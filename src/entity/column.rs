@@ -1,6 +1,7 @@
-use crate::{EntityName, IdenStatic, IntoSimpleExpr, Iterable};
+use crate::{DbBackend, EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable};
 use sea_query::{
-    Alias, BinOper, DynIden, Expr, Iden, IntoIden, SeaRc, SelectStatement, SimpleExpr, Value,
+    Alias, BinOper, DynIden, Expr, IntoIden, IntoLikeExpr, SeaRc, SelectStatement, SimpleExpr,
+    Value,
 };
 use std::str::FromStr;
 
@@ -15,22 +16,11 @@ pub struct ColumnDef {
     pub(crate) null: bool,
     pub(crate) unique: bool,
     pub(crate) indexed: bool,
-    pub(crate) default_value: Option<Value>,
+    pub(crate) default: Option<SimpleExpr>,
+    pub(crate) comment: Option<String>,
 }
 
 macro_rules! bind_oper {
-    ( $op: ident ) => {
-        #[allow(missing_docs)]
-        fn $op<V>(&self, v: V) -> SimpleExpr
-        where
-            V: Into<Value>,
-        {
-            Expr::col((self.entity_name(), *self)).$op(v)
-        }
-    };
-}
-
-macro_rules! bind_oper_with_enum_casting {
     ( $op: ident, $bin_op: ident ) => {
         #[allow(missing_docs)]
         fn $op<V>(&self, v: V) -> SimpleExpr
@@ -61,7 +51,8 @@ macro_rules! bind_vec_func {
             V: Into<Value>,
             I: IntoIterator<Item = V>,
         {
-            Expr::col((self.entity_name(), *self)).$func(v)
+            let v_with_enum_cast = v.into_iter().map(|v| self.save_as(Expr::val(v)));
+            Expr::col((self.entity_name(), *self)).$func(v_with_enum_cast)
         }
     };
 }
@@ -85,6 +76,11 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// Define a column for an Entity
     fn def(&self) -> ColumnDef;
 
+    /// Get the enum name of the column type
+    fn enum_type_name(&self) -> Option<&'static str> {
+        None
+    }
+
     /// Get the name of the entity the column belongs to
     fn entity_name(&self) -> DynIden {
         SeaRc::new(Self::EntityName::default()) as DynIden
@@ -95,12 +91,12 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         (self.entity_name(), SeaRc::new(*self) as DynIden)
     }
 
-    bind_oper_with_enum_casting!(eq, Equal);
-    bind_oper_with_enum_casting!(ne, NotEqual);
-    bind_oper!(gt);
-    bind_oper!(gte);
-    bind_oper!(lt);
-    bind_oper!(lte);
+    bind_oper!(eq, Equal);
+    bind_oper!(ne, NotEqual);
+    bind_oper!(gt, GreaterThan);
+    bind_oper!(gte, GreaterThanOrEqual);
+    bind_oper!(lt, SmallerThan);
+    bind_oper!(lte, SmallerThanOrEqual);
 
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
@@ -149,7 +145,10 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE 'cheese'"
     /// );
     /// ```
-    fn like(&self, s: &str) -> SimpleExpr {
+    fn like<T>(&self, s: T) -> SimpleExpr
+    where
+        T: IntoLikeExpr,
+    {
         Expr::col((self.entity_name(), *self)).like(s)
     }
 
@@ -164,10 +163,18 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` NOT LIKE 'cheese'"
     /// );
     /// ```
-    fn not_like(&self, s: &str) -> SimpleExpr {
+    fn not_like<T>(&self, s: T) -> SimpleExpr
+    where
+        T: IntoLikeExpr,
+    {
         Expr::col((self.entity_name(), *self)).not_like(s)
     }
 
+    /// This is a simplified shorthand for a more general `like` method.
+    /// Use `like` if you need something more complex, like specifying an escape character.
+    ///
+    /// ## Examples
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
@@ -179,11 +186,19 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE 'cheese%'"
     /// );
     /// ```
-    fn starts_with(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("{s}%");
+    fn starts_with<T>(&self, s: T) -> SimpleExpr
+    where
+        T: Into<String>,
+    {
+        let pattern = format!("{}%", s.into());
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
+    /// This is a simplified shorthand for a more general `like` method.
+    /// Use `like` if you need something more complex, like specifying an escape character.
+    ///
+    /// ## Examples
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
@@ -195,11 +210,19 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese'"
     /// );
     /// ```
-    fn ends_with(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("%{s}");
+    fn ends_with<T>(&self, s: T) -> SimpleExpr
+    where
+        T: Into<String>,
+    {
+        let pattern = format!("%{}", s.into());
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
+    /// This is a simplified shorthand for a more general `like` method.
+    /// Use `like` if you need something more complex, like specifying an escape character.
+    ///
+    /// ## Examples
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
@@ -211,8 +234,11 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
     /// );
     /// ```
-    fn contains(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("%{s}%");
+    fn contains<T>(&self, s: T) -> SimpleExpr
+    where
+        T: Into<String>,
+    {
+        let pattern = format!("%{}%", s.into());
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
@@ -242,6 +268,14 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         Expr::expr(self.into_simple_expr())
     }
 
+    /// Construct a returning [`Expr`].
+    #[allow(clippy::match_single_binding)]
+    fn into_returning_expr(self, db_backend: DbBackend) -> Expr {
+        match db_backend {
+            _ => Expr::col(self),
+        }
+    }
+
     /// Cast column expression used in select statement.
     /// It only cast database enum as text if it's an enum column.
     fn select_as(&self, expr: Expr) -> SimpleExpr {
@@ -266,6 +300,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     }
 
     /// Cast value of an enum column as enum type; do nothing if `self` is not an enum.
+    /// Will also transform `Array(Vec<Json>)` into `Json(Vec<Json>)` if the column type is `Json`.
     fn save_enum_as(&self, val: Expr) -> SimpleExpr {
         cast_enum_as(val, self, |col, enum_name, col_type| {
             let type_name = match col_type {
@@ -295,19 +330,31 @@ impl ColumnTypeTrait for ColumnType {
             null: false,
             unique: false,
             indexed: false,
-            default_value: None,
+            default: None,
+            comment: None,
         }
     }
 
     fn get_enum_name(&self) -> Option<&DynIden> {
-        fn enum_name(col_type: &ColumnType) -> Option<&DynIden> {
-            match col_type {
-                ColumnType::Enum { name, .. } => Some(name),
-                ColumnType::Array(col_type) => enum_name(col_type),
-                _ => None,
-            }
-        }
         enum_name(self)
+    }
+}
+
+impl ColumnTypeTrait for ColumnDef {
+    fn def(self) -> ColumnDef {
+        self
+    }
+
+    fn get_enum_name(&self) -> Option<&DynIden> {
+        enum_name(&self.col_type)
+    }
+}
+
+fn enum_name(col_type: &ColumnType) -> Option<&DynIden> {
+    match col_type {
+        ColumnType::Enum { name, .. } => Some(name),
+        ColumnType::Array(col_type) => enum_name(col_type),
+        _ => None,
     }
 }
 
@@ -315,6 +362,11 @@ impl ColumnDef {
     /// Marks the column as `UNIQUE`
     pub fn unique(mut self) -> Self {
         self.unique = true;
+        self
+    }
+    /// Set column comment
+    pub fn comment(mut self, v: &str) -> Self {
+        self.comment = Some(v.into());
         self
     }
 
@@ -340,7 +392,16 @@ impl ColumnDef {
     where
         T: Into<Value>,
     {
-        self.default_value = Some(value.into());
+        self.default = Some(value.into().into());
+        self
+    }
+
+    /// Set the default value or expression of a column
+    pub fn default<T>(mut self, default: T) -> Self
+    where
+        T: Into<SimpleExpr>,
+    {
+        self.default = Some(default.into());
         self
     }
 
@@ -349,18 +410,36 @@ impl ColumnDef {
         &self.col_type
     }
 
+    /// Get [Option<SimpleExpr>] as reference
+    pub fn get_column_default(&self) -> Option<&SimpleExpr> {
+        self.default.as_ref()
+    }
+
     /// Returns true if the column is nullable
     pub fn is_null(&self) -> bool {
         self.null
     }
+
+    /// Returns true if the column is unique
+    pub fn is_unique(&self) -> bool {
+        self.unique
+    }
 }
 
-#[derive(Iden)]
 struct Text;
-
-#[derive(Iden)]
-#[iden = "text[]"]
 struct TextArray;
+
+impl Iden for Text {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(s, "text").unwrap();
+    }
+}
+
+impl Iden for TextArray {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(s, "text[]").unwrap();
+    }
+}
 
 fn cast_enum_as<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
 where
@@ -369,9 +448,41 @@ where
 {
     let col_def = col.def();
     let col_type = col_def.get_column_type();
-    match col_type.get_enum_name() {
-        Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
-        None => expr.into(),
+
+    match col_type {
+        #[cfg(all(feature = "with-json", feature = "postgres-array"))]
+        ColumnType::Json | ColumnType::JsonBinary => {
+            use sea_query::ArrayType;
+            use serde_json::Value as Json;
+
+            #[allow(clippy::boxed_local)]
+            fn unbox<T>(boxed: Box<T>) -> T {
+                *boxed
+            }
+
+            let expr = expr.into();
+            match expr {
+                SimpleExpr::Value(Value::Array(ArrayType::Json, Some(json_vec))) => {
+                    // flatten Array(Vec<Json>) into Json
+                    let json_vec: Vec<Json> = json_vec
+                        .into_iter()
+                        .filter_map(|val| match val {
+                            Value::Json(Some(json)) => Some(unbox(json)),
+                            _ => None,
+                        })
+                        .collect();
+                    SimpleExpr::Value(Value::Json(Some(Box::new(json_vec.into()))))
+                }
+                SimpleExpr::Value(Value::Array(ArrayType::Json, None)) => {
+                    SimpleExpr::Value(Value::Json(None))
+                }
+                _ => expr,
+            }
+        }
+        _ => match col_type.get_enum_name() {
+            Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
+            None => expr.into(),
+        },
     }
 }
 
@@ -459,7 +570,7 @@ mod tests {
     #[test]
     #[cfg(feature = "macros")]
     fn entity_model_column_1() {
-        use crate::entity::*;
+        use crate::prelude::*;
 
         mod hello {
             use crate as sea_orm;
@@ -487,6 +598,14 @@ mod tests {
                 pub eight: u32,
                 #[sea_orm(unique, indexed, nullable)]
                 pub nine: u64,
+                #[sea_orm(default_expr = "Expr::current_timestamp()")]
+                pub ten: DateTimeUtc,
+                #[sea_orm(default_value = 7)]
+                pub eleven: u8,
+                #[sea_orm(default_value = "twelve_value")]
+                pub twelve: String,
+                #[sea_orm(default_expr = "\"twelve_value\"")]
+                pub twelve_two: String,
             }
 
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -527,6 +646,28 @@ mod tests {
         assert_eq!(
             hello::Column::Nine.def(),
             ColumnType::BigUnsigned.def().unique().indexed().nullable()
+        );
+        assert_eq!(
+            hello::Column::Ten.def(),
+            ColumnType::TimestampWithTimeZone
+                .def()
+                .default(Expr::current_timestamp())
+        );
+        assert_eq!(
+            hello::Column::Eleven.def(),
+            ColumnType::TinyUnsigned.def().default(7)
+        );
+        assert_eq!(
+            hello::Column::Twelve.def(),
+            ColumnType::String(StringLen::None)
+                .def()
+                .default("twelve_value")
+        );
+        assert_eq!(
+            hello::Column::TwelveTwo.def(),
+            ColumnType::String(StringLen::None)
+                .def()
+                .default("twelve_value")
         );
     }
 
@@ -888,7 +1029,7 @@ mod tests {
         mod hello_expanded {
             use crate as sea_orm;
             use crate::entity::prelude::*;
-            use crate::sea_query::{Alias, Expr, SimpleExpr};
+            use crate::sea_query::{Expr, SimpleExpr};
 
             #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
             pub struct Entity;
@@ -931,7 +1072,7 @@ mod tests {
 
                 fn select_as(&self, expr: Expr) -> SimpleExpr {
                     match self {
-                        Self::Two => expr.cast_as(Alias::new("integer")),
+                        Self::Two => expr.cast_as("integer"),
                         _ => self.select_enum_as(expr),
                     }
                 }
@@ -1019,7 +1160,7 @@ mod tests {
         mod hello_expanded {
             use crate as sea_orm;
             use crate::entity::prelude::*;
-            use crate::sea_query::{Alias, Expr, SimpleExpr};
+            use crate::sea_query::{Expr, SimpleExpr};
 
             #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
             pub struct Entity;
@@ -1062,7 +1203,7 @@ mod tests {
 
                 fn save_as(&self, val: Expr) -> SimpleExpr {
                     match self {
-                        Self::Two => val.cast_as(Alias::new("text")),
+                        Self::Two => val.cast_as("text"),
                         _ => self.save_enum_as(val),
                     }
                 }
@@ -1150,7 +1291,7 @@ mod tests {
         mod hello_expanded {
             use crate as sea_orm;
             use crate::entity::prelude::*;
-            use crate::sea_query::{Alias, Expr, SimpleExpr};
+            use crate::sea_query::{Expr, SimpleExpr};
 
             #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
             pub struct Entity;
@@ -1193,14 +1334,14 @@ mod tests {
 
                 fn select_as(&self, expr: Expr) -> SimpleExpr {
                     match self {
-                        Self::Two => expr.cast_as(Alias::new("integer")),
+                        Self::Two => expr.cast_as("integer"),
                         _ => self.select_enum_as(expr),
                     }
                 }
 
                 fn save_as(&self, val: Expr) -> SimpleExpr {
                     match self {
-                        Self::Two => val.cast_as(Alias::new("text")),
+                        Self::Two => val.cast_as("text"),
                         _ => self.save_enum_as(val),
                     }
                 }

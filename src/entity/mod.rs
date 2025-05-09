@@ -9,7 +9,7 @@
 /// - The Column which is implemented by [ColumnTrait](crate::ColumnTrait)
 /// - A Relation which is implemented by [RelationTrait](crate::RelationTrait)
 /// - The Primary Key which is implemented by [PrimaryKeyTrait](crate::PrimaryKeyTrait)
-/// and [PrimaryKeyToColumn](crate::PrimaryKeyToColumn)
+///   and [PrimaryKeyToColumn](crate::PrimaryKeyToColumn)
 ///
 /// This trait also provides an API for CRUD actions
 ///
@@ -80,7 +80,7 @@
 ///     fn def(&self) -> ColumnDef {
 ///         match self {
 ///             Self::Id => ColumnType::Integer.def(),
-///             Self::Name => ColumnType::String(None).def(),
+///             Self::Name => ColumnType::String(StringLen::None).def(),
 ///         }
 ///     }
 /// }
@@ -103,6 +103,7 @@ mod column;
 mod identity;
 mod link;
 mod model;
+mod partial_model;
 /// Re-export common types from the entity
 pub mod prelude;
 mod primary_key;
@@ -115,6 +116,7 @@ pub use column::*;
 pub use identity::*;
 pub use link::*;
 pub use model::*;
+pub use partial_model::*;
 // pub use prelude::*;
 pub use primary_key::*;
 pub use relation::*;

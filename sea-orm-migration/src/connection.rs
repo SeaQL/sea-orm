@@ -1,8 +1,8 @@
-use futures::Future;
 use sea_orm::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
     ExecResult, IsolationLevel, QueryResult, Statement, TransactionError, TransactionTrait,
 };
+use std::future::Future;
 use std::pin::Pin;
 
 pub enum SchemaManagerConnection<'c> {
@@ -11,7 +11,7 @@ pub enum SchemaManagerConnection<'c> {
 }
 
 #[async_trait::async_trait]
-impl<'c> ConnectionTrait for SchemaManagerConnection<'c> {
+impl ConnectionTrait for SchemaManagerConnection<'_> {
     fn get_database_backend(&self) -> DbBackend {
         match self {
             SchemaManagerConnection::Connection(conn) => conn.get_database_backend(),
@@ -56,7 +56,7 @@ impl<'c> ConnectionTrait for SchemaManagerConnection<'c> {
 }
 
 #[async_trait::async_trait]
-impl<'c> TransactionTrait for SchemaManagerConnection<'c> {
+impl TransactionTrait for SchemaManagerConnection<'_> {
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         match self {
             SchemaManagerConnection::Connection(conn) => conn.begin().await,

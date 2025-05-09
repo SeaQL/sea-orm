@@ -1,3 +1,5 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
@@ -10,11 +12,6 @@ use sea_orm::{
 };
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("enum_primary_key_tests").await;
     create_tables(&ctx.db).await?;
@@ -109,6 +106,15 @@ pub async fn insert_teas(db: &DatabaseConnection) -> Result<(), DbErr> {
                 Expr::col(Column::Id)
                     .binary(BinOper::In, Expr::tuple([Tea::EverydayTea.as_enum()]))
             )
+            .one(db)
+            .await?
+            .unwrap()
+    );
+    // Equivalent to the above.
+    assert_eq!(
+        model,
+        Entity::find()
+            .filter(Column::Id.is_in([Tea::EverydayTea]))
             .one(db)
             .await?
             .unwrap()

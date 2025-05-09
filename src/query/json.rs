@@ -34,6 +34,13 @@ impl FromQueryResult for JsonValue {
                             }
                         };
                     }
+                    macro_rules! match_mysql_compatible_type {
+                        ( $type: ty ) => {
+                            if <$type as Type<MySql>>::compatible(col_type) {
+                                try_get_type!($type, col)
+                            }
+                        };
+                    }
                     match_mysql_type!(bool);
                     match_mysql_type!(i8);
                     match_mysql_type!(i16);
@@ -64,9 +71,9 @@ impl FromQueryResult for JsonValue {
                     match_mysql_type!(time::OffsetDateTime);
                     #[cfg(feature = "with-rust_decimal")]
                     match_mysql_type!(rust_decimal::Decimal);
+                    match_mysql_compatible_type!(String);
                     #[cfg(feature = "with-json")]
                     try_get_type!(serde_json::Value, col);
-                    try_get_type!(String, col);
                     #[cfg(feature = "with-uuid")]
                     try_get_type!(uuid::Uuid, col);
                     try_get_type!(Vec<u8>, col);
@@ -77,6 +84,7 @@ impl FromQueryResult for JsonValue {
             crate::QueryResultRow::SqlxPostgres(row) => {
                 use serde_json::json;
                 use sqlx::{postgres::types::Oid, Column, Postgres, Row, Type};
+
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
                         continue;
@@ -84,13 +92,25 @@ impl FromQueryResult for JsonValue {
                         column.name().replacen(pre, "", 1)
                     };
                     let col_type = column.type_info();
+
                     macro_rules! match_postgres_type {
                         ( $type: ty ) => {
-                            if <$type as Type<Postgres>>::type_info().eq(col_type) {
-                                try_get_type!($type, col)
+                            match col_type.kind() {
+                                #[cfg(feature = "postgres-array")]
+                                sqlx::postgres::PgTypeKind::Array(_) => {
+                                    if <Vec<$type> as Type<Postgres>>::type_info().eq(col_type) {
+                                        try_get_type!(Vec<$type>, col);
+                                    }
+                                }
+                                _ => {
+                                    if <$type as Type<Postgres>>::type_info().eq(col_type) {
+                                        try_get_type!($type, col);
+                                    }
+                                }
                             }
                         };
                     }
+
                     match_postgres_type!(bool);
                     match_postgres_type!(i8);
                     match_postgres_type!(i16);
@@ -126,9 +146,21 @@ impl FromQueryResult for JsonValue {
                     match_postgres_type!(rust_decimal::Decimal);
                     #[cfg(feature = "with-json")]
                     try_get_type!(serde_json::Value, col);
+                    #[cfg(all(feature = "with-json", feature = "postgres-array"))]
+                    try_get_type!(Vec<serde_json::Value>, col);
                     try_get_type!(String, col);
+                    #[cfg(feature = "postgres-array")]
+                    try_get_type!(Vec<String>, col);
+                    #[cfg(feature = "postgres-vector")]
+                    try_get_type!(pgvector::Vector, col);
                     #[cfg(feature = "with-uuid")]
                     try_get_type!(uuid::Uuid, col);
+                    #[cfg(all(feature = "with-uuid", feature = "postgres-array"))]
+                    try_get_type!(Vec<uuid::Uuid>, col);
+                    #[cfg(feature = "with-ipnetwork")]
+                    try_get_type!(ipnetwork::IpNetwork, col);
+                    #[cfg(all(feature = "with-ipnetwork", feature = "postgres-array"))]
+                    try_get_type!(Vec<ipnetwork::IpNetwork>, col);
                     try_get_type!(Vec<u8>, col);
                 }
                 Ok(JsonValue::Object(map))
@@ -185,6 +217,18 @@ impl FromQueryResult for JsonValue {
             }
             #[cfg(feature = "mock")]
             crate::QueryResultRow::Mock(row) => {
+                for (column, value) in row.clone().into_column_value_tuples() {
+                    let col = if !column.starts_with(pre) {
+                        continue;
+                    } else {
+                        column.replacen(pre, "", 1)
+                    };
+                    map.insert(col, sea_query::sea_value_to_json_value(&value));
+                }
+                Ok(JsonValue::Object(map))
+            }
+            #[cfg(feature = "proxy")]
+            crate::QueryResultRow::Proxy(row) => {
                 for (column, value) in row.clone().into_column_value_tuples() {
                     let col = if !column.starts_with(pre) {
                         continue;

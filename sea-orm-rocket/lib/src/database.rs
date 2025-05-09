@@ -131,10 +131,10 @@ pub trait Database:
         }
 
         let dbtype = std::any::type_name::<Self>();
-        let fairing = Paint::default(format!("{dbtype}::init()")).bold();
+        let fairing = Paint::new(format!("{dbtype}::init()")).bold();
         error!(
             "Attempted to fetch unattached database `{}`.",
-            Paint::default(dbtype).bold()
+            Paint::new(dbtype).bold()
         );
         info_!(
             "`{}` fairing must be attached prior to using this database.",
@@ -180,7 +180,7 @@ pub struct Initializer<D: Database>(Option<&'static str>, PhantomData<fn() -> D>
 ///   status `InternalServerError`. A [`Sentinel`] guards this condition, and so
 ///   this type of failure is unlikely to occur. A `None` error is returned.
 ///   * If a connection is not available within `connect_timeout` seconds or
-///   another error occurs, the gaurd _fails_ with status `ServiceUnavailable`
+///   another error occurs, the guard _fails_ with status `ServiceUnavailable`
 ///   and the error is returned in `Some`.
 pub struct Connection<'a, D: Database>(&'a <D::Pool as Pool>::Connection);
 
@@ -261,7 +261,7 @@ impl<'r, D: Database> FromRequest<'r> for Connection<'r, D> {
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         match D::fetch(req.rocket()) {
             Some(pool) => Outcome::Success(Connection(pool.borrow())),
-            None => Outcome::Failure((Status::InternalServerError, None)),
+            None => Outcome::Error((Status::InternalServerError, None)),
         }
     }
 }

@@ -1,3 +1,5 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
@@ -5,11 +7,6 @@ use pretty_assertions::assert_eq;
 use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("byte_primary_key_tests").await;
     create_tables(&ctx.db).await?;

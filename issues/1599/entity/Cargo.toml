@@ -1,0 +1,17 @@
+[package]
+name = "entity"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "entity"
+path = "src/lib.rs"
+
+[dependencies]
+sea-orm = { path = "../../../" }
+seaography = { path = "../../../../seaography", optional = true }
+async-graphql = { version = "5", optional = true  }
+
+[features]
+seaography = ["dep:seaography", "async-graphql", "sea-orm/seaography"]

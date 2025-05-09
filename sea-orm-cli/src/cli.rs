@@ -1,7 +1,12 @@
-use clap::{ArgEnum, ArgGroup, Parser, Subcommand};
+use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueEnum};
+#[cfg(feature = "codegen")]
+use dotenvy::dotenv;
+
+#[cfg(feature = "codegen")]
+use crate::{handle_error, run_generate_command, run_migrate_command};
 
 #[derive(Parser, Debug)]
-#[clap(
+#[command(
     version,
     author,
     help_template = r#"{before-help}{name} {version}
@@ -24,44 +29,47 @@ AUTHORS:
   An async & dynamic ORM for Rust                  \ |  ,/
   ===============================                   \|_/
 
-  Getting Started!
-    - documentation: https://www.sea-ql.org/SeaORM
-    - step-by-step tutorials: https://www.sea-ql.org/sea-orm-tutorial
-    - integration examples: https://github.com/SeaQL/sea-orm/tree/master/examples
-    - cookbook: https://www.sea-ql.org/sea-orm-cookbook
+  Getting Started
+    - Documentation: https://www.sea-ql.org/SeaORM
+    - Tutorial: https://www.sea-ql.org/sea-orm-tutorial
+    - Examples: https://github.com/SeaQL/sea-orm/tree/master/examples
+    - Cookbook: https://www.sea-ql.org/sea-orm-cookbook
 
   Join our Discord server to chat with others in the SeaQL community!
-    - invitation link: https://discord.com/invite/uCPdDXzbdv
+    - Invitation: https://discord.com/invite/uCPdDXzbdv
 
-  If you like what we do, consider starring, commenting, sharing and contributing!
+  SeaQL Community Survey 2024
+    - Link: https://sea-ql.org/community-survey
+
+  If you like what we do, consider starring, sharing and contributing!
 "#
 )]
 pub struct Cli {
-    #[clap(action, global = true, short, long, help = "Show debug messages")]
+    #[arg(global = true, short, long, help = "Show debug messages")]
     pub verbose: bool,
 
-    #[clap(subcommand)]
+    #[command(subcommand)]
     pub command: Commands,
 }
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum Commands {
-    #[clap(
+    #[command(
         about = "Codegen related commands",
         arg_required_else_help = true,
         display_order = 10
     )]
     Generate {
-        #[clap(subcommand)]
+        #[command(subcommand)]
         command: GenerateSubcommands,
     },
-    #[clap(about = "Migration related commands", display_order = 20)]
+    #[command(about = "Migration related commands", display_order = 20)]
     Migrate {
-        #[clap(
-            value_parser,
+        #[arg(
             global = true,
             short = 'd',
             long,
+            env = "MIGRATION_DIR",
             help = "Migration script directory.
 If your migrations are in their own crate,
 you can provide the root of that crate.
@@ -71,8 +79,7 @@ you should provide the directory of that submodule.",
         )]
         migration_dir: String,
 
-        #[clap(
-            value_parser,
+        #[arg(
             global = true,
             short = 's',
             long,
@@ -83,8 +90,7 @@ you should provide the directory of that submodule.",
         )]
         database_schema: Option<String>,
 
-        #[clap(
-            value_parser,
+        #[arg(
             global = true,
             short = 'u',
             long,
@@ -93,76 +99,59 @@ you should provide the directory of that submodule.",
         )]
         database_url: Option<String>,
 
-        #[clap(subcommand)]
+        #[command(subcommand)]
         command: Option<MigrateSubcommands>,
     },
 }
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum MigrateSubcommands {
-    #[clap(about = "Initialize migration directory", display_order = 10)]
+    #[command(about = "Initialize migration directory", display_order = 10)]
     Init,
-    #[clap(about = "Generate a new, empty migration", display_order = 20)]
+    #[command(about = "Generate a new, empty migration", display_order = 20)]
     Generate {
-        #[clap(
-            value_parser,
-            required = true,
-            takes_value = true,
-            help = "Name of the new migration"
-        )]
+        #[arg(required = true, help = "Name of the new migration")]
         migration_name: String,
 
-        #[clap(
-            action,
+        #[arg(
             long,
             default_value = "true",
             help = "Generate migration file based on Utc time",
-            conflicts_with = "local-time",
+            conflicts_with = "local_time",
             display_order = 1001
         )]
         universal_time: bool,
 
-        #[clap(
-            action,
+        #[arg(
             long,
             help = "Generate migration file based on Local time",
-            conflicts_with = "universal-time",
+            conflicts_with = "universal_time",
             display_order = 1002
         )]
         local_time: bool,
     },
-    #[clap(
+    #[command(
         about = "Drop all tables from the database, then reapply all migrations",
         display_order = 30
     )]
     Fresh,
-    #[clap(
+    #[command(
         about = "Rollback all applied migrations, then reapply all migrations",
         display_order = 40
     )]
     Refresh,
-    #[clap(about = "Rollback all applied migrations", display_order = 50)]
+    #[command(about = "Rollback all applied migrations", display_order = 50)]
     Reset,
-    #[clap(about = "Check the status of all migrations", display_order = 60)]
+    #[command(about = "Check the status of all migrations", display_order = 60)]
     Status,
-    #[clap(about = "Apply pending migrations", display_order = 70)]
+    #[command(about = "Apply pending migrations", display_order = 70)]
     Up {
-        #[clap(
-            value_parser,
-            short,
-            long,
-            help = "Number of pending migrations to apply"
-        )]
+        #[arg(short, long, help = "Number of pending migrations to apply")]
         num: Option<u32>,
     },
-    #[clap(
-        value_parser,
-        about = "Rollback applied migrations",
-        display_order = 80
-    )]
+    #[command(about = "Rollback applied migrations", display_order = 80)]
     Down {
-        #[clap(
-            value_parser,
+        #[arg(
             short,
             long,
             default_value = "1",
@@ -175,54 +164,53 @@ pub enum MigrateSubcommands {
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum GenerateSubcommands {
-    #[clap(about = "Generate entity")]
-    #[clap(arg_required_else_help = true)]
-    #[clap(group(ArgGroup::new("formats").args(&["compact-format", "expanded-format"])))]
-    #[clap(group(ArgGroup::new("group-tables").args(&["tables", "include-hidden-tables"])))]
+    #[command(about = "Generate entity")]
+    #[command(group(ArgGroup::new("formats").args(&["compact_format", "expanded_format"])))]
+    #[command(group(ArgGroup::new("group-tables").args(&["tables", "include_hidden_tables"])))]
     Entity {
-        #[clap(action, long, help = "Generate entity file of compact format")]
+        #[arg(long, help = "Generate entity file of compact format")]
         compact_format: bool,
 
-        #[clap(action, long, help = "Generate entity file of expanded format")]
+        #[arg(long, help = "Generate entity file of expanded format")]
         expanded_format: bool,
 
-        #[clap(
-            action,
+        #[arg(
             long,
             help = "Generate entity file for hidden tables (i.e. table name starts with an underscore)"
         )]
         include_hidden_tables: bool,
 
-        #[clap(
-            value_parser,
+        #[arg(
             short = 't',
             long,
-            use_value_delimiter = true,
-            takes_value = true,
+            value_delimiter = ',',
             help = "Generate entity file for specified tables only (comma separated)"
         )]
         tables: Vec<String>,
 
-        #[clap(
-            value_parser,
+        #[arg(
             long,
-            use_value_delimiter = true,
-            takes_value = true,
+            value_delimiter = ',',
             default_value = "seaql_migrations",
             help = "Skip generating entity file for specified tables (comma separated)"
         )]
         ignore_tables: Vec<String>,
 
-        #[clap(
-            value_parser,
+        #[arg(
             long,
             default_value = "1",
             help = "The maximum amount of connections to use when connecting to the database."
         )]
         max_connections: u32,
 
-        #[clap(
-            value_parser,
+        #[arg(
+            long,
+            default_value = "30",
+            long_help = "Acquire timeout in seconds of the connection used for schema discovery"
+        )]
+        acquire_timeout: u64,
+
+        #[arg(
             short = 'o',
             long,
             default_value = "./",
@@ -230,29 +218,27 @@ pub enum GenerateSubcommands {
         )]
         output_dir: String,
 
-        #[clap(
-            value_parser,
+        #[arg(
             short = 's',
             long,
             env = "DATABASE_SCHEMA",
-            default_value = "public",
             long_help = "Database schema\n \
                         - For MySQL, this argument is ignored.\n \
                         - For PostgreSQL, this argument is optional with default value 'public'."
         )]
-        database_schema: String,
+        database_schema: Option<String>,
 
-        #[clap(
-            value_parser,
-            short = 'u',
-            long,
-            env = "DATABASE_URL",
-            help = "Database URL"
-        )]
+        #[arg(short = 'u', long, env = "DATABASE_URL", help = "Database URL")]
         database_url: String,
 
-        #[clap(
-            value_parser,
+        #[arg(
+            long,
+            default_value = "all",
+            help = "Generate prelude.rs file (all, none, all-allow-unused-imports)"
+        )]
+        with_prelude: String,
+
+        #[arg(
             long,
             default_value = "none",
             help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, \
@@ -260,23 +246,20 @@ pub enum GenerateSubcommands {
         )]
         with_serde: String,
 
-        #[clap(
-            action,
+        #[arg(
             long,
             help = "Generate a serde field attribute, '#[serde(skip_deserializing)]', for the primary key fields to skip them during deserialization, this flag will be affective only when '--with-serde' is 'both' or 'deserialize'"
         )]
         serde_skip_deserializing_primary_key: bool,
 
-        #[clap(
-            action,
+        #[arg(
             long,
             default_value = "false",
             help = "Opt-in to add skip attributes to hidden columns (i.e. when 'with-serde' enabled and column name starts with an underscore)"
         )]
         serde_skip_hidden_column: bool,
 
-        #[clap(
-            action,
+        #[arg(
             long,
             default_value = "false",
             long_help = "Automatically derive the Copy trait on generated enums.\n\
@@ -286,17 +269,15 @@ pub enum GenerateSubcommands {
         )]
         with_copy_enums: bool,
 
-        #[clap(
-            arg_enum,
-            value_parser,
+        #[arg(
             long,
-            default_value = "chrono",
+            default_value_t,
+            value_enum,
             help = "The datetime crate to use for generating entities."
         )]
         date_time_crate: DateTimeCrate,
 
-        #[clap(
-            action,
+        #[arg(
             long,
             short = 'l',
             default_value = "false",
@@ -304,28 +285,88 @@ pub enum GenerateSubcommands {
         )]
         lib: bool,
 
-        #[clap(
-            value_parser,
+        #[arg(
             long,
-            use_value_delimiter = true,
-            takes_value = true,
+            value_delimiter = ',',
             help = "Add extra derive macros to generated model struct (comma separated), e.g. `--model-extra-derives 'ts_rs::Ts','CustomDerive'`"
         )]
         model_extra_derives: Vec<String>,
 
-        #[clap(
-            value_parser,
+        #[arg(
             long,
-            use_value_delimiter = true,
-            takes_value = true,
+            value_delimiter = ',',
             help = r#"Add extra attributes to generated model struct, no need for `#[]` (comma separated), e.g. `--model-extra-attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
         )]
         model_extra_attributes: Vec<String>,
+
+        #[arg(
+            long,
+            value_delimiter = ',',
+            help = "Add extra derive macros to generated enums (comma separated), e.g. `--enum-extra-derives 'ts_rs::Ts','CustomDerive'`"
+        )]
+        enum_extra_derives: Vec<String>,
+
+        #[arg(
+            long,
+            value_delimiter = ',',
+            help = r#"Add extra attributes to generated enums, no need for `#[]` (comma separated), e.g. `--enum-extra-attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
+        )]
+        enum_extra_attributes: Vec<String>,
+
+        #[arg(
+            long,
+            default_value = "false",
+            long_help = "Generate helper Enumerations that are used by Seaography."
+        )]
+        seaography: bool,
+
+        #[arg(
+            long,
+            default_value = "true",
+            default_missing_value = "true",
+            num_args = 0..=1,
+            require_equals = true,
+            action = ArgAction::Set,
+            long_help = "Generate empty ActiveModelBehavior impls."
+        )]
+        impl_active_model_behavior: bool,
     },
 }
 
-#[derive(ArgEnum, Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Default)]
 pub enum DateTimeCrate {
+    #[default]
     Chrono,
     Time,
+}
+
+/// Use this to build a local, version-controlled `sea-orm-cli` in dependent projects
+/// (see [example use case](https://github.com/SeaQL/sea-orm/discussions/1889)).
+#[cfg(feature = "codegen")]
+pub async fn main() {
+    dotenv().ok();
+
+    let cli = Cli::parse();
+    let verbose = cli.verbose;
+
+    match cli.command {
+        Commands::Generate { command } => {
+            run_generate_command(command, verbose)
+                .await
+                .unwrap_or_else(handle_error);
+        }
+        Commands::Migrate {
+            migration_dir,
+            database_schema,
+            database_url,
+            command,
+        } => run_migrate_command(
+            command,
+            &migration_dir,
+            database_schema,
+            database_url,
+            verbose,
+        )
+        .unwrap_or_else(handle_error),
+    }
 }

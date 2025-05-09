@@ -2,7 +2,7 @@ use crate::{
     error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
     Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, UpdateMany, UpdateOne,
 };
-use sea_query::{Expr, FromValueTuple, Query, UpdateStatement};
+use sea_query::{FromValueTuple, Query, UpdateStatement};
 
 /// Defines an update operation
 #[derive(Clone, Debug)]
@@ -18,12 +18,12 @@ pub struct UpdateResult {
     pub rows_affected: u64,
 }
 
-impl<'a, A: 'a> UpdateOne<A>
+impl<A> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
     /// Execute an update operation on an ActiveModel
-    pub async fn exec<'b, C>(self, db: &'b C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
+    pub async fn exec<C>(self, db: &C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
@@ -44,6 +44,20 @@ where
         C: ConnectionTrait,
     {
         Updater::new(self.query).exec(db).await
+    }
+
+    /// Execute an update operation and return the updated model (use `RETURNING` syntax if supported)
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `UPDATE RETURNING`.
+    pub async fn exec_with_returning<C>(self, db: &'a C) -> Result<Vec<E::Model>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        Updater::new(self.query)
+            .exec_update_with_returning::<E, _>(db)
+            .await
     }
 }
 
@@ -100,10 +114,11 @@ impl Updater {
 
         match db.support_returning() {
             true => {
-                let returning = Query::returning()
-                    .exprs(Column::<A>::iter().map(|c| c.select_as(Expr::col(c))));
-                self.query.returning(returning);
                 let db_backend = db.get_database_backend();
+                let returning = Query::returning().exprs(
+                    Column::<A>::iter().map(|c| c.select_as(c.into_returning_expr(db_backend))),
+                );
+                self.query.returning(returning);
                 let found: Option<Model<A>> = SelectorRaw::<SelectModel<Model<A>>>::from_statement(
                     db_backend.build(&self.query),
                 )
@@ -120,6 +135,33 @@ impl Updater {
                 self.check_record_exists().exec(db).await?;
                 find_updated_model_by_id(model, db).await
             }
+        }
+    }
+
+    async fn exec_update_with_returning<E, C>(mut self, db: &C) -> Result<Vec<E::Model>, DbErr>
+    where
+        E: EntityTrait,
+        C: ConnectionTrait,
+    {
+        if self.is_noop() {
+            return Ok(vec![]);
+        }
+
+        match db.support_returning() {
+            true => {
+                let db_backend = db.get_database_backend();
+                let returning = Query::returning().exprs(
+                    E::Column::iter().map(|c| c.select_as(c.into_returning_expr(db_backend))),
+                );
+                self.query.returning(returning);
+                let models: Vec<E::Model> = SelectorRaw::<SelectModel<E::Model>>::from_statement(
+                    db_backend.build(&self.query),
+                )
+                .all(db)
+                .await?;
+                Ok(models)
+            }
+            false => unimplemented!("Database backend doesn't support RETURNING"),
         }
     }
 

@@ -54,7 +54,7 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::Id => ColumnType::Integer.def(),
-            Self::Name => ColumnType::String(Some(255u32)).def(),
+            Self::Name => ColumnType::String(StringLen::N(255u32)).def(),
             Self::FruitId => ColumnType::Integer.def().null(),
         }
     }

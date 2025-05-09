@@ -1,15 +1,13 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 pub use common::{features::*, setup::*, TestContext};
+use pretty_assertions::assert_eq;
 use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
 use serde_json::json;
 use time::macros::{date, time};
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() {
     let ctx = TestContext::new("time_crate_tests").await;
     create_tables(&ctx.db).await.unwrap();
@@ -49,7 +47,7 @@ pub async fn create_transaction_log(db: &DatabaseConnection) -> Result<(), DbErr
             "date": "2022-03-13",
             "time": "16:24:00",
             "date_time": "2022-03-13T16:24:00",
-            "date_time_tz": "2022-03-13T16:24:00+00:00",
+            "date_time_tz": "2022-03-13T16:24:00Z",
         })
     );
 
@@ -76,6 +74,8 @@ pub async fn create_transaction_log(db: &DatabaseConnection) -> Result<(), DbErr
             "date_time_tz": "2022-03-13T16:24:00Z",
         })
     );
+
+    assert_ne!(json, "");
 
     Ok(())
 }

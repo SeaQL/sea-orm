@@ -74,14 +74,14 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
         #[allow(
             missing_copy_implementations,
         )]
-        #vis struct #iter_name #ty_generics {
+        #vis struct #iter_name #impl_generics {
             idx: usize,
             back_idx: usize,
             marker: ::core::marker::PhantomData #phantom_data,
         }
 
-        impl #impl_generics core::fmt::Debug for #iter_name #ty_generics #where_clause {
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        impl #impl_generics ::core::fmt::Debug for #iter_name #ty_generics #where_clause {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                 // We don't know if the variants implement debug themselves so the only thing we
                 // can really show is how many elements are left.
                 f.debug_struct(#iter_name_debug_struct)
@@ -91,7 +91,7 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
         }
 
         impl #impl_generics #iter_name #ty_generics #where_clause {
-            fn get(&self, idx: usize) -> Option<#name #ty_generics> {
+            fn get(&self, idx: usize) -> ::core::option::Option<#name #ty_generics> {
                 match idx {
                     #(#arms),*
                 }
@@ -112,16 +112,16 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
         impl #impl_generics Iterator for #iter_name #ty_generics #where_clause {
             type Item = #name #ty_generics;
 
-            fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+            fn next(&mut self) -> ::core::option::Option<<Self as Iterator>::Item> {
                 self.nth(0)
             }
 
-            fn size_hint(&self) -> (usize, Option<usize>) {
+            fn size_hint(&self) -> (usize, ::core::option::Option<usize>) {
                 let t = if self.idx + self.back_idx >= #variant_count { 0 } else { #variant_count - self.idx - self.back_idx };
                 (t, Some(t))
             }
 
-            fn nth(&mut self, n: usize) -> Option<<Self as Iterator>::Item> {
+            fn nth(&mut self, n: usize) -> ::core::option::Option<<Self as Iterator>::Item> {
                 let idx = self.idx + n + 1;
                 if idx + self.back_idx > #variant_count {
                     // We went past the end of the iterator. Freeze idx at #variant_count
@@ -131,7 +131,7 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
                     ::core::option::Option::None
                 } else {
                     self.idx = idx;
-                    self.get(idx - 1)
+                    #iter_name::get(self, idx - 1)
                 }
             }
         }
@@ -143,7 +143,7 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
         }
 
         impl #impl_generics DoubleEndedIterator for #iter_name #ty_generics #where_clause {
-            fn next_back(&mut self) -> Option<<Self as Iterator>::Item> {
+            fn next_back(&mut self) -> ::core::option::Option<<Self as Iterator>::Item> {
                 let back_idx = self.back_idx + 1;
 
                 if self.idx + back_idx > #variant_count {
@@ -154,10 +154,12 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
                     ::core::option::Option::None
                 } else {
                     self.back_idx = back_idx;
-                    self.get(#variant_count - self.back_idx)
+                    #iter_name::get(self, #variant_count - self.back_idx)
                 }
             }
         }
+
+        impl #impl_generics ::core::iter::FusedIterator for #iter_name #ty_generics #where_clause { }
 
         impl #impl_generics Clone for #iter_name #ty_generics #where_clause {
             fn clone(&self) -> #iter_name #ty_generics {

@@ -2,7 +2,7 @@ use crate::{
     debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
     Statement, Transaction,
 };
-use futures::Stream;
+use futures_util::Stream;
 use std::{
     fmt::Debug,
     pin::Pin,
@@ -47,6 +47,9 @@ pub trait MockDatabaseTrait: Send + Debug {
 
     /// Get the backend being used in the [MockDatabase]
     fn get_database_backend(&self) -> DbBackend;
+
+    /// Ping the [MockDatabase]
+    fn ping(&self) -> Result<(), DbErr>;
 }
 
 impl MockDatabaseConnector {
@@ -114,6 +117,10 @@ impl MockDatabaseConnection {
     }
 
     /// Get the [DatabaseBackend](crate::DatabaseBackend) being used by the [MockDatabase]
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the lock cannot be acquired.
     pub fn get_database_backend(&self) -> DbBackend {
         self.mocker
             .lock()
@@ -163,8 +170,8 @@ impl MockDatabaseConnection {
         statement: &Statement,
     ) -> Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send>> {
         match self.query_all(statement.clone()) {
-            Ok(v) => Box::pin(futures::stream::iter(v.into_iter().map(Ok))),
-            Err(e) => Box::pin(futures::stream::iter(Some(Err(e)).into_iter())),
+            Ok(v) => Box::pin(futures_util::stream::iter(v.into_iter().map(Ok))),
+            Err(e) => Box::pin(futures_util::stream::iter(Some(Err(e)).into_iter())),
         }
     }
 
@@ -193,5 +200,46 @@ impl MockDatabaseConnection {
             .lock()
             .expect("Failed to acquire mocker")
             .rollback()
+    }
+
+    /// Checks if a connection to the database is still valid.
+    pub fn ping(&self) -> Result<(), DbErr> {
+        self.mocker.lock().map_err(query_err)?.ping()
+    }
+}
+
+impl
+    From<(
+        Arc<crate::MockDatabaseConnection>,
+        Statement,
+        Option<crate::metric::Callback>,
+    )> for crate::QueryStream
+{
+    fn from(
+        (conn, stmt, metric_callback): (
+            Arc<crate::MockDatabaseConnection>,
+            Statement,
+            Option<crate::metric::Callback>,
+        ),
+    ) -> Self {
+        crate::QueryStream::build(stmt, crate::InnerConnection::Mock(conn), metric_callback)
+    }
+}
+
+impl crate::DatabaseTransaction {
+    pub(crate) async fn new_mock(
+        inner: Arc<crate::MockDatabaseConnection>,
+        metric_callback: Option<crate::metric::Callback>,
+    ) -> Result<crate::DatabaseTransaction, DbErr> {
+        use futures_util::lock::Mutex;
+        let backend = inner.get_database_backend();
+        Self::begin(
+            Arc::new(Mutex::new(crate::InnerConnection::Mock(inner))),
+            backend,
+            metric_callback,
+            None,
+            None,
+        )
+        .await
     }
 }

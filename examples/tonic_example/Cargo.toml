@@ -7,12 +7,12 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
-members = [".", "api", "core", "entity", "migration"]
+members = [".", "api", "service", "entity", "migration"]
 
 [dependencies]
 tonic-example-api = { path = "api" }
-tonic = "0.7"
-tokio = { version = "1.17", features = ["macros", "rt-multi-thread", "full"] }
+tonic = "0.9.2"
+tokio = { version = "1.29", features = ["macros", "rt-multi-thread", "full"] }
 
 [[bin]]
 name = "server"

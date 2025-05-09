@@ -1,6 +1,6 @@
 use dto::dto;
 use rocket::serde::json::Json;
-use rocket_example_core::{Mutation, Query};
+use rocket_okapi_example_service::{Mutation, Query};
 
 use sea_orm_rocket::Connection;
 
@@ -11,7 +11,6 @@ use crate::pool;
 use pool::Db;
 
 pub use entity::post;
-pub use entity::post::Entity as Post;
 
 use rocket_okapi::settings::OpenApiSettings;
 

@@ -1,6 +1,6 @@
 use crate::{
-    ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, Iterable, PrimaryKeyToColumn,
-    PrimaryKeyTrait, RelationTrait, Schema,
+    ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, Iterable, PrimaryKeyArity,
+    PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
@@ -144,11 +144,7 @@ where
             continue;
         }
         let stmt = Index::create()
-            .name(&format!(
-                "idx-{}-{}",
-                entity.to_string(),
-                column.to_string()
-            ))
+            .name(format!("idx-{}-{}", entity.to_string(), column.to_string()))
             .table(entity)
             .col(column)
             .to_owned();
@@ -163,17 +159,21 @@ where
 {
     let mut stmt = TableCreateStatement::new();
 
+    if let Some(comment) = entity.comment() {
+        stmt.comment(comment);
+    }
+
     for column in E::Column::iter() {
         let mut column_def = column_def_from_entity_column::<E>(column, backend);
         stmt.col(&mut column_def);
     }
 
-    if E::PrimaryKey::iter().count() > 1 {
+    if <<E::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY > 1 {
         let mut idx_pk = Index::create();
         for primary_key in E::PrimaryKey::iter() {
             idx_pk.col(primary_key);
         }
-        stmt.primary_key(idx_pk.name(&format!("pk-{}", entity.to_string())).primary());
+        stmt.primary_key(idx_pk.name(format!("pk-{}", entity.to_string())).primary());
     }
 
     for relation in E::Relation::iter() {
@@ -192,14 +192,14 @@ where
     E: EntityTrait,
 {
     let orm_column_def = column.def();
-    let types = match orm_column_def.col_type {
+    let types = match &orm_column_def.col_type {
         ColumnType::Enum { name, variants } => match backend {
             DbBackend::MySql => {
                 let variants: Vec<String> = variants.iter().map(|v| v.to_string()).collect();
                 ColumnType::custom(format!("ENUM('{}')", variants.join("', '")).as_str())
             }
-            DbBackend::Postgres => ColumnType::Custom(SeaRc::clone(&name)),
-            DbBackend::Sqlite => ColumnType::Text,
+            DbBackend::Postgres => ColumnType::Custom(SeaRc::clone(name)),
+            DbBackend::Sqlite => orm_column_def.col_type,
         },
         _ => orm_column_def.col_type,
     };
@@ -210,15 +210,18 @@ where
     if orm_column_def.unique {
         column_def.unique_key();
     }
-    if let Some(value) = orm_column_def.default_value {
-        column_def.default(value);
+    if let Some(default) = orm_column_def.default {
+        column_def.default(default);
+    }
+    if let Some(comment) = orm_column_def.comment {
+        column_def.comment(comment);
     }
     for primary_key in E::PrimaryKey::iter() {
         if column.to_string() == primary_key.into_column().to_string() {
             if E::PrimaryKey::auto_increment() {
                 column_def.auto_increment();
             }
-            if E::PrimaryKey::iter().count() == 1 {
+            if <<E::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY == 1 {
                 column_def.primary_key();
             }
         }

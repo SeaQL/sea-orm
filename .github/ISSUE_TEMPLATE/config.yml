@@ -1,5 +1,8 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
+  - name: Feature Request
+    url: https://github.com/SeaQL/sea-orm/discussions/new?category=ideas
+    about: Suggest a new feature for this project
   - name: Q & A
     url: https://github.com/SeaQL/sea-orm/discussions/new?category=q-a
     about: Ask a question or look for help. Try to provide sufficient context, snippets to reproduce and error messages.

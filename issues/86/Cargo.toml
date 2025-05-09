@@ -10,5 +10,5 @@ publish = false
 [dependencies]
 sea-orm = { path = "../../", features = [ "sqlx-all", "runtime-tokio-native-tls", "debug-print" ] }
 tokio = { version = "1", features = ["full"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 tracing = { version = "0.1" }

@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug or feature flaw
+about: Report a bug or design flaw
 title: ''
 labels: ''
 assignees: ''
@@ -19,7 +19,7 @@ Want to ask a question? You can reach us via:
 - GitHub Discussions: https://github.com/SeaQL/sea-orm/discussions/new
 
 Please make sure that you are not asking for a missing feature; a bug is incorrect behavior -
-either in the feature specification or implementation.
+either in the feature specification or implementation. Feature requests should be first raised in discussions.
 
 Please also make sure your description is clear and precise - maintainers don't have access to your
 code and can't see what you have seen. Please avoid vague descriptions like "they are different"

@@ -1,10 +1,10 @@
 use crate::{
-    ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable, ModelTrait,
-    PrimaryKeyToColumn, RelationDef,
+    ColumnAsExpr, ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable,
+    ModelTrait, PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
-    Alias, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr, SelectStatement,
-    SimpleExpr, TableRef,
+    Alias, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType, NullOrdering, SeaRc,
+    SelectExpr, SelectStatement, SimpleExpr, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -52,7 +52,7 @@ pub trait QuerySelect: Sized {
     ///         .column(lunch_set::Column::Tea)
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     r#"SELECT CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    ///     r#"SELECT CAST("lunch_set"."tea" AS "text") FROM "lunch_set""#
     /// );
     /// assert_eq!(
     ///     lunch_set::Entity::find()
@@ -86,11 +86,11 @@ pub trait QuerySelect: Sized {
     /// ```
     fn column_as<C, I>(mut self, col: C, alias: I) -> Self
     where
-        C: IntoSimpleExpr,
+        C: ColumnAsExpr,
         I: IntoIdentity,
     {
         self.query().expr(SelectExpr {
-            expr: col.into_simple_expr(),
+            expr: col.into_column_as_expr(),
             alias: Some(SeaRc::new(alias.into_identity())),
             window: None,
         });
@@ -141,7 +141,7 @@ pub trait QuerySelect: Sized {
     ///         .columns([lunch_set::Column::Name, lunch_set::Column::Tea])
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     r#"SELECT "lunch_set"."name", CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    ///     r#"SELECT "lunch_set"."name", CAST("lunch_set"."tea" AS "text") FROM "lunch_set""#
     /// );
     /// assert_eq!(
     ///     lunch_set::Entity::find()
@@ -284,7 +284,7 @@ pub trait QuerySelect: Sized {
 
     /// Add an AND HAVING expression
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{sea_query::{Alias, Expr}, entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -301,10 +301,10 @@ pub trait QuerySelect: Sized {
     ///         .column_as(cake::Column::Id.count(), "count")
     ///         .column_as(cake::Column::Id.sum(), "sum_of_id")
     ///         .group_by(cake::Column::Name)
-    ///         .having(cake::Column::Id.gt(6))
+    ///         .having(Expr::col("count").gt(6))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
-    ///     "SELECT COUNT(`cake`.`id`) AS `count`, SUM(`cake`.`id`) AS `sum_of_id` FROM `cake` GROUP BY `cake`.`name` HAVING `cake`.`id` > 6"
+    ///     "SELECT COUNT(`cake`.`id`) AS `count`, SUM(`cake`.`id`) AS `sum_of_id` FROM `cake` GROUP BY `cake`.`name` HAVING `count` > 6"
     /// );
     /// ```
     fn having<F>(mut self, filter: F) -> Self
@@ -389,8 +389,7 @@ pub trait QuerySelect: Sized {
 
     /// Join via [`RelationDef`].
     fn join(mut self, join: JoinType, rel: RelationDef) -> Self {
-        self.query()
-            .join(join, rel.to_tbl.clone(), join_condition(rel));
+        self.query().join(join, rel.to_tbl.clone(), rel);
         self
     }
 
@@ -398,8 +397,7 @@ pub trait QuerySelect: Sized {
     /// Assume when there exist a relation A to B.
     /// You can reverse join B from A.
     fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
-        self.query()
-            .join(join, rel.from_tbl.clone(), join_condition(rel));
+        self.query().join(join, rel.from_tbl.clone(), rel);
         self
     }
 
@@ -410,8 +408,7 @@ pub trait QuerySelect: Sized {
     {
         let alias = alias.into_iden();
         rel.to_tbl = rel.to_tbl.alias(SeaRc::clone(&alias));
-        self.query()
-            .join(join, rel.to_tbl.clone(), join_condition(rel));
+        self.query().join(join, rel.to_tbl.clone(), rel);
         self
     }
 
@@ -424,8 +421,7 @@ pub trait QuerySelect: Sized {
     {
         let alias = alias.into_iden();
         rel.from_tbl = rel.from_tbl.alias(SeaRc::clone(&alias));
-        self.query()
-            .join(join, rel.from_tbl.clone(), join_condition(rel));
+        self.query().join(join, rel.from_tbl.clone(), rel);
         self
     }
 
@@ -444,6 +440,141 @@ pub trait QuerySelect: Sized {
     /// Select lock exclusive
     fn lock_exclusive(mut self) -> Self {
         self.query().lock_exclusive();
+        self
+    }
+
+    /// Row locking with behavior (if supported).
+    ///
+    /// See [`SelectStatement::lock_with_behavior`](https://docs.rs/sea-query/*/sea_query/query/struct.SelectStatement.html#method.lock_with_behavior).
+    fn lock_with_behavior(mut self, r#type: LockType, behavior: LockBehavior) -> Self {
+        self.query().lock_with_behavior(r#type, behavior);
+        self
+    }
+
+    /// Add an expression to the select expression list.
+    /// ```
+    /// use sea_orm::sea_query::Expr;
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .expr(Expr::col((cake::Entity, cake::Column::Id)))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id` FROM `cake`"
+    /// );
+    /// ```
+    fn expr<T>(mut self, expr: T) -> Self
+    where
+        T: Into<SelectExpr>,
+    {
+        self.query().expr(expr);
+        self
+    }
+
+    /// Add select expressions from vector of [`SelectExpr`].
+    /// ```
+    /// use sea_orm::sea_query::Expr;
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .exprs([
+    ///             Expr::col((cake::Entity, cake::Column::Id)),
+    ///             Expr::col((cake::Entity, cake::Column::Name)),
+    ///         ])
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    /// );
+    /// ```
+    fn exprs<T, I>(mut self, exprs: I) -> Self
+    where
+        T: Into<SelectExpr>,
+        I: IntoIterator<Item = T>,
+    {
+        self.query().exprs(exprs);
+        self
+    }
+
+    /// Select column.
+    /// ```
+    /// use sea_orm::sea_query::{Alias, Expr, Func};
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .expr_as(
+    ///             Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
+    ///             "name_upper"
+    ///         )
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
+    /// );
+    /// ```
+    fn expr_as<T, A>(mut self, expr: T, alias: A) -> Self
+    where
+        T: Into<SimpleExpr>,
+        A: IntoIdentity,
+    {
+        self.query().expr_as(expr, alias.into_identity());
+        self
+    }
+
+    /// Same as `expr_as`. Here for legacy reasons.
+    ///
+    /// Select column.
+    ///
+    /// ```
+    /// use sea_orm::sea_query::{Alias, Expr, Func};
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .expr_as(
+    ///             Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
+    ///             "name_upper"
+    ///         )
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
+    /// );
+    /// ```
+    fn expr_as_<T, A>(mut self, expr: T, alias: A) -> Self
+    where
+        T: Into<SimpleExpr>,
+        A: IntoIdentity,
+    {
+        self.query().expr_as(expr, alias.into_identity());
+        self
+    }
+
+    /// Shorthand of `expr_as(Expr::col((T, C)), A)`.
+    ///
+    /// ```
+    /// use sea_orm::sea_query::{Alias, Expr, Func};
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .tbl_col_as((cake::Entity, cake::Column::Name), "cake_name")
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`name` AS `cake_name` FROM `cake`"
+    /// );
+    /// ```
+    fn tbl_col_as<T, C, A>(mut self, (tbl, col): (T, C), alias: A) -> Self
+    where
+        T: IntoIden + 'static,
+        C: IntoIden + 'static,
+        A: IntoIdentity,
+    {
+        self.query()
+            .expr_as(Expr::col((tbl, col)), alias.into_identity());
         self
     }
 }
@@ -519,6 +650,28 @@ pub trait QueryOrder: Sized {
             .order_by_expr(col.into_simple_expr(), Order::Desc);
         self
     }
+
+    /// Add an order_by expression with nulls ordering option
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_query::NullOrdering;
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .order_by_with_nulls(cake::Column::Id, Order::Asc, NullOrdering::First)
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" ORDER BY "cake"."id" ASC NULLS FIRST"#
+    /// );
+    /// ```
+    fn order_by_with_nulls<C>(mut self, col: C, ord: Order, nulls: NullOrdering) -> Self
+    where
+        C: IntoSimpleExpr,
+    {
+        self.query()
+            .order_by_expr_with_nulls(col.into_simple_expr(), ord, nulls);
+        self
+    }
 }
 
 // LINT: when the column does not appear in tables selected from
@@ -558,6 +711,35 @@ pub trait QueryFilter: Sized {
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 4 OR `cake`.`id` = 5"
+    /// );
+    /// ```
+    ///
+    /// Like above, but using the `IN` operator.
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.is_in([4, 5]))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` IN (4, 5)"
+    /// );
+    /// ```
+    ///
+    /// Like above, but using the `ANY` operator. Postgres only.
+    ///
+    /// ```
+    /// use sea_orm::sea_query::{extension::postgres::PgFunc, Expr};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(Expr::col((cake::Entity, cake::Column::Id)).eq(PgFunc::any(vec![4, 5])))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY [4,5])"#
     /// );
     /// ```
     ///
@@ -677,55 +859,20 @@ pub trait QueryFilter: Sized {
     }
 }
 
-pub(crate) fn join_condition(mut rel: RelationDef) -> Condition {
-    // Use table alias (if any) to construct the join condition
-    let from_tbl = match unpack_table_alias(&rel.from_tbl) {
-        Some(alias) => alias,
-        None => unpack_table_ref(&rel.from_tbl),
-    };
-    let to_tbl = match unpack_table_alias(&rel.to_tbl) {
-        Some(alias) => alias,
-        None => unpack_table_ref(&rel.to_tbl),
-    };
-    let owner_keys = rel.from_col;
-    let foreign_keys = rel.to_col;
-
-    let mut condition = Condition::all().add(join_tbl_on_condition(
-        SeaRc::clone(&from_tbl),
-        SeaRc::clone(&to_tbl),
-        owner_keys,
-        foreign_keys,
-    ));
-    if let Some(f) = rel.on_condition.take() {
-        condition = condition.add(f(from_tbl, to_tbl));
-    }
-
-    condition
-}
-
 pub(crate) fn join_tbl_on_condition(
     from_tbl: SeaRc<dyn Iden>,
     to_tbl: SeaRc<dyn Iden>,
     owner_keys: Identity,
     foreign_keys: Identity,
-) -> SimpleExpr {
-    match (owner_keys, foreign_keys) {
-        (Identity::Unary(o1), Identity::Unary(f1)) => {
-            Expr::col((SeaRc::clone(&from_tbl), o1)).equals((SeaRc::clone(&to_tbl), f1))
-        }
-        (Identity::Binary(o1, o2), Identity::Binary(f1, f2)) => {
-            Expr::col((SeaRc::clone(&from_tbl), o1))
-                .equals((SeaRc::clone(&to_tbl), f1))
-                .and(Expr::col((SeaRc::clone(&from_tbl), o2)).equals((SeaRc::clone(&to_tbl), f2)))
-        }
-        (Identity::Ternary(o1, o2, o3), Identity::Ternary(f1, f2, f3)) => {
-            Expr::col((SeaRc::clone(&from_tbl), o1))
-                .equals((SeaRc::clone(&to_tbl), f1))
-                .and(Expr::col((SeaRc::clone(&from_tbl), o2)).equals((SeaRc::clone(&to_tbl), f2)))
-                .and(Expr::col((SeaRc::clone(&from_tbl), o3)).equals((SeaRc::clone(&to_tbl), f3)))
-        }
-        _ => panic!("Owner key and foreign key mismatch"),
+) -> Condition {
+    let mut cond = Condition::all();
+    for (owner_key, foreign_key) in owner_keys.into_iter().zip(foreign_keys.into_iter()) {
+        cond = cond.add(
+            Expr::col((SeaRc::clone(&from_tbl), owner_key))
+                .equals((SeaRc::clone(&to_tbl), foreign_key)),
+        );
     }
+    cond
 }
 
 pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {

@@ -41,7 +41,7 @@ impl<'c> SchemaManager<'c> {
 }
 
 /// Schema Creation
-impl<'c> SchemaManager<'c> {
+impl SchemaManager<'_> {
     pub async fn create_table(&self, stmt: TableCreateStatement) -> Result<(), DbErr> {
         self.exec_stmt(stmt).await
     }
@@ -60,7 +60,7 @@ impl<'c> SchemaManager<'c> {
 }
 
 /// Schema Mutation
-impl<'c> SchemaManager<'c> {
+impl SchemaManager<'_> {
     pub async fn alter_table(&self, stmt: TableAlterStatement) -> Result<(), DbErr> {
         self.exec_stmt(stmt).await
     }
@@ -94,26 +94,13 @@ impl<'c> SchemaManager<'c> {
     }
 }
 
-/// Schema Inspection
-impl<'c> SchemaManager<'c> {
+/// Schema Inspection.
+impl SchemaManager<'_> {
     pub async fn has_table<T>(&self, table: T) -> Result<bool, DbErr>
     where
         T: AsRef<str>,
     {
-        let stmt = match self.conn.get_database_backend() {
-            DbBackend::MySql => MySql::has_table(table),
-            DbBackend::Postgres => Postgres::has_table(table),
-            DbBackend::Sqlite => Sqlite::has_table(table),
-        };
-
-        let builder = self.conn.get_database_backend();
-        let res = self
-            .conn
-            .query_one(builder.build(&stmt))
-            .await?
-            .ok_or_else(|| DbErr::Custom("Failed to check table exists".to_owned()))?;
-
-        res.try_get("", "has_table")
+        has_table(&self.conn, table).await
     }
 
     pub async fn has_column<T, C>(&self, table: T, column: C) -> Result<bool, DbErr>
@@ -122,9 +109,9 @@ impl<'c> SchemaManager<'c> {
         C: AsRef<str>,
     {
         let stmt = match self.conn.get_database_backend() {
-            DbBackend::MySql => MySql::has_column(table, column),
-            DbBackend::Postgres => Postgres::has_column(table, column),
-            DbBackend::Sqlite => Sqlite::has_column(table, column),
+            DbBackend::MySql => MySql.has_column(table, column),
+            DbBackend::Postgres => Postgres.has_column(table, column),
+            DbBackend::Sqlite => Sqlite.has_column(table, column),
         };
 
         let builder = self.conn.get_database_backend();
@@ -136,4 +123,45 @@ impl<'c> SchemaManager<'c> {
 
         res.try_get("", "has_column")
     }
+
+    pub async fn has_index<T, I>(&self, table: T, index: I) -> Result<bool, DbErr>
+    where
+        T: AsRef<str>,
+        I: AsRef<str>,
+    {
+        let stmt = match self.conn.get_database_backend() {
+            DbBackend::MySql => MySql.has_index(table, index),
+            DbBackend::Postgres => Postgres.has_index(table, index),
+            DbBackend::Sqlite => Sqlite.has_index(table, index),
+        };
+
+        let builder = self.conn.get_database_backend();
+        let res = self
+            .conn
+            .query_one(builder.build(&stmt))
+            .await?
+            .ok_or_else(|| DbErr::Custom("Failed to check index exists".to_owned()))?;
+
+        res.try_get("", "has_index")
+    }
+}
+
+pub(crate) async fn has_table<C, T>(conn: &C, table: T) -> Result<bool, DbErr>
+where
+    C: ConnectionTrait,
+    T: AsRef<str>,
+{
+    let stmt = match conn.get_database_backend() {
+        DbBackend::MySql => MySql.has_table(table),
+        DbBackend::Postgres => Postgres.has_table(table),
+        DbBackend::Sqlite => Sqlite.has_table(table),
+    };
+
+    let builder = conn.get_database_backend();
+    let res = conn
+        .query_one(builder.build(&stmt))
+        .await?
+        .ok_or_else(|| DbErr::Custom("Failed to check table exists".to_owned()))?;
+
+    res.try_get("", "has_table")
 }

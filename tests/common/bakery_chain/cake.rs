@@ -1,3 +1,4 @@
+use crate::common::setup::rust_dec;
 use sea_orm::{entity::prelude::*, ConnectionTrait};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -6,7 +7,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
-    #[sea_orm(column_type = "Decimal(Some((19, 4)))")]
+    #[sea_orm(column_type = "Decimal(Some((16, 4)))")]
     pub price: Decimal,
     pub bakery_id: Option<i32>,
     pub gluten_free: bool,
@@ -20,7 +21,7 @@ pub enum Relation {
         from = "Column::BakeryId",
         to = "super::bakery::Column::Id",
         on_update = "Cascade",
-        on_delete = "Cascade"
+        on_delete = "SetNull"
     )]
     Bakery,
     #[sea_orm(has_many = "super::lineitem::Entity")]
@@ -63,8 +64,7 @@ impl ActiveModelBehavior for ActiveModel {
     where
         C: ConnectionTrait,
     {
-        use rust_decimal_macros::dec;
-        if self.price.as_ref() == &dec!(0) {
+        if self.price.as_ref() == &rust_dec(0) {
             Err(DbErr::Custom(format!(
                 "[before_save] Invalid Price, insert: {insert}"
             )))
@@ -77,8 +77,7 @@ impl ActiveModelBehavior for ActiveModel {
     where
         C: ConnectionTrait,
     {
-        use rust_decimal_macros::dec;
-        if model.price < dec!(0) {
+        if model.price < rust_dec(0) {
             Err(DbErr::Custom(format!(
                 "[after_save] Invalid Price, insert: {insert}"
             )))

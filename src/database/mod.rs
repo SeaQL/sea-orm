@@ -5,6 +5,9 @@ mod db_connection;
 #[cfg(feature = "mock")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 mod mock;
+#[cfg(feature = "proxy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
+mod proxy;
 mod statement;
 mod stream;
 mod transaction;
@@ -14,6 +17,9 @@ pub use db_connection::*;
 #[cfg(feature = "mock")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 pub use mock::*;
+#[cfg(feature = "proxy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
+pub use proxy::*;
 pub use statement::*;
 use std::borrow::Cow;
 pub use stream::*;
@@ -48,20 +54,37 @@ pub struct ConnectOptions {
     pub(crate) sqlx_logging: bool,
     /// SQLx statement logging level (ignored if `sqlx_logging` is false)
     pub(crate) sqlx_logging_level: log::LevelFilter,
+    /// SQLx slow statements logging level (ignored if `sqlx_logging` is false)
+    pub(crate) sqlx_slow_statements_logging_level: log::LevelFilter,
+    /// SQLx slow statements duration threshold (ignored if `sqlx_logging` is false)
+    pub(crate) sqlx_slow_statements_logging_threshold: Duration,
     /// set sqlcipher key
     pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
     /// Schema search path (PostgreSQL only)
     pub(crate) schema_search_path: Option<String>,
+    pub(crate) test_before_acquire: bool,
+    /// Only establish connections to the DB as needed. If set to `true`, the db connection will
+    /// be created using SQLx's [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy)
+    /// method.
+    pub(crate) connect_lazy: bool,
 }
 
 impl Database {
-    /// Method to create a [DatabaseConnection] on a database
+    /// Method to create a [DatabaseConnection] on a database. This method will return an error
+    /// if the database is not available.
     #[instrument(level = "trace", skip(opt))]
     pub async fn connect<C>(opt: C) -> Result<DatabaseConnection, DbErr>
     where
         C: Into<ConnectOptions>,
     {
         let opt: ConnectOptions = opt.into();
+
+        if url::Url::parse(&opt.url).is_err() {
+            return Err(conn_err(format!(
+                "The connection string '{}' cannot be parsed.",
+                opt.url
+            )));
+        }
 
         #[cfg(feature = "sqlx-mysql")]
         if DbBackend::MySql.is_prefix_of(&opt.url) {
@@ -79,36 +102,60 @@ impl Database {
         if crate::MockDatabaseConnector::accepts(&opt.url) {
             return crate::MockDatabaseConnector::connect(&opt.url).await;
         }
+
         Err(conn_err(format!(
             "The connection string '{}' has no supporting driver.",
             opt.url
         )))
     }
-}
 
-impl From<&str> for ConnectOptions {
-    fn from(string: &str) -> ConnectOptions {
-        ConnectOptions::from_str(string)
+    /// Method to create a [DatabaseConnection] on a proxy database
+    #[cfg(feature = "proxy")]
+    #[instrument(level = "trace", skip(proxy_func_arc))]
+    pub async fn connect_proxy(
+        db_type: DbBackend,
+        proxy_func_arc: std::sync::Arc<Box<dyn ProxyDatabaseTrait>>,
+    ) -> Result<DatabaseConnection, DbErr> {
+        match db_type {
+            DbBackend::MySql => {
+                return crate::ProxyDatabaseConnector::connect(
+                    DbBackend::MySql,
+                    proxy_func_arc.to_owned(),
+                );
+            }
+            DbBackend::Postgres => {
+                return crate::ProxyDatabaseConnector::connect(
+                    DbBackend::Postgres,
+                    proxy_func_arc.to_owned(),
+                );
+            }
+            DbBackend::Sqlite => {
+                return crate::ProxyDatabaseConnector::connect(
+                    DbBackend::Sqlite,
+                    proxy_func_arc.to_owned(),
+                );
+            }
+        }
     }
 }
 
-impl From<&String> for ConnectOptions {
-    fn from(string: &String) -> ConnectOptions {
-        ConnectOptions::from_str(string.as_str())
-    }
-}
-
-impl From<String> for ConnectOptions {
-    fn from(string: String) -> ConnectOptions {
-        ConnectOptions::new(string)
+impl<T> From<T> for ConnectOptions
+where
+    T: Into<String>,
+{
+    fn from(s: T) -> ConnectOptions {
+        ConnectOptions::new(s.into())
     }
 }
 
 impl ConnectOptions {
     /// Create new [ConnectOptions] for a [Database] by passing in a URI string
-    pub fn new(url: String) -> Self {
+    pub fn new<T>(url: T) -> Self
+    where
+        T: Into<String>,
+    {
         Self {
-            url,
+            url: url.into(),
             max_connections: None,
             min_connections: None,
             connect_timeout: None,
@@ -117,41 +164,13 @@ impl ConnectOptions {
             max_lifetime: None,
             sqlx_logging: true,
             sqlx_logging_level: log::LevelFilter::Info,
+            sqlx_slow_statements_logging_level: log::LevelFilter::Off,
+            sqlx_slow_statements_logging_threshold: Duration::from_secs(1),
             sqlcipher_key: None,
             schema_search_path: None,
+            test_before_acquire: true,
+            connect_lazy: false,
         }
-    }
-
-    fn from_str(url: &str) -> Self {
-        Self::new(url.to_owned())
-    }
-
-    #[cfg(feature = "sqlx-dep")]
-    /// Convert [ConnectOptions] into [sqlx::pool::PoolOptions]
-    pub fn pool_options<DB>(self) -> sqlx::pool::PoolOptions<DB>
-    where
-        DB: sqlx::Database,
-    {
-        let mut opt = sqlx::pool::PoolOptions::new();
-        if let Some(max_connections) = self.max_connections {
-            opt = opt.max_connections(max_connections);
-        }
-        if let Some(min_connections) = self.min_connections {
-            opt = opt.min_connections(min_connections);
-        }
-        if let Some(connect_timeout) = self.connect_timeout {
-            opt = opt.acquire_timeout(connect_timeout);
-        }
-        if let Some(idle_timeout) = self.idle_timeout {
-            opt = opt.idle_timeout(Some(idle_timeout));
-        }
-        if let Some(acquire_timeout) = self.acquire_timeout {
-            opt = opt.acquire_timeout(acquire_timeout);
-        }
-        if let Some(max_lifetime) = self.max_lifetime {
-            opt = opt.max_lifetime(Some(max_lifetime));
-        }
-        opt
     }
 
     /// Get the database URL of the pool
@@ -236,16 +255,36 @@ impl ConnectOptions {
         self.sqlx_logging
     }
 
-    /// Set SQLx statement logging level (default INFO)
+    /// Set SQLx statement logging level (default INFO).
     /// (ignored if `sqlx_logging` is `false`)
     pub fn sqlx_logging_level(&mut self, level: log::LevelFilter) -> &mut Self {
         self.sqlx_logging_level = level;
         self
     }
 
+    /// Set SQLx slow statements logging level and duration threshold (default `LevelFilter::Off`).
+    /// (ignored if `sqlx_logging` is `false`)
+    pub fn sqlx_slow_statements_logging_settings(
+        &mut self,
+        level: log::LevelFilter,
+        duration: Duration,
+    ) -> &mut Self {
+        self.sqlx_slow_statements_logging_level = level;
+        self.sqlx_slow_statements_logging_threshold = duration;
+        self
+    }
+
     /// Get the level of SQLx statement logging
     pub fn get_sqlx_logging_level(&self) -> log::LevelFilter {
         self.sqlx_logging_level
+    }
+
+    /// Get the SQLx slow statements logging settings
+    pub fn get_sqlx_slow_statements_logging_settings(&self) -> (log::LevelFilter, Duration) {
+        (
+            self.sqlx_slow_statements_logging_level,
+            self.sqlx_slow_statements_logging_threshold,
+        )
     }
 
     /// set key for sqlcipher
@@ -258,8 +297,29 @@ impl ConnectOptions {
     }
 
     /// Set schema search path (PostgreSQL only)
-    pub fn set_schema_search_path(&mut self, schema_search_path: String) -> &mut Self {
-        self.schema_search_path = Some(schema_search_path);
+    pub fn set_schema_search_path<T>(&mut self, schema_search_path: T) -> &mut Self
+    where
+        T: Into<String>,
+    {
+        self.schema_search_path = Some(schema_search_path.into());
         self
+    }
+
+    /// If true, the connection will be pinged upon acquiring from the pool (default true).
+    pub fn test_before_acquire(&mut self, value: bool) -> &mut Self {
+        self.test_before_acquire = value;
+        self
+    }
+
+    /// If set to `true`, the db connection pool will be created using SQLx's
+    /// [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy) method.
+    pub fn connect_lazy(&mut self, value: bool) -> &mut Self {
+        self.connect_lazy = value;
+        self
+    }
+
+    /// Get whether DB connections will be established when the pool is created or only as needed.
+    pub fn get_connect_lazy(&self) -> bool {
+        self.connect_lazy
     }
 }

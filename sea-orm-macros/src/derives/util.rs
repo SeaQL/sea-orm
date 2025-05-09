@@ -1,10 +1,10 @@
 use heck::ToUpperCamelCase;
 use quote::format_ident;
-use syn::{punctuated::Punctuated, token::Comma, Field, Ident, Meta};
+use syn::{punctuated::Punctuated, token::Comma, Field, Ident, Meta, MetaNameValue};
 
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
     for attr in field.attrs.iter() {
-        if let Some(ident) = attr.path.get_ident() {
+        if let Some(ident) = attr.path().get_ident() {
             if ident != "sea_orm" {
                 continue;
             }
@@ -74,7 +74,8 @@ where
 ///      - `"A  B"`
 ///      - `"A_B"`
 ///      - `"A_ B"`
-///   shares the same identifier of `"AB"`;
+///
+/// All shares the same identifier of `"AB"`;
 ///
 /// This function does the PascelCase conversion with a few special escapes:
 /// - Non-Unicode Standard Annex #31 compliant characters will converted to their hex notation;
@@ -158,6 +159,41 @@ pub(crate) const RUST_KEYWORDS: [&str; 49] = [
 
 pub(crate) const RUST_SPECIAL_KEYWORDS: [&str; 3] = ["crate", "Self", "self"];
 
+pub(crate) trait GetMeta {
+    fn exists(&self, k: &str) -> bool;
+    fn get_as_kv(&self, k: &str) -> Option<String>;
+}
+
+impl GetMeta for Meta {
+    fn exists(&self, key: &str) -> bool {
+        let Meta::Path(path) = self else {
+            return false;
+        };
+        path.is_ident(key)
+    }
+
+    fn get_as_kv(&self, key: &str) -> Option<String> {
+        let Meta::NameValue(MetaNameValue {
+            path,
+            value: syn::Expr::Lit(exprlit),
+            ..
+        }) = self
+        else {
+            return None;
+        };
+
+        let syn::Lit::Str(litstr) = &exprlit.lit else {
+            return None;
+        };
+
+        if path.is_ident(key) {
+            Some(litstr.value())
+        } else {
+            None
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,7 +218,7 @@ mod tests {
         // Test spaced words distinct from non-spaced
         assert_eq!(camel_case_with_escaped_non_uax31("foo bar"), "Foo0x20bar");
 
-        // Test undescored words distinct from non-spaced and spaced
+        // Test underscored words distinct from non-spaced and spaced
         assert_eq!(camel_case_with_escaped_non_uax31("foo_bar"), "Foo0x5Fbar");
 
         // Test leading numeric characters
@@ -194,5 +230,11 @@ mod tests {
             camel_case_with_escaped_non_uax31("1 2 3"),
             "_0x310x2020x203"
         );
+
+        assert_eq!(camel_case_with_escaped_non_uax31("씨오알엠"), "씨오알엠");
+
+        assert_eq!(camel_case_with_escaped_non_uax31("A_B"), "A0x5Fb");
+
+        assert_eq!(camel_case_with_escaped_non_uax31("AB"), "Ab");
     }
 }

@@ -16,30 +16,32 @@
 
 #### SeaORM is a relational ORM to help you build web services in Rust with the familiarity of dynamic languages.
 
-## Getting Started
-
 [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
-If you like what we do, consider starring, commenting, sharing and contributing!
+If you like what we do, consider starring, sharing and contributing!
+
+Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2024](https://sea-ql.org/community-survey)!
 
 [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
-Join our Discord server to chat with others in the SeaQL community!
+Join our Discord server to chat with other members of the SeaQL community!
 
-+ [Getting Started](https://www.sea-ql.org/SeaORM/docs/index)
-+ [Step-by-step Tutorials](https://www.sea-ql.org/sea-orm-tutorial/)
-+ [Cookbook](https://www.sea-ql.org/sea-orm-cookbook/)
-+ [Usage Example](https://github.com/SeaQL/sea-orm/tree/master/examples/basic)
+## Getting Started
 
-Integration examples
++ [Documentation](https://www.sea-ql.org/SeaORM)
++ [Tutorial](https://www.sea-ql.org/sea-orm-tutorial)
++ [Cookbook](https://www.sea-ql.org/sea-orm-cookbook)
+
+Integration examples:
 
 + [Actix v4 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
-+ [Actix v3 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix3_example)
 + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
 + [GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/graphql_example)
 + [jsonrpsee Example](https://github.com/SeaQL/sea-orm/tree/master/examples/jsonrpsee_example)
++ [Loco TODO Example](https://github.com/SeaQL/sea-orm/tree/master/examples/loco_example) / [Loco REST Starter](https://github.com/SeaQL/sea-orm/tree/master/examples/loco_starter)
 + [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
-+ [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
++ [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example) / [Rocket OpenAPI Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_okapi_example)
 + [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
 + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
++ [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example)
 
 ## Features
 
@@ -49,15 +51,15 @@ Integration examples
 
 2. Dynamic
 
-    Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex queries without 'fighting the ORM'.
+    Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex dynamic queries.
 
-3. Testable
+3. Service Oriented
 
-    Use mock connections to write unit tests for your logic.
+    Quickly build services that join, filter, sort and paginate data in REST, GraphQL and gRPC APIs.
 
-4. Service Oriented
+4. Production Ready
 
-    Quickly build services that join, filter, sort and paginate data in APIs.
+    SeaORM is feature-rich, well-tested and used in production by companies and startups.
 
 ## A quick taste of SeaORM
 
@@ -186,32 +188,58 @@ fruit::Entity::delete_many()
 
 ```
 
-## Learn More
+## 🧭 Seaography: instant GraphQL API
 
-1. [Design](https://github.com/SeaQL/sea-orm/tree/master/DESIGN.md)
-1. [Architecture](https://www.sea-ql.org/SeaORM/docs/internal-design/architecture/)
-1. [Release Model](https://www.sea-ql.org/SeaORM/blog/2021-08-30-release-model)
-1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
+[Seaography](https://github.com/SeaQL/seaography) is a GraphQL framework built on top of SeaORM. Seaography allows you to build GraphQL resolvers quickly. With just a few commands, you can launch a GraphQL server from SeaORM entities!
 
-## Who's using SeaORM?
+Look at the [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example) to learn more.
 
-The following products are powered by SeaORM:
+<img src="https://raw.githubusercontent.com/SeaQL/sea-orm/master/examples/seaography_example/Seaography%20example.png"/>
 
-<table>
-  <tbody>
-    <tr>
-      <td><br><a href="https://caido.io/"><img src="https://www.sea-ql.org/SeaORM/img/other/caido-logo.png" width="250"/></a><br>A lightweight web security auditing toolkit</td>
-      <td><a href="https://www.svix.com/"><img src="https://www.sea-ql.org/SeaORM/img/other/svix-logo.svg" width="250"/></a><br>The enterprise ready webhooks service</td>
-      <td><a href="https://www.spyglass.fyi/"><img src="https://www.sea-ql.org/SeaORM/img/other/spyglass-logo.svg" width="250"/></a><br/>A personal search engine</td>
-    </tr>
-  </tbody>
-</table>
+## 🖥️ SeaORM Pro: Effortless Admin Panel
 
-SeaORM is the foundation of:
-+ [StarfishQL](https://github.com/SeaQL/starfish-ql): an experimental graph database
-+ [Seaography](https://github.com/SeaQL/seaography): GraphQL framework for SeaORM
+[SeaORM Pro](https://www.sea-ql.org/sea-orm-pro/) is an admin panel solution allowing you to quickly and easily launch an admin panel for your application - frontend development skills not required, but certainly nice to have!
 
-For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm).
+Features:
+
++ Full CRUD
++ Built on React + GraphQL
++ Built-in GraphQL resolver
++ Customize the UI with simple TOML
+
+Learn More
+
++ [Example Repo](https://github.com/SeaQL/sea-orm-pro)
++ [Getting Started with Loco](https://www.sea-ql.org/sea-orm-pro/docs/install-and-config/getting-started-loco/)
++ [Getting Started with Axum](https://www.sea-ql.org/sea-orm-pro/docs/install-and-config/getting-started-axum/)
+
+![](https://raw.githubusercontent.com/SeaQL/sea-orm/refs/heads/master/docs/sea-orm-pro-dark.png#gh-dark-mode-only)
+![](https://raw.githubusercontent.com/SeaQL/sea-orm/refs/heads/master/docs/sea-orm-pro-light.png#gh-light-mode-only)
+
+## Releases
+
+[SeaORM 1.0](https://www.sea-ql.org/blog/2024-08-04-sea-orm-1.0/) is a stable release. The 1.x version will be updated until at least October 2025, and we'll decide whether to release a 2.0 version or extend the 1.x life cycle.
+
+It doesn't mean that SeaORM is 'done', we've designed an architecture to allow us to deliver new features without major breaking changes. In fact, more features are coming!
+
++ [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
+
+### Who's using SeaORM?
+
+Here is a short list of awesome open source software built with SeaORM. [Full list here](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to submit yours!
+
+| Project | GitHub | Tagline |
+|---------|--------|---------|
+| [Zed](https://github.com/zed-industries/zed) | ![GitHub stars](https://img.shields.io/github/stars/zed-industries/zed.svg?style=social) | A high-performance, multiplayer code editor |
+| [OpenObserve](https://github.com/openobserve/openobserve) | ![GitHub stars](https://img.shields.io/github/stars/openobserve/openobserve.svg?style=social) | Open-source observability platform |
+| [RisingWave](https://github.com/risingwavelabs/risingwave) | ![GitHub stars](https://img.shields.io/github/stars/risingwavelabs/risingwave.svg?style=social) | Stream processing and management platform |
+| [LLDAP](https://github.com/nitnelave/lldap) | ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | A light LDAP server for user management |
+| [Warpgate](https://github.com/warp-tech/warpgate) | ![GitHub stars](https://img.shields.io/github/stars/warp-tech/warpgate.svg?style=social) | Smart SSH bastion that works with any SSH client |
+| [Svix](https://github.com/svix/svix-webhooks) | ![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social) | The enterprise ready webhooks service |
+| [Ryot](https://github.com/IgnisDa/ryot) | ![GitHub stars](https://img.shields.io/github/stars/ignisda/ryot.svg?style=social) | The only self hosted tracker you will ever need |
+| [Lapdev](https://github.com/lapce/lapdev) | ![GitHub stars](https://img.shields.io/github/stars/lapce/lapdev.svg?style=social) | Self-hosted remote development enviroment |
+| [System Initiative](https://github.com/systeminit/si) | ![GitHub stars](https://img.shields.io/github/stars/systeminit/si.svg?style=social) | DevOps Automation Platform |
+| [OctoBase](https://github.com/toeverything/OctoBase) | ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend |
 
 ## License
 
@@ -230,11 +258,29 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
 
-SeaORM is a community driven project. We welcome you to participate, contribute and together help build Rust's future.
+We invite you to participate, contribute and together help build Rust's future.
 
-A big shout out to our contributors:
+A big shout out to our contributors!
 
 [![Contributors](https://opencollective.com/sea-orm/contributors.svg?width=1000&button=false)](https://github.com/SeaQL/sea-orm/graphs/contributors)
+
+## Sponsorship
+
+[SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers. If you enjoy using our libraries, please star and share our repositories. If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
+
+### Silver Sponsors
+
+<table><tr>
+<td><a href="https://www.digitalocean.com/">
+  <img src="https://www.sea-ql.org/static/sponsors/DigitalOcean.svg" width="125">
+</a></td>
+
+<td><a href="https://www.jetbrains.com/">
+  <img src="https://www.sea-ql.org/static/sponsors/JetBrains.svg" width="125">
+</a></td>
+</tr></table>
+
+We’re immensely grateful to our sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
 
 ## Mascot
 

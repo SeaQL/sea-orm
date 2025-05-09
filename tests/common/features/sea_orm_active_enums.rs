@@ -1,7 +1,7 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "String(Some(1))")]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::N(1))")]
 pub enum Category {
     #[sea_orm(string_value = "B")]
     Big,
@@ -18,7 +18,7 @@ pub enum Color {
     White,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "tea")]
 pub enum Tea {
     #[sea_orm(string_value = "EverydayTea")]
@@ -52,4 +52,13 @@ pub enum MediaType {
     Archive,
     #[sea_orm(string_value = "3D")]
     _3D,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "tea")]
+pub enum DisplayTea {
+    #[sea_orm(string_value = "EverydayTea", display_value = "Everyday")]
+    EverydayTea,
+    #[sea_orm(string_value = "BreakfastTea", display_value = "Breakfast")]
+    BreakfastTea,
 }

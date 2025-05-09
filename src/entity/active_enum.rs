@@ -1,4 +1,4 @@
-use crate::{ColumnDef, DbErr, Iterable, QueryResult, TryFromU64, TryGetError, TryGetable};
+use crate::{ColIdx, ColumnDef, DbErr, Iterable, QueryResult, TryFromU64, TryGetError, TryGetable};
 use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 
 /// A Rust representation of enum defined in database.
@@ -14,16 +14,13 @@ use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 /// > See [DeriveActiveEnum](sea_orm_macros::DeriveActiveEnum) for the full specification of macro attributes.
 ///
 /// ```rust
-/// use sea_orm::{
-///     entity::prelude::*,
-///     sea_query::{DynIden, SeaRc},
-/// };
+/// use sea_orm::entity::prelude::*;
 ///
 /// // Using the derive macro
-/// #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+/// #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
 /// #[sea_orm(
 ///     rs_type = "String",
-///     db_type = "String(Some(1))",
+///     db_type = "String(StringLen::N(1))",
 ///     enum_name = "category"
 /// )]
 /// pub enum DeriveCategory {
@@ -40,7 +37,7 @@ use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 ///     Small,
 /// }
 ///
-/// #[derive(Debug, Iden)]
+/// #[derive(Debug, DeriveIden)]
 /// pub struct CategoryEnum;
 ///
 /// impl ActiveEnum for Category {
@@ -77,7 +74,7 @@ use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 ///
 ///     fn db_type() -> ColumnDef {
 ///         // The macro attribute `db_type` is being pasted here
-///         ColumnType::String(Some(1)).def()
+///         ColumnType::String(StringLen::N(1)).def()
 ///     }
 /// }
 /// ```
@@ -88,8 +85,8 @@ use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 /// use sea_orm::entity::prelude::*;
 ///
 /// // Define the `Category` active enum
-/// #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum)]
-/// #[sea_orm(rs_type = "String", db_type = "String(Some(1))")]
+/// #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
+/// #[sea_orm(rs_type = "String", db_type = "String(StringLen::N(1))")]
 /// pub enum Category {
 ///     #[sea_orm(string_value = "B")]
 ///     Big,
@@ -113,11 +110,11 @@ use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 /// impl ActiveModelBehavior for ActiveModel {}
 /// ```
 pub trait ActiveEnum: Sized + Iterable {
-    /// Define the Rust type that each enum variant represents.
-    type Value: Into<Value> + ValueType + Nullable + TryGetable;
+    /// Define the Rust type that each enum variant corresponds.
+    type Value: ActiveEnumValue;
 
-    /// Define the enum value in Vector type.
-    type ValueVec: IntoIterator<Item = Self::Value>;
+    /// This has no purpose. It will be removed in the next major version.
+    type ValueVec;
 
     /// Get the name of enum
     fn name() -> DynIden;
@@ -147,18 +144,52 @@ pub trait ActiveEnum: Sized + Iterable {
     }
 }
 
-impl<T> TryGetable for Vec<T>
-where
-    T: ActiveEnum,
-    T::ValueVec: TryGetable,
-{
-    fn try_get_by<I: crate::ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
-        <T::ValueVec as TryGetable>::try_get_by(res, index)?
-            .into_iter()
-            .map(|value| T::try_from_value(&value).map_err(Into::into))
-            .collect()
-    }
+/// The Rust Value backing ActiveEnums
+pub trait ActiveEnumValue: Into<Value> + ValueType + Nullable + TryGetable {
+    /// For getting an array of enum. Postgres only
+    fn try_get_vec_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<Self>, TryGetError>;
 }
+
+macro_rules! impl_active_enum_value {
+    ($type:ident) => {
+        impl ActiveEnumValue for $type {
+            fn try_get_vec_by<I: ColIdx>(
+                _res: &QueryResult,
+                _index: I,
+            ) -> Result<Vec<Self>, TryGetError> {
+                panic!("Not supported by `postgres-array`")
+            }
+        }
+    };
+}
+
+macro_rules! impl_active_enum_value_with_pg_array {
+    ($type:ident) => {
+        impl ActiveEnumValue for $type {
+            fn try_get_vec_by<I: ColIdx>(
+                _res: &QueryResult,
+                _index: I,
+            ) -> Result<Vec<Self>, TryGetError> {
+                #[cfg(feature = "postgres-array")]
+                {
+                    <Vec<Self>>::try_get_by(_res, _index)
+                }
+                #[cfg(not(feature = "postgres-array"))]
+                panic!("`postgres-array` is not enabled")
+            }
+        }
+    };
+}
+
+impl_active_enum_value!(u8);
+impl_active_enum_value!(u16);
+impl_active_enum_value!(u32);
+impl_active_enum_value!(u64);
+impl_active_enum_value_with_pg_array!(String);
+impl_active_enum_value_with_pg_array!(i8);
+impl_active_enum_value_with_pg_array!(i16);
+impl_active_enum_value_with_pg_array!(i32);
+impl_active_enum_value_with_pg_array!(i64);
 
 impl<T> TryFromU64 for T
 where
@@ -174,7 +205,11 @@ where
 #[cfg(test)]
 mod tests {
     use crate as sea_orm;
-    use crate::{error::*, sea_query::SeaRc, *};
+    use crate::{
+        error::*,
+        sea_query::{SeaRc, StringLen},
+        *,
+    };
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -185,8 +220,8 @@ mod tests {
             Small,
         }
 
-        #[derive(Debug, Iden)]
-        #[iden = "category"]
+        #[derive(Debug, DeriveIden)]
+        #[sea_orm(iden = "category")]
         pub struct CategoryEnum;
 
         impl ActiveEnum for Category {
@@ -215,14 +250,14 @@ mod tests {
             }
 
             fn db_type() -> ColumnDef {
-                ColumnType::String(Some(1)).def()
+                ColumnType::String(StringLen::N(1)).def()
             }
         }
 
-        #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+        #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
         #[sea_orm(
             rs_type = "String",
-            db_type = "String(Some(1))",
+            db_type = "String(StringLen::N(1))",
             enum_name = "category"
         )]
         pub enum DeriveCategory {
@@ -262,8 +297,14 @@ mod tests {
             Some(DeriveCategory::Small)
         );
 
-        assert_eq!(Category::db_type(), ColumnType::String(Some(1)).def());
-        assert_eq!(DeriveCategory::db_type(), ColumnType::String(Some(1)).def());
+        assert_eq!(
+            Category::db_type(),
+            ColumnType::String(StringLen::N(1)).def()
+        );
+        assert_eq!(
+            DeriveCategory::db_type(),
+            ColumnType::String(StringLen::N(1)).def()
+        );
 
         assert_eq!(
             Category::name().to_string(),
@@ -271,15 +312,15 @@ mod tests {
         );
         assert_eq!(Category::values(), DeriveCategory::values());
 
-        assert_eq!(format!("{}", DeriveCategory::Big), "'B'");
-        assert_eq!(format!("{}", DeriveCategory::Small), "'S'");
+        assert_eq!(format!("{}", DeriveCategory::Big), "Big");
+        assert_eq!(format!("{}", DeriveCategory::Small), "Small");
     }
 
     #[test]
     fn active_enum_derive_signed_integers() {
         macro_rules! test_num_value_int {
             ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 pub enum $ident {
                     #[sea_orm(num_value = -10)]
@@ -296,7 +337,7 @@ mod tests {
 
         macro_rules! test_fallback_int {
             ($ident: ident, $fallback_type: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 #[repr(i32)]
                 pub enum $ident {
@@ -328,9 +369,9 @@ mod tests {
 
                 assert_eq!($ident::db_type(), ColumnType::$col_def.def());
 
-                assert_eq!(format!("{}", $ident::Big), "1");
-                assert_eq!(format!("{}", $ident::Small), "0");
-                assert_eq!(format!("{}", $ident::Negative), "-10");
+                assert_eq!(format!("{}", $ident::Big), "Big");
+                assert_eq!(format!("{}", $ident::Small), "Small");
+                assert_eq!(format!("{}", $ident::Negative), "Negative");
             };
         }
 
@@ -349,7 +390,7 @@ mod tests {
     fn active_enum_derive_unsigned_integers() {
         macro_rules! test_num_value_uint {
             ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 pub enum $ident {
                     #[sea_orm(num_value = 1)]
@@ -364,7 +405,7 @@ mod tests {
 
         macro_rules! test_fallback_uint {
             ($ident: ident, $fallback_type: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 #[repr($fallback_type)]
                 pub enum $ident {
@@ -393,8 +434,8 @@ mod tests {
 
                 assert_eq!($ident::db_type(), ColumnType::$col_def.def());
 
-                assert_eq!(format!("{}", $ident::Big), "1");
-                assert_eq!(format!("{}", $ident::Small), "0");
+                assert_eq!(format!("{}", $ident::Big), "Big");
+                assert_eq!(format!("{}", $ident::Small), "Small");
             };
         }
 
@@ -462,10 +503,10 @@ mod tests {
             assert_eq!(PopOSTypos::try_from_value(&val.to_owned()), Ok(variant));
         }
 
-        #[derive(Clone, Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+        #[derive(Clone, Debug, PartialEq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
         #[sea_orm(
             rs_type = "String",
-            db_type = "String(None)",
+            db_type = "String(StringLen::None)",
             enum_name = "conflicting_string_values"
         )]
         pub enum ConflictingStringValues {
@@ -492,5 +533,19 @@ mod tests {
         assert_eq!(EnumVariant::A0x5Fb.to_string(), "A_B");
         assert_eq!(EnumVariant::A0x24B.to_string(), "A$B");
         assert_eq!(EnumVariant::_0x300x20123.to_string(), "0 123");
+    }
+
+    #[test]
+    fn test_derive_display() {
+        use crate::DeriveDisplay;
+
+        #[derive(DeriveDisplay)]
+        enum DisplayTea {
+            EverydayTea,
+            #[sea_orm(display_value = "Breakfast Tea")]
+            BreakfastTea,
+        }
+        assert_eq!(format!("{}", DisplayTea::EverydayTea), "EverydayTea");
+        assert_eq!(format!("{}", DisplayTea::BreakfastTea), "Breakfast Tea");
     }
 }

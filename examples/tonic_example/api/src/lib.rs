@@ -3,7 +3,7 @@ use tonic::{Request, Response, Status};
 
 use entity::post;
 use migration::{Migrator, MigratorTrait};
-use tonic_example_core::{
+use tonic_example_service::{
     sea_orm::{Database, DatabaseConnection},
     Mutation, Query,
 };
