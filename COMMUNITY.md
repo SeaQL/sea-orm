@@ -123,6 +123,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [rust-juniper-playground](https://github.com/Yama-Tomo/rust-juniper-playground) | juniper with SeaORM example | DB: MySQL
 - [service_auth](https://github.com/shorii/service_auth) | A simple JWT authentication web-application | DB: Postgres
 - [Super Toolbox](https://github.com/atopx/toolbox) | micro-service best practices: use go-gin and rust-tonic | DB: mysql
+- [rsapi](https://github.com/atopx/rsapi) | A lightweight REST API template, Axum + SeaORM + JWT Middleware + Mini DockerFile | DB: Postgres
 
 ## Learning Resources
 
