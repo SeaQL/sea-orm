@@ -1,9 +1,11 @@
-use crate::{util::escape_rust_keyword, DateTimeCrate};
+use crate::{util::escape_rust_keyword, DatabaseBackend, DateTimeCrate, SqliteIntRsType};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ColumnDef, ColumnSpec, ColumnType, StringLen};
 use std::fmt::Write as FmtWrite;
+
+use super::EntityWriterContext;
 
 #[derive(Clone, Debug)]
 pub struct Column {
@@ -12,6 +14,7 @@ pub struct Column {
     pub(crate) auto_increment: bool,
     pub(crate) not_null: bool,
     pub(crate) unique: bool,
+    pub(crate) primary_key: bool,
 }
 
 impl Column {
@@ -27,8 +30,13 @@ impl Column {
         self.name.to_snake_case() == self.name
     }
 
-    pub fn get_rs_type(&self, date_time_crate: &DateTimeCrate) -> TokenStream {
-        fn write_rs_type(col_type: &ColumnType, date_time_crate: &DateTimeCrate) -> String {
+    pub fn get_rs_type(&self, context: &EntityWriterContext) -> TokenStream {
+        fn write_rs_type(col_type: &ColumnType, context: &EntityWriterContext) -> String {
+            let EntityWriterContext {
+                date_time_crate,
+                db_backend,
+                ..
+            } = context;
             #[allow(unreachable_patterns)]
             match col_type {
                 ColumnType::Char(_)
@@ -37,7 +45,14 @@ impl Column {
                 | ColumnType::Custom(_) => "String".to_owned(),
                 ColumnType::TinyInteger => "i8".to_owned(),
                 ColumnType::SmallInteger => "i16".to_owned(),
-                ColumnType::Integer => "i32".to_owned(),
+                ColumnType::Integer => if *db_backend == DatabaseBackend::Sqlite
+                    && context.sqlite_int_rs_type == SqliteIntRsType::I64
+                {
+                    "i64"
+                } else {
+                    "i32"
+                }
+                .into(),
                 ColumnType::BigInteger => "i64".to_owned(),
                 ColumnType::TinyUnsigned => "u8".to_owned(),
                 ColumnType::SmallUnsigned => "u16".to_owned(),
@@ -74,7 +89,7 @@ impl Column {
                 ColumnType::Boolean => "bool".to_owned(),
                 ColumnType::Enum { name, .. } => name.to_string().to_upper_camel_case(),
                 ColumnType::Array(column_type) => {
-                    format!("Vec<{}>", write_rs_type(column_type, date_time_crate))
+                    format!("Vec<{}>", write_rs_type(column_type, context))
                 }
                 ColumnType::Vector(_) => "PgVector".to_owned(),
                 ColumnType::Bit(None | Some(1)) => "bool".to_owned(),
@@ -87,10 +102,11 @@ impl Column {
                 _ => unimplemented!(),
             }
         }
-        let ident: TokenStream = write_rs_type(&self.col_type, date_time_crate)
-            .parse()
-            .unwrap();
-        match self.not_null {
+
+        let EntityWriterContext { db_backend, .. } = context;
+        let ident: TokenStream = write_rs_type(&self.col_type, context).parse().unwrap();
+
+        match self.not_null || *db_backend == DatabaseBackend::Sqlite && self.primary_key {
             true => quote! { #ident },
             false => quote! { Option<#ident> },
         }
@@ -212,12 +228,9 @@ impl Column {
         col_def
     }
 
-    pub fn get_info(&self, date_time_crate: &DateTimeCrate) -> String {
+    pub fn get_info(&self, context: &EntityWriterContext) -> String {
         let mut info = String::new();
-        let type_info = self
-            .get_rs_type(date_time_crate)
-            .to_string()
-            .replace(' ', "");
+        let type_info = self.get_rs_type(context).to_string().replace(' ', "");
         let col_info = self.col_info();
         write!(
             &mut info,
@@ -294,19 +307,24 @@ impl From<&ColumnDef> for Column {
             .get_column_spec()
             .iter()
             .any(|spec| matches!(spec, ColumnSpec::UniqueKey));
+        let primary_key = col_def
+            .get_column_spec()
+            .iter()
+            .any(|spec| matches!(spec, ColumnSpec::PrimaryKey));
         Self {
             name,
             col_type,
             auto_increment,
             not_null,
             unique,
+            primary_key,
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{Column, DateTimeCrate};
+    use crate::{Column, DateTimeCrate, EntityWriterContext};
     use proc_macro2::TokenStream;
     use quote::quote;
     use sea_query::{Alias, ColumnDef, ColumnType, SeaRc, StringLen};
@@ -320,6 +338,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    primary_key: false,
                 }
             };
         }
@@ -422,7 +441,12 @@ mod tests {
     #[test]
     fn test_get_rs_type_with_chrono() {
         let columns = setup();
-        let chrono_crate = DateTimeCrate::Chrono;
+
+        let context = EntityWriterContext {
+            date_time_crate: DateTimeCrate::Chrono,
+            ..Default::default()
+        };
+
         let rs_types = vec![
             "String",
             "String",
@@ -453,13 +477,13 @@ mod tests {
 
             col.not_null = true;
             assert_eq!(
-                col.get_rs_type(&chrono_crate).to_string(),
+                col.get_rs_type(&context).to_string(),
                 quote!(#rs_type).to_string()
             );
 
             col.not_null = false;
             assert_eq!(
-                col.get_rs_type(&chrono_crate).to_string(),
+                col.get_rs_type(&context).to_string(),
                 quote!(Option<#rs_type>).to_string()
             );
         }
@@ -468,7 +492,10 @@ mod tests {
     #[test]
     fn test_get_rs_type_with_time() {
         let columns = setup();
-        let time_crate = DateTimeCrate::Time;
+        let context = EntityWriterContext {
+            date_time_crate: DateTimeCrate::Time,
+            ..Default::default()
+        };
         let rs_types = vec![
             "String",
             "String",
@@ -499,13 +526,13 @@ mod tests {
 
             col.not_null = true;
             assert_eq!(
-                col.get_rs_type(&time_crate).to_string(),
+                col.get_rs_type(&context).to_string(),
                 quote!(#rs_type).to_string()
             );
 
             col.not_null = false;
             assert_eq!(
-                col.get_rs_type(&time_crate).to_string(),
+                col.get_rs_type(&context).to_string(),
                 quote!(Option<#rs_type>).to_string()
             );
         }
@@ -558,8 +585,18 @@ mod tests {
     #[test]
     fn test_get_info() {
         let column: Column = ColumnDef::new(Alias::new("id")).string().to_owned().into();
+
+        let context_chrono = EntityWriterContext {
+            date_time_crate: DateTimeCrate::Chrono,
+            ..Default::default()
+        };
+        let context_time = EntityWriterContext {
+            date_time_crate: DateTimeCrate::Time,
+            ..Default::default()
+        };
+
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&context_chrono).as_str(),
             "Column `id`: Option<String>"
         );
 
@@ -569,7 +606,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&context_chrono).as_str(),
             "Column `id`: String, not_null"
         );
 
@@ -580,7 +617,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&context_chrono).as_str(),
             "Column `id`: String, not_null, unique"
         );
 
@@ -592,7 +629,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&context_chrono).as_str(),
             "Column `id`: String, auto_increment, not_null, unique"
         );
 
@@ -602,7 +639,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&context_chrono).as_str(),
             "Column `date_field`: Date, not_null"
         );
 
@@ -612,7 +649,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&context_time).as_str(),
             "Column `date_field`: TimeDate, not_null"
         );
 
@@ -622,7 +659,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&context_chrono).as_str(),
             "Column `time_field`: Time, not_null"
         );
 
@@ -632,7 +669,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&context_time).as_str(),
             "Column `time_field`: TimeTime, not_null"
         );
 
@@ -642,7 +679,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&context_chrono).as_str(),
             "Column `date_time_field`: DateTime, not_null"
         );
 
@@ -652,7 +689,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&context_time).as_str(),
             "Column `date_time_field`: TimeDateTime, not_null"
         );
 
@@ -662,7 +699,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&context_chrono).as_str(),
             "Column `timestamp_field`: DateTimeUtc, not_null"
         );
 
@@ -672,7 +709,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&context_time).as_str(),
             "Column `timestamp_field`: TimeDateTime, not_null"
         );
 
@@ -682,7 +719,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&context_chrono).as_str(),
             "Column `timestamp_with_timezone_field`: DateTimeWithTimeZone, not_null"
         );
 
@@ -692,7 +729,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&context_time).as_str(),
             "Column `timestamp_with_timezone_field`: TimeDateTimeWithTimeZone, not_null"
         );
     }
@@ -734,5 +771,24 @@ mod tests {
         assert!(column.auto_increment);
         assert!(column.unique);
         assert!(column.not_null);
+    }
+
+    #[test]
+    fn test_get_sqlite_priamry_key() {
+        let context = EntityWriterContext {
+            db_backend: crate::DatabaseBackend::Sqlite,
+            ..Default::default()
+        };
+
+        let column = Column {
+            name: "id".to_owned(),
+            col_type: ColumnType::Integer,
+            auto_increment: true,
+            not_null: false,
+            unique: true,
+            primary_key: true,
+        };
+
+        assert_eq!(column.get_rs_type(&context).to_string(), "i64");
     }
 }

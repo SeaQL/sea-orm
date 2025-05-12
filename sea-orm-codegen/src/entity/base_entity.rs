@@ -4,9 +4,9 @@ use quote::format_ident;
 use quote::quote;
 use sea_query::ColumnType;
 
-use crate::{
-    util::escape_rust_keyword, Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation,
-};
+use crate::{util::escape_rust_keyword, Column, ConjunctRelation, PrimaryKey, Relation};
+
+use super::EntityWriterContext;
 
 #[derive(Clone, Debug)]
 pub struct Entity {
@@ -48,11 +48,11 @@ impl Entity {
             .collect()
     }
 
-    pub fn get_column_rs_types(&self, date_time_crate: &DateTimeCrate) -> Vec<TokenStream> {
+    pub fn get_column_rs_types(&self, context: &EntityWriterContext) -> Vec<TokenStream> {
         self.columns
             .clone()
             .into_iter()
-            .map(|col| col.get_rs_type(date_time_crate))
+            .map(|col| col.get_rs_type(context))
             .collect()
     }
 
@@ -183,7 +183,7 @@ impl Entity {
         format_ident!("{}", auto_increment)
     }
 
-    pub fn get_primary_key_rs_type(&self, date_time_crate: &DateTimeCrate) -> TokenStream {
+    pub fn get_primary_key_rs_type(&self, context: &EntityWriterContext) -> TokenStream {
         let types = self
             .primary_keys
             .iter()
@@ -192,7 +192,7 @@ impl Entity {
                     .iter()
                     .find(|col| col.name.eq(&primary_key.name))
                     .unwrap()
-                    .get_rs_type(date_time_crate)
+                    .get_rs_type(context)
                     .to_string()
             })
             .collect::<Vec<_>>();
@@ -270,7 +270,9 @@ mod tests {
     use quote::{format_ident, quote};
     use sea_query::{ColumnType, ForeignKeyAction, StringLen};
 
-    use crate::{Column, DateTimeCrate, Entity, PrimaryKey, Relation, RelationType};
+    use crate::{
+        Column, DatabaseBackend, Entity, EntityWriterContext, PrimaryKey, Relation, RelationType,
+    };
 
     fn setup() -> Entity {
         Entity {
@@ -282,6 +284,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    primary_key: false,
                 },
                 Column {
                     name: "name".to_owned(),
@@ -289,6 +292,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    primary_key: false,
                 },
             ],
             relations: vec![
@@ -381,16 +385,15 @@ mod tests {
     fn test_get_column_rs_types() {
         let entity = setup();
 
-        for (i, elem) in entity
-            .get_column_rs_types(&DateTimeCrate::Chrono)
-            .into_iter()
-            .enumerate()
-        {
+        let context = EntityWriterContext {
+            db_backend: DatabaseBackend::Postgres,
+            ..Default::default()
+        };
+
+        for (i, elem) in entity.get_column_rs_types(&context).into_iter().enumerate() {
             assert_eq!(
                 elem.to_string(),
-                entity.columns[i]
-                    .get_rs_type(&DateTimeCrate::Chrono)
-                    .to_string()
+                entity.columns[i].get_rs_type(&context).to_string()
             );
         }
     }
@@ -489,13 +492,33 @@ mod tests {
     fn test_get_primary_key_rs_type() {
         let entity = setup();
 
+        let context = EntityWriterContext::default();
+
         assert_eq!(
-            entity
-                .get_primary_key_rs_type(&DateTimeCrate::Chrono)
-                .to_string(),
-            entity.columns[0]
-                .get_rs_type(&DateTimeCrate::Chrono)
-                .to_string()
+            entity.get_primary_key_rs_type(&context).to_string(),
+            entity.columns[0].get_rs_type(&context).to_string()
+        );
+    }
+
+    #[test]
+    fn test_get_sqlite_int_rs_type() {
+        let context = EntityWriterContext {
+            db_backend: DatabaseBackend::Sqlite,
+            ..Default::default()
+        };
+
+        assert_eq!(
+            "i64",
+            Column {
+                name: "id".to_owned(),
+                col_type: ColumnType::Integer,
+                auto_increment: true,
+                not_null: true,
+                unique: true,
+                primary_key: false,
+            }
+            .get_rs_type(&context)
+            .to_string()
         );
     }
 
