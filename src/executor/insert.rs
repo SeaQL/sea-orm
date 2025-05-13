@@ -1,7 +1,7 @@
 use crate::{
     error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, Insert,
     IntoActiveModel, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw,
-    TryFromU64, TryInsert,
+    TryFromRawValue, TryInsert,
 };
 use sea_query::{FromValueTuple, Iden, InsertStatement, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
@@ -26,7 +26,7 @@ where
     A: ActiveModelTrait,
 {
     /// The id performed when AUTOINCREMENT was performed on the PrimaryKey
-    pub last_insert_id: <PrimaryKey<A> as PrimaryKeyTrait>::ValueType,
+    pub last_insert_id: Option<<<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType>,
 }
 
 /// The types of results for an INSERT operation
@@ -350,7 +350,7 @@ where
             if res.rows_affected() == 0 {
                 return Err(DbErr::RecordNotInserted);
             }
-            FromValueTuple::from_value_tuple(value_tuple)
+            Some(FromValueTuple::from_value_tuple(value_tuple))
         }
         (None, true) => {
             let mut rows = db.query_all(statement).await?;
@@ -361,24 +361,137 @@ where
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
                 .collect::<Vec<_>>();
-            row.try_get_many("", cols.as_ref())
-                .map_err(|_| DbErr::UnpackInsertId)?
+            Some(
+                row.try_get_many("", cols.as_ref())
+                    .map_err(|_| DbErr::UnpackInsertId)?,
+            )
         }
         (None, false) => {
             let res = db.execute(statement).await?;
             if res.rows_affected() == 0 {
                 return Err(DbErr::RecordNotInserted);
             }
+
             let last_insert_id = res.last_insert_id();
-            // For MySQL, the affected-rows number:
-            //   - The affected-rows value per row is `1` if the row is inserted as a new row,
-            //   - `2` if an existing row is updated,
-            //   - and `0` if an existing row is set to its current values.
-            // Reference: https://dev.mysql.com/doc/refman/8.4/en/insert-on-duplicate.html
-            if db_backend == DbBackend::MySql && last_insert_id == 0 {
-                return Err(DbErr::RecordNotInserted);
+            if let Some(sea_query::Value::BigUnsigned(Some(last_insert_id))) = last_insert_id {
+                // For MySQL, the affected-rows number:
+                //   - The affected-rows value per row is `1` if the row is inserted as a new row,
+                //   - `2` if an existing row is updated,
+                //   - and `0` if an existing row is set to its current values.
+                // Reference: https://dev.mysql.com/doc/refman/8.4/en/insert-on-duplicate.html
+                if db_backend == DbBackend::MySql && last_insert_id == 0 {
+                    return Err(DbErr::RecordNotInserted);
+                }
+                Some(
+                    ValueTypeOf::<A>::try_from_u64(last_insert_id)
+                        .map_err(|_| DbErr::UnpackInsertId)?,
+                )
+            } else if let Some(val) = last_insert_id {
+                use sea_query::Value;
+
+                match val {
+                    Value::TinyInt(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::SmallInt(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::Int(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::BigInt(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::TinyUnsigned(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::SmallUnsigned(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::Unsigned(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::BigUnsigned(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val).map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+
+                    Value::String(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::Char(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+
+                    #[cfg(feature = "with-chrono")]
+                    Value::ChronoDate(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-chrono")]
+                    Value::ChronoTime(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-chrono")]
+                    Value::ChronoDateTime(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-chrono")]
+                    Value::ChronoDateTimeUtc(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-chrono")]
+                    Value::ChronoDateTimeLocal(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-chrono")]
+                    Value::ChronoDateTimeWithTimeZone(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-time")]
+                    Value::TimeDate(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-time")]
+                    Value::TimeTime(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-time")]
+                    Value::TimeDateTime(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-time")]
+                    Value::TimeDateTimeWithTimeZone(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-uuid")]
+                    Value::Uuid(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+
+                    _ => None,
+                }
+            } else {
+                None
             }
-            ValueTypeOf::<A>::try_from_u64(last_insert_id).map_err(|_| DbErr::UnpackInsertId)?
         }
     };
 
@@ -425,9 +538,11 @@ where
         }
         false => {
             let insert_res = exec_insert::<A, _>(primary_key, insert_statement, db).await?;
-            <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id)
-                .one(db)
-                .await?
+            <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id.ok_or(
+                DbErr::RecordNotFound("No last insert id returned from the database".to_owned()),
+            )?)
+            .one(db)
+            .await?
         }
     };
     match found {

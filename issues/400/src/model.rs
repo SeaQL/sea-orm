@@ -29,9 +29,13 @@ impl<T> From<AccountId<T>> for Uuid {
     }
 }
 
-impl<T> sea_orm::TryFromU64 for AccountId<T> {
+impl<T> sea_orm::TryFromRawValue for AccountId<T> {
     fn try_from_u64(_n: u64) -> Result<Self, sea_orm::DbErr> {
         Err(sea_orm::DbErr::ConvertFromU64(stringify!(AccountId<T>)))
+    }
+
+    fn try_from_string(_s: String) -> Result<Self, sea_orm::DbErr> {
+        Err(sea_orm::DbErr::ConvertFromString(stringify!(AccountId<T>)))
     }
 }
 

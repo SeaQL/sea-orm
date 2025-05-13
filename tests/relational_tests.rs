@@ -506,7 +506,7 @@ pub async fn related() -> Result<(), DbErr> {
             "home": "0395555555",
             "address": "12 Test St, Testville, Vic, Australia"
         })),
-        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        bakery_id: Set(seaside_bakery_res.last_insert_id),
         ..Default::default()
     };
     let _baker_bob_res = Baker::insert(baker_bob).exec(&ctx.db).await?;
@@ -517,7 +517,7 @@ pub async fn related() -> Result<(), DbErr> {
         contact_details: Set(serde_json::json!({
             "mobile": "+85212345678",
         })),
-        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        bakery_id: Set(seaside_bakery_res.last_insert_id),
         ..Default::default()
     };
     let _baker_bobby_res = Baker::insert(baker_bobby).exec(&ctx.db).await?;
@@ -538,7 +538,7 @@ pub async fn related() -> Result<(), DbErr> {
             "home": "0395555555",
             "address": "12 Test St, Testville, Vic, Australia"
         })),
-        bakery_id: Set(Some(terres_bakery_res.last_insert_id)),
+        bakery_id: Set(terres_bakery_res.last_insert_id),
         ..Default::default()
     };
     let _baker_ada_res = Baker::insert(baker_ada).exec(&ctx.db).await?;
@@ -682,7 +682,7 @@ pub async fn related() -> Result<(), DbErr> {
                             "home": "0395555555",
                             "address": "12 Test St, Testville, Vic, Australia"
                         }),
-                        bakery_id: Some(seaside_bakery_res.last_insert_id),
+                        bakery_id: seaside_bakery_res.last_insert_id,
                     },
                     baker::Model {
                         id: 2,
@@ -690,7 +690,7 @@ pub async fn related() -> Result<(), DbErr> {
                         contact_details: serde_json::json!({
                             "mobile": "+85212345678",
                         }),
-                        bakery_id: Some(seaside_bakery_res.last_insert_id),
+                        bakery_id: seaside_bakery_res.last_insert_id,
                     }
                 ]
             ),
@@ -708,7 +708,7 @@ pub async fn related() -> Result<(), DbErr> {
                         "home": "0395555555",
                         "address": "12 Test St, Testville, Vic, Australia"
                     }),
-                    bakery_id: Some(terres_bakery_res.last_insert_id),
+                    bakery_id: terres_bakery_res.last_insert_id,
                 }]
             ),
             (
@@ -752,7 +752,7 @@ pub async fn linked() -> Result<(), DbErr> {
             "home": "0395555555",
             "address": "12 Test St, Testville, Vic, Australia"
         })),
-        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        bakery_id: Set(seaside_bakery_res.last_insert_id),
         ..Default::default()
     };
     let baker_bob_res = Baker::insert(baker_bob).exec(&ctx.db).await?;
@@ -761,13 +761,13 @@ pub async fn linked() -> Result<(), DbErr> {
         price: Set(rust_dec(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
-        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        bakery_id: Set(seaside_bakery_res.last_insert_id),
         ..Default::default()
     };
     let mud_cake_res = Cake::insert(mud_cake).exec(&ctx.db).await?;
     let bob_cakes_bakers = cakes_bakers::ActiveModel {
-        cake_id: Set(mud_cake_res.last_insert_id),
-        baker_id: Set(baker_bob_res.last_insert_id),
+        cake_id: Set(mud_cake_res.last_insert_id.ok_or(DbErr::UnpackInsertId)?),
+        baker_id: Set(baker_bob_res.last_insert_id.ok_or(DbErr::UnpackInsertId)?),
     };
     CakesBakers::insert(bob_cakes_bakers).exec(&ctx.db).await?;
 
@@ -777,7 +777,7 @@ pub async fn linked() -> Result<(), DbErr> {
         contact_details: Set(serde_json::json!({
             "mobile": "+85212345678",
         })),
-        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        bakery_id: Set(seaside_bakery_res.last_insert_id),
         ..Default::default()
     };
     let baker_bobby_res = Baker::insert(baker_bobby).exec(&ctx.db).await?;
@@ -786,13 +786,17 @@ pub async fn linked() -> Result<(), DbErr> {
         price: Set(rust_dec(20.5)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
-        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        bakery_id: Set(seaside_bakery_res.last_insert_id),
         ..Default::default()
     };
     let cheese_cake_res = Cake::insert(cheese_cake).exec(&ctx.db).await?;
     let bobby_cakes_bakers = cakes_bakers::ActiveModel {
-        cake_id: Set(cheese_cake_res.last_insert_id),
-        baker_id: Set(baker_bobby_res.last_insert_id),
+        cake_id: Set(cheese_cake_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
+        baker_id: Set(baker_bobby_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
     };
     CakesBakers::insert(bobby_cakes_bakers)
         .exec(&ctx.db)
@@ -802,13 +806,17 @@ pub async fn linked() -> Result<(), DbErr> {
         price: Set(rust_dec(30.15)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
-        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        bakery_id: Set(seaside_bakery_res.last_insert_id),
         ..Default::default()
     };
     let chocolate_cake_res = Cake::insert(chocolate_cake).exec(&ctx.db).await?;
     let bobby_cakes_bakers = cakes_bakers::ActiveModel {
-        cake_id: Set(chocolate_cake_res.last_insert_id),
-        baker_id: Set(baker_bobby_res.last_insert_id),
+        cake_id: Set(chocolate_cake_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
+        baker_id: Set(baker_bobby_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
     };
     CakesBakers::insert(bobby_cakes_bakers)
         .exec(&ctx.db)
@@ -820,7 +828,7 @@ pub async fn linked() -> Result<(), DbErr> {
         contact_details: Set(serde_json::json!({
             "mobile": "+85298765432",
         })),
-        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        bakery_id: Set(seaside_bakery_res.last_insert_id),
         ..Default::default()
     };
     let _baker_freerider_res = Baker::insert(baker_freerider).exec(&ctx.db).await?;
@@ -833,16 +841,24 @@ pub async fn linked() -> Result<(), DbErr> {
     };
     let customer_kate_res = Customer::insert(customer_kate).exec(&ctx.db).await?;
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(seaside_bakery_res.last_insert_id),
-        customer_id: Set(customer_kate_res.last_insert_id),
+        bakery_id: Set(seaside_bakery_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
+        customer_id: Set(customer_kate_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
         total: Set(rust_dec(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
     let kate_order_1_res = Order::insert(kate_order_1).exec(&ctx.db).await?;
     lineitem::ActiveModel {
-        cake_id: Set(cheese_cake_res.last_insert_id),
-        order_id: Set(kate_order_1_res.last_insert_id),
+        cake_id: Set(cheese_cake_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
+        order_id: Set(kate_order_1_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
         price: Set(rust_dec(7.55)),
         quantity: Set(2),
         ..Default::default()
@@ -850,16 +866,24 @@ pub async fn linked() -> Result<(), DbErr> {
     .save(&ctx.db)
     .await?;
     let kate_order_2 = order::ActiveModel {
-        bakery_id: Set(seaside_bakery_res.last_insert_id),
-        customer_id: Set(customer_kate_res.last_insert_id),
+        bakery_id: Set(seaside_bakery_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
+        customer_id: Set(customer_kate_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
         total: Set(rust_dec(29.7)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
     let kate_order_2_res = Order::insert(kate_order_2).exec(&ctx.db).await?;
     lineitem::ActiveModel {
-        cake_id: Set(chocolate_cake_res.last_insert_id),
-        order_id: Set(kate_order_2_res.last_insert_id),
+        cake_id: Set(chocolate_cake_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
+        order_id: Set(kate_order_2_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
         price: Set(rust_dec(9.9)),
         quantity: Set(3),
         ..Default::default()
@@ -875,16 +899,22 @@ pub async fn linked() -> Result<(), DbErr> {
     };
     let customer_kara_res = Customer::insert(customer_kara).exec(&ctx.db).await?;
     let kara_order_1 = order::ActiveModel {
-        bakery_id: Set(seaside_bakery_res.last_insert_id),
-        customer_id: Set(customer_kara_res.last_insert_id),
+        bakery_id: Set(seaside_bakery_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
+        customer_id: Set(customer_kara_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
         total: Set(rust_dec(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
     let kara_order_1_res = Order::insert(kara_order_1).exec(&ctx.db).await?;
     lineitem::ActiveModel {
-        cake_id: Set(mud_cake_res.last_insert_id),
-        order_id: Set(kara_order_1_res.last_insert_id),
+        cake_id: Set(mud_cake_res.last_insert_id.ok_or(DbErr::UnpackInsertId)?),
+        order_id: Set(kara_order_1_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
         price: Set(rust_dec(7.55)),
         quantity: Set(2),
         ..Default::default()
@@ -892,16 +922,24 @@ pub async fn linked() -> Result<(), DbErr> {
     .save(&ctx.db)
     .await?;
     let kara_order_2 = order::ActiveModel {
-        bakery_id: Set(seaside_bakery_res.last_insert_id),
-        customer_id: Set(customer_kara_res.last_insert_id),
+        bakery_id: Set(seaside_bakery_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
+        customer_id: Set(customer_kara_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
         total: Set(rust_dec(29.7)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
     let kara_order_2_res = Order::insert(kara_order_2).exec(&ctx.db).await?;
     lineitem::ActiveModel {
-        cake_id: Set(cheese_cake_res.last_insert_id),
-        order_id: Set(kara_order_2_res.last_insert_id),
+        cake_id: Set(cheese_cake_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
+        order_id: Set(kara_order_2_res
+            .last_insert_id
+            .ok_or(DbErr::UnpackInsertId)?),
         price: Set(rust_dec(9.9)),
         quantity: Set(3),
         ..Default::default()
