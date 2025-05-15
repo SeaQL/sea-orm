@@ -166,7 +166,9 @@ async fn not_found(data: web::Data<AppState>, request: HttpRequest) -> Result<Ht
 
 #[actix_web::main]
 async fn start() -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG", "debug");
+    unsafe {
+        std::env::set_var("RUST_LOG", "debug");
+    }
     tracing_subscriber::fmt::init();
 
     // get env vars

@@ -122,7 +122,9 @@ async fn delete(state: Data<&AppState>, Path(id): Path<i32>) -> Result<impl Into
 
 #[tokio::main]
 async fn start() -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG", "debug");
+    unsafe {
+        std::env::set_var("RUST_LOG", "debug");
+    }
     tracing_subscriber::fmt::init();
 
     // get env vars

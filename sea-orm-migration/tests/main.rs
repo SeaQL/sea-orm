@@ -153,7 +153,9 @@ where
         println!("\nRoll back changes when encounter errors");
 
         // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
-        std::env::set_var("ABORT_MIGRATION", "YES");
+        unsafe {
+            std::env::set_var("ABORT_MIGRATION", "YES");
+        }
 
         // Should throw an error
         println!("\nMigrator::up");
@@ -203,7 +205,9 @@ where
         println!("\nRoll back changes when encounter errors");
 
         // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
-        std::env::set_var("ABORT_MIGRATION", "YES");
+        unsafe {
+            std::env::set_var("ABORT_MIGRATION", "YES");
+        }
 
         // Should throw an error
         println!("\nMigrator::down");

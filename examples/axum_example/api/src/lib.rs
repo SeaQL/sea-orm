@@ -22,7 +22,9 @@ use tower_http::services::ServeDir;
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
-    env::set_var("RUST_LOG", "debug");
+    unsafe {
+        env::set_var("RUST_LOG", "debug");
+    }
     tracing_subscriber::fmt::init();
 
     dotenvy::dotenv().ok();
