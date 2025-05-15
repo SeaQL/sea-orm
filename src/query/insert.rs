@@ -178,8 +178,7 @@ where
         let mut columns: Vec<_> = <A::Entity as EntityTrait>::Column::iter()
             .map(|_| None)
             .collect();
-        let mut null_value: Vec<Option<Value>> =
-            std::iter::repeat(None).take(columns.len()).collect();
+        let mut null_value: Vec<Option<Value>> = std::iter::repeat_n(None, columns.len()).collect();
         let mut all_values: Vec<Vec<SimpleExpr>> = Vec::new();
 
         for model in models.into_iter() {
