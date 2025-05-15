@@ -1,10 +1,10 @@
 use actix_example_service::{
-    sea_orm::{Database, DatabaseConnection},
     Mutation, Query,
+    sea_orm::{Database, DatabaseConnection},
 };
 use actix_files::Files as Fs;
 use actix_web::{
-    error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result,
+    App, Error, HttpRequest, HttpResponse, HttpServer, Result, error, get, middleware, post, web,
 };
 
 use entity::post;

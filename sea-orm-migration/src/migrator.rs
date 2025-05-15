@@ -6,8 +6,8 @@ use std::time::SystemTime;
 use tracing::info;
 
 use sea_orm::sea_query::{
-    self, extension::postgres::Type, Alias, Expr, ExprTrait, ForeignKey, IntoIden, JoinType, Order,
-    Query, SelectStatement, SimpleExpr, Table,
+    self, Alias, Expr, ExprTrait, ForeignKey, IntoIden, JoinType, Order, Query, SelectStatement,
+    SimpleExpr, Table, extension::postgres::Type,
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue, Condition, ConnectionTrait, DbBackend, DbErr, DeriveIden,
@@ -16,7 +16,7 @@ use sea_orm::{
 };
 use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
 
-use super::{seaql_migrations, IntoSchemaManagerConnection, MigrationTrait, SchemaManager};
+use super::{IntoSchemaManagerConnection, MigrationTrait, SchemaManager, seaql_migrations};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /// Status of migration

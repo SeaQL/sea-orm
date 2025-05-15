@@ -1,7 +1,7 @@
 #![allow(unused_imports, dead_code)]
 
 pub mod common;
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use sea_orm::entity::prelude::*;
 
 #[derive(DeriveIden)]

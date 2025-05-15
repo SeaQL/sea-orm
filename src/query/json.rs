@@ -1,4 +1,4 @@
-use crate::{error::*, FromQueryResult, QueryResult};
+use crate::{FromQueryResult, QueryResult, error::*};
 use serde_json::Map;
 pub use serde_json::Value as JsonValue;
 
@@ -83,7 +83,7 @@ impl FromQueryResult for JsonValue {
             #[cfg(feature = "sqlx-postgres")]
             crate::QueryResultRow::SqlxPostgres(row) => {
                 use serde_json::json;
-                use sqlx::{postgres::types::Oid, Column, Postgres, Row, Type};
+                use sqlx::{Column, Postgres, Row, Type, postgres::types::Oid};
 
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
@@ -249,7 +249,7 @@ impl FromQueryResult for JsonValue {
 #[cfg(feature = "mock")]
 mod tests {
     use crate::tests_cfg::cake;
-    use crate::{entity::*, DbBackend, DbErr, MockDatabase};
+    use crate::{DbBackend, DbErr, MockDatabase, entity::*};
     use sea_query::Value;
 
     #[smol_potat::test]

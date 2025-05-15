@@ -7,10 +7,10 @@ use poem::error::InternalServerError;
 use poem::http::StatusCode;
 use poem::listener::TcpListener;
 use poem::web::{Data, Form, Html, Path, Query};
-use poem::{get, handler, post, EndpointExt, Error, IntoResponse, Result, Route, Server};
+use poem::{EndpointExt, Error, IntoResponse, Result, Route, Server, get, handler, post};
 use poem_example_service::{
-    sea_orm::{Database, DatabaseConnection},
     Mutation as MutationCore, Query as QueryCore,
+    sea_orm::{Database, DatabaseConnection},
 };
 use serde::Deserialize;
 use tera::Tera;

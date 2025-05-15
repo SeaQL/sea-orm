@@ -4,7 +4,7 @@ use sea_orm_codegen::{
     WithPrelude, WithSerde,
 };
 use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
-use tracing_subscriber::{prelude::*, EnvFilter};
+use tracing_subscriber::{EnvFilter, prelude::*};
 use url::Url;
 
 use crate::{DateTimeCrate, GenerateSubcommands};

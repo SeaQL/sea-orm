@@ -2,8 +2,8 @@
 
 pub mod common;
 
-pub use common::{bakery_chain, setup::*, TestContext};
-use sea_orm::{entity::prelude::*, IntoActiveModel, NotSet, Set};
+pub use common::{TestContext, bakery_chain, setup::*};
+use sea_orm::{IntoActiveModel, NotSet, Set, entity::prelude::*};
 pub use sea_query::{Expr, Query};
 use serde_json::json;
 
@@ -79,7 +79,7 @@ async fn main() -> Result<(), DbErr> {
     should_panic(expected = "Database backend doesn't support RETURNING")
 )]
 async fn insert_many() {
-    pub use common::{features::*, TestContext};
+    pub use common::{TestContext, features::*};
     use edit_log::*;
 
     let ctx = TestContext::new("returning_tests_insert_many").await;
@@ -168,7 +168,7 @@ async fn insert_many() {
 )]
 async fn insert_many_composite_key() {
     use bakery_chain::{baker, cake, cakes_bakers};
-    pub use common::{features::*, TestContext};
+    pub use common::{TestContext, features::*};
 
     let ctx = TestContext::new("returning_tests_insert_many_composite_key").await;
     let db = &ctx.db;
@@ -245,7 +245,7 @@ async fn insert_many_composite_key() {
     should_panic(expected = "Database backend doesn't support RETURNING")
 )]
 async fn update_many() {
-    pub use common::{features::*, TestContext};
+    pub use common::{TestContext, features::*};
     use edit_log::*;
 
     let run = || async {
@@ -364,7 +364,7 @@ async fn update_many() {
     should_panic(expected = "Database backend doesn't support RETURNING")
 )]
 async fn delete_many() {
-    pub use common::{features::*, TestContext};
+    pub use common::{TestContext, features::*};
     use edit_log::*;
 
     let run = || async {

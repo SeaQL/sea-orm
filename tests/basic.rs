@@ -2,7 +2,7 @@
 
 pub mod common;
 
-pub use sea_orm::{entity::*, error::*, query::*, sea_query, tests_cfg::*, Database, DbConn};
+pub use sea_orm::{Database, DbConn, entity::*, error::*, query::*, sea_query, tests_cfg::*};
 
 // cargo test --features sqlx-sqlite,runtime-async-std-native-tls --test basic
 // export DATABASE_URL=mysql://root:root@localhost:3306

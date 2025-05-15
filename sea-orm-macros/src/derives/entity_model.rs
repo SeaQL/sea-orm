@@ -4,7 +4,7 @@ use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{
-    punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, Expr, Fields, Lit,
+    Attribute, Data, Expr, Fields, Lit, punctuated::Punctuated, spanned::Spanned, token::Comma,
 };
 
 /// Method to derive an Model

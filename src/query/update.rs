@@ -33,7 +33,7 @@ impl Update {
     /// Update one ActiveModel
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     Update::one(cake::ActiveModel {
@@ -63,7 +63,7 @@ impl Update {
     /// Update many ActiveModel
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, sea_query::Expr, tests_cfg::fruit, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, sea_query::Expr, tests_cfg::fruit};
     ///
     /// assert_eq!(
     ///     Update::many(fruit::Entity)
@@ -213,7 +213,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit, lunch_set, sea_orm_active_enums::Tea};
-    use crate::{entity::*, query::*, DbBackend};
+    use crate::{DbBackend, entity::*, query::*};
     use sea_query::{Expr, Value};
 
     #[test]
