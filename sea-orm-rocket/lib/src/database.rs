@@ -11,7 +11,7 @@ use rocket::yansi::Paint;
 
 #[cfg(feature = "rocket_okapi")]
 use rocket_okapi::{
-    gen::OpenApiGenerator,
+    r#gen::OpenApiGenerator,
     request::{OpenApiFromRequest, RequestHeaderInput},
 };
 

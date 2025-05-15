@@ -5,7 +5,7 @@ use rocket::{
 };
 use rocket_okapi::okapi::openapi3::Responses;
 use rocket_okapi::okapi::schemars::{self, Map};
-use rocket_okapi::{gen::OpenApiGenerator, response::OpenApiResponderInner, OpenApiError};
+use rocket_okapi::{r#gen::OpenApiGenerator, response::OpenApiResponderInner, OpenApiError};
 
 /// Error messages returned to user
 #[derive(Debug, serde::Serialize, schemars::JsonSchema)]
