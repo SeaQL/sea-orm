@@ -174,7 +174,9 @@ where
         assert!(!manager.has_table("fruit").await?);
 
         // Unset the flag
-        std::env::remove_var("ABORT_MIGRATION");
+        unsafe {
+            std::env::remove_var("ABORT_MIGRATION");
+        }
     }
 
     println!("\nMigrator::up");
@@ -226,7 +228,9 @@ where
         assert!(manager.has_table("fruit").await?);
 
         // Unset the flag
-        std::env::remove_var("ABORT_MIGRATION");
+        unsafe {
+            std::env::remove_var("ABORT_MIGRATION");
+        }
     }
 
     println!("\nMigrator::down");
