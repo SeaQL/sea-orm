@@ -1,6 +1,5 @@
 target
 firedbg
-Cargo.lock
 *.sublime*
 .vscode
 .idea/*
