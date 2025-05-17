@@ -1,9 +1,9 @@
 #![allow(unused_imports, dead_code)]
 
 use sea_orm::{
+    FromQueryResult, JoinType, Set,
     prelude::*,
     query::{QueryOrder, QuerySelect},
-    FromQueryResult, JoinType, Set,
 };
 
 use crate::common::TestContext;

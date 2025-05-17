@@ -1,6 +1,6 @@
 use heck::ToUpperCamelCase;
 use quote::format_ident;
-use syn::{punctuated::Punctuated, token::Comma, Field, Ident, Meta, MetaNameValue};
+use syn::{Field, Ident, Meta, MetaNameValue, punctuated::Punctuated, token::Comma};
 
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
     for attr in field.attrs.iter() {

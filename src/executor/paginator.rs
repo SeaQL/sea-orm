@@ -1,6 +1,6 @@
 use crate::{
-    error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel,
-    SelectThree, SelectThreeModel, SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait,
+    ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel, SelectThree,
+    SelectThreeModel, SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait, error::*,
 };
 use async_stream::stream;
 use futures_util::Stream;
@@ -322,7 +322,7 @@ where
 mod tests {
     use super::*;
     use crate::entity::prelude::*;
-    use crate::{tests_cfg::*, ConnectionTrait, Statement};
+    use crate::{ConnectionTrait, Statement, tests_cfg::*};
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
     use futures_util::TryStreamExt;
     use pretty_assertions::assert_eq;

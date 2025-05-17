@@ -1,7 +1,7 @@
 use anyhow::Result;
 use axum::{body::Body, response::Response};
 use tower_service::Service;
-use worker::{event, Context, Env, HttpRequest};
+use worker::{Context, Env, HttpRequest, event};
 
 pub(crate) mod entity;
 pub(crate) mod orm;

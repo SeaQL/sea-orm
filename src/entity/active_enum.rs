@@ -197,7 +197,7 @@ where
 {
     fn try_from_u64(_: u64) -> Result<Self, DbErr> {
         Err(DbErr::ConvertFromU64(
-            "Fail to construct ActiveEnum from a u64, if your primary key consist of a ActiveEnum field, its auto increment should be set to false."
+            "Fail to construct ActiveEnum from a u64, if your primary key consist of a ActiveEnum field, its auto increment should be set to false.",
         ))
     }
 }

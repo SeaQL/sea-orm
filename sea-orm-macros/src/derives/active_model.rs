@@ -4,7 +4,7 @@ use super::util::{
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
-use syn::{punctuated::IntoIter, Data, DataStruct, Expr, Field, Fields, LitStr, Type};
+use syn::{Data, DataStruct, Expr, Field, Fields, LitStr, Type, punctuated::IntoIter};
 
 /// Method to derive an [ActiveModel](sea_orm::ActiveModel)
 pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<TokenStream> {
@@ -17,7 +17,7 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
         _ => {
             return Ok(quote_spanned! {
                 ident.span() => compile_error!("you can only derive DeriveActiveModel on structs");
-            })
+            });
         }
     }
     .into_iter();

@@ -2,7 +2,7 @@
 
 pub mod common;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, setup::*};
 use pretty_assertions::assert_eq;
 use sea_orm::prelude::*;
 

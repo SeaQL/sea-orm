@@ -29,7 +29,7 @@ pub trait QueryTrait {
     /// # Example
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()

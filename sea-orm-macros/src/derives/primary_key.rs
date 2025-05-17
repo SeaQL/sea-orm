@@ -10,7 +10,7 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
         _ => {
             return Ok(quote_spanned! {
                 ident.span() => compile_error!("you can only derive DerivePrimaryKey on enums");
-            })
+            });
         }
     };
 

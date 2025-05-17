@@ -34,7 +34,7 @@ impl Delete {
     ///
     /// Model
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     Delete::one(cake::Model {
@@ -48,7 +48,7 @@ impl Delete {
     /// ```
     /// ActiveModel
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     Delete::one(cake::ActiveModel {
@@ -78,7 +78,7 @@ impl Delete {
     /// Delete many ActiveModel
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::fruit};
     ///
     /// assert_eq!(
     ///     Delete::many(fruit::Entity)
@@ -183,7 +183,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit};
-    use crate::{entity::*, query::*, DbBackend};
+    use crate::{DbBackend, entity::*, query::*};
 
     #[test]
     fn delete_1() {

@@ -1,7 +1,7 @@
-use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
+use async_graphql::http::{GraphQLPlaygroundConfig, playground_source};
 use async_graphql_poem::GraphQL;
 use dotenv::dotenv;
-use poem::{get, handler, listener::TcpListener, web::Html, IntoResponse, Route, Server};
+use poem::{IntoResponse, Route, Server, get, handler, listener::TcpListener, web::Html};
 use sea_orm::Database;
 use seaography::{async_graphql, lazy_static};
 use std::env;

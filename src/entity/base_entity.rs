@@ -516,10 +516,10 @@ pub trait EntityTrait: EntityName {
     ///
     /// ```
     /// use sea_orm::{
+    ///     DbBackend,
     ///     entity::*,
     ///     query::*,
     ///     tests_cfg::{cake, cake_filling},
-    ///     DbBackend,
     /// };
     ///
     /// assert_eq!(
@@ -1004,7 +1004,7 @@ mod tests {
     #[test]
     fn test_delete_by_id_1() {
         use crate::tests_cfg::cake;
-        use crate::{entity::*, query::*, DbBackend};
+        use crate::{DbBackend, entity::*, query::*};
         assert_eq!(
             cake::Entity::delete_by_id(1)
                 .build(DbBackend::Sqlite)
@@ -1016,7 +1016,7 @@ mod tests {
     #[test]
     fn test_delete_by_id_2() {
         use crate::tests_cfg::cake_filling_price;
-        use crate::{entity::*, query::*, DbBackend};
+        use crate::{DbBackend, entity::*, query::*};
         assert_eq!(
             cake_filling_price::Entity::delete_by_id((1, 2))
                 .build(DbBackend::Sqlite)
@@ -1080,7 +1080,7 @@ mod tests {
     #[test]
     #[cfg(feature = "macros")]
     fn entity_model_3() {
-        use crate::{entity::*, query::*, DbBackend};
+        use crate::{DbBackend, entity::*, query::*};
         use std::borrow::Cow;
 
         mod hello {

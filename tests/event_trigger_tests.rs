@@ -3,15 +3,15 @@
 pub mod common;
 
 pub use common::{
+    TestContext,
     features::{
         event_trigger::{Event, Events},
         *,
     },
     setup::*,
-    TestContext,
 };
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 
 #[sea_orm_macros::test]
 #[cfg(all(feature = "sqlx-postgres", feature = "postgres-array"))]

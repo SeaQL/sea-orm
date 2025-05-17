@@ -3,10 +3,10 @@ use std::future::Future;
 use clap::Parser;
 use dotenvy::dotenv;
 use std::{error::Error, fmt::Display, process::exit};
-use tracing_subscriber::{prelude::*, EnvFilter};
+use tracing_subscriber::{EnvFilter, prelude::*};
 
 use sea_orm::{ConnectOptions, Database, DbConn, DbErr};
-use sea_orm_cli::{run_migrate_generate, run_migrate_init, MigrateSubcommands};
+use sea_orm_cli::{MigrateSubcommands, run_migrate_generate, run_migrate_init};
 
 use super::MigratorTrait;
 

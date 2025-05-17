@@ -2,7 +2,8 @@
 name = "sea-orm-proxy-gluesql-example"
 version = "0.1.0"
 authors = ["Langyo <langyo.china@gmail.com>"]
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 publish = false
 
 [workspace]

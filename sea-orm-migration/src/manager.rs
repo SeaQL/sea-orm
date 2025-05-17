@@ -1,9 +1,9 @@
 use super::{IntoSchemaManagerConnection, SchemaManagerConnection};
 use sea_orm::sea_query::{
-    extension::postgres::{TypeAlterStatement, TypeCreateStatement, TypeDropStatement},
     ForeignKeyCreateStatement, ForeignKeyDropStatement, IndexCreateStatement, IndexDropStatement,
     TableAlterStatement, TableCreateStatement, TableDropStatement, TableRenameStatement,
     TableTruncateStatement,
+    extension::postgres::{TypeAlterStatement, TypeCreateStatement, TypeDropStatement},
 };
 use sea_orm::{ConnectionTrait, DbBackend, DbErr, StatementBuilder};
 use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};

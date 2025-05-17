@@ -3,7 +3,7 @@ extern crate rocket;
 
 use rocket::fairing::{self, AdHoc};
 use rocket::form::{Context, Form};
-use rocket::fs::{relative, FileServer};
+use rocket::fs::{FileServer, relative};
 use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};
 use rocket::{Build, Request, Rocket};

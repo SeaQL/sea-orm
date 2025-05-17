@@ -1,4 +1,4 @@
-use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
+use async_graphql::http::{GraphQLPlaygroundConfig, playground_source};
 use axum::{body::Body, extract::Request};
 use loco_rs::prelude::*;
 use tower_service::Service;

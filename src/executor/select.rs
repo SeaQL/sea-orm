@@ -1,8 +1,8 @@
 use crate::{
-    error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, Iterable,
-    ModelTrait, PartialModelTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait,
-    QueryResult, QuerySelect, Select, SelectA, SelectB, SelectC, SelectThree, SelectTwo,
-    SelectTwoMany, Statement, StreamTrait, TryGetableMany,
+    ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait,
+    PartialModelTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryResult,
+    QuerySelect, Select, SelectA, SelectB, SelectC, SelectThree, SelectTwo, SelectTwoMany,
+    Statement, StreamTrait, TryGetableMany, error::*,
 };
 use futures_util::{Stream, TryStreamExt};
 use sea_query::{SelectStatement, Value};
@@ -249,7 +249,7 @@ where
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveColumn, EnumIter};
+    /// use sea_orm::{DeriveColumn, EnumIter, entity::*, query::*, tests_cfg::cake};
     ///
     /// #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
     /// enum QueryAs {
@@ -297,7 +297,7 @@ where
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveColumn, EnumIter};
+    /// use sea_orm::{DeriveColumn, EnumIter, entity::*, query::*, tests_cfg::cake};
     ///
     /// #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
     /// enum QueryAs {
@@ -868,7 +868,7 @@ where
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, FromQueryResult};
+    /// use sea_orm::{FromQueryResult, entity::*, query::*, tests_cfg::cake};
     ///
     /// #[derive(Debug, PartialEq, FromQueryResult)]
     /// struct SelectResult {

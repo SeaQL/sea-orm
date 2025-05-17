@@ -3,8 +3,8 @@ use crate::{
     PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
-    extension::postgres::{Type, TypeCreateStatement},
     ColumnDef, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement,
+    extension::postgres::{Type, TypeCreateStatement},
 };
 
 impl Schema {
@@ -231,7 +231,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{sea_query::*, tests_cfg::*, DbBackend, EntityName, Schema};
+    use crate::{DbBackend, EntityName, Schema, sea_query::*, tests_cfg::*};
     use pretty_assertions::assert_eq;
 
     #[test]

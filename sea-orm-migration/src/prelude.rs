@@ -7,7 +7,6 @@ pub use crate::{
 };
 pub use async_trait;
 pub use sea_orm::{
-    self,
+    self, ConnectionTrait, DbErr, DeriveIden, DeriveMigrationName,
     sea_query::{self, *},
-    ConnectionTrait, DbErr, DeriveIden, DeriveMigrationName,
 };

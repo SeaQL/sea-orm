@@ -5,7 +5,7 @@
 name = "sea-orm-migration"
 version = "1.1.11"
 authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
-edition = "2021"
+edition = "2024"
 description = "Migration utility for SeaORM"
 license = "MIT OR Apache-2.0"
 homepage = "https://www.sea-ql.org/SeaORM"
@@ -13,7 +13,7 @@ documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
 categories = ["database"]
 keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
-rust-version = "1.65"
+rust-version = "1.85.0"
 
 [lib]
 name = "sea_orm_migration"

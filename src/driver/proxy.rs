@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, ProxyDatabaseTrait,
-    QueryResult, Statement,
+    DatabaseConnection, DbBackend, ExecResult, ProxyDatabaseTrait, QueryResult, Statement,
+    debug_print, error::*,
 };
 use std::{fmt::Debug, sync::Arc};
 use tracing::instrument;

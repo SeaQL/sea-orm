@@ -46,7 +46,7 @@ where
     ///
     /// Model
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     Insert::one(cake::Model {
@@ -60,7 +60,7 @@ where
     /// ```
     /// ActiveModel
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     Insert::one(cake::ActiveModel {
@@ -82,7 +82,7 @@ where
     /// Insert many Model or ActiveModel
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     Insert::many([
@@ -178,8 +178,7 @@ where
         let mut columns: Vec<_> = <A::Entity as EntityTrait>::Column::iter()
             .map(|_| None)
             .collect();
-        let mut null_value: Vec<Option<Value>> =
-            std::iter::repeat(None).take(columns.len()).collect();
+        let mut null_value: Vec<Option<Value>> = std::iter::repeat_n(None, columns.len()).collect();
         let mut all_values: Vec<Vec<SimpleExpr>> = Vec::new();
 
         for model in models.into_iter() {
@@ -241,7 +240,7 @@ where
     ///
     /// on conflict do nothing
     /// ```
-    /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, sea_query::OnConflict, tests_cfg::cake};
     ///
     /// let orange = cake::ActiveModel {
     ///     id: ActiveValue::set(2),

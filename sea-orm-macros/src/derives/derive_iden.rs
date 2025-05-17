@@ -2,7 +2,7 @@ use heck::ToSnakeCase;
 use proc_macro2::{self, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{
-    punctuated::Punctuated, DataEnum, DataStruct, DeriveInput, Expr, Fields, LitStr, Variant,
+    DataEnum, DataStruct, DeriveInput, Expr, Fields, LitStr, Variant, punctuated::Punctuated,
 };
 
 fn must_be_valid_iden(name: &str) -> bool {

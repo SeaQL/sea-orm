@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{punctuated::Punctuated, token::Comma, Meta, PathArguments, PathSegment};
+use syn::{Meta, PathArguments, PathSegment, punctuated::Punctuated, token::Comma};
 
 use super::util::GetMeta;
 

@@ -1,7 +1,7 @@
 use std::env;
 
 use entity::post;
-use jsonrpsee::core::{async_trait, RpcResult};
+use jsonrpsee::core::{RpcResult, async_trait};
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::ServerBuilder;
 use jsonrpsee::types::error::ErrorObjectOwned;

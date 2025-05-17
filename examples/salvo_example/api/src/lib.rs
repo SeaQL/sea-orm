@@ -5,8 +5,8 @@ use migration::{Migrator, MigratorTrait};
 use salvo::affix;
 use salvo::prelude::*;
 use salvo_example_service::{
-    sea_orm::{Database, DatabaseConnection},
     Mutation, Query,
+    sea_orm::{Database, DatabaseConnection},
 };
 use tera::Tera;
 
@@ -142,7 +142,9 @@ async fn delete(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
 
 #[tokio::main]
 pub async fn main() {
-    std::env::set_var("RUST_LOG", "debug");
+    unsafe {
+        std::env::set_var("RUST_LOG", "debug");
+    }
     tracing_subscriber::fmt::init();
 
     // get env vars

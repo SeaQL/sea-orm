@@ -1,7 +1,8 @@
 [package]
-edition = "2021"
 name = "sea-orm-seaography-example"
 version = "0.1.0"
+edition = "2024"
+rust-version = "1.85.0"
 
 [dependencies]
 poem = { version = "3.0" }

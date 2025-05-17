@@ -2,7 +2,8 @@
 name = "sea-orm-graphql-example"
 authors = ["Aaron Leopold <aaronleopold1221@gmail.com>"]
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

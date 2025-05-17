@@ -2,11 +2,11 @@
 
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
 use sea_orm::{
-    entity::prelude::*, DatabaseConnection, Delete, IntoActiveModel, Iterable, QueryTrait, Set,
-    Update,
+    DatabaseConnection, Delete, IntoActiveModel, Iterable, QueryTrait, Set, Update,
+    entity::prelude::*,
 };
 use sea_query::{Expr, Query};
 

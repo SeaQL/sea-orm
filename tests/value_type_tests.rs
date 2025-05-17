@@ -6,15 +6,15 @@ use std::sync::Arc;
 use std::vec;
 
 pub use common::{
+    TestContext,
     features::{
-        value_type::{value_type_general, value_type_pg, Integer, StringVec, Tag1, Tag2},
+        value_type::{Integer, StringVec, Tag1, Tag2, value_type_general, value_type_pg},
         *,
     },
     setup::*,
-    TestContext,
 };
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 use sea_query::{ArrayType, ColumnType, Value, ValueType, ValueTypeErr};
 
 #[sea_orm_macros::test]

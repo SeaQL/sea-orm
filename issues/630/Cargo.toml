@@ -5,7 +5,8 @@
 name = "sea-orm-issues-630"
 version = "0.1.0"
 authors = ["Erik Rhodes <erik@space-nav.com>"]
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 publish = false
 
 [dependencies]

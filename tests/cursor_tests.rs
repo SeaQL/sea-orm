@@ -2,9 +2,9 @@
 
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, DerivePartialModel, FromQueryResult, QuerySelect, Set};
+use sea_orm::{DerivePartialModel, FromQueryResult, QuerySelect, Set, entity::prelude::*};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -512,8 +512,8 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
 }
 
 use common::bakery_chain::{
-    baker, bakery, cake, cakes_bakers, schema as bakery_chain_schema, Baker, Bakery, Cake,
-    CakesBakers,
+    Baker, Bakery, Cake, CakesBakers, baker, bakery, cake, cakes_bakers,
+    schema as bakery_chain_schema,
 };
 
 fn bakery(i: i32) -> bakery::Model {

@@ -5,8 +5,8 @@ use sea_orm::{
     Statement,
 };
 use sea_query::{
-    extension::postgres::{Type, TypeCreateStatement},
     SeaRc, Table, TableCreateStatement,
+    extension::postgres::{Type, TypeCreateStatement},
 };
 
 pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {

@@ -1,12 +1,12 @@
 use super::*;
 use crate::common::setup::{create_enum, create_table, create_table_without_asserts};
 use sea_orm::{
-    error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
-    ExecResult, Schema,
+    ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName, ExecResult, Schema,
+    error::*, sea_query,
 };
 use sea_query::{
-    extension::postgres::Type, Alias, ColumnDef, ColumnType, ForeignKeyCreateStatement, IntoIden,
-    StringLen,
+    Alias, ColumnDef, ColumnType, ForeignKeyCreateStatement, IntoIden, StringLen,
+    extension::postgres::Type,
 };
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {

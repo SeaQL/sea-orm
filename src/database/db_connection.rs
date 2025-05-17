@@ -1,6 +1,6 @@
 use crate::{
-    error::*, AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel,
-    QueryResult, Statement, StatementBuilder, StreamTrait, TransactionError, TransactionTrait,
+    AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel, QueryResult,
+    Statement, StatementBuilder, StreamTrait, TransactionError, TransactionTrait, error::*,
 };
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 use std::{future::Future, pin::Pin};

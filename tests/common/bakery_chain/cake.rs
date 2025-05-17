@@ -1,5 +1,5 @@
 use crate::common::setup::rust_dec;
-use sea_orm::{entity::prelude::*, ConnectionTrait};
+use sea_orm::{ConnectionTrait, entity::prelude::*};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "cake")]

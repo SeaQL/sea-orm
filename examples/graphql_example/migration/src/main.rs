@@ -15,7 +15,9 @@ async fn main() {
             println!("Using DATABASE_URL: {val}");
         }
         Err(_) => {
-            std::env::set_var("DATABASE_URL", fallback);
+            unsafe {
+                std::env::set_var("DATABASE_URL", fallback);
+            }
             println!("Set DATABASE_URL: {fallback}");
         }
     };

@@ -3,7 +3,7 @@
 pub mod common;
 mod crud;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, setup::*};
 pub use crud::*;
 use sea_orm::DatabaseConnection;
 

@@ -1,11 +1,10 @@
 use proc_macro2::TokenStream;
 use syn::{
-    parenthesized,
-    parse::{Parse, ParseStream},
-    parse2, parse_str,
-    punctuated::Punctuated,
     Attribute, DeriveInput, Expr, ExprLit, Ident, Lit, LitBool, LitStr, Meta, MetaNameValue, Path,
-    Token, Variant, Visibility,
+    Token, Variant, Visibility, parenthesized,
+    parse::{Parse, ParseStream},
+    parse_str, parse2,
+    punctuated::Punctuated,
 };
 
 use super::case_style::CaseStyle;

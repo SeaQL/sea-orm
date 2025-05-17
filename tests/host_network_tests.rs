@@ -2,9 +2,9 @@
 
 pub mod common;
 
-use common::{features::*, setup::*, TestContext};
+use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 #[sea_orm_macros::test]

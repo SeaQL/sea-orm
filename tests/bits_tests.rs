@@ -4,7 +4,7 @@ pub mod common;
 
 use common::features::*;
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 
 #[sea_orm_macros::test]
 #[cfg(feature = "sqlx-postgres")]

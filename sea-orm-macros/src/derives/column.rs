@@ -10,7 +10,7 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
         _ => {
             return Ok(quote_spanned! {
                 ident.span() => compile_error!("you can only derive DeriveColumn on enums");
-            })
+            });
         }
     };
 
@@ -66,7 +66,7 @@ pub fn impl_col_from_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream>
         _ => {
             return Ok(quote_spanned! {
                 ident.span() => compile_error!("you can only derive DeriveColumn on enums");
-            })
+            });
         }
     };
 

@@ -112,8 +112,8 @@ fn type_def_from_column_def(column_type: &ColumnType) -> Value {
 mod test {
     use super::*;
     use crate::{
-        tests_cfg::{cake, lunch_set},
         DbBackend,
+        tests_cfg::{cake, lunch_set},
     };
 
     #[test]
