@@ -14,7 +14,8 @@ use sea_orm::{
     DynIden, EntityTrait, FromQueryResult, Iterable, QueryFilter, Schema, Statement,
     TransactionTrait,
 };
-use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
+#[allow(unused_imports)]
+use sea_schema::probe::SchemaProbe;
 
 use super::{seaql_migrations, IntoSchemaManagerConnection, MigrationTrait, SchemaManager};
 
@@ -442,9 +443,14 @@ where
     C: ConnectionTrait,
 {
     match db.get_database_backend() {
-        DbBackend::MySql => MySql.query_tables(),
-        DbBackend::Postgres => Postgres.query_tables(),
-        DbBackend::Sqlite => Sqlite.query_tables(),
+        #[cfg(feature = "sqlx-mysql")]
+        DbBackend::MySql => sea_schema::mysql::MySql.query_tables(),
+        #[cfg(feature = "sqlx-postgres")]
+        DbBackend::Postgres => sea_schema::postgres::Postgres.query_tables(),
+        #[cfg(feature = "sqlx-sqlite")]
+        DbBackend::Sqlite => sea_schema::sqlite::Sqlite.query_tables(),
+        #[allow(unreachable_patterns)]
+        other => panic!("{other:?} feature is off"),
     }
 }
 
@@ -453,9 +459,14 @@ where
     C: ConnectionTrait,
 {
     match db.get_database_backend() {
-        DbBackend::MySql => MySql::get_current_schema(),
-        DbBackend::Postgres => Postgres::get_current_schema(),
-        DbBackend::Sqlite => unimplemented!(),
+        #[cfg(feature = "sqlx-mysql")]
+        DbBackend::MySql => sea_schema::mysql::MySql::get_current_schema(),
+        #[cfg(feature = "sqlx-postgres")]
+        DbBackend::Postgres => sea_schema::postgres::Postgres::get_current_schema(),
+        #[cfg(feature = "sqlx-sqlite")]
+        DbBackend::Sqlite => sea_schema::sqlite::Sqlite::get_current_schema(),
+        #[allow(unreachable_patterns)]
+        other => panic!("{other:?} feature is off"),
     }
 }
 
