@@ -306,7 +306,7 @@ impl TransactionTrait for DatabaseConnection {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -354,7 +354,7 @@ impl TransactionTrait for DatabaseConnection {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]
