@@ -1,6 +1,6 @@
 use crate::{
     error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyArity,
-    PrimaryKeyToColumn, PrimaryKeyTrait, Value,
+    PrimaryKeyToColumn, PrimaryKeyTrait, TryIntoModel, Value,
 };
 use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
@@ -476,9 +476,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     #[cfg(feature = "with-json")]
     fn set_from_json(&mut self, json: serde_json::Value) -> Result<(), DbErr>
     where
+        Self: TryIntoModel<<Self::Entity as EntityTrait>::Model>,
         <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
-            serde::de::Deserialize<'de>,
+            serde::de::Deserialize<'de> + serde::Serialize,
     {
         use crate::Iterable;
 
@@ -504,11 +505,12 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     /// Create ActiveModel from a JSON value
     #[cfg(feature = "with-json")]
-    fn from_json(json: serde_json::Value) -> Result<Self, DbErr>
+    fn from_json(mut json: serde_json::Value) -> Result<Self, DbErr>
     where
+        Self: TryIntoModel<<Self::Entity as EntityTrait>::Model>,
         <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
-            serde::de::Deserialize<'de>,
+            serde::de::Deserialize<'de> + serde::Serialize,
     {
         use crate::{IdenStatic, Iterable};
 
@@ -526,6 +528,24 @@ pub trait ActiveModelTrait: Clone + Debug {
             let key = col.as_str();
             let has_key = obj.contains_key(key);
             json_keys.push((col, has_key));
+        }
+
+        // Create dummy model with dummy values
+        let dummy_model = Self::default_values();
+        if let Ok(dummy_model) = dummy_model.try_into_model() {
+            if let Ok(mut dummy_json) = serde_json::to_value(&dummy_model) {
+                let serde_json::Value::Object(merged) = &mut dummy_json else {
+                    unreachable!();
+                };
+                let serde_json::Value::Object(obj) = json else {
+                    unreachable!();
+                };
+                // overwrite dummy values with input values
+                for (key, value) in obj {
+                    merged.insert(key, value);
+                }
+                json = dummy_json;
+            }
         }
 
         // Convert JSON object into ActiveModel via Model
@@ -1203,16 +1223,42 @@ mod tests {
 
     #[test]
     #[cfg(feature = "with-json")]
-    #[should_panic(
-        expected = r#"called `Result::unwrap()` on an `Err` value: Json("missing field `id`")"#
-    )]
     fn test_active_model_set_from_json_1() {
-        let mut cake: cake::ActiveModel = Default::default();
+        assert_eq!(
+            cake::ActiveModel::from_json(json!({
+                "id": 1,
+                "name": "Apple Pie",
+            }))
+            .unwrap(),
+            cake::ActiveModel {
+                id: ActiveValue::Set(1),
+                name: ActiveValue::Set("Apple Pie".to_owned()),
+            }
+        );
 
+        assert_eq!(
+            cake::ActiveModel::from_json(json!({
+                "id": 1,
+            }))
+            .unwrap(),
+            cake::ActiveModel {
+                id: ActiveValue::Set(1),
+                name: ActiveValue::NotSet,
+            }
+        );
+
+        let mut cake: cake::ActiveModel = Default::default();
         cake.set_from_json(json!({
             "name": "Apple Pie",
         }))
         .unwrap();
+        assert_eq!(
+            cake,
+            cake::ActiveModel {
+                id: ActiveValue::NotSet,
+                name: ActiveValue::Set("Apple Pie".to_owned()),
+            },
+        );
     }
 
     #[test]
