@@ -22,7 +22,7 @@ where
     A: ActiveModelTrait,
 {
     fn default() -> Self {
-        Self::new()
+        Self::new(true)
     }
 }
 
@@ -30,11 +30,11 @@ impl<A> Insert<A>
 where
     A: ActiveModelTrait,
 {
-    pub(crate) fn new() -> Self {
+    fn new(is_one: bool) -> Self {
         Self {
             query: InsertStatement::new()
                 .into_table(A::Entity::default().table_ref())
-                .or_default_values()
+                .or_default_values_many(if is_one { 1 } else { 0 })
                 .to_owned(),
             columns: Vec::new(),
             primary_key: None,
@@ -76,7 +76,7 @@ where
     where
         M: IntoActiveModel<A>,
     {
-        Self::new().add(m)
+        Self::new(true).add(m)
     }
 
     /// Insert many Model or ActiveModel
@@ -105,7 +105,7 @@ where
         M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
     {
-        Self::new().add_many(models)
+        Self::new(false).add_many(models)
     }
 
     /// Add a Model to Self
@@ -383,7 +383,7 @@ where
     A: ActiveModelTrait,
 {
     fn default() -> Self {
-        Self::new()
+        Self::new(true)
     }
 }
 
@@ -392,9 +392,9 @@ impl<A> TryInsert<A>
 where
     A: ActiveModelTrait,
 {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(is_one: bool) -> Self {
         Self {
-            insert_struct: Insert::new(),
+            insert_struct: Insert::new(is_one),
         }
     }
 
@@ -402,7 +402,7 @@ where
     where
         M: IntoActiveModel<A>,
     {
-        Self::new().add(m)
+        Self::new(true).add(m)
     }
 
     pub fn many<M, I>(models: I) -> Self
@@ -410,7 +410,7 @@ where
         M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
     {
-        Self::new().add_many(models)
+        Self::new(false).add_many(models)
     }
 
     #[allow(clippy::should_implement_trait)]
@@ -475,13 +475,12 @@ mod tests {
     #[test]
     fn insert_1() {
         assert_eq!(
-            Insert::<cake::ActiveModel>::new()
-                .add(cake::ActiveModel {
-                    id: ActiveValue::not_set(),
-                    name: ActiveValue::set("Apple Pie".to_owned()),
-                })
-                .build(DbBackend::Postgres)
-                .to_string(),
+            Insert::one(cake::ActiveModel {
+                id: ActiveValue::not_set(),
+                name: ActiveValue::set("Apple Pie".to_owned()),
+            })
+            .build(DbBackend::Postgres)
+            .to_string(),
             r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie')"#,
         );
     }
@@ -489,13 +488,12 @@ mod tests {
     #[test]
     fn insert_2() {
         assert_eq!(
-            Insert::<cake::ActiveModel>::new()
-                .add(cake::ActiveModel {
-                    id: ActiveValue::set(1),
-                    name: ActiveValue::set("Apple Pie".to_owned()),
-                })
-                .build(DbBackend::Postgres)
-                .to_string(),
+            Insert::one(cake::ActiveModel {
+                id: ActiveValue::set(1),
+                name: ActiveValue::set("Apple Pie".to_owned()),
+            })
+            .build(DbBackend::Postgres)
+            .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#,
         );
     }
@@ -503,13 +501,12 @@ mod tests {
     #[test]
     fn insert_3() {
         assert_eq!(
-            Insert::<cake::ActiveModel>::new()
-                .add(cake::Model {
-                    id: 1,
-                    name: "Apple Pie".to_owned(),
-                })
-                .build(DbBackend::Postgres)
-                .to_string(),
+            Insert::one(cake::Model {
+                id: 1,
+                name: "Apple Pie".to_owned(),
+            })
+            .build(DbBackend::Postgres)
+            .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#,
         );
     }
@@ -517,19 +514,18 @@ mod tests {
     #[test]
     fn insert_many_1() {
         assert_eq!(
-            Insert::<cake::ActiveModel>::new()
-                .add_many([
-                    cake::Model {
-                        id: 1,
-                        name: "Apple Pie".to_owned(),
-                    },
-                    cake::Model {
-                        id: 2,
-                        name: "Orange Scone".to_owned(),
-                    }
-                ])
-                .build(DbBackend::Postgres)
-                .to_string(),
+            Insert::many([
+                cake::Model {
+                    id: 1,
+                    name: "Apple Pie".to_owned(),
+                },
+                cake::Model {
+                    id: 2,
+                    name: "Orange Scone".to_owned(),
+                }
+            ])
+            .build(DbBackend::Postgres)
+            .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie'), (2, 'Orange Scone')"#,
         );
     }
@@ -537,19 +533,18 @@ mod tests {
     #[test]
     fn insert_many_2() {
         assert_eq!(
-            Insert::<cake::ActiveModel>::new()
-                .add_many([
-                    cake::ActiveModel {
-                        id: NotSet,
-                        name: Set("Apple Pie".to_owned()),
-                    },
-                    cake::ActiveModel {
-                        id: NotSet,
-                        name: Set("Orange Scone".to_owned()),
-                    }
-                ])
-                .build(DbBackend::Postgres)
-                .to_string(),
+            Insert::many([
+                cake::ActiveModel {
+                    id: NotSet,
+                    name: Set("Apple Pie".to_owned()),
+                },
+                cake::ActiveModel {
+                    id: NotSet,
+                    name: Set("Orange Scone".to_owned()),
+                }
+            ])
+            .build(DbBackend::Postgres)
+            .to_string(),
             r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie'), ('Orange Scone')"#,
         );
     }
@@ -565,8 +560,7 @@ mod tests {
             filling_id: ActiveValue::set(3),
         };
         assert_eq!(
-            Insert::<cake_filling::ActiveModel>::new()
-                .add_many([apple, orange])
+            Insert::many([apple, orange])
                 .build(DbBackend::Postgres)
                 .to_string(),
             r#"INSERT INTO "cake_filling" ("cake_id", "filling_id") VALUES (2, NULL), (NULL, 3)"#,
