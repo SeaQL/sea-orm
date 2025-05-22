@@ -1,6 +1,5 @@
 use crate::{
-    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectThree, SelectTwo,
-    SelectTwoMany,
+    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectTwo, SelectTwoMany,
 };
 use core::marker::PhantomData;
 use sea_query::{Alias, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
@@ -28,6 +27,13 @@ macro_rules! select_def {
 select_def!(SelectA, "A_");
 select_def!(SelectB, "B_");
 select_def!(SelectC, "C_");
+select_def!(SelectD, "D_");
+select_def!(SelectE, "E_");
+select_def!(SelectF, "F_");
+select_def!(SelectG, "G_");
+select_def!(SelectH, "H_");
+select_def!(SelectI, "I_");
+select_def!(SelectJ, "J_");
 
 impl<E> Select<E>
 where
@@ -92,35 +98,66 @@ where
     }
 }
 
-impl<E, F> SelectTwo<E, F>
-where
-    E: EntityTrait,
-    F: EntityTrait,
-{
-    /// Selects extra Entity and returns it together with the Entities from `Self`
-    pub fn select_also<G>(self, _: G) -> SelectThree<E, F, G>
-    where
-        G: EntityTrait,
-    {
-        SelectThree::new(self.into_query())
-    }
+macro_rules! impl_prepare_select_also {
+    ( $struct:ident <$($generics:ident),+>, $last:ident, $col_prefix:ident ) => {
+        impl<$($generics),*> crate::$struct<$($generics),*>
+        where
+            $($generics: EntityTrait),*
+        {
+            pub(crate) fn new(query: SelectStatement) -> Self {
+                Self::new_without_prepare(query).prepare_select()
+            }
 
-    pub(crate) fn new(query: SelectStatement) -> Self {
-        Self::new_without_prepare(query).prepare_select()
-    }
+            pub(crate) fn new_without_prepare(query: SelectStatement) -> Self {
+                Self {
+                    query,
+                    entity: PhantomData,
+                }
+            }
 
-    pub(crate) fn new_without_prepare(query: SelectStatement) -> Self {
-        Self {
-            query,
-            entity: PhantomData,
+            fn prepare_select(mut self) -> Self {
+                prepare_select_col::<$last, _, _>(&mut self, $col_prefix);
+                self
+            }
         }
     }
+}
 
-    fn prepare_select(mut self) -> Self {
-        prepare_select_col::<F, _, _>(&mut self, SelectB);
-        self
+impl_prepare_select_also!(SelectTwo<E, F>, F, SelectB);
+impl_prepare_select_also!(SelectThree<E, F, G>, G, SelectC);
+impl_prepare_select_also!(SelectFour<E, F, G, H>, H, SelectD);
+impl_prepare_select_also!(SelectFive<E, F, G, H, I>, I, SelectE);
+impl_prepare_select_also!(SelectSix<E, F, G, H, I, J>, J, SelectF);
+impl_prepare_select_also!(SelectSeven<E, F, G, H, I, J, K>, K, SelectG);
+impl_prepare_select_also!(SelectEight<E, F, G, H, I, J, K, L>, L, SelectH);
+impl_prepare_select_also!(SelectNine<E, F, G, H, I, J, K, L, M>, M, SelectI);
+impl_prepare_select_also!(SelectTen<E, F, G, H, I, J, K, L, M, N>, N, SelectJ);
+
+macro_rules! impl_select_also {
+    ( $struct:ident <$($generics:ident),+>, $next_struct:ident ) => {
+        impl<$($generics),*> crate::$struct<$($generics),*>
+        where
+            $($generics: EntityTrait),*
+        {
+            #[doc = "Selects extra Entity and returns it together with the Entities from `Self`"]
+            pub fn select_also<R>(self, _: R) -> crate::$next_struct<$($generics),*, R>
+            where
+                R: EntityTrait,
+            {
+                crate::$next_struct::new(self.into_query())
+            }
+        }
     }
 }
+
+impl_select_also!(SelectTwo<E, F>, SelectThree);
+impl_select_also!(SelectThree<E, F, G>, SelectFour);
+impl_select_also!(SelectFour<E, F, G, H>, SelectFive);
+impl_select_also!(SelectFive<E, F, G, H, I>, SelectSix);
+impl_select_also!(SelectSix<E, F, G, H, I, J>, SelectSeven);
+impl_select_also!(SelectSeven<E, F, G, H, I, J, K>, SelectEight);
+impl_select_also!(SelectEight<E, F, G, H, I, J, K, L>, SelectNine);
+impl_select_also!(SelectNine<E, F, G, H, I, J, K, L, M>, SelectTen);
 
 impl<E, F> SelectTwoMany<E, F>
 where
@@ -149,29 +186,6 @@ where
         for col in <E::PrimaryKey as Iterable>::iter() {
             self.query.order_by((E::default(), col), Order::Asc);
         }
-        self
-    }
-}
-
-impl<E, F, G> SelectThree<E, F, G>
-where
-    E: EntityTrait,
-    F: EntityTrait,
-    G: EntityTrait,
-{
-    pub(crate) fn new(query: SelectStatement) -> Self {
-        Self::new_without_prepare(query).prepare_select()
-    }
-
-    pub(crate) fn new_without_prepare(query: SelectStatement) -> Self {
-        Self {
-            query,
-            entity: PhantomData,
-        }
-    }
-
-    fn prepare_select(mut self) -> Self {
-        prepare_select_col::<G, _, _>(&mut self, SelectC);
         self
     }
 }
