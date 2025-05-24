@@ -110,4 +110,4 @@ seaography = ["sea-orm-macros/seaography"]
 # [patch.crates-io]
 # sea-query = { path = "../sea-query" }
 [patch.crates-io]
-sea-query = { git = "https://github.com/Huliiiiii/sea-query.git", branch = "expr-1" }
+sea-query = { git = "https://github.com/Huliiiiii/sea-query.git", branch = "expr-2" }

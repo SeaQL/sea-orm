@@ -1,7 +1,7 @@
 use crate::{DbBackend, EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable};
 use sea_query::{
-    Alias, BinOper, DynIden, Expr, IntoIden, IntoLikeExpr, SeaRc, SelectStatement, SimpleExpr,
-    Value,
+    Alias, BinOper, DynIden, Expr, ExprTrait, IntoIden, IntoLikeExpr, SeaRc, SelectStatement,
+    SimpleExpr, Value,
 };
 use std::str::FromStr;
 
@@ -460,7 +460,7 @@ where
                 *boxed
             }
 
-            let expr = expr.into();
+            let expr = expr;
             match expr {
                 SimpleExpr::Value(Value::Array(ArrayType::Json, Some(json_vec))) => {
                     // flatten Array(Vec<Json>) into Json
@@ -481,7 +481,7 @@ where
         }
         _ => match col_type.get_enum_name() {
             Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
-            None => expr.into(),
+            None => expr,
         },
     }
 }
@@ -1027,6 +1027,8 @@ mod tests {
         use crate::{ActiveModelTrait, ActiveValue, Update};
 
         mod hello_expanded {
+            use sea_query::ExprTrait;
+
             use crate as sea_orm;
             use crate::entity::prelude::*;
             use crate::sea_query::{Expr, SimpleExpr};
@@ -1158,6 +1160,8 @@ mod tests {
         use crate::{ActiveModelTrait, ActiveValue, Update};
 
         mod hello_expanded {
+            use sea_query::ExprTrait;
+
             use crate as sea_orm;
             use crate::entity::prelude::*;
             use crate::sea_query::{Expr, SimpleExpr};
@@ -1289,6 +1293,8 @@ mod tests {
         use crate::{ActiveModelTrait, ActiveValue, Update};
 
         mod hello_expanded {
+            use sea_query::ExprTrait;
+
             use crate as sea_orm;
             use crate::entity::prelude::*;
             use crate::sea_query::{Expr, SimpleExpr};

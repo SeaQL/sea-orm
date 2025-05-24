@@ -1,5 +1,5 @@
 use crate::{ColIdx, ColumnDef, DbErr, Iterable, QueryResult, TryFromU64, TryGetError, TryGetable};
-use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
+use sea_query::{DynIden, Expr, ExprTrait, Nullable, SimpleExpr, Value, ValueType};
 
 /// A Rust representation of enum defined in database.
 ///

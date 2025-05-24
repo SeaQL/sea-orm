@@ -8,7 +8,7 @@ use sea_orm::{
     entity::prelude::*, DatabaseConnection, Delete, IntoActiveModel, Iterable, QueryTrait, Set,
     Update,
 };
-use sea_query::{Expr, Query};
+use sea_query::{Expr, ExprTrait, Query};
 
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
