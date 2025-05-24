@@ -70,14 +70,36 @@ pub fn impl_col_from_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream>
         }
     };
 
-    let columns = data_enum.variants.iter().map(|column| {
-        let column_iden = column.ident.clone();
-        let column_str_snake = column_iden.to_string().to_snake_case();
-        let column_str_mixed = column_iden.to_string().to_lower_camel_case();
-        quote!(
-            #column_str_snake | #column_str_mixed => Ok(#ident::#column_iden)
-        )
-    });
+    let columns = data_enum
+        .variants
+        .iter()
+        .map(|column| {
+            let column_iden = column.ident.clone();
+            let column_str_snake = column_iden.to_string().to_snake_case();
+            let column_str_mixed = column_iden.to_string().to_lower_camel_case();
+
+            let mut column_name = column_str_snake.clone();
+            for attr in column.attrs.iter() {
+                if !attr.path().is_ident("sea_orm") {
+                    continue;
+                }
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("column_name") {
+                        column_name = meta.value()?.parse::<LitStr>()?.value();
+                    } else {
+                        // Reads the value expression to advance the parse stream.
+                        // Some parameters, such as `primary_key`, do not have any value,
+                        // so ignoring an error occurred here.
+                        let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
+                    }
+                    Ok(())
+                })?;
+            }
+            Ok::<TokenStream, syn::Error>(quote!(
+                #column_str_snake | #column_str_mixed | #column_name => Ok(#ident::#column_iden)
+            ))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(quote!(
         #[automatically_derived]
