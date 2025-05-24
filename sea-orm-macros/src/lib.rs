@@ -750,6 +750,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///
 /// ```rust
 /// use sea_orm::{entity::prelude::*, DerivePartialModel, FromQueryResult};
+/// use sea_orm::sea_query::ExprTrait;
 ///
 /// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 /// #[sea_orm(table_name = "posts")]
@@ -777,7 +778,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///
 /// If all fields in the partial model is `from_expr`, the specifying the `entity` can be skipped.
 /// ```
-/// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
+/// use sea_orm::{entity::prelude::*, sea_query::{Expr, ExprTrait}, DerivePartialModel, FromQueryResult};
 ///
 /// #[derive(Debug, FromQueryResult, DerivePartialModel)]
 /// struct SelectResult {

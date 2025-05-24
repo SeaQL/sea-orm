@@ -4,8 +4,8 @@ use crate::{
     SelectThree, SelectThreeModel, SelectTwo, SelectTwoModel, SelectorTrait,
 };
 use sea_query::{
-    Condition, DynIden, Expr, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr, Value,
-    ValueTuple,
+    Condition, DynIden, Expr, ExprTrait, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr,
+    Value, ValueTuple,
 };
 use std::marker::PhantomData;
 use strum::IntoEnumIterator as Iterable;

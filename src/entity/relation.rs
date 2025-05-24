@@ -290,7 +290,7 @@ impl RelationDef {
     ///
     /// ```
     /// use sea_orm::{entity::*, query::*, DbBackend, tests_cfg::{cake, cake_filling}};
-    /// use sea_query::{Expr, IntoCondition};
+    /// use sea_query::{Expr, ExprTrait, IntoCondition};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -328,7 +328,7 @@ impl RelationDef {
     ///
     /// ```
     /// use sea_orm::{entity::*, query::*, DbBackend, tests_cfg::{cake, cake_filling}};
-    /// use sea_query::{Expr, IntoCondition, ConditionType};
+    /// use sea_query::{Expr, ExprTrait, IntoCondition, ConditionType};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()

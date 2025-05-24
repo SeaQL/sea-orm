@@ -3,7 +3,9 @@ use crate::{
     Related, RelationType, Select,
 };
 use async_trait::async_trait;
-use sea_query::{ColumnRef, DynIden, Expr, IntoColumnRef, SimpleExpr, TableRef, ValueTuple};
+use sea_query::{
+    ColumnRef, DynIden, Expr, ExprTrait, IntoColumnRef, SimpleExpr, TableRef, ValueTuple,
+};
 use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
