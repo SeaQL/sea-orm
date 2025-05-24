@@ -116,7 +116,7 @@ pub trait TransactionTrait {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send;
+        E: std::fmt::Display + std::fmt::Debug + Send;
 
     /// Execute the function inside a transaction with isolation level and/or access mode.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
@@ -132,5 +132,5 @@ pub trait TransactionTrait {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send;
+        E: std::fmt::Display + std::fmt::Debug + Send;
 }
