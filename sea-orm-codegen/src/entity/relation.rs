@@ -181,6 +181,7 @@ impl Relation {
             ForeignKeyAction::SetNull => "SetNull",
             ForeignKeyAction::NoAction => "NoAction",
             ForeignKeyAction::SetDefault => "SetDefault",
+            _ => todo!(),
         }
         .to_owned()
     }
