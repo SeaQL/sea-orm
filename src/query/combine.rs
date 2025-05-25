@@ -49,6 +49,7 @@ where
                             ColumnRef::Asterisk | ColumnRef::TableAsterisk(_) => {
                                 panic!("cannot apply alias for Column with asterisk")
                             }
+                            _ => unreachable!(),
                         },
                         SimpleExpr::AsEnum(_, simple_expr) => match simple_expr.as_ref() {
                             SimpleExpr::Column(col_ref) => match &col_ref {
@@ -58,6 +59,7 @@ where
                                 ColumnRef::Asterisk | ColumnRef::TableAsterisk(_) => {
                                     panic!("cannot apply alias for AsEnum with asterisk")
                                 }
+                                _ => unreachable!(),
                             },
                             _ => {
                                 panic!("cannot apply alias for AsEnum with expr other than Column")

@@ -886,6 +886,7 @@ pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {
         | TableRef::SubQuery(_, tbl)
         | TableRef::ValuesList(_, tbl)
         | TableRef::FunctionCall(_, tbl) => SeaRc::clone(tbl),
+        _ => unreachable!(),
     }
 }
 
@@ -900,5 +901,6 @@ pub(crate) fn unpack_table_alias(table_ref: &TableRef) -> Option<DynIden> {
         | TableRef::SchemaTableAlias(_, _, alias)
         | TableRef::DatabaseSchemaTableAlias(_, _, _, alias)
         | TableRef::FunctionCall(_, alias) => Some(SeaRc::clone(alias)),
+        _ => unreachable!(),
     }
 }
