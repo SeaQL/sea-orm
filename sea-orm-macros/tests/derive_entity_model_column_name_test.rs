@@ -43,7 +43,7 @@ fn test_column_names() {
         Column::from_str("firstName").expect("column from str should recognize column_name attr");
     assert!(matches!(col, Column::FirstName));
     let col =
-        Column::from_str("first_Name").expect("column from str should recognize column_name attr");
+        Column::from_str("first_name").expect("column from str should recognize column_name attr");
     assert!(matches!(col, Column::FirstName));
 
     let col =
