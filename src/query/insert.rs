@@ -512,6 +512,16 @@ mod tests {
     }
 
     #[test]
+    fn insert_many_0() {
+        assert_eq!(
+            Insert::many::<cake::Model, _>([])
+                .build(DbBackend::Postgres)
+                .to_string(),
+            r#"INSERT INTO "cake" ()"#,
+        );
+    }
+
+    #[test]
     fn insert_many_1() {
         assert_eq!(
             Insert::many([
