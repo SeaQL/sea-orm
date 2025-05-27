@@ -35,5 +35,6 @@ pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> String {
         | TableRef::SubQuery(_, tbl)
         | TableRef::ValuesList(_, tbl)
         | TableRef::FunctionCall(_, tbl) => tbl.to_string(),
+        _ => todo!(),
     }
 }
