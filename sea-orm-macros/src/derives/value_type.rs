@@ -2,6 +2,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{spanned::Spanned, DataEnum, Lit, Type};
 
+#[allow(clippy::large_enum_variant)]
 enum DeriveValueType {
     Struct(DeriveValueTypeStruct),
     Enum(DeriveValueTypeEnum),

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.1.12 - 2025-05-27
+
+### Enhancements
+
+* Make sea-orm-cli & sea-orm-migration dependencies optional https://github.com/SeaQL/sea-orm/pull/2367
+* Relax TransactionError's trait bound for errors to allow `anyhow::Error` https://github.com/SeaQL/sea-orm/pull/2602
+
+### Bug Fixes
+
+* Include custom `column_name` in DeriveColumn `Column::from_str` impl https://github.com/SeaQL/sea-orm/pull/2603
+```rust
+#[derive(DeriveEntityModel)]
+pub struct Model {
+    #[sea_orm(column_name = "lAsTnAmE")]
+    last_name: String,
+}
+
+assert!(matches!(Column::from_str("lAsTnAmE").unwrap(), Column::LastName));
+```
+
 ## 1.1.11 - 2025-05-07
 
 ### Enhancements

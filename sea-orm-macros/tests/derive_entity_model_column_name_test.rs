@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use sea_orm::prelude::*;
 use sea_orm::Iden;
 use sea_orm::Iterable;
@@ -36,4 +38,21 @@ fn test_column_names() {
             "ordersCount",
         ]
     );
+
+    let col =
+        Column::from_str("firstName").expect("column from str should recognize column_name attr");
+    assert!(matches!(col, Column::FirstName));
+    let col =
+        Column::from_str("first_name").expect("column from str should recognize column_name attr");
+    assert!(matches!(col, Column::FirstName));
+
+    let col =
+        Column::from_str("lastName").expect("column from str should recognize column_name attr");
+    assert!(matches!(col, Column::LastName));
+    let col =
+        Column::from_str("last_name").expect("column from str should recognize column_name attr");
+    assert!(matches!(col, Column::LastName));
+    let col =
+        Column::from_str("lAsTnAmE").expect("column from str should recognize column_name attr");
+    assert!(matches!(col, Column::LastName));
 }
