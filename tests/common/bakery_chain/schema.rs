@@ -1,6 +1,6 @@
 use super::*;
 use crate::common::setup::create_table;
-use sea_orm::{error::*, sea_query, DatabaseConnection, DbConn, ExecResult};
+use sea_orm::{DatabaseConnection, DbConn, ExecResult, error::*, sea_query};
 use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, Table};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {

@@ -2,7 +2,8 @@
 name = "axum-example-api"
 version = "0.1.0"
 authors = ["Yoshiera Huang <huangjasper@126.com>"]
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 publish = false
 
 [dependencies]

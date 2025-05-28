@@ -3,9 +3,9 @@
 pub mod common;
 mod crud;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, setup::*};
 pub use sea_orm::{
-    entity::*, error::DbErr, tests_cfg, DatabaseConnection, DbBackend, EntityName, ExecResult,
+    DatabaseConnection, DbBackend, EntityName, ExecResult, entity::*, error::DbErr, tests_cfg,
 };
 
 pub use crud::*;

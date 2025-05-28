@@ -1,4 +1,4 @@
-use sea_orm::{tests_cfg::cake, Set};
+use sea_orm::{Set, tests_cfg::cake};
 
 struct Cake {
     id: i32,

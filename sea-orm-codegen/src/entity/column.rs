@@ -1,4 +1,4 @@
-use crate::{util::escape_rust_keyword, DateTimeCrate};
+use crate::{DateTimeCrate, util::escape_rust_keyword};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};

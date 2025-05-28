@@ -1,7 +1,7 @@
 use crate::{
-    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, Insert,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, Insert,
     IntoActiveModel, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw,
-    TryFromU64, TryInsert,
+    TryFromU64, TryInsert, error::*,
 };
 use sea_query::{FromValueTuple, Iden, InsertStatement, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};

@@ -2,11 +2,11 @@
 
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::entity::prelude::*;
 use sea_orm::TryInsertResult;
-use sea_orm::{sea_query::OnConflict, Set};
+use sea_orm::entity::prelude::*;
+use sea_orm::{Set, sea_query::OnConflict};
 
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {

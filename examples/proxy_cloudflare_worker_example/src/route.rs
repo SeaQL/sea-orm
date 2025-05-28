@@ -1,8 +1,8 @@
 use anyhow::Result;
 use std::sync::Arc;
 
-use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get, Router};
-use worker::{console_error, console_log, Env};
+use axum::{Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
+use worker::{Env, console_error, console_log};
 
 use sea_orm::{
     ActiveModelTrait,

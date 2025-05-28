@@ -4,17 +4,17 @@ use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
+    Connection, Executor, MySql, MySqlPool,
     mysql::{MySqlConnectOptions, MySqlQueryResult, MySqlRow},
     pool::PoolConnection,
-    Connection, Executor, MySql, MySqlPool,
 };
 
 use sea_query_binder::SqlxValues;
 use tracing::instrument;
 
 use crate::{
-    debug_print, error::*, executor::*, AccessMode, ConnectOptions, DatabaseConnection,
-    DatabaseTransaction, DbBackend, IsolationLevel, QueryStream, Statement, TransactionError,
+    AccessMode, ConnectOptions, DatabaseConnection, DatabaseTransaction, DbBackend, IsolationLevel,
+    QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
 };
 
 use super::sqlx_common::*;

@@ -5,7 +5,7 @@ use tracing::instrument;
 
 #[cfg(feature = "sqlx-dep")]
 use futures_util::TryStreamExt;
-use futures_util::{lock::MutexGuard, Stream};
+use futures_util::{Stream, lock::MutexGuard};
 
 #[cfg(feature = "sqlx-dep")]
 use sqlx::Executor;

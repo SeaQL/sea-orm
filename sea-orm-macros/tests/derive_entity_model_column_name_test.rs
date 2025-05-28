@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
-use sea_orm::prelude::*;
 use sea_orm::Iden;
 use sea_orm::Iterable;
+use sea_orm::prelude::*;
 use sea_orm_macros::DeriveEntityModel;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]

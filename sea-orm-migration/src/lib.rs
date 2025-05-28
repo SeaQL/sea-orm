@@ -14,8 +14,8 @@ pub use migrator::*;
 
 pub use async_trait;
 pub use sea_orm;
-pub use sea_orm::sea_query;
 pub use sea_orm::DbErr;
+pub use sea_orm::sea_query;
 
 pub trait MigrationName {
     fn name(&self) -> &str;

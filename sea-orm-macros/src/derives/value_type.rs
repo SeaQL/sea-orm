@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
-use syn::{spanned::Spanned, DataEnum, Lit, Type};
+use syn::{DataEnum, Lit, Type, spanned::Spanned};
 
 #[allow(clippy::large_enum_variant)]
 enum DeriveValueType {
