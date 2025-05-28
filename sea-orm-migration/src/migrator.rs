@@ -6,7 +6,7 @@ use std::time::SystemTime;
 use tracing::info;
 
 use sea_orm::sea_query::{
-    self, Alias, Expr, ExprTrait, ForeignKey, IntoIden, JoinType, Order, Query, SelectStatement,
+    self, Alias, Expr, ForeignKey, IntoIden, JoinType, Order, Query, SelectStatement,
     SimpleExpr, Table, extension::postgres::Type,
 };
 use sea_orm::{
