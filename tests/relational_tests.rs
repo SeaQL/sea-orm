@@ -1184,3 +1184,81 @@ pub async fn select_three() -> Result<(), DbErr> {
 
     Ok(())
 }
+
+#[sea_orm_macros::test]
+pub async fn select_four() -> Result<(), DbErr> {
+    use common::bakery_chain::*;
+
+    let ctx = TestContext::new("test_select_four").await;
+    create_tables(&ctx.db).await?;
+
+    seed_data::init_1(&ctx, true).await;
+
+    let order = order::Model {
+        id: 101,
+        total: Decimal::from(10),
+        bakery_id: 42,
+        customer_id: 11,
+        placed_at: DateTime::UNIX_EPOCH,
+    };
+
+    let customer = customer::Model {
+        id: 11,
+        name: "Bob".to_owned(),
+        notes: Some("Sweet tooth".to_owned()),
+    };
+
+    let line_1 = lineitem::Model {
+        id: 1,
+        price: 2.into(),
+        quantity: 2,
+        order_id: 101,
+        cake_id: 13,
+    };
+
+    let line_2 = lineitem::Model {
+        id: 2,
+        price: 3.into(),
+        quantity: 2,
+        order_id: 101,
+        cake_id: 15,
+    };
+
+    let bakery = bakery::Model {
+        id: 42,
+        name: "cool little bakery".to_string(),
+        profit_margin: 4.1,
+    };
+
+    let items: Vec<(
+        order::Model,
+        Option<customer::Model>,
+        Option<lineitem::Model>,
+        Option<bakery::Model>,
+    )> = order::Entity::find()
+        .find_also_related(customer::Entity)
+        .find_also_related(lineitem::Entity)
+        .one_also_related::<order::Entity, _>(bakery::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .order_by_asc(bakery::Column::Id)
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[0].0, order);
+    assert_eq!(items[0].1.as_ref().unwrap(), &customer);
+    assert_eq!(items[1].1.as_ref().unwrap(), &customer);
+
+    assert_eq!(items[1].0, order);
+    assert_eq!(items[0].2.as_ref().unwrap(), &line_1);
+    assert_eq!(items[1].2.as_ref().unwrap(), &line_2);
+
+    assert_eq!(items[0].3.as_ref().unwrap(), &bakery);
+    assert_eq!(items[1].3.as_ref().unwrap(), &bakery);
+
+    ctx.delete().await;
+
+    Ok(())
+}

@@ -1,7 +1,7 @@
 use crate::{
     ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IdentityOf, IntoIdentity,
-    PartialModelTrait, PrimaryKeyToColumn, QueryOrder, QuerySelect, Select, SelectModel,
-    SelectThree, SelectThreeModel, SelectTwo, SelectTwoModel, SelectorTrait,
+    PartialModelTrait, PrimaryKeyToColumn, QueryOrder, QuerySelect, Select, SelectModel, SelectTwo,
+    SelectTwoModel, SelectorTrait,
 };
 use sea_query::{
     Condition, DynIden, Expr, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr, Value,
@@ -398,27 +398,27 @@ where
     }
 }
 
-impl<E, F, M, N> CursorTrait for SelectTwo<E, F>
-where
-    E: EntityTrait<Model = M>,
-    F: EntityTrait<Model = N>,
-    M: FromQueryResult + Sized + Send + Sync,
-    N: FromQueryResult + Sized + Send + Sync,
-{
-    type Selector = SelectTwoModel<M, N>;
+macro_rules! impl_cursor_trait {
+    ( $select_struct:ident <$($select_generics:ident),+>, $model_struct:ident <$($model_generics:ident),+> ) => {
+        impl<$($select_generics),*, $($model_generics),*> CursorTrait for crate::$select_struct<$($select_generics),*>
+        where
+            $($select_generics: EntityTrait<Model = $model_generics>,)*
+            $($model_generics: FromQueryResult + Sized + Send + Sync,)*
+        {
+            type Selector = crate::$model_struct<$($model_generics,)*>;
+        }
+    }
 }
 
-impl<E, F, G, M, N, O> CursorTrait for SelectThree<E, F, G>
-where
-    E: EntityTrait<Model = M>,
-    F: EntityTrait<Model = N>,
-    G: EntityTrait<Model = O>,
-    M: FromQueryResult + Sized + Send + Sync,
-    N: FromQueryResult + Sized + Send + Sync,
-    O: FromQueryResult + Sized + Send + Sync,
-{
-    type Selector = SelectThreeModel<M, N, O>;
-}
+impl_cursor_trait!(SelectTwo<E, F>, SelectTwoModel<O, P>);
+impl_cursor_trait!(SelectThree<E, F, G>, SelectThreeModel<O, P, Q>);
+impl_cursor_trait!(SelectFour<E, F, G, H>, SelectFourModel<O, P, Q, R>);
+impl_cursor_trait!(SelectFive<E, F, G, H, I>, SelectFiveModel<O, P, Q, R, S>);
+impl_cursor_trait!(SelectSix<E, F, G, H, I, J>, SelectSixModel<O, P, Q, R, S, T>);
+impl_cursor_trait!(SelectSeven<E, F, G, H, I, J, K>, SelectSevenModel<O, P, Q, R, S, T, U>);
+impl_cursor_trait!(SelectEight<E, F, G, H, I, J, K, L>, SelectEightModel<O, P, Q, R, S, T, U, V>);
+impl_cursor_trait!(SelectNine<E, F, G, H, I, J, K, L, M>, SelectNineModel<O, P, Q, R, S, T, U, V, W>);
+impl_cursor_trait!(SelectTen<E, F, G, H, I, J, K, L, M, N>, SelectTenModel<O, P, Q, R, S, T, U, V, W, X>);
 
 impl<E, F, M, N> SelectTwo<E, F>
 where
@@ -472,50 +472,52 @@ where
     }
 }
 
-impl<E, F, G, M, N, O> SelectThree<E, F, G>
-where
-    E: EntityTrait<Model = M>,
-    F: EntityTrait<Model = N>,
-    G: EntityTrait<Model = O>,
-    M: FromQueryResult + Sized + Send + Sync,
-    N: FromQueryResult + Sized + Send + Sync,
-    O: FromQueryResult + Sized + Send + Sync,
-{
-    /// Convert into a cursor using column of first entity
-    pub fn cursor_by<C>(self, order_columns: C) -> Cursor<SelectThreeModel<M, N, O>>
-    where
-        C: IdentityOf<E>,
-    {
-        let mut cursor = Cursor::new(
-            self.query,
-            SeaRc::new(E::default()),
-            order_columns.identity_of(),
-        );
+macro_rules! impl_cursor_by {
+    ( $select_struct:ident <$first_select_generics:ident, $($select_generics:ident),+>, $model_struct:ident <$first_model_generics:ident, $($model_generics:ident),+> ) => {
+        impl<$first_select_generics, $($select_generics),*, $first_model_generics, $($model_generics),*> crate::$select_struct<$first_select_generics, $($select_generics),*>
+        where
+            $first_select_generics: EntityTrait<Model = $first_model_generics>,
+            $($select_generics: EntityTrait<Model = $model_generics>,)*
+            $first_model_generics: FromQueryResult + Sized + Send + Sync,
+            $($model_generics: FromQueryResult + Sized + Send + Sync,)*
         {
-            let primary_keys: Vec<(DynIden, Identity)> = <F::PrimaryKey as Iterable>::iter()
-                .map(|pk| {
-                    (
-                        SeaRc::new(F::default()),
-                        Identity::Unary(SeaRc::new(pk.into_column())),
-                    )
-                })
-                .collect();
-            cursor.set_secondary_order_by(primary_keys);
+            #[doc ="Convert into a cursor using column of first entity"]
+            pub fn cursor_by<C>(self, order_columns: C) -> Cursor<crate::$model_struct<$first_model_generics, $($model_generics),*>>
+            where
+                C: IdentityOf<$first_select_generics>,
+            {
+                let mut cursor = Cursor::new(
+                    self.query,
+                    SeaRc::new($first_select_generics::default()),
+                    order_columns.identity_of(),
+                );
+                $(
+                    {
+                        let primary_keys: Vec<(DynIden, Identity)> = <$select_generics::PrimaryKey as Iterable>::iter()
+                            .map(|pk| {
+                                (
+                                    SeaRc::new($select_generics::default()),
+                                    Identity::Unary(SeaRc::new(pk.into_column())),
+                                )
+                            })
+                            .collect();
+                        cursor.set_secondary_order_by(primary_keys);
+                    }
+                )*
+                cursor
+            }
         }
-        {
-            let primary_keys: Vec<(DynIden, Identity)> = <G::PrimaryKey as Iterable>::iter()
-                .map(|pk| {
-                    (
-                        SeaRc::new(G::default()),
-                        Identity::Unary(SeaRc::new(pk.into_column())),
-                    )
-                })
-                .collect();
-            cursor.set_secondary_order_by(primary_keys);
-        }
-        cursor
     }
 }
+
+impl_cursor_by!(SelectThree<E, F, G>, SelectThreeModel<O, P, Q>);
+impl_cursor_by!(SelectFour<E, F, G, H>, SelectFourModel<O, P, Q, R>);
+impl_cursor_by!(SelectFive<E, F, G, H, I>, SelectFiveModel<O, P, Q, R, S>);
+impl_cursor_by!(SelectSix<E, F, G, H, I, J>, SelectSixModel<O, P, Q, R, S, T>);
+impl_cursor_by!(SelectSeven<E, F, G, H, I, J, K>, SelectSevenModel<O, P, Q, R, S, T, U>);
+impl_cursor_by!(SelectEight<E, F, G, H, I, J, K, L>, SelectEightModel<O, P, Q, R, S, T, U, V>);
+impl_cursor_by!(SelectNine<E, F, G, H, I, J, K, L, M>, SelectNineModel<O, P, Q, R, S, T, U, V, W>);
+impl_cursor_by!(SelectTen<E, F, G, H, I, J, K, L, M, N>, SelectTenModel<O, P, Q, R, S, T, U, V, W, X>);
 
 #[cfg(test)]
 #[cfg(feature = "mock")]
