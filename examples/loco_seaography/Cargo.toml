@@ -35,7 +35,7 @@ tower-service = { version = "0.3" }
 
 [dependencies.sea-orm]
 path = "../../" # remove this line in your own project
-version = "~1.1.12" # sea-orm version
+version = "~1.2.0-rc.1" # sea-orm version
 features = [
   "sqlx-sqlite",
   "sqlx-postgres",
