@@ -1,8 +1,8 @@
 use super::{IntoSchemaManagerConnection, SchemaManagerConnection};
 use sea_orm::sea_query::{
     ForeignKeyCreateStatement, ForeignKeyDropStatement, IndexCreateStatement, IndexDropStatement,
-    SelectStatement, TableAlterStatement, TableCreateStatement, TableDropStatement, TableRenameStatement,
-    TableTruncateStatement,
+    SelectStatement, TableAlterStatement, TableCreateStatement, TableDropStatement,
+    TableRenameStatement, TableTruncateStatement,
     extension::postgres::{TypeAlterStatement, TypeCreateStatement, TypeDropStatement},
 };
 use sea_orm::{ConnectionTrait, DbBackend, DbErr, StatementBuilder};

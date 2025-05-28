@@ -460,7 +460,6 @@ where
                 *boxed
             }
 
-            let expr = expr.into();
             match expr {
                 SimpleExpr::Value(Value::Array(ArrayType::Json, Some(json_vec))) => {
                     // flatten Array(Vec<Json>) into Json
