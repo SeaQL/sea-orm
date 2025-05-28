@@ -125,12 +125,6 @@ where
     }
 }
 
-impl ColumnAsExpr for Expr {
-    fn into_column_as_expr(self) -> SimpleExpr {
-        self.into_simple_expr()
-    }
-}
-
 impl ColumnAsExpr for SimpleExpr {
     fn into_column_as_expr(self) -> SimpleExpr {
         self.into_simple_expr()
@@ -143,12 +137,6 @@ where
 {
     fn into_simple_expr(self) -> SimpleExpr {
         SimpleExpr::Column(self.as_column_ref().into_column_ref())
-    }
-}
-
-impl IntoSimpleExpr for Expr {
-    fn into_simple_expr(self) -> SimpleExpr {
-        self.into()
     }
 }
 
