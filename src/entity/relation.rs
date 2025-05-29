@@ -1,6 +1,5 @@
 use crate::{
-    join_tbl_on_condition, unpack_table_alias, unpack_table_ref, EntityTrait, Identity, IdentityOf,
-    Iterable, QuerySelect, Select,
+    join_tbl_on_condition, EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select,
 };
 use core::marker::PhantomData;
 use sea_query::{
@@ -140,13 +139,13 @@ fn debug_on_condition(
 impl IntoCondition for RelationDef {
     fn into_condition(mut self) -> Condition {
         // Use table alias (if any) to construct the join condition
-        let from_tbl = match unpack_table_alias(&self.from_tbl) {
+        let from_tbl = match self.from_tbl.table_alias() {
             Some(alias) => alias,
-            None => unpack_table_ref(&self.from_tbl),
+            None => &self.from_tbl.table(),
         };
-        let to_tbl = match unpack_table_alias(&self.to_tbl) {
+        let to_tbl = match self.to_tbl.table_alias() {
             Some(alias) => alias,
-            None => unpack_table_ref(&self.to_tbl),
+            None => &self.to_tbl.table(),
         };
         let owner_keys = self.from_col;
         let foreign_keys = self.to_col;
@@ -163,7 +162,7 @@ impl IntoCondition for RelationDef {
             foreign_keys,
         ));
         if let Some(f) = self.on_condition.take() {
-            condition = condition.add(f(from_tbl, to_tbl));
+            condition = condition.add(f(from_tbl.clone(), to_tbl.clone()));
         }
 
         condition
@@ -498,7 +497,7 @@ macro_rules! set_foreign_key_stmt {
         let name = if let Some(name) = $relation.fk_name {
             name
         } else {
-            let from_tbl = unpack_table_ref(&$relation.from_tbl);
+            let from_tbl = &$relation.from_tbl.table().clone();
             format!("fk-{}-{}", from_tbl.to_string(), from_cols.join("-"))
         };
         $foreign_key.name(&name);
@@ -510,8 +509,8 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
         let mut foreign_key_stmt = Self::new();
         set_foreign_key_stmt!(relation, foreign_key_stmt);
         foreign_key_stmt
-            .from_tbl(unpack_table_ref(&relation.from_tbl))
-            .to_tbl(unpack_table_ref(&relation.to_tbl))
+            .from_tbl(relation.from_tbl.table().clone())
+            .to_tbl(relation.to_tbl.table().clone())
             .take()
     }
 }
@@ -548,8 +547,8 @@ impl From<RelationDef> for TableForeignKey {
         let mut foreign_key = Self::new();
         set_foreign_key_stmt!(relation, foreign_key);
         foreign_key
-            .from_tbl(unpack_table_ref(&relation.from_tbl))
-            .to_tbl(unpack_table_ref(&relation.to_tbl))
+            .from_tbl(relation.from_tbl.table().clone())
+            .to_tbl(relation.to_tbl.table().clone())
             .take()
     }
 }

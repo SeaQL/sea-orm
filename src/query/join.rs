@@ -1,6 +1,6 @@
 use crate::{
-    join_tbl_on_condition, unpack_table_ref, ColumnTrait, EntityTrait, IdenStatic, Iterable,
-    Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectThree, SelectTwo, SelectTwoMany,
+    join_tbl_on_condition, ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QuerySelect,
+    Related, Select, SelectA, SelectB, SelectThree, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
 use sea_query::{Alias, Condition, Expr, IntoIden, SeaRc, SelectExpr};
@@ -74,7 +74,7 @@ where
             let from_tbl = if i > 0 {
                 Alias::new(format!("r{}", i - 1)).into_iden()
             } else {
-                unpack_table_ref(&rel.from_tbl)
+                rel.from_tbl.table().clone()
             };
             let table_ref = rel.to_tbl;
 
@@ -120,7 +120,7 @@ where
             let from_tbl = if i > 0 {
                 Alias::new(format!("r{}", i - 1)).into_iden()
             } else {
-                unpack_table_ref(&rel.from_tbl)
+                rel.from_tbl.table().clone()
             };
             let table_ref = rel.to_tbl;
 
