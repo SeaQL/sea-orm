@@ -23,4 +23,4 @@ features = [
 ]
 
 [patch.crates-io]
-loco-rs = { git = "https://github.com/billy1624/loco", branch = "sea-orm-pr-2599" }
+loco-rs = { git = "https://github.com/SeaQL/loco", branch = "sea-orm-pr-2599" }
