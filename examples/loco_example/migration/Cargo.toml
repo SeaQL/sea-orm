@@ -22,3 +22,6 @@ features = [
   # e.g.
   "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
 ]
+
+[patch.crates-io]
+loco-rs = { git = "https://github.com/SeaQL/loco", branch = "sea-orm-pr-2599" }
