@@ -2,7 +2,7 @@ use heck::ToUpperCamelCase;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{
-    ext::IdentExt, punctuated::Punctuated, spanned::Spanned, token::Comma, Expr, Meta, Type,
+    Expr, Meta, Type, ext::IdentExt, punctuated::Punctuated, spanned::Spanned, token::Comma,
 };
 
 use super::from_query_result::{
@@ -342,7 +342,7 @@ pub fn expand_derive_partial_model(input: syn::DeriveInput) -> syn::Result<Token
 #[cfg(test)]
 mod test {
     use quote::format_ident;
-    use syn::{parse_str, DeriveInput, Type};
+    use syn::{DeriveInput, Type, parse_str};
 
     use crate::derives::partial_model::ColumnAs;
 

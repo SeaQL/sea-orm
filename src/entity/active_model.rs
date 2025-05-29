@@ -1,6 +1,6 @@
 use crate::{
-    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyArity,
-    PrimaryKeyToColumn, PrimaryKeyTrait, TryIntoModel, Value,
+    ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyArity, PrimaryKeyToColumn,
+    PrimaryKeyTrait, TryIntoModel, Value, error::*,
 };
 use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
@@ -22,7 +22,7 @@ pub use ActiveValue::{NotSet, Set, Unchanged};
 ///
 /// ```
 /// use sea_orm::tests_cfg::{cake, fruit};
-/// use sea_orm::{entity::*, query::*, DbBackend};
+/// use sea_orm::{DbBackend, entity::*, query::*};
 ///
 /// // The code snipped below does an UPDATE operation on a `ActiveValue`
 /// assert_eq!(
@@ -974,7 +974,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{entity::*, tests_cfg::*, DbErr};
+    use crate::{DbErr, entity::*, tests_cfg::*};
     use pretty_assertions::assert_eq;
 
     #[cfg(feature = "with-json")]

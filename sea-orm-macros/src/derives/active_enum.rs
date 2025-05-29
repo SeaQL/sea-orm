@@ -3,7 +3,7 @@ use super::util::camel_case_with_escaped_non_uax31;
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse, Expr, Lit, LitInt, LitStr, UnOp};
+use syn::{Expr, Lit, LitInt, LitStr, UnOp, parse};
 
 struct ActiveEnum {
     ident: syn::Ident,

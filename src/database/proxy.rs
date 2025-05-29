@@ -1,4 +1,4 @@
-use crate::{error::*, ExecResult, ExecResultHolder, QueryResult, QueryResultRow, Statement};
+use crate::{ExecResult, ExecResultHolder, QueryResult, QueryResultRow, Statement, error::*};
 
 use sea_query::{Value, ValueType};
 use std::{collections::BTreeMap, fmt::Debug};
@@ -202,8 +202,8 @@ impl ProxyRow {
 #[cfg(test)]
 mod tests {
     use crate::{
-        entity::*, tests_cfg::*, Database, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult,
-        ProxyRow, Statement,
+        Database, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult, ProxyRow, Statement,
+        entity::*, tests_cfg::*,
     };
     use std::sync::{Arc, Mutex};
 

@@ -1,5 +1,5 @@
 use crate::{
-    join_tbl_on_condition, unpack_table_ref, EntityTrait, QuerySelect, RelationDef, Select,
+    EntityTrait, QuerySelect, RelationDef, Select, join_tbl_on_condition, unpack_table_ref,
 };
 use sea_query::{Alias, Condition, IntoIden, JoinType, SeaRc};
 

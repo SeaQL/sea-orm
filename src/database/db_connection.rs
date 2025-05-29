@@ -1,6 +1,6 @@
 use crate::{
-    error::*, AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel,
-    QueryResult, Statement, StatementBuilder, StreamTrait, TransactionError, TransactionTrait,
+    AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel, QueryResult,
+    Statement, StatementBuilder, StreamTrait, TransactionError, TransactionTrait, error::*,
 };
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 use std::{future::Future, pin::Pin};
@@ -306,7 +306,7 @@ impl TransactionTrait for DatabaseConnection {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -354,7 +354,7 @@ impl TransactionTrait for DatabaseConnection {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]

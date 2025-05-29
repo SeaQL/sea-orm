@@ -2,8 +2,8 @@
 
 use entity::{Column, Entity};
 use sea_orm::{
-    prelude::*, sea_query::Alias, DerivePartialModel, FromQueryResult, IntoActiveModel, JoinType,
-    NotSet, QueryOrder, QuerySelect, Set,
+    DerivePartialModel, FromQueryResult, IntoActiveModel, JoinType, NotSet, QueryOrder,
+    QuerySelect, Set, prelude::*, sea_query::Alias,
 };
 
 use crate::common::TestContext;

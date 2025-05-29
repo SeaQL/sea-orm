@@ -1,7 +1,7 @@
 use sea_orm::entity::prelude::*;
 use sea_orm::{
-    sea_query::{ArrayType, ColumnType, ValueType},
     TryGetError, TryGetable,
+    sea_query::{ArrayType, ColumnType, ValueType},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]

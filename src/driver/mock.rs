@@ -1,14 +1,14 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
-    Statement, Transaction,
+    DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult, Statement, Transaction,
+    debug_print, error::*,
 };
 use futures_util::Stream;
 use std::{
     fmt::Debug,
     pin::Pin,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc, Mutex,
+        atomic::{AtomicUsize, Ordering},
     },
 };
 use tracing::instrument;
