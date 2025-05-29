@@ -6,6 +6,7 @@ rust-version = "1.85.0"
 
 [dependencies]
 poem = { version = "3.0" }
+async-graphql = { version = "7.0.17" }
 async-graphql-poem = { version = "7.0" }
 dotenv = "0.15.0"
 tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
