@@ -29,3 +29,7 @@ serde_json = { version = "1.0.103" }
 
 [workspace]
 members = []
+
+[patch.crates-io]
+sea-orm = { path = "../../../" }
+sea-orm-migration = { path = "../../../sea-orm-migration" }
