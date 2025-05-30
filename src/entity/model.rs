@@ -99,7 +99,7 @@ pub trait FromQueryResult: Sized {
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{query::*, FromQueryResult};
+    /// use sea_orm::{FromQueryResult, query::*};
     ///
     /// #[derive(Debug, PartialEq, FromQueryResult)]
     /// struct SelectResult {

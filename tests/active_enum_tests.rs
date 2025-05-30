@@ -3,15 +3,15 @@
 pub mod common;
 
 use active_enum::Entity as ActiveEnumEntity;
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
 #[cfg(feature = "sqlx-postgres")]
 use sea_orm::QueryTrait;
 use sea_orm::{
+    ActiveEnum as ActiveEnumTrait, DatabaseConnection, FromQueryResult, QuerySelect,
     entity::prelude::*,
     entity::*,
     sea_query::{BinOper, Expr},
-    ActiveEnum as ActiveEnumTrait, DatabaseConnection, FromQueryResult, QuerySelect,
 };
 use sea_query::ExprTrait;
 

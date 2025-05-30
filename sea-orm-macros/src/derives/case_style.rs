@@ -4,9 +4,9 @@ use heck::{
 };
 use std::str::FromStr;
 use syn::{
+    Ident, LitStr,
     meta::ParseNestedMeta,
     parse::{Parse, ParseStream},
-    Ident, LitStr,
 };
 
 #[allow(clippy::enum_variant_names)]

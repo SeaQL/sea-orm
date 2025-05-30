@@ -29,7 +29,7 @@ pub trait QuerySelect: Sized {
 
     /// Add a select column
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -44,7 +44,7 @@ pub trait QuerySelect: Sized {
     /// Enum column will be casted into text (PostgreSQL only)
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::lunch_set, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::lunch_set};
     ///
     /// assert_eq!(
     ///     lunch_set::Entity::find()
@@ -73,7 +73,7 @@ pub trait QuerySelect: Sized {
 
     /// Add a select column with alias
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -100,7 +100,7 @@ pub trait QuerySelect: Sized {
     /// Select columns
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -115,7 +115,7 @@ pub trait QuerySelect: Sized {
     /// Conditionally select all columns expect a specific column
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -133,7 +133,7 @@ pub trait QuerySelect: Sized {
     /// Enum column will be casted into text (PostgreSQL only)
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::lunch_set, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::lunch_set};
     ///
     /// assert_eq!(
     ///     lunch_set::Entity::find()
@@ -166,7 +166,7 @@ pub trait QuerySelect: Sized {
     /// Add an offset expression. Passing in None would remove the offset.
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -209,7 +209,7 @@ pub trait QuerySelect: Sized {
     /// Add a limit expression. Passing in None would remove the limit.
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -317,7 +317,7 @@ pub trait QuerySelect: Sized {
 
     /// Add a DISTINCT expression
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     /// struct Input {
     ///     name: Option<String>,
     /// }
@@ -454,7 +454,7 @@ pub trait QuerySelect: Sized {
     /// Add an expression to the select expression list.
     /// ```
     /// use sea_orm::sea_query::Expr;
-    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    /// use sea_orm::{DbBackend, QuerySelect, QueryTrait, entity::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -476,7 +476,7 @@ pub trait QuerySelect: Sized {
     /// Add select expressions from vector of [`SelectExpr`].
     /// ```
     /// use sea_orm::sea_query::Expr;
-    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    /// use sea_orm::{DbBackend, QuerySelect, QueryTrait, entity::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -502,7 +502,7 @@ pub trait QuerySelect: Sized {
     /// Select column.
     /// ```
     /// use sea_orm::sea_query::{Alias, Expr, Func};
-    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    /// use sea_orm::{DbBackend, QuerySelect, QueryTrait, entity::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -530,7 +530,7 @@ pub trait QuerySelect: Sized {
     ///
     /// ```
     /// use sea_orm::sea_query::{Alias, Expr, Func};
-    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    /// use sea_orm::{DbBackend, QuerySelect, QueryTrait, entity::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -556,7 +556,7 @@ pub trait QuerySelect: Sized {
     ///
     /// ```
     /// use sea_orm::sea_query::{Alias, Expr, Func};
-    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    /// use sea_orm::{DbBackend, QuerySelect, QueryTrait, entity::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -590,7 +590,7 @@ pub trait QueryOrder: Sized {
 
     /// Add an order_by expression
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -611,7 +611,7 @@ pub trait QueryOrder: Sized {
 
     /// Add an order_by expression (ascending)
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -632,7 +632,7 @@ pub trait QueryOrder: Sized {
 
     /// Add an order_by expression (descending)
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -653,7 +653,7 @@ pub trait QueryOrder: Sized {
 
     /// Add an order_by expression with nulls ordering option
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     /// use sea_query::NullOrdering;
     ///
     /// assert_eq!(
@@ -685,7 +685,7 @@ pub trait QueryFilter: Sized {
 
     /// Add an AND WHERE expression
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -699,7 +699,7 @@ pub trait QueryFilter: Sized {
     ///
     /// Add a condition tree.
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -717,7 +717,7 @@ pub trait QueryFilter: Sized {
     /// Like above, but using the `IN` operator.
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -745,7 +745,7 @@ pub trait QueryFilter: Sized {
     ///
     /// Add a runtime-built condition tree.
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     /// struct Input {
     ///     name: Option<String>,
     /// }
@@ -769,7 +769,7 @@ pub trait QueryFilter: Sized {
     ///
     /// Add a runtime-built condition tree, functional-way.
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     /// struct Input {
     ///     name: Option<String>,
     /// }

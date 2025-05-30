@@ -1,4 +1,4 @@
-use sea_orm::{entity::prelude::StringLen, ActiveEnum};
+use sea_orm::{ActiveEnum, entity::prelude::StringLen};
 use sea_orm_macros::{DeriveActiveEnum, EnumIter};
 
 #[derive(Debug, EnumIter, DeriveActiveEnum, Eq, PartialEq)]

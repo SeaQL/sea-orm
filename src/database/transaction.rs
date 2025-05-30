@@ -1,7 +1,7 @@
 use crate::{
-    debug_print, error::*, AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult,
-    InnerConnection, IsolationLevel, QueryResult, Statement, StreamTrait, TransactionStream,
-    TransactionTrait,
+    AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
+    QueryResult, Statement, StreamTrait, TransactionStream, TransactionTrait, debug_print,
+    error::*,
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
@@ -100,7 +100,7 @@ impl DatabaseTransaction {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let res = callback(&self).await.map_err(TransactionError::Transaction);
         if res.is_ok() {
@@ -489,7 +489,7 @@ impl TransactionTrait for DatabaseTransaction {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let transaction = self.begin().await.map_err(TransactionError::Connection)?;
         transaction.run(_callback).await
@@ -510,7 +510,7 @@ impl TransactionTrait for DatabaseTransaction {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let transaction = self
             .begin_with_config(isolation_level, access_mode)
@@ -522,10 +522,7 @@ impl TransactionTrait for DatabaseTransaction {
 
 /// Defines errors for handling transaction failures
 #[derive(Debug)]
-pub enum TransactionError<E>
-where
-    E: std::error::Error,
-{
+pub enum TransactionError<E> {
     /// A Database connection error
     Connection(DbErr),
     /// An error occurring when doing database transactions
@@ -534,7 +531,7 @@ where
 
 impl<E> std::fmt::Display for TransactionError<E>
 where
-    E: std::error::Error,
+    E: std::fmt::Display + std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -544,11 +541,11 @@ where
     }
 }
 
-impl<E> std::error::Error for TransactionError<E> where E: std::error::Error {}
+impl<E> std::error::Error for TransactionError<E> where E: std::fmt::Display + std::fmt::Debug {}
 
 impl<E> From<DbErr> for TransactionError<E>
 where
-    E: std::error::Error,
+    E: std::fmt::Display + std::fmt::Debug,
 {
     fn from(e: DbErr) -> Self {
         Self::Connection(e)

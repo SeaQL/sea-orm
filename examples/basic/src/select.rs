@@ -1,5 +1,5 @@
 use super::*;
-use sea_orm::{entity::*, error::*, query::*, DbConn, FromQueryResult};
+use sea_orm::{DbConn, FromQueryResult, entity::*, error::*, query::*};
 
 pub async fn all_about_select(db: &DbConn) -> Result<(), DbErr> {
     find_all(db).await?;

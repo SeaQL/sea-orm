@@ -135,11 +135,7 @@ impl DeriveModel {
         let entity_ident = &self.entity_ident;
         let ignore_attrs = &self.ignore_attrs;
         let ignore = |(ident, ignore): (&'a Ident, &bool)| -> Option<&'a Ident> {
-            if *ignore {
-                None
-            } else {
-                Some(ident)
-            }
+            if *ignore { None } else { Some(ident) }
         };
         let field_idents: Vec<&Ident> = self
             .field_idents

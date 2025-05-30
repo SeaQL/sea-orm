@@ -2,7 +2,7 @@
 
 pub mod common;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, setup::*};
 pub use sea_orm::entity::*;
 pub use sea_orm::{ConnectionTrait, DbErr, QueryFilter};
 

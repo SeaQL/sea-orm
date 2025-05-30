@@ -2,13 +2,13 @@
 
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
 use sea_orm::{
+    ActiveEnum as ActiveEnumTrait, DatabaseConnection,
     entity::prelude::*,
     entity::*,
     sea_query::{BinOper, Expr},
-    ActiveEnum as ActiveEnumTrait, DatabaseConnection,
 };
 use sea_query::ExprTrait;
 
@@ -54,24 +54,28 @@ pub async fn insert_teas(db: &DatabaseConnection) -> Result<(), DbErr> {
     );
 
     // UNIQUE constraint failed
-    assert!(ActiveModel {
-        id: Set(Tea::EverydayTea),
-        category: Set(Some(Category::Big)),
-        color: Set(Some(Color::Black)),
-    }
-    .insert(db)
-    .await
-    .is_err());
+    assert!(
+        ActiveModel {
+            id: Set(Tea::EverydayTea),
+            category: Set(Some(Category::Big)),
+            color: Set(Some(Color::Black)),
+        }
+        .insert(db)
+        .await
+        .is_err()
+    );
 
     // UNIQUE constraint failed
-    assert!(Entity::insert(ActiveModel {
-        id: Set(Tea::EverydayTea),
-        category: Set(Some(Category::Big)),
-        color: Set(Some(Color::Black)),
-    })
-    .exec(db)
-    .await
-    .is_err());
+    assert!(
+        Entity::insert(ActiveModel {
+            id: Set(Tea::EverydayTea),
+            category: Set(Some(Category::Big)),
+            color: Set(Some(Color::Black)),
+        })
+        .exec(db)
+        .await
+        .is_err()
+    );
 
     let _ = ActiveModel {
         category: Set(Some(Category::Big)),

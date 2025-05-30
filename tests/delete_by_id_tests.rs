@@ -1,8 +1,8 @@
 #![allow(unused_imports, dead_code)]
 
 pub mod common;
-pub use common::{features::*, setup::*, TestContext};
-use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
+pub use common::{TestContext, features::*, setup::*};
+use sea_orm::{DatabaseConnection, IntoActiveModel, entity::prelude::*};
 
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
