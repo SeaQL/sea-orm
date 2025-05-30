@@ -2,7 +2,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 
-use syn::{parse_macro_input, DeriveInput, Error};
+use syn::{DeriveInput, Error, parse_macro_input};
 
 #[cfg(feature = "derive")]
 mod derives;
@@ -749,8 +749,8 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// For more complete examples, please refer to https://github.com/SeaQL/sea-orm/blob/master/tests/partial_model_tests.rs
 ///
 /// ```rust
-/// use sea_orm::{entity::prelude::*, DerivePartialModel, FromQueryResult};
 /// use sea_orm::sea_query::ExprTrait;
+/// use sea_orm::{DerivePartialModel, FromQueryResult, entity::prelude::*};
 ///
 /// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 /// #[sea_orm(table_name = "posts")]
@@ -778,7 +778,11 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///
 /// If all fields in the partial model is `from_expr`, the specifying the `entity` can be skipped.
 /// ```
-/// use sea_orm::{entity::prelude::*, sea_query::{Expr, ExprTrait}, DerivePartialModel, FromQueryResult};
+/// use sea_orm::{
+///     DerivePartialModel, FromQueryResult,
+///     entity::prelude::*,
+///     sea_query::{Expr, ExprTrait},
+/// };
 ///
 /// #[derive(Debug, FromQueryResult, DerivePartialModel)]
 /// struct SelectResult {
