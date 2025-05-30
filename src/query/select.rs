@@ -121,7 +121,7 @@ where
     C: ColumnTrait,
 {
     fn into_column_as_expr(self) -> SimpleExpr {
-        self.select_as(Expr::expr(self.as_column_ref().into_column_ref()))
+        self.select_as(Expr::new(self.as_column_ref().into_column_ref()))
     }
 }
 
