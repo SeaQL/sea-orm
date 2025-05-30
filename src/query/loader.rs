@@ -140,7 +140,7 @@ where
         if self.is_empty() {
             return Ok(Vec::new());
         }
-        load_one_impl(self.into_iter(), stmt, db).await
+        load_one_impl(self.iter(), stmt, db).await
     }
 
     async fn load_many<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
@@ -154,7 +154,7 @@ where
         if self.is_empty() {
             return Ok(Vec::new());
         }
-        load_many_impl(self.into_iter(), stmt, db).await
+        load_many_impl(self.iter(), stmt, db).await
     }
 
     async fn load_many_to_many<R, S, V, C>(
@@ -175,7 +175,7 @@ where
         if self.is_empty() {
             return Ok(Vec::new());
         }
-        load_many_to_many_impl(self.into_iter(), stmt, via, db).await
+        load_many_to_many_impl(self.iter(), stmt, via, db).await
     }
 }
 
