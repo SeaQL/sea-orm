@@ -25,7 +25,3 @@ features = [
   "runtime-async-std-native-tls",
   "sqlx-mysql",
 ]
-
-[patch.crates-io]
-sea-orm = { path = "../../../" }
-sea-orm-migration = { path = "../../../sea-orm-migration" }
