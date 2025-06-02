@@ -5,6 +5,7 @@ pub mod common;
 pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
 use sea_orm::{DerivePartialModel, FromQueryResult, QuerySelect, Set, entity::prelude::*};
+use sea_query::ExprTrait;
 use serde_json::json;
 
 #[sea_orm_macros::test]

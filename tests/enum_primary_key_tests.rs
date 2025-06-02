@@ -10,6 +10,7 @@ use sea_orm::{
     entity::*,
     sea_query::{BinOper, Expr},
 };
+use sea_query::ExprTrait;
 
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
@@ -106,10 +107,10 @@ pub async fn insert_teas(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(
         model,
         Entity::find()
-            .filter(
-                Expr::col(Column::Id)
-                    .binary(BinOper::In, Expr::tuple([Tea::EverydayTea.as_enum()]))
-            )
+            .filter(Expr::col(Column::Id).binary(
+                BinOper::In,
+                Expr::tuple([ActiveEnumTrait::as_enum(&Tea::EverydayTea)])
+            ))
             .one(db)
             .await?
             .unwrap()
