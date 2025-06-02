@@ -196,7 +196,7 @@ Look at the [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/ex
 
 <img src="https://raw.githubusercontent.com/SeaQL/sea-orm/master/examples/seaography_example/Seaography%20example.png"/>
 
-## 🖥️ SeaORM Pro: Effortless Admin Panel
+## 🖥️ SeaORM Pro: Professional Admin Panel
 
 [SeaORM Pro](https://www.sea-ql.org/sea-orm-pro/) is an admin panel solution allowing you to quickly and easily launch an admin panel for your application - frontend development skills not required, but certainly nice to have!
 
