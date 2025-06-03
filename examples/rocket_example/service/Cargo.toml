@@ -1,7 +1,8 @@
 [package]
 name = "rocket-example-service"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,7 +11,7 @@ entity = { path = "../entity" }
 
 [dependencies.sea-orm]
 path = "../../../" # remove this line in your own project
-version = "~1.1.4" # sea-orm version
+version = "~1.2.0-rc.1" # sea-orm version
 features = [
     "runtime-tokio-native-tls",
     "sqlx-postgres",

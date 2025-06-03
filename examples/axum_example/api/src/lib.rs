@@ -1,18 +1,18 @@
 mod flash;
 
 use axum::{
+    Router,
     extract::{Form, Path, Query, State},
     http::StatusCode,
     response::Html,
     routing::{get, get_service, post},
-    Router,
 };
 use axum_example_service::{
-    sea_orm::{Database, DatabaseConnection},
     Mutation as MutationCore, Query as QueryCore,
+    sea_orm::{Database, DatabaseConnection},
 };
 use entity::post;
-use flash::{get_flash_cookie, post_response, PostResponse};
+use flash::{PostResponse, get_flash_cookie, post_response};
 use migration::{Migrator, MigratorTrait};
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -22,7 +22,9 @@ use tower_http::services::ServeDir;
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
-    env::set_var("RUST_LOG", "debug");
+    unsafe {
+        env::set_var("RUST_LOG", "debug");
+    }
     tracing_subscriber::fmt::init();
 
     dotenvy::dotenv().ok();
@@ -43,9 +45,9 @@ async fn start() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/", get(list_posts).post(create_post))
-        .route("/:id", get(edit_post).post(update_post))
+        .route("/{id}", get(edit_post).post(update_post))
         .route("/new", get(new_post))
-        .route("/delete/:id", post(delete_post))
+        .route("/delete/{id}", post(delete_post))
         .nest_service(
             "/static",
             get_service(ServeDir::new(concat!(

@@ -5,6 +5,406 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.1.12 - 2025-05-27
+
+### Enhancements
+
+* Make sea-orm-cli & sea-orm-migration dependencies optional https://github.com/SeaQL/sea-orm/pull/2367
+* Relax TransactionError's trait bound for errors to allow `anyhow::Error` https://github.com/SeaQL/sea-orm/pull/2602
+
+### Bug Fixes
+
+* Include custom `column_name` in DeriveColumn `Column::from_str` impl https://github.com/SeaQL/sea-orm/pull/2603
+```rust
+#[derive(DeriveEntityModel)]
+pub struct Model {
+    #[sea_orm(column_name = "lAsTnAmE")]
+    last_name: String,
+}
+
+assert!(matches!(Column::from_str("lAsTnAmE").unwrap(), Column::LastName));
+```
+
+## 1.1.11 - 2025-05-07
+
+### Enhancements
+
+* Added `ActiveModelTrait::default_values`
+```rust
+assert_eq!(
+    fruit::ActiveModel::default_values(),
+    fruit::ActiveModel {
+        id: Set(0),
+        name: Set("".into()),
+        cake_id: Set(None),
+        type_without_default: NotSet,
+    },
+);
+```
+* Impl `IntoCondition` for `RelationDef` https://github.com/SeaQL/sea-orm/pull/2587
+```rust
+// This allows using `RelationDef` directly where sea-query expects an `IntoCondition`
+let query = Query::select()
+    .from(fruit::Entity)
+    .inner_join(cake::Entity, fruit::Relation::Cake.def())
+    .to_owned();
+```
+* Loader: retain only unique key values in the query condition https://github.com/SeaQL/sea-orm/pull/2569
+* Add proxy transaction impl https://github.com/SeaQL/sea-orm/pull/2573
+* [sea-orm-cli] Fix `PgVector` codegen https://github.com/SeaQL/sea-orm/pull/2589
+
+### Bug fixes
+
+* Quote type properly in `AsEnum` casting https://github.com/SeaQL/sea-orm/pull/2570
+```rust
+assert_eq!(
+    lunch_set::Entity::find()
+        .select_only()
+        .column(lunch_set::Column::Tea)
+        .build(DbBackend::Postgres)
+        .to_string(),
+    r#"SELECT CAST("lunch_set"."tea" AS "text") FROM "lunch_set""#
+    // "text" is now quoted; will work for "text"[] as well
+);
+```
+* Fix unicode string enum https://github.com/SeaQL/sea-orm/pull/2218
+
+### Upgrades
+
+* Upgrade `heck` to `0.5` https://github.com/SeaQL/sea-orm/pull/2218
+* Upgrade `sea-query` to `0.32.5`
+* Upgrade `sea-schema` to `0.16.2`
+
+## 1.1.10 - 2025-04-14
+
+### Upgrades
+
+* Upgrade sqlx to 0.8.4 https://github.com/SeaQL/sea-orm/pull/2562
+
+## 1.1.9 - 2025-04-14
+
+### Enhancements
+
+* [sea-orm-macros] Use fully-qualified syntax for ActiveEnum associated type https://github.com/SeaQL/sea-orm/pull/2552
+* Accept `LikeExpr` in `like` and `not_like` https://github.com/SeaQL/sea-orm/pull/2549
+
+### Bug fixes
+
+* Check if url is well-formed before parsing https://github.com/SeaQL/sea-orm/pull/2558
+* `QuerySelect::column_as` method cast ActiveEnum column https://github.com/SeaQL/sea-orm/pull/2551
+
+### House keeping
+
+* Remove redundant `Expr::expr` from internal code https://github.com/SeaQL/sea-orm/pull/2554
+
+## 1.1.8 - 2025-03-30
+
+### New Features
+
+* Implement `DeriveValueType` for enum strings
+```rust
+#[derive(DeriveValueType)]
+#[sea_orm(value_type = "String")]
+pub enum Tag {
+    Hard,
+    Soft,
+}
+
+// `from_str` defaults to `std::str::FromStr::from_str`
+impl std::str::FromStr for Tag {
+    type Err = sea_orm::sea_query::ValueTypeErr;
+    fn from_str(s: &str) -> Result<Self, Self::Err> { .. }
+}
+
+// `to_str` defaults to `std::string::ToString::to_string`.
+impl std::fmt::Display for Tag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { .. }
+}
+
+// you can override from_str and to_str with custom functions
+#[derive(DeriveValueType)]
+#[sea_orm(value_type = "String", from_str = "Tag::from_str", to_str = "Tag::to_str")]
+pub enum Tag {
+    Color,
+    Grey,
+}
+
+impl Tag {
+    fn from_str(s: &str) -> Result<Self, ValueTypeErr> { .. }
+
+    fn to_str(&self) -> &'static str { .. }
+}
+```
+* Support Postgres Ipnetwork (under feature flag `with-ipnetwork`) https://github.com/SeaQL/sea-orm/pull/2395
+```rust
+// Model
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "host_network")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    pub ipaddress: IpNetwork,
+    #[sea_orm(column_type = "Cidr")]
+    pub network: IpNetwork,
+}
+
+// Schema
+sea_query::Table::create()
+    .table(host_network::Entity)
+    .col(ColumnDef::new(host_network::Column::Id).integer().not_null().auto_increment().primary_key())
+    .col(ColumnDef::new(host_network::Column::Ipaddress).inet().not_null())
+    .col(ColumnDef::new(host_network::Column::Network).cidr().not_null())
+    .to_owned();
+
+// CRUD
+host_network::ActiveModel {
+    ipaddress: Set(IpNetwork::new(Ipv6Addr::new(..))),
+    network: Set(IpNetwork::new(Ipv4Addr::new(..))),
+    ..Default::default()
+}
+```
+
+### Enhancements
+
+* Added `try_getable_postgres_array!(Vec<u8>)` (to support `bytea[]`) https://github.com/SeaQL/sea-orm/pull/2503
+
+### Bug fixes
+
+* [sea-orm-codegen] Support postgres array in expanded format https://github.com/SeaQL/sea-orm/pull/2545
+
+### House keeping
+
+* Replace `once_cell` crate with `std` equivalent https://github.com/SeaQL/sea-orm/pull/2524
+(available since rust 1.80)
+
+## 1.1.7 - 2025-03-02
+
+### New Features
+
+* Support nested entities in `FromQueryResult` https://github.com/SeaQL/sea-orm/pull/2508
+```rust
+#[derive(FromQueryResult)]
+struct Cake {
+    id: i32,
+    name: String,
+    #[sea_orm(nested)]
+    bakery: Option<CakeBakery>,
+}
+
+#[derive(FromQueryResult)]
+struct CakeBakery {
+    #[sea_orm(from_alias = "bakery_id")]
+    id: i32,
+    #[sea_orm(from_alias = "bakery_name")]
+    title: String,
+}
+
+let cake: Cake = cake::Entity::find()
+    .select_only()
+    .column(cake::Column::Id)
+    .column(cake::Column::Name)
+    .column_as(bakery::Column::Id, "bakery_id")
+    .column_as(bakery::Column::Name, "bakery_name")
+    .left_join(bakery::Entity)
+    .order_by_asc(cake::Column::Id)
+    .into_model()
+    .one(&ctx.db)
+    .await?
+    .unwrap();
+
+assert_eq!(
+    cake,
+    Cake {
+        id: 1,
+        name: "Cake".to_string(),
+        bakery: Some(CakeBakery {
+            id: 20,
+            title: "Bakery".to_string(),
+        })
+    }
+);
+```
+* Support nested entities in `DerivePartialModel` https://github.com/SeaQL/sea-orm/pull/2508
+```rust
+#[derive(DerivePartialModel)] // FromQueryResult is no longer needed
+#[sea_orm(entity = "cake::Entity", from_query_result)]
+struct Cake {
+    id: i32,
+    name: String,
+    #[sea_orm(nested)]
+    bakery: Option<Bakery>,
+}
+
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "bakery::Entity", from_query_result)]
+struct Bakery {
+    id: i32,
+    #[sea_orm(from_col = "Name")]
+    title: String,
+}
+
+// same as previous example, but without the custom selects
+let cake: Cake = cake::Entity::find()
+    .left_join(bakery::Entity)
+    .order_by_asc(cake::Column::Id)
+    .into_partial_model()
+    .one(&ctx.db)
+    .await?
+    .unwrap();
+
+assert_eq!(
+    cake,
+    Cake {
+        id: 1,
+        name: "Cake".to_string(),
+        bakery: Some(CakeBakery {
+            id: 20,
+            title: "Bakery".to_string(),
+        })
+    }
+);
+```
+* Derive also `IntoActiveModel` with `DerivePartialModel` https://github.com/SeaQL/sea-orm/pull/2517
+```rust
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity", into_active_model)]
+struct Cake {
+    id: i32,
+    name: String,
+}
+
+assert_eq!(
+    Cake {
+        id: 12,
+        name: "Lemon Drizzle".to_owned(),
+    }
+    .into_active_model(),
+    cake::ActiveModel {
+        id: Set(12),
+        name: Set("Lemon Drizzle".to_owned()),
+        ..Default::default()
+    }
+);
+```
+* Added `SelectThree` https://github.com/SeaQL/sea-orm/pull/2518
+```rust
+// Order -> (many) Lineitem -> Cake
+let items: Vec<(order::Model, Option<lineitem::Model>, Option<cake::Model>)> =
+    order::Entity::find()
+        .find_also_related(lineitem::Entity)
+        .and_also_related(cake::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .all(&ctx.db)
+        .await?;
+```
+
+### Enhancements
+
+* Support complex type path in `DeriveIntoActiveModel` https://github.com/SeaQL/sea-orm/pull/2517
+```rust 
+#[derive(DeriveIntoActiveModel)]
+#[sea_orm(active_model = "<fruit::Entity as EntityTrait>::ActiveModel")]
+struct Fruit {
+    cake_id: Option<Option<i32>>,
+}
+```
+* Added `DatabaseConnection::close_by_ref` https://github.com/SeaQL/sea-orm/pull/2511
+```rust
+pub async fn close(self) -> Result<(), DbErr> { .. } // existing
+pub async fn close_by_ref(&self) -> Result<(), DbErr> { .. } // new
+```
+
+### House Keeping
+
+* Cleanup legacy `ActiveValue::Set` https://github.com/SeaQL/sea-orm/pull/2515
+
+## 1.1.6 - 2025-02-24
+
+### New Features
+
+* Support PgVector (under feature flag `postgres-vector`) https://github.com/SeaQL/sea-orm/pull/2500
+```rust
+// Model
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[sea_orm(table_name = "image_model")]
+pub struct Model {
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id: i32,
+    pub embedding: PgVector,
+}
+ 
+// Schema
+sea_query::Table::create()
+    .table(image_model::Entity.table_ref())
+    .col(ColumnDef::new(Column::Id).integer().not_null().primary_key())
+    .col(ColumnDef::new(Column::Embedding).vector(None).not_null())
+    ..
+
+// Insert
+ActiveModel {
+    id: NotSet,
+    embedding: Set(PgVector::from(vec![1., 2., 3.])),
+}
+.insert(db)
+.await?
+```
+* Added `Insert::exec_with_returning_keys` & `Insert::exec_with_returning_many` (Postgres only)
+```rust
+assert_eq!(
+    Entity::insert_many([
+        ActiveModel { id: NotSet, name: Set("two".into()) },
+        ActiveModel { id: NotSet, name: Set("three".into()) },
+    ])
+    .exec_with_returning_many(db)
+    .await
+    .unwrap(),
+    [
+        Model { id: 2, name: "two".into() },
+        Model { id: 3, name: "three".into() },
+    ]
+);
+
+assert_eq!(
+    cakes_bakers::Entity::insert_many([
+        cakes_bakers::ActiveModel {
+            cake_id: Set(1),
+            baker_id: Set(2),
+        },
+        cakes_bakers::ActiveModel {
+            cake_id: Set(2),
+            baker_id: Set(1),
+        },
+    ])
+    .exec_with_returning_keys(db)
+    .await
+    .unwrap(),
+    [(1, 2), (2, 1)]
+);
+```
+* Added `DeleteOne::exec_with_returning` & `DeleteMany::exec_with_returning` https://github.com/SeaQL/sea-orm/pull/2432
+
+### Enhancements
+
+* Expose underlying row types (e.g. `sqlx::postgres::PgRow`) https://github.com/SeaQL/sea-orm/pull/2265
+* [sea-orm-cli] Added `acquire-timeout` option https://github.com/SeaQL/sea-orm/pull/2461
+* [sea-orm-cli] Added `with-prelude` option https://github.com/SeaQL/sea-orm/pull/2322
+* [sea-orm-cli] Added `impl-active-model-behavior` option https://github.com/SeaQL/sea-orm/pull/2487
+
+### Bug Fixes
+
+* Fixed `seaography::register_active_enums` macro https://github.com/SeaQL/sea-orm/pull/2475
+
+### House keeping
+
+* Remove `futures` crate, replace with `futures-util` https://github.com/SeaQL/sea-orm/pull/2466
+
+## 1.1.5 - 2025-02-14
+
+### New Features
+
+* Added `Schema::json_schema_from_entity` to construct a schema description in json for the given Entity
+
 ## 1.1.4 - 2025-01-10
 
 ### Enhancements

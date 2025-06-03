@@ -1,4 +1,4 @@
-use crate::{error::*, ExecResult, ExecResultHolder, QueryResult, QueryResultRow, Statement};
+use crate::{ExecResult, ExecResultHolder, QueryResult, QueryResultRow, Statement, error::*};
 
 use sea_query::{Value, ValueType};
 use std::{collections::BTreeMap, fmt::Debug};
@@ -20,6 +20,9 @@ pub trait ProxyDatabaseTrait: Send + Sync + std::fmt::Debug {
 
     /// Rollback a transaction in the [ProxyDatabase]
     async fn rollback(&self) {}
+
+    /// Start rollback a transaction in the [ProxyDatabase]
+    fn start_rollback(&self) {}
 
     /// Ping the [ProxyDatabase], it should return an error if the database is not available
     async fn ping(&self) -> Result<(), DbErr> {
@@ -199,8 +202,8 @@ impl ProxyRow {
 #[cfg(test)]
 mod tests {
     use crate::{
-        entity::*, tests_cfg::*, Database, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult,
-        ProxyRow, Statement,
+        Database, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult, ProxyRow, Statement,
+        entity::*, tests_cfg::*,
     };
     use std::sync::{Arc, Mutex};
 

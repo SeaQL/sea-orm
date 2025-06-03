@@ -288,7 +288,7 @@ pub trait EntityTrait: EntityName {
         select
     }
 
-    /// Insert an model into database
+    /// Insert a model into database
     ///
     /// # Example (Postgres)
     ///
@@ -365,6 +365,48 @@ pub trait EntityTrait: EntityName {
     ///         r#"INSERT INTO `cake` (`name`) VALUES (?)"#,
     ///         ["Apple Pie".into()]
     ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// To get back inserted Model
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results([
+    /// #         [cake::Model {
+    /// #             id: 1,
+    /// #             name: "Apple Pie".to_owned(),
+    /// #         }],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::insert(cake::ActiveModel {
+    ///         id: NotSet,
+    ///         name: Set("Apple Pie".to_owned()),
+    ///     })
+    ///     .exec_with_returning(&db)
+    ///     .await?,
+    ///     cake::Model {
+    ///         id: 1,
+    ///         name: "Apple Pie".to_owned(),
+    ///     }
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log()[0].statements()[0].sql,
+    ///     r#"INSERT INTO "cake" ("name") VALUES ($1) RETURNING "id", "name""#
     /// );
     /// #
     /// # Ok(())
@@ -474,10 +516,10 @@ pub trait EntityTrait: EntityName {
     ///
     /// ```
     /// use sea_orm::{
+    ///     DbBackend,
     ///     entity::*,
     ///     query::*,
     ///     tests_cfg::{cake, cake_filling},
-    ///     DbBackend,
     /// };
     ///
     /// assert_eq!(
@@ -512,6 +554,63 @@ pub trait EntityTrait: EntityName {
     ///     r#"INSERT INTO "cake_filling" ("cake_id", "filling_id") VALUES (2, NULL), (NULL, 3)"#,
     /// );
     /// ```
+    ///
+    /// To get back inserted Models
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results([
+    /// #         [cake::Model {
+    /// #             id: 1,
+    /// #             name: "Apple Pie".to_owned(),
+    /// #         }, cake::Model {
+    /// #             id: 2,
+    /// #             name: "Choco Pie".to_owned(),
+    /// #         }],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::insert_many([
+    ///         cake::ActiveModel {
+    ///             id: NotSet,
+    ///             name: Set("Apple Pie".to_owned()),
+    ///         },
+    ///         cake::ActiveModel {
+    ///             id: NotSet,
+    ///             name: Set("Choco Pie".to_owned()),
+    ///         },
+    ///     ])
+    ///     .exec_with_returning_many(&db)
+    ///     .await?,
+    ///     [
+    ///         cake::Model {
+    ///             id: 1,
+    ///             name: "Apple Pie".to_owned(),
+    ///         },
+    ///         cake::Model {
+    ///             id: 2,
+    ///             name: "Choco Pie".to_owned(),
+    ///         }
+    ///     ]
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log()[0].statements()[0].sql,
+    ///     r#"INSERT INTO "cake" ("name") VALUES ($1), ($2) RETURNING "id", "name""#
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     fn insert_many<A, I>(models: I) -> Insert<A>
     where
         A: ActiveModelTrait<Entity = Self>,
@@ -520,7 +619,7 @@ pub trait EntityTrait: EntityName {
         Insert::many(models)
     }
 
-    /// Update an model in database
+    /// Update a model in database
     ///
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
     ///
@@ -697,7 +796,7 @@ pub trait EntityTrait: EntityName {
         Update::many(Self::default())
     }
 
-    /// Delete an model from database
+    /// Delete a model from database
     ///
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
     ///
@@ -905,7 +1004,7 @@ mod tests {
     #[test]
     fn test_delete_by_id_1() {
         use crate::tests_cfg::cake;
-        use crate::{entity::*, query::*, DbBackend};
+        use crate::{DbBackend, entity::*, query::*};
         assert_eq!(
             cake::Entity::delete_by_id(1)
                 .build(DbBackend::Sqlite)
@@ -917,7 +1016,7 @@ mod tests {
     #[test]
     fn test_delete_by_id_2() {
         use crate::tests_cfg::cake_filling_price;
-        use crate::{entity::*, query::*, DbBackend};
+        use crate::{DbBackend, entity::*, query::*};
         assert_eq!(
             cake_filling_price::Entity::delete_by_id((1, 2))
                 .build(DbBackend::Sqlite)
@@ -981,7 +1080,7 @@ mod tests {
     #[test]
     #[cfg(feature = "macros")]
     fn entity_model_3() {
-        use crate::{entity::*, query::*, DbBackend};
+        use crate::{DbBackend, entity::*, query::*};
         use std::borrow::Cow;
 
         mod hello {

@@ -1,4 +1,4 @@
-use crate::{error::*, FromQueryResult, QueryResult};
+use crate::{FromQueryResult, QueryResult, error::*};
 use serde_json::Map;
 pub use serde_json::Value as JsonValue;
 
@@ -83,7 +83,7 @@ impl FromQueryResult for JsonValue {
             #[cfg(feature = "sqlx-postgres")]
             crate::QueryResultRow::SqlxPostgres(row) => {
                 use serde_json::json;
-                use sqlx::{postgres::types::Oid, Column, Postgres, Row, Type};
+                use sqlx::{Column, Postgres, Row, Type, postgres::types::Oid};
 
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
@@ -151,10 +151,16 @@ impl FromQueryResult for JsonValue {
                     try_get_type!(String, col);
                     #[cfg(feature = "postgres-array")]
                     try_get_type!(Vec<String>, col);
+                    #[cfg(feature = "postgres-vector")]
+                    try_get_type!(pgvector::Vector, col);
                     #[cfg(feature = "with-uuid")]
                     try_get_type!(uuid::Uuid, col);
                     #[cfg(all(feature = "with-uuid", feature = "postgres-array"))]
                     try_get_type!(Vec<uuid::Uuid>, col);
+                    #[cfg(feature = "with-ipnetwork")]
+                    try_get_type!(ipnetwork::IpNetwork, col);
+                    #[cfg(all(feature = "with-ipnetwork", feature = "postgres-array"))]
+                    try_get_type!(Vec<ipnetwork::IpNetwork>, col);
                     try_get_type!(Vec<u8>, col);
                 }
                 Ok(JsonValue::Object(map))
@@ -243,7 +249,7 @@ impl FromQueryResult for JsonValue {
 #[cfg(feature = "mock")]
 mod tests {
     use crate::tests_cfg::cake;
-    use crate::{entity::*, DbBackend, DbErr, MockDatabase};
+    use crate::{DbBackend, DbErr, MockDatabase, entity::*};
     use sea_query::Value;
 
     #[smol_potat::test]

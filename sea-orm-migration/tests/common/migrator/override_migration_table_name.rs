@@ -17,6 +17,6 @@ impl MigratorTrait for Migrator {
     }
 
     fn migration_table_name() -> sea_orm::DynIden {
-        Alias::new("override_migration_table_name").into_iden()
+        "override_migration_table_name".into_iden()
     }
 }

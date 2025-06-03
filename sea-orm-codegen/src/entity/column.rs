@@ -1,4 +1,4 @@
-use crate::{util::escape_rust_keyword, DateTimeCrate};
+use crate::{DateTimeCrate, util::escape_rust_keyword};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
@@ -76,14 +76,14 @@ impl Column {
                 ColumnType::Array(column_type) => {
                     format!("Vec<{}>", write_rs_type(column_type, date_time_crate))
                 }
+                ColumnType::Vector(_) => "PgVector".to_owned(),
                 ColumnType::Bit(None | Some(1)) => "bool".to_owned(),
                 ColumnType::Bit(_) | ColumnType::VarBit(_) => "Vec<u8>".to_owned(),
                 ColumnType::Year => "i32".to_owned(),
-                ColumnType::Interval(_, _)
-                | ColumnType::Cidr
-                | ColumnType::Inet
-                | ColumnType::MacAddr
-                | ColumnType::LTree => "String".to_owned(),
+                ColumnType::Cidr | ColumnType::Inet => "IpNetwork".to_owned(),
+                ColumnType::Interval(_, _) | ColumnType::MacAddr | ColumnType::LTree => {
+                    "String".to_owned()
+                }
                 _ => unimplemented!(),
             }
         }
@@ -112,6 +112,7 @@ impl Column {
                 StringLen::Max => Some("VarBinary(StringLen::Max)".to_owned()),
             },
             ColumnType::Blob => Some("Blob".to_owned()),
+            ColumnType::Cidr => Some("Cidr".to_owned()),
             _ => None,
         };
         col_type.map(|ty| quote! { column_type = #ty })
@@ -168,18 +169,28 @@ impl Column {
                 ColumnType::Json => quote! { ColumnType::Json },
                 ColumnType::JsonBinary => quote! { ColumnType::JsonBinary },
                 ColumnType::Uuid => quote! { ColumnType::Uuid },
+                ColumnType::Cidr => quote! { ColumnType::Cidr },
+                ColumnType::Inet => quote! { ColumnType::Inet },
                 ColumnType::Custom(s) => {
                     let s = s.to_string();
                     quote! { ColumnType::custom(#s) }
                 }
                 ColumnType::Enum { name, .. } => {
                     let enum_ident = format_ident!("{}", name.to_string().to_upper_camel_case());
-                    quote! { #enum_ident::db_type() }
+                    quote! {
+                        #enum_ident::db_type()
+                            .get_column_type()
+                            .to_owned()
+                    }
                 }
                 ColumnType::Array(column_type) => {
                     let column_type = write_col_def(column_type);
                     quote! { ColumnType::Array(RcOrArc::new(#column_type)) }
                 }
+                ColumnType::Vector(size) => match size {
+                    Some(size) => quote! { ColumnType::Vector(Some(#size)) },
+                    None => quote! { ColumnType::Vector(None) },
+                },
                 #[allow(unreachable_patterns)]
                 _ => unimplemented!(),
             }

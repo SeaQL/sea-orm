@@ -3,13 +3,7 @@ use super::util::camel_case_with_escaped_non_uax31;
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse, Expr, Lit, LitInt, LitStr, UnOp};
-
-enum Error {
-    InputNotEnum,
-    Syn(syn::Error),
-    TT(TokenStream),
-}
+use syn::{Expr, Lit, LitInt, LitStr, UnOp, parse};
 
 struct ActiveEnum {
     ident: syn::Ident,
@@ -26,6 +20,12 @@ struct ActiveEnumVariant {
     string_value: Option<LitStr>,
     num_value: Option<LitInt>,
     rename: Option<CaseStyle>,
+}
+
+enum Error {
+    InputNotEnum,
+    Syn(syn::Error),
+    TT(TokenStream),
 }
 
 impl ActiveEnum {
@@ -352,14 +352,14 @@ impl ActiveEnum {
                     sea_orm::sea_query::SeaRc::new(#enum_name_iden) as sea_orm::sea_query::DynIden
                 }
 
-                fn to_value(&self) -> Self::Value {
+                fn to_value(&self) -> <Self as sea_orm::ActiveEnum>::Value {
                     match self {
                         #( Self::#variant_idents => #variant_values, )*
                     }
                     .to_owned()
                 }
 
-                fn try_from_value(v: &Self::Value) -> std::result::Result<Self, sea_orm::DbErr> {
+                fn try_from_value(v: &<Self as sea_orm::ActiveEnum>::Value) -> std::result::Result<Self, sea_orm::DbErr> {
                     match #val {
                         #( #variant_values => Ok(Self::#variant_idents), )*
                         _ => Err(sea_orm::DbErr::Type(format!(

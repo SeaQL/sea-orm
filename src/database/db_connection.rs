@@ -1,6 +1,6 @@
 use crate::{
-    error::*, AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel,
-    QueryResult, Statement, StatementBuilder, StreamTrait, TransactionError, TransactionTrait,
+    AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel, QueryResult,
+    Statement, StatementBuilder, StreamTrait, TransactionError, TransactionTrait, error::*,
 };
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 use std::{future::Future, pin::Pin};
@@ -306,7 +306,7 @@ impl TransactionTrait for DatabaseConnection {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -354,7 +354,7 @@ impl TransactionTrait for DatabaseConnection {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -475,15 +475,21 @@ impl DatabaseConnection {
         }
     }
 
-    /// Explicitly close the database connection
+    /// Explicitly close the database connection.
+    /// See [`Self::close_by_ref`] for usage with references.
     pub async fn close(self) -> Result<(), DbErr> {
+        self.close_by_ref().await
+    }
+
+    /// Explicitly close the database connection
+    pub async fn close_by_ref(&self) -> Result<(), DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.close().await,
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.close_by_ref().await,
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.close().await,
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.close_by_ref().await,
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.close().await,
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.close_by_ref().await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(_) => {
                 // Nothing to cleanup, we just consume the `DatabaseConnection`

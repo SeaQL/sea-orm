@@ -1,9 +1,9 @@
 #![allow(unused_imports, dead_code)]
 
 pub mod common;
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
+use sea_orm::{DatabaseConnection, IntoActiveModel, entity::prelude::*};
 use serde_json::json;
 use time::macros::{date, time};
 
@@ -74,6 +74,8 @@ pub async fn create_transaction_log(db: &DatabaseConnection) -> Result<(), DbErr
             "date_time_tz": "2022-03-13T16:24:00Z",
         })
     );
+
+    assert_ne!(json, "");
 
     Ok(())
 }

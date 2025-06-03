@@ -5,7 +5,7 @@ use quote::quote;
 use sea_query::ColumnType;
 
 use crate::{
-    util::escape_rust_keyword, Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation,
+    Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation, util::escape_rust_keyword,
 };
 
 #[derive(Clone, Debug)]
@@ -234,6 +234,7 @@ impl Entity {
             match col_type {
                 ColumnType::Float | ColumnType::Double => true,
                 ColumnType::Array(col_type) => is_floats(col_type),
+                ColumnType::Vector(_) => true,
                 _ => false,
             }
         }

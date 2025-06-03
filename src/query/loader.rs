@@ -4,7 +4,10 @@ use crate::{
 };
 use async_trait::async_trait;
 use sea_query::{ColumnRef, DynIden, Expr, IntoColumnRef, SeaRc, SimpleExpr, TableRef, ValueTuple};
-use std::{collections::HashMap, str::FromStr};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+};
 
 /// Entity, or a Select<Entity>; to be used as parameters in [`LoaderTrait`]
 pub trait EntityOrSelect<E: EntityTrait>: Send {
@@ -404,8 +407,13 @@ where
 }
 
 fn prepare_condition(table: &TableRef, col: &Identity, keys: &[ValueTuple]) -> Condition {
-    // TODO when value is hashable, retain only unique values
-    let keys = keys.to_owned();
+    let keys = if !keys.is_empty() {
+        let set: HashSet<_> = keys.iter().cloned().collect();
+        set.into_iter().collect()
+    } else {
+        Vec::new()
+    };
+
     match col {
         Identity::Unary(column_a) => {
             let column_a = table_column(table, column_a);
@@ -498,7 +506,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_one() {
-        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[cake_model(1), cake_model(2)]])
@@ -516,7 +524,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_one_same_cake() {
-        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[cake_model(1), cake_model(2)]])
@@ -534,7 +542,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_one_empty() {
-        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[cake_model(1), cake_model(2)]])
@@ -552,7 +560,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many() {
-        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[fruit_model(1, Some(1))]])
@@ -570,7 +578,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_same_fruit() {
-        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[fruit_model(1, Some(1)), fruit_model(2, Some(1))]])
@@ -594,7 +602,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_empty() {
-        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, MockDatabase};
+        use sea_orm::{DbBackend, MockDatabase, entity::prelude::*, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
@@ -612,7 +620,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_to_many_base() {
-        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, IntoMockRow, LoaderTrait, MockDatabase, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
@@ -633,7 +641,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_to_many_complex() {
-        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, IntoMockRow, LoaderTrait, MockDatabase, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
@@ -673,7 +681,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_to_many_empty() {
-        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, IntoMockRow, LoaderTrait, MockDatabase, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
@@ -692,5 +700,64 @@ mod tests {
         let empty_vec: Vec<Vec<filling::Model>> = vec![];
 
         assert_eq!(fillings, empty_vec);
+    }
+
+    #[tokio::test]
+    async fn test_load_one_duplicate_keys() {
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[cake_model(1), cake_model(2)]])
+            .into_connection();
+
+        let fruits = vec![
+            fruit_model(1, Some(1)),
+            fruit_model(2, Some(1)),
+            fruit_model(3, Some(1)),
+            fruit_model(4, Some(1)),
+        ];
+
+        let cakes = fruits
+            .load_one(cake::Entity::find(), &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(cakes.len(), 4);
+        for cake in &cakes {
+            assert_eq!(cake, &Some(cake_model(1)));
+        }
+        let logs = db.into_transaction_log();
+        let sql = format!("{:?}", logs[0]);
+
+        let values_count = sql.matches("$1").count();
+        assert_eq!(values_count, 1, "Duplicate values were not removed");
+    }
+
+    #[tokio::test]
+    async fn test_load_many_duplicate_keys() {
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                fruit_model(1, Some(1)),
+                fruit_model(2, Some(1)),
+                fruit_model(3, Some(2)),
+            ]])
+            .into_connection();
+
+        let cakes = vec![cake_model(1), cake_model(1), cake_model(2), cake_model(2)];
+
+        let fruits = cakes
+            .load_many(fruit::Entity::find(), &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(fruits.len(), 4);
+
+        let logs = db.into_transaction_log();
+        let sql = format!("{:?}", logs[0]);
+
+        let values_count = sql.matches("$1").count() + sql.matches("$2").count();
+        assert_eq!(values_count, 2, "Duplicate values were not removed");
     }
 }

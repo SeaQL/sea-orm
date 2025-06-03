@@ -53,13 +53,13 @@ Integration examples:
 
     Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex dynamic queries.
 
-3. Testable
-
-    Use mock connections and/or SQLite to write tests for your application logic.
-
-4. Service Oriented
+3. Service Oriented
 
     Quickly build services that join, filter, sort and paginate data in REST, GraphQL and gRPC APIs.
+
+4. Production Ready
+
+    SeaORM is feature-rich, well-tested and used in production by companies and startups.
 
 ## A quick taste of SeaORM
 
@@ -196,26 +196,50 @@ Look at the [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/ex
 
 <img src="https://raw.githubusercontent.com/SeaQL/sea-orm/master/examples/seaography_example/Seaography%20example.png"/>
 
-## 🖥️ Admin Dashboard
+## 🖥️ SeaORM Pro: Professional Admin Panel
 
-Making use of Seaography, it will be a breeze to create admin dashboard with your favourite frontend framework. Check out our examples and tutorials:
+[SeaORM Pro](https://www.sea-ql.org/sea-orm-pro/) is an admin panel solution allowing you to quickly and easily launch an admin panel for your application - frontend development skills not required, but certainly nice to have!
 
-1. [React Admin Example](https://github.com/SeaQL/sea-orm/tree/master/examples/react_admin)
-1. [Adding GraphQL Support to Loco with Seaography](https://www.sea-ql.org/blog/2024-07-01-graphql-support-with-loco-seaography/)
-1. [GraphQL based Admin Dashboard with Loco and Seaography](https://www.sea-ql.org/blog/2024-08-08-graphql-admin-dashboard-with-loco-seaography/)
+Features:
 
-<img src="https://www.sea-ql.org/blog/img/Loco%20x%20Seaography%20Dashboard%20Demo.png"/>
++ Full CRUD
++ Built on React + GraphQL
++ Built-in GraphQL resolver
++ Customize the UI with simple TOML
 
-## Learn More
+Learn More
 
-1. [Design](https://github.com/SeaQL/sea-orm/tree/master/DESIGN.md)
-1. [Architecture](https://www.sea-ql.org/SeaORM/docs/internal-design/architecture/)
-1. [Engineering](https://www.sea-ql.org/blog/2022-07-30-engineering/)
-1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
++ [Example Repo](https://github.com/SeaQL/sea-orm-pro)
++ [Getting Started with Loco](https://www.sea-ql.org/sea-orm-pro/docs/install-and-config/getting-started-loco/)
++ [Getting Started with Axum](https://www.sea-ql.org/sea-orm-pro/docs/install-and-config/getting-started-axum/)
+
+![](https://raw.githubusercontent.com/SeaQL/sea-orm/refs/heads/master/docs/sea-orm-pro-dark.png#gh-dark-mode-only)
+![](https://raw.githubusercontent.com/SeaQL/sea-orm/refs/heads/master/docs/sea-orm-pro-light.png#gh-light-mode-only)
+
+## Releases
+
+[SeaORM 1.0](https://www.sea-ql.org/blog/2024-08-04-sea-orm-1.0/) is a stable release. The 1.x version will be updated until at least October 2025, and we'll decide whether to release a 2.0 version or extend the 1.x life cycle.
+
+It doesn't mean that SeaORM is 'done', we've designed an architecture to allow us to deliver new features without major breaking changes. In fact, more features are coming!
+
++ [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 
 ### Who's using SeaORM?
 
-See [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to [submit yours](https://github.com/SeaQL/sea-orm/issues/403)!
+Here is a short list of awesome open source software built with SeaORM. [Full list here](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to submit yours!
+
+| Project | GitHub | Tagline |
+|---------|--------|---------|
+| [Zed](https://github.com/zed-industries/zed) | ![GitHub stars](https://img.shields.io/github/stars/zed-industries/zed.svg?style=social) | A high-performance, multiplayer code editor |
+| [OpenObserve](https://github.com/openobserve/openobserve) | ![GitHub stars](https://img.shields.io/github/stars/openobserve/openobserve.svg?style=social) | Open-source observability platform |
+| [RisingWave](https://github.com/risingwavelabs/risingwave) | ![GitHub stars](https://img.shields.io/github/stars/risingwavelabs/risingwave.svg?style=social) | Stream processing and management platform |
+| [LLDAP](https://github.com/nitnelave/lldap) | ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | A light LDAP server for user management |
+| [Warpgate](https://github.com/warp-tech/warpgate) | ![GitHub stars](https://img.shields.io/github/stars/warp-tech/warpgate.svg?style=social) | Smart SSH bastion that works with any SSH client |
+| [Svix](https://github.com/svix/svix-webhooks) | ![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social) | The enterprise ready webhooks service |
+| [Ryot](https://github.com/IgnisDa/ryot) | ![GitHub stars](https://img.shields.io/github/stars/ignisda/ryot.svg?style=social) | The only self hosted tracker you will ever need |
+| [Lapdev](https://github.com/lapce/lapdev) | ![GitHub stars](https://img.shields.io/github/stars/lapce/lapdev.svg?style=social) | Self-hosted remote development enviroment |
+| [System Initiative](https://github.com/systeminit/si) | ![GitHub stars](https://img.shields.io/github/stars/systeminit/si.svg?style=social) | DevOps Automation Platform |
+| [OctoBase](https://github.com/toeverything/OctoBase) | ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend |
 
 ## License
 
@@ -244,15 +268,6 @@ A big shout out to our contributors!
 
 [SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers. If you enjoy using our libraries, please star and share our repositories. If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
 
-### Gold Sponsors
-
-<a href="https://osmos.io/">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://www.sea-ql.org/static/sponsors/Osmos-dark.svg">
-    <img src="https://www.sea-ql.org/static/sponsors/Osmos.svg" width="240">
-  </picture>
-</a>
-
 ### Silver Sponsors
 
 <table><tr>
@@ -265,7 +280,7 @@ A big shout out to our contributors!
 </a></td>
 </tr></table>
 
-We’re immensely grateful to our sponsors: Osmos, for their gold-tier sponsorship and trust in the tools we develop. Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
+We’re immensely grateful to our sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
 
 ## Mascot
 

@@ -1,20 +1,20 @@
-use futures::lock::Mutex;
+use futures_util::lock::Mutex;
 use log::LevelFilter;
 use sea_query::Values;
 use std::{fmt::Write, future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
+    Connection, Executor, PgPool, Postgres,
     pool::PoolConnection,
     postgres::{PgConnectOptions, PgQueryResult, PgRow},
-    Connection, Executor, PgPool, Postgres,
 };
 
 use sea_query_binder::SqlxValues;
 use tracing::instrument;
 
 use crate::{
-    debug_print, error::*, executor::*, AccessMode, ConnectOptions, DatabaseConnection,
-    DatabaseTransaction, DbBackend, IsolationLevel, QueryStream, Statement, TransactionError,
+    AccessMode, ConnectOptions, DatabaseConnection, DatabaseTransaction, DbBackend, IsolationLevel,
+    QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
 };
 
 use super::sqlx_common::*;
@@ -238,7 +238,7 @@ impl SqlxPostgresPoolConnection {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
         let transaction = DatabaseTransaction::new_postgres(
@@ -268,8 +268,14 @@ impl SqlxPostgresPoolConnection {
         }
     }
 
-    /// Explicitly close the Postgres connection
+    /// Explicitly close the Postgres connection.
+    /// See [`Self::close_by_ref`] for usage with references.
     pub async fn close(self) -> Result<(), DbErr> {
+        self.close_by_ref().await
+    }
+
+    /// Explicitly close the Postgres connection
+    pub async fn close_by_ref(&self) -> Result<(), DbErr> {
         self.pool.close().await;
         Ok(())
     }

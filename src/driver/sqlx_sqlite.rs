@@ -1,21 +1,21 @@
-use futures::lock::Mutex;
+use futures_util::lock::Mutex;
 use log::LevelFilter;
 use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
+    Connection, Executor, Sqlite, SqlitePool,
     pool::PoolConnection,
     sqlite::{SqliteConnectOptions, SqliteQueryResult, SqliteRow},
-    Connection, Executor, Sqlite, SqlitePool,
 };
 
 use sea_query_binder::SqlxValues;
 use tracing::{instrument, warn};
 
 use crate::{
-    debug_print, error::*, executor::*, sqlx_error_to_exec_err, AccessMode, ConnectOptions,
-    DatabaseConnection, DatabaseTransaction, IsolationLevel, QueryStream, Statement,
-    TransactionError,
+    AccessMode, ConnectOptions, DatabaseConnection, DatabaseTransaction, IsolationLevel,
+    QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
+    sqlx_error_to_exec_err,
 };
 
 use super::sqlx_common::*;
@@ -226,7 +226,7 @@ impl SqlxSqlitePoolConnection {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
         let transaction = DatabaseTransaction::new_sqlite(
@@ -256,8 +256,14 @@ impl SqlxSqlitePoolConnection {
         }
     }
 
-    /// Explicitly close the SQLite connection
+    /// Explicitly close the SQLite connection.
+    /// See [`Self::close_by_ref`] for usage with references.
     pub async fn close(self) -> Result<(), DbErr> {
+        self.close_by_ref().await
+    }
+
+    /// Explicitly close the SQLite connection
+    pub async fn close_by_ref(&self) -> Result<(), DbErr> {
         self.pool.close().await;
         Ok(())
     }

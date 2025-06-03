@@ -1,10 +1,10 @@
 use crate::{
-    ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable, ModelTrait,
-    PrimaryKeyToColumn, RelationDef,
+    ColumnAsExpr, ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable,
+    ModelTrait, PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
-    Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType,
-    NullOrdering, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef,
+    Alias, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType, NullOrdering, SeaRc,
+    SelectExpr, SelectStatement, SimpleExpr, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -29,7 +29,7 @@ pub trait QuerySelect: Sized {
 
     /// Add a select column
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -44,7 +44,7 @@ pub trait QuerySelect: Sized {
     /// Enum column will be casted into text (PostgreSQL only)
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::lunch_set, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::lunch_set};
     ///
     /// assert_eq!(
     ///     lunch_set::Entity::find()
@@ -52,7 +52,7 @@ pub trait QuerySelect: Sized {
     ///         .column(lunch_set::Column::Tea)
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     r#"SELECT CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    ///     r#"SELECT CAST("lunch_set"."tea" AS "text") FROM "lunch_set""#
     /// );
     /// assert_eq!(
     ///     lunch_set::Entity::find()
@@ -73,7 +73,7 @@ pub trait QuerySelect: Sized {
 
     /// Add a select column with alias
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -86,11 +86,11 @@ pub trait QuerySelect: Sized {
     /// ```
     fn column_as<C, I>(mut self, col: C, alias: I) -> Self
     where
-        C: IntoSimpleExpr,
+        C: ColumnAsExpr,
         I: IntoIdentity,
     {
         self.query().expr(SelectExpr {
-            expr: col.into_simple_expr(),
+            expr: col.into_column_as_expr(),
             alias: Some(SeaRc::new(alias.into_identity())),
             window: None,
         });
@@ -100,7 +100,7 @@ pub trait QuerySelect: Sized {
     /// Select columns
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -115,7 +115,7 @@ pub trait QuerySelect: Sized {
     /// Conditionally select all columns expect a specific column
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -133,7 +133,7 @@ pub trait QuerySelect: Sized {
     /// Enum column will be casted into text (PostgreSQL only)
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::lunch_set, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::lunch_set};
     ///
     /// assert_eq!(
     ///     lunch_set::Entity::find()
@@ -141,7 +141,7 @@ pub trait QuerySelect: Sized {
     ///         .columns([lunch_set::Column::Name, lunch_set::Column::Tea])
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     r#"SELECT "lunch_set"."name", CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    ///     r#"SELECT "lunch_set"."name", CAST("lunch_set"."tea" AS "text") FROM "lunch_set""#
     /// );
     /// assert_eq!(
     ///     lunch_set::Entity::find()
@@ -166,7 +166,7 @@ pub trait QuerySelect: Sized {
     /// Add an offset expression. Passing in None would remove the offset.
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -209,7 +209,7 @@ pub trait QuerySelect: Sized {
     /// Add a limit expression. Passing in None would remove the limit.
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -301,7 +301,7 @@ pub trait QuerySelect: Sized {
     ///         .column_as(cake::Column::Id.count(), "count")
     ///         .column_as(cake::Column::Id.sum(), "sum_of_id")
     ///         .group_by(cake::Column::Name)
-    ///         .having(Expr::col(Alias::new("count")).gt(6))
+    ///         .having(Expr::col("count").gt(6))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT COUNT(`cake`.`id`) AS `count`, SUM(`cake`.`id`) AS `sum_of_id` FROM `cake` GROUP BY `cake`.`name` HAVING `count` > 6"
@@ -317,7 +317,7 @@ pub trait QuerySelect: Sized {
 
     /// Add a DISTINCT expression
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     /// struct Input {
     ///     name: Option<String>,
     /// }
@@ -389,8 +389,7 @@ pub trait QuerySelect: Sized {
 
     /// Join via [`RelationDef`].
     fn join(mut self, join: JoinType, rel: RelationDef) -> Self {
-        self.query()
-            .join(join, rel.to_tbl.clone(), join_condition(rel));
+        self.query().join(join, rel.to_tbl.clone(), rel);
         self
     }
 
@@ -398,8 +397,7 @@ pub trait QuerySelect: Sized {
     /// Assume when there exist a relation A to B.
     /// You can reverse join B from A.
     fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
-        self.query()
-            .join(join, rel.from_tbl.clone(), join_condition(rel));
+        self.query().join(join, rel.from_tbl.clone(), rel);
         self
     }
 
@@ -410,8 +408,7 @@ pub trait QuerySelect: Sized {
     {
         let alias = alias.into_iden();
         rel.to_tbl = rel.to_tbl.alias(SeaRc::clone(&alias));
-        self.query()
-            .join(join, rel.to_tbl.clone(), join_condition(rel));
+        self.query().join(join, rel.to_tbl.clone(), rel);
         self
     }
 
@@ -424,8 +421,7 @@ pub trait QuerySelect: Sized {
     {
         let alias = alias.into_iden();
         rel.from_tbl = rel.from_tbl.alias(SeaRc::clone(&alias));
-        self.query()
-            .join(join, rel.from_tbl.clone(), join_condition(rel));
+        self.query().join(join, rel.from_tbl.clone(), rel);
         self
     }
 
@@ -458,7 +454,7 @@ pub trait QuerySelect: Sized {
     /// Add an expression to the select expression list.
     /// ```
     /// use sea_orm::sea_query::Expr;
-    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    /// use sea_orm::{DbBackend, QuerySelect, QueryTrait, entity::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -480,7 +476,7 @@ pub trait QuerySelect: Sized {
     /// Add select expressions from vector of [`SelectExpr`].
     /// ```
     /// use sea_orm::sea_query::Expr;
-    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    /// use sea_orm::{DbBackend, QuerySelect, QueryTrait, entity::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -506,7 +502,7 @@ pub trait QuerySelect: Sized {
     /// Select column.
     /// ```
     /// use sea_orm::sea_query::{Alias, Expr, Func};
-    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    /// use sea_orm::{DbBackend, QuerySelect, QueryTrait, entity::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -534,7 +530,7 @@ pub trait QuerySelect: Sized {
     ///
     /// ```
     /// use sea_orm::sea_query::{Alias, Expr, Func};
-    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    /// use sea_orm::{DbBackend, QuerySelect, QueryTrait, entity::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -560,7 +556,7 @@ pub trait QuerySelect: Sized {
     ///
     /// ```
     /// use sea_orm::sea_query::{Alias, Expr, Func};
-    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    /// use sea_orm::{DbBackend, QuerySelect, QueryTrait, entity::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -594,7 +590,7 @@ pub trait QueryOrder: Sized {
 
     /// Add an order_by expression
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -615,7 +611,7 @@ pub trait QueryOrder: Sized {
 
     /// Add an order_by expression (ascending)
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -636,7 +632,7 @@ pub trait QueryOrder: Sized {
 
     /// Add an order_by expression (descending)
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -657,7 +653,7 @@ pub trait QueryOrder: Sized {
 
     /// Add an order_by expression with nulls ordering option
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     /// use sea_query::NullOrdering;
     ///
     /// assert_eq!(
@@ -689,7 +685,7 @@ pub trait QueryFilter: Sized {
 
     /// Add an AND WHERE expression
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -703,7 +699,7 @@ pub trait QueryFilter: Sized {
     ///
     /// Add a condition tree.
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -721,7 +717,7 @@ pub trait QueryFilter: Sized {
     /// Like above, but using the `IN` operator.
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -735,8 +731,8 @@ pub trait QueryFilter: Sized {
     /// Like above, but using the `ANY` operator. Postgres only.
     ///
     /// ```
-    /// use sea_orm::sea_query::{extension::postgres::PgFunc, Expr};
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::sea_query::{Expr, extension::postgres::PgFunc};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -749,7 +745,7 @@ pub trait QueryFilter: Sized {
     ///
     /// Add a runtime-built condition tree.
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     /// struct Input {
     ///     name: Option<String>,
     /// }
@@ -773,7 +769,7 @@ pub trait QueryFilter: Sized {
     ///
     /// Add a runtime-built condition tree, functional-way.
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     /// struct Input {
     ///     name: Option<String>,
     /// }
@@ -861,37 +857,6 @@ pub trait QueryFilter: Sized {
         }
         self
     }
-}
-
-pub(crate) fn join_condition(mut rel: RelationDef) -> Condition {
-    // Use table alias (if any) to construct the join condition
-    let from_tbl = match unpack_table_alias(&rel.from_tbl) {
-        Some(alias) => alias,
-        None => unpack_table_ref(&rel.from_tbl),
-    };
-    let to_tbl = match unpack_table_alias(&rel.to_tbl) {
-        Some(alias) => alias,
-        None => unpack_table_ref(&rel.to_tbl),
-    };
-    let owner_keys = rel.from_col;
-    let foreign_keys = rel.to_col;
-
-    let mut condition = match rel.condition_type {
-        ConditionType::All => Condition::all(),
-        ConditionType::Any => Condition::any(),
-    };
-
-    condition = condition.add(join_tbl_on_condition(
-        SeaRc::clone(&from_tbl),
-        SeaRc::clone(&to_tbl),
-        owner_keys,
-        foreign_keys,
-    ));
-    if let Some(f) = rel.on_condition.take() {
-        condition = condition.add(f(from_tbl, to_tbl));
-    }
-
-    condition
 }
 
 pub(crate) fn join_tbl_on_condition(

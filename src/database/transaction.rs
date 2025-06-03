@@ -1,11 +1,11 @@
 use crate::{
-    debug_print, error::*, AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult,
-    InnerConnection, IsolationLevel, QueryResult, Statement, StreamTrait, TransactionStream,
-    TransactionTrait,
+    AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
+    QueryResult, Statement, StreamTrait, TransactionStream, TransactionTrait, debug_print,
+    error::*,
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
-use futures::lock::Mutex;
+use futures_util::lock::Mutex;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::TransactionManager;
 use std::{future::Future, pin::Pin, sync::Arc};
@@ -48,13 +48,13 @@ impl DatabaseTransaction {
                 // in MySQL SET TRANSACTION operations must be executed before transaction start
                 crate::driver::sqlx_mysql::set_transaction_config(c, isolation_level, access_mode)
                     .await?;
-                <sqlx::MySql as sqlx::Database>::TransactionManager::begin(c)
+                <sqlx::MySql as sqlx::Database>::TransactionManager::begin(c, None)
                     .await
                     .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-postgres")]
             InnerConnection::Postgres(ref mut c) => {
-                <sqlx::Postgres as sqlx::Database>::TransactionManager::begin(c)
+                <sqlx::Postgres as sqlx::Database>::TransactionManager::begin(c, None)
                     .await
                     .map_err(sqlx_error_to_query_err)?;
                 // in PostgreSQL SET TRANSACTION operations must be executed inside transaction
@@ -70,13 +70,18 @@ impl DatabaseTransaction {
                 // in SQLite isolation level and access mode are global settings
                 crate::driver::sqlx_sqlite::set_transaction_config(c, isolation_level, access_mode)
                     .await?;
-                <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c)
+                <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, None)
                     .await
                     .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(ref mut c) => {
                 c.begin();
+                Ok(())
+            }
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(ref mut c) => {
+                c.begin().await;
                 Ok(())
             }
             #[allow(unreachable_patterns)]
@@ -95,7 +100,7 @@ impl DatabaseTransaction {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let res = callback(&self).await.map_err(TransactionError::Transaction);
         if res.is_ok() {
@@ -136,6 +141,11 @@ impl DatabaseTransaction {
                 c.commit();
                 Ok(())
             }
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(ref mut c) => {
+                c.commit().await;
+                Ok(())
+            }
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }?;
@@ -171,6 +181,11 @@ impl DatabaseTransaction {
                 c.rollback();
                 Ok(())
             }
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(ref mut c) => {
+                c.rollback().await;
+                Ok(())
+            }
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }?;
@@ -199,6 +214,10 @@ impl DatabaseTransaction {
                     #[cfg(feature = "mock")]
                     InnerConnection::Mock(c) => {
                         c.rollback();
+                    }
+                    #[cfg(feature = "proxy")]
+                    InnerConnection::Proxy(c) => {
+                        c.start_rollback();
                     }
                     #[allow(unreachable_patterns)]
                     _ => return Err(conn_err("Disconnected")),
@@ -260,6 +279,8 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.execute(stmt),
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(conn) => return conn.execute(stmt).await,
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }
@@ -300,6 +321,12 @@ impl ConnectionTrait for DatabaseTransaction {
                 let db_backend = conn.get_database_backend();
                 let stmt = Statement::from_string(db_backend, sql);
                 conn.execute(stmt)
+            }
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(conn) => {
+                let db_backend = conn.get_database_backend();
+                let stmt = Statement::from_string(db_backend, sql);
+                conn.execute(stmt).await
             }
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
@@ -344,6 +371,8 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_one(stmt),
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(conn) => return conn.query_one(stmt).await,
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }
@@ -393,6 +422,8 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_all(stmt),
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(conn) => return conn.query_all(stmt).await,
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }
@@ -458,7 +489,7 @@ impl TransactionTrait for DatabaseTransaction {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let transaction = self.begin().await.map_err(TransactionError::Connection)?;
         transaction.run(_callback).await
@@ -479,7 +510,7 @@ impl TransactionTrait for DatabaseTransaction {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let transaction = self
             .begin_with_config(isolation_level, access_mode)
@@ -491,10 +522,7 @@ impl TransactionTrait for DatabaseTransaction {
 
 /// Defines errors for handling transaction failures
 #[derive(Debug)]
-pub enum TransactionError<E>
-where
-    E: std::error::Error,
-{
+pub enum TransactionError<E> {
     /// A Database connection error
     Connection(DbErr),
     /// An error occurring when doing database transactions
@@ -503,7 +531,7 @@ where
 
 impl<E> std::fmt::Display for TransactionError<E>
 where
-    E: std::error::Error,
+    E: std::fmt::Display + std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -513,11 +541,11 @@ where
     }
 }
 
-impl<E> std::error::Error for TransactionError<E> where E: std::error::Error {}
+impl<E> std::error::Error for TransactionError<E> where E: std::fmt::Display + std::fmt::Debug {}
 
 impl<E> From<DbErr> for TransactionError<E>
 where
-    E: std::error::Error,
+    E: std::fmt::Display + std::fmt::Debug,
 {
     fn from(e: DbErr) -> Self {
         Self::Connection(e)

@@ -1,8 +1,8 @@
 #[cfg(feature = "seaography")]
 mod private {
     use heck::ToLowerCamelCase;
+    use proc_macro_crate::{FoundCrate, crate_name};
     use proc_macro2::{Ident, Span, TokenStream};
-    use proc_macro_crate::{crate_name, FoundCrate};
     use quote::{quote, quote_spanned};
 
     use crate::derives::attributes::related_attr;

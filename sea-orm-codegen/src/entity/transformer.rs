@@ -1,6 +1,6 @@
 use crate::{
-    util::unpack_table_ref, ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error,
-    PrimaryKey, Relation, RelationType,
+    ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation,
+    RelationType, util::unpack_table_ref,
 };
 use sea_query::{ColumnSpec, TableCreateStatement};
 use std::collections::{BTreeMap, HashMap};
@@ -27,7 +27,7 @@ impl EntityTransformer {
                 None => {
                     return Err(Error::TransformError(
                         "Table name should not be empty".into(),
-                    ))
+                    ));
                 }
             };
             let mut primary_keys: Vec<PrimaryKey> = Vec::new();
@@ -397,6 +397,7 @@ mod tests {
                     &Default::default(),
                     &Default::default(),
                     false,
+                    true,
                 )
                 .into_iter()
                 .skip(1)

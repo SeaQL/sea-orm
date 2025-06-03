@@ -1,11 +1,11 @@
 pub use crate::{
-    error::*,
-    sea_query::{DynIden, Expr, RcOrArc, SeaRc, StringLen},
     ActiveEnum, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait, ColumnType,
     ColumnTypeTrait, ConnectionTrait, CursorTrait, DatabaseConnection, DbConn, EntityName,
     EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked, LoaderTrait, ModelTrait,
     PaginatorTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryResult,
     Related, RelationDef, RelationTrait, Select, Value,
+    error::*,
+    sea_query::{DynIden, Expr, RcOrArc, SeaRc, StringLen},
 };
 
 #[cfg(feature = "macros")]
@@ -83,3 +83,9 @@ pub use bigdecimal::BigDecimal;
 
 #[cfg(feature = "with-uuid")]
 pub use uuid::Uuid;
+
+#[cfg(feature = "postgres-vector")]
+pub use pgvector::Vector as PgVector;
+
+#[cfg(feature = "with-ipnetwork")]
+pub use ipnetwork::IpNetwork;
