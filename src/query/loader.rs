@@ -1,9 +1,9 @@
 use crate::{
-    Condition, ConnectionTrait, DbErr, EntityTrait, Identity, ModelTrait, QueryFilter, Related,
-    RelationType, Select, error::*,
+    error::*, query::unpack_table_ref, Condition, ConnectionTrait, DbErr, EntityTrait, Identity,
+    ModelTrait, QueryFilter, Related, RelationType, Select,
 };
 use async_trait::async_trait;
-use sea_query::{ColumnRef, DynIden, Expr, IntoColumnRef, SimpleExpr, TableRef, ValueTuple};
+use sea_query::{ColumnRef, DynIden, Expr, IntoColumnRef, SeaRc, SimpleExpr, TableRef, ValueTuple};
 use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
@@ -208,7 +208,12 @@ where
 
         let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
-        let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
+        let mut stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
+        if let Some(on_condition) = rel_def.on_condition {
+            let from_tbl = unpack_table_ref(&rel_def.from_tbl);
+            let to_tbl = unpack_table_ref(&rel_def.to_tbl);
+            stmt = stmt.filter(on_condition(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
+        }
 
         let data = stmt.all(db).await?;
 
