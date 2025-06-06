@@ -23,7 +23,7 @@ pub struct RegisterParams {
 pub struct Validator {
     #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
     pub name: String,
-    #[validate(custom(function = "validation::is_valid_email"))]
+    #[validate(email(message = "invalid email"))]
     pub email: String,
 }
 
@@ -192,7 +192,7 @@ impl super::_entities::users::Model {
     ///
     /// when could not convert user claims to jwt token
     pub fn generate_jwt(&self, secret: &str, expiration: &u64) -> ModelResult<String> {
-        Ok(jwt::JWT::new(secret).generate_token(expiration, self.pid.to_string(), None)?)
+        Ok(jwt::JWT::new(secret).generate_token(*expiration, self.pid.to_string(), Default::default())?)
     }
 }
 

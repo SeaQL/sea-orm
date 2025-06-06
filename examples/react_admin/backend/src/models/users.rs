@@ -23,7 +23,7 @@ pub struct RegisterParams {
 pub struct Validator {
     #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
     pub name: String,
-    #[validate(custom(function = "validation::is_valid_email"))]
+    #[validate(email(message = "invalid email"))]
     pub email: String,
 }
 
