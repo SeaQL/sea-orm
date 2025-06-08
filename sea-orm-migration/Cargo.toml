@@ -25,7 +25,7 @@ clap = { version = "4.3", features = ["env", "derive"], optional = true }
 dotenvy = { version = "0.15", default-features = false, optional = true }
 sea-orm = { version = "~1.2.0-rc.1", path = "../", default-features = false, features = ["macros"] }
 sea-orm-cli = { version = "~1.2.0-rc.1", path = "../sea-orm-cli", default-features = false, optional = true }
-sea-schema = { version = "0.17.0-rc.1", default-features = false, features = ["discovery", "writer", "probe"] }
+sea-schema = { version = "0.17.0-rc.2", default-features = false, features = ["discovery", "writer", "probe"] }
 tracing = { version = "0.1", default-features = false, features = ["log"] }
 tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
 
