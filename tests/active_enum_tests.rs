@@ -9,9 +9,8 @@ use pretty_assertions::assert_eq;
 use sea_orm::QueryTrait;
 use sea_orm::{
     ActiveEnum as ActiveEnumTrait, DatabaseConnection, FromQueryResult, QuerySelect,
-    entity::prelude::*,
-    entity::*,
-    sea_query::{BinOper, Expr},
+    entity::*,QueryFilter,
+    sea_query::{BinOper, ExprTrait, Expr},DbErr,
 };
 
 #[sea_orm_macros::test]
@@ -143,7 +142,7 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
         Entity::find()
             .filter(
                 Expr::col(Column::Tea)
-                    .binary(BinOper::In, Expr::tuple([Tea::EverydayTea.as_enum()]))
+                    .binary(BinOper::In, Expr::tuple([ActiveEnumTrait::as_enum(&Tea::EverydayTea)]))
             )
             .one(db)
             .await?
@@ -175,7 +174,7 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             .filter(Column::Tea.is_not_null())
             .filter(
                 Expr::col(Column::Tea)
-                    .binary(BinOper::NotIn, Expr::tuple([Tea::BreakfastTea.as_enum()]))
+                    .binary(BinOper::NotIn, Expr::tuple([ActiveEnumTrait::as_enum(&Tea::BreakfastTea)]))
             )
             .one(db)
             .await?
