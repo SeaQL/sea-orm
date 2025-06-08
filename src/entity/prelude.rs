@@ -5,7 +5,7 @@ pub use crate::{
     PaginatorTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryResult,
     Related, RelationDef, RelationTrait, Select, Value,
     error::*,
-    sea_query::{DynIden, Expr, RcOrArc, SeaRc, StringLen},
+    sea_query::{DynIden, Expr, ExprTrait, RcOrArc, SeaRc, StringLen},
 };
 
 #[cfg(feature = "macros")]

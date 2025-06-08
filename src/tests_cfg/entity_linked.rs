@@ -1,5 +1,5 @@
 use crate::entity::prelude::*;
-use sea_query::{Expr, IntoCondition};
+use sea_query::{Expr, ExprTrait, IntoCondition};
 
 #[derive(Debug)]
 pub struct CakeToFilling;

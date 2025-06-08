@@ -1028,7 +1028,7 @@ mod tests {
         mod hello_expanded {
             use crate as sea_orm;
             use crate::entity::prelude::*;
-            use crate::sea_query::{Expr, SimpleExpr};
+            use crate::sea_query::{Expr, ExprTrait, SimpleExpr};
 
             #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
             pub struct Entity;
