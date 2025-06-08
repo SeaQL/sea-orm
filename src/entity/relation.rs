@@ -1,5 +1,5 @@
 use crate::{
-    join_tbl_on_condition, EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select,
+    EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select, join_tbl_on_condition,
 };
 use core::marker::PhantomData;
 use sea_query::{
@@ -240,10 +240,10 @@ impl RelationDef {
     ///
     /// ```
     /// use sea_orm::{
+    ///     DbBackend,
     ///     entity::*,
     ///     query::*,
     ///     tests_cfg::{cake, cake_filling},
-    ///     DbBackend,
     /// };
     /// use sea_query::Alias;
     ///
@@ -556,8 +556,8 @@ impl From<RelationDef> for TableForeignKey {
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests_cfg::{cake, fruit},
         RelationBuilder, RelationDef,
+        tests_cfg::{cake, fruit},
     };
 
     #[test]

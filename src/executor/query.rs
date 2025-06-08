@@ -1,7 +1,7 @@
 pub use crate::error::TryGetError;
 use crate::{
-    error::{type_err, DbErr},
     SelectGetableValue, SelectorRaw, Statement,
+    error::{DbErr, type_err},
 };
 use std::fmt;
 
@@ -1165,7 +1165,7 @@ pub trait TryGetableMany: Sized {
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveIden, EnumIter, TryGetableMany};
+    /// use sea_orm::{DeriveIden, EnumIter, TryGetableMany, entity::*, query::*, tests_cfg::cake};
     ///
     /// #[derive(EnumIter, DeriveIden)]
     /// enum ResultCol {

@@ -3,14 +3,14 @@
 pub mod common;
 
 pub use chrono::offset::Utc;
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, setup::*};
 use pretty_assertions::assert_eq;
 use sea_orm::sea_query::{Expr, Func, SimpleExpr};
 use sea_orm::{
+    DbErr, DerivePartialModel, FromQueryResult,
     entity::*,
     prelude::{DateTime, Decimal, Uuid},
     query::*,
-    DbErr, DerivePartialModel, FromQueryResult,
 };
 
 // Run the test locally:
@@ -272,14 +272,18 @@ pub async fn inner_join() {
         .unwrap();
 
     assert_eq!(results.len(), 2);
-    assert!(results
-        .iter()
-        .any(|result| result.name == customer_kate.name.clone()
-            && result.order_total == Some(kate_order_1.total)));
-    assert!(results
-        .iter()
-        .any(|result| result.name == customer_kate.name.clone()
-            && result.order_total == Some(kate_order_2.total)));
+    assert!(
+        results
+            .iter()
+            .any(|result| result.name == customer_kate.name.clone()
+                && result.order_total == Some(kate_order_1.total))
+    );
+    assert!(
+        results
+            .iter()
+            .any(|result| result.name == customer_kate.name.clone()
+                && result.order_total == Some(kate_order_2.total))
+    );
 
     ctx.delete().await;
 }

@@ -4,14 +4,14 @@ use std::ops::DerefMut;
 use rocket::fairing::{self, Fairing, Info, Kind};
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
-use rocket::{error, info_, Build, Ignite, Phase, Rocket, Sentinel};
+use rocket::{Build, Ignite, Phase, Rocket, Sentinel, error, info_};
 
 use rocket::figment::providers::Serialized;
 use rocket::yansi::Paint;
 
 #[cfg(feature = "rocket_okapi")]
 use rocket_okapi::{
-    gen::OpenApiGenerator,
+    r#gen::OpenApiGenerator,
     request::{OpenApiFromRequest, RequestHeaderInput},
 };
 

@@ -3,8 +3,8 @@ use heck::{
 };
 use std::str::FromStr;
 use syn::{
-    parse::{Parse, ParseStream},
     Ident, LitStr,
+    parse::{Parse, ParseStream},
 };
 
 #[allow(clippy::enum_variant_names)]

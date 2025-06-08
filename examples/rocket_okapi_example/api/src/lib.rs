@@ -9,9 +9,9 @@ use sea_orm_rocket::Database;
 
 use rocket_okapi::mount_endpoints_and_merged_docs;
 use rocket_okapi::okapi::openapi3::OpenApi;
-use rocket_okapi::rapidoc::{make_rapidoc, GeneralConfig, HideShowConfig, RapiDocConfig};
+use rocket_okapi::rapidoc::{GeneralConfig, HideShowConfig, RapiDocConfig, make_rapidoc};
 use rocket_okapi::settings::UrlObject;
-use rocket_okapi::swagger_ui::{make_swagger_ui, SwaggerUIConfig};
+use rocket_okapi::swagger_ui::{SwaggerUIConfig, make_swagger_ui};
 
 use rocket::http::Method;
 use rocket_cors::{AllowedHeaders, AllowedOrigins, Cors};

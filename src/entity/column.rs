@@ -99,7 +99,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     bind_oper!(lte, SmallerThanOrEqual);
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -117,7 +117,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -135,7 +135,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -153,7 +153,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -176,7 +176,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// ## Examples
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -200,7 +200,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// ## Examples
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -224,7 +224,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// ## Examples
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -460,7 +460,6 @@ where
                 *boxed
             }
 
-            let expr = expr.into();
             match expr {
                 SimpleExpr::Value(Value::Array(ArrayType::Json, Some(json_vec))) => {
                     // flatten Array(Vec<Json>) into Json
@@ -481,7 +480,7 @@ where
         }
         _ => match col_type.get_enum_name() {
             Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
-            None => expr.into(),
+            None => expr,
         },
     }
 }
@@ -489,7 +488,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests_cfg::*, ColumnTrait, Condition, DbBackend, EntityTrait, QueryFilter, QueryTrait,
+        ColumnTrait, Condition, DbBackend, EntityTrait, QueryFilter, QueryTrait, tests_cfg::*,
     };
     use sea_query::Query;
 

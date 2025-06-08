@@ -1,5 +1,5 @@
 use async_graphql::*;
-use sea_orm::{entity::prelude::*, DeleteMany};
+use sea_orm::{DeleteMany, entity::prelude::*};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize, SimpleObject)]

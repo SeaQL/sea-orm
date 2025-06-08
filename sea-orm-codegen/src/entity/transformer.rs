@@ -27,7 +27,7 @@ impl EntityTransformer {
                 None => {
                     return Err(Error::TransformError(
                         "Table name should not be empty".into(),
-                    ))
+                    ));
                 }
             };
             let mut primary_keys: Vec<PrimaryKey> = Vec::new();

@@ -1,4 +1,4 @@
-use crate::{join_tbl_on_condition, EntityTrait, QuerySelect, RelationDef, Select};
+use crate::{EntityTrait, QuerySelect, RelationDef, Select, join_tbl_on_condition};
 use sea_query::{Alias, Condition, IntoIden, JoinType, SeaRc};
 
 /// Same as [RelationDef]
