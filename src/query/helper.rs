@@ -4,7 +4,7 @@ use crate::{
 };
 use sea_query::{
     Alias, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType, NullOrdering, SeaRc,
-    SelectExpr, SelectStatement, SimpleExpr, TableRef,
+    SelectExpr, SelectStatement, SimpleExpr,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -873,32 +873,4 @@ pub(crate) fn join_tbl_on_condition(
         );
     }
     cond
-}
-
-pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {
-    match table_ref {
-        TableRef::Table(tbl)
-        | TableRef::SchemaTable(_, tbl)
-        | TableRef::DatabaseSchemaTable(_, _, tbl)
-        | TableRef::TableAlias(tbl, _)
-        | TableRef::SchemaTableAlias(_, tbl, _)
-        | TableRef::DatabaseSchemaTableAlias(_, _, tbl, _)
-        | TableRef::SubQuery(_, tbl)
-        | TableRef::ValuesList(_, tbl)
-        | TableRef::FunctionCall(_, tbl) => SeaRc::clone(tbl),
-    }
-}
-
-pub(crate) fn unpack_table_alias(table_ref: &TableRef) -> Option<DynIden> {
-    match table_ref {
-        TableRef::Table(_)
-        | TableRef::SchemaTable(_, _)
-        | TableRef::DatabaseSchemaTable(_, _, _)
-        | TableRef::SubQuery(_, _)
-        | TableRef::ValuesList(_, _) => None,
-        TableRef::TableAlias(_, alias)
-        | TableRef::SchemaTableAlias(_, _, alias)
-        | TableRef::DatabaseSchemaTableAlias(_, _, _, alias)
-        | TableRef::FunctionCall(_, alias) => Some(SeaRc::clone(alias)),
-    }
 }
