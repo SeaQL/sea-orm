@@ -141,11 +141,11 @@ impl IntoCondition for RelationDef {
         // Use table alias (if any) to construct the join condition
         let from_tbl = match self.from_tbl.table_alias() {
             Some(alias) => alias,
-            None => &self.from_tbl.table(),
+            None => self.from_tbl.table(),
         };
         let to_tbl = match self.to_tbl.table_alias() {
             Some(alias) => alias,
-            None => &self.to_tbl.table(),
+            None => self.to_tbl.table(),
         };
         let owner_keys = self.from_col;
         let foreign_keys = self.to_col;
@@ -156,8 +156,8 @@ impl IntoCondition for RelationDef {
         };
 
         condition = condition.add(join_tbl_on_condition(
-            SeaRc::clone(&from_tbl),
-            SeaRc::clone(&to_tbl),
+            SeaRc::clone(from_tbl),
+            SeaRc::clone(to_tbl),
             owner_keys,
             foreign_keys,
         ));

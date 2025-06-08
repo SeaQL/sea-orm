@@ -8,9 +8,10 @@ use pretty_assertions::assert_eq;
 #[cfg(feature = "sqlx-postgres")]
 use sea_orm::QueryTrait;
 use sea_orm::{
-    ActiveEnum as ActiveEnumTrait, DatabaseConnection, FromQueryResult, QuerySelect,
-    entity::*,QueryFilter,
-    sea_query::{BinOper, ExprTrait, Expr},DbErr,
+    ActiveEnum as ActiveEnumTrait, DatabaseConnection, DbErr, FromQueryResult, QueryFilter,
+    QuerySelect,
+    entity::*,
+    sea_query::{BinOper, Expr, ExprTrait},
 };
 
 #[sea_orm_macros::test]
@@ -140,10 +141,10 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(
         model,
         Entity::find()
-            .filter(
-                Expr::col(Column::Tea)
-                    .binary(BinOper::In, Expr::tuple([ActiveEnumTrait::as_enum(&Tea::EverydayTea)]))
-            )
+            .filter(Expr::col(Column::Tea).binary(
+                BinOper::In,
+                Expr::tuple([ActiveEnumTrait::as_enum(&Tea::EverydayTea)])
+            ))
             .one(db)
             .await?
             .unwrap()
@@ -172,10 +173,10 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
         model,
         Entity::find()
             .filter(Column::Tea.is_not_null())
-            .filter(
-                Expr::col(Column::Tea)
-                    .binary(BinOper::NotIn, Expr::tuple([ActiveEnumTrait::as_enum(&Tea::BreakfastTea)]))
-            )
+            .filter(Expr::col(Column::Tea).binary(
+                BinOper::NotIn,
+                Expr::tuple([ActiveEnumTrait::as_enum(&Tea::BreakfastTea)])
+            ))
             .one(db)
             .await?
             .unwrap()
