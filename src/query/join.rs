@@ -1,6 +1,6 @@
 use crate::{
     ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QuerySelect, Related, Select, SelectA,
-    SelectB, SelectThree, SelectTwo, SelectTwoMany,
+    SelectB, SelectThree, SelectTwo, SelectTwoMany, join_tbl_on_condition,
 };
 pub use sea_query::JoinType;
 use sea_query::{Alias, Condition, Expr, IntoIden, SeaRc, SelectExpr};

@@ -1,7 +1,7 @@
 use crate::{DbBackend, EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable};
 use sea_query::{
-    Alias, BinOper, DynIden, Expr, IntoIden, IntoLikeExpr, SeaRc, SelectStatement, SimpleExpr,
-    Value,
+    Alias, BinOper, DynIden, Expr, ExprTrait, IntoIden, IntoLikeExpr, SeaRc, SelectStatement,
+    SimpleExpr, Value,
 };
 use std::str::FromStr;
 

@@ -3,8 +3,8 @@ use crate::{
     ModelTrait, PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
-    Alias, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType, NullOrdering, SeaRc,
-    SelectExpr, SelectStatement, SimpleExpr,
+    Alias, Expr, ExprTrait, Iden, IntoCondition, IntoIden, LockBehavior, LockType, NullOrdering,
+    SeaRc, SelectExpr, SelectStatement, SimpleExpr,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
