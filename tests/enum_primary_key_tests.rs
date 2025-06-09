@@ -10,6 +10,7 @@ use sea_orm::{
     entity::*,
     sea_query::{BinOper, Expr},
 };
+use sea_query::ExprTrait;
 
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {

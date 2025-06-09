@@ -284,7 +284,7 @@ pub trait QuerySelect: Sized {
 
     /// Add an AND HAVING expression
     /// ```
-    /// use sea_orm::{sea_query::{Alias, Expr}, entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{sea_query::{Alias, Expr, ExprTrait}, entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -731,7 +731,7 @@ pub trait QueryFilter: Sized {
     /// Like above, but using the `ANY` operator. Postgres only.
     ///
     /// ```
-    /// use sea_orm::sea_query::{Expr, extension::postgres::PgFunc};
+    /// use sea_orm::sea_query::{Expr, ExprTrait, extension::postgres::PgFunc};
     /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
@@ -790,7 +790,7 @@ pub trait QueryFilter: Sized {
     ///
     /// A slightly more complex example.
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::Expr, DbBackend};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::{Expr, ExprTrait}, DbBackend};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -815,7 +815,7 @@ pub trait QueryFilter: Sized {
     /// ```
     /// Use a sea_query expression
     /// ```
-    /// use sea_orm::{entity::*, query::*, sea_query::Expr, tests_cfg::fruit, DbBackend};
+    /// use sea_orm::{entity::*, query::*, sea_query::{Expr, ExprTrait}, tests_cfg::fruit, DbBackend};
     ///
     /// assert_eq!(
     ///     fruit::Entity::find()
