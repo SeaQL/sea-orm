@@ -35,7 +35,6 @@ lazy_static = { version = "1.4" }
 tower-service = { version = "0.3" }
 
 [dependencies.sea-orm]
-path = "../../" # remove this line in your own project
 version = "~1.2.0-rc.1" # sea-orm version
 features = [
   "sqlx-sqlite",
@@ -56,6 +55,6 @@ loco-rs = { version = "0.15", features = ["testing"] }
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 
 [patch.crates-io]
-sea-orm = { path = "../../" }
-sea-orm-migration = { path = "../../sea-orm-migration" }
+sea-orm = { git = "https://github.com/SeaQL/sea-orm", branch = "master" }
+sea-orm-migration = { git = "https://github.com/SeaQL/sea-orm", branch = "master" }
 loco-rs = { git = "https://github.com/SeaQL/loco", branch = "master" }
