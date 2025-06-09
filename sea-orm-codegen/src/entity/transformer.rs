@@ -1,6 +1,6 @@
 use crate::{
     ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation,
-    RelationType, util::unpack_table_ref,
+    RelationType,
 };
 use sea_query::{ColumnSpec, TableCreateStatement};
 use std::collections::{BTreeMap, HashMap};
@@ -76,7 +76,7 @@ impl EntityTransformer {
                 .iter()
                 .map(|fk_create_stmt| fk_create_stmt.get_foreign_key())
                 .map(|tbl_fk| {
-                    let ref_tbl = unpack_table_ref(tbl_fk.get_ref_table().unwrap());
+                    let ref_tbl = tbl_fk.get_ref_table().unwrap().table().to_string();
                     if let Some(count) = ref_table_counts.get_mut(&ref_tbl) {
                         if *count == 0 {
                             *count = 1;

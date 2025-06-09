@@ -3,7 +3,7 @@ use crate::{
     SelectTwoMany,
 };
 use core::marker::PhantomData;
-use sea_query::{Alias, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
+use sea_query::{Alias, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
 
 macro_rules! select_def {
     ( $ident: ident, $str: expr ) => {
@@ -42,20 +42,16 @@ where
                 }
                 None => {
                     let col = match &sel.expr {
-                        SimpleExpr::Column(col_ref) => match &col_ref {
-                            ColumnRef::Column(col)
-                            | ColumnRef::TableColumn(_, col)
-                            | ColumnRef::SchemaTableColumn(_, _, col) => col,
-                            ColumnRef::Asterisk | ColumnRef::TableAsterisk(_) => {
-                                panic!("cannot apply alias for Column with asterisk")
+                        SimpleExpr::Column(col_ref) => match col_ref.column() {
+                            Some(col) => col,
+                            None => {
+                                panic!("cannot apply alias for Column with asterisk");
                             }
                         },
                         SimpleExpr::AsEnum(_, simple_expr) => match simple_expr.as_ref() {
-                            SimpleExpr::Column(col_ref) => match &col_ref {
-                                ColumnRef::Column(col)
-                                | ColumnRef::TableColumn(_, col)
-                                | ColumnRef::SchemaTableColumn(_, _, col) => col,
-                                ColumnRef::Asterisk | ColumnRef::TableAsterisk(_) => {
+                            SimpleExpr::Column(col_ref) => match col_ref.column() {
+                                Some(col) => col,
+                                None => {
                                     panic!("cannot apply alias for AsEnum with asterisk")
                                 }
                             },

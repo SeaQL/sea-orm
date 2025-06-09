@@ -8,12 +8,11 @@ use pretty_assertions::assert_eq;
 #[cfg(feature = "sqlx-postgres")]
 use sea_orm::QueryTrait;
 use sea_orm::{
-    ActiveEnum as ActiveEnumTrait, DatabaseConnection, FromQueryResult, QuerySelect,
-    entity::prelude::*,
+    ActiveEnum as ActiveEnumTrait, DatabaseConnection, DbErr, FromQueryResult, QueryFilter,
+    QuerySelect,
     entity::*,
-    sea_query::{BinOper, Expr},
+    sea_query::{BinOper, Expr, ExprTrait},
 };
-use sea_query::ExprTrait;
 
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
