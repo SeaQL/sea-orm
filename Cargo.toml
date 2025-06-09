@@ -34,7 +34,7 @@ tracing = { version = "0.1", default-features = false, features = ["attributes",
 rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.4", default-features = false, optional = true }
 sea-orm-macros = { version = "~1.2.0-rc.1", path = "sea-orm-macros", default-features = false, features = ["strum"] }
-sea-query = { version = "1.0.0-rc.1", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite"] }
+sea-query = { version = "1.0.0-rc.2", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite"] }
 sea-query-binder = { version = "0.8.0-rc.1", default-features = false, optional = true }
 strum = { version = "0.26", default-features = false }
 serde = { version = "1.0", default-features = false }
@@ -109,4 +109,3 @@ seaography = ["sea-orm-macros/seaography"]
 # This allows us to develop using a local version of sea-query
 [patch.crates-io]
 # sea-query = { path = "../sea-query" }
-sea-query = { git = "https://github.com/Huliiiiii/sea-query.git", branch = "expr-2" }
