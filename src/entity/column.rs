@@ -1026,11 +1026,9 @@ mod tests {
         use crate::{ActiveModelTrait, ActiveValue, Update};
 
         mod hello_expanded {
-            use sea_query::ExprTrait;
-
             use crate as sea_orm;
             use crate::entity::prelude::*;
-            use crate::sea_query::{Expr, ExprTrait, SimpleExpr};
+            use crate::sea_query::{Expr, SimpleExpr};
 
             #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
             pub struct Entity;
