@@ -5,6 +5,7 @@ use sea_orm::{
     DerivePartialModel, FromQueryResult, IntoActiveModel, JoinType, NotSet, QueryOrder,
     QuerySelect, Set, prelude::*, sea_query::Alias,
 };
+use sea_query::ExprTrait;
 
 use crate::common::TestContext;
 use common::bakery_chain::*;

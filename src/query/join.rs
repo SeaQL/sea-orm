@@ -189,7 +189,7 @@ mod tests {
         RelationTrait,
     };
     use pretty_assertions::assert_eq;
-    use sea_query::{Alias, ConditionType, Expr, IntoCondition, JoinType};
+    use sea_query::{Alias, ConditionType, Expr, ExprTrait, IntoCondition, JoinType};
 
     #[test]
     fn join_1() {

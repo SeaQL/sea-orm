@@ -1,7 +1,7 @@
 use crate::{DbBackend, EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable};
 use sea_query::{
-    Alias, BinOper, DynIden, Expr, IntoIden, IntoLikeExpr, SeaRc, SelectStatement, SimpleExpr,
-    Value,
+    Alias, BinOper, DynIden, Expr, ExprTrait, IntoIden, IntoLikeExpr, SeaRc, SelectStatement,
+    SimpleExpr, Value,
 };
 use std::str::FromStr;
 
@@ -265,7 +265,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
 
     /// Construct a [`SimpleExpr::Column`] wrapped in [`Expr`].
     fn into_expr(self) -> Expr {
-        Expr::expr(self.into_simple_expr())
+        Expr::new(self.into_simple_expr())
     }
 
     /// Construct a returning [`Expr`].
@@ -1026,6 +1026,8 @@ mod tests {
         use crate::{ActiveModelTrait, ActiveValue, Update};
 
         mod hello_expanded {
+            use sea_query::ExprTrait;
+
             use crate as sea_orm;
             use crate::entity::prelude::*;
             use crate::sea_query::{Expr, SimpleExpr};
@@ -1157,6 +1159,8 @@ mod tests {
         use crate::{ActiveModelTrait, ActiveValue, Update};
 
         mod hello_expanded {
+            use sea_query::ExprTrait;
+
             use crate as sea_orm;
             use crate::entity::prelude::*;
             use crate::sea_query::{Expr, SimpleExpr};
@@ -1288,6 +1292,8 @@ mod tests {
         use crate::{ActiveModelTrait, ActiveValue, Update};
 
         mod hello_expanded {
+            use sea_query::ExprTrait;
+
             use crate as sea_orm;
             use crate::entity::prelude::*;
             use crate::sea_query::{Expr, SimpleExpr};
