@@ -8,15 +8,17 @@ use std::fmt::Debug;
 
 pub use ActiveValue::{NotSet, Set, Unchanged};
 
-/// Defines a stateful value used in ActiveModel.
+/// The state of a field in an [ActiveModel][ActiveModelTrait].
 ///
-/// There are three possible state represented by three enum variants.
-/// - [ActiveValue::Set]: A defined [Value] actively being set
-/// - [ActiveValue::Unchanged]: A defined [Value] remain unchanged
-/// - [ActiveValue::NotSet]: An undefined [Value]
+/// There are three possible states represented by three enum variants:
 ///
-/// The stateful value is useful when constructing UPDATE SQL statement,
-/// see an example below.
+/// - [Set] - a value that's explicitly set by the application and sent to the database.
+/// - [Unchanged] - an existing, unchanged value from the database.
+/// - [NotSet] - an undefined value (nothing is sent to the database).
+///
+/// The difference between these states is useful
+/// when constructing `INSERT` and `UPDATE` SQL statements (see an example below).
+/// It's also useful for knowing which fields have changed in a record.
 ///
 /// # Examples
 ///
@@ -24,16 +26,31 @@ pub use ActiveValue::{NotSet, Set, Unchanged};
 /// use sea_orm::tests_cfg::{cake, fruit};
 /// use sea_orm::{DbBackend, entity::*, query::*};
 ///
-/// // The code snipped below does an UPDATE operation on a `ActiveValue`
+/// // Here, we use `NotSet` to let the database automatically generate an `id`.
+/// // This is different from `Set(None)` that explicitly sets `cake_id` to `NULL`.
 /// assert_eq!(
-///     Update::one(fruit::ActiveModel {
-///         id: ActiveValue::set(1),
-///         name: ActiveValue::set("Orange".to_owned()),
-///         cake_id: ActiveValue::not_set(),
+///     Insert::one(fruit::ActiveModel {
+///         id: ActiveValue::NotSet,
+///         name: ActiveValue::Set("Orange".to_owned()),
+///         cake_id: ActiveValue::Set(None),
 ///     })
 ///     .build(DbBackend::Postgres)
 ///     .to_string(),
-///     r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#
+///     r#"INSERT INTO "fruit" ("name", "cake_id") VALUES ('Orange', NULL)"#
+/// );
+///
+/// // Here, we update the record, set `cake_id` to the new value
+/// // and use `NotSet` to avoid updating the `name` field.
+/// // `id` is the primary key, so it's used in the condition and not updated.
+/// assert_eq!(
+///     Update::one(fruit::ActiveModel {
+///         id: ActiveValue::Unchanged(1),
+///         name: ActiveValue::NotSet,
+///         cake_id: ActiveValue::Set(Some(2)),
+///     })
+///     .build(DbBackend::Postgres)
+///     .to_string(),
+///     r#"UPDATE "fruit" SET "cake_id" = 2 WHERE "fruit"."id" = 1"#
 /// );
 /// ```
 #[derive(Clone, Debug)]
@@ -41,11 +58,32 @@ pub enum ActiveValue<V>
 where
     V: Into<Value>,
 {
-    /// A defined [Value] actively being set
+    /// A [Value] that's explicitly set by the application and sent to the database.
+    ///
+    /// Use this to insert or set a specific value.
+    ///
+    /// When editing an existing value, you can use [set_if_not_equals][ActiveValue::set_if_not_equals]
+    /// to preserve the [Unchanged] state when the new value is the same as the old one.
+    /// Then you can meaningfully use methods like [ActiveModelTrait::is_changed].
     Set(V),
-    /// A defined [Value] remain unchanged
+    /// An existing, unchanged [Value] from the database.
+    ///
+    /// You get these when you query an existing [Model][crate::ModelTrait]
+    /// from the database and convert it into an [ActiveModel][ActiveModelTrait].
+    ///
+    /// When you edit it, you can use [set_if_not_equals][ActiveValue::set_if_not_equals]
+    /// to preserve this "unchanged" state if the new value is the same as the old one.
+    /// Then you can meaningfully use methods like [ActiveModelTrait::is_changed].
     Unchanged(V),
-    /// An undefined [Value]
+    /// An undefined [Value]. Nothing is sent to the database.
+    ///
+    /// When you create a new [ActiveModel][ActiveModelTrait],
+    /// its fields are [NotSet][ActiveValue::NotSet] by default.
+    ///
+    /// This can be useful when:
+    ///
+    /// - You insert a new record and want the database to generate a default value (e.g., an id).
+    /// - In an `UPDATE` statement, you don't want to update some field.
     NotSet,
 }
 
@@ -62,9 +100,17 @@ where
     ActiveValue::not_set()
 }
 
-/// A Trait for ActiveModel to perform Create, Update or Delete operation.
-/// The type must also implement the [EntityTrait].
-/// See module level docs [crate::entity] for a full example
+/// `ActiveModel` is a type for constructing `INSERT` and `UPDATE` statements for a particular table.
+///
+/// Like [Model][ModelTrait], it represents a database record and each field represents a column.
+///
+/// But unlike [Model][ModelTrait], it also stores [additional state][ActiveValue] for every field,
+/// and fields are not guaranteed to have a value.
+///
+/// This allows you to:
+///
+/// - omit columns from the query,
+/// - know which columns have changed after editing a record.
 #[async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
     /// The Entity this ActiveModel belongs to
