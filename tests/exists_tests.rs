@@ -4,7 +4,7 @@ pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
 pub use sea_orm::entity::*;
-pub use sea_orm::{ConnectionTrait, QueryFilter, QuerySelect, QueryOrder, PaginatorTrait};
+pub use sea_orm::{ConnectionTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 
 #[sea_orm_macros::test]
 pub async fn exists_with_no_result() {
@@ -282,19 +282,11 @@ pub async fn exists_with_limit_offset() {
     }
 
     // Test exists with limit - should still find records
-    let exists = Bakery::find()
-        .limit(2)
-        .exists(&ctx.db)
-        .await
-        .unwrap();
+    let exists = Bakery::find().limit(2).exists(&ctx.db).await.unwrap();
     assert_eq!(exists, true);
 
     // Test exists with offset - should still find records
-    let exists = Bakery::find()
-        .offset(3)
-        .exists(&ctx.db)
-        .await
-        .unwrap();
+    let exists = Bakery::find().offset(3).exists(&ctx.db).await.unwrap();
     assert_eq!(exists, true);
 
     // Test exists with limit and offset - exists() checks for existence regardless of offset
