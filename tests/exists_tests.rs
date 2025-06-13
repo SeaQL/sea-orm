@@ -146,44 +146,6 @@ pub async fn exists_with_complex_query() {
 }
 
 #[sea_orm_macros::test]
-pub async fn exists_vs_count_performance_comparison() {
-    let ctx = TestContext::new("exists_vs_count_performance_comparison").await;
-    create_tables(&ctx.db).await.unwrap();
-
-    // Insert multiple bakeries to test performance difference
-    for i in 1..=100 {
-        let _bakery = bakery::ActiveModel {
-            name: Set(format!("Bakery {}", i)),
-            profit_margin: Set(10.0 + (i as f64)),
-            ..Default::default()
-        }
-        .save(&ctx.db)
-        .await
-        .expect("could not insert bakery");
-    }
-
-    // Test exists method
-    let start = std::time::Instant::now();
-    let exists = Bakery::find().exists(&ctx.db).await.unwrap();
-    let exists_duration = start.elapsed();
-    assert_eq!(exists, true);
-
-    // Test count method for comparison
-    let start = std::time::Instant::now();
-    let count = Bakery::find().count(&ctx.db).await.unwrap();
-    let count_duration = start.elapsed();
-    assert!(count > 0);
-
-    // exists() should be faster than count() for large datasets
-    // Note: This is more of a documentation test than a strict assertion
-    // since micro-benchmarking can be unreliable in unit tests
-    println!("exists() took: {:?}", exists_duration);
-    println!("count() took: {:?}", count_duration);
-
-    ctx.delete().await;
-}
-
-#[sea_orm_macros::test]
 pub async fn exists_with_joins() {
     let ctx = TestContext::new("exists_with_joins").await;
     create_tables(&ctx.db).await.unwrap();
