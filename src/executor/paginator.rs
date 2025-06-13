@@ -225,6 +225,33 @@ where
     {
         self.paginate(db, 1).num_items().await
     }
+
+    /// Check if any records exist
+    async fn exists(self, db: &'db C) -> Result<bool, DbErr>
+    where
+        Self: Send + Sized,
+    {
+        let paginator = self.paginate(db, 1);
+        let builder = db.get_database_backend();
+        let stmt = SelectStatement::new()
+            .expr(Expr::cust("1"))
+            .from_subquery(
+                paginator
+                    .query
+                    .clone()
+                    .reset_limit()
+                    .reset_offset()
+                    .clear_order_by()
+                    .limit(1)
+                    .to_owned(),
+                "sub_query",
+            )
+            .limit(1)
+            .to_owned();
+        let stmt = builder.build(&stmt);
+        let result = db.query_one(stmt).await?;
+        Ok(result.is_some())
+    }
 }
 
 impl<'db, C, S> PaginatorTrait<'db, C> for Selector<S>
