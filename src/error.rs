@@ -73,6 +73,14 @@ pub enum DbErr {
     /// May be the table is empty or the record does not exist
     #[error("None of the records are updated")]
     RecordNotUpdated,
+    /// This operation is not supported by the database backend
+    #[error("Operation not supported by backend {db}: {ctx}")]
+    BackendNotSupported {
+        /// Database backend
+        db: &'static str,
+        /// Context
+        ctx: &'static str,
+    },
 }
 
 /// An error from trying to get a row from a Model
