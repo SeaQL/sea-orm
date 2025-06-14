@@ -54,6 +54,7 @@ impl Default for DatabaseConnection {
 /// The type of database backend for real world databases.
 /// This is enabled by feature flags as specified in the crate documentation
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DatabaseBackend {
     /// A MySQL backend
     MySql,
