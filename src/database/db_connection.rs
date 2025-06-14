@@ -54,6 +54,7 @@ impl Default for DatabaseConnection {
 /// The type of database backend for real world databases.
 /// This is enabled by feature flags as specified in the crate documentation
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DatabaseBackend {
     /// A MySQL backend
     MySql,
@@ -594,6 +595,17 @@ impl DbBackend {
     pub fn boolean_value(&self, boolean: bool) -> sea_query::Value {
         match self {
             Self::MySql | Self::Postgres | Self::Sqlite => boolean.into(),
+        }
+    }
+}
+
+impl DatabaseBackend {
+    /// Get the display string for this enum
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            DatabaseBackend::MySql => "MySql",
+            DatabaseBackend::Postgres => "Postgres",
+            DatabaseBackend::Sqlite => "Sqlite",
         }
     }
 }

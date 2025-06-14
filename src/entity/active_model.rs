@@ -1,6 +1,6 @@
 use crate::{
     ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyArity, PrimaryKeyToColumn,
-    PrimaryKeyTrait, TryIntoModel, Value, error::*,
+    PrimaryKeyTrait, Value, error::*,
 };
 use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
@@ -522,7 +522,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     #[cfg(feature = "with-json")]
     fn set_from_json(&mut self, json: serde_json::Value) -> Result<(), DbErr>
     where
-        Self: TryIntoModel<<Self::Entity as EntityTrait>::Model>,
+        Self: crate::TryIntoModel<<Self::Entity as EntityTrait>::Model>,
         <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
             serde::de::Deserialize<'de> + serde::Serialize,
@@ -553,7 +553,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     #[cfg(feature = "with-json")]
     fn from_json(mut json: serde_json::Value) -> Result<Self, DbErr>
     where
-        Self: TryIntoModel<<Self::Entity as EntityTrait>::Model>,
+        Self: crate::TryIntoModel<<Self::Entity as EntityTrait>::Model>,
         <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
             serde::de::Deserialize<'de> + serde::Serialize,

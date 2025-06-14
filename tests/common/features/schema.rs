@@ -34,6 +34,12 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
             );
             vec![enum_create_stmt]
         }
+        db => {
+            return Err(DbErr::BackendNotSupported {
+                db: db.as_str(),
+                ctx: "create_byte_primary_key_table",
+            });
+        }
     };
     create_enum(db, &create_enum_stmts, ActiveEnum).await?;
 
@@ -180,6 +186,12 @@ pub async fn create_byte_primary_key_table(db: &DbConn) -> Result<ExecResult, Db
     match db.get_database_backend() {
         DbBackend::MySql => primary_key_col.binary_len(3),
         DbBackend::Sqlite | DbBackend::Postgres => primary_key_col.binary(),
+        db => {
+            return Err(DbErr::BackendNotSupported {
+                db: db.as_str(),
+                ctx: "create_byte_primary_key_table",
+            });
+        }
     };
 
     let stmt = sea_query::Table::create()

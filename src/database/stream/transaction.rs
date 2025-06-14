@@ -49,46 +49,54 @@ impl TransactionStream<'_> {
                 #[cfg(feature = "sqlx-mysql")]
                 InnerConnection::MySql(c) => {
                     let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
-                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let start = _metric_callback.is_some().then(std::time::SystemTime::now);
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
                         .map_err(sqlx_error_to_query_err);
-                    let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
+                    let elapsed = start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[cfg(feature = "sqlx-postgres")]
                 InnerConnection::Postgres(c) => {
                     let query = crate::driver::sqlx_postgres::sqlx_query(stmt);
-                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let start = _metric_callback.is_some().then(std::time::SystemTime::now);
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
                         .map_err(sqlx_error_to_query_err);
-                    let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
+                    let elapsed = start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[cfg(feature = "sqlx-sqlite")]
                 InnerConnection::Sqlite(c) => {
                     let query = crate::driver::sqlx_sqlite::sqlx_query(stmt);
-                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let start = _metric_callback.is_some().then(std::time::SystemTime::now);
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
                         .map_err(sqlx_error_to_query_err);
-                    let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
+                    let elapsed = start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[cfg(feature = "mock")]
                 InnerConnection::Mock(c) => {
-                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let start = _metric_callback.is_some().then(std::time::SystemTime::now);
                     let stream = c.fetch(stmt);
-                    let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
+                    let elapsed = start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[cfg(feature = "proxy")]
                 InnerConnection::Proxy(c) => {
-                    todo!("Proxy connection is not supported")
+                    let start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let stream = futures_util::stream::once(async {
+                        Err(DbErr::BackendNotSupported {
+                            db: "Proxy",
+                            ctx: "TransactionStream",
+                        })
+                    });
+                    let elapsed = start.map(|s| s.elapsed().unwrap_or_default());
+                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[allow(unreachable_patterns)]
                 _ => unreachable!(),

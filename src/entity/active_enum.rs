@@ -157,7 +157,10 @@ macro_rules! impl_active_enum_value {
                 _res: &QueryResult,
                 _index: I,
             ) -> Result<Vec<Self>, TryGetError> {
-                panic!("Not supported by `postgres-array`")
+                Err(TryGetError::DbErr(DbErr::BackendNotSupported {
+                    db: "Postgres",
+                    ctx: "ActiveEnumValue::try_get_vec_by",
+                }))
             }
         }
     };
@@ -175,7 +178,10 @@ macro_rules! impl_active_enum_value_with_pg_array {
                     <Vec<Self>>::try_get_by(_res, _index)
                 }
                 #[cfg(not(feature = "postgres-array"))]
-                panic!("`postgres-array` is not enabled")
+                Err(TryGetError::DbErr(DbErr::BackendNotSupported {
+                    db: "Postgres",
+                    ctx: "ActiveEnumValue::try_get_vec_by (`postgres-array` not enabled)",
+                }))
             }
         }
     };
