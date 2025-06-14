@@ -92,7 +92,7 @@ impl TransactionStream<'_> {
                     let stream = futures_util::stream::once(async {
                         Err(DbErr::BackendNotSupported {
                             db: "Proxy",
-                            ctx: "QueryStream",
+                            ctx: "TransactionStream",
                         })
                     });
                     let elapsed = start.map(|s| s.elapsed().unwrap_or_default());
