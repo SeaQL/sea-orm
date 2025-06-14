@@ -180,7 +180,7 @@ macro_rules! impl_active_enum_value_with_pg_array {
                 #[cfg(not(feature = "postgres-array"))]
                 Err(TryGetError::DbErr(DbErr::BackendNotSupported {
                     db: "Postgres",
-                    ctx: "ActiveEnumValue::try_get_vec_by",
+                    ctx: "ActiveEnumValue::try_get_vec_by (`postgres-array` not enabled)",
                 }))
             }
         }

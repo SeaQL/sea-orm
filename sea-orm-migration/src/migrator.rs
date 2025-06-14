@@ -269,6 +269,10 @@ where
             let manager = SchemaManager::new(db);
             f(&manager).await
         }
+        db => Err(DbErr::BackendNotSupported {
+            db: db.as_str(),
+            ctx: "exec_with_connection",
+        }),
     }
 }
 

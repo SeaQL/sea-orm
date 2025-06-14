@@ -599,6 +599,17 @@ impl DbBackend {
     }
 }
 
+impl DatabaseBackend {
+    /// Get the display string for this enum
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            DatabaseBackend::MySql => "MySql",
+            DatabaseBackend::Postgres => "Postgres",
+            DatabaseBackend::Sqlite => "Sqlite",
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::DatabaseConnection;
