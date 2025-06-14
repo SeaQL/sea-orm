@@ -94,6 +94,12 @@ where
             db
         }
         DbBackend::Sqlite => db,
+        db => {
+            return Err(DbErr::BackendNotSupported {
+                db: db.as_str(),
+                ctx: "run_migration",
+            });
+        }
     };
     let manager = SchemaManager::new(db);
 
