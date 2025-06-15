@@ -83,12 +83,12 @@ pub enum DbErr {
         ctx: &'static str,
     },
     /// (Primary) Key arity mismatch
-    #[error("Key arity mismatch: expected {expected}, got {got}")]
+    #[error("Key arity mismatch: expected {expected}, received {received}")]
     KeyArityMismatch {
         /// Expected value
         expected: u8,
-        /// Observed value
-        got: u8,
+        /// Received value
+        received: u8,
     },
     /// Primay key not set for update / delete
     #[error("Primay key not set for {ctx}")]

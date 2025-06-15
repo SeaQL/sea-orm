@@ -78,7 +78,7 @@ where
             if self.order_columns.arity() != values.arity() {
                 return Err(DbErr::KeyArityMismatch {
                     expected: self.order_columns.arity() as u8,
-                    got: values.arity() as u8,
+                    received: values.arity() as u8,
                 });
             }
             let condition = self.apply_filter(values, |c, v| {
@@ -92,7 +92,7 @@ where
             if self.order_columns.arity() != values.arity() {
                 return Err(DbErr::KeyArityMismatch {
                     expected: self.order_columns.arity() as u8,
-                    got: values.arity() as u8,
+                    received: values.arity() as u8,
                 });
             }
             let condition = self.apply_filter(values, |c, v| {
