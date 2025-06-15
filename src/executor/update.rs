@@ -22,12 +22,15 @@ impl<A> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
-    /// Execute an update operation on an ActiveModel
+    /// Execute an UPDATE operation on an ActiveModel
     pub async fn exec<C>(self, db: &C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
     {
+        if let Some(err) = self.error {
+            return Err(err);
+        }
         Updater::new(self.query)
             .exec_update_and_return_updated(self.model, db)
             .await
@@ -63,17 +66,11 @@ where
 
 impl Updater {
     /// Instantiate an update using an [UpdateStatement]
-    pub fn new(query: UpdateStatement) -> Self {
+    fn new(query: UpdateStatement) -> Self {
         Self {
             query,
             check_record_exists: false,
         }
-    }
-
-    /// Check if a record exists on the ActiveModel to perform the update operation on
-    pub fn check_record_exists(mut self) -> Self {
-        self.check_record_exists = true;
-        self
     }
 
     /// Execute an update operation
@@ -132,7 +129,8 @@ impl Updater {
             }
             false => {
                 // If we updating a row that does not exist then an error will be thrown here.
-                self.check_record_exists().exec(db).await?;
+                self.check_record_exists = true;
+                self.exec(db).await?;
                 find_updated_model_by_id(model, db).await
             }
         }
@@ -197,12 +195,17 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{entity::prelude::*, tests_cfg::*, *};
+    use crate::{
+        ColumnTrait, DbBackend, DbErr, EntityTrait, IntoActiveModel, MockDatabase, MockExecResult,
+        QueryFilter, Set, Transaction, Update, UpdateResult, tests_cfg::cake,
+    };
     use pretty_assertions::assert_eq;
     use sea_query::Expr;
 
     #[smol_potat::test]
     async fn update_record_not_found_1() -> Result<(), DbErr> {
+        use crate::ActiveModelTrait;
+
         let updated_cake = cake::Model {
             id: 1,
             name: "Cheese Cake".to_owned(),
@@ -355,5 +358,28 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn update_error() {
+        use crate::{DbBackend, DbErr, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::MySql).into_connection();
+
+        assert!(matches!(
+            Update::one(cake::ActiveModel {
+                ..Default::default()
+            })
+            .exec(&db)
+            .await,
+            Err(DbErr::PrimaryKeyNotSet { .. })
+        ));
+
+        assert!(matches!(
+            cake::Entity::update(cake::ActiveModel::default())
+                .exec(&db)
+                .await,
+            Err(DbErr::PrimaryKeyNotSet { .. })
+        ));
     }
 }

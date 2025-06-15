@@ -15,3 +15,6 @@ serde_json = { version = "1" }
 futures = { version = "0.3" }
 async-stream = { version = "0.3" }
 futures-util = { version = "0.3" }
+
+[patch.crates-io]
+sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }

@@ -36,8 +36,7 @@ impl<S> Cursor<S>
 where
     S: SelectorTrait,
 {
-    /// Create a new cursor
-    pub fn new<C>(query: SelectStatement, table: DynIden, order_columns: C) -> Self
+    pub(crate) fn new<C>(query: SelectStatement, table: DynIden, order_columns: C) -> Self
     where
         C: IntoIdentity,
     {
@@ -45,6 +44,7 @@ where
             query,
             table,
             order_columns: order_columns.into_identity(),
+            secondary_order_by: Default::default(),
             last: None,
             first: None,
             after: None,
@@ -52,7 +52,6 @@ where
             sort_asc: true,
             is_result_reversed: false,
             phantom: PhantomData,
-            secondary_order_by: Default::default(),
         }
     }
 
@@ -74,8 +73,14 @@ where
         self
     }
 
-    fn apply_filters(&mut self) -> &mut Self {
+    fn apply_filters(&mut self) -> Result<&mut Self, DbErr> {
         if let Some(values) = self.after.clone() {
+            if self.order_columns.arity() != values.arity() {
+                return Err(DbErr::KeyArityMismatch {
+                    expected: self.order_columns.arity() as u8,
+                    received: values.arity() as u8,
+                });
+            }
             let condition = self.apply_filter(values, |c, v| {
                 let exp = Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c)));
                 if self.sort_asc { exp.gt(v) } else { exp.lt(v) }
@@ -84,6 +89,12 @@ where
         }
 
         if let Some(values) = self.before.clone() {
+            if self.order_columns.arity() != values.arity() {
+                return Err(DbErr::KeyArityMismatch {
+                    expected: self.order_columns.arity() as u8,
+                    received: values.arity() as u8,
+                });
+            }
             let condition = self.apply_filter(values, |c, v| {
                 let exp = Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c)));
                 if self.sort_asc { exp.lt(v) } else { exp.gt(v) }
@@ -91,7 +102,7 @@ where
             self.query.cond_where(condition);
         }
 
-        self
+        Ok(self)
     }
 
     fn apply_filter<F>(&self, values: ValueTuple, f: F) -> Condition
@@ -178,7 +189,7 @@ where
                         cond_any.add(inner_cond_all)
                     })
             }
-            _ => panic!("column arity mismatch"),
+            _ => unreachable!("checked by caller"),
         }
     }
 
@@ -273,7 +284,7 @@ where
     {
         self.apply_limit();
         self.apply_order_by();
-        self.apply_filters();
+        self.apply_filters()?;
 
         let stmt = db.get_database_backend().build(&self.query);
         let rows = db.query_all(stmt).await?;
@@ -296,6 +307,7 @@ where
             query: self.query,
             table: self.table,
             order_columns: self.order_columns,
+            secondary_order_by: self.secondary_order_by,
             last: self.last,
             first: self.first,
             after: self.after,
@@ -303,7 +315,6 @@ where
             sort_asc: self.sort_asc,
             is_result_reversed: self.is_result_reversed,
             phantom: PhantomData,
-            secondary_order_by: self.secondary_order_by,
         }
     }
 
@@ -322,6 +333,7 @@ where
             query: self.query,
             table: self.table,
             order_columns: self.order_columns,
+            secondary_order_by: self.secondary_order_by,
             last: self.last,
             first: self.first,
             after: self.after,
@@ -329,7 +341,6 @@ where
             sort_asc: self.sort_asc,
             is_result_reversed: self.is_result_reversed,
             phantom: PhantomData,
-            secondary_order_by: self.secondary_order_by,
         }
     }
 
@@ -1477,6 +1488,35 @@ mod tests {
     }
 
     #[smol_potat::test]
+    async fn composite_keys_error() -> Result<(), DbErr> {
+        use test_entity::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[Model {
+                id: 1,
+                category: "CAT".into(),
+            }]])
+            .into_connection();
+
+        let result = Entity::find()
+            .cursor_by((Column::Category, Column::Id))
+            .after("A".to_owned())
+            .first(3)
+            .all(&db)
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(DbErr::KeyArityMismatch {
+                expected: 2,
+                got: 1,
+            })
+        ));
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
     async fn composite_keys_2_desc() -> Result<(), DbErr> {
         use test_entity::*;
 
@@ -1857,7 +1897,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4))
-                .after(("val_1", "val_2", "val_3", "val_4")).apply_limit().apply_order_by().apply_filters().query
+                .after(("val_1", "val_2", "val_3", "val_4")).apply_limit().apply_order_by().apply_filters()?.query
             ).to_string(),
             format!("{base_sql} {}", [
                 r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" > 'val_4')"#,
@@ -1872,7 +1912,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5))
-                .after(("val_1", "val_2", "val_3", "val_4", "val_5")).apply_limit().apply_order_by().apply_filters()
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5")).apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1889,7 +1929,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6))
-                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6")).apply_limit().apply_order_by().apply_filters()
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6")).apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1907,7 +1947,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7))
-                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7")).apply_limit().apply_order_by().apply_filters()
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7")).apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1926,7 +1966,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8))
-                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8")).apply_limit().apply_order_by().apply_filters()
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8")).apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1946,7 +1986,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8, Column::Col9))
-                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8", "val_9")).apply_limit().apply_order_by().apply_filters()
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8", "val_9")).apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1979,7 +2019,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4))
-                .before(("val_1", "val_2", "val_3", "val_4")).desc().apply_limit().apply_order_by().apply_filters().query
+                .before(("val_1", "val_2", "val_3", "val_4")).desc().apply_limit().apply_order_by().apply_filters()?.query
             ).to_string(),
             format!("{base_sql} {}", [
                 r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" > 'val_4')"#,
@@ -1994,7 +2034,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5))
-                .before(("val_1", "val_2", "val_3", "val_4", "val_5")).desc().apply_limit().apply_order_by().apply_filters()
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5")).desc().apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -2011,7 +2051,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6))
-                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6")).desc().apply_limit().apply_order_by().apply_filters()
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6")).desc().apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -2029,7 +2069,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7))
-                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7")).desc().apply_limit().apply_order_by().apply_filters()
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7")).desc().apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -2048,7 +2088,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8))
-                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8")).desc().apply_limit().apply_order_by().apply_filters()
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8")).desc().apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -2068,7 +2108,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8, Column::Col9))
-                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8", "val_9")).desc().apply_limit().apply_order_by().apply_filters()
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8", "val_9")).desc().apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [

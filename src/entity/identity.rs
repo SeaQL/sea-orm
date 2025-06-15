@@ -15,6 +15,18 @@ pub enum Identity {
     Many(Vec<DynIden>),
 }
 
+impl Identity {
+    /// Get arity for this value
+    pub fn arity(&self) -> usize {
+        match self {
+            Self::Unary(_) => 1,
+            Self::Binary(_, _) => 2,
+            Self::Ternary(_, _, _) => 3,
+            Self::Many(vec) => vec.len(),
+        }
+    }
+}
+
 impl IntoIterator for Identity {
     type Item = DynIden;
     type IntoIter = std::vec::IntoIter<Self::Item>;
