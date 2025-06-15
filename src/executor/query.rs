@@ -253,9 +253,14 @@ impl<T: TryGetable> TryGetable for Option<T> {
             Ok(v) => Ok(Some(v)),
             Err(TryGetError::Null(_)) => Ok(None),
             #[cfg(feature = "sqlx-dep")]
-            Err(TryGetError::DbErr(DbErr::Query(crate::RuntimeErr::SqlxError(
-                sqlx::Error::ColumnNotFound(_),
-            )))) => Ok(None),
+            Err(TryGetError::DbErr(DbErr::Query(crate::RuntimeErr::SqlxError(err)))) => {
+                match err.deref() {
+                    sqlx::Error::ColumnNotFound(_) => Ok(None),
+                    _ => Err(TryGetError::DbErr(DbErr::Query(
+                        crate::RuntimeErr::SqlxError(err),
+                    ))),
+                }
+            }
             Err(e) => Err(e),
         }
     }
