@@ -12,36 +12,15 @@ where
     A: ActiveModelTrait,
 {
     pub(crate) query: InsertStatement,
-    pub(crate) columns: Vec<bool>,
     pub(crate) primary_key: Option<ValueTuple>,
+    pub(crate) empty: bool,
     pub(crate) model: PhantomData<A>,
-}
-
-impl<A> Default for Insert<A>
-where
-    A: ActiveModelTrait,
-{
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl<A> Insert<A>
 where
     A: ActiveModelTrait,
 {
-    pub(crate) fn new() -> Self {
-        Self {
-            query: InsertStatement::new()
-                .into_table(A::Entity::default().table_ref())
-                .or_default_values()
-                .to_owned(),
-            columns: Vec::new(),
-            primary_key: None,
-            model: PhantomData,
-        }
-    }
-
     /// Insert one Model or ActiveModel
     ///
     /// Model
@@ -76,7 +55,7 @@ where
     where
         M: IntoActiveModel<A>,
     {
-        Self::new().add(m)
+        Self::one_impl(m)
     }
 
     /// Insert many Model or ActiveModel
@@ -105,21 +84,20 @@ where
         M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
     {
-        Self::new().add_many(models)
+        Self::many_impl(models)
     }
 
-    /// Add a Model to Self
-    ///
-    /// # Panics
-    ///
-    /// Panics if the rows have different column sets from what've previously been cached in the query statement
-    #[allow(clippy::should_implement_trait)]
-    pub fn add<M>(mut self, m: M) -> Self
+    fn one_impl<M>(m: M) -> Self
     where
         M: IntoActiveModel<A>,
     {
+        let mut query = InsertStatement::new();
+        query
+            .into_table(A::Entity::default().table_ref())
+            .or_default_values();
+
         let mut am: A = m.into_active_model();
-        self.primary_key =
+        let primary_key =
             if !<<A::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::auto_increment() {
                 am.get_primary_key_value()
             } else {
@@ -127,15 +105,10 @@ where
             };
         let mut columns = Vec::new();
         let mut values = Vec::new();
-        let columns_empty = self.columns.is_empty();
-        for (idx, col) in <A::Entity as EntityTrait>::Column::iter().enumerate() {
+
+        for col in <A::Entity as EntityTrait>::Column::iter() {
             let av = am.take(col);
-            let av_has_val = av.is_set() || av.is_unchanged();
-            if columns_empty {
-                self.columns.push(av_has_val);
-            } else if self.columns[idx] != av_has_val {
-                panic!("columns mismatch");
-            }
+
             match av {
                 ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
                     columns.push(col);
@@ -144,46 +117,36 @@ where
                 ActiveValue::NotSet => {}
             }
         }
-        self.query.columns(columns);
-        self.query.values_panic(values);
-        self
-    }
 
-    /// Add many Models to Self. This is the legacy implementation priori to `1.1.3`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the rows have different column sets
-    #[deprecated(
-        since = "1.1.3",
-        note = "Please use [`Insert::add_many`] which does not panic"
-    )]
-    pub fn add_multi<M, I>(mut self, models: I) -> Self
-    where
-        M: IntoActiveModel<A>,
-        I: IntoIterator<Item = M>,
-    {
-        for model in models.into_iter() {
-            self = self.add(model);
+        query.columns(columns);
+        query.values_panic(values);
+
+        Self {
+            query,
+            primary_key,
+            empty: false,
+            model: PhantomData,
         }
-        self
     }
 
-    /// Add many Models to Self
-    pub fn add_many<M, I>(mut self, models: I) -> Self
+    fn many_impl<M, I>(models: I) -> Self
     where
         M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
     {
+        let mut query = InsertStatement::new();
+        query.into_table(A::Entity::default().table_ref());
+
         let mut columns: Vec<_> = <A::Entity as EntityTrait>::Column::iter()
             .map(|_| None)
             .collect();
         let mut null_value: Vec<Option<Value>> = std::iter::repeat_n(None, columns.len()).collect();
         let mut all_values: Vec<Vec<SimpleExpr>> = Vec::new();
+        let mut primary_key = None;
 
         for model in models.into_iter() {
             let mut am: A = model.into_active_model();
-            self.primary_key =
+            primary_key =
                 if !<<A::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::auto_increment() {
                     am.get_primary_key_value()
                 } else {
@@ -206,34 +169,37 @@ where
             all_values.push(values);
         }
 
+        let empty = all_values.is_empty();
+
         if !all_values.is_empty() {
             // filter only used column
-            self.query.columns(columns.iter().cloned().flatten());
-
-            // flag used column
-            self.columns = columns.iter().map(Option::is_some).collect();
+            query.columns(columns.iter().cloned().flatten());
         }
 
         for values in all_values {
             // since we've aligned the column set, this never panics
-            self.query
-                .values_panic(values.into_iter().enumerate().filter_map(|(i, v)| {
-                    if columns[i].is_some() {
-                        // only if the column is used
-                        if !matches!(v, SimpleExpr::Keyword(Keyword::Null)) {
-                            // use the value expression
-                            Some(v)
-                        } else {
-                            // use null as standin, which must be Some
-                            null_value[i].clone().map(SimpleExpr::Value)
-                        }
+            query.values_panic(values.into_iter().enumerate().filter_map(|(i, v)| {
+                if columns[i].is_some() {
+                    // only if the column is used
+                    if !matches!(v, SimpleExpr::Keyword(Keyword::Null)) {
+                        // use the value expression
+                        Some(v)
                     } else {
-                        None
+                        // use null as standin, which must be Some
+                        null_value[i].clone().map(SimpleExpr::Value)
                     }
-                }));
+                } else {
+                    None
+                }
+            }));
         }
 
-        self
+        Self {
+            query,
+            primary_key,
+            empty,
+            model: PhantomData,
+        }
     }
 
     /// On conflict
@@ -289,7 +255,7 @@ where
     where
         A: ActiveModelTrait,
     {
-        TryInsert::from_insert(self)
+        TryInsert::new(self)
     }
 
     /// Alias to `do_nothing`
@@ -297,7 +263,7 @@ where
     where
         A: ActiveModelTrait,
     {
-        TryInsert::from_insert(self)
+        TryInsert::new(self)
     }
 
     /// Set ON CONFLICT on primary key do nothing, but with MySQL specific polyfill.
@@ -343,7 +309,7 @@ where
                 .to_owned(),
         );
 
-        TryInsert::from_insert(self)
+        TryInsert::new(self)
     }
 }
 
@@ -377,23 +343,14 @@ where
     pub(crate) insert_struct: Insert<A>,
 }
 
-impl<A> Default for TryInsert<A>
-where
-    A: ActiveModelTrait,
-{
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[allow(missing_docs)]
 impl<A> TryInsert<A>
 where
     A: ActiveModelTrait,
 {
-    pub(crate) fn new() -> Self {
+    fn new(insert: Insert<A>) -> Self {
         Self {
-            insert_struct: Insert::new(),
+            insert_struct: insert,
         }
     }
 
@@ -401,7 +358,9 @@ where
     where
         M: IntoActiveModel<A>,
     {
-        Self::new().add(m)
+        Self {
+            insert_struct: Insert::one(m),
+        }
     }
 
     pub fn many<M, I>(models: I) -> Self
@@ -409,37 +368,14 @@ where
         M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
     {
-        Self::new().add_many(models)
-    }
-
-    #[allow(clippy::should_implement_trait)]
-    pub fn add<M>(mut self, m: M) -> Self
-    where
-        M: IntoActiveModel<A>,
-    {
-        self.insert_struct = self.insert_struct.add(m);
-        self
-    }
-
-    pub fn add_many<M, I>(mut self, models: I) -> Self
-    where
-        M: IntoActiveModel<A>,
-        I: IntoIterator<Item = M>,
-    {
-        self.insert_struct = self.insert_struct.add_many(models);
-        self
+        Self {
+            insert_struct: Insert::many(models),
+        }
     }
 
     pub fn on_conflict(mut self, on_conflict: OnConflict) -> Self {
         self.insert_struct.query.on_conflict(on_conflict);
         self
-    }
-
-    // helper function for do_nothing in Insert<A>
-    pub fn from_insert(insert: Insert<A>) -> Self {
-        Self {
-            insert_struct: insert,
-        }
     }
 }
 
@@ -461,6 +397,7 @@ where
         self.insert_struct.query
     }
 }
+
 #[cfg(test)]
 mod tests {
     use sea_query::OnConflict;
@@ -474,13 +411,12 @@ mod tests {
     #[test]
     fn insert_1() {
         assert_eq!(
-            Insert::<cake::ActiveModel>::new()
-                .add(cake::ActiveModel {
-                    id: ActiveValue::not_set(),
-                    name: ActiveValue::set("Apple Pie".to_owned()),
-                })
-                .build(DbBackend::Postgres)
-                .to_string(),
+            Insert::<cake::ActiveModel>::one(cake::ActiveModel {
+                id: ActiveValue::not_set(),
+                name: ActiveValue::set("Apple Pie".to_owned()),
+            })
+            .build(DbBackend::Postgres)
+            .to_string(),
             r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie')"#,
         );
     }
@@ -488,13 +424,12 @@ mod tests {
     #[test]
     fn insert_2() {
         assert_eq!(
-            Insert::<cake::ActiveModel>::new()
-                .add(cake::ActiveModel {
-                    id: ActiveValue::set(1),
-                    name: ActiveValue::set("Apple Pie".to_owned()),
-                })
-                .build(DbBackend::Postgres)
-                .to_string(),
+            Insert::<cake::ActiveModel>::one(cake::ActiveModel {
+                id: ActiveValue::set(1),
+                name: ActiveValue::set("Apple Pie".to_owned()),
+            })
+            .build(DbBackend::Postgres)
+            .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#,
         );
     }
@@ -502,13 +437,12 @@ mod tests {
     #[test]
     fn insert_3() {
         assert_eq!(
-            Insert::<cake::ActiveModel>::new()
-                .add(cake::Model {
-                    id: 1,
-                    name: "Apple Pie".to_owned(),
-                })
-                .build(DbBackend::Postgres)
-                .to_string(),
+            Insert::<cake::ActiveModel>::one(cake::Model {
+                id: 1,
+                name: "Apple Pie".to_owned(),
+            })
+            .build(DbBackend::Postgres)
+            .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#,
         );
     }
@@ -516,19 +450,18 @@ mod tests {
     #[test]
     fn insert_many_1() {
         assert_eq!(
-            Insert::<cake::ActiveModel>::new()
-                .add_many([
-                    cake::Model {
-                        id: 1,
-                        name: "Apple Pie".to_owned(),
-                    },
-                    cake::Model {
-                        id: 2,
-                        name: "Orange Scone".to_owned(),
-                    }
-                ])
-                .build(DbBackend::Postgres)
-                .to_string(),
+            Insert::<cake::ActiveModel>::many([
+                cake::Model {
+                    id: 1,
+                    name: "Apple Pie".to_owned(),
+                },
+                cake::Model {
+                    id: 2,
+                    name: "Orange Scone".to_owned(),
+                }
+            ])
+            .build(DbBackend::Postgres)
+            .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie'), (2, 'Orange Scone')"#,
         );
     }
@@ -536,19 +469,18 @@ mod tests {
     #[test]
     fn insert_many_2() {
         assert_eq!(
-            Insert::<cake::ActiveModel>::new()
-                .add_many([
-                    cake::ActiveModel {
-                        id: NotSet,
-                        name: Set("Apple Pie".to_owned()),
-                    },
-                    cake::ActiveModel {
-                        id: NotSet,
-                        name: Set("Orange Scone".to_owned()),
-                    }
-                ])
-                .build(DbBackend::Postgres)
-                .to_string(),
+            Insert::<cake::ActiveModel>::many([
+                cake::ActiveModel {
+                    id: NotSet,
+                    name: Set("Apple Pie".to_owned()),
+                },
+                cake::ActiveModel {
+                    id: NotSet,
+                    name: Set("Orange Scone".to_owned()),
+                }
+            ])
+            .build(DbBackend::Postgres)
+            .to_string(),
             r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie'), ('Orange Scone')"#,
         );
     }
@@ -564,8 +496,7 @@ mod tests {
             filling_id: ActiveValue::set(3),
         };
         assert_eq!(
-            Insert::<cake_filling::ActiveModel>::new()
-                .add_many([apple, orange])
+            Insert::<cake_filling::ActiveModel>::many([apple, orange])
                 .build(DbBackend::Postgres)
                 .to_string(),
             r#"INSERT INTO "cake_filling" ("cake_id", "filling_id") VALUES (2, NULL), (NULL, 3)"#,

@@ -51,7 +51,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        if self.insert_struct.columns.is_empty() {
+        if self.insert_struct.empty {
             return Ok(TryInsertResult::Empty);
         }
         let res = self.insert_struct.exec(db).await;
@@ -73,7 +73,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        if self.insert_struct.columns.is_empty() {
+        if self.insert_struct.empty {
             return Ok(TryInsertResult::Empty);
         }
         let res = self.insert_struct.exec_without_returning(db).await;
@@ -94,7 +94,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        if self.insert_struct.columns.is_empty() {
+        if self.insert_struct.empty {
             return Ok(TryInsertResult::Empty);
         }
         let res = self.insert_struct.exec_with_returning(db).await;
@@ -119,7 +119,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        if self.insert_struct.columns.is_empty() {
+        if self.insert_struct.empty {
             return Ok(TryInsertResult::Empty);
         }
 
@@ -145,7 +145,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        if self.insert_struct.columns.is_empty() {
+        if self.insert_struct.empty {
             return Ok(TryInsertResult::Empty);
         }
 
