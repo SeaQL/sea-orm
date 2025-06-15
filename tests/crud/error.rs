@@ -41,17 +41,16 @@ pub async fn test_cake_error_sqlx(db: &DbConn) {
             _ => panic!("Unexpected sqlx-error kind"),
         },
         #[cfg(all(feature = "sqlx-sqlite", feature = "sqlite-use-returning-for-3_35"))]
-        DbErr::Query(RuntimeErr::SqlxError(Error::Database(e))) => {
-            assert_eq!(e.code().unwrap(), "1555");
-        }
+        DbErr::Query(RuntimeErr::SqlxError(error)) => match std::ops::Deref::deref(error) {
+            Error::Database(e) => assert_eq!(e.code().unwrap(), "1555"),
+            _ => panic!("Unexpected sqlx-error kind"),
+        },
         _ => panic!("Unexpected Error kind"),
     }
     #[cfg(feature = "sqlx-postgres")]
     match &error {
-        DbErr::Query(RuntimeErr::SqlxError(error)) => match error {
-            Error::Database(e) => {
-                assert_eq!(e.code().unwrap(), "23505");
-            }
+        DbErr::Query(RuntimeErr::SqlxError(error)) => match std::ops::Deref::deref(error) {
+            Error::Database(e) => assert_eq!(e.code().unwrap(), "23505"),
             _ => panic!("Unexpected sqlx-error kind"),
         },
         _ => panic!("Unexpected Error kind"),
