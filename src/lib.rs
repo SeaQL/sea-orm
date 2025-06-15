@@ -373,7 +373,7 @@
 //! - Mascot of Rust: Ferris the Crab
 //! - The Rustacean word
 //! 
-//! [Support SeaQL and get a Sticker Pack!](https://www.sea-ql.org/sticker-pack/) All proceeds contributes directly to the development.
+//! [Support SeaQL and get a Sticker Pack!](https://www.sea-ql.org/sticker-pack/) All proceeds contributes directly to the ongoing development of SeaQL projects.
 //! 
 //! <a href="https://www.sea-ql.org/sticker-pack/"><img alt="Rustacean Sticker Pack by SeaQL" src="https://www.sea-ql.org/static/sticker-pack-1s.jpg" width="600"/></a>
 #![doc(
