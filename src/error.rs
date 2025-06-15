@@ -13,7 +13,7 @@ pub use sqlx::sqlite::SqliteError as SqlxSqliteError;
 use thiserror::Error;
 
 /// An error from unsuccessful database operations
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum DbErr {
     /// This error can happen when the connection pool is fully-utilized
     #[error("Failed to acquire connection from pool: {0}")]
@@ -26,7 +26,7 @@ pub enum DbErr {
         /// Into type
         into: &'static str,
         /// TryError
-        source: Box<dyn std::error::Error + Send + Sync>,
+        source: std::sync::Arc<dyn std::error::Error + Send + Sync>,
     },
     /// There was a problem with the database connection
     #[error("Connection Error: {0}")]
@@ -81,6 +81,14 @@ pub enum DbErr {
         /// Context
         ctx: &'static str,
     },
+    /// (Primary) Key arity mismatch
+    #[error("Key arity mismatch: expected {expected}, got {got}")]
+    KeyArityMismatch {
+        /// Expected value
+        expected: u8,
+        /// Observed value
+        got: u8,
+    },
 }
 
 /// An error from trying to get a row from a Model
@@ -93,7 +101,7 @@ pub enum TryGetError {
 }
 
 /// Connection Acquire error
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ConnAcquireErr {
     /// Connection pool timed out
     #[error("Connection pool timed out")]
@@ -104,7 +112,7 @@ pub enum ConnAcquireErr {
 }
 
 /// Runtime error
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum RuntimeErr {
     /// SQLx Error
     #[cfg(feature = "sqlx-dep")]

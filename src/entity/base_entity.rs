@@ -279,11 +279,8 @@ pub trait EntityTrait: EntityName {
                 let col = key.into_column();
                 select = select.filter(col.eq(v));
             } else {
-                panic!("primary key arity mismatch");
+                unreachable!("primary key arity mismatch");
             }
-        }
-        if keys.next().is_some() {
-            panic!("primary key arity mismatch");
         }
         select
     }
@@ -989,11 +986,8 @@ pub trait EntityTrait: EntityName {
                 let col = key.into_column();
                 delete = delete.filter(col.eq(v));
             } else {
-                panic!("primary key arity mismatch");
+                unreachable!("primary key arity mismatch");
             }
-        }
-        if keys.next().is_some() {
-            panic!("primary key arity mismatch");
         }
         delete
     }
@@ -1115,5 +1109,25 @@ mod tests {
         delete_by_id("UUID".to_string());
         delete_by_id("UUID");
         delete_by_id(Cow::from("UUID"));
+    }
+
+    #[smol_potat::test]
+    async fn test_find_by_id() {
+        use crate::tests_cfg::{cake, cake_filling};
+        use crate::{DbBackend, EntityTrait, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::MySql).into_connection();
+
+        cake::Entity::find_by_id(1).all(&db).await.ok();
+        cake_filling::Entity::find_by_id((2, 3)).all(&db).await.ok();
+
+        // below does not compile:
+
+        // cake::Entity::find_by_id((1, 2)).all(&db).await.ok();
+        // cake_filling::Entity::find_by_id(1).all(&db).await.ok();
+        // cake_filling::Entity::find_by_id((1, 2, 3))
+        //     .all(&db)
+        //     .await
+        //     .ok();
     }
 }
