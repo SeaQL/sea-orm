@@ -20,17 +20,19 @@ pub struct DeleteResult {
     pub rows_affected: u64,
 }
 
-impl<'a, A: 'a> DeleteOne<A>
+impl<A> DeleteOne<A>
 where
     A: ActiveModelTrait,
 {
     /// Execute a DELETE operation on one ActiveModel
-    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + 'a
+    pub async fn exec<C>(self, db: &C) -> Result<DeleteResult, DbErr>
     where
         C: ConnectionTrait,
     {
-        // so that self is dropped before entering await
-        exec_delete_only(self.query, db)
+        if let Some(err) = self.error {
+            return Err(err);
+        }
+        exec_delete_only(self.query, db).await
     }
 
     /// Execute an delete operation and return the deleted model
@@ -38,14 +40,17 @@ where
     /// # Panics
     ///
     /// Panics if the database backend does not support `DELETE RETURNING`
-    pub fn exec_with_returning<C>(
+    pub async fn exec_with_returning<C>(
         self,
-        db: &'a C,
-    ) -> impl Future<Output = Result<Option<<A::Entity as EntityTrait>::Model>, DbErr>> + 'a
+        db: &C,
+    ) -> Result<Option<<A::Entity as EntityTrait>::Model>, DbErr>
     where
         C: ConnectionTrait,
     {
-        exec_delete_with_returning_one::<A::Entity, _>(self.query, db)
+        if let Some(err) = self.error {
+            return Err(err);
+        }
+        exec_delete_with_returning_one::<A::Entity, _>(self.query, db).await
     }
 }
 
@@ -174,4 +179,32 @@ where
         false => unimplemented!("Database backend doesn't support RETURNING"),
     };
     Ok(models)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_cfg::cake;
+
+    #[smol_potat::test]
+    async fn delete_error() {
+        use crate::{DbBackend, DbErr, Delete, EntityTrait, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::MySql).into_connection();
+
+        assert!(matches!(
+            Delete::one(cake::ActiveModel {
+                ..Default::default()
+            })
+            .exec(&db)
+            .await,
+            Err(DbErr::PrimaryKeyNotSet { .. })
+        ));
+
+        assert!(matches!(
+            cake::Entity::delete(cake::ActiveModel::default())
+                .exec(&db)
+                .await,
+            Err(DbErr::PrimaryKeyNotSet { .. })
+        ));
+    }
 }

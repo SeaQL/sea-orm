@@ -1,5 +1,5 @@
 use crate::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, IntoActiveModel, Iterable,
+    ActiveModelTrait, ActiveValue, ColumnTrait, DbErr, EntityTrait, IntoActiveModel, Iterable,
     PrimaryKeyToColumn, QueryFilter, QueryTrait,
 };
 use core::marker::PhantomData;
@@ -16,6 +16,7 @@ where
     A: ActiveModelTrait,
 {
     pub(crate) query: DeleteStatement,
+    pub(crate) error: Option<DbErr>,
     pub(crate) model: A,
 }
 
@@ -70,6 +71,7 @@ impl Delete {
             query: DeleteStatement::new()
                 .from_table(A::Entity::default().table_ref())
                 .to_owned(),
+            error: None,
             model: model.into_active_model(),
         };
         myself.prepare()
@@ -113,7 +115,9 @@ where
                 ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
                     self = self.filter(col.eq(value));
                 }
-                ActiveValue::NotSet => panic!("PrimaryKey is not set"),
+                ActiveValue::NotSet => {
+                    self.error = Some(DbErr::PrimaryKeyNotSet { ctx: "DeleteOne" });
+                }
             }
         }
         self

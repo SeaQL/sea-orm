@@ -89,6 +89,12 @@ pub enum DbErr {
         /// Observed value
         got: u8,
     },
+    /// Primay key not set for update / delete
+    #[error("Primay key not set for {ctx}")]
+    PrimaryKeyNotSet {
+        /// Context
+        ctx: &'static str,
+    },
 }
 
 /// An error from trying to get a row from a Model

@@ -1,5 +1,5 @@
 use crate::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, Iterable, PrimaryKeyToColumn,
+    ActiveModelTrait, ActiveValue, ColumnTrait, DbErr, EntityTrait, Iterable, PrimaryKeyToColumn,
     QueryFilter, QueryTrait,
 };
 use core::marker::PhantomData;
@@ -16,6 +16,7 @@ where
     A: ActiveModelTrait,
 {
     pub(crate) query: UpdateStatement,
+    pub(crate) error: Option<DbErr>,
     pub(crate) model: A,
 }
 
@@ -54,6 +55,7 @@ impl Update {
             query: UpdateStatement::new()
                 .table(A::Entity::default().table_ref())
                 .to_owned(),
+            error: None,
             model,
         }
         .prepare_filters()
@@ -96,7 +98,9 @@ where
                 ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
                     self = self.filter(col.eq(value));
                 }
-                ActiveValue::NotSet => panic!("PrimaryKey is not set"),
+                ActiveValue::NotSet => {
+                    self.error = Some(DbErr::PrimaryKeyNotSet { ctx: "UpdateOne" });
+                }
             }
         }
         self
