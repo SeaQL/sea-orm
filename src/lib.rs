@@ -360,7 +360,7 @@
 //! A friend of Ferris, Terres the hermit crab is the official mascot of SeaORM. His hobby is collecting shells.
 //!
 //! <img alt="Terres" src="https://www.sea-ql.org/SeaORM/img/Terres.png" width="400"/>
-//! 
+//!
 //! ### Rustacean Sticker Pack 🦀
 //!
 //! The Rustacean Sticker Pack is the perfect way to express your passion for Rust.

@@ -1509,7 +1509,7 @@ mod tests {
             result,
             Err(DbErr::KeyArityMismatch {
                 expected: 2,
-                got: 1,
+                received: 1,
             })
         ));
 

@@ -31,7 +31,7 @@ pub async fn test_cake_error_sqlx(db: &DbConn) {
 
     #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
     match &error {
-        DbErr::Exec(RuntimeErr::SqlxError(error)) => match error {
+        DbErr::Exec(RuntimeErr::SqlxError(error)) => match std::ops::Deref::deref(error) {
             Error::Database(e) => {
                 #[cfg(feature = "sqlx-mysql")]
                 assert_eq!(e.code().unwrap(), "23000");
