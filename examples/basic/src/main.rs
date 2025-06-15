@@ -21,7 +21,7 @@ use example_fruit as fruit;
 use operation::*;
 use select::*;
 
-#[async_std::main]
+#[tokio::main]
 async fn main() {
     let db = Database::connect("mysql://sea:sea@localhost/bakery")
         .await
