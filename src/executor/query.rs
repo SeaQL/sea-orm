@@ -254,6 +254,7 @@ impl<T: TryGetable> TryGetable for Option<T> {
             Err(TryGetError::Null(_)) => Ok(None),
             #[cfg(feature = "sqlx-dep")]
             Err(TryGetError::DbErr(DbErr::Query(crate::RuntimeErr::SqlxError(err)))) => {
+                use std::ops::Deref;
                 match err.deref() {
                     sqlx::Error::ColumnNotFound(_) => Ok(None),
                     _ => Err(TryGetError::DbErr(DbErr::Query(
