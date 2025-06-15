@@ -109,7 +109,7 @@ jobs:
           toolchain: stable
           components: clippy
       - run: cargo clippy --all -- -D warnings
-      - run: cargo clippy --all --features runtime-async-std-native-tls,sqlx-all -- -D warnings
+      - run: cargo clippy --all --features runtime-tokio-native-tls,sqlx-all -- -D warnings
       # Disable clippy checks on `sea-orm-cli` until we upgraded `clap` to v4. https://github.com/clap-rs/clap/issues/4849
       # - run: cargo clippy --manifest-path sea-orm-cli/Cargo.toml -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-migration/Cargo.toml -- -D warnings
@@ -139,7 +139,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runtime: [async-std]
+        runtime: [tokio]
         tls: [native-tls, rustls]
     steps:
       - uses: actions/checkout@v4
@@ -166,7 +166,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runtime: [actix]
+        runtime: [tokio]
         tls: [native-tls, rustls]
     steps:
       - uses: actions/checkout@v4
@@ -311,7 +311,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runtime: [async-std]
+        runtime: [tokio]
         tls: [native-tls, rustls]
     steps:
       - uses: actions/checkout@v4
@@ -326,8 +326,8 @@ jobs:
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }},sqlite-use-returning-for-3_35
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }},sqlite-use-returning-for-3_35
+      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   mysql:
     name: MySQL
