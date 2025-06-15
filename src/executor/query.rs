@@ -3,7 +3,7 @@ use crate::{
     SelectGetableValue, SelectorRaw, Statement,
     error::{DbErr, type_err},
 };
-use std::fmt;
+use std::{fmt, sync::Arc};
 
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use crate::debug_print;
@@ -638,7 +638,7 @@ impl TryGetable for Decimal {
                         DbErr::TryIntoErr {
                             from: "f64",
                             into: "Decimal",
-                            source: Box::new(e),
+                            source: Arc::new(e),
                         }
                         .into()
                     }),
@@ -691,7 +691,7 @@ impl TryGetable for BigDecimal {
                         DbErr::TryIntoErr {
                             from: "f64",
                             into: "BigDecimal",
-                            source: Box::new(e),
+                            source: Arc::new(e),
                         }
                         .into()
                     }),
@@ -739,7 +739,7 @@ macro_rules! try_getable_uuid {
                                         DbErr::TryIntoErr {
                                             from: "Vec<u8>",
                                             into: "String",
-                                            source: Box::new(e),
+                                            source: Arc::new(e),
                                         }
                                         .into()
                                     })
@@ -749,7 +749,7 @@ macro_rules! try_getable_uuid {
                                         DbErr::TryIntoErr {
                                             from: "String",
                                             into: "uuid::Uuid",
-                                            source: Box::new(e),
+                                            source: Arc::new(e),
                                         }
                                         .into()
                                     })
@@ -860,7 +860,7 @@ impl TryGetable for String {
                         DbErr::TryIntoErr {
                             from: "Vec<u8>",
                             into: "String",
-                            source: Box::new(e),
+                            source: Arc::new(e),
                         }
                         .into()
                     })
@@ -1206,7 +1206,10 @@ pub trait TryGetableMany: Sized {
     where
         C: strum::IntoEnumIterator + sea_query::Iden,
     {
-        SelectorRaw::<SelectGetableValue<Self, C>>::with_columns(stmt)
+        SelectorRaw {
+            stmt,
+            selector: SelectGetableValue::<Self, C>::default(),
+        }
     }
 }
 
@@ -1450,7 +1453,7 @@ macro_rules! try_from_u64_numeric {
                 n.try_into().map_err(|e| DbErr::TryIntoErr {
                     from: stringify!(u64),
                     into: stringify!($type),
-                    source: Box::new(e),
+                    source: Arc::new(e),
                 })
             }
         }

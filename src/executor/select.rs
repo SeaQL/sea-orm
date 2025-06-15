@@ -30,7 +30,7 @@ where
 {
     pub(crate) stmt: Statement,
     #[allow(dead_code)]
-    selector: S,
+    pub(crate) selector: S,
 }
 
 /// A Trait for any type that can perform SELECT queries
@@ -90,6 +90,19 @@ where
     O: FromQueryResult,
 {
     model: PhantomData<(M, N, O)>,
+}
+
+impl<T, C> Default for SelectGetableValue<T, C>
+where
+    T: TryGetableMany,
+    C: strum::IntoEnumIterator + sea_query::Iden,
+{
+    fn default() -> Self {
+        Self {
+            columns: PhantomData,
+            model: PhantomData,
+        }
+    }
 }
 
 impl<T, C> SelectorTrait for SelectGetableValue<T, C>
@@ -338,7 +351,10 @@ where
         T: TryGetableMany,
         C: strum::IntoEnumIterator + sea_query::Iden,
     {
-        Selector::<SelectGetableValue<T, C>>::with_columns(self.query)
+        Selector {
+            query: self.query,
+            selector: Default::default(),
+        }
     }
 
     /// ```
@@ -436,7 +452,10 @@ where
     where
         T: TryGetableMany,
     {
-        Selector::<SelectGetableTuple<T>>::into_tuple(self.query)
+        Selector {
+            query: self.query,
+            selector: SelectGetableTuple { model: PhantomData },
+        }
     }
 
     /// Get one Model from the SELECT query
@@ -742,33 +761,6 @@ impl<S> Selector<S>
 where
     S: SelectorTrait,
 {
-    /// Create `Selector` from Statement and columns. Executing this `Selector`
-    /// will return a type `T` which implement `TryGetableMany`.
-    pub fn with_columns<T, C>(query: SelectStatement) -> Selector<SelectGetableValue<T, C>>
-    where
-        T: TryGetableMany,
-        C: strum::IntoEnumIterator + sea_query::Iden,
-    {
-        Selector {
-            query,
-            selector: SelectGetableValue {
-                columns: PhantomData,
-                model: PhantomData,
-            },
-        }
-    }
-
-    /// Get tuple from query result based on column index
-    pub fn into_tuple<T>(query: SelectStatement) -> Selector<SelectGetableTuple<T>>
-    where
-        T: TryGetableMany,
-    {
-        Selector {
-            query,
-            selector: SelectGetableTuple { model: PhantomData },
-        }
-    }
-
     fn into_selector_raw<C>(self, db: &C) -> SelectorRaw<S>
     where
         C: ConnectionTrait,
@@ -829,22 +821,6 @@ where
         SelectorRaw {
             stmt,
             selector: SelectModel { model: PhantomData },
-        }
-    }
-
-    /// Create `SelectorRaw` from Statement and columns. Executing this `SelectorRaw` will
-    /// return a type `T` which implement `TryGetableMany`.
-    pub fn with_columns<T, C>(stmt: Statement) -> SelectorRaw<SelectGetableValue<T, C>>
-    where
-        T: TryGetableMany,
-        C: strum::IntoEnumIterator + sea_query::Iden,
-    {
-        SelectorRaw {
-            stmt,
-            selector: SelectGetableValue {
-                columns: PhantomData,
-                model: PhantomData,
-            },
         }
     }
 
