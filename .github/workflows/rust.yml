@@ -346,7 +346,7 @@ jobs:
       fail-fast: false
       matrix:
         version: [lts, 5.7]
-        runtime: [actix]
+        runtime: [tokio]
         tls: [native-tls]
     services:
       mysql:
@@ -395,7 +395,7 @@ jobs:
       fail-fast: false
       matrix:
         version: [lts]
-        runtime: [actix]
+        runtime: [tokio]
         tls: [native-tls]
     services:
       mariadb:
