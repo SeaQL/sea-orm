@@ -360,6 +360,22 @@
 //! A friend of Ferris, Terres the hermit crab is the official mascot of SeaORM. His hobby is collecting shells.
 //!
 //! <img alt="Terres" src="https://www.sea-ql.org/SeaORM/img/Terres.png" width="400"/>
+//! 
+//! ### Rustacean Sticker Pack 🦀
+//! 
+//! The Rustacean Sticker Pack is the perfect way to express your passion for Rust.
+//! Our stickers are made with a premium water-resistant vinyl with a unique matte finish.
+//! Stick them on your laptop, notebook, or any gadget to show off your love for Rust!
+//! 
+//! Sticker Pack Contents:
+//! - Logo of SeaQL projects: SeaQL, SeaORM, SeaQuery, Seaography, FireDBG
+//! - Mascot of SeaQL: Terres the Hermit Crab
+//! - Mascot of Rust: Ferris the Crab
+//! - The Rustacean word
+//! 
+//! [Support SeaQL and get a Sticker Pack!](https://www.sea-ql.org/sticker-pack/) All proceeds contributes directly to the development.
+//! 
+//! <a href="https://www.sea-ql.org/sticker-pack/"><img alt="Rustacean Sticker Pack by SeaQL" src="https://www.sea-ql.org/static/sticker-pack-1s.jpg" width="600"/></a>
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/SeaQL/sea-query/master/docs/SeaQL icon dark.png"
 )]
