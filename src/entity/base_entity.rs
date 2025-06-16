@@ -445,9 +445,15 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
+    /// let insert_result = cake::Entity::insert_many::<cake::ActiveModel, _>([])
+    ///     .exec(&db)
+    ///     .await?;
+    ///
+    /// assert_eq!(insert_result.last_insert_id, None);
+    ///
     /// let insert_result = cake::Entity::insert_many([apple, orange]).exec(&db).await?;
     ///
-    /// assert_eq!(insert_result.last_insert_id, 28);
+    /// assert_eq!(insert_result.last_insert_id, Some(28));
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -493,7 +499,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// let insert_result = cake::Entity::insert_many([apple, orange]).exec(&db).await?;
     ///
-    /// assert_eq!(insert_result.last_insert_id, 28);
+    /// assert_eq!(insert_result.last_insert_id, Some(28));
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -587,7 +593,7 @@ pub trait EntityTrait: EntityName {
     ///             name: Set("Choco Pie".to_owned()),
     ///         },
     ///     ])
-    ///     .exec_with_returning_many(&db)
+    ///     .exec_with_returning(&db)
     ///     .await?,
     ///     [
     ///         cake::Model {

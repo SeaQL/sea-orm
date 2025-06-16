@@ -58,33 +58,24 @@ pub async fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr>
 
     assert_eq!(res?.last_insert_id, Some(4));
 
-    let res = Entity::insert_many([
-        ActiveModel { id: Set(3) },
-        ActiveModel { id: Set(4) },
-    ])
-    .exec(db)
-    .await;
+    let res = Entity::insert_many([ActiveModel { id: Set(3) }, ActiveModel { id: Set(4) }])
+        .exec(db)
+        .await;
 
-    assert!(matches!(res, Err(DbErr::Query(RuntimeErr::SqlxError(_)))));
+    assert!(matches!(res, Err(DbErr::Query(_) | DbErr::Exec(_))));
 
-    let res = Entity::insert_many([
-        ActiveModel { id: Set(3) },
-        ActiveModel { id: Set(4) },
-    ])
-    .on_conflict(on_conflict.clone())
-    .exec(db)
-    .await;
+    let res = Entity::insert_many([ActiveModel { id: Set(3) }, ActiveModel { id: Set(4) }])
+        .on_conflict(on_conflict.clone())
+        .exec(db)
+        .await;
 
     assert!(matches!(res, Err(DbErr::RecordNotInserted)));
 
-    let res = Entity::insert_many([
-        ActiveModel { id: Set(3) },
-        ActiveModel { id: Set(4) },
-    ])
-    .on_conflict(on_conflict)
-    .do_nothing()
-    .exec(db)
-    .await;
+    let res = Entity::insert_many([ActiveModel { id: Set(3) }, ActiveModel { id: Set(4) }])
+        .on_conflict(on_conflict)
+        .do_nothing()
+        .exec(db)
+        .await;
 
     assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
 
