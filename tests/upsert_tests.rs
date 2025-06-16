@@ -59,8 +59,15 @@ pub async fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr>
     assert_eq!(res?.last_insert_id, Some(4));
 
     let res = Entity::insert_many([
-        ActiveModel { id: Set(1) },
-        ActiveModel { id: Set(2) },
+        ActiveModel { id: Set(3) },
+        ActiveModel { id: Set(4) },
+    ])
+    .exec(db)
+    .await;
+
+    assert!(matches!(res, Err(DbErr::Query(RuntimeErr::SqlxError(_)))));
+
+    let res = Entity::insert_many([
         ActiveModel { id: Set(3) },
         ActiveModel { id: Set(4) },
     ])
@@ -71,8 +78,6 @@ pub async fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr>
     assert!(matches!(res, Err(DbErr::RecordNotInserted)));
 
     let res = Entity::insert_many([
-        ActiveModel { id: Set(1) },
-        ActiveModel { id: Set(2) },
         ActiveModel { id: Set(3) },
         ActiveModel { id: Set(4) },
     ])
