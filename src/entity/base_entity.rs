@@ -1,7 +1,8 @@
 use crate::{
     ActiveModelBehavior, ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne,
-    FromQueryResult, Insert, ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related,
-    RelationBuilder, RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
+    FromQueryResult, Insert, InsertMany, ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait,
+    QueryFilter, Related, RelationBuilder, RelationTrait, RelationType, Select, Update, UpdateMany,
+    UpdateOne,
 };
 use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 use std::fmt::Debug;
@@ -608,12 +609,12 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
-    fn insert_many<A, I>(models: I) -> Insert<A>
+    fn insert_many<A, I>(models: I) -> InsertMany<A>
     where
         A: ActiveModelTrait<Entity = Self>,
         I: IntoIterator<Item = A>,
     {
-        Insert::many(models)
+        InsertMany::many(models)
     }
 
     /// Update a model in database

@@ -13,8 +13,31 @@ where
 {
     pub(crate) query: InsertStatement,
     pub(crate) primary_key: Option<ValueTuple>,
+    pub(crate) model: PhantomData<A>,
+}
+
+/// Performs INSERT operations on many ActiveModels
+#[derive(Debug)]
+pub struct InsertMany<A>
+where
+    A: ActiveModelTrait,
+{
+    pub(crate) query: InsertStatement,
+    pub(crate) primary_key: Option<ValueTuple>,
     pub(crate) empty: bool,
     pub(crate) model: PhantomData<A>,
+}
+
+/// Performs INSERT operations on one or more ActiveModels, will do nothing if input is empty.
+///
+/// All interfaces works the same as `Insert<A>`.
+#[derive(Debug)]
+pub struct TryInsert<A>
+where
+    A: ActiveModelTrait,
+{
+    pub(crate) insert_struct: Insert<A>,
+    pub(crate) empty: bool,
 }
 
 impl<A> Insert<A>
@@ -55,42 +78,6 @@ where
     where
         M: IntoActiveModel<A>,
     {
-        Self::one_impl(m)
-    }
-
-    /// Insert many Model or ActiveModel
-    ///
-    /// ```
-    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
-    ///
-    /// assert_eq!(
-    ///     Insert::many([
-    ///         cake::Model {
-    ///             id: 1,
-    ///             name: "Apple Pie".to_owned(),
-    ///         },
-    ///         cake::Model {
-    ///             id: 2,
-    ///             name: "Orange Scone".to_owned(),
-    ///         }
-    ///     ])
-    ///     .build(DbBackend::Postgres)
-    ///     .to_string(),
-    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie'), (2, 'Orange Scone')"#,
-    /// );
-    /// ```
-    pub fn many<M, I>(models: I) -> Self
-    where
-        M: IntoActiveModel<A>,
-        I: IntoIterator<Item = M>,
-    {
-        Self::many_impl(models)
-    }
-
-    fn one_impl<M>(m: M) -> Self
-    where
-        M: IntoActiveModel<A>,
-    {
         let mut query = InsertStatement::new();
         query
             .into_table(A::Entity::default().table_ref())
@@ -124,12 +111,152 @@ where
         Self {
             query,
             primary_key,
-            empty: false,
             model: PhantomData,
         }
     }
 
-    fn many_impl<M, I>(models: I) -> Self
+    /// Insert many Model or ActiveModel.
+    /// Alias to [`InsertMany::many`].
+    ///
+    /// ```
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
+    ///
+    /// assert_eq!(
+    ///     Insert::many([
+    ///         cake::Model {
+    ///             id: 1,
+    ///             name: "Apple Pie".to_owned(),
+    ///         },
+    ///         cake::Model {
+    ///             id: 2,
+    ///             name: "Orange Scone".to_owned(),
+    ///         }
+    ///     ])
+    ///     .build(DbBackend::Postgres)
+    ///     .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie'), (2, 'Orange Scone')"#,
+    /// );
+    /// ```
+    pub fn many<M, I>(models: I) -> InsertMany<A>
+    where
+        M: IntoActiveModel<A>,
+        I: IntoIterator<Item = M>,
+    {
+        InsertMany::many(models)
+    }
+
+    /// Set ON CONFLICT logic
+    ///
+    /// on conflict do nothing
+    /// ```
+    /// use sea_orm::{DbBackend, entity::*, query::*, sea_query::OnConflict, tests_cfg::cake};
+    ///
+    /// let orange = cake::ActiveModel {
+    ///     id: ActiveValue::set(2),
+    ///     name: ActiveValue::set("Orange".to_owned()),
+    /// };
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange)
+    ///         .on_conflict(
+    ///             OnConflict::column(cake::Column::Name)
+    ///                 .do_nothing()
+    ///                 .to_owned()
+    ///         )
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO NOTHING"#,
+    /// );
+    /// ```
+    ///
+    /// on conflict do update
+    /// ```
+    /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
+    ///
+    /// let orange = cake::ActiveModel {
+    ///     id: ActiveValue::set(2),
+    ///     name: ActiveValue::set("Orange".to_owned()),
+    /// };
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange)
+    ///         .on_conflict(
+    ///             OnConflict::column(cake::Column::Name)
+    ///                 .update_column(cake::Column::Name)
+    ///                 .to_owned()
+    ///         )
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO UPDATE SET "name" = "excluded"."name""#,
+    /// );
+    /// ```
+    pub fn on_conflict(mut self, on_conflict: OnConflict) -> Self {
+        self.query.on_conflict(on_conflict);
+        self
+    }
+
+    /// Allow insert statement to return without error if nothing's been inserted
+    pub fn do_nothing(self) -> TryInsert<A>
+    where
+        A: ActiveModelTrait,
+    {
+        TryInsert::from_one(self)
+    }
+
+    /// Alias to `do_nothing`
+    pub fn on_empty_do_nothing(self) -> TryInsert<A>
+    where
+        A: ActiveModelTrait,
+    {
+        TryInsert::from_one(self)
+    }
+
+    /// Set ON CONFLICT on primary key do nothing, but with MySQL specific polyfill.
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
+    ///
+    /// let orange = cake::ActiveModel {
+    ///     id: ActiveValue::set(2),
+    ///     name: ActiveValue::set("Orange".to_owned()),
+    /// };
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange.clone())
+    ///         .on_conflict_do_nothing()
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     r#"INSERT INTO `cake` (`id`, `name`) VALUES (2, 'Orange') ON DUPLICATE KEY UPDATE `id` = `id`"#,
+    /// );
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange.clone())
+    ///         .on_conflict_do_nothing()
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("id") DO NOTHING"#,
+    /// );
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange)
+    ///         .on_conflict_do_nothing()
+    ///         .build(DbBackend::Sqlite)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("id") DO NOTHING"#,
+    /// );
+    /// ```
+    pub fn on_conflict_do_nothing(mut self) -> TryInsert<A>
+    where
+        A: ActiveModelTrait,
+    {
+        self.query.on_conflict(on_conflict_primary_key::<A>());
+
+        TryInsert::from_one(self)
+    }
+}
+
+impl<A> InsertMany<A>
+where
+    A: ActiveModelTrait,
+{
+    /// Insert many Model or ActiveModel
+    pub fn many<M, I>(models: I) -> Self
     where
         M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
@@ -202,49 +329,7 @@ where
         }
     }
 
-    /// On conflict
-    ///
-    /// on conflict do nothing
-    /// ```
-    /// use sea_orm::{DbBackend, entity::*, query::*, sea_query::OnConflict, tests_cfg::cake};
-    ///
-    /// let orange = cake::ActiveModel {
-    ///     id: ActiveValue::set(2),
-    ///     name: ActiveValue::set("Orange".to_owned()),
-    /// };
-    /// assert_eq!(
-    ///     cake::Entity::insert(orange)
-    ///         .on_conflict(
-    ///             OnConflict::column(cake::Column::Name)
-    ///                 .do_nothing()
-    ///                 .to_owned()
-    ///         )
-    ///         .build(DbBackend::Postgres)
-    ///         .to_string(),
-    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO NOTHING"#,
-    /// );
-    /// ```
-    ///
-    /// on conflict do update
-    /// ```
-    /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
-    ///
-    /// let orange = cake::ActiveModel {
-    ///     id: ActiveValue::set(2),
-    ///     name: ActiveValue::set("Orange".to_owned()),
-    /// };
-    /// assert_eq!(
-    ///     cake::Entity::insert(orange)
-    ///         .on_conflict(
-    ///             OnConflict::column(cake::Column::Name)
-    ///                 .update_column(cake::Column::Name)
-    ///                 .to_owned()
-    ///         )
-    ///         .build(DbBackend::Postgres)
-    ///         .to_string(),
-    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO UPDATE SET "name" = "excluded"."name""#,
-    /// );
-    /// ```
+    /// Set ON CONFLICT logic
     pub fn on_conflict(mut self, on_conflict: OnConflict) -> Self {
         self.query.on_conflict(on_conflict);
         self
@@ -255,7 +340,7 @@ where
     where
         A: ActiveModelTrait,
     {
-        TryInsert::new(self)
+        TryInsert::from_many(self)
     }
 
     /// Alias to `do_nothing`
@@ -263,53 +348,7 @@ where
     where
         A: ActiveModelTrait,
     {
-        TryInsert::new(self)
-    }
-
-    /// Set ON CONFLICT on primary key do nothing, but with MySQL specific polyfill.
-    ///
-    /// ```
-    /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
-    ///
-    /// let orange = cake::ActiveModel {
-    ///     id: ActiveValue::set(2),
-    ///     name: ActiveValue::set("Orange".to_owned()),
-    /// };
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::insert(orange.clone())
-    ///         .on_conflict_do_nothing()
-    ///         .build(DbBackend::MySql)
-    ///         .to_string(),
-    ///     r#"INSERT INTO `cake` (`id`, `name`) VALUES (2, 'Orange') ON DUPLICATE KEY UPDATE `id` = `id`"#,
-    /// );
-    /// assert_eq!(
-    ///     cake::Entity::insert(orange.clone())
-    ///         .on_conflict_do_nothing()
-    ///         .build(DbBackend::Postgres)
-    ///         .to_string(),
-    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("id") DO NOTHING"#,
-    /// );
-    /// assert_eq!(
-    ///     cake::Entity::insert(orange)
-    ///         .on_conflict_do_nothing()
-    ///         .build(DbBackend::Sqlite)
-    ///         .to_string(),
-    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("id") DO NOTHING"#,
-    /// );
-    /// ```
-    pub fn on_conflict_do_nothing(mut self) -> TryInsert<A>
-    where
-        A: ActiveModelTrait,
-    {
-        let primary_keys = <A::Entity as EntityTrait>::PrimaryKey::iter();
-        self.query.on_conflict(
-            OnConflict::columns(primary_keys.clone())
-                .do_nothing_on(primary_keys)
-                .to_owned(),
-        );
-
-        TryInsert::new(self)
+        TryInsert::from_many(self)
     }
 }
 
@@ -332,49 +371,83 @@ where
     }
 }
 
-/// Performs INSERT operations on a ActiveModel, will do nothing if input is empty.
-///
-/// All functions works the same as if it is Insert<A>. Please refer to Insert<A> page for more information
-#[derive(Debug)]
-pub struct TryInsert<A>
+impl<A> QueryTrait for InsertMany<A>
 where
     A: ActiveModelTrait,
 {
-    pub(crate) insert_struct: Insert<A>,
+    type QueryStatement = InsertStatement;
+
+    fn query(&mut self) -> &mut InsertStatement {
+        &mut self.query
+    }
+
+    fn as_query(&self) -> &InsertStatement {
+        &self.query
+    }
+
+    fn into_query(self) -> InsertStatement {
+        self.query
+    }
 }
 
-#[allow(missing_docs)]
 impl<A> TryInsert<A>
 where
     A: ActiveModelTrait,
 {
-    fn new(insert: Insert<A>) -> Self {
+    fn from_one(insert: Insert<A>) -> Self {
         Self {
             insert_struct: insert,
+            empty: false,
         }
     }
 
+    fn from_many(insert: InsertMany<A>) -> Self {
+        let InsertMany {
+            query,
+            primary_key,
+            empty,
+            model,
+        } = insert;
+
+        Self {
+            insert_struct: Insert {
+                query,
+                primary_key,
+                model,
+            },
+            empty,
+        }
+    }
+
+    /// Try insert one item
     pub fn one<M>(m: M) -> Self
     where
         M: IntoActiveModel<A>,
     {
-        Self {
-            insert_struct: Insert::one(m),
-        }
+        Self::from_one(Insert::one(m))
     }
 
+    /// Try insert many items
     pub fn many<M, I>(models: I) -> Self
     where
         M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
     {
-        Self {
-            insert_struct: Insert::many(models),
-        }
+        Self::from_many(Insert::many(models))
     }
 
-    pub fn on_conflict(mut self, on_conflict: OnConflict) -> Self {
+    /// Set ON CONFLICT logic
+    pub fn on_conflict(mut self, on_conflict: OnConflict) -> Insert<A> {
         self.insert_struct.query.on_conflict(on_conflict);
+        self.insert_struct
+    }
+
+    /// Set ON CONFLICT on primary key do nothing, but with MySQL specific polyfill.
+    pub fn on_conflict_do_nothing(mut self) -> Self {
+        self.insert_struct
+            .query
+            .on_conflict(on_conflict_primary_key::<A>());
+
         self
     }
 }
@@ -396,6 +469,13 @@ where
     fn into_query(self) -> InsertStatement {
         self.insert_struct.query
     }
+}
+
+fn on_conflict_primary_key<A: ActiveModelTrait>() -> OnConflict {
+    let primary_keys = <A::Entity as EntityTrait>::PrimaryKey::iter();
+    let mut on_conflict = OnConflict::columns(primary_keys.clone());
+    on_conflict.do_nothing_on(primary_keys);
+    on_conflict
 }
 
 #[cfg(test)]
