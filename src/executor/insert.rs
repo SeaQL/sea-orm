@@ -21,21 +21,23 @@ where
 
 /// The result of an INSERT operation on an ActiveModel
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct InsertResult<A>
 where
     A: ActiveModelTrait,
 {
-    /// The id performed when AUTOINCREMENT was performed on the PrimaryKey
+    /// The primary key value of the last inserted row
     pub last_insert_id: <PrimaryKey<A> as PrimaryKeyTrait>::ValueType,
 }
 
 /// The result of an INSERT many operation for a set of ActiveModels
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct InsertManyResult<A>
 where
     A: ActiveModelTrait,
 {
-    /// The id performed when AUTOINCREMENT was performed on the PrimaryKey
+    /// The primary key value of the last inserted row
     pub last_insert_id: Option<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>,
 }
 
