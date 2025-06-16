@@ -350,6 +350,35 @@ where
     {
         TryInsert::from_many(self)
     }
+
+    /// Set ON CONFLICT on primary key do nothing, but with MySQL specific polyfill.
+    /// See also [`Insert::on_conflict_do_nothing`].
+    pub fn on_conflict_do_nothing(mut self) -> TryInsert<A>
+    where
+        A: ActiveModelTrait,
+    {
+        self.query.on_conflict(on_conflict_primary_key::<A>());
+
+        TryInsert::from_many(self)
+    }
+
+    /// panic when self is empty
+    pub(crate) fn into_one(self) -> Insert<A> {
+        assert!(!self.empty);
+
+        let Self {
+            query,
+            primary_key,
+            empty: _,
+            model,
+        } = self;
+
+        Insert {
+            query,
+            primary_key,
+            model,
+        }
+    }
 }
 
 impl<A> QueryTrait for Insert<A>

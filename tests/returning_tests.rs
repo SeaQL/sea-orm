@@ -105,6 +105,14 @@ async fn insert_many() {
         },]
     );
 
+    assert!(
+        Entity::insert_many::<ActiveModel, _>([])
+            .exec_with_returning(db)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+
     assert_eq!(
         Entity::insert_many([
             ActiveModel {
@@ -118,7 +126,7 @@ async fn insert_many() {
                 values: Set(json!({ "id": "unique-id-003" })),
             },
         ])
-        .exec_with_returning_many(db)
+        .exec_with_returning(db)
         .await
         .unwrap(),
         [
@@ -133,6 +141,14 @@ async fn insert_many() {
                 values: json!({ "id": "unique-id-003" }),
             },
         ]
+    );
+
+    assert!(
+        Entity::insert_many::<ActiveModel, _>([])
+            .exec_with_returning_keys(db)
+            .await
+            .unwrap()
+            .is_empty()
     );
 
     assert_eq!(
@@ -399,7 +415,7 @@ async fn delete_many() {
                     values: Set(json!({ "id": "unique-id-002" })),
                 },
             ])
-            .exec_with_returning_many(db)
+            .exec_with_returning(db)
             .await?,
             inserted_models
         );

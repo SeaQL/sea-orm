@@ -71,10 +71,9 @@ where
     A: ActiveModelTrait,
 {
     /// Execute an insert operation
-    pub async fn exec<'a, C>(self, db: &'a C) -> Result<TryInsertResult<InsertResult<A>>, DbErr>
+    pub async fn exec<C>(self, db: &C) -> Result<TryInsertResult<InsertResult<A>>, DbErr>
     where
         C: ConnectionTrait,
-        A: 'a,
     {
         if self.empty {
             return Ok(TryInsertResult::Empty);
@@ -89,14 +88,10 @@ where
 
     /// Execute an insert operation without returning (don't use `RETURNING` syntax)
     /// Number of rows affected is returned
-    pub async fn exec_without_returning<'a, C>(
-        self,
-        db: &'a C,
-    ) -> Result<TryInsertResult<u64>, DbErr>
+    pub async fn exec_without_returning<C>(self, db: &C) -> Result<TryInsertResult<u64>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
-        A: 'a,
     {
         if self.empty {
             return Ok(TryInsertResult::Empty);
@@ -110,14 +105,13 @@ where
     }
 
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
-    pub async fn exec_with_returning<'a, C>(
+    pub async fn exec_with_returning<C>(
         self,
-        db: &'a C,
+        db: &C,
     ) -> Result<TryInsertResult<<A::Entity as EntityTrait>::Model>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
-        A: 'a,
     {
         if self.empty {
             return Ok(TryInsertResult::Empty);
@@ -135,14 +129,13 @@ where
     /// # Panics
     ///
     /// Panics if the database backend does not support `INSERT RETURNING`.
-    pub async fn exec_with_returning_keys<'a, C>(
+    pub async fn exec_with_returning_keys<C>(
         self,
-        db: &'a C,
+        db: &C,
     ) -> Result<TryInsertResult<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
-        A: 'a,
     {
         if self.empty {
             return Ok(TryInsertResult::Empty);
@@ -161,14 +154,13 @@ where
     /// # Panics
     ///
     /// Panics if the database backend does not support `INSERT RETURNING`.
-    pub async fn exec_with_returning_many<'a, C>(
+    pub async fn exec_with_returning_many<C>(
         self,
-        db: &'a C,
+        db: &C,
     ) -> Result<TryInsertResult<Vec<<A::Entity as EntityTrait>::Model>>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
-        A: 'a,
     {
         if self.empty {
             return Ok(TryInsertResult::Empty);
@@ -280,16 +272,86 @@ where
                 last_insert_id: None,
             });
         }
-        let mut query = self.query;
-        if db.support_returning() {
-            query.returning(returning_pk::<A>(db.get_database_backend()));
-        }
-        match Inserter::<A>::new(self.primary_key, query).exec(db).await {
+        let res = self.into_one().exec(db).await;
+        match res {
             Ok(r) => Ok(InsertManyResult {
                 last_insert_id: Some(r.last_insert_id),
             }),
             Err(err) => Err(err),
         }
+    }
+
+    /// Execute an insert operation without returning (don't use `RETURNING` syntax)
+    /// Number of rows affected is returned
+    pub async fn exec_without_returning<C>(self, db: &C) -> Result<u64, DbErr>
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+    {
+        if self.empty {
+            return Ok(0);
+        }
+        self.into_one().exec_without_returning(db).await
+    }
+
+    /// Execute an insert operation and return all inserted models
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `INSERT RETURNING`.
+    pub async fn exec_with_returning<C>(
+        self,
+        db: &C,
+    ) -> Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+    {
+        if self.empty {
+            return Ok(Vec::new());
+        }
+
+        self.into_one().exec_with_returning_many(db).await
+    }
+
+    /// Alias to [`InsertMany::exec_with_returning`].
+    #[deprecated(
+        since = "1.2.0",
+        note = "Please use [`InsertMany::exec_with_returning`]"
+    )]
+    pub async fn exec_with_returning_many<C>(
+        self,
+        db: &C,
+    ) -> Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+    {
+        if self.empty {
+            return Ok(Vec::new());
+        }
+
+        self.into_one().exec_with_returning_many(db).await
+    }
+
+    /// Execute an insert operation and return primary keys of inserted models
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `INSERT RETURNING`.
+    pub async fn exec_with_returning_keys<C>(
+        self,
+        db: &C,
+    ) -> Result<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr>
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+    {
+        if self.empty {
+            return Ok(Vec::new());
+        }
+
+        self.into_one().exec_with_returning_keys(db).await
     }
 }
 
