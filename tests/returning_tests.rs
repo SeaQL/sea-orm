@@ -441,21 +441,43 @@ async fn delete_many() -> Result<(), DbErr> {
     .await?;
 
     // Delete one
-    let result = Entity::delete(ActiveModel {
-        id: Set(3),
-        ..Default::default()
-    })
-    .exec_with_returning(db)
-    .await;
-
     if db.support_returning() {
-        assert_eq!(result.unwrap(), Some(inserted_model_3));
+        assert_eq!(
+            Entity::delete(ActiveModel {
+                id: Set(3),
+                ..Default::default()
+            })
+            .exec_with_returning(db)
+            .await
+            .unwrap(),
+            Some(inserted_model_3)
+        );
     } else {
-        assert!(matches!(result, Err(DbErr::BackendNotSupported { .. })));
+        assert_eq!(
+            Entity::delete(ActiveModel {
+                id: Set(3),
+                ..Default::default()
+            })
+            .exec(db)
+            .await
+            .unwrap()
+            .rows_affected,
+            1
+        );
     }
 
     // No-op
-    assert_eq!(Entity::delete_many().exec_with_returning(db).await?, []);
+    if db.support_returning() {
+        assert_eq!(
+            Entity::delete_many().exec_with_returning(db).await.unwrap(),
+            []
+        );
+    } else {
+        assert_eq!(
+            Entity::delete_many().exec(db).await.unwrap().rows_affected,
+            0
+        );
+    }
 
     Ok(())
 }
