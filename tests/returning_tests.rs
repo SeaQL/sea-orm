@@ -415,15 +415,20 @@ async fn delete_many() -> Result<(), DbErr> {
         .unwrap();
     }
 
-    let result = Entity::delete_many()
-        .filter(Column::Action.eq("before_save"))
-        .exec_with_returning(db)
-        .await;
-
     if db.support_returning() {
-        assert_eq!(result.unwrap(), inserted_models);
+        assert_eq!(
+            Entity::delete_many()
+                .filter(Column::Action.eq("before_save"))
+                .exec_with_returning(db)
+                .await
+                .unwrap(),
+            inserted_models
+        );
     } else {
-        assert!(matches!(result, Err(DbErr::BackendNotSupported { .. })));
+        assert_eq!(
+            Entity::delete_many().exec(db).await.unwrap().rows_affected,
+            2
+        );
     }
 
     let inserted_model_3 = Model {
