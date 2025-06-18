@@ -127,10 +127,6 @@ where
     }
 
     /// Execute an insert operation and return primary keys of inserted models
-    ///
-    /// # Panics
-    ///
-    /// Panics if the database backend does not support `INSERT RETURNING`.
     pub async fn exec_with_returning_keys<C>(
         self,
         db: &C,
@@ -152,10 +148,6 @@ where
     }
 
     /// Execute an insert operation and return all inserted models
-    ///
-    /// # Panics
-    ///
-    /// Panics if the database backend does not support `INSERT RETURNING`.
     pub async fn exec_with_returning_many<C>(
         self,
         db: &C,
@@ -226,10 +218,6 @@ where
     }
 
     /// Execute an insert operation and return primary keys of inserted models
-    ///
-    /// # Panics
-    ///
-    /// Panics if the database backend does not support `INSERT RETURNING`.
     pub fn exec_with_returning_keys<'a, C>(
         self,
         db: &'a C,
@@ -243,10 +231,6 @@ where
     }
 
     /// Execute an insert operation and return all inserted models
-    ///
-    /// # Panics
-    ///
-    /// Panics if the database backend does not support `INSERT RETURNING`.
     pub fn exec_with_returning_many<'a, C>(
         self,
         db: &'a C,
@@ -297,10 +281,6 @@ where
     }
 
     /// Execute an insert operation and return all inserted models
-    ///
-    /// # Panics
-    ///
-    /// Panics if the database backend does not support `INSERT RETURNING`.
     pub async fn exec_with_returning<C>(
         self,
         db: &C,
@@ -337,10 +317,6 @@ where
     }
 
     /// Execute an insert operation and return primary keys of inserted models
-    ///
-    /// # Panics
-    ///
-    /// Panics if the database backend does not support `INSERT RETURNING`.
     pub async fn exec_with_returning_keys<C>(
         self,
         db: &C,
@@ -405,10 +381,6 @@ where
     }
 
     /// Execute an insert operation and return primary keys of inserted models
-    ///
-    /// # Panics
-    ///
-    /// Panics if the database backend does not support `INSERT RETURNING`.
     pub fn exec_with_returning_keys<'a, C>(
         self,
         db: &'a C,
@@ -422,10 +394,6 @@ where
     }
 
     /// Execute an insert operation and return all inserted models
-    ///
-    /// # Panics
-    ///
-    /// Panics if the database backend does not support `INSERT RETURNING`.
     pub fn exec_with_returning_many<'a, C>(
         self,
         db: &'a C,
@@ -574,7 +542,10 @@ where
             }
             Ok(keys)
         }
-        false => unimplemented!("Database backend doesn't support RETURNING"),
+        false => Err(DbErr::BackendNotSupported {
+            db: db_backend.as_str(),
+            ctx: "INSERT RETURNING",
+        }),
     }
 }
 
@@ -602,7 +573,10 @@ where
             .all(db)
             .await
         }
-        false => unimplemented!("Database backend doesn't support RETURNING"),
+        false => Err(DbErr::BackendNotSupported {
+            db: db_backend.as_str(),
+            ctx: "INSERT RETURNING",
+        }),
     }
 }
 

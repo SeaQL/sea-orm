@@ -25,8 +25,8 @@ async fn main() -> Result<(), DbErr> {
     update
         .table(Entity)
         .values([
-            (Column::Name, "Bakery Shop".into()),
-            (Column::ProfitMargin, 0.5.into()),
+            (Column::Name, "Bakery 2".into()),
+            (Column::ProfitMargin, 0.8.into()),
         ])
         .and_where(Column::Id.eq(1));
 
@@ -42,18 +42,24 @@ async fn main() -> Result<(), DbErr> {
             .query_one(builder.build(&insert))
             .await?
             .expect("Insert failed with query_one");
-        let _id: i32 = insert_res.try_get("", "id")?;
-        let _name: String = insert_res.try_get("", "name")?;
-        let _profit_margin: f64 = insert_res.try_get("", "profit_margin")?;
+        let id: i32 = insert_res.try_get("", "id")?;
+        assert_eq!(id, 1);
+        let name: String = insert_res.try_get("", "name")?;
+        assert_eq!(name, "Bakery Shop");
+        let profit_margin: f64 = insert_res.try_get("", "profit_margin")?;
+        assert_eq!(profit_margin, 0.5);
 
         update.returning(returning.clone());
         let update_res = db
             .query_one(builder.build(&update))
             .await?
             .expect("Update filed with query_one");
-        let _id: i32 = update_res.try_get("", "id")?;
-        let _name: String = update_res.try_get("", "name")?;
-        let _profit_margin: f64 = update_res.try_get("", "profit_margin")?;
+        let id: i32 = update_res.try_get("", "id")?;
+        assert_eq!(id, 1);
+        let name: String = update_res.try_get("", "name")?;
+        assert_eq!(name, "Bakery 2");
+        let profit_margin: f64 = update_res.try_get("", "profit_margin")?;
+        assert_eq!(profit_margin, 0.8);
     } else {
         let insert_res = db.execute(builder.build(&insert)).await?;
         assert!(insert_res.rows_affected() > 0);
@@ -68,16 +74,6 @@ async fn main() -> Result<(), DbErr> {
 }
 
 #[sea_orm_macros::test]
-#[cfg_attr(
-    any(
-        feature = "sqlx-mysql",
-        all(
-            feature = "sqlx-sqlite",
-            not(feature = "sqlite-use-returning-for-3_35")
-        )
-    ),
-    should_panic(expected = "Database backend doesn't support RETURNING")
-)]
 async fn insert_many() {
     pub use common::{TestContext, features::*};
     use edit_log::*;
@@ -113,35 +109,40 @@ async fn insert_many() {
             .is_empty()
     );
 
-    assert_eq!(
-        Entity::insert_many([
-            ActiveModel {
-                id: NotSet,
-                action: Set("two".into()),
-                values: Set(json!({ "id": "unique-id-002" })),
-            },
-            ActiveModel {
-                id: NotSet,
-                action: Set("three".into()),
-                values: Set(json!({ "id": "unique-id-003" })),
-            },
-        ])
-        .exec_with_returning(db)
-        .await
-        .unwrap(),
-        [
-            Model {
-                id: 2,
-                action: "two".into(),
-                values: json!({ "id": "unique-id-002" }),
-            },
-            Model {
-                id: 3,
-                action: "three".into(),
-                values: json!({ "id": "unique-id-003" }),
-            },
-        ]
-    );
+    let result = Entity::insert_many([
+        ActiveModel {
+            id: NotSet,
+            action: Set("two".into()),
+            values: Set(json!({ "id": "unique-id-002" })),
+        },
+        ActiveModel {
+            id: NotSet,
+            action: Set("three".into()),
+            values: Set(json!({ "id": "unique-id-003" })),
+        },
+    ])
+    .exec_with_returning(db)
+    .await;
+
+    if db.support_returning() {
+        assert_eq!(
+            result.unwrap(),
+            [
+                Model {
+                    id: 2,
+                    action: "two".into(),
+                    values: json!({ "id": "unique-id-002" }),
+                },
+                Model {
+                    id: 3,
+                    action: "three".into(),
+                    values: json!({ "id": "unique-id-003" }),
+                },
+            ]
+        );
+    } else {
+        assert!(matches!(result, Err(DbErr::BackendNotSupported { .. })));
+    }
 
     assert!(
         Entity::insert_many::<ActiveModel, _>([])
@@ -151,37 +152,29 @@ async fn insert_many() {
             .is_empty()
     );
 
-    assert_eq!(
-        Entity::insert_many([
-            ActiveModel {
-                id: NotSet,
-                action: Set("four".into()),
-                values: Set(json!({ "id": "unique-id-004" })),
-            },
-            ActiveModel {
-                id: NotSet,
-                action: Set("five".into()),
-                values: Set(json!({ "id": "unique-id-005" })),
-            },
-        ])
-        .exec_with_returning_keys(db)
-        .await
-        .unwrap(),
-        [4, 5]
-    );
+    let result = Entity::insert_many([
+        ActiveModel {
+            id: NotSet,
+            action: Set("four".into()),
+            values: Set(json!({ "id": "unique-id-004" })),
+        },
+        ActiveModel {
+            id: NotSet,
+            action: Set("five".into()),
+            values: Set(json!({ "id": "unique-id-005" })),
+        },
+    ])
+    .exec_with_returning_keys(db)
+    .await;
+
+    if db.support_returning() {
+        assert_eq!(result.unwrap(), [4, 5]);
+    } else {
+        assert!(matches!(result, Err(DbErr::BackendNotSupported { .. })));
+    }
 }
 
 #[sea_orm_macros::test]
-#[cfg_attr(
-    any(
-        feature = "sqlx-mysql",
-        all(
-            feature = "sqlx-sqlite",
-            not(feature = "sqlite-use-returning-for-3_35")
-        )
-    ),
-    should_panic(expected = "Database backend doesn't support RETURNING")
-)]
 async fn insert_many_composite_key() {
     use bakery_chain::{baker, cake, cakes_bakers};
     pub use common::{TestContext, features::*};
@@ -250,16 +243,6 @@ async fn insert_many_composite_key() {
 }
 
 #[sea_orm_macros::test]
-#[cfg_attr(
-    any(
-        feature = "sqlx-mysql",
-        all(
-            feature = "sqlx-sqlite",
-            not(feature = "sqlite-use-returning-for-3_35")
-        )
-    ),
-    should_panic(expected = "Database backend doesn't support RETURNING")
-)]
 async fn update_many() {
     pub use common::{TestContext, features::*};
     use edit_log::*;
@@ -369,16 +352,6 @@ async fn update_many() {
 }
 
 #[sea_orm_macros::test]
-#[cfg_attr(
-    any(
-        feature = "sqlx-mysql",
-        all(
-            feature = "sqlx-sqlite",
-            not(feature = "sqlite-use-returning-for-3_35")
-        )
-    ),
-    should_panic(expected = "Database backend doesn't support RETURNING")
-)]
 async fn delete_many() {
     pub use common::{TestContext, features::*};
     use edit_log::*;
