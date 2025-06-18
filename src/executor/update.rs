@@ -50,10 +50,6 @@ where
     }
 
     /// Execute an update operation and return the updated model (use `RETURNING` syntax if supported)
-    ///
-    /// # Panics
-    ///
-    /// Panics if the database backend does not support `UPDATE RETURNING`.
     pub async fn exec_with_returning<C>(self, db: &'a C) -> Result<Vec<E::Model>, DbErr>
     where
         C: ConnectionTrait,
@@ -145,9 +141,9 @@ impl Updater {
             return Ok(vec![]);
         }
 
+        let db_backend = db.get_database_backend();
         match db.support_returning() {
             true => {
-                let db_backend = db.get_database_backend();
                 let returning = Query::returning().exprs(
                     E::Column::iter().map(|c| c.select_as(c.into_returning_expr(db_backend))),
                 );
@@ -159,7 +155,10 @@ impl Updater {
                 .await?;
                 Ok(models)
             }
-            false => unimplemented!("Database backend doesn't support RETURNING"),
+            false => Err(DbErr::BackendNotSupported {
+                db: db_backend.as_str(),
+                ctx: "UPDATE RETURNING",
+            }),
         }
     }
 

@@ -36,10 +36,6 @@ where
     }
 
     /// Execute an delete operation and return the deleted model
-    ///
-    /// # Panics
-    ///
-    /// Panics if the database backend does not support `DELETE RETURNING`
     pub async fn exec_with_returning<C>(
         self,
         db: &C,
@@ -68,10 +64,6 @@ where
     }
 
     /// Execute an delete operation and return the deleted model
-    ///
-    /// # Panics
-    ///
-    /// Panics if the database backend does not support `DELETE RETURNING`
     pub fn exec_with_returning<C>(
         self,
         db: &C,
@@ -99,10 +91,6 @@ impl Deleter {
     }
 
     /// Execute an delete operation and return the deleted model
-    ///
-    /// # Panics
-    ///
-    /// Panics if the database backend does not support `DELETE RETURNING`
     pub fn exec_with_returning<E, C>(
         self,
         db: &C,
@@ -143,17 +131,19 @@ where
     E: EntityTrait,
     C: ConnectionTrait,
 {
-    let models = match db.support_returning() {
+    let db_backend = db.get_database_backend();
+    match db.support_returning() {
         true => {
-            let db_backend = db.get_database_backend();
             let delete_statement = db_backend.build(&query.returning_all().to_owned());
             SelectorRaw::<SelectModel<<E>::Model>>::from_statement(delete_statement)
                 .one(db)
-                .await?
+                .await
         }
-        false => unimplemented!("Database backend doesn't support RETURNING"),
-    };
-    Ok(models)
+        false => Err(DbErr::BackendNotSupported {
+            db: db_backend.as_str(),
+            ctx: "DELETE RETURNING",
+        }),
+    }
 }
 
 async fn exec_delete_with_returning_many<E, C>(
@@ -164,9 +154,9 @@ where
     E: EntityTrait,
     C: ConnectionTrait,
 {
-    let models = match db.support_returning() {
+    let db_backend = db.get_database_backend();
+    match db.support_returning() {
         true => {
-            let db_backend = db.get_database_backend();
             let returning = Query::returning().exprs(
                 E::Column::iter().map(|c| c.select_enum_as(c.into_returning_expr(db_backend))),
             );
@@ -174,11 +164,13 @@ where
             let delete_statement = db_backend.build(&query.to_owned());
             SelectorRaw::<SelectModel<<E>::Model>>::from_statement(delete_statement)
                 .all(db)
-                .await?
+                .await
         }
-        false => unimplemented!("Database backend doesn't support RETURNING"),
-    };
-    Ok(models)
+        false => Err(DbErr::BackendNotSupported {
+            db: db_backend.as_str(),
+            ctx: "DELETE RETURNING",
+        }),
+    }
 }
 
 #[cfg(test)]
