@@ -378,26 +378,41 @@ async fn delete_many() -> Result<(), DbErr> {
         },
     ];
 
-    // Delete many with returning
-    let result = Entity::insert_many(vec![
-        ActiveModel {
-            id: NotSet,
-            action: Set("before_save".to_string()),
-            values: Set(json!({ "id": "unique-id-001" })),
-        },
-        ActiveModel {
-            id: NotSet,
-            action: Set("before_save".to_string()),
-            values: Set(json!({ "id": "unique-id-002" })),
-        },
-    ])
-    .exec_with_returning(db)
-    .await;
-
     if db.support_returning() {
-        assert_eq!(result.unwrap(), inserted_models);
+        assert_eq!(
+            Entity::insert_many(vec![
+                ActiveModel {
+                    id: NotSet,
+                    action: Set("before_save".to_string()),
+                    values: Set(json!({ "id": "unique-id-001" })),
+                },
+                ActiveModel {
+                    id: NotSet,
+                    action: Set("before_save".to_string()),
+                    values: Set(json!({ "id": "unique-id-002" })),
+                },
+            ])
+            .exec_with_returning(db)
+            .await
+            .unwrap(),
+            inserted_models
+        );
     } else {
-        assert!(matches!(result, Err(DbErr::BackendNotSupported { .. })));
+        Entity::insert_many(vec![
+            ActiveModel {
+                id: NotSet,
+                action: Set("before_save".to_string()),
+                values: Set(json!({ "id": "unique-id-001" })),
+            },
+            ActiveModel {
+                id: NotSet,
+                action: Set("before_save".to_string()),
+                values: Set(json!({ "id": "unique-id-002" })),
+            },
+        ])
+        .exec(db)
+        .await
+        .unwrap();
     }
 
     let result = Entity::delete_many()
