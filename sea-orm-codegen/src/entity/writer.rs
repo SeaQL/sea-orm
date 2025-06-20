@@ -46,6 +46,7 @@ pub enum DateTimeCrate {
 #[derive(Debug)]
 pub struct EntityWriterContext {
     pub(crate) expanded_format: bool,
+    pub(crate) frontend_format: bool,
     pub(crate) with_prelude: WithPrelude,
     pub(crate) with_serde: WithSerde,
     pub(crate) with_copy_enums: bool,
@@ -163,6 +164,7 @@ impl EntityWriterContext {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         expanded_format: bool,
+        frontend_format: bool,
         with_prelude: WithPrelude,
         with_serde: WithSerde,
         with_copy_enums: bool,
@@ -180,6 +182,7 @@ impl EntityWriterContext {
     ) -> Self {
         Self {
             expanded_format,
+            frontend_format,
             with_prelude,
             with_serde,
             with_copy_enums,
@@ -205,7 +208,7 @@ impl EntityWriter {
         let with_prelude = context.with_prelude != WithPrelude::None;
         files.push(self.write_index_file(context.lib, with_prelude, context.seaography));
         if with_prelude {
-            files.push(self.write_prelude(context.with_prelude));
+            files.push(self.write_prelude(context.with_prelude, context.frontend_format));
         }
         if !self.enums.is_empty() {
             files.push(self.write_sea_orm_active_enums(
@@ -213,6 +216,7 @@ impl EntityWriter {
                 context.with_copy_enums,
                 &context.enum_extra_derives,
                 &context.enum_extra_attributes,
+                context.frontend_format,
             ));
         }
         WriterOutput { files }
@@ -245,7 +249,20 @@ impl EntityWriter {
 
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
-                let code_blocks = if context.expanded_format {
+                let code_blocks = if context.frontend_format {
+                    Self::gen_frontend_code_blocks(
+                        entity,
+                        &context.with_serde,
+                        &context.date_time_crate,
+                        &context.schema_name,
+                        serde_skip_deserializing_primary_key,
+                        serde_skip_hidden_column,
+                        &context.model_extra_derives,
+                        &context.model_extra_attributes,
+                        context.seaography,
+                        context.impl_active_model_behavior,
+                    )
+                } else if context.expanded_format {
                     Self::gen_expanded_code_blocks(
                         entity,
                         &context.with_serde,
@@ -321,13 +338,23 @@ impl EntityWriter {
         }
     }
 
-    pub fn write_prelude(&self, with_prelude: WithPrelude) -> OutputFile {
+    pub fn write_prelude(&self, with_prelude: WithPrelude, frontend_format: bool) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
         if with_prelude == WithPrelude::AllAllowUnusedImports {
             Self::write_allow_unused_imports(&mut lines)
         }
-        let code_blocks = self.entities.iter().map(Self::gen_prelude_use).collect();
+        let code_blocks = self
+            .entities
+            .iter()
+            .map({
+                if frontend_format {
+                    Self::gen_prelude_use_model
+                } else {
+                    Self::gen_prelude_use
+                }
+            })
+            .collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
             name: "prelude.rs".to_owned(),
@@ -341,10 +368,15 @@ impl EntityWriter {
         with_copy_enums: bool,
         extra_derives: &TokenStream,
         extra_attributes: &TokenStream,
+        frontend_format: bool,
     ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        Self::write(&mut lines, vec![Self::gen_import(with_serde)]);
+        if frontend_format {
+            Self::write(&mut lines, vec![Self::gen_import_serde(with_serde)]);
+        } else {
+            Self::write(&mut lines, vec![Self::gen_import(with_serde)]);
+        }
         lines.push("".to_owned());
         let code_blocks = self
             .enums
@@ -355,6 +387,7 @@ impl EntityWriter {
                     with_copy_enums,
                     extra_derives,
                     extra_attributes,
+                    frontend_format,
                 )
             })
             .collect();
@@ -474,28 +507,60 @@ impl EntityWriter {
         code_blocks
     }
 
-    pub fn gen_import(with_serde: &WithSerde) -> TokenStream {
-        let prelude_import = quote!(
-            use sea_orm::entity::prelude::*;
-        );
+    #[allow(clippy::too_many_arguments)]
+    pub fn gen_frontend_code_blocks(
+        entity: &Entity,
+        with_serde: &WithSerde,
+        date_time_crate: &DateTimeCrate,
+        schema_name: &Option<String>,
+        serde_skip_deserializing_primary_key: bool,
+        serde_skip_hidden_column: bool,
+        model_extra_derives: &TokenStream,
+        model_extra_attributes: &TokenStream,
+        _seaography: bool,
+        _impl_active_model_behavior: bool,
+    ) -> Vec<TokenStream> {
+        let mut imports = Self::gen_import_serde(with_serde);
+        imports.extend(Self::gen_import_active_enum(entity));
+        let code_blocks = vec![
+            imports,
+            Self::gen_frontend_model_struct(
+                entity,
+                with_serde,
+                date_time_crate,
+                schema_name,
+                serde_skip_deserializing_primary_key,
+                serde_skip_hidden_column,
+                model_extra_derives,
+                model_extra_attributes,
+            ),
+        ];
+        code_blocks
+    }
 
+    pub fn gen_import(with_serde: &WithSerde) -> TokenStream {
+        let serde_import = Self::gen_import_serde(with_serde);
+        quote! {
+            use sea_orm::entity::prelude::*;
+            #serde_import
+        }
+    }
+
+    pub fn gen_import_serde(with_serde: &WithSerde) -> TokenStream {
         match with_serde {
-            WithSerde::None => prelude_import,
+            WithSerde::None => Default::default(),
             WithSerde::Serialize => {
                 quote! {
-                    #prelude_import
                     use serde::Serialize;
                 }
             }
             WithSerde::Deserialize => {
                 quote! {
-                    #prelude_import
                     use serde::Deserialize;
                 }
             }
             WithSerde::Both => {
                 quote! {
-                    #prelude_import
                     use serde::{Deserialize,Serialize};
                 }
             }
@@ -812,6 +877,14 @@ impl EntityWriter {
         }
     }
 
+    pub fn gen_prelude_use_model(entity: &Entity) -> TokenStream {
+        let table_name_snake_case_ident = entity.get_table_name_snake_case_ident();
+        let table_name_camel_case_ident = entity.get_table_name_camel_case_ident();
+        quote! {
+            pub use super::#table_name_snake_case_ident::Model as #table_name_camel_case_ident;
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn gen_compact_model_struct(
         entity: &Entity,
@@ -912,6 +985,51 @@ impl EntityWriter {
                 #(
                     #attrs
                     #relation_enum_name,
+                )*
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn gen_frontend_model_struct(
+        entity: &Entity,
+        with_serde: &WithSerde,
+        date_time_crate: &DateTimeCrate,
+        _schema_name: &Option<String>,
+        serde_skip_deserializing_primary_key: bool,
+        serde_skip_hidden_column: bool,
+        model_extra_derives: &TokenStream,
+        model_extra_attributes: &TokenStream,
+    ) -> TokenStream {
+        let column_names_snake_case = entity.get_column_names_snake_case();
+        let column_rs_types = entity.get_column_rs_types(date_time_crate);
+        let if_eq_needed = entity.get_eq_needed();
+        let primary_keys: Vec<String> = entity
+            .primary_keys
+            .iter()
+            .map(|pk| pk.name.clone())
+            .collect();
+        let attrs: Vec<TokenStream> = entity
+            .columns
+            .iter()
+            .map(|col| {
+                let is_primary_key = primary_keys.contains(&col.name);
+                col.get_serde_attribute(
+                    is_primary_key,
+                    serde_skip_deserializing_primary_key,
+                    serde_skip_hidden_column,
+                )
+            })
+            .collect();
+        let extra_derive = with_serde.extra_derive();
+
+        quote! {
+            #[derive(Clone, Debug, PartialEq #if_eq_needed #extra_derive #model_extra_derives)]
+            #model_extra_attributes
+            pub struct Model {
+                #(
+                    #attrs
+                    pub #column_names_snake_case: #column_rs_types,
                 )*
             }
         }
@@ -1604,6 +1722,24 @@ mod tests {
         Ok(content.parse().unwrap())
     }
 
+    fn parse_from_frontend_file<R>(inner: R) -> io::Result<TokenStream>
+    where
+        R: Read,
+    {
+        let mut reader = BufReader::new(inner);
+        let mut lines: Vec<String> = Vec::new();
+
+        reader.read_until(b'\n', &mut Vec::new())?;
+
+        let mut line = String::new();
+        while reader.read_line(&mut line)? > 0 {
+            lines.push(line.to_owned());
+            line.clear();
+        }
+        let content = lines.join("");
+        Ok(content.parse().unwrap())
+    }
+
     #[test]
     fn test_gen_expanded_code_blocks() -> io::Result<()> {
         let entities = setup();
@@ -1777,6 +1913,92 @@ mod tests {
     }
 
     #[test]
+    fn test_gen_frontend_code_blocks() -> io::Result<()> {
+        let entities = setup();
+        const ENTITY_FILES: [&str; 13] = [
+            include_str!("../../tests/frontend/cake.rs"),
+            include_str!("../../tests/frontend/cake_filling.rs"),
+            include_str!("../../tests/frontend/cake_filling_price.rs"),
+            include_str!("../../tests/frontend/filling.rs"),
+            include_str!("../../tests/frontend/fruit.rs"),
+            include_str!("../../tests/frontend/vendor.rs"),
+            include_str!("../../tests/frontend/rust_keyword.rs"),
+            include_str!("../../tests/frontend/cake_with_float.rs"),
+            include_str!("../../tests/frontend/cake_with_double.rs"),
+            include_str!("../../tests/frontend/collection.rs"),
+            include_str!("../../tests/frontend/collection_float.rs"),
+            include_str!("../../tests/frontend/parent.rs"),
+            include_str!("../../tests/frontend/child.rs"),
+        ];
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 13] = [
+            include_str!("../../tests/frontend_with_schema_name/cake.rs"),
+            include_str!("../../tests/frontend_with_schema_name/cake_filling.rs"),
+            include_str!("../../tests/frontend_with_schema_name/cake_filling_price.rs"),
+            include_str!("../../tests/frontend_with_schema_name/filling.rs"),
+            include_str!("../../tests/frontend_with_schema_name/fruit.rs"),
+            include_str!("../../tests/frontend_with_schema_name/vendor.rs"),
+            include_str!("../../tests/frontend_with_schema_name/rust_keyword.rs"),
+            include_str!("../../tests/frontend_with_schema_name/cake_with_float.rs"),
+            include_str!("../../tests/frontend_with_schema_name/cake_with_double.rs"),
+            include_str!("../../tests/frontend_with_schema_name/collection.rs"),
+            include_str!("../../tests/frontend_with_schema_name/collection_float.rs"),
+            include_str!("../../tests/frontend_with_schema_name/parent.rs"),
+            include_str!("../../tests/frontend_with_schema_name/child.rs"),
+        ];
+
+        assert_eq!(entities.len(), ENTITY_FILES.len());
+
+        for (i, entity) in entities.iter().enumerate() {
+            assert_eq!(
+                dbg!(parse_from_frontend_file(ENTITY_FILES[i].as_bytes())?.to_string()),
+                EntityWriter::gen_frontend_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &crate::DateTimeCrate::Chrono,
+                    &None,
+                    false,
+                    false,
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    false,
+                    true,
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+            assert_eq!(
+                parse_from_frontend_file(ENTITY_FILES_WITH_SCHEMA_NAME[i].as_bytes())?.to_string(),
+                EntityWriter::gen_frontend_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &crate::DateTimeCrate::Chrono,
+                    &Some("schema_name".to_owned()),
+                    false,
+                    false,
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    false,
+                    true,
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
     fn test_gen_with_serde() -> io::Result<()> {
         let cake_entity = setup().get(0).unwrap().clone();
 
@@ -1914,6 +2136,72 @@ mod tests {
             ))
         );
 
+        // Frontend code blocks
+        assert_eq!(
+            comparable_file_string(include_str!("../../tests/frontend_with_serde/cake_none.rs"))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_serde/cake_serialize.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::Serialize,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_serde/cake_deserialize.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::Deserialize,
+                &DateTimeCrate::Chrono,
+                &None,
+                true,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!("../../tests/frontend_with_serde/cake_both.rs"))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::Both,
+                &DateTimeCrate::Chrono,
+                &None,
+                true,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+
         Ok(())
     }
 
@@ -2000,6 +2288,23 @@ mod tests {
         assert_eq!(
             comparable_file_string(include_str!("../../tests/with_seaography/cake_expanded.rs"))?,
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                true,
+                true,
+            ))
+        );
+
+        // Frontend code blocks
+        assert_eq!(
+            comparable_file_string(include_str!("../../tests/with_seaography/cake_frontend.rs"))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
@@ -2180,6 +2485,59 @@ mod tests {
             ))
         );
 
+        // Frontend code blocks
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_derives/cake_none.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_derives/cake_one.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &bonus_derive(["ts_rs::TS"]),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_derives/cake_multiple.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+
         // Make the `name` column of `cake` entity as hidden column
         cake_entity.columns[1].name = "_name".into();
 
@@ -2202,6 +2560,17 @@ mod tests {
                 None,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
+        )?;
+        assert_serde_variant_results(
+            &cake_entity,
+            &(
+                include_str!(
+                    "../../tests/frontend_with_serde/cake_serialize_with_hidden_column.rs"
+                ),
+                WithSerde::Serialize,
+                None,
+            ),
+            Box::new(EntityWriter::gen_frontend_code_blocks),
         )?;
 
         Ok(())
@@ -2365,6 +2734,59 @@ mod tests {
                 "../../tests/expanded_with_attributes/cake_multiple.rs"
             ))?,
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
+                false,
+                true,
+            ))
+        );
+
+        // Frontend code blocks
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_attributes/cake_none.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_attributes/cake_one.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_attributes/cake_multiple.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,

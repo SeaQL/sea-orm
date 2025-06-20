@@ -165,7 +165,7 @@ pub enum MigrateSubcommands {
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum GenerateSubcommands {
     #[command(about = "Generate entity")]
-    #[command(group(ArgGroup::new("formats").args(&["compact_format", "expanded_format"])))]
+    #[command(group(ArgGroup::new("formats").args(&["compact_format", "expanded_format", "frontend_format"])))]
     #[command(group(ArgGroup::new("group-tables").args(&["tables", "include_hidden_tables"])))]
     Entity {
         #[arg(long, help = "Generate entity file of compact format")]
@@ -173,6 +173,9 @@ pub enum GenerateSubcommands {
 
         #[arg(long, help = "Generate entity file of expanded format")]
         expanded_format: bool,
+
+        #[arg(long, help = "Generate entity file of frontend format")]
+        frontend_format: bool,
 
         #[arg(
             long,
