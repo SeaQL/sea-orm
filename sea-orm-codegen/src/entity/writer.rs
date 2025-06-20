@@ -343,13 +343,17 @@ impl EntityWriter {
         if with_prelude == WithPrelude::AllAllowUnusedImports {
             Self::write_allow_unused_imports(&mut lines)
         }
-        let code_blocks = self.entities.iter().map({
-            if frontend_format {
-                Self::gen_prelude_use
-            } else {
-                Self::gen_prelude_use_model
-            }
-        }).collect();
+        let code_blocks = self
+            .entities
+            .iter()
+            .map({
+                if frontend_format {
+                    Self::gen_prelude_use
+                } else {
+                    Self::gen_prelude_use_model
+                }
+            })
+            .collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
             name: "prelude.rs".to_owned(),
