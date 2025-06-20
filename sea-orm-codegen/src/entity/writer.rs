@@ -216,6 +216,7 @@ impl EntityWriter {
                 context.with_copy_enums,
                 &context.enum_extra_derives,
                 &context.enum_extra_attributes,
+                context.frontend_format,
             ));
         }
         WriterOutput { files }
@@ -348,9 +349,9 @@ impl EntityWriter {
             .iter()
             .map({
                 if frontend_format {
-                    Self::gen_prelude_use
-                } else {
                     Self::gen_prelude_use_model
+                } else {
+                    Self::gen_prelude_use
                 }
             })
             .collect();
@@ -367,10 +368,15 @@ impl EntityWriter {
         with_copy_enums: bool,
         extra_derives: &TokenStream,
         extra_attributes: &TokenStream,
+        frontend_format: bool,
     ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        Self::write(&mut lines, vec![Self::gen_import(with_serde)]);
+        if frontend_format {
+            Self::write(&mut lines, vec![Self::gen_import_serde(with_serde)]);
+        } else {
+            Self::write(&mut lines, vec![Self::gen_import(with_serde)]);
+        }
         lines.push("".to_owned());
         let code_blocks = self
             .enums
@@ -381,6 +387,7 @@ impl EntityWriter {
                     with_copy_enums,
                     extra_derives,
                     extra_attributes,
+                    frontend_format,
                 )
             })
             .collect();
