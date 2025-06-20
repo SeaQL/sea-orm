@@ -208,7 +208,7 @@ impl EntityWriter {
         let with_prelude = context.with_prelude != WithPrelude::None;
         files.push(self.write_index_file(context.lib, with_prelude, context.seaography));
         if with_prelude {
-            files.push(self.write_prelude(context.with_prelude));
+            files.push(self.write_prelude(context.with_prelude, context.frontend_format));
         }
         if !self.enums.is_empty() {
             files.push(self.write_sea_orm_active_enums(
@@ -337,13 +337,19 @@ impl EntityWriter {
         }
     }
 
-    pub fn write_prelude(&self, with_prelude: WithPrelude) -> OutputFile {
+    pub fn write_prelude(&self, with_prelude: WithPrelude, frontend_format: bool) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
         if with_prelude == WithPrelude::AllAllowUnusedImports {
             Self::write_allow_unused_imports(&mut lines)
         }
-        let code_blocks = self.entities.iter().map(Self::gen_prelude_use).collect();
+        let code_blocks = self.entities.iter().map({
+            if frontend_format {
+                Self::gen_prelude_use
+            } else {
+                Self::gen_prelude_use_model
+            }
+        }).collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
             name: "prelude.rs".to_owned(),
@@ -857,6 +863,14 @@ impl EntityWriter {
         let table_name_camel_case_ident = entity.get_table_name_camel_case_ident();
         quote! {
             pub use super::#table_name_snake_case_ident::Entity as #table_name_camel_case_ident;
+        }
+    }
+
+    pub fn gen_prelude_use_model(entity: &Entity) -> TokenStream {
+        let table_name_snake_case_ident = entity.get_table_name_snake_case_ident();
+        let table_name_camel_case_ident = entity.get_table_name_camel_case_ident();
+        quote! {
+            pub use super::#table_name_snake_case_ident::Model as #table_name_camel_case_ident;
         }
     }
 
