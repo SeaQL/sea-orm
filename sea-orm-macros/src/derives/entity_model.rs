@@ -27,7 +27,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                 } else if meta.path.is_ident("table_name") {
                     table_name = Some(meta.value()?.parse::<Lit>()?);
                 } else if meta.path.is_ident("schema_name") {
-                    let name: Lit = meta.value()?.parse()?;
+                    let name: Expr = meta.value()?.parse()?;
                     schema_name = quote! { Some(#name) };
                 } else if meta.path.is_ident("table_iden") {
                     table_iden = true;
