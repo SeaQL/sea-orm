@@ -8,15 +8,17 @@ use sea_query::{
 };
 
 impl Schema {
-    /// Creates Postgres enums from an ActiveEnum. See [TypeCreateStatement] for more details
-    pub fn create_enum_from_active_enum<A>(&self) -> TypeCreateStatement
+    /// Creates Postgres enums from an ActiveEnum. See [`TypeCreateStatement`] for more details.
+    /// Returns None if not Postgres.
+    pub fn create_enum_from_active_enum<A>(&self) -> Option<TypeCreateStatement>
     where
         A: ActiveEnum,
     {
         create_enum_from_active_enum::<A>(self.backend)
     }
 
-    /// Creates Postgres enums from an Entity. See [TypeCreateStatement] for more details
+    /// Creates Postgres enums from an Entity. See [`TypeCreateStatement`] for more details.
+    /// Returns empty vec if not Postgres.
     pub fn create_enum_from_entity<E>(&self, entity: E) -> Vec<TypeCreateStatement>
     where
         E: EntityTrait,
@@ -89,24 +91,24 @@ impl Schema {
     }
 }
 
-pub(crate) fn create_enum_from_active_enum<A>(backend: DbBackend) -> TypeCreateStatement
+pub(crate) fn create_enum_from_active_enum<A>(backend: DbBackend) -> Option<TypeCreateStatement>
 where
     A: ActiveEnum,
 {
     if matches!(backend, DbBackend::MySql | DbBackend::Sqlite) {
-        panic!("TypeCreateStatement is not supported in MySQL & SQLite");
+        return None;
     }
     let col_def = A::db_type();
     let col_type = col_def.get_column_type();
     create_enum_from_column_type(col_type)
 }
 
-pub(crate) fn create_enum_from_column_type(col_type: &ColumnType) -> TypeCreateStatement {
+pub(crate) fn create_enum_from_column_type(col_type: &ColumnType) -> Option<TypeCreateStatement> {
     let (name, values) = match col_type {
         ColumnType::Enum { name, variants } => (name.clone(), variants.clone()),
-        _ => panic!("Should be ColumnType::Enum"),
+        _ => return None,
     };
-    Type::create().as_enum(name).values(values).to_owned()
+    Some(Type::create().as_enum(name).values(values).to_owned())
 }
 
 #[allow(clippy::needless_borrow)]
@@ -124,8 +126,9 @@ where
         if !matches!(col_type, ColumnType::Enum { .. }) {
             continue;
         }
-        let stmt = create_enum_from_column_type(&col_type);
-        vec.push(stmt);
+        if let Some(stmt) = create_enum_from_column_type(&col_type) {
+            vec.push(stmt);
+        }
     }
     vec
 }
