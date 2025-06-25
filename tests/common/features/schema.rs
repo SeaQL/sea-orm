@@ -30,7 +30,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
                 .to_owned();
             assert_eq!(
                 db_backend.build(&enum_create_stmt),
-                db_backend.build(&schema.create_enum_from_active_enum::<Tea>())
+                db_backend.build(&schema.create_enum_from_active_enum::<Tea>().unwrap())
             );
             vec![enum_create_stmt]
         }
