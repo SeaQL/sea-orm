@@ -1038,7 +1038,7 @@ mod tests {
         );
 
         assert_eq!(
-            db_postgres.build(&schema.create_enum_from_active_enum::<Tea>()),
+            db_postgres.build(&schema.create_enum_from_active_enum::<Tea>().unwrap()),
             Statement::from_string(
                 db_postgres,
                 r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea')"#.to_owned()
