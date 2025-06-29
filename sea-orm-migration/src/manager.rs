@@ -117,7 +117,12 @@ impl SchemaManager<'_> {
             #[cfg(feature = "sqlx-sqlite")]
             DbBackend::Sqlite => sea_schema::sqlite::Sqlite.has_column(_table, _column),
             #[allow(unreachable_patterns)]
-            other => panic!("{other:?} feature is off"),
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "has_column",
+                });
+            }
         };
 
         #[allow(unreachable_code)]
@@ -144,7 +149,12 @@ impl SchemaManager<'_> {
             #[cfg(feature = "sqlx-sqlite")]
             DbBackend::Sqlite => sea_schema::sqlite::Sqlite.has_index(_table, _index),
             #[allow(unreachable_patterns)]
-            other => panic!("{other:?} feature is off"),
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "has_index",
+                });
+            }
         };
 
         #[allow(unreachable_code)]
@@ -172,7 +182,12 @@ where
         #[cfg(feature = "sqlx-sqlite")]
         DbBackend::Sqlite => sea_schema::sqlite::Sqlite.has_table(_table),
         #[allow(unreachable_patterns)]
-        other => panic!("{other:?} feature is off"),
+        other => {
+            return Err(DbErr::BackendNotSupported {
+                db: other.as_str(),
+                ctx: "has_table",
+            });
+        }
     };
 
     #[allow(unreachable_code)]

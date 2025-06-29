@@ -318,7 +318,7 @@ where
     }
 
     // Drop all tables
-    let stmt = query_tables(db).await;
+    let stmt = query_tables(db)?;
     let rows = db.query_all(db_backend.build(&stmt)).await?;
     for row in rows.into_iter() {
         let table_name: String = row.try_get("", "table_name")?;
@@ -442,22 +442,26 @@ where
     Ok(())
 }
 
-async fn query_tables<C>(db: &C) -> SelectStatement
+fn query_tables<C>(db: &C) -> Result<SelectStatement, DbErr>
 where
     C: ConnectionTrait,
 {
     match db.get_database_backend() {
         #[cfg(feature = "sqlx-mysql")]
-        DbBackend::MySql => sea_schema::mysql::MySql.query_tables(),
+        DbBackend::MySql => Ok(sea_schema::mysql::MySql.query_tables()),
         #[cfg(feature = "sqlx-postgres")]
-        DbBackend::Postgres => sea_schema::postgres::Postgres.query_tables(),
+        DbBackend::Postgres => Ok(sea_schema::postgres::Postgres.query_tables()),
         #[cfg(feature = "sqlx-sqlite")]
-        DbBackend::Sqlite => sea_schema::sqlite::Sqlite.query_tables(),
+        DbBackend::Sqlite => Ok(sea_schema::sqlite::Sqlite.query_tables()),
         #[allow(unreachable_patterns)]
-        other => panic!("{other:?} feature is off"),
+        other => Err(DbErr::BackendNotSupported {
+            db: other.as_str(),
+            ctx: "query_tables",
+        }),
     }
 }
 
+// this function is only called after checking db backend, the panic is unreachable
 fn get_current_schema<C>(db: &C) -> SimpleExpr
 where
     C: ConnectionTrait,
