@@ -136,7 +136,7 @@ impl Entity {
         // helper function that generates attributes for `Relation` data
         let produce_relation_attrs = |rel: &Relation, reverse: bool| {
             let entity = match rel.get_module_name() {
-                Some(module_name) => format!("super::{}::Entity", module_name),
+                Some(module_name) => format!("super::{module_name}::Entity"),
                 None => String::from("Entity"),
             };
 

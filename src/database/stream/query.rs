@@ -33,6 +33,7 @@ impl std::fmt::Debug for QueryStream {
 }
 
 impl QueryStream {
+    #[allow(dead_code)]
     #[instrument(level = "trace", skip(metric_callback))]
     pub(crate) fn build(
         stmt: Statement,
