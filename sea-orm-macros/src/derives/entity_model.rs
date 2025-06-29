@@ -140,9 +140,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                     let ty: TokenStream = syn::parse_str(&litstr.value())?;
                                     sql_type = Some(ty);
                                 } else {
-                                    return Err(
-                                        meta.error(format!("Invalid column_type {lit:?}"))
-                                    );
+                                    return Err(meta.error(format!("Invalid column_type {lit:?}")));
                                 }
                             } else if meta.path.is_ident("auto_increment") {
                                 let lit = meta.value()?.parse()?;
@@ -163,18 +161,14 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                     let value_expr: TokenStream = syn::parse_str(&litstr.value())?;
                                     default_expr = Some(value_expr);
                                 } else {
-                                    return Err(
-                                        meta.error(format!("Invalid column_type {lit:?}"))
-                                    );
+                                    return Err(meta.error(format!("Invalid column_type {lit:?}")));
                                 }
                             } else if meta.path.is_ident("column_name") {
                                 let lit = meta.value()?.parse()?;
                                 if let Lit::Str(litstr) = lit {
                                     column_name = Some(litstr.value());
                                 } else {
-                                    return Err(
-                                        meta.error(format!("Invalid column_name {lit:?}"))
-                                    );
+                                    return Err(meta.error(format!("Invalid column_name {lit:?}")));
                                 }
                             } else if meta.path.is_ident("enum_name") {
                                 let lit = meta.value()?.parse()?;
