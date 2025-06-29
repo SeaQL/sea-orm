@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
-* [sea-orm-cli] New `--frontend-format` flag to generate entities in pure Rust:
+* [sea-orm-cli] New `--frontend-format` flag to generate entities in pure Rust https://github.com/SeaQL/sea-orm/pull/2631
 ```rust
 // for example, below is the normal (compact) Entity:
 use sea_orm::entity::prelude::*;
