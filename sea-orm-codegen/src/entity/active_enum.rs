@@ -30,7 +30,7 @@ impl ActiveEnum {
             } else {
                 let variant_name = v.to_upper_camel_case();
                 if variant_name.is_empty() {
-                    println!("Warning: item '{}' in the enumeration '{}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.", v, enum_name);
+                    println!("Warning: item '{v}' in the enumeration '{enum_name}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.");
                     let mut ss = String::new();
                     for c in v.chars() {
                         if c.len_utf8() > 1 {

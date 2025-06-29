@@ -117,7 +117,7 @@ impl Relation {
                     let punctuated = punctuated.join(", ");
                     match len {
                         0..=1 => punctuated,
-                        _ => format!("({})", punctuated),
+                        _ => format!("({punctuated})"),
                     }
                 };
                 let (from, to) =
