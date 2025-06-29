@@ -84,7 +84,7 @@ impl DeriveValueTypeStruct {
                         let ty: TokenStream = syn::parse_str(&litstr.value())?;
                         col_type = Some(ty);
                     } else {
-                        return Err(meta.error(format!("Invalid column_type {:?}", lit)));
+                        return Err(meta.error(format!("Invalid column_type {lit:?}")));
                     }
                 } else if meta.path.is_ident("array_type") {
                     let lit = meta.value()?.parse()?;
@@ -92,7 +92,7 @@ impl DeriveValueTypeStruct {
                         let ty: TokenStream = syn::parse_str(&litstr.value())?;
                         arr_type = Some(ty);
                     } else {
-                        return Err(meta.error(format!("Invalid array_type {:?}", lit)));
+                        return Err(meta.error(format!("Invalid array_type {lit:?}")));
                     }
                 } else {
                     return Err(meta.error(format!("Invalid attribute {:?}", meta.path)));
@@ -203,7 +203,7 @@ impl DeriveValueTypeEnum {
                         let ty: TokenStream = syn::parse_str(&litstr.value())?;
                         from_str = Some(ty);
                     } else {
-                        return Err(meta.error(format!("Invalid from_str {:?}", lit)));
+                        return Err(meta.error(format!("Invalid from_str {lit:?}")));
                     }
                 } else if meta.path.is_ident("to_str") {
                     let lit = meta.value()?.parse()?;
@@ -211,14 +211,14 @@ impl DeriveValueTypeEnum {
                         let ty: TokenStream = syn::parse_str(&litstr.value())?;
                         to_str = Some(ty);
                     } else {
-                        return Err(meta.error(format!("Invalid to_str {:?}", lit)));
+                        return Err(meta.error(format!("Invalid to_str {lit:?}")));
                     }
                 } else if meta.path.is_ident("value_type") {
                     let lit = meta.value()?.parse()?;
                     if let Lit::Str(litstr) = lit {
                         value_type = Some(litstr.value());
                     } else {
-                        return Err(meta.error(format!("Invalid value_type {:?}", lit)));
+                        return Err(meta.error(format!("Invalid value_type {lit:?}")));
                     }
                 } else {
                     return Err(meta.error(format!("Invalid attribute {:?}", meta.path)));
