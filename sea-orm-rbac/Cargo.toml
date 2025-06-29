@@ -1,0 +1,20 @@
+[package]
+name = "sea-orm-rbac"
+version = "1.2.0-rc.1"
+authors = ["Chris Tsang <chris.2y3@outlook.com>"]
+edition = "2024"
+description = "Role based access control for SeaORM"
+license = "MIT OR Apache-2.0"
+homepage = "https://www.sea-ql.org/SeaORM"
+documentation = "https://docs.rs/sea-orm"
+repository = "https://github.com/SeaQL/sea-orm"
+categories = ["database"]
+keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
+rust-version = "1.85.0"
+
+[dependencies]
+sea-orm = { version = "~1.2.0-rc", path = "../", default-features = false, features = ["macros"] }
+# sea-schema = { version = "0.17.0-rc.2", default-features = false, features = ["discovery", "writer", "probe"] }
+
+[dev-dependencies]
+# tokio = { version = "1", features = ["full"] }
