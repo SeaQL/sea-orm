@@ -141,7 +141,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                     sql_type = Some(ty);
                                 } else {
                                     return Err(
-                                        meta.error(format!("Invalid column_type {:?}", lit))
+                                        meta.error(format!("Invalid column_type {lit:?}"))
                                     );
                                 }
                             } else if meta.path.is_ident("auto_increment") {
@@ -150,7 +150,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                     auto_increment = litbool.value();
                                 } else {
                                     return Err(
-                                        meta.error(format!("Invalid auto_increment = {:?}", lit))
+                                        meta.error(format!("Invalid auto_increment = {lit:?}"))
                                     );
                                 }
                             } else if meta.path.is_ident("comment") {
@@ -164,7 +164,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                     default_expr = Some(value_expr);
                                 } else {
                                     return Err(
-                                        meta.error(format!("Invalid column_type {:?}", lit))
+                                        meta.error(format!("Invalid column_type {lit:?}"))
                                     );
                                 }
                             } else if meta.path.is_ident("column_name") {
@@ -173,7 +173,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                     column_name = Some(litstr.value());
                                 } else {
                                     return Err(
-                                        meta.error(format!("Invalid column_name {:?}", lit))
+                                        meta.error(format!("Invalid column_name {lit:?}"))
                                     );
                                 }
                             } else if meta.path.is_ident("enum_name") {
@@ -182,21 +182,21 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                     let ty: Ident = syn::parse_str(&litstr.value())?;
                                     enum_name = Some(ty);
                                 } else {
-                                    return Err(meta.error(format!("Invalid enum_name {:?}", lit)));
+                                    return Err(meta.error(format!("Invalid enum_name {lit:?}")));
                                 }
                             } else if meta.path.is_ident("select_as") {
                                 let lit = meta.value()?.parse()?;
                                 if let Lit::Str(litstr) = lit {
                                     select_as = Some(litstr.value());
                                 } else {
-                                    return Err(meta.error(format!("Invalid select_as {:?}", lit)));
+                                    return Err(meta.error(format!("Invalid select_as {lit:?}")));
                                 }
                             } else if meta.path.is_ident("save_as") {
                                 let lit = meta.value()?.parse()?;
                                 if let Lit::Str(litstr) = lit {
                                     save_as = Some(litstr.value());
                                 } else {
-                                    return Err(meta.error(format!("Invalid save_as {:?}", lit)));
+                                    return Err(meta.error(format!("Invalid save_as {lit:?}")));
                                 }
                             } else if meta.path.is_ident("ignore") {
                                 ignore = true;
