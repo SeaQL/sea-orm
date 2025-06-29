@@ -150,10 +150,11 @@ where
             return Ok(Vec::new());
         }
 
-        let keys: Vec<ValueTuple> = self
-            .iter()
-            .map(|model: &M| extract_key(&rel_def.from_col, model))
-            .collect();
+        let mut keys: Vec<ValueTuple> = Default::default();
+        for model in self.iter() {
+            keys.push(extract_key(&rel_def.from_col, model)?);
+        }
+        let keys = keys; // un-mut
 
         let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
@@ -161,17 +162,12 @@ where
 
         let data = stmt.all(db).await?;
 
-        let hashmap: HashMap<ValueTuple, <R as EntityTrait>::Model> = data.into_iter().fold(
-            HashMap::new(),
-            |mut acc, value: <R as EntityTrait>::Model| {
-                {
-                    let key = extract_key(&rel_def.to_col, &value);
-                    acc.insert(key, value);
-                }
-
-                acc
-            },
-        );
+        let mut hashmap: HashMap<ValueTuple, <R as EntityTrait>::Model> = Default::default();
+        for value in data {
+            let key = extract_key(&rel_def.to_col, &value)?;
+            hashmap.insert(key, value);
+        }
+        let hashmap = hashmap; // un-mut
 
         let result: Vec<Option<<R as EntityTrait>::Model>> =
             keys.iter().map(|key| hashmap.get(key).cloned()).collect();
@@ -201,10 +197,11 @@ where
             return Ok(Vec::new());
         }
 
-        let keys: Vec<ValueTuple> = self
-            .iter()
-            .map(|model: &M| extract_key(&rel_def.from_col, model))
-            .collect();
+        let mut keys: Vec<ValueTuple> = Default::default();
+        for model in self.iter() {
+            keys.push(extract_key(&rel_def.from_col, model)?);
+        }
+        let keys = keys; // un-mut
 
         let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
@@ -219,16 +216,15 @@ where
                     acc
                 });
 
-        data.into_iter()
-            .for_each(|value: <R as EntityTrait>::Model| {
-                let key = extract_key(&rel_def.to_col, &value);
+        for value in data {
+            let key = extract_key(&rel_def.to_col, &value)?;
 
-                let vec = hashmap
-                    .get_mut(&key)
-                    .expect("Failed at finding key on hashmap");
+            let vec = hashmap.get_mut(&key).ok_or_else(|| {
+                DbErr::RecordNotFound(format!("Loader: failed to find model for {key:?}"))
+            })?;
 
-                vec.push(value);
-            });
+            vec.push(value);
+        }
 
         let result: Vec<Vec<R::Model>> = keys
             .iter()
@@ -274,10 +270,11 @@ where
                 return Ok(Vec::new());
             }
 
-            let pkeys: Vec<ValueTuple> = self
-                .iter()
-                .map(|model: &M| extract_key(&via_rel.from_col, model))
-                .collect();
+            let mut pkeys: Vec<ValueTuple> = Default::default();
+            for model in self.iter() {
+                pkeys.push(extract_key(&via_rel.from_col, model)?);
+            }
+            let pkeys = pkeys; // un-mut
 
             // Map of M::PK -> Vec<R::PK>
             let mut keymap: HashMap<ValueTuple, Vec<ValueTuple>> = Default::default();
@@ -286,13 +283,13 @@ where
                 let condition = prepare_condition(&via_rel.to_tbl, &via_rel.to_col, &pkeys);
                 let stmt = V::find().filter(condition);
                 let data = stmt.all(db).await?;
-                data.into_iter().for_each(|model| {
-                    let pk = extract_key(&via_rel.to_col, &model);
+                for model in data {
+                    let pk = extract_key(&via_rel.to_col, &model)?;
                     let entry = keymap.entry(pk).or_default();
 
-                    let fk = extract_key(&rel_def.from_col, &model);
+                    let fk = extract_key(&rel_def.from_col, &model)?;
                     entry.push(fk);
-                });
+                }
 
                 keymap.values().flatten().cloned().collect()
             };
@@ -301,16 +298,14 @@ where
 
             let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
 
-            let data = stmt.all(db).await?;
+            let models = stmt.all(db).await?;
 
             // Map of R::PK -> R::Model
-            let data: HashMap<ValueTuple, <R as EntityTrait>::Model> = data
-                .into_iter()
-                .map(|model| {
-                    let key = extract_key(&rel_def.to_col, &model);
-                    (key, model)
-                })
-                .collect();
+            let mut data: HashMap<ValueTuple, <R as EntityTrait>::Model> = Default::default();
+            for model in models {
+                data.insert(extract_key(&rel_def.to_col, &model)?, model);
+            }
+            let data = data; // un-mut
 
             let result: Vec<Vec<R::Model>> = pkeys
                 .into_iter()
@@ -338,48 +333,48 @@ fn cmp_table_ref(left: &TableRef, right: &TableRef) -> bool {
     format!("{left:?}") == format!("{right:?}")
 }
 
-fn extract_key<Model>(target_col: &Identity, model: &Model) -> ValueTuple
+fn extract_key<Model>(target_col: &Identity, model: &Model) -> Result<ValueTuple, DbErr>
 where
     Model: ModelTrait,
 {
-    match target_col {
+    Ok(match target_col {
         Identity::Unary(a) => {
+            let a = a.to_string();
             let column_a =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &a.to_string(),
-                )
-                .unwrap_or_else(|_| panic!("Failed at mapping string to column A:1"));
+                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(&a)
+                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}' to column A:1")))?;
             ValueTuple::One(model.get(column_a))
         }
         Identity::Binary(a, b) => {
+            let a = a.to_string();
+            let b = b.to_string();
             let column_a =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &a.to_string(),
-                )
-                .unwrap_or_else(|_| panic!("Failed at mapping string to column A:2"));
+                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(&a)
+                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}' to column A:2")))?;
             let column_b =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &b.to_string(),
-                )
-                .unwrap_or_else(|_| panic!("Failed at mapping string to column B:2"));
+                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(&b)
+                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{b}' to column B:2")))?;
             ValueTuple::Two(model.get(column_a), model.get(column_b))
         }
         Identity::Ternary(a, b, c) => {
+            let a = a.to_string();
+            let b = b.to_string();
+            let c = c.to_string();
             let column_a =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &a.to_string(),
                 )
-                .unwrap_or_else(|_| panic!("Failed at mapping string to column A:3"));
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}' to column A:3")))?;
             let column_b =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &b.to_string(),
                 )
-                .unwrap_or_else(|_| panic!("Failed at mapping string to column B:3"));
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{b}' to column B:3")))?;
             let column_c =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &c.to_string(),
                 )
-                .unwrap_or_else(|_| panic!("Failed at mapping string to column C:3"));
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{c}' to column C:3")))?;
             ValueTuple::Three(
                 model.get(column_a),
                 model.get(column_b),
@@ -387,18 +382,19 @@ where
             )
         }
         Identity::Many(cols) => {
-            let values = cols.iter().map(|col| {
+            let mut values = Vec::new();
+            for col in cols {
                 let col_name = col.to_string();
-                let column = <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &col_name,
-                )
-                .unwrap_or_else(|_| panic!("Failed at mapping '{}' to column", col_name));
-                model.get(column)
-            })
-            .collect();
+                let column =
+                    <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
+                        &col_name,
+                    )
+                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{col_name}' to colum")))?;
+                values.push(model.get(column))
+            }
             ValueTuple::Many(values)
         }
-    }
+    })
 }
 
 fn prepare_condition(table: &TableRef, col: &Identity, keys: &[ValueTuple]) -> Condition {
