@@ -1,5 +1,6 @@
 use super::*;
 use crate::common::TestContext;
+use chrono::DateTime as ChronoDateTime;
 use sea_orm::{prelude::*, NotSet, Set};
 
 pub async fn init_1(ctx: &TestContext, link: bool) {
@@ -69,7 +70,7 @@ pub async fn init_1(ctx: &TestContext, link: bool) {
             total: Set(10.into()),
             bakery_id: Set(42),
             customer_id: Set(11),
-            placed_at: Set(DateTime::UNIX_EPOCH),
+            placed_at: Set(ChronoDateTime::UNIX_EPOCH.naive_utc()),
         })
         .exec(&ctx.db)
         .await
