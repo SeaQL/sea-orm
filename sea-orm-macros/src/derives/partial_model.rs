@@ -36,6 +36,7 @@ enum ColumnAs {
     Nested {
         typ: Type,
         field: syn::Ident,
+        alias: Option<String>,
     },
     Skip(syn::Ident),
 }
@@ -109,6 +110,7 @@ impl DerivePartialModel {
             let mut from_col = None;
             let mut from_expr = None;
             let mut nested = false;
+            let mut nested_alias = None;
             let mut skip = false;
 
             for attr in field.attrs.iter() {
@@ -127,6 +129,8 @@ impl DerivePartialModel {
                             from_col = Some(format_ident!("{}", s.to_upper_camel_case()));
                         } else if let Some(s) = meta.get_as_kv("from_expr") {
                             from_expr = Some(syn::parse_str::<Expr>(&s).map_err(Error::Syn)?);
+                        } else if let Some(s) = meta.get_as_kv("alias") {
+                            nested_alias = Some(s);
                         }
                     }
                 }
@@ -152,6 +156,7 @@ impl DerivePartialModel {
                 (None, None, true) => ColumnAs::Nested {
                     typ: field.ty,
                     field: field_name,
+                    alias: nested_alias,
                 },
                 (None, None, false) => {
                     if entity.is_none() {
@@ -254,7 +259,7 @@ impl DerivePartialModel {
             ..
         } = self;
         let select_col_code_gen = fields.iter().map(|col_as| match col_as {
-            ColumnAs::Col { col, field } => {
+            ColumnAs::Col { col, field} => {
                 let field = field.unraw().to_string();
                 let entity = entity.as_ref().unwrap();
                 let col_name = if let Some(col) = col {
@@ -263,9 +268,21 @@ impl DerivePartialModel {
                     &format_ident!("{}", field.to_upper_camel_case())
                 };
                 let col_value = if let Some(alias) = alias {
-                    quote!(sea_orm::sea_query::Expr::col((#alias, <#entity as sea_orm::EntityTrait>::Column:: #col_name)))
+                    quote!(if let Some(nested_alias) = nested_alias {
+                        let alias_owned = sea_orm::sea_query::Alias::new(nested_alias);
+                        let alias_iden = sea_orm::sea_query::DynIden::new(alias_owned);
+                        sea_orm::sea_query::Expr::col((alias_iden, <#entity as sea_orm::EntityTrait>::Column:: #col_name))
+                    } else {
+                        sea_orm::sea_query::Expr::col((#alias, <#entity as sea_orm::EntityTrait>::Column:: #col_name))
+                    })
                 } else {
-                    quote!( <#entity as sea_orm::EntityTrait>::Column:: #col_name)
+                    quote!(if let Some(nested_alias) = nested_alias {
+                        let alias_owned = sea_orm::sea_query::Alias::new(nested_alias);
+                        let alias_iden = sea_orm::sea_query::DynIden::new(alias_owned);
+                        sea_orm::sea_query::Expr::col((alias_iden, <#entity as sea_orm::EntityTrait>::Column:: #col_name))
+                    } else {
+                        <#entity as sea_orm::EntityTrait>::Column:: #col_name.into_expr()
+                    })
                 };
                 quote!(let #select_ident =
                     if let Some(prefix) = pre {
@@ -287,8 +304,13 @@ impl DerivePartialModel {
                     };
                 )
             }
-            ColumnAs::Nested { typ, field } => {
+            ColumnAs::Nested { typ, field, alias } => {
                 let field = field.unraw().to_string();
+                let alias_ref: Option<&str> = alias.as_deref();
+                let alias_arg = match alias_ref {
+                    Some(s) => quote! { Some(#s) },
+                    None => quote! { None },
+                };
                 quote!(let #select_ident =
                     <#typ as sea_orm::PartialModelTrait>::select_cols_nested(#select_ident,
                         Some(&if let Some(prefix) = pre {
@@ -296,7 +318,9 @@ impl DerivePartialModel {
                             } else {
                                 format!("{}_", #field)
                             }
-                        ));
+                        ), 
+                        #alias_arg
+                    );
                 )
             }
             ColumnAs::Skip(_) => quote!(),
@@ -306,10 +330,10 @@ impl DerivePartialModel {
             #[automatically_derived]
             impl sea_orm::PartialModelTrait for #ident {
                 fn select_cols<S: sea_orm::SelectColumns>(#select_ident: S) -> S {
-                    Self::select_cols_nested(#select_ident, None)
+                    Self::select_cols_nested(#select_ident, None, None)
                 }
 
-                fn select_cols_nested<S: sea_orm::SelectColumns>(#select_ident: S, pre: Option<&str>) -> S {
+                fn select_cols_nested<S: sea_orm::SelectColumns>(#select_ident: S, pre: Option<&str>, nested_alias: Option<&str>) -> S {
                     #(#select_col_code_gen)*
                     #select_ident
                 }
