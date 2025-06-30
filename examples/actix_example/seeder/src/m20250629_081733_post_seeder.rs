@@ -1,6 +1,6 @@
-use sea_orm_migration::{ prelude::*, schema::* };
-use sea_orm::{ ActiveModelTrait, Set, EntityTrait, ColumnTrait, QueryFilter };
 use entity::post::*;
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
+use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -12,7 +12,7 @@ impl MigrationTrait for Migration {
 
         let seed_data = vec![
             ("First Post", "This is the first post."),
-            ("Second Post", "This is another post.")
+            ("Second Post", "This is another post."),
         ];
 
         for (title, text) in seed_data {
@@ -32,7 +32,10 @@ impl MigrationTrait for Migration {
         let db = manager.get_connection();
 
         let titles_to_delete = vec!["First Post", "Second Post"];
-        Entity::delete_many().filter(Column::Title.is_in(titles_to_delete)).exec(db).await?;
+        Entity::delete_many()
+            .filter(Column::Title.is_in(titles_to_delete))
+            .exec(db)
+            .await?;
 
         println!("Posts seeded data removed.");
         Ok(())
