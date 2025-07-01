@@ -114,3 +114,10 @@ pub fn arr_type_match(
         }
     }
 }
+
+pub fn can_try_from_u64(field_type: &str) -> bool {
+    matches!(
+        field_type,
+        "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64"
+    )
+}
