@@ -318,7 +318,7 @@ impl DerivePartialModel {
                             } else {
                                 format!("{}_", #field)
                             }
-                        ), 
+                        ),
                         #alias_arg
                     );
                 )
