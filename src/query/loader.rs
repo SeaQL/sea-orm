@@ -150,11 +150,10 @@ where
             return Ok(Vec::new());
         }
 
-        let mut keys: Vec<ValueTuple> = Default::default();
-        for model in self.iter() {
-            keys.push(extract_key(&rel_def.from_col, model)?);
-        }
-        let keys = keys; // un-mut
+        let keys = self
+            .iter()
+            .map(|model| extract_key(&rel_def.from_col, model))
+            .collect::<Result<Vec<_>, _>>()?;
 
         let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
@@ -162,12 +161,16 @@ where
 
         let data = stmt.all(db).await?;
 
-        let mut hashmap: HashMap<ValueTuple, <R as EntityTrait>::Model> = Default::default();
-        for value in data {
-            let key = extract_key(&rel_def.to_col, &value)?;
-            hashmap.insert(key, value);
-        }
-        let hashmap = hashmap; // un-mut
+        let hashmap = data.into_iter().try_fold(
+            HashMap::<ValueTuple, <R as EntityTrait>::Model>::new(),
+            |mut acc, value| {
+                extract_key(&rel_def.to_col, &value).map(|key| {
+                    acc.insert(key, value);
+
+                    acc
+                })
+            },
+        )?;
 
         let result: Vec<Option<<R as EntityTrait>::Model>> =
             keys.iter().map(|key| hashmap.get(key).cloned()).collect();
@@ -197,11 +200,10 @@ where
             return Ok(Vec::new());
         }
 
-        let mut keys: Vec<ValueTuple> = Default::default();
-        for model in self.iter() {
-            keys.push(extract_key(&rel_def.from_col, model)?);
-        }
-        let keys = keys; // un-mut
+        let keys = self
+            .iter()
+            .map(|model| extract_key(&rel_def.from_col, model))
+            .collect::<Result<Vec<_>, _>>()?;
 
         let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
@@ -270,11 +272,10 @@ where
                 return Ok(Vec::new());
             }
 
-            let mut pkeys: Vec<ValueTuple> = Default::default();
-            for model in self.iter() {
-                pkeys.push(extract_key(&via_rel.from_col, model)?);
-            }
-            let pkeys = pkeys; // un-mut
+            let pkeys = self
+                .iter()
+                .map(|model| extract_key(&via_rel.from_col, model))
+                .collect::<Result<Vec<_>, _>>()?;
 
             // Map of M::PK -> Vec<R::PK>
             let mut keymap: HashMap<ValueTuple, Vec<ValueTuple>> = Default::default();
@@ -301,11 +302,16 @@ where
             let models = stmt.all(db).await?;
 
             // Map of R::PK -> R::Model
-            let mut data: HashMap<ValueTuple, <R as EntityTrait>::Model> = Default::default();
-            for model in models {
-                data.insert(extract_key(&rel_def.to_col, &model)?, model);
-            }
-            let data = data; // un-mut
+            let data = models.into_iter().try_fold(
+                HashMap::<ValueTuple, <R as EntityTrait>::Model>::new(),
+                |mut acc, model| {
+                    extract_key(&rel_def.to_col, &model).map(|key| {
+                        acc.insert(key, model);
+
+                        acc
+                    })
+                },
+            )?;
 
             let result: Vec<Vec<R::Model>> = pkeys
                 .into_iter()
