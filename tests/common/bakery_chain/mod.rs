@@ -7,6 +7,7 @@ pub mod lineitem;
 pub mod order;
 pub mod schema;
 pub mod seed_data;
+pub mod worker;
 
 pub use baker::Entity as Baker;
 pub use bakery::Entity as Bakery;
