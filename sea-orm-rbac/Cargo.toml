@@ -15,6 +15,7 @@ rust-version = "1.85.0"
 [dependencies]
 sea-orm = { version = "~1.2.0-rc", path = "../", default-features = false, features = ["macros"] }
 # sea-schema = { version = "0.17.0-rc.2", default-features = false, features = ["discovery", "writer", "probe"] }
+thiserror = { version = "2", default-features = false }
 
 [dev-dependencies]
 # tokio = { version = "1", features = ["full"] }
