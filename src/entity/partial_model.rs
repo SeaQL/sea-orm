@@ -4,35 +4,40 @@ use crate::{EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait, Sele
 pub trait PartialModelTrait: FromQueryResult {
     /// Select specific columns this [PartialModel] needs
     ///
-    /// If you are implementing this by hand, please make sure to read the hints in the
-    /// documentation for `select_cols_nested` and ensure to implement both methods.
-    fn select_cols<S: SelectColumns>(select: S) -> S;
-
-    /// Used when nesting these structs into each other.
-    ///
-    /// This will stop being a provided method in a future major release.
-    /// Please implement this method manually when implementing this trait by hand,
-    /// and ensure that your `select_cols` implementation is calling it with `_prefix` as `None`.
-    fn select_cols_nested<S: SelectColumns>(select: S, _prefix: Option<&str>) -> S {
-        Self::select_cols(select)
-    }
-}
-
-impl<T: PartialModelTrait> PartialModelTrait for Option<T> {
+    /// No need to implement this method, please implement `select_cols_nested` instead.
     fn select_cols<S: SelectColumns>(select: S) -> S {
         Self::select_cols_nested(select, None)
     }
 
+    /// Used when nesting these structs into each other.
+    ///
+    /// Example impl
+    ///
+    /// ```ignore
+    /// fn select_cols_nested<S: SelectColumns>(mut select: S, prefix: Option<&str>) -> S {
+    ///     if let Some(prefix) = prefix {
+    ///         for col in <<T::Entity as EntityTrait>::Column as Iterable>::iter() {
+    ///             let alias = format!("{prefix}{}", col.as_str());
+    ///             select = select.select_column_as(col, alias);
+    ///         }
+    ///     } else {
+    ///         for col in <<T::Entity as EntityTrait>::Column as Iterable>::iter() {
+    ///             select = select.select_column(col);
+    ///         }
+    ///     }
+    ///     select
+    /// }
+    /// ```
+    fn select_cols_nested<S: SelectColumns>(select: S, _prefix: Option<&str>) -> S;
+}
+
+impl<T: PartialModelTrait> PartialModelTrait for Option<T> {
     fn select_cols_nested<S: SelectColumns>(select: S, prefix: Option<&str>) -> S {
         T::select_cols_nested(select, prefix)
     }
 }
 
 impl<T: ModelTrait + FromQueryResult> PartialModelTrait for T {
-    fn select_cols<S: SelectColumns>(select: S) -> S {
-        Self::select_cols_nested(select, None)
-    }
-
     fn select_cols_nested<S: SelectColumns>(mut select: S, prefix: Option<&str>) -> S {
         if let Some(prefix) = prefix {
             for col in <<T::Entity as EntityTrait>::Column as Iterable>::iter() {
