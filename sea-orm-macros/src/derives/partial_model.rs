@@ -305,10 +305,6 @@ impl DerivePartialModel {
         quote! {
             #[automatically_derived]
             impl sea_orm::PartialModelTrait for #ident {
-                fn select_cols<S: sea_orm::SelectColumns>(#select_ident: S) -> S {
-                    Self::select_cols_nested(#select_ident, None)
-                }
-
                 fn select_cols_nested<S: sea_orm::SelectColumns>(#select_ident: S, pre: Option<&str>) -> S {
                     #(#select_col_code_gen)*
                     #select_ident
