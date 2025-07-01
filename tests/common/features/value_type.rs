@@ -7,7 +7,7 @@ pub mod value_type_general {
     pub struct Model {
         #[sea_orm(primary_key)]
         pub id: i32,
-        pub number: Integer,
+        pub number: MyInteger,
         pub tag_1: Tag1,
         pub tag_2: Tag2,
     }
@@ -27,8 +27,26 @@ pub mod value_type_pg {
     pub struct Model {
         #[sea_orm(primary_key)]
         pub id: i32,
-        pub number: Integer,
+        pub number: MyInteger,
         pub str_vec: StringVec,
+    }
+
+    #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+    pub enum Relation {}
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+pub mod value_type_pk {
+    use super::*;
+    use sea_orm::entity::prelude::*;
+
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "value_type_pk")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: MyInteger,
+        pub val: MyInteger,
     }
 
     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -40,14 +58,14 @@ pub mod value_type_pg {
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
-pub struct Integer(i32);
+pub struct MyInteger(pub i32);
 
-impl<T> From<T> for Integer
+impl<T> From<T> for MyInteger
 where
     T: Into<i32>,
 {
-    fn from(v: T) -> Integer {
-        Integer(v.into())
+    fn from(v: T) -> MyInteger {
+        MyInteger(v.into())
     }
 }
 

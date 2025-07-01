@@ -1,3 +1,4 @@
+use super::sql_type_match::{arr_type_match, can_try_from_u64, col_type_match};
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{DataEnum, Lit, Type, spanned::Spanned};
@@ -13,6 +14,7 @@ struct DeriveValueTypeStruct {
     ty: Type,
     column_type: TokenStream,
     array_type: TokenStream,
+    can_try_from_u64: bool,
 }
 
 struct DeriveValueTypeEnum {
@@ -114,17 +116,16 @@ impl DeriveValueTypeStruct {
         };
         let field_span = field.span();
 
-        let column_type =
-            crate::derives::sql_type_match::col_type_match(col_type, field_type, field_span);
-
-        let array_type =
-            crate::derives::sql_type_match::arr_type_match(arr_type, field_type, field_span);
+        let column_type = col_type_match(col_type, field_type, field_span);
+        let array_type = arr_type_match(arr_type, field_type, field_span);
+        let can_try_from_u64 = can_try_from_u64(field_type);
 
         Ok(Self {
             name,
             ty,
             column_type,
             array_type,
+            can_try_from_u64,
         })
     }
 
@@ -133,6 +134,24 @@ impl DeriveValueTypeStruct {
         let field_type = &self.ty;
         let column_type = &self.column_type;
         let array_type = &self.array_type;
+
+        let try_from_u64_impl = if self.can_try_from_u64 {
+            quote!(
+                #[automatically_derived]
+                impl sea_orm::TryFromU64 for #name {
+                    fn try_from_u64(n: u64) -> Result<Self, sea_orm::DbErr> {
+                        use std::convert::TryInto;
+                        Ok(Self(n.try_into().map_err(|e| sea_orm::DbErr::TryIntoErr {
+                            from: stringify!(u64),
+                            into: stringify!(#name),
+                            source: std::sync::Arc::new(e),
+                        })?))
+                    }
+                }
+            )
+        } else {
+            quote!()
+        };
 
         quote!(
             #[automatically_derived]
@@ -175,6 +194,8 @@ impl DeriveValueTypeStruct {
                     <#field_type as sea_orm::sea_query::Nullable>::null()
                 }
             }
+
+            #try_from_u64_impl
         )
     }
 }

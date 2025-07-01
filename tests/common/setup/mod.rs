@@ -142,6 +142,17 @@ where
     create_table_without_asserts(db, create).await
 }
 
+pub async fn create_table_from_entity<E>(db: &DbConn, entity: E) -> Result<ExecResult, DbErr>
+where
+    E: EntityTrait,
+{
+    let builder = db.get_database_backend();
+    let schema = Schema::new(builder);
+    let stmt = builder.build(&schema.create_table_from_entity(entity));
+
+    db.execute(stmt).await
+}
+
 pub async fn create_table_without_asserts(
     db: &DbConn,
     create: &TableCreateStatement,
