@@ -6,11 +6,11 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: RoleId,
-    pub name: String,
+    pub role: String,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, DeriveValueType)]
-pub struct RoleId(i64);
+pub struct RoleId(pub i64);
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
