@@ -1,14 +1,15 @@
+use super::{permission::PermissionId, resource::ResourceId, role::RoleId};
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "sea_orm_role_permission")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub role_id: i64,
+    pub role_id: RoleId,
     #[sea_orm(primary_key)]
-    pub permission_id: i64,
+    pub permission_id: PermissionId,
     #[sea_orm(primary_key)]
-    pub resource_id: i64,
+    pub resource_id: ResourceId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

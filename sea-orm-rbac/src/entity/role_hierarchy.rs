@@ -1,12 +1,13 @@
+use super::role::RoleId;
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "sea_orm_role_role")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub role_id: i64,
+    pub role_id: RoleId,
     #[sea_orm(primary_key)]
-    pub super_role_id: i64,
+    pub super_role_id: RoleId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

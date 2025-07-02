@@ -10,7 +10,7 @@ pub struct Model {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, DeriveValueType)]
-pub struct PermissionId(i64);
+pub struct PermissionId(pub i64);
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}

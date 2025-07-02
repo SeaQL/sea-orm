@@ -1,7 +1,7 @@
 use crate::entity::resource::Model as Resource;
 
-pub struct Table<'a>(&'a str);
-pub struct SchemaTable<'a, 'b>(&'a str, &'b str);
+pub struct Table<'a>(pub &'a str);
+pub struct SchemaTable<'a, 'b>(pub &'a str, pub &'b str);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ResourceRequest {
@@ -23,6 +23,15 @@ impl<'a, 'b> From<SchemaTable<'a, 'b>> for ResourceRequest {
         ResourceRequest {
             schema: Some(schema_table.0.to_owned()),
             table: schema_table.1.to_owned(),
+        }
+    }
+}
+
+impl From<Resource> for ResourceRequest {
+    fn from(resource: Resource) -> Self {
+        Self {
+            schema: resource.schema,
+            table: resource.table,
         }
     }
 }

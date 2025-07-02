@@ -1,6 +1,6 @@
-use crate::entity::resource::Model as Resource;
+use crate::entity::permission::Model as Permission;
 
-pub struct Action<'a>(&'a str);
+pub struct Action<'a>(pub &'a str);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PermissionRequest {
@@ -11,6 +11,14 @@ impl<'a> From<Action<'a>> for PermissionRequest {
     fn from(action: Action<'a>) -> PermissionRequest {
         PermissionRequest {
             action: action.0.to_owned(),
+        }
+    }
+}
+
+impl From<Permission> for PermissionRequest {
+    fn from(permission: Permission) -> Self {
+        Self {
+            action: permission.action,
         }
     }
 }
