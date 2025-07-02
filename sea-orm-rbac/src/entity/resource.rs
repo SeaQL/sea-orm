@@ -11,7 +11,7 @@ pub struct Model {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, DeriveValueType)]
-pub struct ResourceId(i64);
+pub struct ResourceId(pub i64);
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}

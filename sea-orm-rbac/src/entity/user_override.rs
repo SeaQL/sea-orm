@@ -1,11 +1,11 @@
-use super::{permission::PermissionId, resource::ResourceId, role::RoleId};
+use super::{permission::PermissionId, resource::ResourceId, user::UserId};
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "sea_orm_user_override")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub role_id: RoleId,
+    pub user_id: UserId,
     #[sea_orm(primary_key)]
     pub permission_id: PermissionId,
     #[sea_orm(primary_key)]
@@ -16,12 +16,6 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::role::Entity",
-        from = "Column::RoleId",
-        to = "super::role::Column::Id"
-    )]
-    Role,
     #[sea_orm(
         belongs_to = "super::permission::Entity",
         from = "Column::PermissionId",
