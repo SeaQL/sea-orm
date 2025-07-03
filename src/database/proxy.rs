@@ -68,7 +68,7 @@ impl From<ExecResult> for ProxyExecResult {
         match result.result {
             #[cfg(feature = "sqlx-mysql")]
             ExecResultHolder::SqlxMySql(result) => Self {
-                last_insert_id: result.last_insert_id() as u64,
+                last_insert_id: result.last_insert_id(),
                 rows_affected: result.rows_affected(),
             },
             #[cfg(feature = "sqlx-postgres")]
@@ -93,7 +93,7 @@ impl From<ExecResult> for ProxyExecResult {
 
 /// Defines the structure of a Row for the [ProxyDatabase]
 /// which is just a [BTreeMap]<[String], [Value]>
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ProxyRow {
     /// The values of the single row
     pub values: BTreeMap<String, Value>,
@@ -103,14 +103,6 @@ impl ProxyRow {
     /// Create a new [ProxyRow] from a [BTreeMap]<[String], [Value]>
     pub fn new(values: BTreeMap<String, Value>) -> Self {
         Self { values }
-    }
-}
-
-impl Default for ProxyRow {
-    fn default() -> Self {
-        Self {
-            values: BTreeMap::new(),
-        }
     }
 }
 
@@ -141,9 +133,9 @@ impl From<ProxyRow> for QueryResult {
 }
 
 #[cfg(feature = "with-json")]
-impl Into<serde_json::Value> for ProxyRow {
-    fn into(self) -> serde_json::Value {
-        self.values
+impl From<ProxyRow> for serde_json::Value {
+    fn from(val: ProxyRow) -> serde_json::Value {
+        val.values
             .into_iter()
             .map(|(k, v)| (k, sea_query::sea_value_to_json_value(&v)))
             .collect()
@@ -154,11 +146,11 @@ impl Into<serde_json::Value> for ProxyRow {
 pub fn from_query_result_to_proxy_row(result: &QueryResult) -> ProxyRow {
     match &result.row {
         #[cfg(feature = "sqlx-mysql")]
-        QueryResultRow::SqlxMySql(row) => crate::from_sqlx_mysql_row_to_proxy_row(&row),
+        QueryResultRow::SqlxMySql(row) => crate::from_sqlx_mysql_row_to_proxy_row(row),
         #[cfg(feature = "sqlx-postgres")]
-        QueryResultRow::SqlxPostgres(row) => crate::from_sqlx_postgres_row_to_proxy_row(&row),
+        QueryResultRow::SqlxPostgres(row) => crate::from_sqlx_postgres_row_to_proxy_row(row),
         #[cfg(feature = "sqlx-sqlite")]
-        QueryResultRow::SqlxSqlite(row) => crate::from_sqlx_sqlite_row_to_proxy_row(&row),
+        QueryResultRow::SqlxSqlite(row) => crate::from_sqlx_sqlite_row_to_proxy_row(row),
         #[cfg(feature = "mock")]
         QueryResultRow::Mock(row) => ProxyRow {
             values: row.values.clone(),
