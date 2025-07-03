@@ -376,7 +376,7 @@ mod test {
 
     #[test]
     #[rustfmt::skip]
-    fn test_rbac_engine_1() {
+    fn test_rbac_engine_basic() {
         let admin = UserId(1);
         let manager = UserId(2);
         let clerk = UserId(3);
@@ -502,7 +502,7 @@ mod test {
 
     #[test]
     #[rustfmt::skip]
-    fn test_rbac_engine_2() {
+    fn test_rbac_engine_wildcard() {
         let silver = UserId(1);
         let gold = UserId(2);
         let platinum = UserId(3);
@@ -530,5 +530,96 @@ mod test {
         assert!(engine.user_can(admin, Action("browse"), SchemaTable("departmentA", "book")).unwrap());
         assert!(engine.user_can(admin, Action("browse"), SchemaTable("departmentB", "book")).unwrap());
         assert!(engine.user_can(admin, Action("browse"), SchemaTable("departmentB", "CD")).unwrap());
+    }
+
+    #[rustfmt::skip]
+    fn seed_3() -> RbacSnapshot {
+        let mut snapshot = RbacSnapshot::default();
+        snapshot.set_resources(vec![
+            resource("book"),
+            resource("CD"),
+            resource("magazine"),
+        ]);
+        snapshot.set_permissions(vec![
+            permission("browse"),
+        ]);
+        snapshot.set_roles(vec![
+            role("A"),
+            role("B"),
+            role("C"),
+            role("A+B"),
+            role("A+C"),
+            role("A+B+C"),
+            role("(A+B)+C"),
+        ]);
+        snapshot.add_user_roles(UserId(1), &["A"]);
+        snapshot.add_user_roles(UserId(2), &["B"]);
+        snapshot.add_user_roles(UserId(3), &["C"]);
+        snapshot.add_user_roles(UserId(4), &["A+B"]);
+        snapshot.add_user_roles(UserId(5), &["A+C"]);
+        snapshot.add_user_roles(UserId(6), &["A+B+C"]);
+        snapshot.add_user_roles(UserId(7), &["(A+B)+C"]);
+
+        snapshot.add_role_permission("A", Action("browse"), Object("book"));
+        snapshot.add_role_permission("B", Action("browse"), Object("CD"));
+        snapshot.add_role_permission("C", Action("browse"), Object("magazine"));
+
+        snapshot.add_role_hierarchy("A", "A+B");
+        snapshot.add_role_hierarchy("B", "A+B");
+
+        snapshot.add_role_hierarchy("A", "A+C");
+        snapshot.add_role_hierarchy("C", "A+C");
+
+        snapshot.add_role_hierarchy("A", "A+B+C");
+        snapshot.add_role_hierarchy("B", "A+B+C");
+        snapshot.add_role_hierarchy("C", "A+B+C");
+
+        snapshot.add_role_hierarchy("A+B", "(A+B)+C");
+        snapshot.add_role_hierarchy("C", "(A+B)+C");
+
+        snapshot
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    #[allow(non_snake_case)]
+    fn test_rbac_engine_hierarchy() {
+        let A = UserId(1);
+        let B = UserId(2);
+        let C = UserId(3);
+        let A_B = UserId(4);
+        let A_C = UserId(5);
+        let A_B_C = UserId(6);
+        let A_B_C_ = UserId(7);
+
+        let engine = RbacEngine::from_snapshot(seed_3());
+
+        assert!(engine.user_can(A, Action("browse"), Object("book")).unwrap());
+        assert!(!engine.user_can(A, Action("browse"), Object("CD")).unwrap());
+        assert!(!engine.user_can(A, Action("browse"), Object("magazine")).unwrap());
+
+        assert!(!engine.user_can(B, Action("browse"), Object("book")).unwrap());
+        assert!(engine.user_can(B, Action("browse"), Object("CD")).unwrap());
+        assert!(!engine.user_can(B, Action("browse"), Object("magazine")).unwrap());
+
+        assert!(!engine.user_can(C, Action("browse"), Object("book")).unwrap());
+        assert!(!engine.user_can(C, Action("browse"), Object("CD")).unwrap());
+        assert!(engine.user_can(C, Action("browse"), Object("magazine")).unwrap());
+
+        assert!(engine.user_can(A_B, Action("browse"), Object("book")).unwrap());
+        assert!(engine.user_can(A_B, Action("browse"), Object("CD")).unwrap());
+        assert!(!engine.user_can(A_B, Action("browse"), Object("magazine")).unwrap());
+    
+        assert!(engine.user_can(A_C, Action("browse"), Object("book")).unwrap());
+        assert!(!engine.user_can(A_C, Action("browse"), Object("CD")).unwrap());
+        assert!(engine.user_can(A_C, Action("browse"), Object("magazine")).unwrap());
+    
+        assert!(engine.user_can(A_B_C, Action("browse"), Object("book")).unwrap());
+        assert!(engine.user_can(A_B_C, Action("browse"), Object("CD")).unwrap());
+        assert!(engine.user_can(A_B_C, Action("browse"), Object("magazine")).unwrap());
+    
+        assert!(engine.user_can(A_B_C_, Action("browse"), Object("book")).unwrap());
+        assert!(engine.user_can(A_B_C_, Action("browse"), Object("CD")).unwrap());
+        assert!(engine.user_can(A_B_C_, Action("browse"), Object("magazine")).unwrap());
     }
 }
