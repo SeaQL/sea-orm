@@ -8,7 +8,7 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
-members = [".", "api", "service", "entity", "migration"]
+members = [".", "api", "service", "entity", "migration", "seeder"]
 
 [dependencies]
 graphql-example-api = { path = "api" }
