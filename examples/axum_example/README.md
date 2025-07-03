@@ -16,3 +16,15 @@ Run mock test on the service logic crate:
 cd service
 cargo test --features mock
 ```
+
+Run migration:
+
+```bash
+cargo run -p migration -- up
+```
+
+Run seeder:
+
+```bash
+cargo run -p seeder -- up
+```
