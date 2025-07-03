@@ -443,5 +443,92 @@ mod test {
         for user in [clerk, manager] {
             assert!(!engine.user_can(user, Action("buy"), Object("pen")).unwrap());
         }
+
+        // only admin can replace / dispose pen
+        for action in ["replace", "dispose"] {
+            assert!(engine.user_can(admin, Action(action), Object("pen")).unwrap());
+        }
+
+        // unknown action / object
+        assert!(engine.user_can(admin, Action("?"), Object("?")).is_err());
+    }
+
+    #[rustfmt::skip]
+    fn seed_2() -> RbacSnapshot {
+        fn resource(schema: &str, table: &str) -> Resource {
+            Resource {
+                id: ResourceId(0),
+                schema: Some(schema.to_owned()),
+                table: table.to_owned(),
+            }
+        }
+
+        let mut snapshot = RbacSnapshot::default();
+        snapshot.set_resources(vec![
+            resource("departmentA", "book"),
+            resource("departmentB", "book"),
+            resource("departmentB", "CD"),
+            resource("*", "book"),
+            resource("departmentB", "*"),
+            resource("*", "*"),
+        ]);
+        snapshot.set_permissions(vec![
+            permission("browse"),
+        ]);
+        snapshot.set_roles(vec![
+            role("silver"),
+            role("gold"),
+            role("platinum"),
+            role("reader"),
+            role("admin"),
+        ]);
+        snapshot.add_user_roles(UserId(1), &["silver"]);
+        snapshot.add_user_roles(UserId(2), &["gold"]);
+        snapshot.add_user_roles(UserId(3), &["platinum"]);
+        snapshot.add_user_roles(UserId(4), &["reader"]);
+        snapshot.add_user_roles(UserId(5), &["admin"]);
+
+        snapshot.add_role_permission("silver", Action("browse"), SchemaTable("departmentA", "book"));
+        snapshot.add_role_permission("gold", Action("browse"), SchemaTable("departmentB", "book"));
+        snapshot.add_role_permission("platinum", Action("browse"), SchemaTable("departmentA", "book"));
+        snapshot.add_role_permission("platinum", Action("browse"), SchemaTable("departmentB", "*"));
+
+        snapshot.add_role_permission("reader", Action("browse"), SchemaTable("*", "book"));
+
+        snapshot.add_role_permission("admin", Action("browse"), SchemaTable("*", "*"));
+
+        snapshot
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn test_rbac_engine_2() {
+        let silver = UserId(1);
+        let gold = UserId(2);
+        let platinum = UserId(3);
+        let reader = UserId(4);
+        let admin = UserId(5);
+
+        let engine = RbacEngine::from_snapshot(seed_2());
+
+        assert!(engine.user_can(silver, Action("browse"), SchemaTable("departmentA", "book")).unwrap());
+        assert!(!engine.user_can(silver, Action("browse"), SchemaTable("departmentB", "book")).unwrap());
+        assert!(!engine.user_can(silver, Action("browse"), SchemaTable("departmentB", "CD")).unwrap());
+
+        assert!(!engine.user_can(gold, Action("browse"), SchemaTable("departmentA", "book")).unwrap());
+        assert!(engine.user_can(gold, Action("browse"), SchemaTable("departmentB", "book")).unwrap());
+        assert!(!engine.user_can(gold, Action("browse"), SchemaTable("departmentB", "CD")).unwrap());
+
+        assert!(engine.user_can(platinum, Action("browse"), SchemaTable("departmentA", "book")).unwrap());
+        assert!(engine.user_can(platinum, Action("browse"), SchemaTable("departmentB", "book")).unwrap());
+        assert!(engine.user_can(platinum, Action("browse"), SchemaTable("departmentB", "CD")).unwrap());
+
+        assert!(engine.user_can(reader, Action("browse"), SchemaTable("departmentA", "book")).unwrap());
+        assert!(engine.user_can(reader, Action("browse"), SchemaTable("departmentB", "book")).unwrap());
+        assert!(!engine.user_can(reader, Action("browse"), SchemaTable("departmentB", "CD")).unwrap());
+
+        assert!(engine.user_can(admin, Action("browse"), SchemaTable("departmentA", "book")).unwrap());
+        assert!(engine.user_can(admin, Action("browse"), SchemaTable("departmentB", "book")).unwrap());
+        assert!(engine.user_can(admin, Action("browse"), SchemaTable("departmentB", "CD")).unwrap());
     }
 }
