@@ -319,6 +319,7 @@ impl ColumnTypeTrait for ColumnType {
             indexed: false,
             default: None,
             comment: None,
+            unique_key: None,
         }
     }
 

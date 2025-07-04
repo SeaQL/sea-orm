@@ -21,6 +21,8 @@ pub struct Model {
     pub unique_attr: i32,
     pub index1_attr: i32,
     pub index2_attr: i32,
+    pub unique_key_a: String,
+    pub unique_key_b: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -29,6 +31,8 @@ pub enum Column {
     UniqueAttr,
     Index1Attr,
     Index2Attr,
+    UniqueKeyA,
+    UniqueKeyB,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -56,6 +60,8 @@ impl ColumnTrait for Column {
             Self::UniqueAttr => ColumnType::Integer.def().unique(),
             Self::Index1Attr => ColumnType::Integer.def().indexed(),
             Self::Index2Attr => ColumnType::Integer.def().indexed().unique(),
+            Self::UniqueKeyA => ColumnType::string(None).def().unique_key("my_unique"),
+            Self::UniqueKeyB => ColumnType::string(None).def().unique_key("my_unique"),
         }
     }
 }

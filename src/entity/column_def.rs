@@ -13,6 +13,7 @@ pub struct ColumnDef {
     pub(crate) indexed: bool,
     pub(crate) default: Option<SimpleExpr>,
     pub(crate) comment: Option<String>,
+    pub(crate) unique_key: Option<String>,
 }
 
 impl ColumnDef {
@@ -21,6 +22,13 @@ impl ColumnDef {
         self.unique = true;
         self
     }
+
+    /// This column belongs to a unique key
+    pub fn unique_key(mut self, key: &str) -> Self {
+        self.unique_key = Some(key.into());
+        self
+    }
+
     /// Set column comment
     pub fn comment(mut self, v: &str) -> Self {
         self.comment = Some(v.into());
@@ -85,10 +93,7 @@ impl ColumnDef {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ColumnTrait, Condition, DbBackend, EntityTrait, QueryFilter, QueryTrait, tests_cfg::*,
-    };
-    use sea_query::Query;
+    use crate::tests_cfg::*;
 
     #[test]
     fn test_col_from_str() {
