@@ -6,7 +6,9 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: ResourceId,
+    #[sea_orm(unique_group = "1")]
     pub schema: Option<String>,
+    #[sea_orm(unique_group = "1")]
     pub table: String,
 }
 
