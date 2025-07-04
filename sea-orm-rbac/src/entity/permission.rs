@@ -6,6 +6,7 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: PermissionId,
+    #[sea_orm(unique)]
     pub action: String,
 }
 
