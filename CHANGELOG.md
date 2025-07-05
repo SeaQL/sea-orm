@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
-* Overhauling `Entity::insert_many`. We've made a number of changes https://github.com/SeaQL/sea-orm/pull/2628
+* Overhauled `Entity::insert_many`. We've made a number of changes https://github.com/SeaQL/sea-orm/pull/2628
     1. removed APIs that can panic
     2. new helper struct `InsertMany`, `last_insert_id` is now `Option<Value>`
     3. on empty iterator, `None` or `vec![]` is returned on exec operations
@@ -46,13 +46,11 @@ assert_eq!(res?.last_insert_id, Some(2)); // insert something return Some
 Same on conflict API as before:
 ```rust
 let res = Entity::insert_many([ActiveModel { id: Set(3) }, ActiveModel { id: Set(4) }])
-    .on_conflict(OnConflict::column(Column::Id)
-        .do_nothing_on([Column::Id])
-        .to_owned())
+    .on_conflict_do_nothing()
     .exec(db)
     .await;
 
-assert!(matches!(res, Err(DbErr::RecordNotInserted)));
+assert!(matches!(conflict_insert, Ok(TryInsertResult::Conflicted)));
 ```
 Exec with returning now returns a `Vec<Model>`, so it feels intuitive:
 ```rust
@@ -81,7 +79,7 @@ assert_eq!(
     ]
 );
 ```
-* Improve utility of `ActiveModel::from_json`. Consider the following Entity https://github.com/SeaQL/sea-orm/pull/2599
+* Improved utility of `ActiveModel::from_json`. Consider the following Entity https://github.com/SeaQL/sea-orm/pull/2599
 ```rust
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "cake")]
