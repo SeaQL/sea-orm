@@ -9,6 +9,79 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
+* Overhauling `Entity::insert_many`. We've made a number of changes https://github.com/SeaQL/sea-orm/pull/2628
+    1. removed APIs that can panic
+    2. new helper struct `InsertMany`
+    3. `last_insert_id` is now `Option<Value>`
+    4. on empty iterator, `None` or `vec![]` is returned on exec operations
+    5. on conflict clause, if added, returns `DbErr::RecordNotInserted` (same as before)
+    6. `TryInsert` API is unchanged
+
+Previously, `insert_many` shares the same helper struct with `insert_one`, which led to an awkard API.
+```rust
+let res = Bakery::insert_many(std::iter::empty())
+    .on_empty_do_nothing() // <- you need to add this
+    .exec(db)
+    .await;
+
+assert!(matches!(res, Ok(TryInsertResult::Empty)));
+```
+`last_insert_id` is now `Option<Value>`:
+```rust
+struct InsertManyResult<A: ActiveModelTrait>
+{
+    pub last_insert_id: Option<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>,
+}
+```
+```rust
+let res = Entity::insert_many::<ActiveModel, _>([]).exec(db).await;
+
+assert_eq!(res?.last_insert_id, None); // insert empty return None
+
+let res = Entity::insert_many([ActiveModel { id: Set(1) }, ActiveModel { id: Set(2) }])
+    .exec(db)
+    .await;
+
+assert_eq!(res?.last_insert_id, Some(2)); // insert something return Some
+```
+Same on conflict API as before:
+```rust
+let res = Entity::insert_many([ActiveModel { id: Set(3) }, ActiveModel { id: Set(4) }])
+    .on_conflict(OnConflict::column(Column::Id)
+        .do_nothing_on([Column::Id])
+        .to_owned())
+    .exec(db)
+    .await;
+
+assert!(matches!(res, Err(DbErr::RecordNotInserted)));
+```
+Exec with returning now return a `Vec<Model>`, so it feels intuitive now:
+```rust
+assert!(
+    Entity::insert_many::<ActiveModel, _>([])
+        .exec_with_returning(db)
+        .await?
+        .is_empty() // no footgun, nice
+);
+
+assert_eq!(
+    Entity::insert_many([
+        ActiveModel {
+            id: NotSet,
+            value: Set("two".into()),
+        }
+    ])
+    .exec_with_returning(db)
+    .await
+    .unwrap(),
+    [
+        Model {
+            id: 2,
+            value: "two".into(),
+        }
+    ]
+);
+```
 * Improve utility of `ActiveModel::from_json`. Consider the following Entity https://github.com/SeaQL/sea-orm/pull/2599
 ```rust
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
