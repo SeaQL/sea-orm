@@ -5,6 +5,169 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.0.0 - pending
+
+### New Features
+
+* Improve utility of `ActiveModel::from_json`. Consider the following Entity https://github.com/SeaQL/sea-orm/pull/2599
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
+#[sea_orm(table_name = "cake")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,      // <- not nullable
+    pub name: String,
+}
+```
+Previously, the following would result in error "missing field `id`":
+```rust
+assert!(
+    cake::ActiveModel::from_json(json!({
+        "name": "Apple Pie",
+    })).is_err();
+);
+```
+Now, the ActiveModel will be partially filled:
+```rust
+assert_eq!(
+    cake::ActiveModel::from_json(json!({
+        "name": "Apple Pie",
+    }))
+    .unwrap(),
+    cake::ActiveModel {
+        id: NotSet,
+        name: Set("Apple Pie".to_owned()),
+    }
+);
+```
+* A full `Model` can now be used as `PartialModel` in nested query https://github.com/SeaQL/sea-orm/pull/2642
+```rust
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity", from_query_result)]
+struct Cake {
+    id: i32,
+    name: String,
+    #[sea_orm(nested)]
+    bakery: Option<bakery::Model>,
+}
+
+let cake: Cake = cake::Entity::find()
+    .left_join(bakery::Entity)
+    .order_by_asc(cake::Column::Id)
+    .into_partial_model()
+    .one(&ctx.db)
+    .await?
+    .unwrap();
+
+assert_eq!(cake.id, 13);
+assert_eq!(cake.name, "Cheesecake");
+assert_eq!(
+    cake.bakery.unwrap(),
+    bakery::Model {
+        id: 42,
+        name: "cool little bakery".to_string(),
+    }
+);
+```
+* Wrapper type derived with `DeriveValueType` can now be used as primary key https://github.com/SeaQL/sea-orm/pull/2643
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "my_value_type")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: MyInteger,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
+pub struct MyInteger(pub i32);
+// only for i8 | i16 | i32 | i64 | u8 | u16 | u32 | u64
+```
+* You can now define unique keys that span multiple columns in Entity https://github.com/SeaQL/sea-orm/pull/2651
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "lineitem")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    #[sea_orm(unique_key = "item")]
+    pub order_id: i32,
+    #[sea_orm(unique_key = "item")]
+    pub cake_id: i32,
+}
+
+let stmts = Schema::new(backend).create_index_from_entity(lineitem::Entity);
+
+assert_eq!(
+    stmts[0],
+    Index::create()
+        .name("idx-lineitem-item")
+        .table(lineitem::Entity)
+        .col(lineitem::Column::OrderId)
+        .col(lineitem::Column::CakeId)
+        .unique()
+        .take()
+);
+
+assert_eq!(
+    backend.build(stmts[0]),
+    r#"CREATE UNIQUE INDEX "idx-lineitem-item" ON "lineitem" ("order_id", "cake_id")"#
+);
+```
+
+### Enhancements
+
+* Added new error variant `BackendNotSupported`. Previously, it panics with e.g. "Database backend doesn't support RETURNING" https://github.com/SeaQL/sea-orm/pull/2630
+```rust
+let result = cake::Entity::insert_many([])
+    .exec_with_returning_keys(db)
+    .await;
+
+if db.support_returning() {
+    // Postgres and SQLite
+    assert_eq!(result.unwrap(), []);
+} else {
+    // MySQL
+    assert!(matches!(result, Err(DbErr::BackendNotSupported { .. })));
+}
+```
+* Added new error variant `PrimaryKeyNotSet`. Previously, it panics with "PrimaryKey is not set" https://github.com/SeaQL/sea-orm/pull/2627
+```rust
+assert!(matches!(
+    Update::one(cake::ActiveModel {
+        ..Default::default()
+    })
+    .exec(&db)
+    .await,
+    Err(DbErr::PrimaryKeyNotSet { .. })
+));
+```
+* Remove panics in `Schema::create_enum_from_active_enum` https://github.com/SeaQL/sea-orm/pull/2634
+```rust
+fn create_enum_from_active_enum<A>(&self) -> Option<TypeCreateStatement>
+// method can now return None
+```
+
+### Breaking Changes
+
+* Removed `runtime-actix` feature flag. It's been an alias of `runtime-tokio` for more than a year, so there should be no impact.
+* Enabled `sqlite-use-returning-for-3_35` by default. SQLite `3.35` was released in 2021, it should be the default by now.
+* Now implemented `impl<T: ModelTrait + FromQueryResult> PartialModelTrait for T`, there may be a potential conflict https://github.com/SeaQL/sea-orm/pull/2642
+* Now `DeriveValueType` will also `TryFromU64` if applicable, there may be a potential conflict https://github.com/SeaQL/sea-orm/pull/2643
+* Added `TryIntoModel` and `Serialize` to trait bounds of `ActiveModel::from_json`. There should be no impact if your models are derived with `DeriveEntityModel` https://github.com/SeaQL/sea-orm/pull/2599
+```rust
+fn from_json(mut json: serde_json::Value) -> Result<Self, DbErr>
+where
+    Self: TryIntoModel<<Self::Entity as EntityTrait>::Model>,
+    <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+    for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
+        serde::de::Deserialize<'de> + serde::Serialize,
+```
+
+### Upgrades
+
+* Upgraded Rust Edition to 2024 https://github.com/SeaQL/sea-orm/pull/2596
+* Upgraded `strum` to `0.27`
+
 ## 1.1.13 - 2025-06-29
 
 ### New Features
@@ -37,7 +200,7 @@ pub struct Model {
 
 ### Enhancements
 
-* Remove potential panics in `Loader` https://github.com/SeaQL/sea-orm/pull/2637
+* Removed potential panics from `Loader` https://github.com/SeaQL/sea-orm/pull/2637
 
 ## 1.1.12 - 2025-05-27
 
