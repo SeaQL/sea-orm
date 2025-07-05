@@ -1,0 +1,24 @@
+[package]
+name = "seeder"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "seeder"
+path = "src/lib.rs"
+
+[dependencies]
+dotenvy = "0.15.0"
+async-std = { version = "1", features = ["attributes", "tokio1"] }
+entity = { path = "../entity" }
+migration = { path = "../migration" }
+
+[dependencies.sea-orm-migration]
+path = "../../../sea-orm-migration" # remove this line in your own project
+version = "1.1.0"
+features = [
+  # Enable following runtime and db backend features if you want to run migration via CLI
+  # "runtime-tokio-native-tls",
+  # "sqlx-sqlite",
+]
