@@ -153,10 +153,34 @@
 //! // find related models (eager)
 //! let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> =
 //!     Cake::find().find_with_related(Fruit).all(db).await?;
-//!
 //! # Ok(())
 //! # }
 //! ```
+//! ### Nested Select
+//!
+//! ```
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
+//! use sea_orm::DerivePartialModel;
+//!
+//! #[derive(DerivePartialModel)]
+//! #[sea_orm(entity = "cake::Entity", from_query_result)]
+//! struct CakeWithFruit {
+//!     id: i32,
+//!     name: String,
+//!     #[sea_orm(nested)]
+//!     fruit: Option<fruit::Model>,
+//! }
+//!
+//! let cakes: Vec<CakeWithFruit> = cake::Entity::find()
+//!     .left_join(fruit::Entity)
+//!     .into_partial_model()
+//!     .all(db)
+//!     .await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
 //! ### Insert
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
