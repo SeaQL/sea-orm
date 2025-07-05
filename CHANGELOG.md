@@ -35,7 +35,7 @@ Which means the awkardness is removed:
 ```rust
 let res = Entity::insert_many::<ActiveModel, _>([]).exec(db).await;
 
-assert_eq!(res?.last_insert_id, None); // insert empty return None
+assert_eq!(res?.last_insert_id, None); // insert nothing return None
 
 let res = Entity::insert_many([ActiveModel { id: Set(1) }, ActiveModel { id: Set(2) }])
     .exec(db)
