@@ -521,6 +521,8 @@ fn bakery(i: i32) -> bakery::Model {
         name: i.to_string(),
         profit_margin: 10.4,
         id: i,
+        manager_id: 1,
+        cashier_id: 2,
     }
 }
 fn baker(c: char) -> baker::Model {

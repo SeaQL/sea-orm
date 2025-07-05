@@ -38,6 +38,7 @@ pub async fn test(db: &DbConn) {
         name: Set("SeaSide Bakery".to_owned()),
         profit_margin: Set(10.4),
         id: Set(1),
+        ..Default::default()
     };
 
     let conflict_insert = Bakery::insert_many([double_seaside_bakery])
