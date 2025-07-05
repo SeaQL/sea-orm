@@ -1277,8 +1277,8 @@ mod tests {
             }))
             .unwrap(),
             cake::ActiveModel {
-                id: ActiveValue::Set(1),
-                name: ActiveValue::Set("Apple Pie".to_owned()),
+                id: Set(1),
+                name: Set("Apple Pie".to_owned()),
             }
         );
 
@@ -1288,8 +1288,19 @@ mod tests {
             }))
             .unwrap(),
             cake::ActiveModel {
-                id: ActiveValue::Set(1),
-                name: ActiveValue::NotSet,
+                id: Set(1),
+                name: NotSet,
+            }
+        );
+
+        assert_eq!(
+            cake::ActiveModel::from_json(json!({
+                "name": "Apple Pie",
+            }))
+            .unwrap(),
+            cake::ActiveModel {
+                id: NotSet,
+                name: Set("Apple Pie".to_owned()),
             }
         );
 
@@ -1301,9 +1312,9 @@ mod tests {
         assert_eq!(
             cake,
             cake::ActiveModel {
-                id: ActiveValue::NotSet,
-                name: ActiveValue::Set("Apple Pie".to_owned()),
-            },
+                id: NotSet,
+                name: Set("Apple Pie".to_owned()),
+            }
         );
     }
 
