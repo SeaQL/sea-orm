@@ -8,7 +8,9 @@ pub struct Model {
     #[sea_orm(column_type = "Decimal(Some((16, 4)))")]
     pub price: Decimal,
     pub quantity: i32,
+    #[sea_orm(unique_key = "lineitem")]
     pub order_id: i32,
+    #[sea_orm(unique_key = "lineitem")]
     pub cake_id: i32,
 }
 
