@@ -13,6 +13,7 @@ pub struct ColumnDef {
     pub(crate) indexed: bool,
     pub(crate) default: Option<SimpleExpr>,
     pub(crate) comment: Option<String>,
+    pub(crate) unique_key: Option<String>,
 }
 
 impl ColumnDef {
@@ -21,6 +22,13 @@ impl ColumnDef {
         self.unique = true;
         self
     }
+
+    /// This column belongs to a unique key
+    pub fn unique_key(mut self, key: &str) -> Self {
+        self.unique_key = Some(key.into());
+        self
+    }
+
     /// Set column comment
     pub fn comment(mut self, v: &str) -> Self {
         self.comment = Some(v.into());
@@ -85,10 +93,7 @@ impl ColumnDef {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ColumnTrait, Condition, DbBackend, EntityTrait, QueryFilter, QueryTrait, tests_cfg::*,
-    };
-    use sea_query::Query;
+    use crate::tests_cfg::*;
 
     #[test]
     fn test_col_from_str() {
@@ -568,5 +573,37 @@ mod tests {
 
         assert_eq!(my_entity::Column::IdentityColumn.to_string().as_str(), "id");
         assert_eq!(my_entity::Column::Type.to_string().as_str(), "type");
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn column_def_unique_key() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "my_entity")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            #[sea_orm(column_name = "my_a", unique_key = "my_unique")]
+            pub a: String,
+            #[sea_orm(unique_key = "my_unique")]
+            pub b: String,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+
+        assert_eq!(
+            Column::A.def(),
+            ColumnType::string(None).def().unique_key("my_unique")
+        );
+        assert_eq!(
+            Column::B.def(),
+            ColumnType::string(None).def().unique_key("my_unique")
+        );
     }
 }

@@ -142,6 +142,22 @@ where
     create_table_without_asserts(db, create).await
 }
 
+pub async fn create_table_with_index<E>(
+    db: &DbConn,
+    create: &TableCreateStatement,
+    entity: E,
+) -> Result<ExecResult, DbErr>
+where
+    E: EntityTrait,
+{
+    let res = create_table(db, create, entity).await?;
+    let backend = db.get_database_backend();
+    for stmt in Schema::new(backend).create_index_from_entity(entity) {
+        db.execute(backend.build(&stmt)).await?;
+    }
+    Ok(res)
+}
+
 pub async fn create_table_from_entity<E>(db: &DbConn, entity: E) -> Result<ExecResult, DbErr>
 where
     E: EntityTrait,

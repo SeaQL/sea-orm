@@ -3,9 +3,10 @@ use crate::{
     PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
-    ColumnDef, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement,
+    ColumnDef, DynIden, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement,
     extension::postgres::{Type, TypeCreateStatement},
 };
+use std::collections::BTreeMap;
 
 impl Schema {
     /// Creates Postgres enums from an ActiveEnum. See [`TypeCreateStatement`] for more details.
@@ -140,20 +141,39 @@ pub(crate) fn create_index_from_entity<E>(
 where
     E: EntityTrait,
 {
-    let mut vec = Vec::new();
+    let mut indexes = Vec::new();
+    let mut unique_keys: BTreeMap<String, Vec<DynIden>> = Default::default();
+
     for column in E::Column::iter() {
         let column_def = column.def();
-        if !column_def.indexed {
-            continue;
+
+        if column_def.indexed {
+            let stmt = Index::create()
+                .name(format!("idx-{}-{}", entity.to_string(), column.to_string()))
+                .table(entity)
+                .col(column)
+                .take();
+            indexes.push(stmt);
         }
-        let stmt = Index::create()
-            .name(format!("idx-{}-{}", entity.to_string(), column.to_string()))
-            .table(entity)
-            .col(column)
-            .to_owned();
-        vec.push(stmt)
+
+        if let Some(key) = column_def.unique_key {
+            unique_keys.entry(key).or_default().push(SeaRc::new(column));
+        }
     }
-    vec
+
+    for (key, cols) in unique_keys {
+        let mut stmt = Index::create()
+            .name(format!("idx-{}-{}", entity.to_string(), key))
+            .table(entity)
+            .unique()
+            .take();
+        for col in cols {
+            stmt.col(col);
+        }
+        indexes.push(stmt);
+    }
+
+    indexes
 }
 
 pub(crate) fn create_table_from_entity<E>(entity: E, backend: DbBackend) -> TableCreateStatement
@@ -297,14 +317,14 @@ mod tests {
             assert_eq!(
                 builder.build(&schema.create_table_from_entity(indexes::Entity)),
                 builder.build(
-                    &get_indexes_stmt()
+                    &get_indexes_table_stmt()
                         .table(indexes::Entity.table_ref())
                         .to_owned()
                 )
             );
 
             let stmts = schema.create_index_from_entity(indexes::Entity);
-            assert_eq!(stmts.len(), 2);
+            assert_eq!(stmts.len(), 3);
 
             let idx: IndexCreateStatement = Index::create()
                 .name("idx-indexes-index1_attr")
@@ -317,12 +337,21 @@ mod tests {
                 .name("idx-indexes-index2_attr")
                 .table(indexes::Entity)
                 .col(indexes::Column::Index2Attr)
-                .to_owned();
+                .take();
             assert_eq!(builder.build(&stmts[1]), builder.build(&idx));
+
+            let idx: IndexCreateStatement = Index::create()
+                .name("idx-indexes-my_unique")
+                .table(indexes::Entity)
+                .col(indexes::Column::UniqueKeyA)
+                .col(indexes::Column::UniqueKeyB)
+                .unique()
+                .take();
+            assert_eq!(builder.build(&stmts[2]), builder.build(&idx));
         }
     }
 
-    fn get_indexes_stmt() -> TableCreateStatement {
+    fn get_indexes_table_stmt() -> TableCreateStatement {
         Table::create()
             .col(
                 ColumnDef::new(indexes::Column::IndexesId)
@@ -347,6 +376,16 @@ mod tests {
                     .integer()
                     .not_null()
                     .unique_key(),
+            )
+            .col(
+                ColumnDef::new(indexes::Column::UniqueKeyA)
+                    .string()
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(indexes::Column::UniqueKeyB)
+                    .string()
+                    .not_null(),
             )
             .to_owned()
     }
