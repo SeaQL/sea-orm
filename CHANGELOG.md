@@ -11,11 +11,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Overhauling `Entity::insert_many`. We've made a number of changes https://github.com/SeaQL/sea-orm/pull/2628
     1. removed APIs that can panic
-    2. new helper struct `InsertMany`
-    3. `last_insert_id` is now `Option<Value>`
-    4. on empty iterator, `None` or `vec![]` is returned on exec operations
-    5. on conflict clause, if added, returns `DbErr::RecordNotInserted` (same as before)
-    6. `TryInsert` API is unchanged
+    2. new helper struct `InsertMany`, `last_insert_id` is now `Option<Value>`
+    3. on empty iterator, `None` or `vec![]` is returned on exec operations
+    4. `TryInsert` API is unchanged
 
 Previously, `insert_many` shares the same helper struct with `insert_one`, which led to an awkard API.
 ```rust
