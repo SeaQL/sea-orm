@@ -33,6 +33,7 @@ struct InsertManyResult<A: ActiveModelTrait>
     pub last_insert_id: Option<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>,
 }
 ```
+Which means the awkardness is removed:
 ```rust
 let res = Entity::insert_many::<ActiveModel, _>([]).exec(db).await;
 
@@ -55,7 +56,7 @@ let res = Entity::insert_many([ActiveModel { id: Set(3) }, ActiveModel { id: Set
 
 assert!(matches!(res, Err(DbErr::RecordNotInserted)));
 ```
-Exec with returning now return a `Vec<Model>`, so it feels intuitive now:
+Exec with returning now returns a `Vec<Model>`, so it feels intuitive:
 ```rust
 assert!(
     Entity::insert_many::<ActiveModel, _>([])
