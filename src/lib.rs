@@ -209,8 +209,24 @@
 //! #     ..Default::default()
 //! # };
 //!
-//! // insert many
-//! Fruit::insert_many([apple, pear]).exec(db).await?;
+//! // insert many with last insert id
+//! let result = Fruit::insert_many([apple, pear]).exec(db).await?;
+//! result.last_insert_id == Some(2);
+//! # Ok(())
+//! # }
+//! # async fn function3(db: &DbConn) -> Result<(), DbErr> {
+//! # let apple = fruit::ActiveModel {
+//! #     name: Set("Apple".to_owned()),
+//! #     ..Default::default() // no need to set primary key
+//! # };
+//! # let pear = fruit::ActiveModel {
+//! #     name: Set("Pear".to_owned()),
+//! #     ..Default::default()
+//! # };
+//!
+//! // insert many with returning (if supported by database)
+//! let models: Vec<fruit::Model> = Fruit::insert_many([apple, pear]).exec_with_returning(db).await?;
+//! models[0] == fruit::Model { id: 1, name: "Apple".to_owned(), cake_id: None };
 //! # Ok(())
 //! # }
 //! ```

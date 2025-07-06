@@ -146,8 +146,13 @@ let pear = fruit::ActiveModel {
 // insert one
 let pear = pear.insert(db).await?;
 
-// insert many
-Fruit::insert_many([apple, pear]).exec(db).await?;
+// insert many with last insert id
+let result = Fruit::insert_many([apple, pear]).exec(db).await?;
+result.last_insert_id == Some(2);
+
+// insert many with returning (if supported by database)
+let models: Vec<fruit::Model> = Fruit::insert_many([apple, pear]).exec_with_returning(db).await?;
+models[0] == fruit::Model { id: 1, name: "Apple".to_owned(), cake_id: None };
 ```
 ### Update
 ```rust
