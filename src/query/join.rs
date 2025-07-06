@@ -74,7 +74,7 @@ where
             let from_tbl = if i > 0 {
                 Alias::new(format!("r{}", i - 1)).into_iden()
             } else {
-                rel.from_tbl.table().clone()
+                rel.from_tbl.sea_orm_table().clone()
             };
             let table_ref = rel.to_tbl;
 
@@ -120,7 +120,7 @@ where
             let from_tbl = if i > 0 {
                 Alias::new(format!("r{}", i - 1)).into_iden()
             } else {
-                rel.from_tbl.table().clone()
+                rel.from_tbl.sea_orm_table().clone()
             };
             let table_ref = rel.to_tbl;
 

@@ -23,7 +23,7 @@ pub trait Linked {
             let to_tbl = if i > 0 {
                 Alias::new(format!("r{}", i - 1)).into_iden()
             } else {
-                rel.to_tbl.table().clone()
+                rel.to_tbl.sea_orm_table().clone()
             };
             let table_ref = rel.from_tbl;
 

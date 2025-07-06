@@ -139,13 +139,13 @@ fn debug_on_condition(
 impl IntoCondition for RelationDef {
     fn into_condition(mut self) -> Condition {
         // Use table alias (if any) to construct the join condition
-        let from_tbl = match self.from_tbl.table_alias() {
+        let from_tbl = match self.from_tbl.sea_orm_table_alias() {
             Some(alias) => alias,
-            None => self.from_tbl.table(),
+            None => self.from_tbl.sea_orm_table(),
         };
-        let to_tbl = match self.to_tbl.table_alias() {
+        let to_tbl = match self.to_tbl.sea_orm_table_alias() {
             Some(alias) => alias,
-            None => self.to_tbl.table(),
+            None => self.to_tbl.sea_orm_table(),
         };
         let owner_keys = self.from_col;
         let foreign_keys = self.to_col;
@@ -497,7 +497,7 @@ macro_rules! set_foreign_key_stmt {
         let name = if let Some(name) = $relation.fk_name {
             name
         } else {
-            let from_tbl = &$relation.from_tbl.table().clone();
+            let from_tbl = &$relation.from_tbl.sea_orm_table().clone();
             format!("fk-{}-{}", from_tbl.to_string(), from_cols.join("-"))
         };
         $foreign_key.name(&name);
@@ -509,8 +509,8 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
         let mut foreign_key_stmt = Self::new();
         set_foreign_key_stmt!(relation, foreign_key_stmt);
         foreign_key_stmt
-            .from_tbl(relation.from_tbl.table().clone())
-            .to_tbl(relation.to_tbl.table().clone())
+            .from_tbl(relation.from_tbl.sea_orm_table().clone())
+            .to_tbl(relation.to_tbl.sea_orm_table().clone())
             .take()
     }
 }
@@ -547,8 +547,8 @@ impl From<RelationDef> for TableForeignKey {
         let mut foreign_key = Self::new();
         set_foreign_key_stmt!(relation, foreign_key);
         foreign_key
-            .from_tbl(relation.from_tbl.table().clone())
-            .to_tbl(relation.to_tbl.table().clone())
+            .from_tbl(relation.from_tbl.sea_orm_table().clone())
+            .to_tbl(relation.to_tbl.sea_orm_table().clone())
             .take()
     }
 }
