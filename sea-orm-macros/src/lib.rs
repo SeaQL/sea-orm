@@ -743,6 +743,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 }
 
 /// The DerivePartialModel derive macro will implement [`sea_orm::PartialModelTrait`] for simplify partial model queries.
+/// Since 2.0, this macro cannot be used with the `FromQueryResult` macro.
 ///
 /// ## Usage
 ///
@@ -750,7 +751,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///
 /// ```rust
 /// use sea_orm::sea_query::ExprTrait;
-/// use sea_orm::{DerivePartialModel, FromQueryResult, entity::prelude::*};
+/// use sea_orm::{DerivePartialModel, entity::prelude::*};
 ///
 /// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 /// #[sea_orm(table_name = "posts")]
@@ -765,7 +766,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// # pub enum Relation {}
 /// # impl ActiveModelBehavior for ActiveModel {}
 ///
-/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// #[derive(Debug, DerivePartialModel)]
 /// #[sea_orm(entity = "Entity")]
 /// struct SelectResult {
 ///     title: String,
@@ -779,23 +780,24 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// If all fields in the partial model is `from_expr`, the specifying the `entity` can be skipped.
 /// ```
 /// use sea_orm::{
-///     DerivePartialModel, FromQueryResult,
+///     DerivePartialModel,
 ///     entity::prelude::*,
 ///     sea_query::{Expr, ExprTrait},
 /// };
 ///
-/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// #[derive(Debug, DerivePartialModel)]
 /// struct SelectResult {
 ///     #[sea_orm(from_expr = "Expr::val(1).add(1)")]
 ///     sum: i32,
 /// }
 /// ```
 ///
-/// Since SeaORM 1.1.7, `DerivePartialModel` can also assumes the function of `FromQueryResult`.
+/// Since SeaORM 1.1.7, `DerivePartialModel` can also derive `FromQueryResult`.
 /// This is necessary to support nested partial models.
+/// Since 2.0, `from_query_result` is implemented by default, unless `from_query_result = "false"`.
 ///
 /// ```
-/// use sea_orm::{DerivePartialModel, FromQueryResult};
+/// use sea_orm::{DerivePartialModel};
 /// #
 /// # mod cake {
 /// # use sea_orm::entity::prelude::*;
@@ -826,7 +828,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// # }
 ///
 /// #[derive(DerivePartialModel)]
-/// #[sea_orm(entity = "cake::Entity", from_query_result)]
+/// #[sea_orm(entity = "cake::Entity")]
 /// struct Cake {
 ///     id: i32,
 ///     name: String,
@@ -836,7 +838,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///     ignore: String,
 /// }
 ///
-/// #[derive(FromQueryResult, DerivePartialModel)]
+/// #[derive(DerivePartialModel)]
 /// #[sea_orm(entity = "bakery::Entity")]
 /// struct Bakery {
 ///     id: i32,
@@ -847,7 +849,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// // In addition, there's an `alias` attribute to select the columns from an alias:
 ///
 /// #[derive(DerivePartialModel)]
-/// #[sea_orm(entity = "bakery::Entity", alias = "factory", from_query_result)]
+/// #[sea_orm(entity = "bakery::Entity", alias = "factory")]
 /// struct Factory {
 ///     id: i32,
 ///     #[sea_orm(from_col = "name")]
@@ -855,7 +857,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// }
 ///
 /// #[derive(DerivePartialModel)]
-/// #[sea_orm(entity = "cake::Entity", from_query_result)]
+/// #[sea_orm(entity = "cake::Entity")]
 /// struct CakeFactory {
 ///     id: i32,
 ///     name: String,
@@ -890,9 +892,9 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// Or, it will result in a compile error.
 ///
 /// ```compile_fail
-/// use sea_orm::{entity::prelude::*, FromQueryResult, DerivePartialModel, sea_query::Expr};
+/// use sea_orm::{entity::prelude::*, DerivePartialModel, sea_query::Expr};
 ///
-/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// #[derive(Debug, DerivePartialModel)]
 /// #[sea_orm(entity = "Entity")]
 /// struct SelectResult {
 ///     #[sea_orm(from_expr = "Expr::val(1).add(1)", from_col = "foo")]

@@ -4,9 +4,7 @@ pub mod common;
 
 pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{
-    DatabaseConnection, DerivePartialModel, FromQueryResult, entity::prelude::*, entity::*,
-};
+use sea_orm::{DatabaseConnection, DerivePartialModel, entity::prelude::*, entity::*};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -207,7 +205,7 @@ pub async fn update_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
 pub async fn select_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
     use collection::*;
 
-    #[derive(DerivePartialModel, FromQueryResult, Debug, PartialEq)]
+    #[derive(DerivePartialModel, Debug, PartialEq)]
     #[sea_orm(entity = "Entity")]
     struct PartialSelectResult {
         name: String,

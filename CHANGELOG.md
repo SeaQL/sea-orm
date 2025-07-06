@@ -113,7 +113,7 @@ assert_eq!(
 * A full `Model` can now be used as `PartialModel` in nested query https://github.com/SeaQL/sea-orm/pull/2642
 ```rust
 #[derive(DerivePartialModel)]
-#[sea_orm(entity = "cake::Entity", from_query_result)]
+#[sea_orm(entity = "cake::Entity")]
 struct Cake {
     id: i32,
     name: String,
@@ -231,6 +231,13 @@ where
     <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
     for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
         serde::de::Deserialize<'de> + serde::Serialize,
+```
+* `DerivePartialModel` now implement `FromQueryResult` by default, so there may be a potential conflict
+```rust
+error[E0119]: conflicting implementations of trait `sea_orm::FromQueryResult` for type `CakeWithFruit`
+  |
+> | #[derive(DerivePartialModel, FromQueryResult)]
+  |          ------------------  ^^^^^^^^^^^^^^^ conflicting implementation for `CakeWithFruit`
 ```
 
 ### Upgrades

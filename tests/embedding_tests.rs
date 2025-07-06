@@ -4,9 +4,7 @@ pub mod common;
 
 pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{
-    DatabaseConnection, DerivePartialModel, FromQueryResult, entity::prelude::*, entity::*,
-};
+use sea_orm::{DatabaseConnection, DerivePartialModel, entity::prelude::*, entity::*};
 use serde_json::json;
 
 #[cfg(feature = "postgres-vector")]
@@ -105,7 +103,7 @@ mod test {
     pub async fn select_embedding(db: &DatabaseConnection) -> Result<(), DbErr> {
         use embedding::*;
 
-        #[derive(DerivePartialModel, FromQueryResult, Debug, PartialEq)]
+        #[derive(DerivePartialModel, Debug, PartialEq)]
         #[sea_orm(entity = "Entity")]
         struct PartialSelectResult {
             embedding: PgVector,

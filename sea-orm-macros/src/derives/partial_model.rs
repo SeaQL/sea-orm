@@ -68,7 +68,7 @@ impl DerivePartialModel {
         let mut entity_string = String::new();
         let mut active_model = None;
         let mut alias = None;
-        let mut from_query_result = false;
+        let mut from_query_result = true;
         let mut into_active_model = false;
 
         for attr in input.attrs.iter() {
@@ -83,8 +83,10 @@ impl DerivePartialModel {
                         entity_string = s;
                     } else if let Some(s) = meta.get_as_kv("alias") {
                         alias = Some(s);
-                    } else if meta.exists("from_query_result") {
-                        from_query_result = true;
+                    } else if let Some(s) = meta.get_as_kv("from_query_result") {
+                        if s == "false" {
+                            from_query_result = false;
+                        }
                     } else if meta.exists("into_active_model") {
                         into_active_model = true;
                     }
@@ -386,13 +388,13 @@ mod test {
                 field: format_ident!("expr_field"),
             }
         );
-        assert_eq!(middle.from_query_result, false);
+        assert_eq!(middle.from_query_result, true);
 
         Ok(())
     }
 
     const CODE_SNIPPET_2: &str = r#"
-        #[sea_orm(entity = "MyEntity", from_query_result)]
+        #[sea_orm(entity = "MyEntity", from_query_result = "false")]
         struct PartialModel {
             default_field: i32,
         }
@@ -413,7 +415,7 @@ mod test {
                 field: format_ident!("default_field")
             }
         );
-        assert_eq!(middle.from_query_result, true);
+        assert_eq!(middle.from_query_result, false);
 
         Ok(())
     }
