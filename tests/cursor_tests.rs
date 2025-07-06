@@ -422,7 +422,7 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
         [json!({ "id": 6 }), json!({ "id": 7 })]
     );
 
-    #[derive(DerivePartialModel, FromQueryResult, Debug, PartialEq, Clone)]
+    #[derive(DerivePartialModel, Debug, PartialEq, Clone)]
     #[sea_orm(entity = "Entity")]
     struct PartialRow {
         #[sea_orm(from_col = "id")]

@@ -164,7 +164,7 @@
 //! use sea_orm::DerivePartialModel;
 //!
 //! #[derive(DerivePartialModel)]
-//! #[sea_orm(entity = "cake::Entity", from_query_result)]
+//! #[sea_orm(entity = "cake::Entity")]
 //! struct CakeWithFruit {
 //!     id: i32,
 //!     name: String,

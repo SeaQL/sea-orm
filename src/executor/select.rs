@@ -205,11 +205,11 @@ where
     ///     entity::*,
     ///     query::*,
     ///     tests_cfg::cake::{self, Entity as Cake},
-    ///     DbBackend, DerivePartialModel, FromQueryResult,
+    ///     DbBackend, DerivePartialModel,
     /// };
     /// use sea_query::{Expr, Func, SimpleExpr};
     ///
-    /// #[derive(DerivePartialModel, FromQueryResult)]
+    /// #[derive(DerivePartialModel)]
     /// #[sea_orm(entity = "Cake")]
     /// struct PartialCake {
     ///     name: String,
