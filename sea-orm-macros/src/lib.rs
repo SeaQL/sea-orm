@@ -797,7 +797,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// Since 2.0, `from_query_result` is implemented by default, unless `from_query_result = "false"`.
 ///
 /// ```
-/// use sea_orm::{DerivePartialModel};
+/// use sea_orm::DerivePartialModel;
 /// #
 /// # mod cake {
 /// # use sea_orm::entity::prelude::*;
