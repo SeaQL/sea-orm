@@ -211,7 +211,7 @@ impl Relation {
 impl From<&TableForeignKey> for Relation {
     fn from(tbl_fk: &TableForeignKey) -> Self {
         let ref_table = match tbl_fk.get_ref_table() {
-            Some(s) => s.table().to_string(),
+            Some(s) => s.sea_orm_table().to_string(),
             None => panic!("RefTable should not be empty"),
         };
         let columns = tbl_fk.get_columns();

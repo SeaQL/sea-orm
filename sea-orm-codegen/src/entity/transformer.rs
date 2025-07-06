@@ -76,7 +76,7 @@ impl EntityTransformer {
                 .iter()
                 .map(|fk_create_stmt| fk_create_stmt.get_foreign_key())
                 .map(|tbl_fk| {
-                    let ref_tbl = tbl_fk.get_ref_table().unwrap().table().to_string();
+                    let ref_tbl = tbl_fk.get_ref_table().unwrap().sea_orm_table().to_string();
                     if let Some(count) = ref_table_counts.get_mut(&ref_tbl) {
                         if *count == 0 {
                             *count = 1;
