@@ -232,7 +232,7 @@ where
     for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
         serde::de::Deserialize<'de> + serde::Serialize,
 ```
-* `DerivePartialModel` now implement `FromQueryResult` by default, so there may be a potential conflict
+* `DerivePartialModel` now implement `FromQueryResult` by default, so there may be a potential conflict https://github.com/SeaQL/sea-orm/pull/2653
 ```rust
 error[E0119]: conflicting implementations of trait `sea_orm::FromQueryResult` for type `CakeWithFruit`
   |
