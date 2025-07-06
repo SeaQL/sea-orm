@@ -18,7 +18,12 @@ pub fn expand_derive_from_json_query_result(ident: Ident) -> syn::Result<TokenSt
         #[automatically_derived]
         impl std::convert::From<#ident> for sea_orm::Value {
             fn from(source: #ident) -> Self {
-                sea_orm::Value::Json(serde_json::to_value(&source).ok().map(|s| std::boxed::Box::new(s)))
+                sea_orm::Value::Json(
+                    Some(std::boxed::Box::new(
+                        serde_json::to_value(&source)
+                            .expect(concat!("Failed to serialize '", stringify!(#ident), "'"))
+                    ))
+                )
             }
         }
 
