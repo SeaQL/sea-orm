@@ -2467,6 +2467,42 @@ mod tests {
                 true,
             ))
         );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/compact_with_derives/cake_one_relation.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_compact_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &bonus_derive(["ts_rs::TS"]),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/compact_with_derives/cake_multiple_relation.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_compact_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &bonus_derive(["ts_rs::TS", "ts_rs::TS2"]),
+                false,
+                true,
+            ))
+        );
 
         // Expanded code blocks
         assert_eq!(
