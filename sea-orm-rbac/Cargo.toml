@@ -1,6 +1,6 @@
 [package]
 name = "sea-orm-rbac"
-version = "1.2.0-rc.1"
+version = "2.0.0-rc.1"
 authors = ["Chris Tsang <chris.2y3@outlook.com>"]
 edition = "2024"
 description = "Role based access control for SeaORM"
@@ -13,7 +13,7 @@ keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 rust-version = "1.85.0"
 
 [dependencies]
-sea-orm = { version = "~1.2.0-rc", path = "../", default-features = false, features = ["macros"] }
+sea-orm = { version = "~2.0.0-rc", path = "../", default-features = false, features = ["macros"] }
 # sea-schema = { version = "0.17.0-rc.2", default-features = false, features = ["discovery", "writer", "probe"] }
 thiserror = { version = "2", default-features = false }
 
