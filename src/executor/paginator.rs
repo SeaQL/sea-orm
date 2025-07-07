@@ -319,8 +319,8 @@ where
 mod tests {
     use super::*;
     use crate::entity::prelude::*;
-    use crate::{ConnectionTrait, Statement, tests_cfg::*};
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
+    use crate::{Statement, tests_cfg::*};
     use futures_util::TryStreamExt;
     use pretty_assertions::assert_eq;
     use sea_query::{Expr, SelectStatement, Value};
