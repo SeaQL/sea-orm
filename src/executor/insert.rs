@@ -419,18 +419,17 @@ where
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
 
     let db_backend = db.get_database_backend();
-    let statement = db_backend.build(&statement);
 
     let last_insert_id = match (primary_key, db.support_returning()) {
         (Some(value_tuple), _) => {
-            let res = db.execute(statement).await?;
+            let res = db.execute(&statement).await?;
             if res.rows_affected() == 0 {
                 return Err(DbErr::RecordNotInserted);
             }
             FromValueTuple::from_value_tuple(value_tuple)
         }
         (None, true) => {
-            let mut rows = db.query_all(statement).await?;
+            let mut rows = db.query_all(&statement).await?;
             let row = match rows.pop() {
                 Some(row) => row,
                 None => return Err(DbErr::RecordNotInserted),
@@ -442,7 +441,7 @@ where
                 .map_err(|_| DbErr::UnpackInsertId)?
         }
         (None, false) => {
-            let res = db.execute(statement).await?;
+            let res = db.execute(&statement).await?;
             if res.rows_affected() == 0 {
                 return Err(DbErr::RecordNotInserted);
             }
@@ -469,9 +468,7 @@ async fn exec_insert_without_returning<C>(
 where
     C: ConnectionTrait,
 {
-    let db_backend = db.get_database_backend();
-    let insert_statement = db_backend.build(&insert_statement);
-    let exec_result = db.execute(insert_statement).await?;
+    let exec_result = db.execute(&insert_statement).await?;
     Ok(exec_result.rows_affected())
 }
 
@@ -528,8 +525,7 @@ where
     match db.support_returning() {
         true => {
             insert_statement.returning(returning_pk::<A>(db_backend));
-            let statement = db_backend.build(&insert_statement);
-            let rows = db.query_all(statement).await?;
+            let rows = db.query_all(&insert_statement).await?;
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
                 .collect::<Vec<_>>();

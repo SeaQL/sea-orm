@@ -106,24 +106,12 @@ impl std::fmt::Debug for DatabaseConnection {
 #[async_trait::async_trait]
 impl ConnectionTrait for DatabaseConnection {
     fn get_database_backend(&self) -> DbBackend {
-        match self {
-            #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(_) => DbBackend::MySql,
-            #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(_) => DbBackend::Postgres,
-            #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(_) => DbBackend::Sqlite,
-            #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn) => conn.get_database_backend(),
-            #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.get_database_backend(),
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
-        }
+        self.get_database_backend()
     }
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
-    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
+    async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.execute(stmt).await,
@@ -171,7 +159,7 @@ impl ConnectionTrait for DatabaseConnection {
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
-    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
+    async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_one(stmt).await,
@@ -189,7 +177,7 @@ impl ConnectionTrait for DatabaseConnection {
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
-    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+    async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_all(stmt).await,
@@ -215,9 +203,13 @@ impl ConnectionTrait for DatabaseConnection {
 impl StreamTrait for DatabaseConnection {
     type Stream<'a> = crate::QueryStream;
 
+    fn get_database_backend(&self) -> DbBackend {
+        self.get_database_backend()
+    }
+
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
-    fn stream<'a>(
+    fn stream_raw<'a>(
         &'a self,
         stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>> {
@@ -437,6 +429,23 @@ impl DatabaseConnection {
 }
 
 impl DatabaseConnection {
+    /// Get the database backend for this connection
+    pub fn get_database_backend(&self) -> DbBackend {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(_) => DbBackend::MySql,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(_) => DbBackend::Postgres,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(_) => DbBackend::Sqlite,
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.get_database_backend(),
+            #[cfg(feature = "proxy")]
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.get_database_backend(),
+            DatabaseConnection::Disconnected => panic!("Disconnected"),
+        }
+    }
+
     /// Sets a callback to metric this connection
     pub fn set_metric_callback<F>(&mut self, _callback: F)
     where

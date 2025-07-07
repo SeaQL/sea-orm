@@ -77,9 +77,7 @@ impl Updater {
         if self.is_noop() {
             return Ok(UpdateResult::default());
         }
-        let builder = db.get_database_backend();
-        let statement = builder.build(&self.query);
-        let result = db.execute(statement).await?;
+        let result = db.execute(&self.query).await?;
         if self.check_record_exists && result.rows_affected() == 0 {
             return Err(DbErr::RecordNotUpdated);
         }

@@ -38,8 +38,7 @@ async fn setup_schema(db: &DbConn) -> Result<(), DbErr> {
         .col(ColumnDef::new(cake::Column::Name).string())
         .to_owned();
 
-    let builder = db.get_database_backend();
-    let result = db.execute(builder.build(&stmt)).await?;
+    let result = db.execute(&stmt).await?;
     println!("Create table cake: {result:?}");
 
     Ok(())

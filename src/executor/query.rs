@@ -3,7 +3,7 @@ use crate::{
     SelectGetableValue, SelectorRaw, Statement,
     error::{DbErr, type_err},
 };
-use std::{fmt, sync::Arc};
+use std::{fmt, marker::PhantomData, sync::Arc};
 
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use crate::debug_print;
@@ -1214,7 +1214,7 @@ pub trait TryGetableMany: Sized {
     {
         SelectorRaw {
             stmt,
-            selector: SelectGetableValue::<Self, C>::default(),
+            selector: PhantomData,
         }
     }
 }
