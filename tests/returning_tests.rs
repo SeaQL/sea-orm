@@ -2,9 +2,9 @@
 
 pub mod common;
 
-pub use common::{TestContext, bakery_chain, setup::*};
+use common::{TestContext, bakery_chain, setup::*};
 use sea_orm::{IntoActiveModel, NotSet, Set, entity::prelude::*};
-pub use sea_query::{Expr, Query};
+use sea_query::{Expr, Query};
 use serde_json::json;
 
 #[sea_orm_macros::test]
