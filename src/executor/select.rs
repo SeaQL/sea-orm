@@ -19,7 +19,7 @@ where
     S: SelectorTrait,
 {
     pub(crate) query: SelectStatement,
-    selector: S,
+    selector: PhantomData<S>,
 }
 
 /// Performs a raw `SELECT` operation on a model
@@ -29,8 +29,7 @@ where
     S: SelectorTrait,
 {
     pub(crate) stmt: Statement,
-    #[allow(dead_code)]
-    pub(crate) selector: S,
+    pub(super) selector: PhantomData<S>,
 }
 
 /// A Trait for any type that can perform SELECT queries
@@ -181,7 +180,7 @@ where
     pub fn from_raw_sql(self, stmt: Statement) -> SelectorRaw<SelectModel<E::Model>> {
         SelectorRaw {
             stmt,
-            selector: SelectModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -192,7 +191,7 @@ where
     {
         Selector {
             query: self.query,
-            selector: SelectModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -240,7 +239,7 @@ where
     pub fn into_json(self) -> Selector<SelectModel<JsonValue>> {
         Selector {
             query: self.query,
-            selector: SelectModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -353,7 +352,7 @@ where
     {
         Selector {
             query: self.query,
-            selector: Default::default(),
+            selector: PhantomData,
         }
     }
 
@@ -454,7 +453,7 @@ where
     {
         Selector {
             query: self.query,
-            selector: SelectGetableTuple { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -511,7 +510,7 @@ where
     {
         Selector {
             query: self.query,
-            selector: SelectTwoModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -532,7 +531,7 @@ where
     pub fn into_json(self) -> Selector<SelectTwoModel<JsonValue, JsonValue>> {
         Selector {
             query: self.query,
-            selector: SelectTwoModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -590,7 +589,7 @@ where
     {
         Selector {
             query: self.query,
-            selector: SelectTwoModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -611,7 +610,7 @@ where
     pub fn into_json(self) -> Selector<SelectTwoModel<JsonValue, JsonValue>> {
         Selector {
             query: self.query,
-            selector: SelectTwoModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -680,7 +679,7 @@ where
     {
         Selector {
             query: self.query,
-            selector: SelectThreeModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -702,7 +701,7 @@ where
     pub fn into_json(self) -> Selector<SelectThreeModel<JsonValue, JsonValue, JsonValue>> {
         Selector {
             query: self.query,
-            selector: SelectThreeModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -761,18 +760,6 @@ impl<S> Selector<S>
 where
     S: SelectorTrait,
 {
-    fn into_selector_raw<C>(self, db: &C) -> SelectorRaw<S>
-    where
-        C: ConnectionTrait,
-    {
-        let builder = db.get_database_backend();
-        let stmt = builder.build(&self.query);
-        SelectorRaw {
-            stmt,
-            selector: self.selector,
-        }
-    }
-
     /// Get the SQL statement
     pub fn into_statement(self, builder: DbBackend) -> Statement {
         builder.build(&self.query)
@@ -784,7 +771,11 @@ where
         C: ConnectionTrait,
     {
         self.query.limit(1);
-        self.into_selector_raw(db).one(db).await
+        let row = db.query_one(&self.query).await?;
+        match row {
+            Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
+            None => Ok(None),
+        }
     }
 
     /// Get all items from the Select query
@@ -792,7 +783,12 @@ where
     where
         C: ConnectionTrait,
     {
-        self.into_selector_raw(db).all(db).await
+        let rows = db.query_all(&self.query).await?;
+        let mut models = Vec::new();
+        for row in rows.into_iter() {
+            models.push(S::from_raw_query_result(row)?);
+        }
+        Ok(models)
     }
 
     /// Stream the results of the Select operation
@@ -805,7 +801,10 @@ where
         S: 'b,
         S::Item: Send,
     {
-        self.into_selector_raw(db).stream(db).await
+        let stream = db.stream(&self.query).await?;
+        Ok(Box::pin(stream.and_then(|row| {
+            futures_util::future::ready(S::from_raw_query_result(row))
+        })))
     }
 }
 
@@ -820,7 +819,7 @@ where
     {
         SelectorRaw {
             stmt,
-            selector: SelectModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -894,7 +893,7 @@ where
     {
         SelectorRaw {
             stmt: self.stmt,
-            selector: SelectModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -958,7 +957,7 @@ where
     pub fn into_json(self) -> SelectorRaw<SelectModel<JsonValue>> {
         SelectorRaw {
             stmt: self.stmt,
-            selector: SelectModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -1011,7 +1010,7 @@ where
     where
         C: ConnectionTrait,
     {
-        let row = db.query_one(self.stmt).await?;
+        let row = db.query_one_raw(self.stmt).await?;
         match row {
             Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
             None => Ok(None),
@@ -1062,7 +1061,7 @@ where
     where
         C: ConnectionTrait,
     {
-        let rows = db.query_all(self.stmt).await?;
+        let rows = db.query_all_raw(self.stmt).await?;
         let mut models = Vec::new();
         for row in rows.into_iter() {
             models.push(S::from_raw_query_result(row)?);
@@ -1080,7 +1079,7 @@ where
         S: 'b,
         S::Item: Send,
     {
-        let stream = db.stream(self.stmt).await?;
+        let stream = db.stream_raw(self.stmt).await?;
         Ok(Box::pin(stream.and_then(|row| {
             futures_util::future::ready(S::from_raw_query_result(row))
         })))

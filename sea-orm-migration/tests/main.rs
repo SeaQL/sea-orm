@@ -61,7 +61,7 @@ where
 
     let db = &match db.get_database_backend() {
         DbBackend::MySql => {
-            db.execute(Statement::from_string(
+            db.execute_raw(Statement::from_string(
                 db.get_database_backend(),
                 format!("CREATE DATABASE IF NOT EXISTS `{db_name}`;"),
             ))
@@ -71,12 +71,12 @@ where
             db_connect(url).await?
         }
         DbBackend::Postgres => {
-            db.execute(Statement::from_string(
+            db.execute_raw(Statement::from_string(
                 db.get_database_backend(),
                 format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
             ))
             .await?;
-            db.execute(Statement::from_string(
+            db.execute_raw(Statement::from_string(
                 db.get_database_backend(),
                 format!("CREATE DATABASE \"{db_name}\";"),
             ))
@@ -85,7 +85,7 @@ where
             let url = format!("{url}/{db_name}");
             let db = db_connect(url).await?;
 
-            db.execute(Statement::from_string(
+            db.execute_raw(Statement::from_string(
                 db.get_database_backend(),
                 format!("CREATE SCHEMA IF NOT EXISTS \"{schema}\";"),
             ))

@@ -171,7 +171,7 @@ pub trait MigratorTrait: Send {
             .create_table_from_entity(seaql_migrations::Entity)
             .table_name(table_name);
         stmt.if_not_exists();
-        db.execute(builder.build(&stmt)).await.map(|_| ())
+        db.execute(&stmt).await.map(|_| ())
     }
 
     /// Check the status of all migrations
@@ -288,7 +288,7 @@ where
     // Temporarily disable the foreign key check
     if db_backend == DbBackend::Sqlite {
         info!("Disabling foreign key check");
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             db_backend,
             "PRAGMA foreign_keys = OFF".to_owned(),
         ))
@@ -300,7 +300,7 @@ where
     if db_backend == DbBackend::MySql {
         info!("Dropping all foreign keys");
         let stmt = query_mysql_foreign_keys(db);
-        let rows = db.query_all(db_backend.build(&stmt)).await?;
+        let rows = db.query_all(&stmt).await?;
         for row in rows.into_iter() {
             let constraint_name: String = row.try_get("", "CONSTRAINT_NAME")?;
             let table_name: String = row.try_get("", "TABLE_NAME")?;
@@ -311,7 +311,7 @@ where
             let mut stmt = ForeignKey::drop();
             stmt.table(Alias::new(table_name.as_str()))
                 .name(constraint_name.as_str());
-            db.execute(db_backend.build(&stmt)).await?;
+            db.execute(&stmt).await?;
             info!("Foreign key '{}' has been dropped", constraint_name);
         }
         info!("All foreign keys dropped");
@@ -319,7 +319,7 @@ where
 
     // Drop all tables
     let stmt = query_tables(db)?;
-    let rows = db.query_all(db_backend.build(&stmt)).await?;
+    let rows = db.query_all(&stmt).await?;
     for row in rows.into_iter() {
         let table_name: String = row.try_get("", "table_name")?;
         info!("Dropping table '{}'", table_name);
@@ -327,7 +327,7 @@ where
         stmt.table(Alias::new(table_name.as_str()))
             .if_exists()
             .cascade();
-        db.execute(db_backend.build(&stmt)).await?;
+        db.execute(&stmt).await?;
         info!("Table '{}' has been dropped", table_name);
     }
 
@@ -335,13 +335,13 @@ where
     if db_backend == DbBackend::Postgres {
         info!("Dropping all types");
         let stmt = query_pg_types(db);
-        let rows = db.query_all(db_backend.build(&stmt)).await?;
+        let rows = db.query_all(&stmt).await?;
         for row in rows {
             let type_name: String = row.try_get("", "typname")?;
             info!("Dropping type '{}'", type_name);
             let mut stmt = Type::drop();
             stmt.name(Alias::new(&type_name));
-            db.execute(db_backend.build(&stmt)).await?;
+            db.execute(&stmt).await?;
             info!("Type '{}' has been dropped", type_name);
         }
     }
@@ -349,7 +349,7 @@ where
     // Restore the foreign key check
     if db_backend == DbBackend::Sqlite {
         info!("Restoring foreign key check");
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             db_backend,
             "PRAGMA foreign_keys = ON".to_owned(),
         ))

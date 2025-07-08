@@ -2,9 +2,9 @@
 
 pub mod common;
 
-pub use common::{TestContext, bakery_chain, setup::*};
+use common::{TestContext, bakery_chain, setup::*};
 use sea_orm::{IntoActiveModel, NotSet, Set, entity::prelude::*};
-pub use sea_query::{Expr, Query};
+use sea_query::{Expr, Query};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -39,7 +39,7 @@ async fn main() -> Result<(), DbErr> {
     if db.support_returning() {
         insert.returning(returning.clone());
         let insert_res = db
-            .query_one(builder.build(&insert))
+            .query_one(&insert)
             .await?
             .expect("Insert failed with query_one");
         let id: i32 = insert_res.try_get("", "id")?;
@@ -51,7 +51,7 @@ async fn main() -> Result<(), DbErr> {
 
         update.returning(returning.clone());
         let update_res = db
-            .query_one(builder.build(&update))
+            .query_one(&update)
             .await?
             .expect("Update filed with query_one");
         let id: i32 = update_res.try_get("", "id")?;
@@ -61,10 +61,10 @@ async fn main() -> Result<(), DbErr> {
         let profit_margin: f64 = update_res.try_get("", "profit_margin")?;
         assert_eq!(profit_margin, 0.8);
     } else {
-        let insert_res = db.execute(builder.build(&insert)).await?;
+        let insert_res = db.execute(&insert).await?;
         assert!(insert_res.rows_affected() > 0);
 
-        let update_res = db.execute(builder.build(&update)).await?;
+        let update_res = db.execute(&update).await?;
         assert!(update_res.rows_affected() > 0);
     }
 
