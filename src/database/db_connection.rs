@@ -430,6 +430,10 @@ impl DatabaseConnection {
 
 impl DatabaseConnection {
     /// Get the database backend for this connection
+    ///
+    /// # Panics
+    ///
+    /// Panics if [DatabaseConnection] is `Disconnected`.
     pub fn get_database_backend(&self) -> DbBackend {
         match self {
             #[cfg(feature = "sqlx-mysql")]

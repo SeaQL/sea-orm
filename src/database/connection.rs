@@ -16,7 +16,7 @@ pub trait ConnectionTrait: Sync {
     async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr>;
 
     /// Execute a [QueryStatement]
-    async fn execute<S: StatementBuilder + Sync>(&self, stmt: &S) -> Result<ExecResult, DbErr> {
+    async fn execute<S: StatementBuilder>(&self, stmt: &S) -> Result<ExecResult, DbErr> {
         let db_backend = self.get_database_backend();
         let stmt = db_backend.build(stmt);
         self.execute_raw(stmt).await
@@ -29,10 +29,7 @@ pub trait ConnectionTrait: Sync {
     async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr>;
 
     /// Execute a [QueryStatement] and return a single row of `QueryResult`
-    async fn query_one<S: StatementBuilder + Sync>(
-        &self,
-        stmt: &S,
-    ) -> Result<Option<QueryResult>, DbErr> {
+    async fn query_one<S: StatementBuilder>(&self, stmt: &S) -> Result<Option<QueryResult>, DbErr> {
         let db_backend = self.get_database_backend();
         let stmt = db_backend.build(stmt);
         self.query_one_raw(stmt).await
@@ -42,10 +39,7 @@ pub trait ConnectionTrait: Sync {
     async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
 
     /// Execute a [QueryStatement] and return a vector of `QueryResult`
-    async fn query_all<S: StatementBuilder + Sync>(
-        &self,
-        stmt: &S,
-    ) -> Result<Vec<QueryResult>, DbErr> {
+    async fn query_all<S: StatementBuilder>(&self, stmt: &S) -> Result<Vec<QueryResult>, DbErr> {
         let db_backend = self.get_database_backend();
         let stmt = db_backend.build(stmt);
         self.query_all_raw(stmt).await
