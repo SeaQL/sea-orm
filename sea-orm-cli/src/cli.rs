@@ -232,7 +232,13 @@ pub enum GenerateSubcommands {
         )]
         database_schema: Option<String>,
 
-        #[arg(short = 'u', long, env = "DATABASE_URL", help = "Database URL", hide_env_values = true)]
+        #[arg(
+            short = 'u',
+            long,
+            env = "DATABASE_URL",
+            help = "Database URL",
+            hide_env_values = true
+        )]
         database_url: String,
 
         #[arg(
