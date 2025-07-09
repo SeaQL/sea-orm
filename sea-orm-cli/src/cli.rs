@@ -95,7 +95,8 @@ you should provide the directory of that submodule.",
             short = 'u',
             long,
             env = "DATABASE_URL",
-            help = "Database URL"
+            help = "Database URL",
+            hide_env_values = true
         )]
         database_url: Option<String>,
 
@@ -231,7 +232,7 @@ pub enum GenerateSubcommands {
         )]
         database_schema: Option<String>,
 
-        #[arg(short = 'u', long, env = "DATABASE_URL", help = "Database URL")]
+        #[arg(short = 'u', long, env = "DATABASE_URL", help = "Database URL", hide_env_values = true)]
         database_url: String,
 
         #[arg(
