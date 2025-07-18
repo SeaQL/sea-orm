@@ -101,7 +101,7 @@ where
             ));
             select_two.query().expr(SelectExpr {
                 expr: col.select_as(expr),
-                alias: Some(SeaRc::new(Alias::new(alias))),
+                alias: Some(alias.into_iden()),
                 window: None,
             });
         }
@@ -147,7 +147,7 @@ where
             ));
             select_two_many.query().expr(SelectExpr {
                 expr: col.select_as(expr),
-                alias: Some(SeaRc::new(Alias::new(alias))),
+                alias: Some(alias.into_iden()),
                 window: None,
             });
         }

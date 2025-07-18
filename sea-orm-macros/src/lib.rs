@@ -21,7 +21,7 @@ mod strum;
 /// pub struct Entity;
 ///
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -174,7 +174,7 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
 /// # pub struct Entity;
 /// #
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -226,7 +226,7 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
 pub fn derive_primary_key(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
 
-    match derives::expand_derive_primary_key(ident, data) {
+    match derives::expand_derive_primary_key(&ident, &data) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
@@ -258,40 +258,6 @@ pub fn derive_column(input: TokenStream) -> TokenStream {
     }
 }
 
-/// Derive a column if column names are not in snake-case
-///
-/// ### Usage
-///
-/// ```
-/// use sea_orm::entity::prelude::*;
-///
-/// #[derive(Copy, Clone, Debug, EnumIter, DeriveCustomColumn)]
-/// pub enum Column {
-///     Id,
-///     Name,
-///     VendorId,
-/// }
-///
-/// impl IdenStatic for Column {
-///     fn as_str(&self) -> &str {
-///         match self {
-///             Self::Id => "id",
-///             _ => self.default_as_str(),
-///         }
-///     }
-/// }
-/// ```
-#[cfg(feature = "derive")]
-#[proc_macro_derive(DeriveCustomColumn)]
-pub fn derive_custom_column(input: TokenStream) -> TokenStream {
-    let DeriveInput { ident, data, .. } = parse_macro_input!(input);
-
-    match derives::expand_derive_custom_column(&ident, &data) {
-        Ok(ts) => ts.into(),
-        Err(e) => e.to_compile_error().into(),
-    }
-}
-
 /// The DeriveModel derive macro will implement ModelTrait for Model,
 /// which provides setters and getters for all attributes in the mod
 /// It also implements FromQueryResult to convert a query result into the corresponding Model.
@@ -311,7 +277,7 @@ pub fn derive_custom_column(input: TokenStream) -> TokenStream {
 /// # pub struct Entity;
 /// #
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -384,7 +350,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 /// # pub struct Entity;
 /// #
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -470,7 +436,7 @@ pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
 /// # pub struct Entity;
 /// #
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -1072,7 +1038,7 @@ pub fn derive_active_enum_display(input: TokenStream) -> TokenStream {
     }
 }
 
-/// The DeriveIden derive macro will implement `sea_orm::sea_query::Iden` for simplify Iden implementation.
+/// The DeriveIden derive macro will implement `sea_orm::Iden` for simplify Iden implementation.
 ///
 /// ## Usage
 ///

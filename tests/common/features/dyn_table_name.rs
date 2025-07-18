@@ -1,16 +1,17 @@
-use arraystring::{ArrayString, typenum::U32};
 use sea_orm::entity::prelude::*;
-
-pub type TableName = ArrayString<U32>;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity {
-    pub table_name: TableName,
+    pub table_name: u32,
 }
 
 impl EntityName for Entity {
-    fn table_name(&self) -> &str {
-        self.table_name.as_str()
+    fn table_name(&self) -> &'static str {
+        match self.table_name {
+            1 => "dyn_table_1",
+            2 => "dyn_table_2",
+            _ => "",
+        }
     }
 }
 

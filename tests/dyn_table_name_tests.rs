@@ -14,20 +14,19 @@ use sea_query::{Expr, ExprTrait, Query};
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("dyn_table_name_tests").await;
     create_tables(&ctx.db).await?;
-    dyn_table_name_lazy_static(&ctx.db).await?;
+    dyn_table_name(&ctx.db).await?;
     ctx.delete().await;
 
     Ok(())
 }
 
-pub async fn dyn_table_name_lazy_static(db: &DatabaseConnection) -> Result<(), DbErr> {
-    use dyn_table_name_lazy_static::*;
+pub async fn dyn_table_name(db: &DatabaseConnection) -> Result<(), DbErr> {
+    use dyn_table_name::*;
 
     for i in 1..=2 {
         let entity = Entity {
-            table_name: TableName::from_str_truncate(format!("dyn_table_name_lazy_static_{}", i)),
+            table_name: i as u32,
         };
-
         let model = Model {
             id: 1,
             name: "1st Row".into(),

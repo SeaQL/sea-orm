@@ -270,7 +270,7 @@ mod tests {
             pub struct Entity;
 
             impl EntityName for Entity {
-                fn table_name(&self) -> &str {
+                fn table_name(&self) -> &'static str {
                     "hello"
                 }
             }
@@ -375,7 +375,7 @@ mod tests {
             pub struct Entity;
 
             impl EntityName for Entity {
-                fn table_name(&self) -> &str {
+                fn table_name(&self) -> &'static str {
                     "hello"
                 }
             }
@@ -482,7 +482,7 @@ mod tests {
             pub struct Entity;
 
             impl EntityName for Entity {
-                fn table_name(&self) -> &str {
+                fn table_name(&self) -> &'static str {
                     "hello"
                 }
             }
