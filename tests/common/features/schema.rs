@@ -745,14 +745,7 @@ pub async fn create_bits_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 pub async fn create_dyn_table_name_lazy_static_table(db: &DbConn) -> Result<(), DbErr> {
     use dyn_table_name::*;
 
-    let entities = [
-        Entity {
-            table_name: 1,
-        },
-        Entity {
-            table_name: 2,
-        },
-    ];
+    let entities = [Entity { table_name: 1 }, Entity { table_name: 2 }];
     for entity in entities {
         let create_table_stmt = sea_query::Table::create()
             .table(entity.table_ref())
