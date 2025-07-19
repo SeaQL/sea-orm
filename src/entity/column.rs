@@ -362,11 +362,15 @@ impl Iden for Text {
 
 impl Iden for TextArray {
     fn quoted(&self) -> Cow<'static, str> {
-        "text[]".into()
+        // This is Postgres only and it has a special handling for quoting this
+        Cow::Borrowed("text[]")
     }
 
     fn unquoted(&self) -> &str {
-        "text[]"
+        match self.quoted() {
+            Cow::Borrowed(s) => s,
+            _ => unreachable!(),
+        }
     }
 }
 
