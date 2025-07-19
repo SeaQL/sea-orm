@@ -11,7 +11,7 @@ path = "src/lib.rs"
 
 [dependencies]
 sea-orm = { path = "../../../" }
-seaography = { path = "../../../../seaography", optional = true }
+seaography = { version = "1.1.4", optional = true }
 async-graphql = { version = "5", optional = true  }
 
 [features]
