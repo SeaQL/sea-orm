@@ -5,7 +5,7 @@ use sea_query::{
     Alias, BinOper, DynIden, Expr, ExprTrait, IntoIden, IntoLikeExpr, SeaRc, SelectStatement,
     SimpleExpr, Value,
 };
-use std::str::FromStr;
+use std::{borrow::Cow, str::FromStr};
 
 macro_rules! bind_oper {
     ( $op: ident, $bin_op: ident ) => {
@@ -70,12 +70,12 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
 
     /// Get the name of the entity the column belongs to
     fn entity_name(&self) -> DynIden {
-        SeaRc::new(Self::EntityName::default()) as DynIden
+        SeaRc::new(Self::EntityName::default())
     }
 
     /// get the name of the entity the column belongs to
     fn as_column_ref(&self) -> (DynIden, DynIden) {
-        (self.entity_name(), SeaRc::new(*self) as DynIden)
+        (self.entity_name(), SeaRc::new(*self))
     }
 
     bind_oper!(eq, Equal);
@@ -291,9 +291,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     fn save_enum_as(&self, val: Expr) -> SimpleExpr {
         cast_enum_as(val, self, |col, enum_name, col_type| {
             let type_name = match col_type {
-                ColumnType::Array(_) => {
-                    Alias::new(format!("{}[]", enum_name.to_string())).into_iden()
-                }
+                ColumnType::Array(_) => Alias::new(format!("{enum_name}[]")).into_iden(),
                 _ => enum_name,
             };
             col.as_enum(type_name)
@@ -350,14 +348,25 @@ struct Text;
 struct TextArray;
 
 impl Iden for Text {
-    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-        write!(s, "text").unwrap();
+    fn quoted(&self) -> Cow<'static, str> {
+        Cow::Borrowed("text")
+    }
+
+    fn unquoted(&self) -> &str {
+        match self.quoted() {
+            Cow::Borrowed(s) => s,
+            _ => unreachable!(),
+        }
     }
 }
 
 impl Iden for TextArray {
-    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-        write!(s, "text[]").unwrap();
+    fn quoted(&self) -> Cow<'static, str> {
+        "text[]".into()
+    }
+
+    fn unquoted(&self) -> &str {
+        "text[]"
     }
 }
 
@@ -474,7 +483,7 @@ mod tests {
             pub struct Entity;
 
             impl EntityName for Entity {
-                fn table_name(&self) -> &str {
+                fn table_name(&self) -> &'static str {
                     "hello"
                 }
             }
@@ -605,7 +614,7 @@ mod tests {
             pub struct Entity;
 
             impl EntityName for Entity {
-                fn table_name(&self) -> &str {
+                fn table_name(&self) -> &'static str {
                     "hello"
                 }
             }
@@ -736,7 +745,7 @@ mod tests {
             pub struct Entity;
 
             impl EntityName for Entity {
-                fn table_name(&self) -> &str {
+                fn table_name(&self) -> &'static str {
                     "hello"
                 }
             }

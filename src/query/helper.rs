@@ -3,8 +3,8 @@ use crate::{
     ModelTrait, PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
-    Alias, Expr, ExprTrait, Iden, IntoCondition, IntoIden, LockBehavior, LockType, NullOrdering,
-    SeaRc, SelectExpr, SelectStatement, SimpleExpr,
+    Alias, Expr, ExprTrait, IntoCondition, IntoIden, LockBehavior, LockType, NullOrdering, SeaRc,
+    SelectExpr, SelectStatement, SimpleExpr,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -860,8 +860,8 @@ pub trait QueryFilter: Sized {
 }
 
 pub(crate) fn join_tbl_on_condition(
-    from_tbl: SeaRc<dyn Iden>,
-    to_tbl: SeaRc<dyn Iden>,
+    from_tbl: DynIden,
+    to_tbl: DynIden,
     owner_keys: Identity,
     foreign_keys: Identity,
 ) -> Condition {

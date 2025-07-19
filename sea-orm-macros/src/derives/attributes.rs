@@ -11,11 +11,11 @@ pub mod derive_attr {
         pub active_model: Option<syn::Ident>,
         pub primary_key: Option<syn::Ident>,
         pub relation: Option<syn::Ident>,
-        pub schema_name: Option<syn::Lit>,
-        pub table_name: Option<syn::Lit>,
-        pub comment: Option<syn::Lit>,
+        pub schema_name: Option<syn::LitStr>,
+        pub table_name: Option<syn::LitStr>,
+        pub comment: Option<syn::LitStr>,
         pub table_iden: Option<()>,
-        pub rename_all: Option<syn::Lit>,
+        pub rename_all: Option<syn::LitStr>,
     }
 }
 

@@ -279,13 +279,13 @@ impl ActiveEnum {
                 }
 
                 #[automatically_derived]
-                impl sea_orm::sea_query::Iden for #enum_variant_iden {
-                    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-                        write!(s, "{}", match self {
+                impl sea_orm::Iden for #enum_variant_iden {
+                    fn unquoted(&self) -> &str {
+                        match self {
                             #(
                                 Self::#enum_variants => #str_variants,
                             )*
-                        }).unwrap();
+                        }
                     }
                 }
 
@@ -334,9 +334,9 @@ impl ActiveEnum {
             pub struct #enum_name_iden;
 
             #[automatically_derived]
-            impl sea_orm::sea_query::Iden for #enum_name_iden {
-                fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-                    write!(s, "{}", #enum_name).unwrap();
+            impl sea_orm::Iden for #enum_name_iden {
+                fn unquoted(&self) -> &str {
+                    #enum_name
                 }
             }
 

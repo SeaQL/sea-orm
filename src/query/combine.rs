@@ -3,7 +3,8 @@ use crate::{
     SelectTwoMany,
 };
 use core::marker::PhantomData;
-use sea_query::{Alias, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
+use sea_query::{Iden, IntoIden, Order, SelectExpr, SelectStatement, SimpleExpr};
+use std::borrow::Cow;
 
 macro_rules! select_def {
     ( $ident: ident, $str: expr ) => {
@@ -12,13 +13,17 @@ macro_rules! select_def {
         pub struct $ident;
 
         impl Iden for $ident {
-            fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-                write!(s, "{}", self.as_str()).unwrap();
+            fn quoted(&self) -> Cow<'static, str> {
+                Cow::Borrowed(IdenStatic::as_str(self))
+            }
+
+            fn unquoted(&self) -> &str {
+                IdenStatic::as_str(self)
             }
         }
 
         impl IdenStatic for $ident {
-            fn as_str(&self) -> &str {
+            fn as_str(&self) -> &'static str {
                 $str
             }
         }
@@ -38,7 +43,7 @@ where
             match &sel.alias {
                 Some(alias) => {
                     let alias = format!("{}{}", pre, alias.to_string().as_str());
-                    sel.alias = Some(SeaRc::new(Alias::new(alias)));
+                    sel.alias = Some(alias.into_iden());
                 }
                 None => {
                     let col = match &sel.expr {
@@ -62,7 +67,7 @@ where
                         _ => panic!("cannot apply alias for expr other than Column or AsEnum"),
                     };
                     let alias = format!("{}{}", pre, col.to_string().as_str());
-                    sel.alias = Some(SeaRc::new(Alias::new(alias)));
+                    sel.alias = Some(alias.into_iden());
                 }
             };
         });
@@ -182,7 +187,7 @@ where
         let alias = format!("{}{}", alias.as_str(), col.as_str());
         selector.query().expr(SelectExpr {
             expr: col.select_as(col.into_expr()),
-            alias: Some(SeaRc::new(Alias::new(alias))),
+            alias: Some(alias.into_iden()),
             window: None,
         });
     }

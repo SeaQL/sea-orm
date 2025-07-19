@@ -5,7 +5,7 @@ use syn::{
     DataEnum, DataStruct, DeriveInput, Expr, Fields, LitStr, Variant, punctuated::Punctuated,
 };
 
-fn must_be_valid_iden(name: &str) -> bool {
+pub(super) fn is_static_iden(name: &str) -> bool {
     // can only begin with [a-z_]
     name.chars()
         .take(1)
@@ -13,38 +13,37 @@ fn must_be_valid_iden(name: &str) -> bool {
         && name.chars().all(|c| c == '_' || c.is_ascii_alphanumeric())
 }
 
-fn impl_iden_for_unit_struct(
-    ident: &proc_macro2::Ident,
-    new_iden: &str,
+pub(super) fn impl_iden_for_unit_struct(
+    ident: &syn::Ident,
+    iden_str: &str,
 ) -> proc_macro2::TokenStream {
-    let prepare = if must_be_valid_iden(new_iden) {
+    let quoted = if is_static_iden(iden_str) {
         quote! {
-            fn prepare(&self, s: &mut dyn ::std::fmt::Write, q: sea_orm::sea_query::Quote) {
-                write!(s, "{}", q.left()).unwrap();
-                self.unquoted(s);
-                write!(s, "{}", q.right()).unwrap();
+            fn quoted(&self) -> std::borrow::Cow<'static, str> {
+                std::borrow::Cow::Borrowed(#iden_str)
             }
         }
     } else {
         quote! {}
     };
     quote! {
-        impl sea_orm::sea_query::Iden for #ident {
-            #prepare
+        #[automatically_derived]
+        impl sea_orm::Iden for #ident {
+            #quoted
 
-            fn unquoted(&self, s: &mut dyn ::std::fmt::Write) {
-                write!(s, #new_iden).unwrap();
+            fn unquoted(&self) -> &str {
+                #iden_str
             }
         }
     }
 }
 
 fn impl_iden_for_enum(
-    ident: &proc_macro2::Ident,
+    ident: &syn::Ident,
     variants: Punctuated<Variant, syn::token::Comma>,
 ) -> proc_macro2::TokenStream {
     let variants = variants.iter();
-    let mut all_valid = true;
+    let mut all_static = true;
 
     let match_pair: Vec<TokenStream> = variants
         .map(|v| {
@@ -63,7 +62,6 @@ fn impl_iden_for_enum(
                         if meta.path.is_ident("iden") {
                             let litstr: LitStr = meta.value()?.parse()?;
                             var_name = litstr.value();
-                            all_valid &= must_be_valid_iden(var_name.as_str());
                         } else {
                             // Reads the value expression to advance the parse stream.
                             // Some parameters do not have any value,
@@ -74,18 +72,19 @@ fn impl_iden_for_enum(
                     })
                 })
                 .expect("something something");
-            quote! { Self::#var_ident => write!(s, "{}", #var_name).unwrap() }
+            all_static &= is_static_iden(&var_name);
+            quote! { Self::#var_ident => #var_name }
         })
         .collect();
 
     let match_arms: TokenStream = quote! { #(#match_pair),* };
 
-    let prepare = if all_valid {
+    let quoted = if all_static {
         quote! {
-            fn prepare(&self, s: &mut dyn ::std::fmt::Write, q: sea_orm::sea_query::Quote) {
-                write!(s, "{}", q.left()).unwrap();
-                self.unquoted(s);
-                write!(s, "{}", q.right()).unwrap();
+            fn quoted(&self) -> std::borrow::Cow<'static, str> {
+                std::borrow::Cow::Borrowed(match self {
+                    #match_arms
+                })
             }
         }
     } else {
@@ -93,13 +92,14 @@ fn impl_iden_for_enum(
     };
 
     quote! {
-        impl sea_orm::sea_query::Iden for #ident {
-            #prepare
+        #[automatically_derived]
+        impl sea_orm::Iden for #ident {
+            #quoted
 
-            fn unquoted(&self, s: &mut dyn ::std::fmt::Write) {
+            fn unquoted(&self) -> &str {
                 match self {
                     #match_arms
-                };
+                }
             }
         }
     }
@@ -108,7 +108,7 @@ fn impl_iden_for_enum(
 pub fn expand_derive_iden(input: DeriveInput) -> syn::Result<TokenStream> {
     let DeriveInput { ident, data, .. } = input;
 
-    let mut new_iden: TokenStream = ident.to_string().to_snake_case().parse().unwrap();
+    let mut new_iden: String = ident.to_string().to_snake_case();
     input
         .attrs
         .iter()
@@ -117,7 +117,7 @@ pub fn expand_derive_iden(input: DeriveInput) -> syn::Result<TokenStream> {
             attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("iden") {
                     let litstr: LitStr = meta.value()?.parse()?;
-                    new_iden = syn::parse_str::<TokenStream>(&litstr.value())?;
+                    new_iden = litstr.value();
                 } else {
                     // Reads the value expression to advance the parse stream.
                     // Some parameters do not have any value,
@@ -140,10 +140,7 @@ pub fn expand_derive_iden(input: DeriveInput) -> syn::Result<TokenStream> {
         syn::Data::Struct(DataStruct {
             fields: Fields::Unit,
             ..
-        }) => Ok(impl_iden_for_unit_struct(
-            &ident,
-            new_iden.to_string().as_str(),
-        )),
+        }) => Ok(impl_iden_for_unit_struct(&ident, &new_iden)),
         _ => Ok(quote_spanned! {
             ident.span() => compile_error!("you can only derive DeriveIden on unit struct or enum");
         }),
