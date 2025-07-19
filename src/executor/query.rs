@@ -1522,6 +1522,18 @@ try_from_u64_err!(rust_decimal::Decimal);
 #[cfg(feature = "with-uuid")]
 try_from_u64_err!(uuid::Uuid);
 
+#[cfg(feature = "with-uuid")]
+try_from_u64_err!(uuid::fmt::Simple);
+
+#[cfg(feature = "with-uuid")]
+try_from_u64_err!(uuid::fmt::Hyphenated);
+
+#[cfg(feature = "with-uuid")]
+try_from_u64_err!(uuid::fmt::Urn);
+
+#[cfg(feature = "with-uuid")]
+try_from_u64_err!(uuid::fmt::Braced);
+
 #[cfg(feature = "with-ipnetwork")]
 try_from_u64_err!(ipnetwork::IpNetwork);
 
