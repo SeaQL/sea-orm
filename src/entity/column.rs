@@ -291,9 +291,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     fn save_enum_as(&self, val: Expr) -> SimpleExpr {
         cast_enum_as(val, self, |col, enum_name, col_type| {
             let type_name = match col_type {
-                ColumnType::Array(_) => {
-                    Alias::new(format!("{enum_name}[]")).into_iden()
-                }
+                ColumnType::Array(_) => Alias::new(format!("{enum_name}[]")).into_iden(),
                 _ => enum_name,
             };
             col.as_enum(type_name)
