@@ -28,8 +28,7 @@ impl<'c> SchemaManager<'c> {
     where
         S: StatementBuilder,
     {
-        let builder = self.conn.get_database_backend();
-        self.conn.execute(builder.build(&stmt)).await.map(|_| ())
+        self.conn.execute(&stmt).await.map(|_| ())
     }
 
     pub fn get_database_backend(&self) -> DbBackend {
@@ -126,10 +125,9 @@ impl SchemaManager<'_> {
         };
 
         #[allow(unreachable_code)]
-        let builder = self.conn.get_database_backend();
         let res = self
             .conn
-            .query_one(builder.build(&_stmt))
+            .query_one(&_stmt)
             .await?
             .ok_or_else(|| DbErr::Custom("Failed to check column exists".to_owned()))?;
 
@@ -158,10 +156,9 @@ impl SchemaManager<'_> {
         };
 
         #[allow(unreachable_code)]
-        let builder = self.conn.get_database_backend();
         let res = self
             .conn
-            .query_one(builder.build(&_stmt))
+            .query_one(&_stmt)
             .await?
             .ok_or_else(|| DbErr::Custom("Failed to check index exists".to_owned()))?;
 
@@ -191,9 +188,8 @@ where
     };
 
     #[allow(unreachable_code)]
-    let builder = conn.get_database_backend();
     let res = conn
-        .query_one(builder.build(&_stmt))
+        .query_one(&_stmt)
         .await?
         .ok_or_else(|| DbErr::Custom("Failed to check table exists".to_owned()))?;
 

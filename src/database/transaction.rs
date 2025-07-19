@@ -246,7 +246,7 @@ impl ConnectionTrait for DatabaseTransaction {
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
-    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
+    async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
         match &mut *self.conn.lock().await {
@@ -335,7 +335,7 @@ impl ConnectionTrait for DatabaseTransaction {
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
-    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
+    async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
         match &mut *self.conn.lock().await {
@@ -380,7 +380,7 @@ impl ConnectionTrait for DatabaseTransaction {
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
-    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+    async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
         match &mut *self.conn.lock().await {
@@ -433,8 +433,12 @@ impl ConnectionTrait for DatabaseTransaction {
 impl StreamTrait for DatabaseTransaction {
     type Stream<'a> = TransactionStream<'a>;
 
+    fn get_database_backend(&self) -> DbBackend {
+        self.backend
+    }
+
     #[instrument(level = "trace")]
-    fn stream<'a>(
+    fn stream_raw<'a>(
         &'a self,
         stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>> {
