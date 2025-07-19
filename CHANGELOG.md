@@ -239,6 +239,41 @@ error[E0119]: conflicting implementations of trait `sea_orm::FromQueryResult` fo
 > | #[derive(DerivePartialModel, FromQueryResult)]
   |          ------------------  ^^^^^^^^^^^^^^^ conflicting implementation for `CakeWithFruit`
 ```
+* Changed `IdenStatic` and `EntityName` definition https://github.com/SeaQL/sea-orm/pull/2667
+```rust
+trait IdenStatic {
+    fn as_str(&self) -> &'static str; // added static lifetime
+}
+trait EntityName {
+    fn table_name(&self) -> &'static str; // added static lifetime
+}
+```
+* Removed `DeriveCustomColumn` and `default_as_str` https://github.com/SeaQL/sea-orm/pull/2667
+```rust
+// This is no longer supported:
+#[derive(Copy, Clone, Debug, EnumIter, DeriveCustomColumn)]
+pub enum Column {
+    Id,
+    Name,
+}
+
+impl IdenStatic for Column {
+    fn as_str(&self) -> &str {
+        match self {
+            Self::Name => "my_name",
+            _ => self.default_as_str(),
+        }
+    }
+}
+
+// Do the following instead:
+#[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+pub enum Column {
+    Id,
+    #[sea_orm(column_name = "my_name")]
+    Name,
+}
+```
 
 ### Upgrades
 
