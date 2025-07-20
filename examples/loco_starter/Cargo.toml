@@ -10,7 +10,7 @@ rust-version = "1.85.0"
 
 [dependencies]
 
-loco-rs = { version = "0.15" }
+loco-rs = { version = "0.16" }
 migration = { path = "migration" }
 
 serde = { version = "1", features = ["derive"] }
