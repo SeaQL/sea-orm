@@ -2286,8 +2286,8 @@ dependencies = [
 
 [[package]]
 name = "loco-gen"
-version = "0.15.0"
-source = "git+https://github.com/SeaQL/loco?branch=master#535eb9f02e300c888db5ea747c73e73df94058b5"
+version = "0.16.1"
+source = "git+https://github.com/SeaQL/loco?branch=master#eee8d5820ee681164c5827a68a0323ec246e6151"
 dependencies = [
  "chrono",
  "clap",
@@ -2307,8 +2307,8 @@ dependencies = [
 
 [[package]]
 name = "loco-rs"
-version = "0.15.0"
-source = "git+https://github.com/SeaQL/loco?branch=master#535eb9f02e300c888db5ea747c73e73df94058b5"
+version = "0.16.1"
+source = "git+https://github.com/SeaQL/loco?branch=master#eee8d5820ee681164c5827a68a0323ec246e6151"
 dependencies = [
  "argon2",
  "async-trait",
@@ -2361,7 +2361,7 @@ dependencies = [
  "tree-fs",
  "ulid",
  "uuid",
- "validator 0.20.0",
+ "validator",
 ]
 
 [[package]]
@@ -3595,7 +3595,8 @@ dependencies = [
 
 [[package]]
 name = "sea-orm"
-version = "1.2.0-rc.1"
+version = "2.0.0-rc.1"
+source = "git+https://github.com/SeaQL/sea-orm?branch=master#a8b733b36b613007804896433ff14217d205817a"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -3622,7 +3623,8 @@ dependencies = [
 
 [[package]]
 name = "sea-orm-cli"
-version = "1.2.0-rc.1"
+version = "2.0.0-rc.1"
+source = "git+https://github.com/SeaQL/sea-orm?branch=master#a8b733b36b613007804896433ff14217d205817a"
 dependencies = [
  "chrono",
  "clap",
@@ -3638,7 +3640,8 @@ dependencies = [
 
 [[package]]
 name = "sea-orm-macros"
-version = "1.2.0-rc.1"
+version = "2.0.0-rc.1"
+source = "git+https://github.com/SeaQL/sea-orm?branch=master#a8b733b36b613007804896433ff14217d205817a"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -3650,7 +3653,8 @@ dependencies = [
 
 [[package]]
 name = "sea-orm-migration"
-version = "1.2.0-rc.1"
+version = "2.0.0-rc.1"
+source = "git+https://github.com/SeaQL/sea-orm?branch=master#a8b733b36b613007804896433ff14217d205817a"
 dependencies = [
  "async-trait",
  "clap",
@@ -3664,9 +3668,9 @@ dependencies = [
 
 [[package]]
 name = "sea-query"
-version = "1.0.0-rc.1"
+version = "1.0.0-rc.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de6a2f428f1f31b2155960536bd3cf88311b41fd1cc980a0230a22b8308ed2e7"
+checksum = "d745a641d7930aa25e4ceab041e48a0aaeba937118681c6acfa83b6801f612fa"
 dependencies = [
  "bigdecimal",
  "chrono",
@@ -3697,23 +3701,23 @@ dependencies = [
 
 [[package]]
 name = "sea-query-derive"
-version = "0.4.2"
+version = "1.0.0-rc.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9834af2c4bd8c5162f00c89f1701fb6886119a88062cf76fe842ea9e232b9839"
+checksum = "dc33ec01f13cc2144c01cf350a2fc72f3587161c23ed53f87137d04f3b69086a"
 dependencies = [
  "darling",
  "heck 0.4.1",
  "proc-macro2",
  "quote",
  "syn 2.0.98",
- "thiserror 1.0.64",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
 name = "sea-schema"
-version = "0.17.0-rc.1"
+version = "0.17.0-rc.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7002e5d8888be5f56aae7e2ddfd315f8cbd3d6d5d71ee01cceae8d395f425cab"
+checksum = "5303eb8f88dc297f3981fbd218b3866ee6c4a4242924d0c1a51ce2df6c7fe8da"
 dependencies = [
  "futures",
  "sea-query",
@@ -4337,9 +4341,9 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "strum"
-version = "0.26.3"
+version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fec0f0aef304996cf250b31b5a10dee7980c85da9d759361292b8bca5a18f06"
+checksum = "af23d6f6c1a224baef9d3f61e287d2761385a5b88fdab4eb4c6f11aeb54c4bcf"
 
 [[package]]
 name = "subtle"
@@ -4573,7 +4577,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
- "validator 0.19.0",
+ "validator",
 ]
 
 [[package]]
@@ -5039,21 +5043,6 @@ dependencies = [
  "getrandom 0.2.15",
  "rand 0.8.5",
  "serde",
-]
-
-[[package]]
-name = "validator"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0b4a29d8709210980a09379f27ee31549b73292c87ab9899beee1c0d3be6303"
-dependencies = [
- "idna 1.0.2",
- "once_cell",
- "regex",
- "serde",
- "serde_derive",
- "serde_json",
- "url",
 ]
 
 [[package]]
