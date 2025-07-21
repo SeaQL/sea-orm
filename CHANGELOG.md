@@ -183,6 +183,18 @@ assert_eq!(
     r#"CREATE UNIQUE INDEX "idx-lineitem-item" ON "lineitem" ("order_id", "cake_id")"#
 );
 ```
+* Overhauled `ConnectionTrait` API: `execute`, `query_one`, `query_all`, `stream` now takes in SeaQuery statement instead of raw SQL statement https://github.com/SeaQL/sea-orm/pull/2657
+```rust
+// old
+let query: SelectStatement = Entity::find().filter(..).into_query();
+let backend = self.db.get_database_backend();
+let stmt = backend.build(&query);
+let rows = self.db.query_all(stmt).await?;
+
+// new
+let query: SelectStatement = Entity::find().filter(..).into_query();
+let rows = self.db.query_all(&query).await?;
+```
 
 ### Enhancements
 
@@ -273,6 +285,26 @@ pub enum Column {
     #[sea_orm(column_name = "my_name")]
     Name,
 }
+```
+* `execute`, `query_one`, `query_all`, `stream` now takes in SeaQuery statement instead of raw SQL statement. a new set of methods `execute_raw`, `query_one_raw`, `query_all_raw`, `stream_raw` is added https://github.com/SeaQL/sea-orm/pull/2657
+```rust
+  --> src/executor/paginator.rs:53:38
+   |
+>  |         let rows = self.db.query_all(stmt).await?;
+   |                            --------- ^^^^ expected `&_`, found `Statement`
+   |                            |
+   |                            arguments to this method are incorrect
+   |
+   = note: expected reference `&_`
+                 found struct `statement::Statement`
+```
+```rust
+// change to:
+let backend = self.db.get_database_backend();
+let stmt = backend.build(&query);
+let rows = self.db.query_all_raw(stmt).await?;
+// if the query is a SeaQuery statement, then just do this:
+let rows = self.db.query_all(&query).await?; // no need to build query
 ```
 
 ### Upgrades
