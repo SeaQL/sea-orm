@@ -1,5 +1,6 @@
 use crate::{
-    DatabaseTransaction, DbBackend, DbErr, ExecResult, QueryResult, Statement, TransactionError,
+    DatabaseTransaction, DbBackend, DbErr, ExecResult, QueryResult, Statement, StatementBuilder,
+    TransactionError,
 };
 use futures_util::Stream;
 use std::{future::Future, pin::Pin};
@@ -8,21 +9,41 @@ use std::{future::Future, pin::Pin};
 /// It abstracts database connection and transaction
 #[async_trait::async_trait]
 pub trait ConnectionTrait: Sync {
-    /// Fetch the database backend as specified in [DbBackend].
-    /// This depends on feature flags enabled.
+    /// Get the database backend for the connection. This depends on feature flags enabled.
     fn get_database_backend(&self) -> DbBackend;
 
     /// Execute a [Statement]
-    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr>;
+    async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr>;
+
+    /// Execute a [QueryStatement]
+    async fn execute<S: StatementBuilder>(&self, stmt: &S) -> Result<ExecResult, DbErr> {
+        let db_backend = self.get_database_backend();
+        let stmt = db_backend.build(stmt);
+        self.execute_raw(stmt).await
+    }
 
     /// Execute a unprepared [Statement]
     async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr>;
 
-    /// Execute a [Statement] and return a query
-    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr>;
+    /// Execute a [Statement] and return a single row of `QueryResult`
+    async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr>;
 
-    /// Execute a [Statement] and return a collection Vec<[QueryResult]> on success
-    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
+    /// Execute a [QueryStatement] and return a single row of `QueryResult`
+    async fn query_one<S: StatementBuilder>(&self, stmt: &S) -> Result<Option<QueryResult>, DbErr> {
+        let db_backend = self.get_database_backend();
+        let stmt = db_backend.build(stmt);
+        self.query_one_raw(stmt).await
+    }
+
+    /// Execute a [Statement] and return a vector of `QueryResult`
+    async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
+
+    /// Execute a [QueryStatement] and return a vector of `QueryResult`
+    async fn query_all<S: StatementBuilder>(&self, stmt: &S) -> Result<Vec<QueryResult>, DbErr> {
+        let db_backend = self.get_database_backend();
+        let stmt = db_backend.build(stmt);
+        self.query_all_raw(stmt).await
+    }
 
     /// Check if the connection supports `RETURNING` syntax on insert and update
     fn support_returning(&self) -> bool {
@@ -43,11 +64,24 @@ pub trait StreamTrait: Send + Sync {
     where
         Self: 'a;
 
+    /// Get the database backend for the connection. This depends on feature flags enabled.
+    fn get_database_backend(&self) -> DbBackend;
+
     /// Execute a [Statement] and return a stream of results
-    fn stream<'a>(
+    fn stream_raw<'a>(
         &'a self,
         stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>>;
+
+    /// Execute a [QueryStatement] and return a stream of results
+    fn stream<'a, S: StatementBuilder + Sync>(
+        &'a self,
+        stmt: &S,
+    ) -> Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>> {
+        let db_backend = self.get_database_backend();
+        let stmt = db_backend.build(stmt);
+        self.stream_raw(stmt)
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

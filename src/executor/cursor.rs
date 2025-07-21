@@ -286,8 +286,7 @@ where
         self.apply_order_by();
         self.apply_filters()?;
 
-        let stmt = db.get_database_backend().build(&self.query);
-        let rows = db.query_all(stmt).await?;
+        let rows = db.query_all(&self.query).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
             buffer.push(S::from_raw_query_result(row)?);

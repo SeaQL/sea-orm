@@ -19,10 +19,10 @@ impl ConnectionTrait for SchemaManagerConnection<'_> {
         }
     }
 
-    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
+    async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
-            SchemaManagerConnection::Connection(conn) => conn.execute(stmt).await,
-            SchemaManagerConnection::Transaction(trans) => trans.execute(stmt).await,
+            SchemaManagerConnection::Connection(conn) => conn.execute_raw(stmt).await,
+            SchemaManagerConnection::Transaction(trans) => trans.execute_raw(stmt).await,
         }
     }
 
@@ -33,24 +33,17 @@ impl ConnectionTrait for SchemaManagerConnection<'_> {
         }
     }
 
-    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
+    async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
-            SchemaManagerConnection::Connection(conn) => conn.query_one(stmt).await,
-            SchemaManagerConnection::Transaction(trans) => trans.query_one(stmt).await,
+            SchemaManagerConnection::Connection(conn) => conn.query_one_raw(stmt).await,
+            SchemaManagerConnection::Transaction(trans) => trans.query_one_raw(stmt).await,
         }
     }
 
-    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+    async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         match self {
-            SchemaManagerConnection::Connection(conn) => conn.query_all(stmt).await,
-            SchemaManagerConnection::Transaction(trans) => trans.query_all(stmt).await,
-        }
-    }
-
-    fn is_mock_connection(&self) -> bool {
-        match self {
-            SchemaManagerConnection::Connection(conn) => conn.is_mock_connection(),
-            SchemaManagerConnection::Transaction(trans) => trans.is_mock_connection(),
+            SchemaManagerConnection::Connection(conn) => conn.query_all_raw(stmt).await,
+            SchemaManagerConnection::Transaction(trans) => trans.query_all_raw(stmt).await,
         }
     }
 }

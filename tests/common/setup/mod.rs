@@ -14,14 +14,14 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
         let url = format!("{base_url}/mysql");
         let db = Database::connect(&url).await.unwrap();
         let _drop_db_result = db
-            .execute(Statement::from_string(
+            .execute_raw(Statement::from_string(
                 DatabaseBackend::MySql,
                 format!("DROP DATABASE IF EXISTS `{db_name}`;"),
             ))
             .await;
 
         let _create_db_result = db
-            .execute(Statement::from_string(
+            .execute_raw(Statement::from_string(
                 DatabaseBackend::MySql,
                 format!("CREATE DATABASE `{db_name}`;"),
             ))
@@ -33,14 +33,14 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
         let url = format!("{base_url}/postgres");
         let db = Database::connect(&url).await.unwrap();
         let _drop_db_result = db
-            .execute(Statement::from_string(
+            .execute_raw(Statement::from_string(
                 DatabaseBackend::Postgres,
                 format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
             ))
             .await;
 
         let _create_db_result = db
-            .execute(Statement::from_string(
+            .execute_raw(Statement::from_string(
                 DatabaseBackend::Postgres,
                 format!("CREATE DATABASE \"{db_name}\";"),
             ))
@@ -60,7 +60,7 @@ pub async fn tear_down(base_url: &str, db_name: &str) {
         let url = format!("{base_url}/mysql");
         let db = Database::connect(&url).await.unwrap();
         let _ = db
-            .execute(Statement::from_string(
+            .execute_raw(Statement::from_string(
                 DatabaseBackend::MySql,
                 format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
             ))
@@ -69,7 +69,7 @@ pub async fn tear_down(base_url: &str, db_name: &str) {
         let url = format!("{base_url}/postgres");
         let db = Database::connect(&url).await.unwrap();
         let _ = db
-            .execute(Statement::from_string(
+            .execute_raw(Statement::from_string(
                 DatabaseBackend::Postgres,
                 format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
             ))
@@ -97,13 +97,8 @@ where
                 ColumnType::Enum { name, .. } => name,
                 _ => unreachable!(),
             };
-            let drop_type_stmt = Type::drop()
-                .name(SeaRc::clone(name))
-                .if_exists()
-                .cascade()
-                .to_owned();
-            let stmt = builder.build(&drop_type_stmt);
-            db.execute(stmt).await?;
+            db.execute(Type::drop().name(SeaRc::clone(name)).if_exists().cascade())
+                .await?;
         }
     }
 
@@ -117,8 +112,8 @@ where
 
     assert_eq!(expect_stmts, create_from_entity_stmts);
 
-    for stmt in expect_stmts {
-        db.execute(stmt).await.map(|_| ())?;
+    for stmt in creates.iter() {
+        db.execute(stmt).await?;
     }
 
     Ok(())
@@ -153,7 +148,7 @@ where
     let res = create_table(db, create, entity).await?;
     let backend = db.get_database_backend();
     for stmt in Schema::new(backend).create_index_from_entity(entity) {
-        db.execute(backend.build(&stmt)).await?;
+        db.execute(&stmt).await?;
     }
     Ok(res)
 }
@@ -164,9 +159,9 @@ where
 {
     let builder = db.get_database_backend();
     let schema = Schema::new(builder);
-    let stmt = builder.build(&schema.create_table_from_entity(entity));
+    let stmt = schema.create_table_from_entity(entity);
 
-    db.execute(stmt).await
+    db.execute(&stmt).await
 }
 
 pub async fn create_table_without_asserts(
@@ -175,15 +170,14 @@ pub async fn create_table_without_asserts(
 ) -> Result<ExecResult, DbErr> {
     let builder = db.get_database_backend();
     if builder != DbBackend::Sqlite {
-        let stmt = builder.build(
-            Table::drop()
-                .table(create.get_table_name().unwrap().clone())
-                .if_exists()
-                .cascade(),
-        );
-        db.execute(stmt).await?;
+        let stmt = Table::drop()
+            .table(create.get_table_name().unwrap().clone())
+            .if_exists()
+            .cascade()
+            .take();
+        db.execute(&stmt).await?;
     }
-    db.execute(builder.build(create)).await
+    db.execute(create).await
 }
 
 pub fn rust_dec<T: ToString>(v: T) -> rust_decimal::Decimal {

@@ -48,9 +48,7 @@ where
             .limit(self.page_size)
             .offset(self.page_size * page)
             .to_owned();
-        let builder = self.db.get_database_backend();
-        let stmt = builder.build(&query);
-        let rows = self.db.query_all(stmt).await?;
+        let rows = self.db.query_all(&query).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
             // TODO: Error handling
@@ -66,8 +64,8 @@ where
 
     /// Get the total number of items
     pub async fn num_items(&self) -> Result<u64, DbErr> {
-        let builder = self.db.get_database_backend();
-        let stmt = SelectStatement::new()
+        let db_backend = self.db.get_database_backend();
+        let query = SelectStatement::new()
             .expr(Expr::cust("COUNT(*) AS num_items"))
             .from_subquery(
                 self.query
@@ -79,12 +77,11 @@ where
                 "sub_query",
             )
             .to_owned();
-        let stmt = builder.build(&stmt);
-        let result = match self.db.query_one(stmt).await? {
+        let result = match self.db.query_one(&query).await? {
             Some(res) => res,
             None => return Ok(0),
         };
-        let num_items = match builder {
+        let num_items = match db_backend {
             DbBackend::Postgres => result.try_get::<i64>("", "num_items")? as u64,
             _ => result.try_get::<i32>("", "num_items")? as u64,
         };
@@ -322,8 +319,8 @@ where
 mod tests {
     use super::*;
     use crate::entity::prelude::*;
-    use crate::{ConnectionTrait, Statement, tests_cfg::*};
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
+    use crate::{Statement, tests_cfg::*};
     use futures_util::TryStreamExt;
     use pretty_assertions::assert_eq;
     use sea_query::{Expr, SelectStatement, Value};

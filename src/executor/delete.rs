@@ -114,10 +114,7 @@ async fn exec_delete<C>(query: DeleteStatement, db: &C) -> Result<DeleteResult, 
 where
     C: ConnectionTrait,
 {
-    let builder = db.get_database_backend();
-    let statement = builder.build(&query);
-
-    let result = db.execute(statement).await?;
+    let result = db.execute(&query).await?;
     Ok(DeleteResult {
         rows_affected: result.rows_affected(),
     })
