@@ -42,8 +42,9 @@ features = [
 ]
 
 [dependencies.seaography]
-# version = "~2.0.0-rc.1" # seaography version
+version = "~2.0.0-rc.1" # seaography version
 git = "https://github.com/SeaQL/seaography.git"
+branch = "main"
 features = ["with-decimal", "with-chrono"]
 
 [[bin]]
