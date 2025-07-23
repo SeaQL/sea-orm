@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 pub mod engine;
 pub mod entity;
 mod error;

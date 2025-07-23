@@ -1,5 +1,6 @@
-use crate::entity::permission::Model as Permission;
+use crate::rbac::entity::permission::Model as Permission;
 
+#[derive(Debug)]
 pub struct Action<'a>(pub &'a str);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

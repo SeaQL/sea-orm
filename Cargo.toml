@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "sea-orm-macros", "sea-orm-codegen", "sea-orm-rbac"]
+members = [".", "sea-orm-macros", "sea-orm-codegen"]
 
 [package]
 name = "sea-orm"
@@ -74,6 +74,7 @@ default = [
 ]
 macros = ["sea-orm-macros/derive"]
 mock = []
+rbac = ["sea-query/audit", "macros"]
 proxy = ["serde_json", "serde/derive"]
 with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "rust_decimal?/serde", "bigdecimal?/serde", "uuid?/serde", "time?/serde", "pgvector?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
 with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono", "sqlx?/chrono"]
