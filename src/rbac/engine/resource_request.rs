@@ -1,6 +1,9 @@
-use crate::entity::resource::Model as Resource;
+use crate::rbac::entity::resource::Model as Resource;
 
+#[derive(Debug)]
 pub struct Table<'a>(pub &'a str);
+
+#[derive(Debug)]
 pub struct SchemaTable<'a, 'b>(pub &'a str, pub &'b str);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -1,5 +1,7 @@
-use super::role::RoleId;
+use crate as sea_orm;
 use sea_orm::entity::prelude::*;
+
+use super::role::RoleId;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "sea_orm_role_role")]

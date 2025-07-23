@@ -1,3 +1,4 @@
+use crate as sea_orm;
 use sea_orm::DeriveValueType;
 use sea_orm::entity::prelude::*;
 

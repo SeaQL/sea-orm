@@ -1,4 +1,4 @@
-use crate::entity::{
+use crate::rbac::entity::{
     permission::{Model as Permission, PermissionId},
     resource::{Model as Resource, ResourceId},
     role::{Model as Role, RoleId},
@@ -8,7 +8,7 @@ use crate::entity::{
     user_override::Model as UserOverride,
     user_role::Model as UserRole,
 };
-use crate::{Error, WILDCARD};
+use crate::rbac::{Error, WILDCARD};
 
 mod permission_request;
 mod resource_request;
@@ -32,7 +32,13 @@ pub struct RbacEngine {
     role_hierarchy: HashMap<RoleId, Vec<RoleId>>, // Role -> ChildRole
 }
 
-#[derive(Default)]
+impl std::fmt::Debug for RbacEngine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "RbacEngine")
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct RbacSnapshot {
     resources: Vec<Resource>,
     permissions: Vec<Permission>,
@@ -43,6 +49,7 @@ pub struct RbacSnapshot {
     role_hierarchy: Vec<RoleHierarchy>,
 }
 
+#[cfg(test)]
 impl RbacSnapshot {
     fn set_resources(&mut self, mut resources: Vec<Resource>) {
         for (i, r) in resources.iter_mut().enumerate() {
