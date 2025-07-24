@@ -412,7 +412,17 @@
 //!
 //! [SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers. If you enjoy using our libraries, please star and share our repositories. If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
 //!
+//! ### Gold Sponsors
+//!
+//! <table><tr>
+//! <td><a href="https://qdx.co/">
+//!   <img src="https://www.sea-ql.org/static/sponsors/QDX.jpg" width="138"/>
+//! </a></td>
+//! </tr></table>
+//!
 //! ### Silver Sponsors
+//!
+//! We’re immensely grateful to our sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
 //!
 //! <table><tr>
 //! <td><a href="https://www.digitalocean.com/">
@@ -423,8 +433,6 @@
 //!   <img src="https://www.sea-ql.org/static/sponsors/JetBrains.svg" width="125">
 //! </a></td>
 //! </tr></table>
-//!
-//! We’re immensely grateful to our sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
 //!
 //! ## Mascot
 //!
