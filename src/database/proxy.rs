@@ -197,11 +197,12 @@ mod tests {
         Database, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult, ProxyRow, Statement,
         entity::*, tests_cfg::*,
     };
-    use std::sync::{Arc, Mutex};
+    use std::sync::Arc;
 
     #[derive(Debug)]
     struct ProxyDb {}
 
+    #[async_trait::async_trait]
     impl ProxyDatabaseTrait for ProxyDb {
         async fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr> {
             println!("SQL query: {}", statement.sql);
