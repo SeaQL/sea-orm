@@ -349,9 +349,12 @@
 //! </a></td>
 //! </tr></table>
 //!
+//! [QDX](https://qdx.co/) pioneers quantum dynamics-powered drug discovery, leveraging AI and supercomputing to accelerate molecular modeling.
+//! We're grateful to QDX for sponsoring the development of SeaORM, the SQL toolkit that powers their data engineering workflows.
+//!
 //! ### Silver Sponsors
 //!
-//! We’re immensely grateful to our sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
+//! We’re grateful to our silver sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
 //!
 //! <table><tr>
 //! <td><a href="https://www.digitalocean.com/">
