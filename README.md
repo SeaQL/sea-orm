@@ -116,7 +116,7 @@ let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> =
 use sea_orm::DerivePartialModel;
 
 #[derive(DerivePartialModel)]
-#[sea_orm(entity = "cake::Entity", from_query_result)]
+#[sea_orm(entity = "cake::Entity")]
 struct CakeWithFruit {
     id: i32,
     name: String,
@@ -320,9 +320,12 @@ A big shout out to our contributors!
 </a></td>
 </tr></table>
 
+[QDX](https://qdx.co/) pioneers quantum dynamics–powered drug discovery, leveraging AI and supercomputing to accelerate molecular modeling.
+We're immensely grateful to QDX for sponsoring the development of SeaORM, the SQL toolkit driving their data engineering workflows.
+
 ### Silver Sponsors
 
-We’re immensely grateful to our sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
+We’re grateful to our silver sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
 
 <table><tr>
 <td><a href="https://www.digitalocean.com/">
