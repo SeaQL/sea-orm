@@ -35,6 +35,7 @@ async-std = { version = "1", features = ["attributes", "tokio1"] }
 [features]
 default = ["cli"]
 cli = ["clap", "dotenvy", "sea-orm-cli/cli"]
+sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-mysql = ["sea-orm/sqlx-mysql", "sea-schema/sqlx-mysql", "sea-schema/mysql", "sea-orm-cli?/sqlx-mysql"]
 sqlx-postgres = ["sea-orm/sqlx-postgres", "sea-schema/sqlx-postgres", "sea-schema/postgres", "sea-orm-cli?/sqlx-postgres"]
 sqlx-sqlite = ["sea-orm/sqlx-sqlite", "sea-schema/sqlx-sqlite", "sea-schema/sqlite", "sea-orm-cli?/sqlx-sqlite"]
