@@ -272,7 +272,7 @@ A big shout out to our contributors!
 
 <table><tr>
 <td><a href="https://qdx.co/">
-  <img src="https://www.sea-ql.org/static/sponsors/QDX.jpg" width="138"/>
+  <img src="https://www.sea-ql.org/static/sponsors/QDX.svg" width="138"/>
 </a></td>
 </tr></table>
 
