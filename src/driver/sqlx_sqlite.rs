@@ -13,8 +13,8 @@ use sea_query_binder::SqlxValues;
 use tracing::{instrument, warn};
 
 use crate::{
-    AccessMode, ConnectOptions, DatabaseConnection, DatabaseTransaction, IsolationLevel,
-    QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
+    AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
+    IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
     sqlx_error_to_exec_err,
 };
 
@@ -48,7 +48,9 @@ impl From<SqlitePool> for SqlxSqlitePoolConnection {
 
 impl From<SqlitePool> for DatabaseConnection {
     fn from(pool: SqlitePool) -> Self {
-        DatabaseConnection::SqlxSqlitePoolConnection(pool.into())
+        DatabaseConnection {
+            inner: DatabaseConnectionType::SqlxSqlitePoolConnection(pool.into()),
+        }
     }
 }
 
@@ -107,17 +109,21 @@ impl SqlxSqliteConnector {
             ensure_returning_version(&version)?;
         }
 
-        Ok(DatabaseConnection::SqlxSqlitePoolConnection(pool))
+        Ok(DatabaseConnection {
+            inner: DatabaseConnectionType::SqlxSqlitePoolConnection(pool),
+        })
     }
 }
 
 impl SqlxSqliteConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_sqlite_pool(pool: SqlitePool) -> DatabaseConnection {
-        DatabaseConnection::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection {
-            pool,
-            metric_callback: None,
-        })
+        DatabaseConnection {
+            inner: DatabaseConnectionType::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection {
+                pool,
+                metric_callback: None,
+            }),
+        }
     }
 }
 

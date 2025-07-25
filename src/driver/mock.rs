@@ -1,6 +1,6 @@
 use crate::{
-    DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult, Statement, Transaction,
-    debug_print, error::*,
+    DatabaseConnection, DatabaseConnectionType, DbBackend, ExecResult, MockDatabase, QueryResult,
+    Statement, Transaction, debug_print, error::*,
 };
 use futures_util::Stream;
 use std::{
@@ -77,9 +77,11 @@ impl MockDatabaseConnector {
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
         macro_rules! connect_mock_db {
             ( $syntax: expr ) => {
-                Ok(DatabaseConnection::MockDatabaseConnection(Arc::new(
-                    MockDatabaseConnection::new(MockDatabase::new($syntax)),
-                )))
+                Ok(DatabaseConnection {
+                    inner: DatabaseConnectionType::MockDatabaseConnection(Arc::new(
+                        MockDatabaseConnection::new(MockDatabase::new($syntax)),
+                    )),
+                })
             };
         }
 

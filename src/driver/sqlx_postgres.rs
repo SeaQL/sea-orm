@@ -13,8 +13,9 @@ use sea_query_binder::SqlxValues;
 use tracing::instrument;
 
 use crate::{
-    AccessMode, ConnectOptions, DatabaseConnection, DatabaseTransaction, DbBackend, IsolationLevel,
-    QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
+    AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
+    DbBackend, IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*,
+    executor::*,
 };
 
 use super::sqlx_common::*;
@@ -47,7 +48,9 @@ impl From<PgPool> for SqlxPostgresPoolConnection {
 
 impl From<PgPool> for DatabaseConnection {
     fn from(pool: PgPool) -> Self {
-        DatabaseConnection::SqlxPostgresPoolConnection(pool.into())
+        DatabaseConnection {
+            inner: DatabaseConnectionType::SqlxPostgresPoolConnection(pool.into()),
+        }
     }
 }
 
@@ -114,22 +117,24 @@ impl SqlxPostgresConnector {
                 .await
                 .map_err(sqlx_error_to_conn_err)?
         };
-        Ok(DatabaseConnection::SqlxPostgresPoolConnection(
-            SqlxPostgresPoolConnection {
+        Ok(DatabaseConnection {
+            inner: DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
                 pool,
                 metric_callback: None,
-            },
-        ))
+            }),
+        })
     }
 }
 
 impl SqlxPostgresConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_postgres_pool(pool: PgPool) -> DatabaseConnection {
-        DatabaseConnection::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
-            pool,
-            metric_callback: None,
-        })
+        DatabaseConnection {
+            inner: DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
+                pool,
+                metric_callback: None,
+            }),
+        }
     }
 }
 
