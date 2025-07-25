@@ -13,8 +13,9 @@ use sea_query_binder::SqlxValues;
 use tracing::instrument;
 
 use crate::{
-    AccessMode, ConnectOptions, DatabaseConnection, DatabaseTransaction, DbBackend, IsolationLevel,
-    QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
+    AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
+    DbBackend, IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*,
+    executor::*,
 };
 
 use super::sqlx_common::*;
@@ -47,7 +48,9 @@ impl From<MySqlPool> for SqlxMySqlPoolConnection {
 
 impl From<MySqlPool> for DatabaseConnection {
     fn from(pool: MySqlPool) -> Self {
-        DatabaseConnection::SqlxMySqlPoolConnection(pool.into())
+        DatabaseConnection {
+            inner: DatabaseConnectionType::SqlxMySqlPoolConnection(pool.into()),
+        }
     }
 }
 
@@ -85,22 +88,24 @@ impl SqlxMySqlConnector {
                 .await
                 .map_err(sqlx_error_to_conn_err)?
         };
-        Ok(DatabaseConnection::SqlxMySqlPoolConnection(
-            SqlxMySqlPoolConnection {
+        Ok(DatabaseConnection {
+            inner: DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
                 pool,
                 metric_callback: None,
-            },
-        ))
+            }),
+        })
     }
 }
 
 impl SqlxMySqlConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_mysql_pool(pool: MySqlPool) -> DatabaseConnection {
-        DatabaseConnection::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
-            pool,
-            metric_callback: None,
-        })
+        DatabaseConnection {
+            inner: DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
+                pool,
+                metric_callback: None,
+            }),
+        }
     }
 }
 
