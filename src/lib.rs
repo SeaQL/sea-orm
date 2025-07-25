@@ -421,7 +421,7 @@
 //! </tr></table>
 //!
 //! [QDX](https://qdx.co/) pioneers quantum dynamics–powered drug discovery, leveraging AI and supercomputing to accelerate molecular modeling.
-//! We're immensely grateful to QDX for sponsoring the development of SeaORM, the SQL toolkit driving their data engineering workflows.
+//! We're grateful to QDX for sponsoring the development of SeaORM, the SQL toolkit that powers their data engineering workflows.
 //!
 //! ### Silver Sponsors
 //!
