@@ -306,6 +306,23 @@ let rows = self.db.query_all_raw(stmt).await?;
 // if the query is a SeaQuery statement, then just do this:
 let rows = self.db.query_all(&query).await?; // no need to build query
 ```
+* `DatabaseConnection` is changed from enum to struct. The original enum is moved into `DatabaseConnection::inner`. The new enum is named `DatabaseConnectionType` https://github.com/SeaQL/sea-orm/pull/2671
+```rust
+error[E0599]: no associated item named `Disconnected` found for struct `db_connection::DatabaseConnection` in the current scope
+   --> src/database/db_connection.rs:137:33
+    |
+>   | pub struct DatabaseConnection {
+    | ----------------------------- associated item `Disconnected` not found for this struct
+...
+>   |             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
+    |                                 ^^^^^^^^^^^^ associated item not found in `DatabaseConnection`
+```
+```rust
+match conn.inner {
+    DatabaseConnectionType::Disconnected => (),
+    _ => (),
+}
+```
 
 ### Upgrades
 
