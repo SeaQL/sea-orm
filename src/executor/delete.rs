@@ -1,11 +1,10 @@
+use super::{ReturningSelector, SelectModel};
 use crate::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, Iterable,
     error::*,
 };
 use sea_query::{DeleteStatement, Query};
 use std::future::Future;
-
-use super::{SelectModel, SelectorRaw};
 
 /// Handles DELETE operations in a ActiveModel using [DeleteStatement]
 #[derive(Clone, Debug)]
@@ -131,8 +130,8 @@ where
     let db_backend = db.get_database_backend();
     match db.support_returning() {
         true => {
-            let delete_statement = db_backend.build(&query.returning_all().to_owned());
-            SelectorRaw::<SelectModel<<E>::Model>>::from_statement(delete_statement)
+            query.returning_all();
+            ReturningSelector::<SelectModel<<E>::Model>, _>::from_query(query)
                 .one(db)
                 .await
         }
@@ -157,9 +156,8 @@ where
             let returning = Query::returning().exprs(
                 E::Column::iter().map(|c| c.select_enum_as(c.into_returning_expr(db_backend))),
             );
-            let query = query.returning(returning);
-            let delete_statement = db_backend.build(&query.to_owned());
-            SelectorRaw::<SelectModel<<E>::Model>>::from_statement(delete_statement)
+            query.returning(returning);
+            ReturningSelector::<SelectModel<<E>::Model>, _>::from_query(query)
                 .all(db)
                 .await
         }

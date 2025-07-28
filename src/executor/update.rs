@@ -1,6 +1,7 @@
+use super::ReturningSelector;
 use crate::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel, Iterable,
-    PrimaryKeyTrait, SelectModel, SelectorRaw, UpdateMany, UpdateOne, error::*,
+    PrimaryKeyTrait, SelectModel, UpdateMany, UpdateOne, error::*,
 };
 use sea_query::{FromValueTuple, Query, UpdateStatement};
 
@@ -110,11 +111,10 @@ impl Updater {
                     Column::<A>::iter().map(|c| c.select_as(c.into_returning_expr(db_backend))),
                 );
                 self.query.returning(returning);
-                let found: Option<Model<A>> = SelectorRaw::<SelectModel<Model<A>>>::from_statement(
-                    db_backend.build(&self.query),
-                )
-                .one(db)
-                .await?;
+                let found: Option<Model<A>> =
+                    ReturningSelector::<SelectModel<Model<A>>, _>::from_query(self.query)
+                        .one(db)
+                        .await?;
                 // If we got `None` then we are updating a row that does not exist.
                 match found {
                     Some(model) => Ok(model),
@@ -146,11 +146,10 @@ impl Updater {
                     E::Column::iter().map(|c| c.select_as(c.into_returning_expr(db_backend))),
                 );
                 self.query.returning(returning);
-                let models: Vec<E::Model> = SelectorRaw::<SelectModel<E::Model>>::from_statement(
-                    db_backend.build(&self.query),
-                )
-                .all(db)
-                .await?;
+                let models: Vec<E::Model> =
+                    ReturningSelector::<SelectModel<E::Model>, _>::from_query(self.query)
+                        .all(db)
+                        .await?;
                 Ok(models)
             }
             false => Err(DbErr::BackendNotSupported {

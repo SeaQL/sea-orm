@@ -1,7 +1,8 @@
+use super::ReturningSelector;
 use crate::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, Insert, InsertMany,
-    IntoActiveModel, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw,
-    TryFromU64, TryInsert, error::*,
+    IntoActiveModel, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, TryFromU64,
+    TryInsert, error::*,
 };
 use sea_query::{FromValueTuple, Iden, InsertStatement, Query, ReturningClause, ValueTuple};
 use std::{future::Future, marker::PhantomData};
@@ -490,8 +491,7 @@ where
                     .map(|c| c.select_as(c.into_returning_expr(db_backend))),
             );
             insert_statement.returning(returning);
-            let insert_statement = db_backend.build(&insert_statement);
-            SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
+            ReturningSelector::<SelectModel<<A::Entity as EntityTrait>::Model>, _>::from_query(
                 insert_statement,
             )
             .one(db)
@@ -562,8 +562,7 @@ where
                     .map(|c| c.select_as(c.into_returning_expr(db_backend))),
             );
             insert_statement.returning(returning);
-            let insert_statement = db_backend.build(&insert_statement);
-            SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
+            ReturningSelector::<SelectModel<<A::Entity as EntityTrait>::Model>, _>::from_query(
                 insert_statement,
             )
             .all(db)
