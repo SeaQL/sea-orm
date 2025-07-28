@@ -48,9 +48,7 @@ impl From<PgPool> for SqlxPostgresPoolConnection {
 
 impl From<PgPool> for DatabaseConnection {
     fn from(pool: PgPool) -> Self {
-        DatabaseConnection {
-            inner: DatabaseConnectionType::SqlxPostgresPoolConnection(pool.into()),
-        }
+        DatabaseConnectionType::SqlxPostgresPoolConnection(pool.into()).into()
     }
 }
 
@@ -117,24 +115,24 @@ impl SqlxPostgresConnector {
                 .await
                 .map_err(sqlx_error_to_conn_err)?
         };
-        Ok(DatabaseConnection {
-            inner: DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
+        Ok(
+            DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
                 pool,
                 metric_callback: None,
-            }),
-        })
+            })
+            .into(),
+        )
     }
 }
 
 impl SqlxPostgresConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_postgres_pool(pool: PgPool) -> DatabaseConnection {
-        DatabaseConnection {
-            inner: DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
-                pool,
-                metric_callback: None,
-            }),
-        }
+        DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
+            pool,
+            metric_callback: None,
+        })
+        .into()
     }
 }
 

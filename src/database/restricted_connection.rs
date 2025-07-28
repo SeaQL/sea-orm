@@ -1,23 +1,38 @@
 use crate::rbac::{
-    RbacError,
-    engine::{PermissionRequest, RbacEngine, ResourceRequest},
-    entity::user::UserId,
+    PermissionRequest, RbacEngine, RbacError, ResourceRequest, entity::user::UserId,
+    schema::action_str,
 };
 use crate::{
     ConnectionTrait, DatabaseConnection, DbBackend, DbErr, ExecResult, QueryResult, Statement,
     StatementBuilder,
-    sea_query::audit::{AccessType, SchemaOper},
 };
 use std::sync::{Arc, RwLock};
 
 /// Wrapper of [`DatabaseConnection`] that performs authorization on all executed
 /// queries for the current user. Note that raw SQL [`Statement`] is not checked
 /// currently.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RestrictedConnection {
-    user_id: UserId,
-    conn: DatabaseConnection,
-    engine: Arc<RwLock<RbacEngine>>,
+    pub(crate) user_id: UserId,
+    pub(crate) conn: DatabaseConnection,
+    pub(crate) engine: RbacEngineHolder,
+}
+
+#[derive(Debug, Default, Clone)]
+pub(crate) struct RbacEngineHolder {
+    inner: Arc<RwLock<Option<RbacEngine>>>,
+}
+
+impl RbacEngineHolder {
+    pub fn is_some(&self) -> bool {
+        let engine = self.inner.read().expect("RBAC Engine Died");
+        engine.is_some()
+    }
+
+    pub fn replace(&self, engine: RbacEngine) {
+        let mut inner = self.inner.write().expect("RBAC Engine Died");
+        *inner = Some(engine);
+    }
 }
 
 #[async_trait::async_trait]
@@ -27,7 +42,9 @@ impl ConnectionTrait for RestrictedConnection {
     }
 
     async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
-        self.conn.execute_raw(stmt).await
+        Err(DbErr::RbacError(format!(
+            "Raw query is not supported: {stmt}"
+        )))
     }
 
     async fn execute<S: StatementBuilder>(&self, stmt: &S) -> Result<ExecResult, DbErr> {
@@ -40,7 +57,9 @@ impl ConnectionTrait for RestrictedConnection {
     }
 
     async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
-        self.conn.query_one_raw(stmt).await
+        Err(DbErr::RbacError(format!(
+            "Raw query is not supported: {stmt}"
+        )))
     }
 
     async fn query_one<S: StatementBuilder>(&self, stmt: &S) -> Result<Option<QueryResult>, DbErr> {
@@ -49,7 +68,9 @@ impl ConnectionTrait for RestrictedConnection {
     }
 
     async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
-        self.conn.query_all_raw(stmt).await
+        Err(DbErr::RbacError(format!(
+            "Raw query is not supported: {stmt}"
+        )))
     }
 
     async fn query_all<S: StatementBuilder>(&self, stmt: &S) -> Result<Vec<QueryResult>, DbErr> {
@@ -59,6 +80,11 @@ impl ConnectionTrait for RestrictedConnection {
 }
 
 impl RestrictedConnection {
+    /// Get the [`RbacUserId`] bounded to this connection.
+    pub fn user_id(&self) -> UserId {
+        self.user_id
+    }
+
     /// Returns `()` if the current user can execute / query the given SQL statement.
     /// Returns `DbErr` otherwise.
     pub fn user_can_run<S: StatementBuilder>(&self, stmt: &S) -> Result<(), DbErr> {
@@ -67,9 +93,12 @@ impl RestrictedConnection {
             Err(err) => return Err(DbErr::RbacError(err.to_string())),
         };
         for request in audit.requests {
-            let engine = self.engine.read().expect("RBAC Engine Died");
+            // There is nothing we can do if RwLock is poisoned.
+            let holder = self.engine.inner.read().expect("RBAC Engine Died");
+            // Constructor of this struct should ensure engine is not None.
+            let engine = holder.as_ref().expect("RBAC Engine not setup");
             let permission = || PermissionRequest {
-                action: action(&request.access_type).to_owned(),
+                action: action_str(&request.access_type).to_owned(),
             };
             let resource = || ResourceRequest {
                 schema: request.schema_table.0.as_ref().map(|s| s.to_string()),
@@ -86,20 +115,6 @@ impl RestrictedConnection {
             }
         }
         Ok(())
-    }
-}
-
-fn action(at: &AccessType) -> &'static str {
-    match at {
-        AccessType::Select => "select",
-        AccessType::Insert => "insert",
-        AccessType::Update => "update",
-        AccessType::Delete => "delete",
-        AccessType::Schema(SchemaOper::Create) => "schema_create",
-        AccessType::Schema(SchemaOper::Alter) => "schema_alter",
-        AccessType::Schema(SchemaOper::Drop) => "schema_drop",
-        AccessType::Schema(SchemaOper::Rename) => "schema_rename",
-        AccessType::Schema(SchemaOper::Truncate) => "schema_truncate",
     }
 }
 

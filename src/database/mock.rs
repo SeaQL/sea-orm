@@ -68,11 +68,8 @@ impl MockDatabase {
 
     /// Create a database connection
     pub fn into_connection(self) -> DatabaseConnection {
-        DatabaseConnection {
-            inner: DatabaseConnectionType::MockDatabaseConnection(Arc::new(
-                MockDatabaseConnection::new(self),
-            )),
-        }
+        DatabaseConnectionType::MockDatabaseConnection(Arc::new(MockDatabaseConnection::new(self)))
+            .into()
     }
 
     /// Add some [MockExecResult]s to `exec_results`

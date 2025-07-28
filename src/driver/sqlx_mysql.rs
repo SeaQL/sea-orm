@@ -48,9 +48,7 @@ impl From<MySqlPool> for SqlxMySqlPoolConnection {
 
 impl From<MySqlPool> for DatabaseConnection {
     fn from(pool: MySqlPool) -> Self {
-        DatabaseConnection {
-            inner: DatabaseConnectionType::SqlxMySqlPoolConnection(pool.into()),
-        }
+        DatabaseConnectionType::SqlxMySqlPoolConnection(pool.into()).into()
     }
 }
 
@@ -88,24 +86,24 @@ impl SqlxMySqlConnector {
                 .await
                 .map_err(sqlx_error_to_conn_err)?
         };
-        Ok(DatabaseConnection {
-            inner: DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
+        Ok(
+            DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
                 pool,
                 metric_callback: None,
-            }),
-        })
+            })
+            .into(),
+        )
     }
 }
 
 impl SqlxMySqlConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_mysql_pool(pool: MySqlPool) -> DatabaseConnection {
-        DatabaseConnection {
-            inner: DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
-                pool,
-                metric_callback: None,
-            }),
-        }
+        DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
+            pool,
+            metric_callback: None,
+        })
+        .into()
     }
 }
 

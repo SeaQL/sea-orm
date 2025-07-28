@@ -1,4 +1,4 @@
-use crate::rbac::entity::{
+use super::entity::{
     permission::{Model as Permission, PermissionId},
     resource::{Model as Resource, ResourceId},
     role::{Model as Role, RoleId},
@@ -8,8 +8,9 @@ use crate::rbac::entity::{
     user_override::Model as UserOverride,
     user_role::Model as UserRole,
 };
-use crate::rbac::{Error, WILDCARD};
+use super::{Error, WILDCARD};
 
+mod loader;
 mod permission_request;
 mod resource_request;
 mod role_hierarchy_impl;

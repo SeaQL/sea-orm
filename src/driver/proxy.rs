@@ -31,11 +31,12 @@ impl ProxyDatabaseConnector {
         db_type: DbBackend,
         func: Arc<Box<dyn ProxyDatabaseTrait>>,
     ) -> Result<DatabaseConnection, DbErr> {
-        Ok(DatabaseConnection {
-            inner: DatabaseConnectionType::ProxyDatabaseConnection(Arc::new(
+        Ok(
+            DatabaseConnectionType::ProxyDatabaseConnection(Arc::new(
                 ProxyDatabaseConnection::new(db_type, func),
-            )),
-        })
+            ))
+            .into(),
+        )
     }
 }
 

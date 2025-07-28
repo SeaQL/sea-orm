@@ -4,7 +4,7 @@ use sea_orm::entity::prelude::*;
 use super::role::RoleId;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-#[sea_orm(table_name = "sea_orm_role_role")]
+#[sea_orm(table_name = "sea_orm_role_hierarchy")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub role_id: RoleId,

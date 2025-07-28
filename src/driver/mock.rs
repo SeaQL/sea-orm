@@ -77,11 +77,10 @@ impl MockDatabaseConnector {
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
         macro_rules! connect_mock_db {
             ( $syntax: expr ) => {
-                Ok(DatabaseConnection {
-                    inner: DatabaseConnectionType::MockDatabaseConnection(Arc::new(
-                        MockDatabaseConnection::new(MockDatabase::new($syntax)),
-                    )),
-                })
+                Ok(DatabaseConnectionType::MockDatabaseConnection(Arc::new(
+                    MockDatabaseConnection::new(MockDatabase::new($syntax)),
+                ))
+                .into())
             };
         }
 
