@@ -157,6 +157,38 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! ### Nested Select
+//!
+//! ```
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
+//! use sea_orm::DerivePartialModel;
+//!
+//! #[derive(DerivePartialModel)]
+//! #[sea_orm(entity = "cake::Entity", from_query_result)]
+//! struct CakeWithFruit {
+//!     id: i32,
+//!     name: String,
+//!     #[sea_orm(nested)]
+//!     fruit: Option<Fruit>,
+//! }
+//!
+//! #[derive(DerivePartialModel)]
+//! #[sea_orm(entity = "fruit::Entity", from_query_result)]
+//! struct Fruit {
+//!     id: i32,
+//!     name: String,
+//! }
+//!
+//! let cakes: Vec<CakeWithFruit> = cake::Entity::find()
+//!     .left_join(fruit::Entity)
+//!     .into_partial_model()
+//!     .all(db)
+//!     .await?;
+//! # Ok(())
+//! # }
+//! ```
 //! ### Insert
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};

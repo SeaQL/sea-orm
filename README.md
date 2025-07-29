@@ -111,6 +111,34 @@ let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> =
     Cake::find().find_with_related(Fruit).all(db).await?;
 
 ```
+
+### Nested Select
+
+```rust
+use sea_orm::DerivePartialModel;
+
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity", from_query_result)]
+struct CakeWithFruit {
+    id: i32,
+    name: String,
+    #[sea_orm(nested)]
+    fruit: Option<Fruit>,
+}
+
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "fruit::Entity", from_query_result)]
+struct Fruit {
+    id: i32,
+    name: String,
+}
+
+let cakes: Vec<CakeWithFruit> = cake::Entity::find()
+    .left_join(fruit::Entity)
+    .into_partial_model()
+    .all(db)
+    .await?;
+```
 ### Insert
 ```rust
 let apple = fruit::ActiveModel {
