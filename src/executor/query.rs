@@ -610,6 +610,9 @@ try_getable_all!(time::PrimitiveDateTime);
 #[cfg(feature = "with-time")]
 try_getable_all!(time::OffsetDateTime);
 
+#[cfg(feature = "with-postgres-point")]
+try_getable_postgres!(sqlx::postgres::types::PgPoint);
+
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;
 
