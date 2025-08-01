@@ -4,6 +4,7 @@ about: Report a bug or design flaw
 title: ''
 labels: ''
 assignees: ''
+type: Bug
 
 ---
 
