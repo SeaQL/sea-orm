@@ -517,13 +517,13 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
 
 /// Creates a column definition for example to update a table.
 /// ```
-/// use sea_query::{Alias, IntoIden, MysqlQueryBuilder, TableAlterStatement, TableRef, ConditionType};
+/// use sea_query::{Alias, IntoIden, MysqlQueryBuilder, TableAlterStatement, IntoTableRef, ConditionType};
 /// use sea_orm::{EnumIter, Iden, Identity, PrimaryKeyTrait, RelationDef, RelationTrait, RelationType};
 ///
 /// let relation = RelationDef {
 ///     rel_type: RelationType::HasOne,
-///     from_tbl: TableRef::Table("foo".into_iden()),
-///     to_tbl: TableRef::Table("bar".into_iden()),
+///     from_tbl: "foo".into_table_ref(),
+///     to_tbl: "bar".into_table_ref(),
 ///     from_col: Identity::Unary("bar_id".into_iden()),
 ///     to_col: Identity::Unary("bar_id".into_iden()),
 ///     is_owner: false,
@@ -535,7 +535,7 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
 /// };
 ///
 /// let mut alter_table = TableAlterStatement::new()
-///     .table(TableRef::Table("foo".into_iden()))
+///     .table("foo")
 ///     .add_foreign_key(&mut relation.into()).take();
 /// assert_eq!(
 ///     alter_table.to_string(MysqlQueryBuilder::default()),

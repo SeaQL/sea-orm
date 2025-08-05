@@ -4,7 +4,7 @@ pub mod common;
 
 pub use sea_orm::{Database, DbConn, entity::*, error::*, query::*, sea_query, tests_cfg::*};
 
-// cargo test --features sqlx-sqlite,runtime-async-std-native-tls --test basic
+// cargo test --features sqlx-sqlite,runtime-tokio --test basic
 // export DATABASE_URL=mysql://root:root@localhost:3306
 // export DATABASE_URL=sqlite::memory:
 #[sea_orm_macros::test]

@@ -4,7 +4,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use sea_query::{
-    ColumnRef, DynIden, Expr, ExprTrait, IntoColumnRef, SimpleExpr, TableRef, ValueTuple,
+    ColumnRef, DynIden, Expr, ExprTrait, IntoColumnRef, SimpleExpr, TableName, TableRef, ValueTuple,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -444,8 +444,7 @@ fn prepare_condition(table: &TableRef, col: &Identity, keys: &[ValueTuple]) -> C
 
 fn table_column(tbl: &TableRef, col: &DynIden) -> ColumnRef {
     match tbl.to_owned() {
-        TableRef::Table(tbl) => (tbl, col.clone()).into_column_ref(),
-        TableRef::SchemaTable(sch, tbl) => (sch, tbl, col.clone()).into_column_ref(),
+        TableRef::Table(TableName(_, tbl), _) => (tbl, col.clone()).into_column_ref(),
         val => unimplemented!("Unsupported TableRef {val:?}"),
     }
 }

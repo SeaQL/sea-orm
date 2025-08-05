@@ -15,15 +15,7 @@ impl EntityTransformer {
         let mut entities = BTreeMap::new();
         for table_create in table_create_stmts.into_iter() {
             let table_name = match table_create.get_table_name() {
-                Some(table_ref) => match table_ref {
-                    sea_query::TableRef::Table(t)
-                    | sea_query::TableRef::SchemaTable(_, t)
-                    | sea_query::TableRef::DatabaseSchemaTable(_, _, t)
-                    | sea_query::TableRef::TableAlias(t, _)
-                    | sea_query::TableRef::SchemaTableAlias(_, t, _)
-                    | sea_query::TableRef::DatabaseSchemaTableAlias(_, _, t, _) => t.to_string(),
-                    _ => unimplemented!(),
-                },
+                Some(table_ref) => table_ref.sea_orm_table().to_string(),
                 None => {
                     return Err(Error::TransformError(
                         "Table name should not be empty".into(),

@@ -1561,7 +1561,10 @@ mod tests {
     #[test]
     fn build_with_query() {
         use sea_orm::{DbBackend, Statement};
-        use sea_query::*;
+        use sea_query::{
+            ColumnRef, CommonTableExpression, Cycle, Expr, ExprTrait, JoinType, SelectStatement,
+            UnionType, WithClause,
+        };
 
         let base_query = SelectStatement::new()
             .column("id")
@@ -1596,7 +1599,7 @@ mod tests {
             .to_owned();
 
         let select = SelectStatement::new()
-            .column(ColumnRef::Asterisk)
+            .column(ColumnRef::Asterisk(None))
             .from("cte_traversal")
             .to_owned();
 
@@ -1604,7 +1607,7 @@ mod tests {
             .recursive(true)
             .cte(common_table_expression)
             .cycle(Cycle::new_from_expr_set_using(
-                SimpleExpr::Column(ColumnRef::Column("id".into_iden())),
+                Expr::column("id"),
                 "looped",
                 "traversal_path",
             ))
@@ -1626,10 +1629,7 @@ mod tests {
     fn column_names_from_query_result() {
         let mut values = BTreeMap::new();
         values.insert("id".to_string(), Value::Int(Some(1)));
-        values.insert(
-            "name".to_string(),
-            Value::String(Some(Box::new("Abc".to_owned()))),
-        );
+        values.insert("name".to_string(), Value::String(Some("Abc".to_owned())));
         let query_result = QueryResult {
             row: QueryResultRow::Mock(crate::MockRow { values }),
         };
