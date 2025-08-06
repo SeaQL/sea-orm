@@ -443,11 +443,7 @@ fn prepare_condition(table: &TableRef, col: &Identity, keys: &[ValueTuple]) -> C
 }
 
 fn table_column(tbl: &TableRef, col: &DynIden) -> ColumnRef {
-    match tbl.to_owned() {
-        TableRef::Table(tbl) => (tbl, col.clone()).into_column_ref(),
-        TableRef::SchemaTable(sch, tbl) => (sch, tbl, col.clone()).into_column_ref(),
-        val => unimplemented!("Unsupported TableRef {val:?}"),
-    }
+    (tbl.sea_orm_table().to_owned(), col.clone()).into_column_ref()
 }
 
 #[cfg(test)]

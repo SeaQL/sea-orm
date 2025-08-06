@@ -48,7 +48,7 @@ impl ProxyDatabaseTrait for ProxyDb {
                                             sea_orm::Value::BigInt(Some(*val))
                                         }
                                         gluesql::prelude::Value::Str(val) => {
-                                            sea_orm::Value::String(Some(Box::new(val.to_owned())))
+                                            sea_orm::Value::String(Some(val.to_owned()))
                                         }
                                         _ => unreachable!("Unsupported value: {:?}", column),
                                     },

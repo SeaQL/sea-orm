@@ -22,7 +22,7 @@ impl TryGetableFromJson for StringVec {}
 
 impl From<StringVec> for Value {
     fn from(source: StringVec) -> Self {
-        sea_orm::Value::Json(serde_json::to_value(source).ok().map(std::boxed::Box::new))
+        sea_orm::Value::Json(serde_json::to_value(source).ok())
     }
 }
 
@@ -30,7 +30,7 @@ impl sea_query::ValueType for StringVec {
     fn try_from(v: Value) -> Result<Self, sea_query::ValueTypeErr> {
         match v {
             sea_orm::Value::Json(Some(json)) => {
-                Ok(serde_json::from_value(*json).map_err(|_| sea_orm::sea_query::ValueTypeErr)?)
+                Ok(serde_json::from_value(json).map_err(|_| sea_orm::sea_query::ValueTypeErr)?)
             }
             _ => Err(sea_orm::sea_query::ValueTypeErr),
         }

@@ -31,7 +31,7 @@ impl From<Events> for Value {
             Some(Box::new(
                 events
                     .into_iter()
-                    .map(|Event(s)| Value::String(Some(Box::new(s))))
+                    .map(|Event(s)| Value::String(Some(s)))
                     .collect(),
             )),
         )

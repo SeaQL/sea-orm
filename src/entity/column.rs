@@ -388,22 +388,17 @@ where
             use sea_query::ArrayType;
             use serde_json::Value as Json;
 
-            #[allow(clippy::boxed_local)]
-            fn unbox<T>(boxed: Box<T>) -> T {
-                *boxed
-            }
-
             match expr {
                 SimpleExpr::Value(Value::Array(ArrayType::Json, Some(json_vec))) => {
                     // flatten Array(Vec<Json>) into Json
                     let json_vec: Vec<Json> = json_vec
                         .into_iter()
                         .filter_map(|val| match val {
-                            Value::Json(Some(json)) => Some(unbox(json)),
+                            Value::Json(Some(json)) => Some(json),
                             _ => None,
                         })
                         .collect();
-                    SimpleExpr::Value(Value::Json(Some(Box::new(json_vec.into()))))
+                    SimpleExpr::Value(Value::Json(Some(json_vec.into())))
                 }
                 SimpleExpr::Value(Value::Array(ArrayType::Json, None)) => {
                     SimpleExpr::Value(Value::Json(None))
