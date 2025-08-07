@@ -217,7 +217,7 @@ async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
 
     // only admin can delete customer
     {
-        use sea_orm::{ModelTrait};
+        use sea_orm::ModelTrait;
 
         let db = db.restricted_for(admin)?;
 
