@@ -14,18 +14,20 @@ use sqlx::pool::PoolConnection;
 use std::sync::Arc;
 
 /// Handle a database connection depending on the backend enabled by the feature
-/// flags. This creates a database pool. This will be `Clone` unless the feature
-/// flag `mock` is enabled.
-#[derive(Debug)]
-#[cfg_attr(not(feature = "mock"), derive(Clone))]
+/// flags. This creates a connection pool internally (for SQLx connections),
+/// and so is cheap to clone.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct DatabaseConnection {
     /// `DatabaseConnection` used to be a enum. Now it's moved into inner,
     /// because we have to attach other contexts.
     pub inner: DatabaseConnectionType,
+    #[cfg(feature = "rbac")]
+    rbac: crate::RbacEngineHolder,
 }
 
 /// The underlying database connection type.
-#[cfg_attr(not(feature = "mock"), derive(Clone))]
+#[derive(Clone)]
 pub enum DatabaseConnectionType {
     /// Create a MYSQL database connection and pool
     #[cfg(feature = "sqlx-mysql")]
@@ -56,8 +58,16 @@ pub type DbConn = DatabaseConnection;
 
 impl Default for DatabaseConnection {
     fn default() -> Self {
+        DatabaseConnectionType::Disconnected.into()
+    }
+}
+
+impl From<DatabaseConnectionType> for DatabaseConnection {
+    fn from(inner: DatabaseConnectionType) -> Self {
         Self {
-            inner: DatabaseConnectionType::Disconnected,
+            inner,
+            #[cfg(feature = "rbac")]
+            rbac: Default::default(),
         }
     }
 }
@@ -211,7 +221,8 @@ impl ConnectionTrait for DatabaseConnection {
         matches!(
             self,
             DatabaseConnection {
-                inner: DatabaseConnectionType::MockDatabaseConnection(_)
+                inner: DatabaseConnectionType::MockDatabaseConnection(_),
+                ..
             }
         )
     }
@@ -444,6 +455,39 @@ impl DatabaseConnection {
         match &self.inner {
             DatabaseConnectionType::ProxyDatabaseConnection(proxy_conn) => proxy_conn,
             _ => panic!("Not proxy connection"),
+        }
+    }
+}
+
+#[cfg(feature = "rbac")]
+impl DatabaseConnection {
+    /// Load RBAC data from the same database as this connection and setup RBAC engine.
+    /// If the RBAC engine already exists, it will be replaced.
+    pub async fn load_rbac(&self) -> Result<(), DbErr> {
+        self.load_rbac_from(self).await
+    }
+
+    /// Load RBAC data from the given database connection and setup RBAC engine.
+    /// This could be another database.
+    pub async fn load_rbac_from(&self, db: &DbConn) -> Result<(), DbErr> {
+        let engine = crate::rbac::RbacEngine::load_from(db).await?;
+        self.rbac.replace(engine);
+        Ok(())
+    }
+
+    /// Create a restricted connection with access control specific for the user.
+    pub fn restricted_for(
+        &self,
+        user_id: crate::rbac::RbacUserId,
+    ) -> Result<crate::RestrictedConnection, DbErr> {
+        if self.rbac.is_some() {
+            Ok(crate::RestrictedConnection {
+                user_id,
+                conn: self.clone(),
+                engine: self.rbac.clone(),
+            })
+        } else {
+            Err(DbErr::RbacError("engine not set up".into()))
         }
     }
 }

@@ -299,9 +299,9 @@ pub enum Column {
                  found struct `statement::Statement`
 ```
 ```rust
-// change to:
 let backend = self.db.get_database_backend();
 let stmt = backend.build(&query);
+// change to:
 let rows = self.db.query_all_raw(stmt).await?;
 // if the query is a SeaQuery statement, then just do this:
 let rows = self.db.query_all(&query).await?; // no need to build query

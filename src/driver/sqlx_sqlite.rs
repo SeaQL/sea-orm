@@ -48,9 +48,7 @@ impl From<SqlitePool> for SqlxSqlitePoolConnection {
 
 impl From<SqlitePool> for DatabaseConnection {
     fn from(pool: SqlitePool) -> Self {
-        DatabaseConnection {
-            inner: DatabaseConnectionType::SqlxSqlitePoolConnection(pool.into()),
-        }
+        DatabaseConnectionType::SqlxSqlitePoolConnection(pool.into()).into()
     }
 }
 
@@ -109,21 +107,18 @@ impl SqlxSqliteConnector {
             ensure_returning_version(&version)?;
         }
 
-        Ok(DatabaseConnection {
-            inner: DatabaseConnectionType::SqlxSqlitePoolConnection(pool),
-        })
+        Ok(DatabaseConnectionType::SqlxSqlitePoolConnection(pool).into())
     }
 }
 
 impl SqlxSqliteConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_sqlite_pool(pool: SqlitePool) -> DatabaseConnection {
-        DatabaseConnection {
-            inner: DatabaseConnectionType::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection {
-                pool,
-                metric_callback: None,
-            }),
-        }
+        DatabaseConnectionType::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection {
+            pool,
+            metric_callback: None,
+        })
+        .into()
     }
 }
 

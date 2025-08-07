@@ -96,6 +96,17 @@ pub enum DbErr {
         /// Context
         ctx: &'static str,
     },
+    /// Error while running RBAC checks
+    #[error("RBAC error: {0}")]
+    RbacError(String),
+    /// Access denied after running RBAC checks
+    #[error("Access denied: cannot `{permission}` on `{resource}`")]
+    AccessDenied {
+        /// The required permission
+        permission: String,
+        /// The requested resource
+        resource: String,
+    },
 }
 
 /// An error from trying to get a row from a Model

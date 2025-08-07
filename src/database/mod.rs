@@ -8,6 +8,8 @@ mod mock;
 #[cfg(feature = "proxy")]
 #[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
 mod proxy;
+#[cfg(feature = "rbac")]
+mod restricted_connection;
 mod statement;
 mod stream;
 mod transaction;
@@ -20,6 +22,8 @@ pub use mock::*;
 #[cfg(feature = "proxy")]
 #[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
 pub use proxy::*;
+#[cfg(feature = "rbac")]
+pub use restricted_connection::*;
 pub use statement::*;
 use std::borrow::Cow;
 pub use stream::*;
