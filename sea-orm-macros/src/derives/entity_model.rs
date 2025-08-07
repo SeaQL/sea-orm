@@ -277,7 +277,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     };
                     let field_span = field.span();
 
-                    let sea_query_col_type = crate::derives::sql_type_match::col_type_match(
+                    let sea_query_col_type = crate::derives::sql_type_match::column_type_match(
                         sql_type, field_type, field_span,
                     );
 
