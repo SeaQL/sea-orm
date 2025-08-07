@@ -57,4 +57,3 @@ with-ipnetwork = ["sea-orm/with-ipnetwork"]
 [patch.crates-io]
 # sea-query = { path = "../sea-query" }
 sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }
-sea-schema = { git = "https://github.com/SeaQL/sea-schema", branch = "master" }

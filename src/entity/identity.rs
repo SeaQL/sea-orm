@@ -50,7 +50,7 @@ impl Iden for Identity {
             Identity::Many(vec) => {
                 let mut s = String::new();
                 for iden in vec.iter() {
-                    write!(&mut s, "{iden}").expect("Can write to String");
+                    write!(&mut s, "{iden}").expect("Infallible");
                 }
                 Cow::Owned(s)
             }
