@@ -35,7 +35,7 @@ rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.4", default-features = false, optional = true }
 sea-orm-macros = { version = "~2.0.0-rc.1", path = "sea-orm-macros", default-features = false, features = ["strum"] }
 sea-query = { version = "1.0.0-rc.2", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite"] }
-sea-query-binder = { version = "0.8.0-rc.1", default-features = false, optional = true }
+sea-query-sqlx = { version = "0.8.0-rc.1", default-features = false, optional = true }
 strum = { version = "0.27", default-features = false }
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false, optional = true }
@@ -75,22 +75,22 @@ default = [
 macros = ["sea-orm-macros/derive"]
 mock = []
 proxy = ["serde_json", "serde/derive"]
-with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "rust_decimal?/serde", "bigdecimal?/serde", "uuid?/serde", "time?/serde", "pgvector?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
-with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono", "sqlx?/chrono"]
-with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-binder?/with-rust_decimal", "sqlx?/rust_decimal"]
-with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-binder?/with-bigdecimal", "sqlx?/bigdecimal"]
-with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
-with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
-with-ipnetwork = ["ipnetwork", "sea-query/with-ipnetwork", "sea-query-binder?/with-ipnetwork", "sqlx?/ipnetwork"]
-postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros/postgres-array"]
-postgres-vector = ["pgvector", "sea-query/postgres-vector", "sea-query-binder?/postgres-vector"]
+with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "rust_decimal?/serde", "bigdecimal?/serde", "uuid?/serde", "time?/serde", "pgvector?/serde", "sea-query-sqlx?/with-json", "sqlx?/json"]
+with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-sqlx?/with-chrono", "sqlx?/chrono"]
+with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-sqlx?/with-rust_decimal", "sqlx?/rust_decimal"]
+with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-sqlx?/with-bigdecimal", "sqlx?/bigdecimal"]
+with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-sqlx?/with-uuid", "sqlx?/uuid"]
+with-time = ["time", "sea-query/with-time", "sea-query-sqlx?/with-time", "sqlx?/time"]
+with-ipnetwork = ["ipnetwork", "sea-query/with-ipnetwork", "sea-query-sqlx?/with-ipnetwork", "sqlx?/ipnetwork"]
+postgres-array = ["sea-query/postgres-array", "sea-query-sqlx?/postgres-array", "sea-orm-macros/postgres-array"]
+postgres-vector = ["pgvector", "sea-query/postgres-vector", "sea-query-sqlx?/postgres-vector"]
 json-array = ["postgres-array"] # this does not actually enable sqlx-postgres, but only a few traits to support array in sea-query
 sea-orm-internal = []
 sqlx-dep = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
-sqlx-mysql = ["sqlx-dep", "sea-query-binder/sqlx-mysql", "sqlx/mysql"]
-sqlx-postgres = ["sqlx-dep", "sea-query-binder/sqlx-postgres", "sqlx/postgres", "postgres-array"]
-sqlx-sqlite = ["sqlx-dep", "sea-query-binder/sqlx-sqlite", "sqlx/sqlite"]
+sqlx-mysql = ["sqlx-dep", "sea-query-sqlx/sqlx-mysql", "sqlx/mysql"]
+sqlx-postgres = ["sqlx-dep", "sea-query-sqlx/sqlx-postgres", "sqlx/postgres", "postgres-array"]
+sqlx-sqlite = ["sqlx-dep", "sea-query-sqlx/sqlx-sqlite", "sqlx/sqlite"]
 sqlite-use-returning-for-3_35 = []
 runtime-async-std = ["sqlx?/runtime-async-std"]
 runtime-async-std-native-tls = ["sqlx?/runtime-async-std-native-tls", "runtime-async-std"]

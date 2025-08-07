@@ -9,7 +9,7 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteQueryResult, SqliteRow},
 };
 
-use sea_query_binder::SqlxValues;
+use sea_query_sqlx::SqlxValues;
 use tracing::{instrument, warn};
 
 use crate::{

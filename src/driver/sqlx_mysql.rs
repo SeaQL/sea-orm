@@ -9,7 +9,7 @@ use sqlx::{
     pool::PoolConnection,
 };
 
-use sea_query_binder::SqlxValues;
+use sea_query_sqlx::SqlxValues;
 use tracing::instrument;
 
 use crate::{

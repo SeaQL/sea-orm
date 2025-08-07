@@ -9,7 +9,7 @@ use sqlx::{
     postgres::{PgConnectOptions, PgQueryResult, PgRow},
 };
 
-use sea_query_binder::SqlxValues;
+use sea_query_sqlx::SqlxValues;
 use tracing::instrument;
 
 use crate::{
