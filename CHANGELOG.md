@@ -26,18 +26,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
       and reject them accordingly. all Entity operations except raw SQL are supported.
       complex joins, insert select from, and even CTE queries are supported.
 ```rust
+// load rules from database
 db_conn.load_rbac().await?;
 
+// admin can create bakery
 let db = db_conn.restricted_for(admin)?;
-
 let seaside_bakery = bakery::ActiveModel {
     name: Set("SeaSide Bakery".to_owned()),
     ..Default::default()
 };
 assert!(Bakery::insert(seaside_bakery).exec(&db).await.is_ok());
 
+// public cannot create bakery
 let db = db_conn.restricted_for(public)?;
-
 assert!(matches!(
     Bakery::insert(bakery::ActiveModel::default())
         .exec(&db)
