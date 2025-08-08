@@ -281,7 +281,7 @@ impl DerivePartialModel {
                         let alias_iden = sea_orm::sea_query::DynIden::new(alias_owned);
                         sea_orm::sea_query::Expr::col((alias_iden, <#entity as sea_orm::EntityTrait>::Column:: #col_name))
                     } else {
-                        <#entity as sea_orm::EntityTrait>::Column:: #col_name.into_expr()
+                        ::sea_orm::ColumnTrait::into_expr(<#entity as sea_orm::EntityTrait>::Column::#col_name)
                     })
                 };
                 quote!(let #select_ident =
