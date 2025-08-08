@@ -1,0 +1,1 @@
+ignore = ["sea-orm-codegen/src/tests_cfg"]

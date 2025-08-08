@@ -3,7 +3,7 @@ use crate::common::TestContext;
 use sea_orm::{prelude::*, NotSet, Set};
 
 pub async fn init_1(ctx: &TestContext, link: bool) {
-      worker::Entity::insert(worker::ActiveModel {
+    worker::Entity::insert(worker::ActiveModel {
         id: Set(1),
         name: Set("Tom".to_owned()),
         ..Default::default()

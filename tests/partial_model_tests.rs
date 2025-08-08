@@ -470,9 +470,9 @@ struct BakeryWorker {
     id: i32,
     name: String,
     profit_margin: f64,
-    #[sea_orm(nested, alias="manager")]
+    #[sea_orm(nested, alias = "manager")]
     manager_id: Worker,
-    #[sea_orm(nested, alias="cashier")]
+    #[sea_orm(nested, alias = "cashier")]
     cashier_id: Worker,
 }
 
@@ -484,8 +484,16 @@ async fn partial_model_nested_alias() {
     seed_data::init_1(&ctx, true).await;
 
     let bakery: BakeryWorker = bakery::Entity::find()
-        .join_as(sea_orm::JoinType::LeftJoin, crate::bakery::Relation::Manager.def(), "manager")
-        .join_as(sea_orm::JoinType::LeftJoin, crate::bakery::Relation::Cashier.def(), "cashier")
+        .join_as(
+            sea_orm::JoinType::LeftJoin,
+            crate::bakery::Relation::Manager.def(),
+            "manager",
+        )
+        .join_as(
+            sea_orm::JoinType::LeftJoin,
+            crate::bakery::Relation::Cashier.def(),
+            "cashier",
+        )
         .into_partial_model()
         .one(&ctx.db)
         .await
