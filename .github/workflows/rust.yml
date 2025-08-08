@@ -152,7 +152,7 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - run: cargo test --test '*' --features default,rbac,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
 
   compile-mysql:
     name: Compile MySQL
@@ -179,7 +179,7 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --test '*' --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - run: cargo test --test '*' --features default,rbac,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
 
   compile-postgres:
     name: Compile PostgreSQL
@@ -206,7 +206,7 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --test '*' --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - run: cargo test --test '*' --features default,rbac,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
 
   test:
     name: Unit Test
@@ -215,6 +215,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --workspace
+      - run: cargo test --features rbac
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml
 
   cli:
@@ -324,9 +325,7 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features default,rbac,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   mysql:
@@ -375,7 +374,7 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --test '*' --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features default,rbac,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   mariadb:
@@ -426,7 +425,7 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --test '*' --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features default,rbac,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   postgres:
     name: Postgres
@@ -472,5 +471,5 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --test '*' --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features default,rbac,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}

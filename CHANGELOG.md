@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
+* Role Based Access Control https://github.com/SeaQL/sea-orm/pull/2683
+
+  1. a hierarchical RBAC engine that is table scoped
+      + a user has 1 (and only 1) role
+      + a role has a set of permissions on a set of resources
+          + permissions here are CRUD operations and resources are tables
+          + but the engine is generic so can be used for other things
+      + roles have hierarchy, and so can inherit permissions
+      + there is a wildcard `*` to grant all permissions or resources
+      + individual users can have rules override
+  3. a set of Entities to load / store the access control rules to / from database
+  4. a query auditor that dissect queries for necessary permissions (implemented in SeaQuery)
+  5. integration of RBAC into SeaORM in form of `RestrictedConnection`.
+      it implements `ConnectionTrait`, and will audit all queries and perform permission check,
+      and reject them accordingly. all Entity operations except raw SQL are supported.
+      complex joins, insert select from, and even CTE queries are supported.
+```rust
+db_conn.load_rbac().await?;
+
+let db = db_conn.restricted_for(admin)?;
+
+let seaside_bakery = bakery::ActiveModel {
+    name: Set("SeaSide Bakery".to_owned()),
+    ..Default::default()
+};
+assert!(Bakery::insert(seaside_bakery).exec(&db).await.is_ok());
+
+let db = db_conn.restricted_for(public)?;
+
+assert!(matches!(
+    Bakery::insert(bakery::ActiveModel::default())
+        .exec(&db)
+        .await,
+    Err(DbErr::AccessDenied { .. })
+));
+```
+
 * Overhauled `Entity::insert_many`. We've made a number of changes https://github.com/SeaQL/sea-orm/pull/2628
     1. removed APIs that can panic
     2. new helper struct `InsertMany`, `last_insert_id` is now `Option<Value>`

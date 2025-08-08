@@ -101,7 +101,7 @@ impl RestrictedConnection {
                 action: action_str(&request.access_type).to_owned(),
             };
             let resource = || ResourceRequest {
-                schema: request.schema_table.0.as_ref().map(|s| s.to_string()),
+                schema: request.schema_table.0.as_ref().map(|s| s.1.to_string()),
                 table: request.schema_table.1.to_string(),
             };
             if !engine

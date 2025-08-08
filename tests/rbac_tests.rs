@@ -47,12 +47,12 @@ async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
 
     // manager / public can't create bakery
     for user in [manager, public] {
-        matches!(
+        assert!(matches!(
             Bakery::insert(bakery::ActiveModel::default())
                 .exec(&db.restricted_for(user)?)
                 .await,
             Err(DbErr::AccessDenied { .. })
-        );
+        ));
     }
 
     // anyone can read bakery
@@ -185,13 +185,13 @@ async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
             .await?;
 
         // reject; of course
-        matches!(
+        assert!(matches!(
             lineitem::Entity::delete_many()
                 .filter(lineitem::Column::Id.eq(lineitem_id))
                 .exec(&public_db)
                 .await,
             Err(DbErr::AccessDenied { .. })
-        );
+        ));
 
         // only 1 line item left
         let order_with_items = order::Entity::find()
