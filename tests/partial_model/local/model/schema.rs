@@ -4,8 +4,8 @@ use sea_orm::{error::*, sea_query, DatabaseConnection, DbConn, ExecResult};
 use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, Table};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
-    create_bakery_table(db).await?;
     create_worker_table(db).await?;
+    create_bakery_table(db).await?;
     Ok(())
 }
 
