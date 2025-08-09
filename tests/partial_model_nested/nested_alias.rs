@@ -1,8 +1,8 @@
 use crate::common::TestContext;
 use crate::local::{bakery, create_tables, worker};
 use sea_orm::{
-    prelude::*, sea_query::Alias, DerivePartialModel, FromQueryResult, IntoActiveModel, JoinType,
-    NotSet, QueryOrder, QuerySelect, Set,
+    DerivePartialModel, FromQueryResult, IntoActiveModel, JoinType, NotSet, QueryOrder,
+    QuerySelect, Set, prelude::*, sea_query::Alias,
 };
 
 #[derive(DerivePartialModel)]
@@ -20,7 +20,7 @@ struct BakeryWorker {
     #[sea_orm(nested, alias = "manager")]
     manager: Worker,
     #[sea_orm(nested, alias = "cashier")]
-    cashier: Worker,
+    cashier: worker::Model,
 }
 
 #[sea_orm_macros::test]

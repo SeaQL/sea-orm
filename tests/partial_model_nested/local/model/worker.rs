@@ -1,4 +1,4 @@
-use sea_orm::{entity::prelude::*, ActiveValue, IntoActiveValue};
+use sea_orm::{ActiveValue, IntoActiveValue, entity::prelude::*};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "worker")]
