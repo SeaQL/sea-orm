@@ -27,10 +27,4 @@ pub enum Relation {
     Cashier,
 }
 
-impl Related<super::worker::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Manager.def()
-    }
-}
-
 impl ActiveModelBehavior for ActiveModel {}
