@@ -7,8 +7,6 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub profit_margin: f64,
-    pub manager_id: i32,
-    pub cashier_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -19,10 +17,6 @@ pub enum Relation {
     Order,
     #[sea_orm(has_many = "super::cake::Entity")]
     Cake,
-    #[sea_orm(has_one = "super::worker::Entity")]
-    Manager,
-    #[sea_orm(has_one = "super::worker::Entity")]
-    Cashier,
 }
 
 impl Related<super::baker::Entity> for Entity {

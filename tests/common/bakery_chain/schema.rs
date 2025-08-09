@@ -11,7 +11,6 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_cake_table(db).await?;
     create_cakes_bakers_table(db).await?;
     create_lineitem_table(db).await?;
-    create_worker_table(db).await?;
     Ok(())
 }
 
@@ -29,16 +28,6 @@ pub async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(
             ColumnDef::new(bakery::Column::ProfitMargin)
                 .double()
-                .not_null(),
-        )
-        .col(
-            ColumnDef::new(bakery::Column::ManagerId)
-                .integer()
-                .not_null(),
-        )
-        .col(
-            ColumnDef::new(bakery::Column::CashierId)
-                .integer()
                 .not_null(),
         )
         .to_owned();
@@ -256,22 +245,6 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .not_null(),
         )
         .col(ColumnDef::new(cake::Column::Serial).uuid().not_null())
-        .to_owned();
-
-    create_table(db, &stmt, Cake).await
-}
-
-pub async fn create_worker_table(db: &DbConn) -> Result<ExecResult, DbErr> {
-    let stmt = Table::create()
-        .table(worker::Entity)
-        .col(
-            ColumnDef::new(cake::Column::Id)
-                .integer()
-                .not_null()
-                .auto_increment()
-                .primary_key(),
-        )
-        .col(ColumnDef::new(cake::Column::Name).string().not_null())
         .to_owned();
 
     create_table(db, &stmt, Cake).await

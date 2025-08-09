@@ -3,30 +3,10 @@ use crate::common::TestContext;
 use sea_orm::{prelude::*, NotSet, Set};
 
 pub async fn init_1(ctx: &TestContext, link: bool) {
-    worker::Entity::insert(worker::ActiveModel {
-        id: Set(1),
-        name: Set("Tom".to_owned()),
-        ..Default::default()
-    })
-    .exec(&ctx.db)
-    .await
-    .expect("insert succeeds");
-
-    worker::Entity::insert(worker::ActiveModel {
-        id: Set(2),
-        name: Set("Jerry".to_owned()),
-        ..Default::default()
-    })
-    .exec(&ctx.db)
-    .await
-    .expect("insert succeeds");
-
     bakery::Entity::insert(bakery::ActiveModel {
         id: Set(42),
         name: Set("cool little bakery".to_string()),
         profit_margin: Set(4.1),
-        manager_id: Set(1),
-        cashier_id: Set(2),
     })
     .exec(&ctx.db)
     .await

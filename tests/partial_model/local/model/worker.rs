@@ -10,18 +10,10 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::bakery::Entity",
-        from = "Column::Id",
-        to = "super::bakery::Column::ManagerId"
-    )]
-    Bakery,
-}
-
-impl Related<super::bakery::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Bakery.def()
-    }
+    #[sea_orm(has_one = "super::bakery::Entity")]
+    BakeryManager,
+    #[sea_orm(has_one = "super::bakery::Entity")]
+    BakeryCashier,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
