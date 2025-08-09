@@ -9,11 +9,6 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_one = "super::bakery::Entity")]
-    BakeryManager,
-    #[sea_orm(has_one = "super::bakery::Entity")]
-    BakeryCashier,
-}
+pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
