@@ -35,7 +35,6 @@ async fn partial_model_nested_alias() {
     worker::Entity::insert(worker::ActiveModel {
         id: Set(1),
         name: Set("Tom".to_owned()),
-
         ..Default::default()
     })
     .exec(&ctx.db)
