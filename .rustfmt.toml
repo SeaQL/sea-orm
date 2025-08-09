@@ -1,0 +1,6 @@
+ignore = [
+	# These files are used to test the output of derive macros.
+	# Formatting them will cause the tests to fail.
+	"sea-orm-codegen/src/tests_cfg"
+]
+format_code_in_doc_comments=true

@@ -13,7 +13,6 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_cake_table(db).await?;
     create_cakes_bakers_table(db).await?;
     create_lineitem_table(db).await?;
-
     Ok(())
 }
 

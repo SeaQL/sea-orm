@@ -524,6 +524,7 @@ fn bakery(i: i32) -> bakery::Model {
         id: i,
     }
 }
+
 fn baker(c: char) -> baker::Model {
     baker::Model {
         name: c.clone().to_string(),

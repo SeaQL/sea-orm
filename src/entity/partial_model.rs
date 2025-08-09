@@ -28,17 +28,17 @@ pub trait PartialModelTrait: FromQueryResult {
     ///     select
     /// }
     /// ```
-    fn select_cols_nested<S: SelectColumns>(select: S, _prefix: Option<&str>) -> S;
+    fn select_cols_nested<S: SelectColumns>(select: S, prefix: Option<&str>, alias: Option<&str>) -> S;
 }
 
 impl<T: PartialModelTrait> PartialModelTrait for Option<T> {
-    fn select_cols_nested<S: SelectColumns>(select: S, prefix: Option<&str>) -> S {
-        T::select_cols_nested(select, prefix)
+    fn select_cols_nested<S: SelectColumns>(select: S, prefix: Option<&str>, alias: Option<&str>) -> S {
+        T::select_cols_nested(select, prefix, alias)
     }
 }
 
 impl<T: ModelTrait + FromQueryResult> PartialModelTrait for T {
-    fn select_cols_nested<S: SelectColumns>(mut select: S, prefix: Option<&str>) -> S {
+    fn select_cols_nested<S: SelectColumns>(mut select: S, prefix: Option<&str>, alias: Option<&str>) -> S {
         if let Some(prefix) = prefix {
             for col in <<T::Entity as EntityTrait>::Column as Iterable>::iter() {
                 let alias = format!("{prefix}{}", col.as_str());
