@@ -458,54 +458,6 @@ async fn partial_model_into_active_model() {
     );
 }
 
-// #[derive(DerivePartialModel)]
-// #[sea_orm(entity = "worker::Entity", from_query_result)]
-// struct Worker {
-//     id: i32,
-//     name: String,
-// }
-// #[derive(DerivePartialModel)]
-// #[sea_orm(entity = "bakery::Entity", from_query_result)]
-// struct BakeryWorker {
-//     id: i32,
-//     name: String,
-//     profit_margin: f64,
-//     #[sea_orm(nested, alias = "manager")]
-//     manager_id: Worker,
-//     #[sea_orm(nested, alias = "cashier")]
-//     cashier_id: Worker,
-// }
-
-// #[sea_orm_macros::test]
-// async fn partial_model_nested_alias() {
-//     let ctx = TestContext::new("partial_model_nested").await;
-//     create_tables(&ctx.db).await.unwrap();
-
-//     seed_data::init_1(&ctx, true).await;
-
-//     let bakery: BakeryWorker = bakery::Entity::find()
-//         .join_as(
-//             sea_orm::JoinType::LeftJoin,
-//             crate::bakery::Relation::Manager.def(),
-//             "manager",
-//         )
-//         .join_as(
-//             sea_orm::JoinType::LeftJoin,
-//             crate::bakery::Relation::Cashier.def(),
-//             "cashier",
-//         )
-//         .into_partial_model()
-//         .one(&ctx.db)
-//         .await
-//         .expect("succeeds to get the result")
-//         .expect("exactly one model in DB");
-
-//     assert_eq!(bakery.manager.name, "Tom");
-//     assert_eq!(bakery.cashier.name, "Jerry");
-
-//     ctx.delete().await;
-// }
-
 #[derive(Debug, FromQueryResult, DerivePartialModel)]
 #[sea_orm(entity = "bakery::Entity")]
 struct WrongBakery {
