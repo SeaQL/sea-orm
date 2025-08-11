@@ -6,13 +6,14 @@ use sea_orm::{
 };
 
 #[derive(DerivePartialModel)]
-#[sea_orm(entity = "worker::Entity", from_query_result)]
+#[sea_orm(entity = "worker::Entity")]
 struct Worker {
     id: i32,
     name: String,
 }
+
 #[derive(DerivePartialModel)]
-#[sea_orm(entity = "bakery::Entity", from_query_result)]
+#[sea_orm(entity = "bakery::Entity")]
 struct BakeryWorker {
     id: i32,
     name: String,
