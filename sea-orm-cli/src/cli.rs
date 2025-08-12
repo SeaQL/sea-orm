@@ -217,7 +217,7 @@ pub enum GenerateSubcommands {
         #[arg(
             short = 'o',
             long,
-            env = "OUTPUT_DIR",
+            env = "SEA_OUTPUT_DIR",
             default_value = "./",
             help = "Entity file output directory"
         )]
