@@ -228,7 +228,9 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml', 'sea-orm-macros/Cargo.toml', 'sea-orm-codegen/Cargo.toml', 'sea-orm-cli/Cargo.toml', 'sea-orm-migration/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
+      - run: cargo test --workspace --no-run
       - run: cargo test --workspace
+      - run: cargo test --manifest-path sea-orm-cli/Cargo.toml --no-run
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml
 
   cli:
@@ -284,7 +286,7 @@ jobs:
       - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
       - uses: dtolnay/rust-toolchain@stable
       - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo update --manifest-path {}
-      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo build --manifest-path {}
+      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {} --no-run
       - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
       - run: ${{'! '}}${{ '[ -d "' }}${{ matrix.path }}${{ '/service" ]' }} || find ${{ matrix.path }}/service -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {} --features mock
 
@@ -354,8 +356,11 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-sqlite-tests-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
+      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }},sqlite-use-returning-for-3_35 --no-run
       - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }},sqlite-use-returning-for-3_35
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }},sqlite-use-returning-for-3_35
 
@@ -405,7 +410,9 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-mysql-tests-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
+      - run: cargo test --test '*' --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --test '*' --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   mariadb:
@@ -456,6 +463,7 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-pg-tests-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
+      - run: cargo test --test '*' --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --test '*' --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   postgres:
@@ -505,5 +513,7 @@ jobs:
             ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml') }}
             ${{ runner.os }}-cargo-
       - uses: mozilla-actions/sccache-action@v0.0.9
+      - run: cargo test --test '*' --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --test '*' --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
