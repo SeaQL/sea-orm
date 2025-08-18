@@ -19,9 +19,9 @@
 #### SeaORM 是一个关系型 ORM，帮助你在 Rust 中构建 Web 服务，同时提供动态语言的使用体验。
 
 [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
-如果你喜欢我们的工作，请考虑给我们点星、分享和贡献代码！
+如果你喜欢我们的工作，请考虑给我们加星标、分享并参与贡献！
 
-请通过完成 [SeaQL 社区调查 2024](https://sea-ql.org/community-survey/) 帮助我们维护 SeaORM！
+完成 [SeaQL 社区调查 2024](https://sea-ql.org/community-survey/) 可以帮助我们维护 SeaORM！
 
 [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
 加入我们的 Discord 服务器，与 SeaQL 社区的其他成员交流！
@@ -49,7 +49,7 @@
 
 1. 异步
 
-    基于 [SQLx](https://github.com/launchbadge/sqlx)，SeaORM 从第一天起就支持异步操作。
+    基于 [SQLx](https://github.com/launchbadge/sqlx)，SeaORM 从第一天起就支持异步。
 
 2. 动态
 
@@ -105,13 +105,12 @@ let chocolate: Vec<cake::Model> = Cake::find()
 let cheese: Option<cake::Model> = Cake::find_by_id(1).one(db).await?;
 let cheese: cake::Model = cheese.unwrap();
 
-// 查找关联模型（惰性加载）
+// 查找关联模型（惰性）
 let fruits: Vec<fruit::Model> = cheese.find_related(Fruit).all(db).await?;
 
-// 查找关联模型（贪婪加载）
-let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> = 
+// 查找关联模型（急切）
+let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> =
     Cake::find().find_with_related(Fruit).all(db).await?;
-
 ```
 
 ### 嵌套查询
@@ -120,19 +119,12 @@ let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> =
 use sea_orm::DerivePartialModel;
 
 #[derive(DerivePartialModel)]
-#[sea_orm(entity = "cake::Entity", from_query_result)]
+#[sea_orm(entity = "cake::Entity")]
 struct CakeWithFruit {
     id: i32,
     name: String,
     #[sea_orm(nested)]
-    fruit: Option<Fruit>,
-}
-
-#[derive(DerivePartialModel)]
-#[sea_orm(entity = "fruit::Entity", from_query_result)]
-struct Fruit {
-    id: i32,
-    name: String,
+    fruit: Option<fruit::Model>,
 }
 
 let cakes: Vec<CakeWithFruit> = cake::Entity::find()
@@ -141,6 +133,7 @@ let cakes: Vec<CakeWithFruit> = cake::Entity::find()
     .all(db)
     .await?;
 ```
+
 ### 插入
 ```rust
 let apple = fruit::ActiveModel {
@@ -156,9 +149,33 @@ let pear = fruit::ActiveModel {
 // 插入单个
 let pear = pear.insert(db).await?;
 
-// 插入多个
+// 插入多个并返回最后插入的id（需要数据库与列类型支持）
 Fruit::insert_many([apple, pear]).exec(db).await?;
+result.last_insert_id == Some(2);
 ```
+
+### 高级插入
+```rust
+// 插入多条记录并返回（需要数据库支持）
+let models: Vec<fruit::Model> = Fruit::insert_many([apple, pear])
+    .exec_with_returning(db)
+    .await?;
+models[0]
+    == fruit::Model {
+        id: 1,
+        name: "Apple".to_owned(),
+        cake_id: None,
+    };
+
+// 使用 ON CONFLICT，在主键冲突时忽略插入, 并为 MySQL 提供特定的 polyfill
+let result = Fruit::insert_many([apple, pear])
+    .on_conflict_do_nothing()
+    .exec(db)
+    .await?;
+
+matches!(result, TryInsertResult::Conflicted);
+```
+
 ### 更新
 ```rust
 use sea_orm::sea_query::{Expr, Value};
@@ -284,11 +301,11 @@ fruit::Entity::delete_many()
 
 ## 贡献
 
-除非你明确声明，否则你有意提交的任何贡献，如 Apache-2.0 许可证所定义的，将按照上述双重许可证授权，没有任何附加条款或条件。
+除非你明确声明，否则你有意提交的任何贡献，根据 Apache-2.0 许可证的定义，都将按照上述许可证双重授权，且不附带任何附加条款或条件。
 
-我们邀请你参与、贡献并共同帮助构建 Rust 的未来。
+我们诚挚邀请你参与、贡献，并携手共建 Rust 的未来。
 
-向我们的贡献者大声致敬！
+向我们的贡献者们致以最真诚的感谢！
 
 [![Contributors](https://opencollective.com/sea-orm/contributors.svg?width=1000&button=false)](https://github.com/SeaQL/sea-orm/graphs/contributors)
 
