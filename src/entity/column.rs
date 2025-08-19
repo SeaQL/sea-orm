@@ -252,7 +252,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
 
     /// Construct a [`SimpleExpr::Column`] wrapped in [`Expr`].
     fn into_expr(self) -> Expr {
-        Expr::new(self.into_simple_expr())
+        self.into_simple_expr()
     }
 
     /// Construct a returning [`Expr`].

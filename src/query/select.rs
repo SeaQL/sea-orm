@@ -1,7 +1,7 @@
 use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect, QueryTrait};
 use core::fmt::Debug;
 use core::marker::PhantomData;
-use sea_query::{Expr, IntoColumnRef, SelectStatement, SimpleExpr};
+use sea_query::{IntoColumnRef, SelectStatement, SimpleExpr};
 
 /// Defines a structure to perform select operations
 #[derive(Clone, Debug)]
@@ -121,7 +121,7 @@ where
     C: ColumnTrait,
 {
     fn into_column_as_expr(self) -> SimpleExpr {
-        self.select_as(Expr::new(self.as_column_ref().into_column_ref()))
+        self.select_as(self.as_column_ref().into_column_ref().into())
     }
 }
 

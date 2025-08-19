@@ -3,8 +3,8 @@ use crate::{
 };
 use core::marker::PhantomData;
 use sea_query::{
-    Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoCondition, IntoIden,
-    JoinType, SeaRc, TableForeignKey, TableRef,
+    Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoIden, JoinType, SeaRc,
+    TableForeignKey, TableRef,
 };
 use std::fmt::Debug;
 
@@ -136,21 +136,21 @@ fn debug_on_condition(
 ///     r#"SELECT  FROM "fruit" INNER JOIN "cake" ON "fruit"."cake_id" = "cake"."id""#
 /// );
 /// ```
-impl IntoCondition for RelationDef {
-    fn into_condition(mut self) -> Condition {
+impl From<RelationDef> for Condition {
+    fn from(mut rel: RelationDef) -> Condition {
         // Use table alias (if any) to construct the join condition
-        let from_tbl = match self.from_tbl.sea_orm_table_alias() {
+        let from_tbl = match rel.from_tbl.sea_orm_table_alias() {
             Some(alias) => alias,
-            None => self.from_tbl.sea_orm_table(),
+            None => rel.from_tbl.sea_orm_table(),
         };
-        let to_tbl = match self.to_tbl.sea_orm_table_alias() {
+        let to_tbl = match rel.to_tbl.sea_orm_table_alias() {
             Some(alias) => alias,
-            None => self.to_tbl.sea_orm_table(),
+            None => rel.to_tbl.sea_orm_table(),
         };
-        let owner_keys = self.from_col;
-        let foreign_keys = self.to_col;
+        let owner_keys = rel.from_col;
+        let foreign_keys = rel.to_col;
 
-        let mut condition = match self.condition_type {
+        let mut condition = match rel.condition_type {
             ConditionType::All => Condition::all(),
             ConditionType::Any => Condition::any(),
         };
@@ -161,7 +161,7 @@ impl IntoCondition for RelationDef {
             owner_keys,
             foreign_keys,
         ));
-        if let Some(f) = self.on_condition.take() {
+        if let Some(f) = rel.on_condition.take() {
             condition = condition.add(f(from_tbl.clone(), to_tbl.clone()));
         }
 
