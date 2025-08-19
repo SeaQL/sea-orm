@@ -14,6 +14,8 @@
 
 # SeaORM
 
+[中文文档](https://github.com/SeaQL/sea-orm/blob/1.1.x/README-zh.md)
+
 #### SeaORM is a relational ORM to help you build web services in Rust with the familiarity of dynamic languages.
 
 [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
