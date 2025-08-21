@@ -23,7 +23,7 @@ pub type ForeignKeyAction = sea_query::ForeignKeyAction;
 
 /// Defines the relations of an Entity
 pub trait RelationTrait: Iterable + Debug + 'static {
-    /// The method to call
+    /// Creates a [`RelationDef`]
     fn def(&self) -> RelationDef;
 }
 

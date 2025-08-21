@@ -90,6 +90,16 @@ pub trait EntityTrait: EntityName {
         RelationBuilder::from_rel(RelationType::HasMany, R::to().rev(), true)
     }
 
+    /// Construct a has many relation, with the Relation provided.
+    /// This is for the case where `Related<Self>` is not possible.
+    fn has_many_via<R, T>(_: R, rel: T) -> RelationBuilder<Self, R>
+    where
+        R: EntityTrait,
+        T: RelationTrait,
+    {
+        RelationBuilder::from_rel(RelationType::HasMany, rel.def().rev(), true)
+    }
+
     /// Construct select statement to find one / all models
     ///
     /// - To select columns, join tables and group by expressions, see [`QuerySelect`](crate::query::QuerySelect)
