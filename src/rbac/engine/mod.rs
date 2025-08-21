@@ -50,8 +50,32 @@ pub struct RbacSnapshot {
     role_hierarchy: Vec<RoleHierarchy>,
 }
 
-#[cfg(test)]
 impl RbacSnapshot {
+    /// Create an unrestricted system where `UserId(0)` can perform any action on any resource.
+    /// This is intended to be an escape hatch to bypass RBAC restrictions.
+    /// Use at your own risk.
+    pub fn danger_unrestricted() -> Self {
+        let mut snapshot = Self::default();
+
+        snapshot.set_resources(vec![Resource {
+            id: ResourceId(0),
+            schema: None,
+            table: WILDCARD.to_owned(),
+        }]);
+        snapshot.set_permissions(vec![Permission {
+            id: PermissionId(0),
+            action: WILDCARD.to_owned(),
+        }]);
+        snapshot.set_roles(vec![Role {
+            id: RoleId(0),
+            role: "unrestricted".to_owned(),
+        }]);
+        snapshot.add_user_roles(UserId(0), &["unrestricted"]);
+        snapshot.add_role_permission("unrestricted", Action("*"), Table("*"));
+
+        snapshot
+    }
+
     fn set_resources(&mut self, mut resources: Vec<Resource>) {
         for (i, r) in resources.iter_mut().enumerate() {
             r.id = ResourceId(i as i64 + 1);
@@ -97,6 +121,7 @@ impl RbacSnapshot {
         });
     }
 
+    #[cfg(test)]
     fn add_user_override<P, R>(&mut self, user_id: UserId, permission: P, resource: R, grant: bool)
     where
         P: Into<PermissionRequest>,
@@ -112,6 +137,7 @@ impl RbacSnapshot {
         });
     }
 
+    #[cfg(test)]
     fn add_role_hierarchy(&mut self, role: &str, super_role: &str) {
         self.role_hierarchy.push(RoleHierarchy {
             role_id: self.find_role(role),
