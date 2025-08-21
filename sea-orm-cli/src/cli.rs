@@ -39,7 +39,7 @@ AUTHORS:
     - Invitation: https://discord.com/invite/uCPdDXzbdv
 
   SeaQL Community Survey 2024
-    - Link: https://sea-ql.org/community-survey
+    - Link: https://www.sea-ql.org/community-survey
 
   If you like what we do, consider starring, sharing and contributing!
 "#
