@@ -159,6 +159,27 @@ let pear = pear.insert(db).await?;
 // insert many
 Fruit::insert_many([apple, pear]).exec(db).await?;
 ```
+### Insert (advanced)
+```rust
+// insert many with returning (if supported by database)
+let models: Vec<fruit::Model> = Fruit::insert_many([apple, pear])
+    .exec_with_returning_many(db)
+    .await?;
+models[0]
+    == fruit::Model {
+        id: 1,
+        name: "Apple".to_owned(),
+        cake_id: None,
+    };
+
+// insert with ON CONFLICT on primary key do nothing, with MySQL specific polyfill
+let result = Fruit::insert_many([apple, pear])
+    .on_conflict_do_nothing()
+    .exec(db)
+    .await?;
+
+matches!(result, TryInsertResult::Conflicted);
+```
 ### Update
 ```rust
 use sea_orm::sea_query::{Expr, Value};

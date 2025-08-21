@@ -159,6 +159,27 @@ let pear = pear.insert(db).await?;
 // 插入多个
 Fruit::insert_many([apple, pear]).exec(db).await?;
 ```
+### 高级插入
+```rust
+// 插入多条记录并返回（需要数据库支持）
+let models: Vec<fruit::Model> = Fruit::insert_many([apple, pear])
+    .exec_with_returning_many(db)
+    .await?;
+models[0]
+    == fruit::Model {
+        id: 1,
+        name: "Apple".to_owned(),
+        cake_id: None,
+    };
+
+// 使用 ON CONFLICT，在主键冲突时忽略插入, 并为 MySQL 提供特定的 polyfill
+let result = Fruit::insert_many([apple, pear])
+    .on_conflict_do_nothing()
+    .exec(db)
+    .await?;
+
+matches!(result, TryInsertResult::Conflicted);
+```
 ### 更新
 ```rust
 use sea_orm::sea_query::{Expr, Value};

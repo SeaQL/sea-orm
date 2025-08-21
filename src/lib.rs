@@ -224,6 +224,50 @@
 //! # Ok(())
 //! # }
 //! ```
+//! ### Insert (advanced)
+//! ```
+//! # use sea_orm::{DbConn, TryInsertResult, error::*, entity::*, query::*, tests_cfg::*};
+//! # async fn function_1(db: &DbConn) -> Result<(), DbErr> {
+//! # let apple = fruit::ActiveModel {
+//! #     name: Set("Apple".to_owned()),
+//! #     ..Default::default() // no need to set primary key
+//! # };
+//! # let pear = fruit::ActiveModel {
+//! #     name: Set("Pear".to_owned()),
+//! #     ..Default::default()
+//! # };
+//! // insert many with returning (if supported by database)
+//! let models: Vec<fruit::Model> = Fruit::insert_many([apple, pear])
+//!     .exec_with_returning_many(db)
+//!     .await?;
+//! models[0]
+//!     == fruit::Model {
+//!         id: 1,
+//!         name: "Apple".to_owned(),
+//!         cake_id: None,
+//!     };
+//! # Ok(())
+//! # }
+//!
+//! # async fn function_2(db: &DbConn) -> Result<(), DbErr> {
+//! # let apple = fruit::ActiveModel {
+//! #     name: Set("Apple".to_owned()),
+//! #     ..Default::default() // no need to set primary key
+//! # };
+//! # let pear = fruit::ActiveModel {
+//! #     name: Set("Pear".to_owned()),
+//! #     ..Default::default()
+//! # };
+//! // insert with ON CONFLICT on primary key do nothing, with MySQL specific polyfill
+//! let result = Fruit::insert_many([apple, pear])
+//!     .on_conflict_do_nothing()
+//!     .exec(db)
+//!     .await?;
+//!
+//! matches!(result, TryInsertResult::Conflicted);
+//! # Ok(())
+//! # }
+//! ```
 //! ### Update
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
