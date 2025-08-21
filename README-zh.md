@@ -21,7 +21,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
 如果你喜欢我们的工作，请考虑给我们加星标、分享并参与贡献！
 
-完成 [SeaQL 社区调查 2024](https://sea-ql.org/community-survey/) 可以帮助我们维护 SeaORM！
+完成 [SeaQL 社区调查 2025](https://forms.office.com/r/KAa5zaMv5K) 可以帮助我们维护 SeaORM！
 
 [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
 加入我们的 Discord 服务器，与 SeaQL 社区的其他成员交流！
