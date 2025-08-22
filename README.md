@@ -249,7 +249,6 @@ struct Bakery {
     name: String,
 }
 
-let bakery_id = 1;
 let cake_ids = [2, 3, 4];
 
 let cake: Option<Cake> = Cake::find_by_statement(raw_sql!(
@@ -259,9 +258,7 @@ let cake: Option<Cake> = Cake::find_by_statement(raw_sql!(
             "bakery"."name" AS "bakery_name"
         FROM "cake"
         LEFT JOIN "bakery" ON "cake"."bakery_id" = "bakery"."id"
-        WHERE
-            "bakery"."id" = {bakery_id}
-            AND "cake"."id" IN ({..cake_ids})
+        WHERE "cake"."id" IN ({..cake_ids})
         ORDER BY "cake"."id""#
 ))
 .one(db)
