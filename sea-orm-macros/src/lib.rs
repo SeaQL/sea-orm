@@ -551,7 +551,7 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 ///
 /// - `skip`: will not try to pull this field from the query result. And set it to the default value of the type.
 /// - `nested`: allows nesting models. can be any type that implements `FromQueryResult`
-/// - `from_alias`: get the value from this column alias
+/// - `alias` / `from_alias`: get the value from this column alias
 ///
 /// ### Usage
 ///
@@ -572,9 +572,9 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 ///
 /// #[derive(FromQueryResult)]
 /// struct CakeBakery {
-///     #[sea_orm(from_alias = "bakery_id")]
+///     #[sea_orm(alias = "bakery_id")]
 ///     id: i32,
-///     #[sea_orm(from_alias = "bakery_name")]
+///     #[sea_orm(alias = "bakery_name")]
 ///     title: String,
 /// }
 /// ```

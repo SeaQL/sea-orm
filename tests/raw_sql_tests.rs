@@ -21,7 +21,7 @@ async fn raw_sql_test_simple_select() {
     struct BakeryFlat {
         id: i32,
         name: String,
-        #[sea_orm(from_alias = "profit_margin")]
+        #[sea_orm(alias = "profit_margin")]
         profit: f64,
     }
 
@@ -87,9 +87,9 @@ async fn raw_sql_test_nested_select() {
 
     #[derive(FromQueryResult)]
     struct Bakery {
-        #[sea_orm(from_alias = "bakery_id")]
+        #[sea_orm(alias = "bakery_id")]
         id: i32,
-        #[sea_orm(from_alias = "bakery_name")]
+        #[sea_orm(alias = "bakery_name")]
         name: String,
     }
 

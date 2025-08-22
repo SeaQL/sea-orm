@@ -136,8 +136,10 @@ impl DeriveFromQueryResult {
                             typ = ItemType::Skip;
                         } else if meta.exists("nested") {
                             typ = ItemType::Nested;
+                        } else if let Some(alias_) = meta.get_as_kv("from_alias") {
+                            alias = Some(alias_);
                         } else {
-                            alias = meta.get_as_kv("from_alias");
+                            alias = meta.get_as_kv("alias");
                         }
                     }
                 }

@@ -347,7 +347,7 @@
 //!
 //! #[derive(FromQueryResult)]
 //! struct Bakery {
-//!     #[sea_orm(from_alias = "bakery_name")]
+//!     #[sea_orm(alias = "bakery_name")]
 //!     name: String,
 //! }
 //!

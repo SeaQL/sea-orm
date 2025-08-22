@@ -22,9 +22,9 @@ struct Cake {
 
 #[derive(FromQueryResult)]
 struct CakeBakery {
-    #[sea_orm(from_alias = "bakery_id")]
+    #[sea_orm(alias = "bakery_id")]
     id: i32,
-    #[sea_orm(from_alias = "bakery_name")]
+    #[sea_orm(alias = "bakery_name")]
     title: String,
 }
 
