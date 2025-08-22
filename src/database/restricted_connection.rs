@@ -24,13 +24,57 @@ pub(crate) struct RbacEngineHolder {
 
 impl RbacEngineHolder {
     pub fn is_some(&self) -> bool {
-        let engine = self.inner.read().expect("RBAC Engine Died");
+        let engine = self.inner.read().expect("RBAC Engine died");
         engine.is_some()
     }
 
     pub fn replace(&self, engine: RbacEngine) {
-        let mut inner = self.inner.write().expect("RBAC Engine Died");
+        let mut inner = self.inner.write().expect("RBAC Engine died");
         *inner = Some(engine);
+    }
+
+    pub fn user_can_run<S: StatementBuilder>(
+        &self,
+        user_id: UserId,
+        stmt: &S,
+    ) -> Result<(), DbErr> {
+        let audit = match stmt.audit() {
+            Ok(audit) => audit,
+            Err(err) => return Err(DbErr::RbacError(err.to_string())),
+        };
+        for request in audit.requests {
+            // There is nothing we can do if RwLock is poisoned.
+            let holder = self.inner.read().expect("RBAC Engine died");
+            // Constructor of this struct should ensure engine is not None.
+            let engine = holder.as_ref().expect("RBAC Engine not set");
+            let permission = || PermissionRequest {
+                action: action_str(&request.access_type).to_owned(),
+            };
+            let resource = || ResourceRequest {
+                schema: request.schema_table.0.as_ref().map(|s| s.1.to_string()),
+                table: request.schema_table.1.to_string(),
+            };
+            if !engine
+                .user_can(user_id, permission(), resource())
+                .map_err(map_err)?
+            {
+                let r = resource();
+                return Err(DbErr::AccessDenied {
+                    permission: permission().action.to_owned(),
+                    resource: format!(
+                        "{}{}{}",
+                        if let Some(schema) = &r.schema {
+                            schema
+                        } else {
+                            ""
+                        },
+                        if r.schema.is_some() { "." } else { "" },
+                        r.table
+                    ),
+                });
+            }
+        }
+        Ok(())
     }
 }
 
@@ -87,33 +131,7 @@ impl RestrictedConnection {
     /// Returns `()` if the current user can execute / query the given SQL statement.
     /// Returns `DbErr` otherwise.
     pub fn user_can_run<S: StatementBuilder>(&self, stmt: &S) -> Result<(), DbErr> {
-        let audit = match stmt.audit() {
-            Ok(audit) => audit,
-            Err(err) => return Err(DbErr::RbacError(err.to_string())),
-        };
-        for request in audit.requests {
-            // There is nothing we can do if RwLock is poisoned.
-            let holder = self.conn.rbac.inner.read().expect("RBAC Engine Died");
-            // Constructor of this struct should ensure engine is not None.
-            let engine = holder.as_ref().expect("RBAC Engine not setup");
-            let permission = || PermissionRequest {
-                action: action_str(&request.access_type).to_owned(),
-            };
-            let resource = || ResourceRequest {
-                schema: request.schema_table.0.as_ref().map(|s| s.1.to_string()),
-                table: request.schema_table.1.to_string(),
-            };
-            if !engine
-                .user_can(self.user_id, permission(), resource())
-                .map_err(map_err)?
-            {
-                return Err(DbErr::AccessDenied {
-                    permission: format!("{:?}", permission()),
-                    resource: format!("{:?}", resource()),
-                });
-            }
-        }
-        Ok(())
+        self.conn.rbac.user_can_run(self.user_id, stmt)
     }
 }
 
