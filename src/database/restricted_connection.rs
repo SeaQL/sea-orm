@@ -15,7 +15,6 @@ use std::sync::{Arc, RwLock};
 pub struct RestrictedConnection {
     pub(crate) user_id: UserId,
     pub(crate) conn: DatabaseConnection,
-    pub(crate) engine: RbacEngineHolder,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -94,7 +93,7 @@ impl RestrictedConnection {
         };
         for request in audit.requests {
             // There is nothing we can do if RwLock is poisoned.
-            let holder = self.engine.inner.read().expect("RBAC Engine Died");
+            let holder = self.conn.rbac.inner.read().expect("RBAC Engine Died");
             // Constructor of this struct should ensure engine is not None.
             let engine = holder.as_ref().expect("RBAC Engine not setup");
             let permission = || PermissionRequest {

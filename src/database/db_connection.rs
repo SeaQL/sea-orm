@@ -23,7 +23,7 @@ pub struct DatabaseConnection {
     /// because we have to attach other contexts.
     pub inner: DatabaseConnectionType,
     #[cfg(feature = "rbac")]
-    rbac: crate::RbacEngineHolder,
+    pub(crate) rbac: crate::RbacEngineHolder,
 }
 
 /// The underlying database connection type.
@@ -468,11 +468,16 @@ impl DatabaseConnection {
     }
 
     /// Load RBAC data from the given database connection and setup RBAC engine.
-    /// This could be another database.
+    /// This could be from another database.
     pub async fn load_rbac_from(&self, db: &DbConn) -> Result<(), DbErr> {
         let engine = crate::rbac::RbacEngine::load_from(db).await?;
         self.rbac.replace(engine);
         Ok(())
+    }
+
+    /// Replace the internal RBAC engine.
+    pub fn replace_rbac(&self, engine: crate::rbac::RbacEngine) {
+        self.rbac.replace(engine);
     }
 
     /// Create a restricted connection with access control specific for the user.
@@ -484,7 +489,6 @@ impl DatabaseConnection {
             Ok(crate::RestrictedConnection {
                 user_id,
                 conn: self.clone(),
-                engine: self.rbac.clone(),
             })
         } else {
             Err(DbErr::RbacError("engine not set up".into()))
