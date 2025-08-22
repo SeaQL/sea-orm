@@ -253,13 +253,10 @@ let cake_ids = [2, 3, 4];
 
 let cake: Option<Cake> = Cake::find_by_statement(raw_sql!(
     Sqlite,
-    r#"SELECT
-            "cake"."name",
-            "bakery"."name" AS "bakery_name"
-        FROM "cake"
-        LEFT JOIN "bakery" ON "cake"."bakery_id" = "bakery"."id"
-        WHERE "cake"."id" IN ({..cake_ids})
-        ORDER BY "cake"."id""#
+    r#"SELECT "cake"."name", "bakery"."name" AS "bakery_name"
+       FROM "cake"
+       LEFT JOIN "bakery" ON "cake"."bakery_id" = "bakery"."id"
+       WHERE "cake"."id" IN ({..cake_ids})"#
 ))
 .one(db)
 .await?;
