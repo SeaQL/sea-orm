@@ -10,6 +10,8 @@ mod derives;
 #[cfg(feature = "strum")]
 mod strum;
 
+mod raw_sql;
+
 /// Create an Entity
 ///
 /// ### Usage
@@ -1069,6 +1071,14 @@ pub fn derive_iden(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
 
     match derives::expand_derive_iden(derive_input) {
+        Ok(token_stream) => token_stream.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+#[proc_macro]
+pub fn raw_sql(input: TokenStream) -> TokenStream {
+    match raw_sql::expand(input) {
         Ok(token_stream) => token_stream.into(),
         Err(e) => e.to_compile_error().into(),
     }

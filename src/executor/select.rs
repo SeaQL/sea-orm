@@ -983,13 +983,14 @@ where
     /// #     ])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    /// use sea_orm::{entity::*, query::*, raw_sql, tests_cfg::cake};
+    ///
+    /// let id = 1;
     ///
     /// let _: Option<cake::Model> = cake::Entity::find()
-    ///     .from_raw_sql(Statement::from_sql_and_values(
-    ///         DbBackend::Postgres,
-    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#,
-    ///         [1.into()],
+    ///     .from_raw_sql(raw_sql!(
+    ///         Postgres,
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = {id}"#
     ///     ))
     ///     .one(&db)
     ///     .await?;
@@ -1034,13 +1035,12 @@ where
     /// #     ])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    /// use sea_orm::{entity::*, query::*, raw_sql, tests_cfg::cake};
     ///
     /// let _: Vec<cake::Model> = cake::Entity::find()
-    ///     .from_raw_sql(Statement::from_sql_and_values(
-    ///         DbBackend::Postgres,
-    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
-    ///         [],
+    ///     .from_raw_sql(raw_sql!(
+    ///         Postgres,
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake""#
     ///     ))
     ///     .all(&db)
     ///     .await?;
