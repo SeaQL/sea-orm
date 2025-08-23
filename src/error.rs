@@ -100,7 +100,7 @@ pub enum DbErr {
     #[error("RBAC error: {0}")]
     RbacError(String),
     /// Access denied after running RBAC checks
-    #[error("Access denied: cannot `{permission}` on `{resource}`")]
+    #[error("Access denied: cannot perform `{permission}` on `{resource}`")]
     AccessDenied {
         /// The required permission
         permission: String,

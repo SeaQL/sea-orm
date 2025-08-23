@@ -251,14 +251,8 @@ impl RbacEngine {
     {
         let resource = resource.into();
         let permission = permission.into();
-        let resource = self
-            .resources
-            .get(&resource)
-            .ok_or_else(|| Error::ResourceNotFound(format!("{resource:?}")))?;
-        let permission = self
-            .permissions
-            .get(&permission)
-            .ok_or_else(|| Error::PermissionNotFound(format!("{permission:?}")))?;
+        let resource = self.resources.get(&resource);
+        let permission = self.permissions.get(&permission);
 
         // get user roles and flatten hierarchy
         let mut user_roles = HashSet::new();
@@ -273,30 +267,38 @@ impl RbacEngine {
             }
         }
 
-        if let Some(user_overrides) = self.user_overrides.get(&user_id) {
-            for user_override in user_overrides {
-                if user_override.permission_id == permission.id
-                    && user_override.resource_id == resource.id
-                {
-                    return Ok(user_override.grant);
+        if let (Some(permission), Some(resource)) = (permission, resource) {
+            if let Some(user_overrides) = self.user_overrides.get(&user_id) {
+                for user_override in user_overrides {
+                    if user_override.permission_id == permission.id
+                        && user_override.resource_id == resource.id
+                    {
+                        return Ok(user_override.grant);
+                    }
                 }
             }
         }
 
         for role_id in user_roles {
             if let Some(role_permissions) = self.role_permissions.get(&role_id) {
-                if role_permissions.contains(&(permission.id, resource.id)) {
-                    return Ok(true);
+                if let (Some(permission), Some(resource)) = (permission, resource) {
+                    if role_permissions.contains(&(permission.id, resource.id)) {
+                        return Ok(true);
+                    }
                 }
                 for (permission_id, resource_id) in role_permissions {
                     let is_wildcard_permission =
-                        self.is_wildcard_permission(*permission_id, &permission);
-                    let is_wildcard_resource = self.is_wildcard_resource(*resource_id, &resource);
-                    if resource_id == &resource.id && is_wildcard_permission {
-                        return Ok(true);
+                        self.is_wildcard_permission(*permission_id, permission);
+                    let is_wildcard_resource = self.is_wildcard_resource(*resource_id, resource);
+                    if let Some(resource) = &resource {
+                        if resource_id == &resource.id && is_wildcard_permission {
+                            return Ok(true);
+                        }
                     }
-                    if permission_id == &permission.id && is_wildcard_resource {
-                        return Ok(true);
+                    if let Some(permission) = &permission {
+                        if permission_id == &permission.id && is_wildcard_resource {
+                            return Ok(true);
+                        }
                     }
                     if is_wildcard_permission && is_wildcard_resource {
                         return Ok(true);
@@ -305,21 +307,35 @@ impl RbacEngine {
             }
         }
 
+        if resource.is_none() {
+            return Err(Error::ResourceNotFound(format!("{resource:?}")));
+        }
+
+        if permission.is_none() {
+            return Err(Error::PermissionNotFound(format!("{permission:?}")));
+        }
+
         Ok(false)
     }
 
-    fn is_wildcard_resource(&self, id: ResourceId, target: &Resource) -> bool {
+    fn is_wildcard_resource(&self, id: ResourceId, target: Option<&Resource>) -> bool {
         if let Some(resource) = self.wildcard_resources.get(&id) {
-            let schema_match = resource.schema.is_none()
-                || resource.schema.as_ref().unwrap() == WILDCARD
-                || resource.schema == target.schema;
-            let table_match = resource.table == WILDCARD || resource.table == target.table;
-            return schema_match && table_match;
+            if let Some(target) = target {
+                let schema_match = resource.schema.is_none()
+                    || resource.schema.as_ref().unwrap() == WILDCARD
+                    || resource.schema == target.schema;
+                let table_match = resource.table == WILDCARD || resource.table == target.table;
+                schema_match && table_match
+            } else {
+                (resource.schema.is_none() || resource.schema.as_ref().unwrap() == WILDCARD)
+                    && resource.table == WILDCARD
+            }
+        } else {
+            false
         }
-        false
     }
 
-    fn is_wildcard_permission(&self, id: PermissionId, _: &Permission) -> bool {
+    fn is_wildcard_permission(&self, id: PermissionId, _: Option<&Permission>) -> bool {
         if let Some(permission) = self.wildcard_permissions.get(&id) {
             return permission.action == WILDCARD;
         }
@@ -483,8 +499,10 @@ mod test {
             assert!(engine.user_can(admin, Action(action), Object("pen")).unwrap());
         }
 
-        // unknown action / object
-        assert!(engine.user_can(admin, Action("?"), Object("?")).is_err());
+        // unknown action / object; admin has wildcard
+        assert!(engine.user_can(admin, Action("?"), Object("?")).is_ok());
+        assert!(engine.user_can(manager, Action("?"), Object("?")).is_err());
+        assert!(engine.user_can(clerk, Action("?"), Object("?")).is_err());
     }
 
     #[rustfmt::skip]

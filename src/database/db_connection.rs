@@ -23,33 +23,33 @@ pub struct DatabaseConnection {
     /// because we have to attach other contexts.
     pub inner: DatabaseConnectionType,
     #[cfg(feature = "rbac")]
-    pub(crate) rbac: crate::RbacEngineHolder,
+    pub(crate) rbac: crate::RbacEngineMount,
 }
 
 /// The underlying database connection type.
 #[derive(Clone)]
 pub enum DatabaseConnectionType {
-    /// Create a MYSQL database connection and pool
+    /// MySql database connection pool
     #[cfg(feature = "sqlx-mysql")]
     SqlxMySqlPoolConnection(crate::SqlxMySqlPoolConnection),
 
-    /// Create a PostgreSQL database connection and pool
+    /// PostgreSQL database connection pool
     #[cfg(feature = "sqlx-postgres")]
     SqlxPostgresPoolConnection(crate::SqlxPostgresPoolConnection),
 
-    /// Create a SQLite database connection and pool
+    /// SQLite database connection pool
     #[cfg(feature = "sqlx-sqlite")]
     SqlxSqlitePoolConnection(crate::SqlxSqlitePoolConnection),
 
-    /// Create a Mock database connection useful for testing
+    /// Mock database connection useful for testing
     #[cfg(feature = "mock")]
     MockDatabaseConnection(Arc<crate::MockDatabaseConnection>),
 
-    /// Create a Proxy database connection useful for proxying
+    /// Proxy database connection
     #[cfg(feature = "proxy")]
     ProxyDatabaseConnection(Arc<crate::ProxyDatabaseConnection>),
 
-    /// The connection to the database has been severed
+    /// The connection has never been established
     Disconnected,
 }
 
@@ -266,6 +266,8 @@ impl StreamTrait for DatabaseConnection {
 
 #[async_trait::async_trait]
 impl TransactionTrait for DatabaseConnection {
+    type Transaction = DatabaseTransaction;
+
     #[instrument(level = "trace")]
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         match &self.inner {
