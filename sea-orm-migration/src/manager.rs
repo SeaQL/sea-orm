@@ -24,6 +24,14 @@ impl<'c> SchemaManager<'c> {
         }
     }
 
+    pub async fn execute<S>(&self, stmt: S) -> Result<(), DbErr>
+    where
+        S: StatementBuilder,
+    {
+        self.conn.execute(&stmt).await.map(|_| ())
+    }
+
+    #[doc(hidden)]
     pub async fn exec_stmt<S>(&self, stmt: S) -> Result<(), DbErr>
     where
         S: StatementBuilder,
@@ -43,54 +51,54 @@ impl<'c> SchemaManager<'c> {
 /// Schema Creation
 impl SchemaManager<'_> {
     pub async fn create_table(&self, stmt: TableCreateStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn create_index(&self, stmt: IndexCreateStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn create_foreign_key(&self, stmt: ForeignKeyCreateStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn create_type(&self, stmt: TypeCreateStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 }
 
 /// Schema Mutation
 impl SchemaManager<'_> {
     pub async fn alter_table(&self, stmt: TableAlterStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn drop_table(&self, stmt: TableDropStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn rename_table(&self, stmt: TableRenameStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn truncate_table(&self, stmt: TableTruncateStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn drop_index(&self, stmt: IndexDropStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn drop_foreign_key(&self, stmt: ForeignKeyDropStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn alter_type(&self, stmt: TypeAlterStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn drop_type(&self, stmt: TypeDropStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 }
 
