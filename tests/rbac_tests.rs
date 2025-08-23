@@ -53,6 +53,13 @@ async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
                 .await,
             Err(DbErr::AccessDenied { .. })
         ));
+        let txn = db.restricted_for(user)?.begin().await?;
+        assert!(matches!(
+            Bakery::insert(bakery::ActiveModel::default())
+                .exec(&txn)
+                .await,
+            Err(DbErr::AccessDenied { .. })
+        ));
     }
 
     // anyone can read bakery
