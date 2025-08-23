@@ -189,7 +189,7 @@ mod tests {
         RelationTrait,
     };
     use pretty_assertions::assert_eq;
-    use sea_query::{Alias, ConditionType, Expr, ExprTrait, IntoCondition, JoinType};
+    use sea_query::{ConditionType, Expr, ExprTrait, IntoCondition, JoinType};
 
     #[test]
     fn join_1() {
@@ -577,7 +577,7 @@ mod tests {
         assert_eq!(
             cake::Entity::find()
                 .column_as(
-                    Expr::col((Alias::new("fruit_alias"), fruit::Column::Name)),
+                    Expr::col(("fruit_alias", fruit::Column::Name)),
                     "fruit_name"
                 )
                 .join_as(
@@ -589,7 +589,7 @@ mod tests {
                                 .like("%tropical%")
                                 .into_condition()
                         }),
-                    Alias::new("fruit_alias")
+                    "fruit_alias"
                 )
                 .build(DbBackend::MySql)
                 .to_string(),
@@ -606,7 +606,7 @@ mod tests {
         assert_eq!(
             cake::Entity::find()
                 .column_as(
-                    Expr::col((Alias::new("cake_filling_alias"), cake_filling::Column::CakeId)),
+                    Expr::col(("cake_filling_alias", cake_filling::Column::CakeId)),
                     "cake_filling_cake_id"
                 )
                 .join(JoinType::LeftJoin, cake::Relation::TropicalFruit.def())
@@ -619,7 +619,7 @@ mod tests {
                                 .gt(10)
                                 .into_condition()
                         }),
-                    Alias::new("cake_filling_alias")
+                    "cake_filling_alias"
                 )
                 .build(DbBackend::MySql)
                 .to_string(),
@@ -637,7 +637,7 @@ mod tests {
         assert_eq!(
             cake::Entity::find()
                 .column_as(
-                    Expr::col((Alias::new("cake_filling_alias"), cake_filling::Column::CakeId)),
+                    Expr::col(("cake_filling_alias", cake_filling::Column::CakeId)),
                     "cake_filling_cake_id"
                 )
                 .join(JoinType::LeftJoin, cake::Relation::OrTropicalFruit.def())
@@ -651,7 +651,7 @@ mod tests {
                                 .gt(10)
                                 .into_condition()
                         }),
-                    Alias::new("cake_filling_alias")
+                    "cake_filling_alias"
                 )
                 .build(DbBackend::MySql)
                 .to_string(),

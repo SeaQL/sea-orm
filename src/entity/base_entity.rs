@@ -66,7 +66,8 @@ pub trait EntityTrait: EntityName {
     #[allow(missing_docs)]
     type PrimaryKey: PrimaryKeyTrait + PrimaryKeyToColumn<Column = Self::Column>;
 
-    /// Construct a belongs to relation
+    /// Construct a belongs to relation, where this table has a foreign key to
+    /// another table.
     fn belongs_to<R>(related: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait,
