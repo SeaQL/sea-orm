@@ -7,7 +7,7 @@ mod rbac;
 pub use common::{TestContext, bakery_chain::*, setup::*};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DbConn, DbErr, EntityTrait, IntoActiveModel, NotSet, QueryFilter,
-    Set,
+    Set, TransactionTrait,
 };
 
 #[sea_orm_macros::test]
@@ -78,16 +78,25 @@ async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
         .await
         .expect("insert succeeds");
 
-        cake::Entity::insert(cake::ActiveModel {
-            name: Set("Chocolate".to_owned()),
-            price: Set(3.into()),
-            bakery_id: Set(Some(1)),
-            gluten_free: Set(true),
-            ..Default::default()
+        db.transaction::<_, _, DbErr>(|txn| {
+            Box::pin(async move {
+                cake::Entity::insert(cake::ActiveModel {
+                    name: Set("Chocolate".to_owned()),
+                    price: Set(3.into()),
+                    bakery_id: Set(Some(1)),
+                    gluten_free: Set(true),
+                    ..Default::default()
+                })
+                .exec(txn)
+                .await?;
+
+                Ok(())
+            })
         })
-        .exec(&db)
         .await
         .expect("insert succeeds");
+
+        let txn = db.begin().await?;
 
         baker::Entity::insert(baker::ActiveModel {
             name: Set("Master Baker".to_owned()),
@@ -95,10 +104,14 @@ async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
             bakery_id: Set(Some(1)),
             ..Default::default()
         })
-        .exec(&db)
+        .exec(&txn)
         .await
         .expect("insert succeeds");
+
+        txn.commit().await?;
     }
+
+    assert_eq!(cake::Entity::find().all(db).await?.len(), 2);
 
     // anyone can read cake
     for user_id in [1, 2, 3] {

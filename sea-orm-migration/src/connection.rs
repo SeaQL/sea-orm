@@ -50,6 +50,8 @@ impl ConnectionTrait for SchemaManagerConnection<'_> {
 
 #[async_trait::async_trait]
 impl TransactionTrait for SchemaManagerConnection<'_> {
+    type Transaction = DatabaseTransaction;
+
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         match self {
             SchemaManagerConnection::Connection(conn) => conn.begin().await,

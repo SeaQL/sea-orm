@@ -13,7 +13,7 @@ use tracing::instrument;
 
 /// Defines a database transaction, whether it is an open transaction and the type of
 /// backend to use.
-/// Under the hood, a Transaction is just a sugar for a connection where
+/// Under the hood, a Transaction is just a wrapper for a connection where
 /// START TRANSACTION has been executed.
 pub struct DatabaseTransaction {
     conn: Arc<Mutex<InnerConnection>>,
