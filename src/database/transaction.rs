@@ -456,6 +456,8 @@ impl StreamTrait for DatabaseTransaction {
 
 #[async_trait::async_trait]
 impl TransactionTrait for DatabaseTransaction {
+    type Transaction = DatabaseTransaction;
+
     #[instrument(level = "trace")]
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         DatabaseTransaction::begin(

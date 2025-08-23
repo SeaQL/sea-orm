@@ -1,6 +1,5 @@
 use crate::{
-    DatabaseTransaction, DbBackend, DbErr, ExecResult, QueryResult, Statement, StatementBuilder,
-    TransactionError,
+    DbBackend, DbErr, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError,
 };
 use futures_util::Stream;
 use std::{future::Future, pin::Pin};
@@ -129,9 +128,12 @@ impl std::fmt::Display for AccessMode {
 /// Spawn database transaction
 #[async_trait::async_trait]
 pub trait TransactionTrait {
+    /// The concrete type for the transaction
+    type Transaction;
+
     /// Execute SQL `BEGIN` transaction.
     /// Returns a Transaction that can be committed or rolled back
-    async fn begin(&self) -> Result<DatabaseTransaction, DbErr>;
+    async fn begin(&self) -> Result<Self::Transaction, DbErr>;
 
     /// Execute SQL `BEGIN` transaction with isolation level and/or access mode.
     /// Returns a Transaction that can be committed or rolled back
@@ -139,14 +141,14 @@ pub trait TransactionTrait {
         &self,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
-    ) -> Result<DatabaseTransaction, DbErr>;
+    ) -> Result<Self::Transaction, DbErr>;
 
     /// Execute the function inside a transaction.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
     async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
-                &'c DatabaseTransaction,
+                &'c Self::Transaction,
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
@@ -162,7 +164,7 @@ pub trait TransactionTrait {
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
-                &'c DatabaseTransaction,
+                &'c Self::Transaction,
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
