@@ -11,29 +11,7 @@
 ## Specify a database url
 
 ```
-export DATABASE_URL=mysql://sea:sea@localhost/bakery
-```
-
-## Setup the Database
-
-Cd into `migration` folder and follow instructions there, but basically:
-
-```sh
-cargo run
-```
-
-## Install Seaography
-
-```sh
-cargo install seaography-cli@^1.1.3
-```
-
-## Generate GraphQL project
-
-```sh
-rm -rf graphql # this entire folder is generated
-sea-orm-cli generate entity --output-dir graphql/src/entities --seaography
-seaography-cli graphql graphql/src/entities $DATABASE_URL sea-orm-seaography-example
+export DATABASE_URL="sqlite://../sakila.db"
 ```
 
 ## Running the project
@@ -83,4 +61,29 @@ cargo run
     }
   }
 }
+```
+
+## Starting from scratch
+
+### Setup the Database
+
+`cd` into `migration` folder and follow instructions there, but basically:
+
+```sh
+cd migration
+cargo run
+```
+
+### Install Seaography
+
+```sh
+cargo install seaography-cli@^1.1.3
+```
+
+### Generate GraphQL project
+
+```sh
+rm -rf graphql # this entire folder is generated
+sea-orm-cli generate entity --output-dir graphql/src/entities --seaography
+seaography-cli graphql graphql/src/entities $DATABASE_URL sea-orm-seaography-example
 ```

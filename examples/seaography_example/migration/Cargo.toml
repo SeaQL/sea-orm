@@ -23,5 +23,5 @@ path = "../../../sea-orm-migration" # remove this line in your own project
 version = "~2.0.0-rc.5" # sea-orm-migration version
 features = [
   "runtime-async-std-native-tls",
-  "sqlx-mysql",
+  "sqlx-sqlite",
 ]

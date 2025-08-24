@@ -1,14 +1,18 @@
 # Bakery Schema
 
+## MySQL
+
+Assume the database is named `bakery`:
+
 ```sql
 CREATE DATABASE bakery;
 GRANT ALL PRIVILEGES ON bakery.* TO sea;
 ```
 
-Assume the database is named `bakery`:
+## SQLite
 
 ```sh
-export DATABASE_URL=mysql://sea:sea@localhost/bakery
+export DATABASE_URL=sqlite://../sakila.db?mode=rwc
 ```
 
 # Re-generate entities
