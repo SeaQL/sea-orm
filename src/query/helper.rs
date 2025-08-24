@@ -707,7 +707,7 @@ pub trait QueryFilter: Sized {
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
-    ///         .filter(cake::Column::Id.eq_any(vec![4, 5]))
+    ///         .filter(cake::Column::Id.eq_any([4, 5]))
     ///         .build(DbBackend::Postgres),
     ///     Statement::from_sql_and_values(
     ///         DbBackend::Postgres,
