@@ -148,11 +148,14 @@ where
         let column_def = column.def();
 
         if column_def.indexed {
-            let stmt = Index::create()
+            let mut stmt = Index::create()
                 .name(format!("idx-{}-{}", entity.to_string(), column.to_string()))
                 .table(entity)
                 .col(column)
                 .take();
+            if column_def.unique {
+                stmt.unique();
+            }
             indexes.push(stmt);
         }
 
@@ -337,6 +340,7 @@ mod tests {
                 .name("idx-indexes-index2_attr")
                 .table(indexes::Entity)
                 .col(indexes::Column::Index2Attr)
+                .unique()
                 .take();
             assert_eq!(builder.build(&stmts[1]), builder.build(&idx));
 
