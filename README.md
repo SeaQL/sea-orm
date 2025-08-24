@@ -43,7 +43,7 @@ Integration examples:
 + [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example) / [Rocket OpenAPI Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_okapi_example)
 + [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
 + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
-+ [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example)
++ [Seaography Example (Bakery)](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example) / [Seaography Example (Sakila)](https://github.com/SeaQL/seaography/tree/main/examples/sqlite)
 
 ## Features
 
