@@ -247,6 +247,29 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     bind_vec_func!(is_in);
     bind_vec_func!(is_not_in);
 
+    /// Postgres only.
+    /// ```
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.eq_any(vec![4, 5]))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY [4,5])"#
+    /// );
+    /// ```
+    fn eq_any<V, I>(&self, v: I) -> SimpleExpr
+    where
+        V: Into<Value> + sea_query::ValueType + sea_query::with_array::NotU8,
+        I: IntoIterator<Item = V>,
+    {
+        use sea_query::extension::postgres::PgFunc;
+
+        let vec: Vec<_> = v.into_iter().collect();
+        Expr::col((self.entity_name(), *self)).eq(PgFunc::any(vec))
+    }
+
     bind_subquery_func!(in_subquery);
     bind_subquery_func!(not_in_subquery);
 

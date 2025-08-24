@@ -266,6 +266,16 @@ assert!(matches!(
 fn create_enum_from_active_enum<A>(&self) -> Option<TypeCreateStatement>
 // method can now return None
 ```
+* Added `ColumnTrait::eq_any` as a shorthand for the ` = ANY` operator. Postgres only.
+```rust
+assert_eq!(
+    cake::Entity::find()
+        .filter(cake::Column::Id.eq_any(vec![4, 5]))
+        .build(DbBackend::Postgres)
+        .to_string(),
+    r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY [4,5])"#
+);
+```
 
 ### Breaking Changes
 
