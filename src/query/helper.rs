@@ -524,34 +524,6 @@ pub trait QuerySelect: Sized {
         self
     }
 
-    /// Same as `expr_as`. Here for legacy reasons.
-    ///
-    /// Select column.
-    ///
-    /// ```
-    /// use sea_orm::sea_query::{Alias, Expr, Func};
-    /// use sea_orm::{DbBackend, QuerySelect, QueryTrait, entity::*, tests_cfg::cake};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .expr_as(
-    ///             Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
-    ///             "name_upper"
-    ///         )
-    ///         .build(DbBackend::MySql)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
-    /// );
-    /// ```
-    fn expr_as_<T, A>(mut self, expr: T, alias: A) -> Self
-    where
-        T: Into<SimpleExpr>,
-        A: IntoIdentity,
-    {
-        self.query().expr_as(expr, alias.into_identity());
-        self
-    }
-
     /// Shorthand of `expr_as(Expr::col((T, C)), A)`.
     ///
     /// ```
@@ -736,9 +708,12 @@ pub trait QueryFilter: Sized {
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Id.eq_any(vec![4, 5]))
-    ///         .build(DbBackend::Postgres)
-    ///         .to_string(),
-    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY [4,5])"#
+    ///         .build(DbBackend::Postgres),
+    ///     Statement::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY($1)"#,
+    ///         [vec![4, 5].into()]
+    ///     )
     /// );
     /// ```
     ///
