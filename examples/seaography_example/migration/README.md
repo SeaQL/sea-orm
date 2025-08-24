@@ -12,7 +12,7 @@ GRANT ALL PRIVILEGES ON bakery.* TO sea;
 ## SQLite
 
 ```sh
-export DATABASE_URL=sqlite://../sakila.db?mode=rwc
+export DATABASE_URL=sqlite://../bakery.db?mode=rwc
 ```
 
 # Re-generate entities

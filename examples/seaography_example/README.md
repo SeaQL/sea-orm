@@ -11,7 +11,7 @@
 ## Specify a database url
 
 ```
-export DATABASE_URL="sqlite://../sakila.db"
+export DATABASE_URL="sqlite://../bakery.db"
 ```
 
 ## Running the project
