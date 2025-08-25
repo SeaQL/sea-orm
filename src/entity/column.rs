@@ -259,6 +259,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY [4,5])"#
     /// );
     /// ```
+    #[cfg(feature = "postgres-array")]
     fn eq_any<V, I>(&self, v: I) -> SimpleExpr
     where
         V: Into<Value> + sea_query::ValueType + sea_query::with_array::NotU8,
