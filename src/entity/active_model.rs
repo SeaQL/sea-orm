@@ -128,15 +128,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     /// Set the Value into an ActiveModel, return error if failed.
-    ///
-    /// This method is provided to prevent breaking changes, will be removed in next major version.
-    /// The provided implementation will still panic.
-    ///
-    /// If you're using `DeriveActiveModel` then it's correctly implemented.
-    fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr> {
-        self.set(c, v);
-        Ok(())
-    }
+    fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
 
     /// Set the state of an [ActiveValue] to the not set state
     fn not_set(&mut self, c: <Self::Entity as EntityTrait>::Column);
