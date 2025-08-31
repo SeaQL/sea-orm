@@ -13,7 +13,7 @@ pub struct Model {
     pub table: String,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, DeriveValueType)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, DeriveValueType)]
 pub struct ResourceId(pub i64);
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

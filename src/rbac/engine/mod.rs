@@ -26,8 +26,8 @@ pub struct RbacEngine {
     permissions: HashMap<PermissionRequest, Permission>,
     wildcard_resources: HashMap<ResourceId, Resource>,
     wildcard_permissions: HashMap<PermissionId, Permission>,
-    roles: HashSet<RoleId>,
-    user_roles: HashMap<UserId, Vec<RoleId>>,
+    roles: HashMap<RoleId, Role>,
+    user_roles: HashMap<UserId, RoleId>,
     role_permissions: HashMap<RoleId, HashSet<(PermissionId, ResourceId)>>,
     user_overrides: HashMap<UserId, Vec<UserOverride>>,
     role_hierarchy: HashMap<RoleId, Vec<RoleId>>, // Role -> ChildRole
@@ -50,6 +50,12 @@ pub struct RbacSnapshot {
     role_hierarchy: Vec<RoleHierarchy>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct RbacUserRolePermissions {
+    pub role: Role,
+    pub permissions: Vec<(Resource, Permission)>,
+}
+
 impl RbacSnapshot {
     /// Create an unrestricted system where `UserId(0)` can perform any action on any resource.
     /// This is intended to be an escape hatch to bypass RBAC restrictions.
@@ -70,7 +76,7 @@ impl RbacSnapshot {
             id: RoleId(0),
             role: "unrestricted".to_owned(),
         }]);
-        snapshot.add_user_roles(UserId(0), &["unrestricted"]);
+        snapshot.set_user_role(UserId(0), "unrestricted");
         snapshot.add_role_permission("unrestricted", Action("*"), Table("*"));
 
         snapshot
@@ -97,13 +103,11 @@ impl RbacSnapshot {
         self.roles = roles;
     }
 
-    fn add_user_roles(&mut self, user_id: UserId, roles: &[&str]) {
-        for role in roles {
-            self.user_roles.push(UserRole {
-                user_id,
-                role_id: self.find_role(role),
-            });
-        }
+    fn set_user_role(&mut self, user_id: UserId, role: &str) {
+        self.user_roles.push(UserRole {
+            user_id,
+            role_id: self.find_role(role),
+        });
     }
 
     fn add_role_permission<P, R>(&mut self, role: &str, permission: P, resource: R)
@@ -198,14 +202,11 @@ impl RbacEngine {
             }
         }
 
-        let roles: HashSet<RoleId> = roles_rows.into_iter().map(|r| r.id).collect();
+        let roles: HashMap<RoleId, Role> = roles_rows.into_iter().map(|r| (r.id, r)).collect();
 
-        let mut user_roles: HashMap<UserId, Vec<RoleId>> = Default::default();
+        let mut user_roles: HashMap<UserId, RoleId> = Default::default();
         for user_role in user_roles_rows {
-            user_roles
-                .entry(user_role.user_id)
-                .or_default()
-                .push(user_role.role_id);
+            user_roles.insert(user_role.user_id, user_role.role_id);
         }
 
         let mut role_permissions: HashMap<RoleId, HashSet<(PermissionId, ResourceId)>> =
@@ -244,6 +245,80 @@ impl RbacEngine {
         }
     }
 
+    fn get_user_role_ids(&self, user_id: &UserId) -> Result<HashSet<RoleId>, Error> {
+        if let Some(role) = self.user_roles.get(&user_id) {
+            let mut user_roles = HashSet::new();
+            for role in enumerate_role(*role, &self.role_hierarchy) {
+                if !self.roles.contains_key(&role) {
+                    return Err(Error::RoleNotFound(format!("{role:?}")));
+                }
+                user_roles.insert(role);
+            }
+            Ok(user_roles)
+        } else {
+            Err(Error::UserNotFound(format!("{user_id:?}")))
+        }
+    }
+
+    pub fn get_user_role_permissions(
+        &self,
+        user_id: UserId,
+    ) -> Result<RbacUserRolePermissions, Error> {
+        let mut user_roles: Vec<RoleId> = self.get_user_role_ids(&user_id)?.into_iter().collect();
+        user_roles.sort();
+
+        let mut role_permissions: HashSet<(PermissionId, ResourceId)> = Default::default();
+
+        for role_id in user_roles {
+            if let Some(items) = self.role_permissions.get(&role_id) {
+                role_permissions.extend(items.into_iter());
+            }
+        }
+
+        if let Some(user_overrides) = self.user_overrides.get(&user_id) {
+            for over in user_overrides {
+                let role_permission = (over.permission_id, over.resource_id);
+                if role_permissions.contains(&role_permission) {
+                    if !over.grant {
+                        role_permissions.remove(&role_permission);
+                    }
+                } else if over.grant {
+                    role_permissions.insert(role_permission);
+                }
+            }
+        }
+
+        let mut permissions = role_permissions
+            .into_iter()
+            .map(|(permission_id, resource_id)| {
+                let resource = self
+                    .resources
+                    .values()
+                    .find(|r| r.id == resource_id)
+                    .ok_or_else(|| Error::ResourceNotFound(format!("{resource_id:?}")))?
+                    .clone();
+                let permission = self
+                    .permissions
+                    .values()
+                    .find(|p| p.id == permission_id)
+                    .ok_or_else(|| Error::PermissionNotFound(format!("{permission_id:?}")))?
+                    .clone();
+                Ok((resource, permission))
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
+
+        permissions.sort_by_key(|r| (r.0.id, r.1.id));
+
+        Ok(RbacUserRolePermissions {
+            role: self
+                .roles
+                .get(&self.user_roles.get(&user_id).expect("Checked above"))
+                .expect("Checked above")
+                .to_owned(),
+            permissions,
+        })
+    }
+
     pub fn user_can<P, R>(&self, user_id: UserId, permission: P, resource: R) -> Result<bool, Error>
     where
         P: Into<PermissionRequest>,
@@ -255,17 +330,7 @@ impl RbacEngine {
         let permission = self.permissions.get(&permission);
 
         // get user roles and flatten hierarchy
-        let mut user_roles = HashSet::new();
-        if let Some(roles) = self.user_roles.get(&user_id) {
-            for role in roles {
-                for role in enumerate_role(*role, &self.role_hierarchy) {
-                    if !self.roles.contains(&role) {
-                        return Err(Error::RoleNotFound(format!("{role:?}")));
-                    }
-                    user_roles.insert(role);
-                }
-            }
-        }
+        let user_roles = self.get_user_role_ids(&user_id)?;
 
         if let (Some(permission), Some(resource)) = (permission, resource) {
             if let Some(user_overrides) = self.user_overrides.get(&user_id) {
@@ -395,11 +460,11 @@ mod test {
             role("clerk"),
             role("auditor"),
         ]);
-        snapshot.add_user_roles(UserId(1), &["admin"]);
-        snapshot.add_user_roles(UserId(2), &["manager"]);
-        snapshot.add_user_roles(UserId(3), &["clerk"]);
-        snapshot.add_user_roles(UserId(4), &["auditor"]);
-        snapshot.add_user_roles(UserId(5), &["clerk"]);
+        snapshot.set_user_role(UserId(1), "admin");
+        snapshot.set_user_role(UserId(2), "manager");
+        snapshot.set_user_role(UserId(3), "clerk");
+        snapshot.set_user_role(UserId(4), "auditor");
+        snapshot.set_user_role(UserId(5), "clerk");
 
         snapshot.add_role_hierarchy("manager", "admin");
         snapshot.add_role_hierarchy("clerk", "manager");
@@ -503,6 +568,90 @@ mod test {
         assert!(engine.user_can(admin, Action("?"), Object("?")).is_ok());
         assert!(engine.user_can(manager, Action("?"), Object("?")).is_err());
         assert!(engine.user_can(clerk, Action("?"), Object("?")).is_err());
+
+        assert_eq!(engine.get_user_role_permissions(clerk).unwrap(), RbacUserRolePermissions {
+            role: Role {
+                id: RoleId(3),
+                role: "clerk".to_owned(),
+            },
+            permissions: vec![
+                (
+                    Resource {
+                        id: ResourceId(2),
+                        schema: None,
+                        table: "paper".to_owned(),
+                    },
+                    Permission {
+                        id: PermissionId(1),
+                        action: "browse".to_owned(),
+                    },
+                ),
+                (
+                    Resource {
+                        id: ResourceId(2),
+                        schema: None,
+                        table: "paper".to_owned(),
+                    },
+                    Permission {
+                        id: PermissionId(4),
+                        action: "dispose".to_owned(),
+                    },
+                ),
+                (
+                    Resource {
+                        id: ResourceId(3),
+                        schema: None,
+                        table: "pen".to_owned(),
+                    },
+                    Permission {
+                        id: PermissionId(1),
+                        action: "browse".to_owned(),
+                    },
+                ),
+            ],
+        });
+
+        assert_eq!(engine.get_user_role_permissions(designer).unwrap(), RbacUserRolePermissions {
+            role: Role {
+                id: RoleId(3),
+                role: "clerk".to_owned(),
+            },
+            permissions: vec![
+                (
+                    Resource {
+                        id: ResourceId(2),
+                        schema: None,
+                        table: "paper".to_owned(),
+                    },
+                    Permission {
+                        id: PermissionId(1),
+                        action: "browse".to_owned(),
+                    },
+                ),
+                (
+                    Resource {
+                        id: ResourceId(3),
+                        schema: None,
+                        table: "pen".to_owned(),
+                    },
+                    Permission {
+                        id: PermissionId(1),
+                        action: "browse".to_owned(),
+                    },
+                ),
+                (
+                    Resource {
+                        id: ResourceId(3),
+                        schema: None,
+                        table: "pen".to_owned(),
+                    },
+                    Permission {
+                        id: PermissionId(2),
+                        action: "buy".to_owned(),
+                    },
+                ),
+            ],
+        });
     }
 
     #[rustfmt::skip]
@@ -534,11 +683,11 @@ mod test {
             role("reader"),
             role("admin"),
         ]);
-        snapshot.add_user_roles(UserId(1), &["silver"]);
-        snapshot.add_user_roles(UserId(2), &["gold"]);
-        snapshot.add_user_roles(UserId(3), &["platinum"]);
-        snapshot.add_user_roles(UserId(4), &["reader"]);
-        snapshot.add_user_roles(UserId(5), &["admin"]);
+        snapshot.set_user_role(UserId(1), "silver");
+        snapshot.set_user_role(UserId(2), "gold");
+        snapshot.set_user_role(UserId(3), "platinum");
+        snapshot.set_user_role(UserId(4), "reader");
+        snapshot.set_user_role(UserId(5), "admin");
 
         snapshot.add_role_permission("silver", Action("browse"), SchemaTable("departmentA", "book"));
         snapshot.add_role_permission("gold", Action("browse"), SchemaTable("departmentB", "book"));
@@ -604,13 +753,13 @@ mod test {
             role("A+B+C"),
             role("(A+B)+C"),
         ]);
-        snapshot.add_user_roles(UserId(1), &["A"]);
-        snapshot.add_user_roles(UserId(2), &["B"]);
-        snapshot.add_user_roles(UserId(3), &["C"]);
-        snapshot.add_user_roles(UserId(4), &["A+B"]);
-        snapshot.add_user_roles(UserId(5), &["A+C"]);
-        snapshot.add_user_roles(UserId(6), &["A+B+C"]);
-        snapshot.add_user_roles(UserId(7), &["(A+B)+C"]);
+        snapshot.set_user_role(UserId(1), "A");
+        snapshot.set_user_role(UserId(2), "B");
+        snapshot.set_user_role(UserId(3), "C");
+        snapshot.set_user_role(UserId(4), "A+B");
+        snapshot.set_user_role(UserId(5), "A+C");
+        snapshot.set_user_role(UserId(6), "A+B+C");
+        snapshot.set_user_role(UserId(7), "(A+B)+C");
 
         snapshot.add_role_permission("A", Action("browse"), Object("book"));
         snapshot.add_role_permission("B", Action("browse"), Object("CD"));

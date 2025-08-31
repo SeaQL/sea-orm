@@ -8,7 +8,6 @@ use super::{role::RoleId, user::UserId};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub user_id: UserId,
-    #[sea_orm(primary_key)]
     pub role_id: RoleId,
 }
 

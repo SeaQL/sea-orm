@@ -11,7 +11,7 @@ pub struct Model {
     pub role: String,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, DeriveValueType)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, DeriveValueType)]
 pub struct RoleId(pub i64);
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

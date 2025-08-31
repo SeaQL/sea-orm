@@ -1,6 +1,6 @@
 use crate::rbac::{
-    PermissionRequest, RbacEngine, RbacError, ResourceRequest, entity::user::UserId,
-    schema::action_str,
+    PermissionRequest, RbacEngine, RbacError, RbacUserRolePermissions, ResourceRequest,
+    entity::user::UserId, schema::action_str,
 };
 use crate::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
@@ -139,6 +139,11 @@ impl RestrictedConnection {
     /// Returns `DbErr` otherwise.
     pub fn user_can_run<S: StatementBuilder>(&self, stmt: &S) -> Result<(), DbErr> {
         self.conn.rbac.user_can_run(self.user_id, stmt)
+    }
+
+    /// Get current user's role and associated permissions
+    pub fn user_role_permissions(&self) -> Result<RbacUserRolePermissions, DbErr> {
+        self.conn.rbac.user_role_permissions(self.user_id)
     }
 }
 
@@ -385,6 +390,14 @@ impl RbacEngineMount {
             }
         }
         Ok(())
+    }
+
+    pub fn user_role_permissions(&self, user_id: UserId) -> Result<RbacUserRolePermissions, DbErr> {
+        let holder = self.inner.read().expect("RBAC Engine died");
+        let engine = holder.as_ref().expect("RBAC Engine not set");
+        engine
+            .get_user_role_permissions(user_id)
+            .map_err(|err| DbErr::RbacError(err.to_string()))
     }
 }
 

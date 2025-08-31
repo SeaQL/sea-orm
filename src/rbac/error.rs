@@ -12,4 +12,7 @@ pub enum Error {
     /// Role not found
     #[error("Role Not Found: {0}")]
     RoleNotFound(String),
+    /// User not found
+    #[error("User Not Found: {0}")]
+    UserNotFound(String),
 }
