@@ -516,9 +516,18 @@ where
 #[derive(DeriveIden)]
 enum PgType {
     Table,
+    Oid,
     Typname,
     Typnamespace,
     Typelem,
+}
+
+#[derive(DeriveIden)]
+enum PgDepend {
+    Table,
+    Objid,
+    Deptype,
+    Refclassid,
 }
 
 #[derive(DeriveIden)]
@@ -532,21 +541,32 @@ fn query_pg_types<C>(db: &C) -> SelectStatement
 where
     C: ConnectionTrait,
 {
-    let mut stmt = Query::select();
-    stmt.column(PgType::Typname)
+    Query::select()
+        .column(PgType::Typname)
         .from(PgType::Table)
-        .join(
-            JoinType::LeftJoin,
+        .left_join(
             PgNamespace::Table,
             Expr::col((PgNamespace::Table, PgNamespace::Oid))
                 .equals((PgType::Table, PgType::Typnamespace)),
         )
-        .cond_where(
-            Condition::all()
-                .add(get_current_schema(db).equals((PgNamespace::Table, PgNamespace::Nspname)))
-                .add(Expr::col((PgType::Table, PgType::Typelem)).eq(0)),
-        );
-    stmt
+        .and_where(get_current_schema(db).equals((PgNamespace::Table, PgNamespace::Nspname)))
+        .and_where(Expr::col((PgType::Table, PgType::Typelem)).eq(0))
+        .and_where(Expr::not(Expr::exists(
+            Query::select()
+                .expr(Expr::value(1))
+                .from(PgDepend::Table)
+                .and_where(
+                    Expr::col((PgDepend::Table, PgDepend::Objid))
+                        .equals((PgType::Table, PgType::Oid)),
+                )
+                .and_where(
+                    Expr::col((PgDepend::Table, PgDepend::Refclassid))
+                        .eq(Expr::cust("'pg_extension'::regclass::oid")),
+                )
+                .and_where(Expr::col((PgDepend::Table, PgDepend::Deptype)).eq(Expr::cust("'e'")))
+                .to_owned(),
+        )))
+        .take()
 }
 
 trait QueryTable {
