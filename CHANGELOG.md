@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.1.15 - 2025-08-31
+
+### Enhancements
+
+* Allow `DerivePartialModel` to have nested aliases https://github.com/SeaQL/sea-orm/pull/2686
+```rust
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "bakery::Entity", from_query_result)]
+struct Factory {
+    id: i32,
+    #[sea_orm(from_col = "name")]
+    plant: String,
+}
+
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity", from_query_result)]
+struct CakeFactory {
+    id: i32,
+    name: String,
+    #[sea_orm(nested, alias = "factory")] // <- new
+    bakery: Option<Factory>,
+}
+```
+* Add `ActiveModelTrait::try_set` https://github.com/SeaQL/sea-orm/pull/2706
+```rust
+fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
+/// New: a non-panicking version of above
+fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
+```
+
+### Bug Fixes
+
+* [sea-orm-cli] Fix compilation issue https://github.com/SeaQL/sea-orm/pull/2713
+
 ## 1.1.14 - 2025-07-21
 
 ### Enhancements
