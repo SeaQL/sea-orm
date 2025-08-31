@@ -2,7 +2,7 @@ use crate::{
     ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation,
     RelationType,
 };
-use sea_query::{ColumnSpec, TableCreateStatement};
+use sea_query::TableCreateStatement;
 use std::collections::{BTreeMap, HashMap};
 
 #[derive(Clone, Debug)]
@@ -27,10 +27,7 @@ impl EntityTransformer {
                 .get_columns()
                 .iter()
                 .map(|col_def| {
-                    let primary_key = col_def
-                        .get_column_spec()
-                        .iter()
-                        .any(|spec| matches!(spec, ColumnSpec::PrimaryKey));
+                    let primary_key = col_def.get_column_spec().primary_key;
                     if primary_key {
                         primary_keys.push(PrimaryKey {
                             name: col_def.get_column_name(),

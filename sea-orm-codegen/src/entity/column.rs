@@ -2,7 +2,7 @@ use crate::{DateTimeCrate, util::escape_rust_keyword};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use sea_query::{ColumnDef, ColumnSpec, ColumnType, StringLen};
+use sea_query::{ColumnDef, ColumnType, StringLen};
 use std::fmt::Write as FmtWrite;
 
 #[derive(Clone, Debug)]
@@ -282,18 +282,9 @@ impl From<&ColumnDef> for Column {
             Some(ty) => ty.clone(),
             None => panic!("ColumnType should not be empty"),
         };
-        let auto_increment = col_def
-            .get_column_spec()
-            .iter()
-            .any(|spec| matches!(spec, ColumnSpec::AutoIncrement));
-        let not_null = col_def
-            .get_column_spec()
-            .iter()
-            .any(|spec| matches!(spec, ColumnSpec::NotNull));
-        let unique = col_def
-            .get_column_spec()
-            .iter()
-            .any(|spec| matches!(spec, ColumnSpec::UniqueKey));
+        let auto_increment = col_def.get_column_spec().auto_increment;
+        let not_null = !col_def.get_column_spec().nullable.unwrap_or_default();
+        let unique = col_def.get_column_spec().unique;
         Self {
             name,
             col_type,
