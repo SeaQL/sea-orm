@@ -283,7 +283,10 @@ impl From<&ColumnDef> for Column {
             None => panic!("ColumnType should not be empty"),
         };
         let auto_increment = col_def.get_column_spec().auto_increment;
-        let not_null = !col_def.get_column_spec().nullable.unwrap_or_default();
+        let not_null = match col_def.get_column_spec().nullable {
+            Some(nullable) => !nullable,
+            None => false,
+        };
         let unique = col_def.get_column_spec().unique;
         Self {
             name,
