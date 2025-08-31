@@ -6,8 +6,8 @@ use std::time::SystemTime;
 use tracing::info;
 
 use sea_orm::sea_query::{
-    self, extension::postgres::Type, Alias, Expr, ExprTrait, ForeignKey, IntoIden, JoinType, Order,
-    Query, SelectStatement, SimpleExpr, Table,
+    self, extension::postgres::Type, Alias, Expr, ExprTrait, ForeignKey, IntoIden, Order, Query,
+    SelectStatement, SimpleExpr, Table,
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue, Condition, ConnectionTrait, DbBackend, DbErr, DeriveIden,
@@ -549,23 +549,19 @@ where
             Expr::col((PgNamespace::Table, PgNamespace::Oid))
                 .equals((PgType::Table, PgType::Typnamespace)),
         )
-        .and_where(get_current_schema(db).equals((PgNamespace::Table, PgNamespace::Nspname)))
-        .and_where(Expr::col((PgType::Table, PgType::Typelem)).eq(0))
-        .and_where(Expr::not(Expr::exists(
-            Query::select()
-                .expr(Expr::value(1))
-                .from(PgDepend::Table)
-                .and_where(
-                    Expr::col((PgDepend::Table, PgDepend::Objid))
-                        .equals((PgType::Table, PgType::Oid)),
-                )
-                .and_where(
+        .left_join(
+            PgDepend::Table,
+            Expr::col((PgDepend::Table, PgDepend::Objid))
+                .equals((PgType::Table, PgType::Oid))
+                .and(
                     Expr::col((PgDepend::Table, PgDepend::Refclassid))
                         .eq(Expr::cust("'pg_extension'::regclass::oid")),
                 )
-                .and_where(Expr::col((PgDepend::Table, PgDepend::Deptype)).eq(Expr::cust("'e'")))
-                .to_owned(),
-        )))
+                .and(Expr::col((PgDepend::Table, PgDepend::Deptype)).eq(Expr::cust("'e'"))),
+        )
+        .and_where(get_current_schema(db).equals((PgNamespace::Table, PgNamespace::Nspname)))
+        .and_where(Expr::col((PgType::Table, PgType::Typelem)).eq(0))
+        .and_where(Expr::col((PgDepend::Table, PgDepend::Objid)).is_null())
         .take()
 }
 
