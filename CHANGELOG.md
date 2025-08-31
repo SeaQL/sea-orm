@@ -233,6 +233,33 @@ let rows = self.db.query_all(stmt).await?;
 let query: SelectStatement = Entity::find().filter(..).into_query();
 let rows = self.db.query_all(&query).await?;
 ```
+* Added `raw_sql` macro for ergonomic parameter injection
+```rust
+#[derive(FromQueryResult)]
+struct Cake {
+    name: String,
+    #[sea_orm(nested)]
+    bakery: Option<Bakery>,
+}
+
+#[derive(FromQueryResult)]
+struct Bakery {
+    #[sea_orm(alias = "bakery_name")]
+    name: String,
+}
+
+let cake_ids = [2, 3, 4]; // expanded by the `..` operator
+
+let cake: Option<Cake> = Cake::find_by_statement(raw_sql!(
+    Sqlite,
+    r#"SELECT "cake"."name", "bakery"."name" AS "bakery_name"
+       FROM "cake"
+       LEFT JOIN "bakery" ON "cake"."bakery_id" = "bakery"."id"
+       WHERE "cake"."id" IN ({..cake_ids})"#
+))
+.one(db)
+.await?;
+```
 
 ### Enhancements
 
