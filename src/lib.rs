@@ -351,7 +351,7 @@
 //!     name: String,
 //! }
 //!
-//! let cake_ids = [2, 3, 4];
+//! let cake_ids = [2, 3, 4]; // expanded by the `..` operator
 //!
 //! let cake: Option<Cake> = Cake::find_by_statement(raw_sql!(
 //!     Sqlite,
