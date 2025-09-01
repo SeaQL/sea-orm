@@ -291,18 +291,25 @@ impl RbacEngine {
         let mut permissions = role_permissions
             .into_iter()
             .map(|(permission_id, resource_id)| {
-                let resource = self
-                    .resources
-                    .values()
-                    .find(|r| r.id == resource_id)
-                    .ok_or_else(|| Error::ResourceNotFound(format!("{resource_id:?}")))?
-                    .clone();
-                let permission = self
-                    .permissions
-                    .values()
-                    .find(|p| p.id == permission_id)
-                    .ok_or_else(|| Error::PermissionNotFound(format!("{permission_id:?}")))?
-                    .clone();
+                let resource = if let Some(r) = self.wildcard_resources.get(&resource_id) {
+                    r
+                } else {
+                    self.resources
+                        .values()
+                        .find(|r| r.id == resource_id)
+                        .ok_or_else(|| Error::ResourceNotFound(format!("{resource_id:?}")))?
+                }
+                .clone();
+                let permission = if let Some(p) = self.wildcard_permissions.get(&permission_id) {
+                    p
+                } else {
+                    self.permissions
+                        .values()
+                        .find(|p| p.id == permission_id)
+                        .ok_or_else(|| Error::PermissionNotFound(format!("{permission_id:?}")))?
+                }
+                .clone();
+
                 Ok((resource, permission))
             })
             .collect::<Result<Vec<_>, Error>>()?;
@@ -822,5 +829,30 @@ mod test {
         assert!(engine.user_can(A_B_C_, Action("browse"), Object("book")).unwrap());
         assert!(engine.user_can(A_B_C_, Action("browse"), Object("CD")).unwrap());
         assert!(engine.user_can(A_B_C_, Action("browse"), Object("magazine")).unwrap());
+    }
+
+    #[test]
+    fn test_unrestricted() {
+        let engine = RbacEngine::from_snapshot(RbacSnapshot::danger_unrestricted());
+        assert_eq!(
+            engine.get_user_role_permissions(UserId(0)).unwrap(),
+            RbacUserRolePermissions {
+                role: Role {
+                    id: RoleId(1),
+                    role: "unrestricted".to_owned(),
+                },
+                permissions: vec![(
+                    Resource {
+                        id: ResourceId(1),
+                        schema: None,
+                        table: "*".to_owned(),
+                    },
+                    Permission {
+                        id: PermissionId(1),
+                        action: "*".to_owned(),
+                    },
+                ),],
+            }
+        );
     }
 }
