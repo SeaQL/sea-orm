@@ -1,6 +1,6 @@
 use crate::{
-    ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyArity, PrimaryKeyToColumn,
-    PrimaryKeyTrait, Value, error::*,
+    ConnectionTrait, DeleteResult, EntityTrait, IdenStatic, Iterable, PrimaryKeyArity,
+    PrimaryKeyToColumn, PrimaryKeyTrait, Value, error::*,
 };
 use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
@@ -124,7 +124,13 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     /// Set the Value into an ActiveModel, panic if failed
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) {
-        self.try_set(c, v).unwrap()
+        self.try_set(c, v).unwrap_or_else(|e| {
+            panic!(
+                "Failed to set value for {}.{}: {e:?}",
+                Self::Entity::default().as_str(),
+                c.as_str()
+            )
+        })
     }
 
     /// Set the Value into an ActiveModel, return error if failed.
