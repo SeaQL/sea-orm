@@ -47,6 +47,14 @@ pub struct RbacUserRolePermissions {
     pub permissions: Vec<(Resource, Permission)>,
 }
 
+pub type RbacRolesAndRanks = Vec<(Role, u32)>;
+
+pub type RbacRoleHierarchyList = Vec<RoleHierarchy>;
+
+pub type RbacResourcesAndPermissions = (Vec<Resource>, Vec<Permission>);
+
+pub type RbacPermissionsByResources = Vec<(Resource, Vec<Permission>)>;
+
 impl RbacEngine {
     pub fn from_snapshot(
         RbacSnapshot {
@@ -122,6 +130,7 @@ impl RbacEngine {
         }
     }
 
+    /// get user's role and walk the hierarchy, returning all assigned roles
     fn get_user_role_ids(&self, user_id: &UserId) -> Result<HashSet<RoleId>, Error> {
         if let Some(role) = self.user_roles.get(&user_id) {
             let mut user_roles = HashSet::new();
@@ -135,6 +144,22 @@ impl RbacEngine {
         } else {
             Err(Error::UserNotFound(format!("{user_id:?}")))
         }
+    }
+
+    pub fn get_roles_and_ranks(&self) -> Result<RbacRolesAndRanks, Error> {
+        let mut all_roles = Vec::new();
+        for role_id in self.roles.keys() {
+            all_roles.push((
+                self.roles
+                    .get(role_id)
+                    .cloned()
+                    .ok_or_else(|| Error::RoleNotFound(format!("{role_id:?}")))?,
+                enumerate_role(*role_id, &self.role_hierarchy).len() as u32,
+            ));
+        }
+        // descending rank but ascending role
+        all_roles.sort_by_key(|r| (-(r.1 as i64), r.0.id));
+        Ok(all_roles)
     }
 
     pub fn get_user_role_permissions(
@@ -201,6 +226,51 @@ impl RbacEngine {
                 .to_owned(),
             permissions,
         })
+    }
+
+    pub fn list_resources_and_permissions(&self) -> RbacResourcesAndPermissions {
+        (
+            self.resources.values().cloned().collect(),
+            self.permissions.values().cloned().collect(),
+        )
+    }
+
+    pub fn list_role_hierarchy_edges(&self, role_id: RoleId) -> Vec<RoleHierarchy> {
+        list_role_hierarchy_edges(role_id, &self.role_hierarchy)
+    }
+
+    pub fn list_role_permissions_by_resources(
+        &self,
+        role_id: RoleId,
+    ) -> Result<RbacPermissionsByResources, Error> {
+        let mut map: HashMap<ResourceId, (Resource, Vec<Permission>)> = Default::default();
+
+        for row in self
+            .role_permissions
+            .get(&role_id)
+            .ok_or_else(|| Error::RoleNotFound(format!("{role_id:?}")))?
+        {
+            let permission = self
+                .permissions
+                .values()
+                .find(|p| p.id == row.0)
+                .ok_or_else(|| Error::PermissionNotFound(format!("{:?}", row.0)))?;
+            let resource = self
+                .resources
+                .values()
+                .find(|r| r.id == row.1)
+                .ok_or_else(|| Error::ResourceNotFound(format!("{:?}", row.1)))?;
+
+            map.entry(row.1)
+                .or_insert_with(|| (resource.to_owned(), Default::default()))
+                .1
+                .push(permission.to_owned());
+        }
+
+        let mut vec: Vec<_> = map.into_values().collect();
+        vec.sort_by_key(|r| r.0.id);
+        vec.iter_mut().for_each(|r| r.1.sort_by_key(|p| p.id));
+        Ok(vec)
     }
 
     pub fn user_can<P, R>(&self, user_id: UserId, permission: P, resource: R) -> Result<bool, Error>
@@ -460,37 +530,16 @@ mod test {
             },
             permissions: vec![
                 (
-                    Resource {
-                        id: ResourceId(2),
-                        schema: None,
-                        table: "paper".to_owned(),
-                    },
-                    Permission {
-                        id: PermissionId(1),
-                        action: "browse".to_owned(),
-                    },
+                    Resource { id: ResourceId(2), schema: None, table: "paper".to_owned() },
+                    Permission { id: PermissionId(1), action: "browse".to_owned() },
                 ),
                 (
-                    Resource {
-                        id: ResourceId(2),
-                        schema: None,
-                        table: "paper".to_owned(),
-                    },
-                    Permission {
-                        id: PermissionId(4),
-                        action: "dispose".to_owned(),
-                    },
+                    Resource { id: ResourceId(2), schema: None, table: "paper".to_owned() },
+                    Permission { id: PermissionId(4), action: "dispose".to_owned() },
                 ),
                 (
-                    Resource {
-                        id: ResourceId(3),
-                        schema: None,
-                        table: "pen".to_owned(),
-                    },
-                    Permission {
-                        id: PermissionId(1),
-                        action: "browse".to_owned(),
-                    },
+                    Resource { id: ResourceId(3), schema: None, table: "pen".to_owned() },
+                    Permission { id: PermissionId(1), action: "browse".to_owned() },
                 ),
             ],
         });
@@ -502,40 +551,49 @@ mod test {
             },
             permissions: vec![
                 (
-                    Resource {
-                        id: ResourceId(2),
-                        schema: None,
-                        table: "paper".to_owned(),
-                    },
-                    Permission {
-                        id: PermissionId(1),
-                        action: "browse".to_owned(),
-                    },
+                    Resource { id: ResourceId(2), schema: None, table: "paper".to_owned() },
+                    Permission { id: PermissionId(1), action: "browse".to_owned() },
                 ),
                 (
-                    Resource {
-                        id: ResourceId(3),
-                        schema: None,
-                        table: "pen".to_owned(),
-                    },
-                    Permission {
-                        id: PermissionId(1),
-                        action: "browse".to_owned(),
-                    },
+                    Resource { id: ResourceId(3), schema: None, table: "pen".to_owned() },
+                    Permission { id: PermissionId(1), action: "browse".to_owned() },
                 ),
                 (
-                    Resource {
-                        id: ResourceId(3),
-                        schema: None,
-                        table: "pen".to_owned(),
-                    },
-                    Permission {
-                        id: PermissionId(2),
-                        action: "buy".to_owned(),
-                    },
+                    Resource { id: ResourceId(3), schema: None, table: "pen".to_owned() },
+                    Permission { id: PermissionId(2), action: "buy".to_owned() },
                 ),
             ],
         });
+
+        assert_eq!(engine.get_roles_and_ranks().unwrap(), vec![
+            (Role { id: RoleId(1), role: "admin".to_owned()   }, 4), // <- manager | auditor
+            (Role { id: RoleId(2), role: "manager".to_owned() }, 2), // <- clerk
+            (Role { id: RoleId(3), role: "clerk".to_owned()   }, 1), //
+            (Role { id: RoleId(4), role: "auditor".to_owned() }, 1), //
+        ]);
+
+        assert_eq!(engine.list_role_hierarchy_edges(RoleId(1)), vec![
+            RoleHierarchy { super_role_id: RoleId(1), role_id: RoleId(2) },
+            RoleHierarchy { super_role_id: RoleId(1), role_id: RoleId(4) },
+            RoleHierarchy { super_role_id: RoleId(2), role_id: RoleId(3) },
+        ]);
+
+        assert_eq!(engine.list_role_hierarchy_edges(RoleId(2)), vec![
+            RoleHierarchy { super_role_id: RoleId(2), role_id: RoleId(3) },
+        ]);
+
+        assert_eq!(engine.list_role_hierarchy_edges(RoleId(3)), vec![]);
+
+        assert_eq!(engine.list_role_permissions_by_resources(RoleId(2)).unwrap(), vec![
+            (Resource { id: ResourceId(1), schema: None, table: "book".into() }, vec![
+                Permission { id: PermissionId(1), action: "browse".into() },
+                Permission { id: PermissionId(2), action: "buy".into() },
+                Permission { id: PermissionId(4), action: "dispose".into() },
+            ]),
+            (Resource { id: ResourceId(2), schema: None, table: "paper".into() }, vec![
+                Permission { id: PermissionId(3), action: "replace".into() },
+            ]),
+        ]);
     }
 
     #[rustfmt::skip]
@@ -706,6 +764,43 @@ mod test {
         assert!(engine.user_can(A_B_C_, Action("browse"), Object("book")).unwrap());
         assert!(engine.user_can(A_B_C_, Action("browse"), Object("CD")).unwrap());
         assert!(engine.user_can(A_B_C_, Action("browse"), Object("magazine")).unwrap());
+
+        assert_eq!(engine.get_roles_and_ranks().unwrap(), vec![
+            (Role { id: RoleId(7), role: "(A+B)+C".into() }, 5),
+            (Role { id: RoleId(6), role: "A+B+C".into() }, 4),
+            (Role { id: RoleId(4), role: "A+B".into() }, 3),
+            (Role { id: RoleId(5), role: "A+C".into() }, 3),
+            (Role { id: RoleId(1), role: "A".into() }, 1),
+            (Role { id: RoleId(2), role: "B".into() }, 1),
+            (Role { id: RoleId(3), role: "C".into() }, 1),
+        ]);
+
+        assert_eq!(engine.list_role_hierarchy_edges(RoleId(1)), vec![]);
+        assert_eq!(engine.list_role_hierarchy_edges(RoleId(2)), vec![]);
+        assert_eq!(engine.list_role_hierarchy_edges(RoleId(3)), vec![]);
+
+        assert_eq!(engine.list_role_hierarchy_edges(RoleId(4)), vec![
+            RoleHierarchy { super_role_id: RoleId(4), role_id: RoleId(1) },
+            RoleHierarchy { super_role_id: RoleId(4), role_id: RoleId(2) },
+        ]);
+
+        assert_eq!(engine.list_role_hierarchy_edges(RoleId(5)), vec![
+            RoleHierarchy { super_role_id: RoleId(5), role_id: RoleId(1) },
+            RoleHierarchy { super_role_id: RoleId(5), role_id: RoleId(3) },
+        ]);
+
+        assert_eq!(engine.list_role_hierarchy_edges(RoleId(6)), vec![
+            RoleHierarchy { super_role_id: RoleId(6), role_id: RoleId(1) },
+            RoleHierarchy { super_role_id: RoleId(6), role_id: RoleId(2) },
+            RoleHierarchy { super_role_id: RoleId(6), role_id: RoleId(3) },
+        ]);
+
+        assert_eq!(engine.list_role_hierarchy_edges(RoleId(7)), vec![
+            RoleHierarchy { super_role_id: RoleId(7), role_id: RoleId(4) },
+            RoleHierarchy { super_role_id: RoleId(7), role_id: RoleId(3) },
+            RoleHierarchy { super_role_id: RoleId(4), role_id: RoleId(1) },
+            RoleHierarchy { super_role_id: RoleId(4), role_id: RoleId(2) },
+        ]);
     }
 
     #[test]

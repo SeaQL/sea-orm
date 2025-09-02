@@ -1,11 +1,12 @@
-use super::RoleId;
+use super::{RoleHierarchy, RoleId};
 use std::collections::{HashMap, VecDeque};
 
-/// walk the hierarchy tree and enumerate all the child roles given a role
-pub fn enumerate_role(
-    role: RoleId,
-    role_hierarchy: &HashMap<RoleId, Vec<RoleId>>, // Role -> ChildRole
-) -> Vec<RoleId> {
+/// Role -> [ChildRole]
+pub type RoleHierarchyMap = HashMap<RoleId, Vec<RoleId>>;
+
+/// walk the hierarchy tree and enumerate all the children roles given a role.
+/// this is a non-recursive tree walk impl.
+pub fn enumerate_role(role: RoleId, role_hierarchy: &RoleHierarchyMap) -> Vec<RoleId> {
     let mut roles = Vec::new();
     let mut queue = VecDeque::new();
     queue.push_back(role);
@@ -20,6 +21,33 @@ pub fn enumerate_role(
     }
 
     roles
+}
+
+/// walk the hierarchy tree and enumerate all the children roles given a role.
+/// return the edges instead.
+pub fn list_role_hierarchy_edges(
+    role: RoleId,
+    role_hierarchy: &RoleHierarchyMap,
+) -> Vec<RoleHierarchy> {
+    let mut edges = Vec::new();
+    let mut roles = Vec::new();
+    let mut queue = VecDeque::new();
+    queue.push_back(role);
+
+    while let Some(role) = queue.pop_front() {
+        roles.push(role);
+        if let Some(children) = role_hierarchy.get(&role) {
+            for child in children {
+                queue.push_back(*child);
+                edges.push(RoleHierarchy {
+                    super_role_id: role,
+                    role_id: *child,
+                });
+            }
+        }
+    }
+
+    edges
 }
 
 #[cfg(test)]

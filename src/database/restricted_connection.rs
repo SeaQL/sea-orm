@@ -1,6 +1,9 @@
 use crate::rbac::{
-    PermissionRequest, RbacEngine, RbacError, RbacUserRolePermissions, ResourceRequest,
-    entity::user::UserId, schema::action_str,
+    PermissionRequest, RbacEngine, RbacError, RbacPermissionsByResources,
+    RbacResourcesAndPermissions, RbacRoleHierarchyList, RbacRolesAndRanks, RbacUserRolePermissions,
+    ResourceRequest,
+    entity::{role::RoleId, user::UserId},
+    schema::action_str,
 };
 use crate::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
@@ -141,9 +144,35 @@ impl RestrictedConnection {
         self.conn.rbac.user_can_run(self.user_id, stmt)
     }
 
-    /// Get current user's role and associated permissions
+    /// Get current user's role and associated permissions.
+    /// This includes permissions "inherited" from child roles.
     pub fn user_role_permissions(&self) -> Result<RbacUserRolePermissions, DbErr> {
         self.conn.rbac.user_role_permissions(self.user_id)
+    }
+
+    /// Get a list of all roles and their ranks.
+    /// Rank is defined as (1 + number of child roles).
+    pub fn roles_and_ranks(&self) -> Result<RbacRolesAndRanks, DbErr> {
+        self.conn.rbac.roles_and_ranks()
+    }
+
+    /// Get two lists of all resources and permissions, excluding wildcards.
+    pub fn resources_and_permissions(&self) -> Result<RbacResourcesAndPermissions, DbErr> {
+        self.conn.rbac.resources_and_permissions()
+    }
+
+    /// Get a list of edges walking the role hierarchy tree
+    pub fn role_hierarchy_edges(&self, role_id: RoleId) -> Result<RbacRoleHierarchyList, DbErr> {
+        self.conn.rbac.role_hierarchy_edges(role_id)
+    }
+
+    /// Get a list of permissions for the specific role, grouped by resources.
+    /// This does not include permissions of child roles.
+    pub fn role_permissions_by_resources(
+        &self,
+        role_id: RoleId,
+    ) -> Result<RbacPermissionsByResources, DbErr> {
+        self.conn.rbac.role_permissions_by_resources(role_id)
     }
 }
 
@@ -397,6 +426,37 @@ impl RbacEngineMount {
         let engine = holder.as_ref().expect("RBAC Engine not set");
         engine
             .get_user_role_permissions(user_id)
+            .map_err(|err| DbErr::RbacError(err.to_string()))
+    }
+
+    pub fn roles_and_ranks(&self) -> Result<RbacRolesAndRanks, DbErr> {
+        let holder = self.inner.read().expect("RBAC Engine died");
+        let engine = holder.as_ref().expect("RBAC Engine not set");
+        engine
+            .get_roles_and_ranks()
+            .map_err(|err| DbErr::RbacError(err.to_string()))
+    }
+
+    pub fn resources_and_permissions(&self) -> Result<RbacResourcesAndPermissions, DbErr> {
+        let holder = self.inner.read().expect("RBAC Engine died");
+        let engine = holder.as_ref().expect("RBAC Engine not set");
+        Ok(engine.list_resources_and_permissions())
+    }
+
+    pub fn role_hierarchy_edges(&self, role_id: RoleId) -> Result<RbacRoleHierarchyList, DbErr> {
+        let holder = self.inner.read().expect("RBAC Engine died");
+        let engine = holder.as_ref().expect("RBAC Engine not set");
+        Ok(engine.list_role_hierarchy_edges(role_id))
+    }
+
+    pub fn role_permissions_by_resources(
+        &self,
+        role_id: RoleId,
+    ) -> Result<RbacPermissionsByResources, DbErr> {
+        let holder = self.inner.read().expect("RBAC Engine died");
+        let engine = holder.as_ref().expect("RBAC Engine not set");
+        engine
+            .list_role_permissions_by_resources(role_id)
             .map_err(|err| DbErr::RbacError(err.to_string()))
     }
 }
