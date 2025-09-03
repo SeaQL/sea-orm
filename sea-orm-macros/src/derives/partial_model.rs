@@ -269,22 +269,22 @@ impl DerivePartialModel {
                     &format_ident!("{}", field.to_upper_camel_case())
                 };
 
-                let select_ident_value = {
-                    // variant of the entity column
-                    let column = quote! {
-                        <#entity as ::sea_orm::EntityTrait>::Column::#col_variant
-                    };
+                // variant of the entity column
+                let column = quote! {
+                    <#entity as ::sea_orm::EntityTrait>::Column::#col_variant
+                };
 
-                    let maybe_aliased_column = match alias {
-                        Some(alias) => quote! {
-                            ::sea_orm::sea_query::Expr::col((#alias, #column))
-                        },
-                        None => quote! {
-                            #column
-                        },
-                    };
+                let maybe_aliased_column = match alias {
+                    Some(alias) => quote! {
+                        ::sea_orm::sea_query::Expr::col((#alias, #column))
+                    },
+                    None => quote! {
+                        #column
+                    },
+                };
 
-                    quote! {{
+                quote! {
+                    let #select_ident = {
                         let col_alias = pre.map_or(#field.to_string(), |pre| format!("{pre}{}", #field));
                         if let Some(nested_alias) = nested_alias {
                             // TODO: Replace this with the new iden after updating to sea-query 1.0
@@ -301,12 +301,7 @@ impl DerivePartialModel {
                         } else {
                             ::sea_orm::SelectColumns::select_column_as(#select_ident, #maybe_aliased_column, col_alias)
                         }
-                    }}
-                };
-
-
-                quote! {
-                    let #select_ident = #select_ident_value;
+                    };
                 }
             }
 
