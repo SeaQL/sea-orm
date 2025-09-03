@@ -284,26 +284,24 @@ impl DerivePartialModel {
                         },
                     };
 
-                    quote! {
-                        {
-                            let col_alias = pre.map_or(#field.to_string(), |pre| format!("{pre}{}", #field));
-                            if let Some(nested_alias) = nested_alias {
-                                // TODO: Replace this with the new iden after updating to sea-query 1.0
-                                let alias = ::sea_orm::sea_query::Alias::new(nested_alias);
-                                let alias_iden = ::sea_orm::sea_query::DynIden::new(alias);
-                                let col_expr = ::sea_orm::sea_query::Expr::col(
-                                    (alias_iden, #column)
-                                );
+                    quote! {{
+                        let col_alias = pre.map_or(#field.to_string(), |pre| format!("{pre}{}", #field));
+                        if let Some(nested_alias) = nested_alias {
+                            // TODO: Replace this with the new iden after updating to sea-query 1.0
+                            let alias = ::sea_orm::sea_query::Alias::new(nested_alias);
+                            let alias_iden = ::sea_orm::sea_query::DynIden::new(alias);
+                            let col_expr = ::sea_orm::sea_query::Expr::col(
+                                (alias_iden, #column)
+                            );
 
-                                // Cast enum as text if the backend is postgres
-                                let col_expr = ::sea_orm::ColumnTrait::select_as(&#column, col);
+                            // Cast enum as text if the backend is postgres
+                            let col_expr = ::sea_orm::ColumnTrait::select_as(&#column, col_expr);
 
-                                ::sea_orm::SelectColumns::select_column_as(#select_ident, col_expr, col_alias)
-                            } else {
-                                ::sea_orm::SelectColumns::select_column_as(#select_ident, #maybe_aliased_column, col_alias)
-                            }
+                            ::sea_orm::SelectColumns::select_column_as(#select_ident, col_expr, col_alias)
+                        } else {
+                            ::sea_orm::SelectColumns::select_column_as(#select_ident, #maybe_aliased_column, col_alias)
                         }
-                    }
+                    }}
                 };
 
 
