@@ -44,7 +44,7 @@ enum ColumnAs {
 struct DerivePartialModel {
     entity: Option<syn::Type>,
     active_model: Option<syn::Type>,
-    model_alias: Option<String>,
+    alias: Option<String>,
     ident: syn::Ident,
     fields: Vec<ColumnAs>,
     from_query_result: bool,
@@ -68,8 +68,8 @@ impl DerivePartialModel {
         let mut entity = None;
         let mut entity_string = String::new();
         let mut active_model = None;
-        let mut model_alias = None;
-        let mut from_query_result = true;
+        let mut alias = None;
+        let mut from_query_result = false;
         let mut into_active_model = false;
 
         for attr in input.attrs.iter() {
@@ -83,11 +83,9 @@ impl DerivePartialModel {
                         entity = Some(syn::parse_str::<syn::Type>(&s).map_err(Error::Syn)?);
                         entity_string = s;
                     } else if let Some(s) = meta.get_as_kv("alias") {
-                        model_alias = Some(s);
-                    } else if let Some(s) = meta.get_as_kv("from_query_result") {
-                        if s == "false" {
-                            from_query_result = false;
-                        }
+                        alias = Some(s);
+                    } else if meta.exists("from_query_result") {
+                        from_query_result = true;
                     } else if meta.exists("into_active_model") {
                         into_active_model = true;
                     }
@@ -181,7 +179,7 @@ impl DerivePartialModel {
         Ok(Self {
             entity,
             active_model,
-            model_alias,
+            alias,
             ident: input.ident,
             fields: column_as_list,
             from_query_result,
@@ -255,7 +253,7 @@ impl DerivePartialModel {
         let select_ident = format_ident!("select");
         let DerivePartialModel {
             entity,
-            model_alias,
+            alias,
             ident,
             fields,
             ..
@@ -265,40 +263,46 @@ impl DerivePartialModel {
                 let field = field.unraw().to_string();
                 let entity = entity.as_ref().unwrap();
 
-                let col_as = if let Some(col) = col {
+                let variant_name = if let Some(col) = col {
                     col
                 } else {
                     &format_ident!("{}", field.to_upper_camel_case())
                 };
 
-                let col_value = {
-                    let col_expr = quote! {
-                        <#entity as sea_orm::EntityTrait>::Column::#col_as
-                    };
+                // variant of the entity column
+                let column = quote! {
+                    <#entity as sea_orm::EntityTrait>::Column::#variant_name
+                };
 
-                    let non_nested = match model_alias {
-                        Some(model_alias) => quote! {
-                            sea_orm::sea_query::Expr::col((#model_alias, #col_expr))
-                        },
-                        None => quote! {
-                            sea_orm::ColumnTrait::into_expr(#col_expr)
-                        },
-                    };
+                // We cast enum as text in select_as if the backend is postgres
 
-                    quote! {
-                        if let Some(nested_alias) = nested_alias {
-                            sea_orm::sea_query::Expr::col((nested_alias, #col_expr))
-                        } else {
-                            #non_nested
-                        }
-                    }
+                let non_nested = match alias {
+                    Some(alias) => quote! {
+                        let col_expr = sea_orm::sea_query::Expr::col((#alias, #column));
+                        let casted = sea_orm::ColumnTrait::select_as(&#column, col_expr);
+                        sea_orm::SelectColumns::select_column_as(#select_ident, casted, col_alias)
+                    },
+                    None => quote! {
+                        sea_orm::SelectColumns::select_column_as(#select_ident, #column, col_alias)
+                    },
                 };
 
                 quote! {
                     let #select_ident = {
-                        let ident = pre.map_or(#field.to_string(), |pre| format!("{pre}{}", #field));
+                        let col_alias = pre.map_or(#field.to_string(), |pre| format!("{pre}{}", #field));
+                        if let Some(nested_alias) = nested_alias {
+                            // TODO: Replace this with the new iden after updating to sea-query 1.0
+                            let alias = sea_orm::sea_query::Alias::new(nested_alias);
+                            let alias_iden = sea_orm::sea_query::DynIden::new(alias);
+                            let col_expr = sea_orm::sea_query::Expr::col(
+                                (alias_iden, #column)
+                            );
 
-                        sea_orm::QuerySelect::column_as(#select_ident, #col_value, ident)
+                            let casted = sea_orm::ColumnTrait::select_as(&#column, col_expr);
+                            sea_orm::SelectColumns::select_column_as(#select_ident, casted, col_alias)
+                        } else {
+                            #non_nested
+                        }
                     };
                 }
             }
@@ -308,9 +312,9 @@ impl DerivePartialModel {
                 quote!(let #select_ident =
                     if let Some(prefix) = pre {
                         let ident = format!("{prefix}{}", #field);
-                        sea_orm::QuerySelect::column_as(#select_ident, #expr, ident)
+                        sea_orm::SelectColumns::select_column_as(#select_ident, #expr, ident)
                     } else {
-                        sea_orm::QuerySelect::column_as(#select_ident, #expr, #field)
+                        sea_orm::SelectColumns::select_column_as(#select_ident, #expr, #field)
                     };
                 )
             }
@@ -339,7 +343,11 @@ impl DerivePartialModel {
         quote! {
             #[automatically_derived]
             impl sea_orm::PartialModelTrait for #ident {
-                fn select_cols_nested<S: sea_orm::QuerySelect>(#select_ident: S, pre: Option<&str>, nested_alias: Option<&'static str>) -> S {
+                fn select_cols<S: sea_orm::SelectColumns>(#select_ident: S) -> S {
+                    Self::select_cols_nested(#select_ident, None, None)
+                }
+
+                fn select_cols_nested<S: sea_orm::SelectColumns>(#select_ident: S, pre: Option<&str>, nested_alias: Option<&str>) -> S {
                     #(#select_col_code_gen)*
                     #select_ident
                 }
@@ -420,13 +428,13 @@ mod test {
                 field: format_ident!("expr_field"),
             }
         );
-        assert_eq!(middle.from_query_result, true);
+        assert_eq!(middle.from_query_result, false);
 
         Ok(())
     }
 
     const CODE_SNIPPET_2: &str = r#"
-        #[sea_orm(entity = "MyEntity", from_query_result = "false")]
+        #[sea_orm(entity = "MyEntity", from_query_result)]
         struct PartialModel {
             default_field: i32,
         }
@@ -447,7 +455,7 @@ mod test {
                 field: format_ident!("default_field")
             }
         );
-        assert_eq!(middle.from_query_result, false);
+        assert_eq!(middle.from_query_result, true);
 
         Ok(())
     }
