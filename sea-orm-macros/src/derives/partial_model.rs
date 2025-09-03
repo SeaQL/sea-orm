@@ -288,24 +288,24 @@ impl DerivePartialModel {
 
 
                     quote! {
-                        if let Some(nested_alias) = nested_alias {
-                            // TODO: Replace this with the new iden after updating to sea-query 1.0
-                            let alias = ::sea_orm::sea_query::Alias::new(nested_alias);
-                            let alias_iden = ::sea_orm::sea_query::DynIden::new(alias);
-                            let col = ::sea_orm::sea_query::Expr::col(
-                                (alias_iden, #column)
-                            );
-
-                            // Cast enum as text if the backend is postgres
-                            let col = ::sea_orm::ColumnTrait::select_as(&#column, col);
-
+                        {
                             let ident = pre.map_or(#field.to_string(), |pre| format!("{pre}{}", #field));
 
-                            ::sea_orm::SelectColumns::select_column_as(#select_ident, col, ident)
-                        } else {
-                            let ident = pre.map_or(#field.to_string(), |pre| format!("{pre}{}", #field));
+                            if let Some(nested_alias) = nested_alias {
+                                // TODO: Replace this with the new iden after updating to sea-query 1.0
+                                let alias = ::sea_orm::sea_query::Alias::new(nested_alias);
+                                let alias_iden = ::sea_orm::sea_query::DynIden::new(alias);
+                                let col = ::sea_orm::sea_query::Expr::col(
+                                    (alias_iden, #column)
+                                );
 
-                            ::sea_orm::SelectColumns::select_column_as(#select_ident, #non_nested, ident)
+                                // Cast enum as text if the backend is postgres
+                                let col = ::sea_orm::ColumnTrait::select_as(&#column, col);
+
+                                ::sea_orm::SelectColumns::select_column_as(#select_ident, col, ident)
+                            } else {
+                                ::sea_orm::SelectColumns::select_column_as(#select_ident, #non_nested, ident)
+                            }
                         }
                     }
                 };
