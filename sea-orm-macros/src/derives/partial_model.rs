@@ -263,7 +263,7 @@ impl DerivePartialModel {
                 let field = field.unraw().to_string();
                 let entity = entity.as_ref().unwrap();
 
-                let col_as = if let Some(col) = col {
+                let col_variant = if let Some(col) = col {
                     col
                 } else {
                     &format_ident!("{}", field.to_upper_camel_case())
@@ -272,39 +272,35 @@ impl DerivePartialModel {
                 let select_ident_value = {
                     // variant of the entity column
                     let column = quote! {
-                        <#entity as ::sea_orm::EntityTrait>::Column::#col_as
+                        <#entity as ::sea_orm::EntityTrait>::Column::#col_variant
                     };
 
-                    let non_nested = match alias {
+                    let maybe_aliased_column = match alias {
                         Some(alias) => quote! {
-                            ::sea_orm::sea_query::Expr::col(
-                                (#alias, #column)
-                            )
+                            (#alias, #column)
                         },
                         None => quote! {
                             #column
                         },
                     };
 
-
                     quote! {
                         {
-                            let ident = pre.map_or(#field.to_string(), |pre| format!("{pre}{}", #field));
-
+                            let col_alias = pre.map_or(#field.to_string(), |pre| format!("{pre}{}", #field));
                             if let Some(nested_alias) = nested_alias {
                                 // TODO: Replace this with the new iden after updating to sea-query 1.0
                                 let alias = ::sea_orm::sea_query::Alias::new(nested_alias);
                                 let alias_iden = ::sea_orm::sea_query::DynIden::new(alias);
-                                let col = ::sea_orm::sea_query::Expr::col(
+                                let col_expr = ::sea_orm::sea_query::Expr::col(
                                     (alias_iden, #column)
                                 );
 
                                 // Cast enum as text if the backend is postgres
-                                let col = ::sea_orm::ColumnTrait::select_as(&#column, col);
+                                let col_expr = ::sea_orm::ColumnTrait::select_as(&#column, col);
 
-                                ::sea_orm::SelectColumns::select_column_as(#select_ident, col, ident)
+                                ::sea_orm::SelectColumns::select_column_as(#select_ident, col_expr, col_alias)
                             } else {
-                                ::sea_orm::SelectColumns::select_column_as(#select_ident, #non_nested, ident)
+                                ::sea_orm::SelectColumns::select_column_as(#select_ident, #maybe_aliased_column, col_alias)
                             }
                         }
                     }
