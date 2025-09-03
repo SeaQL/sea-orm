@@ -263,7 +263,7 @@ impl DerivePartialModel {
                 let field = field.unraw().to_string();
                 let entity = entity.as_ref().unwrap();
 
-                let col_variant = if let Some(col) = col {
+                let variant_name = if let Some(col) = col {
                     col
                 } else {
                     &format_ident!("{}", field.to_upper_camel_case())
@@ -271,7 +271,7 @@ impl DerivePartialModel {
 
                 // variant of the entity column
                 let column = quote! {
-                    <#entity as ::sea_orm::EntityTrait>::Column::#col_variant
+                    <#entity as ::sea_orm::EntityTrait>::Column::#variant_name
                 };
 
                 let maybe_aliased_column = match alias {
