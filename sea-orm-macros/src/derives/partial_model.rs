@@ -277,7 +277,7 @@ impl DerivePartialModel {
 
                     let maybe_aliased_column = match alias {
                         Some(alias) => quote! {
-                            Expr::col((#alias, #column))
+                            ::sea_orm::sea_query::Expr::col((#alias, #column))
                         },
                         None => quote! {
                             #column
