@@ -263,47 +263,44 @@ impl DerivePartialModel {
                 let field = field.unraw().to_string();
                 let entity = entity.as_ref().unwrap();
 
-                let col_as = if let Some(col) = col {
+                let variant_name = if let Some(col) = col {
                     col
                 } else {
                     &format_ident!("{}", field.to_upper_camel_case())
                 };
 
-                let col_value = {
-                    let col_expr = quote! {
-                        <#entity as ::sea_orm::EntityTrait>::Column::#col_as
-                    };
+                // variant of the entity column
+                let column = quote! {
+                    <#entity as ::sea_orm::EntityTrait>::Column::#variant_name
+                };
 
-                    let non_nested = match alias {
-                        Some(alias) => quote! {
-                            ::sea_orm::sea_query::Expr::col(
-                                (#alias, #col_expr)
-                            )
-                        },
-                        None => quote! {
-                            ::sea_orm::ColumnTrait::into_expr(#col_expr)
-                        },
-                    };
-
-                    // TODO: Replace this with the new iden after updating to sea-query 1.0
-                    quote! {
-                        if let Some(nested_alias) = nested_alias {
-                            let ident = ::sea_orm::sea_query::Alias::new(nested_alias);
-                            let ident = ::sea_orm::sea_query::DynIden::new(ident);
-                            ::sea_orm::sea_query::Expr::col(
-                                (ident, #col_expr)
-                            )
-                        } else {
-                            #non_nested
-                        }
-                    }
+                let maybe_aliased_column = match alias {
+                    Some(alias) => quote! {
+                        ::sea_orm::sea_query::Expr::col((#alias, #column))
+                    },
+                    None => quote! {
+                        #column
+                    },
                 };
 
                 quote! {
                     let #select_ident = {
-                        let ident = pre.map_or(#field.to_string(), |pre| format!("{pre}{}", #field));
+                        let col_alias = pre.map_or(#field.to_string(), |pre| format!("{pre}{}", #field));
+                        if let Some(nested_alias) = nested_alias {
+                            // TODO: Replace this with the new iden after updating to sea-query 1.0
+                            let alias = ::sea_orm::sea_query::Alias::new(nested_alias);
+                            let alias_iden = ::sea_orm::sea_query::DynIden::new(alias);
+                            let col_expr = ::sea_orm::sea_query::Expr::col(
+                                (alias_iden, #column)
+                            );
 
-                        ::sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, ident)
+                            // Cast enum as text if the backend is postgres
+                            let col_expr = ::sea_orm::ColumnTrait::select_as(&#column, col_expr);
+
+                            ::sea_orm::SelectColumns::select_column_as(#select_ident, col_expr, col_alias)
+                        } else {
+                            ::sea_orm::SelectColumns::select_column_as(#select_ident, #maybe_aliased_column, col_alias)
+                        }
                     };
                 }
             }
