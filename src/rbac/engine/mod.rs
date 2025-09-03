@@ -752,15 +752,15 @@ mod test {
         assert!(engine.user_can(A_B, Action("browse"), Object("book")).unwrap());
         assert!(engine.user_can(A_B, Action("browse"), Object("CD")).unwrap());
         assert!(!engine.user_can(A_B, Action("browse"), Object("magazine")).unwrap());
-    
+
         assert!(engine.user_can(A_C, Action("browse"), Object("book")).unwrap());
         assert!(!engine.user_can(A_C, Action("browse"), Object("CD")).unwrap());
         assert!(engine.user_can(A_C, Action("browse"), Object("magazine")).unwrap());
-    
+
         assert!(engine.user_can(A_B_C, Action("browse"), Object("book")).unwrap());
         assert!(engine.user_can(A_B_C, Action("browse"), Object("CD")).unwrap());
         assert!(engine.user_can(A_B_C, Action("browse"), Object("magazine")).unwrap());
-    
+
         assert!(engine.user_can(A_B_C_, Action("browse"), Object("book")).unwrap());
         assert!(engine.user_can(A_B_C_, Action("browse"), Object("CD")).unwrap());
         assert!(engine.user_can(A_B_C_, Action("browse"), Object("magazine")).unwrap());
@@ -806,6 +806,11 @@ mod test {
     #[test]
     fn test_unrestricted() {
         let engine = RbacEngine::from_snapshot(RbacSnapshot::danger_unrestricted());
+        assert!(
+            engine
+                .user_can(UserId(0), Action("browse"), Object("book"))
+                .unwrap()
+        );
         assert_eq!(
             engine.get_user_role_permissions(UserId(0)).unwrap(),
             RbacUserRolePermissions {
