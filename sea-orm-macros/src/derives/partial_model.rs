@@ -277,7 +277,7 @@ impl DerivePartialModel {
 
                     let maybe_aliased_column = match alias {
                         Some(alias) => quote! {
-                            (#alias, #column)
+                            Expr::col((#alias, #column))
                         },
                         None => quote! {
                             #column
