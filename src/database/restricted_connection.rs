@@ -146,7 +146,7 @@ impl RestrictedConnection {
 
     /// Get current user's role and associated permissions.
     /// This includes permissions "inherited" from child roles.
-    pub fn user_role_permissions(&self) -> Result<RbacUserRolePermissions, DbErr> {
+    pub fn current_user_role_permissions(&self) -> Result<RbacUserRolePermissions, DbErr> {
         self.conn.rbac.user_role_permissions(self.user_id)
     }
 
