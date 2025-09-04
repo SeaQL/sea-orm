@@ -1066,7 +1066,6 @@ mod tests {
             tea: Option<Tea>,
         }
 
-        // Build a query that would be produced by into_partial_model()
         let sql = active_enum::Entity::find()
             .into_partial_model::<PartialWithEnum>()
             .into_statement(DbBackend::Postgres)
@@ -1075,6 +1074,23 @@ mod tests {
         assert_eq!(
             sql,
             r#"SELECT CAST("active_enum"."tea" AS "text") AS "tea" FROM "public"."active_enum""#,
+        );
+
+        #[derive(Debug, DerivePartialModel)]
+        #[sea_orm(entity = "active_enum::Entity", from_query_result, alias = "zzz")]
+        struct PartialWithEnumAndAlias {
+            #[sea_orm(from_col = "tea")]
+            foo: Option<Tea>,
+        }
+
+        let sql = active_enum::Entity::find()
+            .into_partial_model::<PartialWithEnumAndAlias>()
+            .into_statement(DbBackend::Postgres)
+            .sql;
+
+        assert_eq!(
+            sql,
+            r#"SELECT CAST("zzz"."tea" AS "text") AS "foo" FROM "public"."active_enum""#,
         );
 
         #[derive(Debug, DerivePartialModel)]
@@ -1093,6 +1109,24 @@ mod tests {
         assert_eq!(
             sql,
             r#"SELECT CAST("active_enum"."tea" AS "text") AS "tea", CAST("foo"."tea" AS "text") AS "nested_tea" FROM "public"."active_enum""#,
+        );
+
+        #[derive(Debug, DerivePartialModel)]
+        #[sea_orm(entity = "active_enum::Entity", from_query_result, alias = "aaa")]
+        struct PartialWithEnumNestedWithAlias {
+            tea: Option<Tea>,
+            #[sea_orm(nested, alias = "foo")]
+            nested: Option<PartialWithEnum>,
+        }
+
+        let sql = active_enum::Entity::find()
+            .into_partial_model::<PartialWithEnumNestedWithAlias>()
+            .into_statement(DbBackend::Postgres)
+            .sql;
+
+        assert_eq!(
+            sql,
+            r#"SELECT CAST("aaa"."tea" AS "text") AS "tea", CAST("foo"."tea" AS "text") AS "nested_tea" FROM "public"."active_enum""#,
         );
     }
 }

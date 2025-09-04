@@ -274,12 +274,16 @@ impl DerivePartialModel {
                     <#entity as ::sea_orm::EntityTrait>::Column::#variant_name
                 };
 
-                let maybe_aliased_column = match alias {
+                // We cast enum as text in select_as if the backend is postgres
+
+                let non_nested = match alias {
                     Some(alias) => quote! {
-                        ::sea_orm::sea_query::Expr::col((#alias, #column))
+                        let col_expr = ::sea_orm::sea_query::Expr::col((#alias, #column));
+                        let casted = ::sea_orm::ColumnTrait::select_as(&#column, col_expr);
+                        ::sea_orm::SelectColumns::select_column_as(#select_ident, casted, col_alias)
                     },
                     None => quote! {
-                        #column
+                        ::sea_orm::SelectColumns::select_column_as(#select_ident, #column, col_alias)
                     },
                 };
 
@@ -294,12 +298,10 @@ impl DerivePartialModel {
                                 (alias_iden, #column)
                             );
 
-                            // Cast enum as text if the backend is postgres
-                            let col_expr = ::sea_orm::ColumnTrait::select_as(&#column, col_expr);
-
-                            ::sea_orm::SelectColumns::select_column_as(#select_ident, col_expr, col_alias)
+                            let casted = ::sea_orm::ColumnTrait::select_as(&#column, col_expr);
+                            ::sea_orm::SelectColumns::select_column_as(#select_ident, casted, col_alias)
                         } else {
-                            ::sea_orm::SelectColumns::select_column_as(#select_ident, #maybe_aliased_column, col_alias)
+                            #non_nested
                         }
                     };
                 }
