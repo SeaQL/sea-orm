@@ -230,8 +230,16 @@ impl RbacEngine {
 
     pub fn list_resources_and_permissions(&self) -> RbacResourcesAndPermissions {
         (
-            self.resources.values().cloned().collect(),
-            self.permissions.values().cloned().collect(),
+            self.resources
+                .values()
+                .chain(self.wildcard_resources.values())
+                .cloned()
+                .collect(),
+            self.permissions
+                .values()
+                .chain(self.wildcard_permissions.values())
+                .cloned()
+                .collect(),
         )
     }
 
