@@ -250,16 +250,23 @@ impl RbacEngine {
             .get(&role_id)
             .ok_or_else(|| Error::RoleNotFound(format!("{role_id:?}")))?
         {
-            let permission = self
-                .permissions
-                .values()
-                .find(|p| p.id == row.0)
-                .ok_or_else(|| Error::PermissionNotFound(format!("{:?}", row.0)))?;
-            let resource = self
-                .resources
-                .values()
-                .find(|r| r.id == row.1)
-                .ok_or_else(|| Error::ResourceNotFound(format!("{:?}", row.1)))?;
+            let permission = if let Some(p) = self.wildcard_permissions.get(&row.0) {
+                p
+            } else {
+                self.permissions
+                    .values()
+                    .find(|p| p.id == row.0)
+                    .ok_or_else(|| Error::PermissionNotFound(format!("{:?}", row.0)))?
+            };
+
+            let resource = if let Some(r) = self.wildcard_resources.get(&row.1) {
+                r
+            } else {
+                self.resources
+                    .values()
+                    .find(|r| r.id == row.1)
+                    .ok_or_else(|| Error::ResourceNotFound(format!("{:?}", row.1)))?
+            };
 
             map.entry(row.1)
                 .or_insert_with(|| (resource.to_owned(), Default::default()))
@@ -592,6 +599,12 @@ mod test {
             ]),
             (Resource { id: ResourceId(2), schema: None, table: "paper".into() }, vec![
                 Permission { id: PermissionId(3), action: "replace".into() },
+            ]),
+        ]);
+
+        assert_eq!(engine.list_role_permissions_by_resources(RoleId(4)).unwrap(), vec![
+            (Resource { id: ResourceId(4), schema: None, table: "*".into() }, vec![
+                Permission { id: PermissionId(1), action: "browse".into() },
             ]),
         ]);
     }
