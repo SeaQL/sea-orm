@@ -15,7 +15,7 @@ pub async fn create_tables(db: &DbConn) -> Result<(), DbErr> {
 }
 
 /// All tables associated with RBAC, created by SeaORM
-pub fn all_tables() -> Vec<Item = &'static str> {
+pub fn all_tables() -> Vec<&'static str> {
     use crate::EntityName;
 
     vec![
