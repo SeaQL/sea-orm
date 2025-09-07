@@ -44,7 +44,7 @@ impl std::fmt::Debug for RbacEngine {
 #[derive(Debug, PartialEq, Eq)]
 pub struct RbacUserRolePermissions {
     pub role: Role,
-    pub permissions: Vec<(Resource, Permission)>,
+    pub resource_permissions: RbacPermissionsByResources,
 }
 
 pub type RbacRolesAndRanks = Vec<(Role, u32)>;
@@ -190,41 +190,15 @@ impl RbacEngine {
             }
         }
 
-        let mut permissions = role_permissions
-            .into_iter()
-            .map(|(permission_id, resource_id)| {
-                let resource = if let Some(r) = self.wildcard_resources.get(&resource_id) {
-                    r
-                } else {
-                    self.resources
-                        .values()
-                        .find(|r| r.id == resource_id)
-                        .ok_or_else(|| Error::ResourceNotFound(format!("{resource_id:?}")))?
-                }
-                .clone();
-                let permission = if let Some(p) = self.wildcard_permissions.get(&permission_id) {
-                    p
-                } else {
-                    self.permissions
-                        .values()
-                        .find(|p| p.id == permission_id)
-                        .ok_or_else(|| Error::PermissionNotFound(format!("{permission_id:?}")))?
-                }
-                .clone();
-
-                Ok((resource, permission))
-            })
-            .collect::<Result<Vec<_>, Error>>()?;
-
-        permissions.sort_by_key(|r| (r.0.id, r.1.id));
-
         Ok(RbacUserRolePermissions {
             role: self
                 .roles
                 .get(&self.user_roles.get(&user_id).expect("Checked above"))
                 .expect("Checked above")
                 .to_owned(),
-            permissions,
+            resource_permissions: self.group_permissions_by_resources(
+                role_permissions.into_iter().map(|(p, r)| (r, p)),
+            )?,
         })
     }
 
@@ -247,36 +221,32 @@ impl RbacEngine {
         list_role_hierarchy_edges(role_id, &self.role_hierarchy)
     }
 
-    pub fn list_role_permissions_by_resources(
+    fn group_permissions_by_resources(
         &self,
-        role_id: RoleId,
+        items: impl Iterator<Item = (ResourceId, PermissionId)>,
     ) -> Result<RbacPermissionsByResources, Error> {
         let mut map: HashMap<ResourceId, (Resource, Vec<Permission>)> = Default::default();
 
-        for row in self
-            .role_permissions
-            .get(&role_id)
-            .ok_or_else(|| Error::RoleNotFound(format!("{role_id:?}")))?
-        {
-            let permission = if let Some(p) = self.wildcard_permissions.get(&row.0) {
+        for item in items {
+            let permission = if let Some(p) = self.wildcard_permissions.get(&item.1) {
                 p
             } else {
                 self.permissions
                     .values()
-                    .find(|p| p.id == row.0)
-                    .ok_or_else(|| Error::PermissionNotFound(format!("{:?}", row.0)))?
+                    .find(|p| p.id == item.1)
+                    .ok_or_else(|| Error::PermissionNotFound(format!("{:?}", item.1)))?
             };
 
-            let resource = if let Some(r) = self.wildcard_resources.get(&row.1) {
+            let resource = if let Some(r) = self.wildcard_resources.get(&item.0) {
                 r
             } else {
                 self.resources
                     .values()
-                    .find(|r| r.id == row.1)
-                    .ok_or_else(|| Error::ResourceNotFound(format!("{:?}", row.1)))?
+                    .find(|r| r.id == item.0)
+                    .ok_or_else(|| Error::ResourceNotFound(format!("{:?}", item.0)))?
             };
 
-            map.entry(row.1)
+            map.entry(item.0)
                 .or_insert_with(|| (resource.to_owned(), Default::default()))
                 .1
                 .push(permission.to_owned());
@@ -286,6 +256,19 @@ impl RbacEngine {
         vec.sort_by_key(|r| r.0.id);
         vec.iter_mut().for_each(|r| r.1.sort_by_key(|p| p.id));
         Ok(vec)
+    }
+
+    pub fn list_role_permissions_by_resources(
+        &self,
+        role_id: RoleId,
+    ) -> Result<RbacPermissionsByResources, Error> {
+        self.group_permissions_by_resources(
+            self.role_permissions
+                .get(&role_id)
+                .ok_or_else(|| Error::RoleNotFound(format!("{role_id:?}")))?
+                .iter()
+                .map(|(p, r)| (*r, *p)),
+        )
     }
 
     pub fn user_can<P, R>(&self, user_id: UserId, permission: P, resource: R) -> Result<bool, Error>
@@ -543,18 +526,17 @@ mod test {
                 id: RoleId(3),
                 role: "clerk".to_owned(),
             },
-            permissions: vec![
+            resource_permissions: vec![
                 (
                     Resource { id: ResourceId(2), schema: None, table: "paper".to_owned() },
-                    Permission { id: PermissionId(1), action: "browse".to_owned() },
-                ),
-                (
-                    Resource { id: ResourceId(2), schema: None, table: "paper".to_owned() },
-                    Permission { id: PermissionId(4), action: "dispose".to_owned() },
+                    vec![
+                        Permission { id: PermissionId(1), action: "browse".to_owned() },
+                        Permission { id: PermissionId(4), action: "dispose".to_owned() },
+                    ]
                 ),
                 (
                     Resource { id: ResourceId(3), schema: None, table: "pen".to_owned() },
-                    Permission { id: PermissionId(1), action: "browse".to_owned() },
+                    vec![Permission { id: PermissionId(1), action: "browse".to_owned() }]
                 ),
             ],
         });
@@ -564,18 +546,17 @@ mod test {
                 id: RoleId(3),
                 role: "clerk".to_owned(),
             },
-            permissions: vec![
+            resource_permissions: vec![
                 (
                     Resource { id: ResourceId(2), schema: None, table: "paper".to_owned() },
-                    Permission { id: PermissionId(1), action: "browse".to_owned() },
+                    vec![Permission { id: PermissionId(1), action: "browse".to_owned() }]
                 ),
                 (
                     Resource { id: ResourceId(3), schema: None, table: "pen".to_owned() },
-                    Permission { id: PermissionId(1), action: "browse".to_owned() },
-                ),
-                (
-                    Resource { id: ResourceId(3), schema: None, table: "pen".to_owned() },
-                    Permission { id: PermissionId(2), action: "buy".to_owned() },
+                    vec![
+                        Permission { id: PermissionId(1), action: "browse".to_owned() },
+                        Permission { id: PermissionId(2), action: "buy".to_owned() },
+                    ]
                 ),
             ],
         });
@@ -839,16 +820,16 @@ mod test {
                     id: RoleId(1),
                     role: "unrestricted".to_owned(),
                 },
-                permissions: vec![(
+                resource_permissions: vec![(
                     Resource {
                         id: ResourceId(1),
                         schema: None,
                         table: "*".to_owned(),
                     },
-                    Permission {
+                    vec![Permission {
                         id: PermissionId(1),
                         action: "*".to_owned(),
-                    },
+                    }]
                 ),],
             }
         );
