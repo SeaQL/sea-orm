@@ -1,6 +1,7 @@
 use super::{AccessType, SchemaOper, entity};
 use crate::{ConnectionTrait, DbConn, DbErr, EntityTrait, ExecResult, Schema};
 
+/// Create RBAC tables, will currently fail if any of them already exsits
 pub async fn create_tables(db: &DbConn) -> Result<(), DbErr> {
     create_table(db, entity::permission::Entity).await?;
     create_table(db, entity::resource::Entity).await?;
@@ -11,6 +12,21 @@ pub async fn create_tables(db: &DbConn) -> Result<(), DbErr> {
     create_table(db, entity::user_role::Entity).await?;
 
     Ok(())
+}
+
+/// All tables associated with RBAC, created by SeaORM
+pub fn all_tables() -> impl IntoIterator<Item = &'static str> {
+    use crate::EntityName;
+
+    [
+        entity::permission::Entity.table_name(),
+        entity::resource::Entity.table_name(),
+        entity::role::Entity.table_name(),
+        entity::role_hierarchy::Entity.table_name(),
+        entity::role_permission::Entity.table_name(),
+        entity::user_override::Entity.table_name(),
+        entity::user_role::Entity.table_name(),
+    ]
 }
 
 async fn create_table<E>(db: &DbConn, entity: E) -> Result<ExecResult, DbErr>
@@ -29,6 +45,7 @@ where
     Ok(res)
 }
 
+/// Mapping of AccessType to &str
 pub fn action_str(at: &AccessType) -> &'static str {
     match at {
         AccessType::Select => "select",
