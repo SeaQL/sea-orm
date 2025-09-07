@@ -15,10 +15,10 @@ pub async fn create_tables(db: &DbConn) -> Result<(), DbErr> {
 }
 
 /// All tables associated with RBAC, created by SeaORM
-pub fn all_tables() -> impl IntoIterator<Item = &'static str> {
+pub fn all_tables() -> Vec<Item = &'static str> {
     use crate::EntityName;
 
-    [
+    vec![
         entity::permission::Entity.table_name(),
         entity::resource::Entity.table_name(),
         entity::role::Entity.table_name(),
