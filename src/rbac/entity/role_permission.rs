@@ -36,4 +36,22 @@ pub enum Relation {
     Resource,
 }
 
+impl Related<super::role::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Role.def()
+    }
+}
+
+impl Related<super::permission::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Permission.def()
+    }
+}
+
+impl Related<super::resource::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Resource.def()
+    }
+}
+
 impl ActiveModelBehavior for ActiveModel {}
