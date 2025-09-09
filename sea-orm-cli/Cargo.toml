@@ -30,7 +30,7 @@ required-features = ["cli", "codegen"]
 
 [[bin]]
 name = "sea"
-path = "src/bin/sea.rs"
+path = "src/bin/main.rs"
 required-features = ["cli", "codegen"]
 
 [dependencies]
@@ -46,7 +46,7 @@ url = { version = "2.2", default-features = false }
 chrono = { version = "0.4.20", default-features = false, features = ["clock"] }
 regex = { version = "1.11.2" }
 glob = { version = "0.3", default-features = false }
-
+tokio = { version = "1.38.2", default-features = false, features = ["rt-multi-thread", "macros"], optional = true }
 [dev-dependencies]
 smol = "1.2.5"
 
@@ -58,12 +58,18 @@ sqlx-mysql = ["sqlx?/sqlx-mysql", "sea-schema?/sqlx-mysql", "sea-schema?/mysql"]
 sqlx-postgres = ["sqlx?/sqlx-postgres", "sea-schema?/sqlx-postgres", "sea-schema?/postgres"]
 sqlx-sqlite = ["sqlx?/sqlx-sqlite", "sea-schema?/sqlx-sqlite", "sea-schema?/sqlite"]
 postgres-vector = ["sea-schema/postgres-vector"]
+
+runtime-actix = ["runtime-tokio"]
+runtime-actix-native-tls = ["runtime-tokio-native-tls"]
+runtime-actix-rustls = ["runtime-tokio-rustls"]
+
 runtime-async-std = ["sqlx?/runtime-async-std", "sea-schema?/runtime-async-std"]
-runtime-tokio = ["sqlx?/runtime-tokio", "sea-schema?/runtime-tokio"]
 runtime-async-std-native-tls = ["sqlx?/runtime-async-std-native-tls", "sea-schema?/runtime-async-std-native-tls"]
-runtime-tokio-native-tls = ["sqlx?/runtime-tokio-native-tls", "sea-schema?/runtime-tokio-native-tls"]
 runtime-async-std-rustls = ["sqlx?/runtime-async-std-rustls", "sea-schema?/runtime-async-std-rustls"]
-runtime-tokio-rustls = ["sqlx?/runtime-tokio-rustls", "sea-schema?/runtime-tokio-rustls"]
+
+runtime-tokio = ["tokio", "sqlx?/runtime-tokio", "sea-schema?/runtime-tokio"]
+runtime-tokio-native-tls = ["tokio", "sqlx?/runtime-tokio-native-tls", "sea-schema?/runtime-tokio-native-tls"]
+runtime-tokio-rustls = ["tokio", "sqlx?/runtime-tokio-rustls", "sea-schema?/runtime-tokio-rustls"]
 
 # This allows us to develop using an overridden version of sea-query
 [patch.crates-io]
