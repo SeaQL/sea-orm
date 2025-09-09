@@ -11,8 +11,6 @@
         feature = "runtime-tokio",
         feature = "runtime-tokio-native-tls",
         feature = "runtime-tokio-rustls",
-        // TODO: Remove this if the async-std is not the default runtime
-        not(feature = "runtime-async-std-native-tls")
     ),
     tokio::main
 )]

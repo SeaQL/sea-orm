@@ -51,7 +51,7 @@ tokio = { version = "1.38.2", default-features = false, features = ["rt-multi-th
 smol = "1.2.5"
 
 [features]
-default = ["codegen", "sqlx-mysql", "sqlx-postgres", "sqlx-sqlite", "runtime-async-std-native-tls", "async-std"]
+default = ["codegen", "sqlx-mysql", "sqlx-postgres", "sqlx-sqlite", "runtime-tokio-native-tls"]
 codegen = ["cli", "sqlx", "sea-schema", "sea-orm-codegen"]
 cli = ["clap", "dotenvy"]
 sqlx-mysql = ["sqlx?/sqlx-mysql", "sea-schema?/sqlx-mysql", "sea-schema?/mysql"]
@@ -63,9 +63,9 @@ runtime-actix = ["runtime-tokio"]
 runtime-actix-native-tls = ["runtime-tokio-native-tls"]
 runtime-actix-rustls = ["runtime-tokio-rustls"]
 
-runtime-async-std = ["sqlx?/runtime-async-std", "sea-schema?/runtime-async-std"]
-runtime-async-std-native-tls = ["sqlx?/runtime-async-std-native-tls", "sea-schema?/runtime-async-std-native-tls"]
-runtime-async-std-rustls = ["sqlx?/runtime-async-std-rustls", "sea-schema?/runtime-async-std-rustls"]
+runtime-async-std = ["async-std", "sqlx?/runtime-async-std", "sea-schema?/runtime-async-std"]
+runtime-async-std-native-tls = ["async-std", "sqlx?/runtime-async-std-native-tls", "sea-schema?/runtime-async-std-native-tls"]
+runtime-async-std-rustls = ["async-std", "sqlx?/runtime-async-std-rustls", "sea-schema?/runtime-async-std-rustls"]
 
 runtime-tokio = ["tokio", "sqlx?/runtime-tokio", "sea-schema?/runtime-tokio"]
 runtime-tokio-native-tls = ["tokio", "sqlx?/runtime-tokio-native-tls", "sea-schema?/runtime-tokio-native-tls"]
