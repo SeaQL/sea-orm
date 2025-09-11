@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.1.16 - 2025-09-11
+
+### Bug Fixes
+
+* Fix enum casting in DerivePartialModel https://github.com/SeaQL/sea-orm/pull/2719 https://github.com/SeaQL/sea-orm/pull/2720
+```rust
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "active_enum::Entity", from_query_result, alias = "zzz")]
+struct PartialWithEnumAndAlias {
+    #[sea_orm(from_col = "tea")]
+    foo: Option<Tea>,
+}
+
+let sql = active_enum::Entity::find()
+    .into_partial_model::<PartialWithEnumAndAlias>()
+    .into_statement(DbBackend::Postgres)
+    .sql;
+
+assert_eq!(
+    sql,
+    r#"SELECT CAST("zzz"."tea" AS "text") AS "foo" FROM "public"."active_enum""#,
+);
+```
+
+### Enhancements
+
+* [sea-orm-cli] Use tokio (optional) instead of async-std https://github.com/SeaQL/sea-orm/pull/2721
+
 ## 1.1.15 - 2025-08-31
 
 ### Enhancements
