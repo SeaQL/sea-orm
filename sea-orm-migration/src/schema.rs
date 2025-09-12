@@ -68,9 +68,14 @@ pub fn table_auto<T: IntoIden + 'static>(name: T) -> TableCreateStatement {
     timestamps(Table::create().table(name).if_not_exists().take())
 }
 
-/// Create a primary key column with auto-increment feature.
+/// Create a primary key column with auto-increment
 pub fn pk_auto<T: IntoIden>(name: T) -> ColumnDef {
     integer(name).auto_increment().primary_key().take()
+}
+
+/// Create a primary key column of big integer with auto-increment
+pub fn big_pk_auto<T: IntoIden>(name: T) -> ColumnDef {
+    big_integer(name).auto_increment().primary_key().take()
 }
 
 /// Create a UUID primary key
