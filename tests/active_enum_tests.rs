@@ -1060,7 +1060,7 @@ mod tests {
         use sea_orm::*;
         use sea_query::PostgresQueryBuilder;
 
-        #[derive(Debug, FromQueryResult, DerivePartialModel)]
+        #[derive(Debug, DerivePartialModel)]
         #[sea_orm(entity = "active_enum::Entity")]
         struct PartialWithEnum {
             tea: Option<Tea>,

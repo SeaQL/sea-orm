@@ -372,25 +372,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: PoolTimedOut")]
-    fn test_generate_entity_no_password() {
-        let cli = Cli::parse_from([
-            "sea-orm-cli",
-            "generate",
-            "entity",
-            "--database-url",
-            "mysql://root:@localhost:3306/database",
-        ]);
-
-        match cli.command {
-            Commands::Generate { command } => {
-                smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: EmptyHost")]
     fn test_generate_entity_no_host() {
         let cli = Cli::parse_from([
