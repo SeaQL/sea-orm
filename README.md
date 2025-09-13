@@ -231,7 +231,7 @@ let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
 let orange: fruit::Model = orange.unwrap();
 orange.delete(db).await?;
 
-// delete many: DELETE FROM "fruit" WHERE "fruit"."name" LIKE 'Orange'
+// delete many: DELETE FROM "fruit" WHERE "fruit"."name" LIKE '%Orange%'
 fruit::Entity::delete_many()
     .filter(fruit::Column::Name.contains("Orange"))
     .exec(db)
