@@ -14,12 +14,27 @@ pub struct ColumnDef {
     pub(crate) default: Option<SimpleExpr>,
     pub(crate) comment: Option<String>,
     pub(crate) unique_key: Option<String>,
+    pub(crate) seaography: SeaographyColumnAttr,
+}
+
+/// Seaography specific attributes
+#[non_exhaustive]
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct SeaographyColumnAttr {
+    /// Ignore this column in seaography
+    pub ignore: bool,
 }
 
 impl ColumnDef {
     /// Marks the column as `UNIQUE`
     pub fn unique(mut self) -> Self {
         self.unique = true;
+        self
+    }
+
+    /// Set Seaography ignore
+    pub fn seaography_ignore(mut self) -> Self {
+        self.seaography.ignore = true;
         self
     }
 
@@ -88,6 +103,11 @@ impl ColumnDef {
     /// Returns true if the column is unique
     pub fn is_unique(&self) -> bool {
         self.unique
+    }
+
+    /// Get Seaography attribute
+    pub fn seaography(&self) -> &SeaographyColumnAttr {
+        &self.seaography
     }
 }
 
@@ -228,6 +248,7 @@ mod tests {
     #[test]
     #[cfg(feature = "macros")]
     fn column_name_1() {
+        use crate::ColumnTrait;
         use sea_query::Iden;
 
         mod hello {
@@ -241,8 +262,10 @@ mod tests {
                 pub id: i32,
                 #[sea_orm(column_name = "ONE")]
                 pub one: i32,
+                #[seaography(ignore)]
                 pub two: i32,
                 #[sea_orm(column_name = "3")]
+                #[seaography(ignore)]
                 pub three: i32,
             }
 
@@ -255,6 +278,10 @@ mod tests {
         assert_eq!(hello::Column::One.to_string().as_str(), "ONE");
         assert_eq!(hello::Column::Two.to_string().as_str(), "two");
         assert_eq!(hello::Column::Three.to_string().as_str(), "3");
+
+        assert!(!hello::Column::One.def().seaography().ignore);
+        assert!(hello::Column::Two.def().seaography().ignore);
+        assert!(hello::Column::Three.def().seaography().ignore);
     }
 
     #[test]

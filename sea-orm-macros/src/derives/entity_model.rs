@@ -114,6 +114,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut ignore = false;
                     let mut unique = false;
                     let mut sql_type = None;
+                    let mut enum_name = None;
+                    let mut is_primary_key = false;
+                    let mut seaography_ignore = false;
+
                     let mut column_name = if let Some(case_style) = rename_all {
                         Some(field_name.convert_case(Some(case_style)))
                     } else if original_field_name
@@ -125,101 +129,118 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         None
                     };
 
-                    let mut enum_name = None;
-                    let mut is_primary_key = false;
                     // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(StringLen::N(255))", default_value = "new user", default_expr = "gen_random_uuid()", column_name = "name", enum_name = "Name", nullable, indexed, unique)]
                     for attr in field.attrs.iter() {
-                        if !attr.path().is_ident("sea_orm") {
-                            continue;
+                        if attr.path().is_ident("sea_orm") {
+                            // single param
+                            attr.parse_nested_meta(|meta| {
+                                if meta.path.is_ident("column_type") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        let ty: TokenStream = syn::parse_str(&litstr.value())?;
+                                        sql_type = Some(ty);
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid column_type {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("auto_increment") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Bool(litbool) = lit {
+                                        auto_increment = litbool.value();
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid auto_increment = {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("comment") {
+                                    comment = Some(meta.value()?.parse::<Lit>()?);
+                                } else if meta.path.is_ident("default_value") {
+                                    default_value = Some(meta.value()?.parse::<Lit>()?);
+                                } else if meta.path.is_ident("default_expr") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        let value_expr: TokenStream =
+                                            syn::parse_str(&litstr.value())?;
+                                        default_expr = Some(value_expr);
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid column_type {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("column_name") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        column_name = Some(litstr.value());
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid column_name {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("enum_name") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        let ty: Ident = syn::parse_str(&litstr.value())?;
+                                        enum_name = Some(ty);
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid enum_name {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("select_as") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        select_as = Some(litstr.value());
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid select_as {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("save_as") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        save_as = Some(litstr.value());
+                                    } else {
+                                        return Err(meta.error(format!("Invalid save_as {lit:?}")));
+                                    }
+                                } else if meta.path.is_ident("ignore") {
+                                    ignore = true;
+                                } else if meta.path.is_ident("primary_key") {
+                                    is_primary_key = true;
+                                    primary_key_types.push(field.ty.clone());
+                                } else if meta.path.is_ident("nullable") {
+                                    nullable = true;
+                                } else if meta.path.is_ident("indexed") {
+                                    indexed = true;
+                                } else if meta.path.is_ident("unique") {
+                                    unique = true;
+                                } else if meta.path.is_ident("unique_key") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        unique_key = Some(litstr.value());
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid unique_key {lit:?}"))
+                                        );
+                                    }
+                                } else {
+                                    // Reads the value expression to advance the parse stream.
+                                    // Some parameters, such as `primary_key`, do not have any value,
+                                    // so ignoring an error occurred here.
+                                    let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
+                                }
+
+                                Ok(())
+                            })?;
+                        } else if attr.path().is_ident("seaography") {
+                            attr.parse_nested_meta(|meta| {
+                                if meta.path.is_ident("ignore") {
+                                    seaography_ignore = true;
+                                }
+
+                                Ok(())
+                            })?;
                         }
-
-                        // single param
-                        attr.parse_nested_meta(|meta| {
-                            if meta.path.is_ident("column_type") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Str(litstr) = lit {
-                                    let ty: TokenStream = syn::parse_str(&litstr.value())?;
-                                    sql_type = Some(ty);
-                                } else {
-                                    return Err(meta.error(format!("Invalid column_type {lit:?}")));
-                                }
-                            } else if meta.path.is_ident("auto_increment") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Bool(litbool) = lit {
-                                    auto_increment = litbool.value();
-                                } else {
-                                    return Err(
-                                        meta.error(format!("Invalid auto_increment = {lit:?}"))
-                                    );
-                                }
-                            } else if meta.path.is_ident("comment") {
-                                comment = Some(meta.value()?.parse::<Lit>()?);
-                            } else if meta.path.is_ident("default_value") {
-                                default_value = Some(meta.value()?.parse::<Lit>()?);
-                            } else if meta.path.is_ident("default_expr") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Str(litstr) = lit {
-                                    let value_expr: TokenStream = syn::parse_str(&litstr.value())?;
-                                    default_expr = Some(value_expr);
-                                } else {
-                                    return Err(meta.error(format!("Invalid column_type {lit:?}")));
-                                }
-                            } else if meta.path.is_ident("column_name") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Str(litstr) = lit {
-                                    column_name = Some(litstr.value());
-                                } else {
-                                    return Err(meta.error(format!("Invalid column_name {lit:?}")));
-                                }
-                            } else if meta.path.is_ident("enum_name") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Str(litstr) = lit {
-                                    let ty: Ident = syn::parse_str(&litstr.value())?;
-                                    enum_name = Some(ty);
-                                } else {
-                                    return Err(meta.error(format!("Invalid enum_name {lit:?}")));
-                                }
-                            } else if meta.path.is_ident("select_as") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Str(litstr) = lit {
-                                    select_as = Some(litstr.value());
-                                } else {
-                                    return Err(meta.error(format!("Invalid select_as {lit:?}")));
-                                }
-                            } else if meta.path.is_ident("save_as") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Str(litstr) = lit {
-                                    save_as = Some(litstr.value());
-                                } else {
-                                    return Err(meta.error(format!("Invalid save_as {lit:?}")));
-                                }
-                            } else if meta.path.is_ident("ignore") {
-                                ignore = true;
-                            } else if meta.path.is_ident("primary_key") {
-                                is_primary_key = true;
-                                primary_key_types.push(field.ty.clone());
-                            } else if meta.path.is_ident("nullable") {
-                                nullable = true;
-                            } else if meta.path.is_ident("indexed") {
-                                indexed = true;
-                            } else if meta.path.is_ident("unique") {
-                                unique = true;
-                            } else if meta.path.is_ident("unique_key") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Str(litstr) = lit {
-                                    unique_key = Some(litstr.value());
-                                } else {
-                                    return Err(meta.error(format!("Invalid unique_key {lit:?}")));
-                                }
-                            } else {
-                                // Reads the value expression to advance the parse stream.
-                                // Some parameters, such as `primary_key`, do not have any value,
-                                // so ignoring an error occurred here.
-                                let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
-                            }
-
-                            Ok(())
-                        })?;
                     }
 
                     if let Some(enum_name) = enum_name {
@@ -293,6 +314,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     }
                     if unique {
                         match_row = quote! { #match_row.unique() };
+                    }
+                    if seaography_ignore {
+                        match_row = quote! { #match_row.seaography_ignore() };
                     }
                     if unique_key.is_some() {
                         match_row = quote! { #match_row.unique_key(#unique_key) };
