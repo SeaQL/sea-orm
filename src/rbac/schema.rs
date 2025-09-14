@@ -1,5 +1,5 @@
 use super::{AccessType, SchemaOper, entity};
-use crate::{ConnectionTrait, DbConn, DbErr, EntityTrait, ExecResult, RelationDef, Schema};
+use crate::{ConnectionTrait, DbErr, EntityTrait, ExecResult, RelationDef, Schema};
 
 #[derive(Debug, Default)]
 pub struct RbacCreateTablesParams {
@@ -8,8 +8,8 @@ pub struct RbacCreateTablesParams {
 }
 
 /// Create RBAC tables, will currently fail if any of them already exsits
-pub async fn create_tables(
-    db: &DbConn,
+pub async fn create_tables<C: ConnectionTrait>(
+    db: &C,
     RbacCreateTablesParams {
         user_override_relation,
         user_role_relation,
@@ -41,12 +41,13 @@ pub fn all_tables() -> Vec<&'static str> {
     ]
 }
 
-async fn create_table<E>(
-    db: &DbConn,
+async fn create_table<C, E>(
+    db: &C,
     entity: E,
     rel: Option<RelationDef>,
 ) -> Result<ExecResult, DbErr>
 where
+    C: ConnectionTrait,
     E: EntityTrait,
 {
     let backend = db.get_database_backend();
