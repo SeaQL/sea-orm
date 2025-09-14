@@ -176,14 +176,27 @@ where
     ///     id: ActiveValue::set(2),
     ///     name: ActiveValue::set("Orange".to_owned()),
     /// };
+    /// let query = cake::Entity::insert(orange)
+    ///     .on_conflict(
+    ///         OnConflict::column(cake::Column::Name)
+    ///             .update_column(cake::Column::Name)
+    ///             .to_owned()
+    ///     );
     /// assert_eq!(
-    ///     cake::Entity::insert(orange)
-    ///         .on_conflict(
-    ///             OnConflict::column(cake::Column::Name)
-    ///                 .update_column(cake::Column::Name)
-    ///                 .to_owned()
-    ///         )
+    ///     query
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "INSERT INTO `cake` (`id`, `name`) VALUES (2, 'Orange') ON DUPLICATE KEY UPDATE `name` = VALUES(`name`)"
+    /// );
+    /// assert_eq!(
+    ///     query
     ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO UPDATE SET "name" = "excluded"."name""#,
+    /// );
+    /// assert_eq!(
+    ///     query
+    ///         .build(DbBackend::Sqlite)
     ///         .to_string(),
     ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO UPDATE SET "name" = "excluded"."name""#,
     /// );
