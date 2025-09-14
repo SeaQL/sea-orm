@@ -3,8 +3,8 @@ use crate::{ConnectionTrait, DbErr, EntityTrait, ExecResult, RelationDef, Schema
 
 #[derive(Debug, Default)]
 pub struct RbacCreateTablesParams {
-    user_override_relation: Option<RelationDef>,
-    user_role_relation: Option<RelationDef>,
+    pub user_override_relation: Option<RelationDef>,
+    pub user_role_relation: Option<RelationDef>,
 }
 
 /// Create RBAC tables, will currently fail if any of them already exsits
