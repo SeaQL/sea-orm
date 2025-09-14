@@ -1,15 +1,27 @@
 use super::{AccessType, SchemaOper, entity};
-use crate::{ConnectionTrait, DbConn, DbErr, EntityTrait, ExecResult, Schema};
+use crate::{ConnectionTrait, DbConn, DbErr, EntityTrait, ExecResult, RelationDef, Schema};
+
+#[derive(Debug, Default)]
+pub struct RbacCreateTablesParams {
+    user_override_relation: Option<RelationDef>,
+    user_role_relation: Option<RelationDef>,
+}
 
 /// Create RBAC tables, will currently fail if any of them already exsits
-pub async fn create_tables(db: &DbConn) -> Result<(), DbErr> {
-    create_table(db, entity::permission::Entity).await?;
-    create_table(db, entity::resource::Entity).await?;
-    create_table(db, entity::role::Entity).await?;
-    create_table(db, entity::role_hierarchy::Entity).await?;
-    create_table(db, entity::role_permission::Entity).await?;
-    create_table(db, entity::user_override::Entity).await?;
-    create_table(db, entity::user_role::Entity).await?;
+pub async fn create_tables(
+    db: &DbConn,
+    RbacCreateTablesParams {
+        user_override_relation,
+        user_role_relation,
+    }: RbacCreateTablesParams,
+) -> Result<(), DbErr> {
+    create_table(db, entity::permission::Entity, None).await?;
+    create_table(db, entity::resource::Entity, None).await?;
+    create_table(db, entity::role::Entity, None).await?;
+    create_table(db, entity::role_hierarchy::Entity, None).await?;
+    create_table(db, entity::role_permission::Entity, None).await?;
+    create_table(db, entity::user_override::Entity, user_override_relation).await?;
+    create_table(db, entity::user_role::Entity, user_role_relation).await?;
 
     Ok(())
 }
@@ -29,14 +41,22 @@ pub fn all_tables() -> Vec<&'static str> {
     ]
 }
 
-async fn create_table<E>(db: &DbConn, entity: E) -> Result<ExecResult, DbErr>
+async fn create_table<E>(
+    db: &DbConn,
+    entity: E,
+    rel: Option<RelationDef>,
+) -> Result<ExecResult, DbErr>
 where
     E: EntityTrait,
 {
     let backend = db.get_database_backend();
     let schema = Schema::new(backend);
 
-    let res = db.execute(&schema.create_table_from_entity(entity)).await?;
+    let mut stmt = schema.create_table_from_entity(entity);
+    if let Some(rel) = rel {
+        stmt.foreign_key(&mut rel.into());
+    }
+    let res = db.execute(&stmt).await?;
 
     for stmt in schema.create_index_from_entity(entity) {
         db.execute(&stmt).await?;

@@ -15,7 +15,9 @@ use sea_orm::{
 async fn main() {
     let ctx = TestContext::new("bakery_chain_rbac_tests").await;
     create_tables(&ctx.db).await.unwrap();
-    sea_orm::rbac::schema::create_tables(&ctx.db).await.unwrap();
+    sea_orm::rbac::schema::create_tables(&ctx.db, Default::default())
+        .await
+        .unwrap();
     rbac::setup(&ctx.db).await.unwrap();
     crud_tests(&ctx.db).await.unwrap();
     ctx.delete().await;
