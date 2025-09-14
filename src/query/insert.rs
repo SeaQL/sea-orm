@@ -168,7 +168,7 @@ where
     /// );
     /// ```
     ///
-    /// on conflict do update
+    /// on conflict do update (upsert)
     /// ```
     /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
     ///
