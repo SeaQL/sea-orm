@@ -604,6 +604,8 @@ mod tests {
             );
             assert_eq!(
                 Update::one(active_model)
+                    .validate()
+                    .unwrap()
                     .build(DbBackend::Postgres)
                     .to_string(),
                 r#"UPDATE "hello" SET "one1" = 1, "two" = 2, "three3" = 3 WHERE "hello"."id" = 1"#,
@@ -735,6 +737,8 @@ mod tests {
             );
             assert_eq!(
                 Update::one(active_model)
+                    .validate()
+                    .unwrap()
                     .build(DbBackend::Postgres)
                     .to_string(),
                 r#"UPDATE "hello" SET "one1" = 1, "two" = CAST(2 AS text), "three3" = 3 WHERE "hello"."id" = 1"#,
@@ -873,6 +877,8 @@ mod tests {
             );
             assert_eq!(
                 Update::one(active_model)
+                    .validate()
+                    .unwrap()
                     .build(DbBackend::Postgres)
                     .to_string(),
                 r#"UPDATE "hello" SET "one1" = 1, "two" = CAST(2 AS text), "three3" = 3 WHERE "hello"."id" = 1"#,

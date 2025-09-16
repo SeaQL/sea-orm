@@ -662,6 +662,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     fruit::Entity::update(orange.clone())
+    ///         .validate()?
     ///         .filter(fruit::Column::Name.contains("orange"))
     ///         .exec(&db)
     ///         .await?,
@@ -719,6 +720,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     fruit::Entity::update(orange.clone())
+    ///         .validate()?
     ///         .filter(fruit::Column::Name.contains("orange"))
     ///         .exec(&db)
     ///         .await?,
