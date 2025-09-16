@@ -15,7 +15,6 @@ use sea_orm::{
             user_override::ActiveModel as UserOverride,
             user_role::ActiveModel as UserRole,
         },
-        schema::action_str,
     },
 };
 use std::collections::HashMap;
@@ -56,9 +55,9 @@ pub async fn setup(db: &DbConn) -> Result<(), DbErr> {
         AccessType::Delete,
     ] {
         permissions.insert(
-            action_str(&action),
+            action.as_str(),
             Permission {
-                action: Set(action_str(&action).to_owned()),
+                action: Set(action.as_str().to_owned()),
                 ..Default::default()
             }
             .insert(db)

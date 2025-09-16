@@ -1,4 +1,4 @@
-use super::{AccessType, SchemaOper, entity};
+use super::entity;
 use crate::{ConnectionTrait, DbErr, EntityTrait, ExecResult, RelationDef, Schema};
 
 #[derive(Debug, Default)]
@@ -64,19 +64,4 @@ where
     }
 
     Ok(res)
-}
-
-/// Mapping of AccessType to &str
-pub fn action_str(at: &AccessType) -> &'static str {
-    match at {
-        AccessType::Select => "select",
-        AccessType::Insert => "insert",
-        AccessType::Update => "update",
-        AccessType::Delete => "delete",
-        AccessType::Schema(SchemaOper::Create) => "schema_create",
-        AccessType::Schema(SchemaOper::Alter) => "schema_alter",
-        AccessType::Schema(SchemaOper::Drop) => "schema_drop",
-        AccessType::Schema(SchemaOper::Rename) => "schema_rename",
-        AccessType::Schema(SchemaOper::Truncate) => "schema_truncate",
-    }
 }

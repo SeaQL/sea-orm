@@ -66,11 +66,15 @@ impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self.values {
             Some(values) => {
-                let string = inject_parameters(
-                    &self.sql,
-                    values.0.clone(),
-                    self.db_backend.get_query_builder().as_ref(),
-                );
+                let string = match self.db_backend {
+                    DbBackend::MySql => inject_parameters(&self.sql, &values.0, &MysqlQueryBuilder),
+                    DbBackend::Postgres => {
+                        inject_parameters(&self.sql, &values.0, &PostgresQueryBuilder)
+                    }
+                    DbBackend::Sqlite => {
+                        inject_parameters(&self.sql, &values.0, &SqliteQueryBuilder)
+                    }
+                };
                 write!(f, "{}", &string)
             }
             None => {

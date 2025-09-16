@@ -3,7 +3,6 @@ use crate::rbac::{
     RbacResourcesAndPermissions, RbacRoleHierarchyList, RbacRolesAndRanks, RbacUserRolePermissions,
     ResourceRequest,
     entity::{role::RoleId, user::UserId},
-    schema::action_str,
 };
 use crate::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
@@ -392,7 +391,7 @@ impl RbacEngineMount {
             // Constructor of this struct should ensure engine is not None.
             let engine = holder.as_ref().expect("RBAC Engine not set");
             let permission = || PermissionRequest {
-                action: action_str(&request.access_type).to_owned(),
+                action: request.access_type.as_str().to_owned(),
             };
             let resource = || ResourceRequest {
                 schema: request.schema_table.0.as_ref().map(|s| s.1.to_string()),

@@ -2,7 +2,6 @@ use crate::{
     AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel, QueryResult,
     Statement, StatementBuilder, StreamTrait, TransactionError, TransactionTrait, error::*,
 };
-use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 use std::{fmt::Debug, future::Future, pin::Pin};
 use tracing::instrument;
 use url::Url;
@@ -654,15 +653,6 @@ impl DbBackend {
         S: StatementBuilder,
     {
         statement.build(self)
-    }
-
-    /// A helper for building SQL queries
-    pub fn get_query_builder(&self) -> Box<dyn QueryBuilder> {
-        match self {
-            Self::MySql => Box::new(MysqlQueryBuilder),
-            Self::Postgres => Box::new(PostgresQueryBuilder),
-            Self::Sqlite => Box::new(SqliteQueryBuilder),
-        }
     }
 
     /// Check if the database supports `RETURNING` syntax on insert and update

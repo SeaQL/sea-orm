@@ -1,10 +1,9 @@
-use crate::{DbBackend, Statement};
-use sea_query::QueryStatementBuilder;
+use crate::{DbBackend, Statement, StatementBuilder};
 
 /// A Trait for any type performing queries on a Model or ActiveModel
 pub trait QueryTrait {
-    /// Constrain the QueryStatement to [QueryStatementBuilder] trait
-    type QueryStatement: QueryStatementBuilder;
+    /// Constrain the QueryStatement to [StatementBuilder] trait
+    type QueryStatement: StatementBuilder;
 
     /// Get a mutable ref to the query builder
     fn query(&mut self) -> &mut Self::QueryStatement;
@@ -17,11 +16,7 @@ pub trait QueryTrait {
 
     /// Build the query as [`Statement`]
     fn build(&self, db_backend: DbBackend) -> Statement {
-        let query_builder = db_backend.get_query_builder();
-        Statement::from_string_values_tuple(
-            db_backend,
-            self.as_query().build_any(query_builder.as_ref()),
-        )
+        StatementBuilder::build(self.as_query(), &db_backend)
     }
 
     /// Apply an operation on the [QueryTrait::QueryStatement] if the given `Option<T>` is `Some(_)`
