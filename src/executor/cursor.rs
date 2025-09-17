@@ -1,7 +1,7 @@
 use crate::{
     ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IdentityOf, IntoIdentity,
-    PartialModelTrait, PrimaryKeyToColumn, QueryOrder, QuerySelect, Select, SelectModel,
-    SelectThree, SelectThreeModel, SelectTwo, SelectTwoModel, SelectorTrait,
+    PartialModelTrait, PrimaryKeyToColumn, QuerySelect, Select, SelectModel, SelectThree,
+    SelectThreeModel, SelectTwo, SelectTwoModel, SelectorTrait,
 };
 use sea_query::{
     Condition, DynIden, Expr, ExprTrait, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr,
@@ -351,17 +351,6 @@ where
 }
 
 impl<S> QuerySelect for Cursor<S>
-where
-    S: SelectorTrait,
-{
-    type QueryStatement = SelectStatement;
-
-    fn query(&mut self) -> &mut SelectStatement {
-        &mut self.query
-    }
-}
-
-impl<S> QueryOrder for Cursor<S>
 where
     S: SelectorTrait,
 {
