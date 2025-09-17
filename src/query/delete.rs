@@ -88,6 +88,10 @@ impl Delete {
     ///     r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,
     /// );
     /// ```
+    //
+    // (non-doc comment for maintainers)
+    // Ideally, we would make this method fallible instead of stashing and delaying the error.
+    // But that's a bigger breaking change.
     pub fn one<E, A, M>(model: M) -> DeleteOne<A>
     where
         E: EntityTrait,

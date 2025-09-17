@@ -71,6 +71,10 @@ impl Update {
     ///     r#"UPDATE "cake" SET "name" = 'Apple Pie' WHERE "cake"."id" = 1"#,
     /// );
     /// ```
+    //
+    // (non-doc comment for maintainers)
+    // Ideally, we would make this method fallible instead of stashing and delaying the error.
+    // But that's a bigger breaking change.
     pub fn one<E, A>(model: A) -> UpdateOne<A>
     where
         E: EntityTrait,
