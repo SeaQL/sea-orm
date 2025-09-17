@@ -78,6 +78,7 @@ pub async fn create_and_update_metadata(db: &DatabaseConnection) -> Result<(), D
         value: Set("0.22".to_owned()),
         ..metadata.clone().into_active_model()
     })
+    .validate()?
     .filter(metadata::Column::Uuid.eq(Uuid::default()))
     .exec(db)
     .await;

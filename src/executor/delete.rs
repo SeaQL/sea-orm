@@ -1,7 +1,7 @@
 use super::{ReturningSelector, SelectModel};
 use crate::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, Iterable,
-    error::*,
+    ValidatedDeleteOne, error::*,
 };
 use sea_query::{DeleteStatement, Query};
 use std::future::Future;
@@ -19,7 +19,7 @@ pub struct DeleteResult {
     pub rows_affected: u64,
 }
 
-impl<A> DeleteOne<A>
+impl<A> ValidatedDeleteOne<A>
 where
     A: ActiveModelTrait,
 {
@@ -28,9 +28,6 @@ where
     where
         C: ConnectionTrait,
     {
-        if let Some(err) = self.error {
-            return Err(err);
-        }
         exec_delete_only(self.query, db).await
     }
 
@@ -42,10 +39,31 @@ where
     where
         C: ConnectionTrait,
     {
-        if let Some(err) = self.error {
-            return Err(err);
-        }
         exec_delete_with_returning_one::<A::Entity, _>(self.query, db).await
+    }
+}
+
+impl<A> DeleteOne<A>
+where
+    A: ActiveModelTrait,
+{
+    /// Execute a DELETE operation on one ActiveModel
+    pub async fn exec<C>(self, db: &C) -> Result<DeleteResult, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.0?.exec(db).await
+    }
+
+    /// Execute an delete operation and return the deleted model
+    pub async fn exec_with_returning<C>(
+        self,
+        db: &C,
+    ) -> Result<Option<<A::Entity as EntityTrait>::Model>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.0?.exec_with_returning(db).await
     }
 }
 

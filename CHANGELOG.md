@@ -398,6 +398,12 @@ match conn.inner {
     _ => (),
 }
 ```
+* `DeleteOne` and `UpdateOne` no longer implement `QueryFilter` and `QueryTrait`
+  directly. Those implementations could expose an incomplete SQL query with an
+  incomplete condition that touches too many records. To generate the right
+  condition, we must make sure that the primary key is set on the input
+  `ActiveModel`. If you need to access the generated SQL query, convert into
+  `ValidatedDeleteOne`/`ValidatedUpdateOne` first.
 
 ### Upgrades
 
@@ -828,7 +834,7 @@ let items: Vec<(order::Model, Option<lineitem::Model>, Option<cake::Model>)> =
 ### Enhancements
 
 * Support complex type path in `DeriveIntoActiveModel` https://github.com/SeaQL/sea-orm/pull/2517
-```rust 
+```rust
 #[derive(DeriveIntoActiveModel)]
 #[sea_orm(active_model = "<fruit::Entity as EntityTrait>::ActiveModel")]
 struct Fruit {
@@ -859,7 +865,7 @@ pub struct Model {
     pub id: i32,
     pub embedding: PgVector,
 }
- 
+
 // Schema
 sea_query::Table::create()
     .table(image_model::Entity.table_ref())
@@ -1589,7 +1595,7 @@ pub struct JsonColumn {
 
 ## 0.12.1 - 2023-07-27
 
-+ `0.12.0-rc.1`: Yanked    
++ `0.12.0-rc.1`: Yanked
 + `0.12.0-rc.2`: 2023-05-19
 + `0.12.0-rc.3`: 2023-06-22
 + `0.12.0-rc.4`: 2023-07-08

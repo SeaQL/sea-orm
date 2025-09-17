@@ -48,6 +48,8 @@ pub use ActiveValue::{NotSet, Set, Unchanged};
 ///         name: ActiveValue::NotSet,
 ///         cake_id: ActiveValue::Set(Some(2)),
 ///     })
+///     .validate()
+///     .unwrap()
 ///     .build(DbBackend::Postgres)
 ///     .to_string(),
 ///     r#"UPDATE "fruit" SET "cake_id" = 2 WHERE "fruit"."id" = 1"#

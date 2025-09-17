@@ -1,7 +1,7 @@
 use super::ReturningSelector;
 use crate::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel, Iterable,
-    PrimaryKeyTrait, SelectModel, UpdateMany, UpdateOne, error::*,
+    PrimaryKeyTrait, SelectModel, UpdateMany, UpdateOne, ValidatedUpdateOne, error::*,
 };
 use sea_query::{FromValueTuple, Query, UpdateStatement};
 
@@ -19,6 +19,22 @@ pub struct UpdateResult {
     pub rows_affected: u64,
 }
 
+impl<A> ValidatedUpdateOne<A>
+where
+    A: ActiveModelTrait,
+{
+    /// Execute an UPDATE operation on an ActiveModel
+    pub async fn exec<C>(self, db: &C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+    {
+        Updater::new(self.query)
+            .exec_update_and_return_updated(self.model, db)
+            .await
+    }
+}
+
 impl<A> UpdateOne<A>
 where
     A: ActiveModelTrait,
@@ -29,12 +45,7 @@ where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
     {
-        if let Some(err) = self.error {
-            return Err(err);
-        }
-        Updater::new(self.query)
-            .exec_update_and_return_updated(self.model, db)
-            .await
+        self.0?.exec(db).await
     }
 }
 
