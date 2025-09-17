@@ -404,6 +404,26 @@ match conn.inner {
   condition, we must make sure that the primary key is set on the input
   `ActiveModel`. If you need to access the generated SQL query, convert into
   `ValidatedDeleteOne`/`ValidatedUpdateOne` first.
+```rust
+error[E0599]: no method named `build` found for struct `query::update::UpdateOne` in the current scope
+   --> src/entity/column.rs:607:22
+    |
+  > | /                 Update::one(active_model)
+  > | |                     .build(DbBackend::Postgres)
+    | |                     -^^^^^ method not found in `UpdateOne<A>`
+    | |_____________________|
+    |
+```
+Call the `validate()` method:
+```rust
+Update::one(active_model)
+  + .validate()?
+    .build(DbBackend::Postgres)
+```
+* Removed `DbBackend::get_query_builder()` because `QueryBuilder` is not longer object safe.
+```rust
+  - fn get_query_builder(&self) -> Box<dyn QueryBuilder>
+```
 
 ### Upgrades
 
