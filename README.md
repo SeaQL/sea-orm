@@ -91,6 +91,8 @@ impl Related<super::fruit::Entity> for Entity {
 ```
 
 ### Select
+SeaORM models one-to-many and many-to-many relationships at the Entity level.
+Many-to-many join can traverse the junction table in a single method call.
 ```rust
 // find all models
 let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
@@ -108,7 +110,7 @@ let cheese: cake::Model = cheese.unwrap();
 // find related models (lazy)
 let fruits: Vec<fruit::Model> = cheese.find_related(Fruit).all(db).await?;
 
-// find related models (eager)
+// find related models (eager): works for both 1-N and M-N relations
 let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> =
     Cake::find().find_with_related(Fruit).all(db).await?;
 ```
@@ -124,12 +126,12 @@ struct CakeWithFruit {
     id: i32,
     name: String,
     #[sea_orm(nested)]
-    fruit: Option<fruit::Model>,
+    fruit: Option<fruit::Model>, // this can be a regular or another partial model
 }
 
 let cakes: Vec<CakeWithFruit> = cake::Entity::find()
-    .left_join(fruit::Entity)
-    .into_partial_model()
+    .left_join(fruit::Entity) // no need to specify join condition
+    .into_partial_model()     // only the columns in the target struct will be selected
     .all(db)
     .await?;
 ```
@@ -185,7 +187,7 @@ let mut pear: fruit::ActiveModel = pear.unwrap().into();
 
 pear.name = Set("Sweet pear".to_owned());
 
-// update one
+// update one: only changed columns will be updated (not all columns)
 let pear: fruit::Model = pear.update(db).await?;
 
 // update many: UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."name" LIKE '%Apple%'
@@ -234,7 +236,11 @@ fruit::Entity::delete_many()
     .await?;
 
 ```
-### Raw SQL
+### Ergonomic Raw SQL
+The `raw_sql!` macro is like the `format!` macro but without the risk of SQL injection.
+It supports nested parameter interpolation, array and tuple expansion, and even repeating group,
+offering great flexibility in crafting complex queries.
+
 ```rust
 #[derive(FromQueryResult)]
 struct Cake {
@@ -251,6 +257,7 @@ struct Bakery {
 
 let cake_ids = [2, 3, 4]; // expanded by the `..` operator
 
+// can use many APIs with raw SQL, including nested select
 let cake: Option<Cake> = Cake::find_by_statement(raw_sql!(
     Sqlite,
     r#"SELECT "cake"."name", "bakery"."name" AS "bakery_name"

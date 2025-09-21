@@ -19,7 +19,7 @@ pub struct Statement {
 
 /// Any type that can build a [Statement]
 pub trait StatementBuilder: Sync {
-    /// Method to call in order to build a [Statement]
+    /// Method to build a [Statement]
     fn build(&self, db_backend: &DbBackend) -> Statement;
 
     #[cfg(feature = "rbac")]

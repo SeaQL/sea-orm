@@ -124,7 +124,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Get a immutable [ActiveValue] from an ActiveModel
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
 
-    /// Set the Value into an ActiveModel, panic if failed
+    /// Set the Value of a ActiveModel field, panic if failed
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) {
         self.try_set(c, v).unwrap_or_else(|e| {
             panic!(
@@ -135,7 +135,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         })
     }
 
-    /// Set the Value into an ActiveModel, return error if failed.
+    /// Set the Value of a ActiveModel field, return error if failed
     fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
 
     /// Set the state of an [ActiveValue] to the not set state
