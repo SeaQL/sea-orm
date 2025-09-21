@@ -6,7 +6,6 @@ pub use common::{TestContext, bakery_chain::*, setup::*};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DbConn, DbErr, EntityName, EntityTrait, IntoActiveModel, NotSet,
     QueryFilter, Set, TransactionTrait,
-    rbac::{RbacAddRoleHierarchy, RbacContext},
 };
 
 #[sea_orm_macros::test]
@@ -24,6 +23,8 @@ async fn main() {
 
 #[cfg(feature = "rbac")]
 async fn rbac_setup(db: &DbConn) -> Result<(), DbErr> {
+    use sea_orm::rbac::{RbacAddRoleHierarchy, RbacContext};
+
     let mut context = RbacContext::load(db).await?;
 
     let tables = [

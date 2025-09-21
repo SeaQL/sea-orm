@@ -6,7 +6,7 @@ pub use engine::*;
 pub mod entity;
 pub use entity::user::UserId as RbacUserId;
 
-mod context;
+pub mod context;
 pub use context::*;
 
 mod error;
