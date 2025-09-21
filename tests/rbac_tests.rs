@@ -1,13 +1,12 @@
 #![allow(unused_imports, dead_code)]
 
 pub mod common;
-#[cfg(feature = "rbac")]
-mod rbac;
 
 pub use common::{TestContext, bakery_chain::*, setup::*};
 use sea_orm::{
-    ColumnTrait, ConnectionTrait, DbConn, DbErr, EntityTrait, IntoActiveModel, NotSet, QueryFilter,
-    Set, TransactionTrait,
+    ColumnTrait, ConnectionTrait, DbConn, DbErr, EntityName, EntityTrait, IntoActiveModel, NotSet,
+    QueryFilter, Set, TransactionTrait,
+    rbac::{RbacAddRoleHierarchy, RbacContext},
 };
 
 #[sea_orm_macros::test]
@@ -18,19 +17,99 @@ async fn main() {
     sea_orm::rbac::schema::create_tables(&ctx.db, Default::default())
         .await
         .unwrap();
-    rbac::setup(&ctx.db).await.unwrap();
+    rbac_setup(&ctx.db).await.unwrap();
     crud_tests(&ctx.db).await.unwrap();
     ctx.delete().await;
 }
 
 #[cfg(feature = "rbac")]
+async fn rbac_setup(db: &DbConn) -> Result<(), DbErr> {
+    let mut context = RbacContext::load(db).await?;
+
+    let tables = [
+        baker::Entity.table_name(),
+        bakery::Entity.table_name(),
+        cake::Entity.table_name(),
+        cakes_bakers::Entity.table_name(),
+        customer::Entity.table_name(),
+        lineitem::Entity.table_name(),
+        order::Entity.table_name(),
+        "*", // WILDCARD
+    ];
+
+    context.add_tables(db, &tables).await?;
+
+    context.add_crud_permissions(db).await?;
+
+    context
+        .add_roles(db, &["admin", "manager", "public"])
+        .await?;
+
+    context
+        .assign_user_role(db, &[(1, "admin"), (2, "manager"), (3, "public")])
+        .await?;
+
+    // public can select everything
+    context
+        .add_role_permissions(db, "public", &["select"], &["*"])
+        .await?;
+
+    // manager can create / update everything except bakery
+    context
+        .add_role_permissions(
+            db,
+            "manager",
+            &["insert", "update"],
+            &tables
+                .iter()
+                .cloned()
+                .filter(|t| !matches!(*t, "bakery" | "*"))
+                .collect::<Vec<_>>(),
+        )
+        .await?;
+
+    // manager can delete order
+    context
+        .add_role_permissions(db, "manager", &["delete"], &["order", "lineitem"])
+        .await?;
+
+    // admin can do anything, in addition to public / manager
+    context
+        .add_role_permissions(db, "admin", &["delete"], &["*"])
+        .await?;
+
+    // add permissions to bakery which manager doesn't have
+    context
+        .add_role_permissions(db, "admin", &["insert", "update"], &["bakery"])
+        .await?;
+
+    context
+        .add_role_hierarchy(
+            db,
+            &[
+                RbacAddRoleHierarchy {
+                    super_role: "admin",
+                    role: "manager",
+                },
+                RbacAddRoleHierarchy {
+                    super_role: "manager",
+                    role: "public",
+                },
+            ],
+        )
+        .await?;
+
+    Ok(())
+}
+
+#[cfg(feature = "rbac")]
 async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
+    db.load_rbac().await?;
+
     use sea_orm::rbac::RbacUserId;
     let admin = RbacUserId(1);
     let manager = RbacUserId(2);
     let public = RbacUserId(3);
-
-    db.load_rbac().await?;
 
     {
         // only admin can create bakery
