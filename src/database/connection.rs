@@ -129,7 +129,7 @@ impl std::fmt::Display for AccessMode {
 #[async_trait::async_trait]
 pub trait TransactionTrait {
     /// The concrete type for the transaction
-    type Transaction: ConnectionTrait + TransactionTrait;
+    type Transaction: ConnectionTrait + TransactionTrait + TransactionSession;
 
     /// Execute SQL `BEGIN` transaction.
     /// Returns a Transaction that can be committed or rolled back
@@ -169,4 +169,14 @@ pub trait TransactionTrait {
             + Send,
         T: Send,
         E: std::fmt::Display + std::fmt::Debug + Send;
+}
+
+/// Represents an open transaction
+#[async_trait::async_trait]
+pub trait TransactionSession {
+    /// Commit a transaction
+    async fn commit(self) -> Result<(), DbErr>;
+
+    /// Rolls back a transaction explicitly
+    async fn rollback(self) -> Result<(), DbErr>;
 }

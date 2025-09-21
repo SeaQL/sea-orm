@@ -1,7 +1,7 @@
 use crate::{
     AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
-    QueryResult, Statement, StreamTrait, TransactionStream, TransactionTrait, debug_print,
-    error::*,
+    QueryResult, Statement, StreamTrait, TransactionSession, TransactionStream, TransactionTrait,
+    debug_print, error::*,
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
@@ -229,6 +229,17 @@ impl DatabaseTransaction {
             }
         }
         Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl TransactionSession for DatabaseTransaction {
+    async fn commit(self) -> Result<(), DbErr> {
+        self.commit().await
+    }
+
+    async fn rollback(self) -> Result<(), DbErr> {
+        self.rollback().await
     }
 }
 

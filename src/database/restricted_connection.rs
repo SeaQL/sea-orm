@@ -7,7 +7,7 @@ use crate::rbac::{
 use crate::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
     ExecResult, IsolationLevel, QueryResult, Statement, StatementBuilder, TransactionError,
-    TransactionTrait,
+    TransactionSession, TransactionTrait,
 };
 use std::{
     pin::Pin,
@@ -325,6 +325,17 @@ impl TransactionTrait for RestrictedTransaction {
             .await
             .map_err(TransactionError::Connection)?;
         transaction.run(callback).await
+    }
+}
+
+#[async_trait::async_trait]
+impl TransactionSession for RestrictedTransaction {
+    async fn commit(self) -> Result<(), DbErr> {
+        self.commit().await
+    }
+
+    async fn rollback(self) -> Result<(), DbErr> {
+        self.rollback().await
     }
 }
 
