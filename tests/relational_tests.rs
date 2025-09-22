@@ -512,8 +512,9 @@ pub async fn related() -> Result<(), DbErr> {
         })),
         bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
         ..Default::default()
-    };
-    let _baker_bob_res = Baker::insert(baker_bob).exec(&ctx.db).await?;
+    }
+    .insert(&ctx.db)
+    .await?;
 
     // Bobby's Baker
     let baker_bobby = baker::ActiveModel {
@@ -544,8 +545,9 @@ pub async fn related() -> Result<(), DbErr> {
         })),
         bakery_id: Set(Some(terres_bakery_res.last_insert_id)),
         ..Default::default()
-    };
-    let _baker_ada_res = Baker::insert(baker_ada).exec(&ctx.db).await?;
+    }
+    .insert(&ctx.db)
+    .await?;
 
     // Stone Bakery, with no baker
     let stone_bakery = bakery::ActiveModel {
@@ -554,6 +556,30 @@ pub async fn related() -> Result<(), DbErr> {
         ..Default::default()
     };
     let _stone_bakery_res = Bakery::insert(stone_bakery).exec(&ctx.db).await?;
+
+    let cake = cake::ActiveModel {
+        name: Set("Chocolate".to_owned()),
+        price: Set("1.2".parse().unwrap()),
+        gluten_free: Set(false),
+        bakery_id: Set(None),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await?;
+
+    cakes_bakers::ActiveModel {
+        cake_id: Set(cake.id),
+        baker_id: Set(baker_bob.id),
+    }
+    .insert(&ctx.db)
+    .await?;
+
+    cakes_bakers::ActiveModel {
+        cake_id: Set(cake.id),
+        baker_id: Set(baker_ada.id),
+    }
+    .insert(&ctx.db)
+    .await?;
 
     #[derive(Debug, FromQueryResult, PartialEq)]
     struct BakerLite {
@@ -724,6 +750,29 @@ pub async fn related() -> Result<(), DbErr> {
                 vec![]
             ),
         ]
+    );
+
+    let select_cake_with_baker = Cake::find().find_with_related(Baker);
+
+    assert_eq!(
+        select_cake_with_baker
+            .build(sea_orm::DatabaseBackend::MySql)
+            .to_string(),
+        [
+            "SELECT",
+            "`cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`, `cake`.`price` AS `A_price`,",
+            "`cake`.`bakery_id` AS `A_bakery_id`, `cake`.`gluten_free` AS `A_gluten_free`,",
+            "`cake`.`serial` AS `A_serial`, `baker`.`id` AS `B_id`, `baker`.`name` AS `B_name`,",
+            "`baker`.`contact_details` AS `B_contact_details`, `baker`.`bakery_id` AS `B_bakery_id`",
+            "FROM `cake` LEFT JOIN `cakes_bakers` ON `cake`.`id` = `cakes_bakers`.`cake_id`",
+            "LEFT JOIN `baker` ON `cakes_bakers`.`baker_id` = `baker`.`id`",
+            "ORDER BY `cake`.`id` ASC"
+        ].join(" ")
+    );
+
+    assert_eq!(
+        select_cake_with_baker.all(&ctx.db).await?,
+        [(cake.try_into_model().unwrap(), vec![baker_bob, baker_ada])]
     );
 
     ctx.delete().await;
