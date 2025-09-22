@@ -1164,7 +1164,7 @@ pub async fn select_three() -> Result<(), DbErr> {
         total: Decimal::from(10),
         bakery_id: 42,
         customer_id: 11,
-        placed_at: DateTimeUtc::UNIX_EPOCH,
+        placed_at: "2020-01-01T00:00:00Z".parse().unwrap(),
     };
 
     let customer = customer::Model {

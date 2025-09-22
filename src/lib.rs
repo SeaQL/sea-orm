@@ -179,7 +179,7 @@
 //!
 //! let cakes: Vec<CakeWithFruit> = cake::Entity::find()
 //!     .left_join(fruit::Entity) // no need to specify join condition
-//!     .into_partial_model()     // only the columns in the target struct will be selected
+//!     .into_partial_model() // only the columns in the target struct will be selected
 //!     .all(db)
 //!     .await?;
 //! # Ok(())

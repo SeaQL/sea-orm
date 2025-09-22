@@ -69,7 +69,7 @@ pub async fn init_1(ctx: &TestContext, link: bool) {
             total: Set(10.into()),
             bakery_id: Set(42),
             customer_id: Set(11),
-            placed_at: Set(DateTimeUtc::UNIX_EPOCH),
+            placed_at: Set("2020-01-01T00:00:00Z".parse().unwrap()),
         })
         .exec(&ctx.db)
         .await
