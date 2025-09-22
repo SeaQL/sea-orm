@@ -12,6 +12,8 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::bakery::Entity", via = "Relation::Manager")]
     BakeryManager,
+    #[sea_orm(has_many = "super::bakery::Entity", via = "Relation::Cashier")]
+    BakeryCashier,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

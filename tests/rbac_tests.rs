@@ -2,6 +2,7 @@
 
 pub mod common;
 
+pub use chrono::offset::Utc;
 pub use common::{TestContext, bakery_chain::*, setup::*};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DbConn, DbErr, EntityName, EntityTrait, IntoActiveModel, NotSet,
@@ -241,7 +242,7 @@ async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
             total: Set(10.into()),
             bakery_id: Set(1),
             customer_id: Set(11),
-            placed_at: Set(Default::default()),
+            placed_at: Set(Utc::now()),
         })
         .exec(&db)
         .await?;
