@@ -58,6 +58,10 @@ pub type ChronoDateTimeWithTimeZone = chrono::DateTime<chrono::FixedOffset>;
 #[cfg(feature = "with-chrono")]
 pub type ChronoDateTimeUtc = chrono::DateTime<chrono::Utc>;
 
+/// The UTC type from chrono
+#[cfg(feature = "with-chrono")]
+pub type ChronoUtc = chrono::Utc;
+
 /// Date time represented in local time
 #[cfg(feature = "with-chrono")]
 pub type ChronoDateTimeLocal = chrono::DateTime<chrono::Local>;

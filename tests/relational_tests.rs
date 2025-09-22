@@ -2,14 +2,13 @@
 
 pub mod common;
 
-pub use chrono::offset::Utc;
 pub use common::{TestContext, bakery_chain::*, setup::*};
 use pretty_assertions::assert_eq;
 use sea_orm::sea_query::{Expr, Func, SimpleExpr};
 use sea_orm::{
     DbErr, DerivePartialModel, FromQueryResult,
     entity::*,
-    prelude::{DateTimeUtc, Decimal, Uuid},
+    prelude::{ChronoUtc, DateTimeUtc, Decimal, Uuid},
     query::*,
 };
 
@@ -151,7 +150,7 @@ pub async fn right_join() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(15.10)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -233,7 +232,7 @@ pub async fn inner_join() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(15.10)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -245,7 +244,7 @@ pub async fn inner_join() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(100.00)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -314,7 +313,7 @@ pub async fn group_by() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(99.95)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -326,7 +325,7 @@ pub async fn group_by() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(200.00)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -409,7 +408,7 @@ pub async fn having() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(100.00)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -421,7 +420,7 @@ pub async fn having() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(12.00)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -441,7 +440,7 @@ pub async fn having() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_bob.id),
         total: Set(rust_dec(50.0)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -453,7 +452,7 @@ pub async fn having() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_bob.id),
         total: Set(rust_dec(50.0)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -889,7 +888,7 @@ pub async fn linked() -> Result<(), DbErr> {
         bakery_id: Set(seaside_bakery_res.last_insert_id),
         customer_id: Set(customer_kate_res.last_insert_id),
         total: Set(rust_dec(15.10)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
         ..Default::default()
     };
     let kate_order_1_res = Order::insert(kate_order_1).exec(&ctx.db).await?;
@@ -906,7 +905,7 @@ pub async fn linked() -> Result<(), DbErr> {
         bakery_id: Set(seaside_bakery_res.last_insert_id),
         customer_id: Set(customer_kate_res.last_insert_id),
         total: Set(rust_dec(29.7)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
         ..Default::default()
     };
     let kate_order_2_res = Order::insert(kate_order_2).exec(&ctx.db).await?;
@@ -931,7 +930,7 @@ pub async fn linked() -> Result<(), DbErr> {
         bakery_id: Set(seaside_bakery_res.last_insert_id),
         customer_id: Set(customer_kara_res.last_insert_id),
         total: Set(rust_dec(15.10)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
         ..Default::default()
     };
     let kara_order_1_res = Order::insert(kara_order_1).exec(&ctx.db).await?;
@@ -948,7 +947,7 @@ pub async fn linked() -> Result<(), DbErr> {
         bakery_id: Set(seaside_bakery_res.last_insert_id),
         customer_id: Set(customer_kara_res.last_insert_id),
         total: Set(rust_dec(29.7)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
         ..Default::default()
     };
     let kara_order_2_res = Order::insert(kara_order_2).exec(&ctx.db).await?;

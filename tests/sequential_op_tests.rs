@@ -2,10 +2,9 @@
 
 pub mod common;
 
-use chrono::offset::Utc;
 use common::{TestContext, bakery_chain::*, setup::*};
 use rust_decimal::prelude::*;
-use sea_orm::{DatabaseConnection, FromQueryResult, entity::*, query::*};
+use sea_orm::{DatabaseConnection, FromQueryResult, entity::*, prelude::ChronoUtc, query::*};
 use uuid::Uuid;
 
 // Run the test locally:
@@ -113,7 +112,7 @@ async fn seed_data(db: &DatabaseConnection) {
         bakery_id: Set(bakery.id.clone().unwrap()),
         customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(rust_dec(99.95)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -267,7 +266,7 @@ async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
         bakery_id: Set(cake.bakery_id.unwrap()),
         customer_id: Set(another_customer.id.clone().unwrap()),
         total: Set(rust_dec(200.00)),
-        placed_at: Set(Utc::now()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }

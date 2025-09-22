@@ -2,11 +2,10 @@
 
 pub mod common;
 
-pub use chrono::offset::Utc;
 pub use common::{TestContext, bakery_chain::*, setup::*};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DbConn, DbErr, EntityName, EntityTrait, IntoActiveModel, NotSet,
-    QueryFilter, Set, TransactionTrait,
+    QueryFilter, Set, TransactionTrait, entity::prelude::ChronoUtc,
 };
 
 #[sea_orm_macros::test]
@@ -242,7 +241,7 @@ async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
             total: Set(10.into()),
             bakery_id: Set(1),
             customer_id: Set(11),
-            placed_at: Set(Utc::now()),
+            placed_at: Set(ChronoUtc::now()),
         })
         .exec(&db)
         .await?;
