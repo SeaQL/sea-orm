@@ -303,6 +303,18 @@ assert_eq!(
     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY [4,5])"#
 );
 ```
+* Added `ActiveModelTrait::try_set`
+```rust
+pub trait ActiveModelTrait {
+    /// old: set the Value of a ActiveModel field, panic if failed
+    fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) {
+        self.try_set(c, v).unwrap_or_else(|e| panic!(..))
+    }
+
+    /// new: same as above but non-panicking
+    fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
+}
+```
 
 ### Breaking Changes
 
