@@ -75,7 +75,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
         bakery_id: Set(bakery_insert_res.last_insert_id),
         customer_id: Set(customer_insert_res.last_insert_id),
         total: Set(rust_dec(7.55)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(Utc::now()),
         ..Default::default()
     };
     let order_insert_res = Order::insert(order_1)

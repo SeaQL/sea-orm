@@ -107,7 +107,7 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(order::Column::PlacedAt)
-                .date_time()
+                .timestamp_with_time_zone()
                 .not_null(),
         )
         .foreign_key(

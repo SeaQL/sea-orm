@@ -9,7 +9,7 @@ pub struct Model {
     pub total: Decimal,
     pub bakery_id: i32,
     pub customer_id: i32,
-    pub placed_at: DateTime,
+    pub placed_at: DateTimeUtc,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

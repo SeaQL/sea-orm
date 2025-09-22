@@ -113,7 +113,7 @@ async fn seed_data(db: &DatabaseConnection) {
         bakery_id: Set(bakery.id.clone().unwrap()),
         customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(rust_dec(99.95)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(Utc::now()),
 
         ..Default::default()
     }
@@ -267,7 +267,7 @@ async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
         bakery_id: Set(cake.bakery_id.unwrap()),
         customer_id: Set(another_customer.id.clone().unwrap()),
         total: Set(rust_dec(200.00)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(Utc::now()),
 
         ..Default::default()
     }
