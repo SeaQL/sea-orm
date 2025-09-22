@@ -60,22 +60,27 @@ impl SqlxPostgresConnector {
     /// Add configuration options for the PostgreSQL database
     #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
-        let mut opt = options
+        let mut sqlx_opts = options
             .url
             .parse::<PgConnectOptions>()
             .map_err(sqlx_error_to_conn_err)?;
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
-            opt = opt.disable_statement_logging();
+            sqlx_opts = sqlx_opts.disable_statement_logging();
         } else {
-            opt = opt.log_statements(options.sqlx_logging_level);
+            sqlx_opts = sqlx_opts.log_statements(options.sqlx_logging_level);
             if options.sqlx_slow_statements_logging_level != LevelFilter::Off {
-                opt = opt.log_slow_statements(
+                sqlx_opts = sqlx_opts.log_slow_statements(
                     options.sqlx_slow_statements_logging_level,
                     options.sqlx_slow_statements_logging_threshold,
                 );
             }
         }
+
+        if let Some(f) = &options.pg_opts_fn {
+            sqlx_opts = f(sqlx_opts);
+        }
+
         let set_search_path_sql = options.schema_search_path.as_ref().map(|schema| {
             let mut string = "SET search_path = ".to_owned();
             if schema.starts_with('"') {
@@ -107,10 +112,10 @@ impl SqlxPostgresConnector {
             });
         }
         let pool = if lazy {
-            pool_options.connect_lazy_with(opt)
+            pool_options.connect_lazy_with(sqlx_opts)
         } else {
             pool_options
-                .connect_with(opt)
+                .connect_with(sqlx_opts)
                 .await
                 .map_err(sqlx_error_to_conn_err)?
         };
