@@ -38,8 +38,8 @@ AUTHORS:
   Join our Discord server to chat with others in the SeaQL community!
     - Invitation: https://discord.com/invite/uCPdDXzbdv
 
-  SeaQL Community Survey 2024
-    - Link: https://sea-ql.org/community-survey
+  SeaQL Community Survey 2025
+    - Link: https://www.sea-ql.org/community-survey
 
   If you like what we do, consider starring, sharing and contributing!
 "#
@@ -95,7 +95,8 @@ you should provide the directory of that submodule.",
             short = 'u',
             long,
             env = "DATABASE_URL",
-            help = "Database URL"
+            help = "Database URL",
+            hide_env_values = true
         )]
         database_url: Option<String>,
 
@@ -231,7 +232,13 @@ pub enum GenerateSubcommands {
         )]
         database_schema: Option<String>,
 
-        #[arg(short = 'u', long, env = "DATABASE_URL", help = "Database URL")]
+        #[arg(
+            short = 'u',
+            long,
+            env = "DATABASE_URL",
+            help = "Database URL",
+            hide_env_values = true
+        )]
         database_url: String,
 
         #[arg(

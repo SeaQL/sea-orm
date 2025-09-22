@@ -36,6 +36,7 @@ enum ColumnAs {
     Nested {
         typ: Type,
         field: syn::Ident,
+        alias: Option<String>,
     },
     Skip(syn::Ident),
 }
@@ -109,6 +110,7 @@ impl DerivePartialModel {
             let mut from_col = None;
             let mut from_expr = None;
             let mut nested = false;
+            let mut nested_alias = None;
             let mut skip = false;
 
             for attr in field.attrs.iter() {
@@ -127,6 +129,8 @@ impl DerivePartialModel {
                             from_col = Some(format_ident!("{}", s.to_upper_camel_case()));
                         } else if let Some(s) = meta.get_as_kv("from_expr") {
                             from_expr = Some(syn::parse_str::<Expr>(&s).map_err(Error::Syn)?);
+                        } else if let Some(s) = meta.get_as_kv("alias") {
+                            nested_alias = Some(s);
                         }
                     }
                 }
@@ -152,6 +156,7 @@ impl DerivePartialModel {
                 (None, None, true) => ColumnAs::Nested {
                     typ: field.ty,
                     field: field_name,
+                    alias: nested_alias,
                 },
                 (None, None, false) => {
                     if entity.is_none() {
@@ -257,25 +262,51 @@ impl DerivePartialModel {
             ColumnAs::Col { col, field } => {
                 let field = field.unraw().to_string();
                 let entity = entity.as_ref().unwrap();
-                let col_name = if let Some(col) = col {
+
+                let variant_name = if let Some(col) = col {
                     col
                 } else {
                     &format_ident!("{}", field.to_upper_camel_case())
                 };
-                let col_value = if let Some(alias) = alias {
-                    quote!(sea_orm::sea_query::Expr::col((#alias, <#entity as sea_orm::EntityTrait>::Column:: #col_name)))
-                } else {
-                    quote!( <#entity as sea_orm::EntityTrait>::Column:: #col_name)
+
+                // variant of the entity column
+                let column = quote! {
+                    <#entity as sea_orm::EntityTrait>::Column::#variant_name
                 };
-                quote!(let #select_ident =
-                    if let Some(prefix) = pre {
-                        let ident = format!("{prefix}{}", #field);
-                        sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, ident)
-                    } else {
-                        sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #field)
+
+                // We cast enum as text in select_as if the backend is postgres
+
+                let non_nested = match alias {
+                    Some(alias) => quote! {
+                        let col_expr = sea_orm::sea_query::Expr::col((#alias, #column));
+                        let casted = sea_orm::ColumnTrait::select_as(&#column, col_expr);
+                        sea_orm::SelectColumns::select_column_as(#select_ident, casted, col_alias)
+                    },
+                    None => quote! {
+                        sea_orm::SelectColumns::select_column_as(#select_ident, #column, col_alias)
+                    },
+                };
+
+                quote! {
+                    let #select_ident = {
+                        let col_alias = pre.map_or(#field.to_string(), |pre| format!("{pre}{}", #field));
+                        if let Some(nested_alias) = nested_alias {
+                            // TODO: Replace this with the new iden after updating to sea-query 1.0
+                            let alias = sea_orm::sea_query::Alias::new(nested_alias);
+                            let alias_iden = sea_orm::sea_query::DynIden::new(alias);
+                            let col_expr = sea_orm::sea_query::Expr::col(
+                                (alias_iden, #column)
+                            );
+
+                            let casted = sea_orm::ColumnTrait::select_as(&#column, col_expr);
+                            sea_orm::SelectColumns::select_column_as(#select_ident, casted, col_alias)
+                        } else {
+                            #non_nested
+                        }
                     };
-                )
+                }
             }
+
             ColumnAs::Expr { expr, field } => {
                 let field = field.unraw().to_string();
                 quote!(let #select_ident =
@@ -287,8 +318,13 @@ impl DerivePartialModel {
                     };
                 )
             }
-            ColumnAs::Nested { typ, field } => {
+            ColumnAs::Nested { typ, field, alias } => {
                 let field = field.unraw().to_string();
+                let alias_ref: Option<&str> = alias.as_deref();
+                let alias_arg = match alias_ref {
+                    Some(s) => quote! { Some(#s) },
+                    None => quote! { None },
+                };
                 quote!(let #select_ident =
                     <#typ as sea_orm::PartialModelTrait>::select_cols_nested(#select_ident,
                         Some(&if let Some(prefix) = pre {
@@ -296,7 +332,9 @@ impl DerivePartialModel {
                             } else {
                                 format!("{}_", #field)
                             }
-                        ));
+                        ),
+                        #alias_arg
+                    );
                 )
             }
             ColumnAs::Skip(_) => quote!(),
@@ -306,10 +344,10 @@ impl DerivePartialModel {
             #[automatically_derived]
             impl sea_orm::PartialModelTrait for #ident {
                 fn select_cols<S: sea_orm::SelectColumns>(#select_ident: S) -> S {
-                    Self::select_cols_nested(#select_ident, None)
+                    Self::select_cols_nested(#select_ident, None, None)
                 }
 
-                fn select_cols_nested<S: sea_orm::SelectColumns>(#select_ident: S, pre: Option<&str>) -> S {
+                fn select_cols_nested<S: sea_orm::SelectColumns>(#select_ident: S, pre: Option<&str>, nested_alias: Option<&str>) -> S {
                     #(#select_col_code_gen)*
                     #select_ident
                 }

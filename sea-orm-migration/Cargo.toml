@@ -3,7 +3,7 @@
 
 [package]
 name = "sea-orm-migration"
-version = "1.1.13"
+version = "1.1.16"
 authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
 edition = "2021"
 description = "Migration utility for SeaORM"
@@ -23,8 +23,8 @@ path = "src/lib.rs"
 async-trait = { version = "0.1", default-features = false }
 clap = { version = "4.3", features = ["env", "derive"], optional = true }
 dotenvy = { version = "0.15", default-features = false, optional = true }
-sea-orm = { version = "~1.1.13", path = "../", default-features = false, features = ["macros"] }
-sea-orm-cli = { version = "~1.1.13", path = "../sea-orm-cli", default-features = false, optional = true }
+sea-orm = { version = "~1.1.16", path = "../", default-features = false, features = ["macros"] }
+sea-orm-cli = { version = "~1.1.16", path = "../sea-orm-cli", default-features = false, optional = true }
 sea-schema = { version = "0.16.2", default-features = false, features = ["discovery", "writer", "probe"] }
 tracing = { version = "0.1", default-features = false, features = ["log"] }
 tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
@@ -35,6 +35,7 @@ async-std = { version = "1", features = ["attributes", "tokio1"] }
 [features]
 default = ["cli"]
 cli = ["clap", "dotenvy", "sea-orm-cli/cli"]
+sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-mysql = ["sea-orm/sqlx-mysql", "sea-schema/sqlx-mysql", "sea-schema/mysql", "sea-orm-cli?/sqlx-mysql"]
 sqlx-postgres = ["sea-orm/sqlx-postgres", "sea-schema/sqlx-postgres", "sea-schema/postgres", "sea-orm-cli?/sqlx-postgres"]
 sqlx-sqlite = ["sea-orm/sqlx-sqlite", "sea-schema/sqlx-sqlite", "sea-schema/sqlite", "sea-orm-cli?/sqlx-sqlite"]

@@ -1,10 +1,10 @@
 ---
 name: Bug Report
 about: Report a bug or design flaw
-title: ''
-labels: ''
-assignees: ''
-
+title: ""
+labels: ""
+assignees: ""
+type: Bug
 ---
 
 <!--
@@ -26,7 +26,7 @@ code and can't see what you have seen. Please avoid vague descriptions like "the
 or "the program crashes" - in either case, provide exact information.
 
 If you are certain there is a bug, please provide a reproducible example, which helps the investigator
-to pin-point the bug and the implementor to verify that a solution is satisfactory. Bug reports without 
+to pin-point the bug and the implementor to verify that a solution is satisfactory. Bug reports without
 reproducible example may be closed immediately or dangle forever.
 
 Finally, please search for existing issues and discussions before submission. Feel free to revive old

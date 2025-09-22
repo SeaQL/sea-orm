@@ -13,17 +13,25 @@ pub trait PartialModelTrait: FromQueryResult {
     /// This will stop being a provided method in a future major release.
     /// Please implement this method manually when implementing this trait by hand,
     /// and ensure that your `select_cols` implementation is calling it with `_prefix` as `None`.
-    fn select_cols_nested<S: SelectColumns>(select: S, _prefix: Option<&str>) -> S {
+    fn select_cols_nested<S: SelectColumns>(
+        select: S,
+        _prefix: Option<&str>,
+        _alias: Option<&str>,
+    ) -> S {
         Self::select_cols(select)
     }
 }
 
 impl<T: PartialModelTrait> PartialModelTrait for Option<T> {
     fn select_cols<S: SelectColumns>(select: S) -> S {
-        Self::select_cols_nested(select, None)
+        Self::select_cols_nested(select, None, None)
     }
 
-    fn select_cols_nested<S: SelectColumns>(select: S, prefix: Option<&str>) -> S {
-        T::select_cols_nested(select, prefix)
+    fn select_cols_nested<S: SelectColumns>(
+        select: S,
+        prefix: Option<&str>,
+        _alias: Option<&str>,
+    ) -> S {
+        T::select_cols_nested(select, prefix, _alias)
     }
 }

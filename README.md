@@ -14,12 +14,14 @@
 
 # SeaORM
 
+[中文文档](https://github.com/SeaQL/sea-orm/blob/1.1.x/README-zh.md)
+
 #### SeaORM is a relational ORM to help you build web services in Rust with the familiarity of dynamic languages.
 
 [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
 If you like what we do, consider starring, sharing and contributing!
 
-Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2024](https://sea-ql.org/community-survey)!
+Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2025](https://www.sea-ql.org/community-survey/)!
 
 [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
 Join our Discord server to chat with other members of the SeaQL community!
@@ -111,6 +113,34 @@ let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> =
     Cake::find().find_with_related(Fruit).all(db).await?;
 
 ```
+
+### Nested Select
+
+```rust
+use sea_orm::DerivePartialModel;
+
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity", from_query_result)]
+struct CakeWithFruit {
+    id: i32,
+    name: String,
+    #[sea_orm(nested)]
+    fruit: Option<Fruit>,
+}
+
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "fruit::Entity", from_query_result)]
+struct Fruit {
+    id: i32,
+    name: String,
+}
+
+let cakes: Vec<CakeWithFruit> = cake::Entity::find()
+    .left_join(fruit::Entity)
+    .into_partial_model()
+    .all(db)
+    .await?;
+```
 ### Insert
 ```rust
 let apple = fruit::ActiveModel {
@@ -128,6 +158,27 @@ let pear = pear.insert(db).await?;
 
 // insert many
 Fruit::insert_many([apple, pear]).exec(db).await?;
+```
+### Insert (advanced)
+```rust
+// insert many with returning (if supported by database)
+let models: Vec<fruit::Model> = Fruit::insert_many([apple, pear])
+    .exec_with_returning_many(db)
+    .await?;
+models[0]
+    == fruit::Model {
+        id: 1,
+        name: "Apple".to_owned(),
+        cake_id: None,
+    };
+
+// insert with ON CONFLICT on primary key do nothing, with MySQL specific polyfill
+let result = Fruit::insert_many([apple, pear])
+    .on_conflict_do_nothing()
+    .exec(db)
+    .await?;
+
+matches!(result, TryInsertResult::Conflicted);
 ```
 ### Update
 ```rust
@@ -180,7 +231,7 @@ let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
 let orange: fruit::Model = orange.unwrap();
 orange.delete(db).await?;
 
-// delete many: DELETE FROM "fruit" WHERE "fruit"."name" LIKE 'Orange'
+// delete many: DELETE FROM "fruit" WHERE "fruit"."name" LIKE '%Orange%'
 fruit::Entity::delete_many()
     .filter(fruit::Column::Name.contains("Orange"))
     .exec(db)
@@ -268,7 +319,20 @@ A big shout out to our contributors!
 
 [SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers. If you enjoy using our libraries, please star and share our repositories. If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
 
+### Gold Sponsors
+
+<table><tr>
+<td><a href="https://qdx.co/">
+  <img src="https://www.sea-ql.org/static/sponsors/QDX.svg" width="138"/>
+</a></td>
+</tr></table>
+
+[QDX](https://qdx.co/) pioneers quantum dynamics-powered drug discovery, leveraging AI and supercomputing to accelerate molecular modeling.
+We're immensely grateful to QDX for sponsoring the development of SeaORM, the SQL toolkit that powers their data engineering workflows.
+
 ### Silver Sponsors
+
+We’re grateful to our silver sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
 
 <table><tr>
 <td><a href="https://www.digitalocean.com/">
@@ -279,8 +343,6 @@ A big shout out to our contributors!
   <img src="https://www.sea-ql.org/static/sponsors/JetBrains.svg" width="125">
 </a></td>
 </tr></table>
-
-We’re immensely grateful to our sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
 
 ## Mascot
 

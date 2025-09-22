@@ -1053,4 +1053,80 @@ mod tests {
         assert_eq!(format!("{}", Tea::EverydayTea), "EverydayTea");
         assert_eq!(format!("{}", DisplayTea::EverydayTea), "Everyday");
     }
+
+    #[cfg(feature = "sqlx-postgres")]
+    #[test]
+    fn derive_partial_model_active_enum_casts_to_text() {
+        use sea_orm::*;
+        use sea_query::PostgresQueryBuilder;
+
+        #[derive(Debug, FromQueryResult, DerivePartialModel)]
+        #[sea_orm(entity = "active_enum::Entity")]
+        struct PartialWithEnum {
+            tea: Option<Tea>,
+        }
+
+        let sql = active_enum::Entity::find()
+            .into_partial_model::<PartialWithEnum>()
+            .into_statement(DbBackend::Postgres)
+            .sql;
+
+        assert_eq!(
+            sql,
+            r#"SELECT CAST("active_enum"."tea" AS "text") AS "tea" FROM "public"."active_enum""#,
+        );
+
+        #[derive(Debug, DerivePartialModel)]
+        #[sea_orm(entity = "active_enum::Entity", from_query_result, alias = "zzz")]
+        struct PartialWithEnumAndAlias {
+            #[sea_orm(from_col = "tea")]
+            foo: Option<Tea>,
+        }
+
+        let sql = active_enum::Entity::find()
+            .into_partial_model::<PartialWithEnumAndAlias>()
+            .into_statement(DbBackend::Postgres)
+            .sql;
+
+        assert_eq!(
+            sql,
+            r#"SELECT CAST("zzz"."tea" AS "text") AS "foo" FROM "public"."active_enum""#,
+        );
+
+        #[derive(Debug, DerivePartialModel)]
+        #[sea_orm(entity = "active_enum::Entity", from_query_result)]
+        struct PartialWithEnumNested {
+            tea: Option<Tea>,
+            #[sea_orm(nested, alias = "foo")]
+            nested: Option<PartialWithEnum>,
+        }
+
+        let sql = active_enum::Entity::find()
+            .into_partial_model::<PartialWithEnumNested>()
+            .into_statement(DbBackend::Postgres)
+            .sql;
+
+        assert_eq!(
+            sql,
+            r#"SELECT CAST("active_enum"."tea" AS "text") AS "tea", CAST("foo"."tea" AS "text") AS "nested_tea" FROM "public"."active_enum""#,
+        );
+
+        #[derive(Debug, DerivePartialModel)]
+        #[sea_orm(entity = "active_enum::Entity", from_query_result, alias = "aaa")]
+        struct PartialWithEnumNestedWithAlias {
+            tea: Option<Tea>,
+            #[sea_orm(nested, alias = "foo")]
+            nested: Option<PartialWithEnum>,
+        }
+
+        let sql = active_enum::Entity::find()
+            .into_partial_model::<PartialWithEnumNestedWithAlias>()
+            .into_statement(DbBackend::Postgres)
+            .sql;
+
+        assert_eq!(
+            sql,
+            r#"SELECT CAST("aaa"."tea" AS "text") AS "tea", CAST("foo"."tea" AS "text") AS "nested_tea" FROM "public"."active_enum""#,
+        );
+    }
 }
