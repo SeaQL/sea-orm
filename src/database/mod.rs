@@ -93,7 +93,6 @@ pub struct ConnectOptions {
         Option<Arc<dyn Fn(SqliteConnectOptions) -> SqliteConnectOptions + Send + Sync>>,
 }
 
-
 impl Database {
     /// Method to create a [DatabaseConnection] on a database. This method will return an error
     /// if the database is not available.
