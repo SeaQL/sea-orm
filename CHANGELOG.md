@@ -442,6 +442,18 @@ Update::one(active_model)
 * Upgraded Rust Edition to 2024 https://github.com/SeaQL/sea-orm/pull/2596
 * Upgraded `strum` to `0.27`
 
+## 1.1.17 - pending
+
+### New Features
+
+* Added `map_sqlx_mysql_opts`, `map_sqlx_postgres_opts`, `map_sqlx_sqlite_opts` to `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/2731
+```rust
+let mut opt = ConnectOptions::new(url);
+opt.map_sqlx_postgres_opts(|pg_opt: PgConnectOptions| {
+    pg_opt.ssl_mode(PgSslMode::Require)
+});
+```
+
 ## 1.1.16 - 2025-09-11
 
 ### Bug Fixes
