@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.1.17 - pending
+
+### New Features
+
+* Added `map_sqlx_mysql_opts`, `map_sqlx_postgres_opts`, `map_sqlx_sqlite_opts` to `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/2731
+```rust
+let mut opt = ConnectOptions::new(url);
+opt.map_sqlx_postgres_opts(|pg_opt: PgConnectOptions| {
+    pg_opt.ssl_mode(PgSslMode::Require)
+});
+```
+
 ## 1.1.16 - 2025-09-11
 
 ### Bug Fixes
