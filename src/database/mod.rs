@@ -46,7 +46,7 @@ use crate::error::*;
 pub struct Database;
 
 /// Defines the configuration options of a database
-#[derive(Clone)]
+#[derive(derive_more::Debug, Clone)]
 pub struct ConnectOptions {
     /// The URI of the database
     pub(crate) url: String,
@@ -81,62 +81,18 @@ pub struct ConnectOptions {
     /// method.
     pub(crate) connect_lazy: bool,
     #[cfg(feature = "sqlx-mysql")]
+    #[debug(skip)]
     pub(crate) mysql_opts_fn:
         Option<Arc<dyn Fn(MySqlConnectOptions) -> MySqlConnectOptions + Send + Sync>>,
     #[cfg(feature = "sqlx-postgres")]
+    #[debug(skip)]
     pub(crate) pg_opts_fn: Option<Arc<dyn Fn(PgConnectOptions) -> PgConnectOptions + Send + Sync>>,
     #[cfg(feature = "sqlx-sqlite")]
+    #[debug(skip)]
     pub(crate) sqlite_opts_fn:
         Option<Arc<dyn Fn(SqliteConnectOptions) -> SqliteConnectOptions + Send + Sync>>,
 }
 
-impl core::fmt::Debug for ConnectOptions {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        match self {
-            ConnectOptions {
-                url,
-                max_connections,
-                min_connections,
-                connect_timeout,
-                idle_timeout,
-                acquire_timeout,
-                max_lifetime,
-                sqlx_logging,
-                sqlx_logging_level,
-                sqlx_slow_statements_logging_level,
-                sqlx_slow_statements_logging_threshold,
-                sqlcipher_key,
-                schema_search_path,
-                test_before_acquire,
-                connect_lazy,
-                ..
-            } => f
-                .debug_struct("ConnectOptions")
-                .field("url", &url)
-                .field("max_connections", &max_connections)
-                .field("min_connections", &min_connections)
-                .field("connect_timeout", &connect_timeout)
-                .field("idle_timeout", &idle_timeout)
-                .field("acquire_timeout", &acquire_timeout)
-                .field("max_lifetime", &max_lifetime)
-                .field("sqlx_logging", &sqlx_logging)
-                .field("sqlx_logging_level", &sqlx_logging_level)
-                .field(
-                    "sqlx_slow_statements_logging_level",
-                    &sqlx_slow_statements_logging_level,
-                )
-                .field(
-                    "sqlx_slow_statements_logging_threshold",
-                    &sqlx_slow_statements_logging_threshold,
-                )
-                .field("sqlcipher_key", &sqlcipher_key)
-                .field("schema_search_path", &schema_search_path)
-                .field("test_before_acquire", &test_before_acquire)
-                .field("connect_lazy", &connect_lazy)
-                .finish(),
-        }
-    }
-}
 
 impl Database {
     /// Method to create a [DatabaseConnection] on a database. This method will return an error
