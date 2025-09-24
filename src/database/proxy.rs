@@ -5,7 +5,7 @@ use std::{collections::BTreeMap, fmt::Debug};
 
 /// Defines the [ProxyDatabaseTrait] to save the functions
 #[async_trait::async_trait]
-pub trait ProxyDatabaseTrait: Send + Sync + std::fmt::Debug {
+pub trait ProxyDatabaseTrait: Send + Sync + Debug {
     /// Execute a query in the [ProxyDatabase], and return the query results
     async fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr>;
 

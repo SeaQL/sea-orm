@@ -3,7 +3,7 @@ use crate::{
     SelectGetableValue, SelectorRaw, Statement,
     error::{DbErr, type_err},
 };
-use std::{fmt, marker::PhantomData, sync::Arc};
+use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use crate::debug_print;
@@ -226,8 +226,8 @@ impl QueryResult {
 }
 
 #[allow(unused_variables)]
-impl fmt::Debug for QueryResultRow {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Debug for QueryResultRow {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             Self::SqlxMySql(row) => write!(f, "{row:?}"),
@@ -268,7 +268,7 @@ impl<T: TryGetable> TryGetable for Option<T> {
 }
 
 /// Column Index, used by [`TryGetable`]. Implemented for `&str` and `usize`
-pub trait ColIdx: std::fmt::Debug + Copy {
+pub trait ColIdx: Debug + Copy {
     #[cfg(feature = "sqlx-mysql")]
     /// Type surrogate
     type SqlxMySqlIndex: sqlx::ColumnIndex<sqlx::mysql::MySqlRow>;
