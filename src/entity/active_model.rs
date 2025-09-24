@@ -1,5 +1,5 @@
 use crate::{
-    ColumnTrait, ConnectionTrait, DeleteResult, EntityTrait, IdenStatic, Iterable, PrimaryKeyArity,
+    ColumnTrait, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyArity,
     PrimaryKeyToColumn, PrimaryKeyTrait, Value, error::*,
 };
 use async_trait::async_trait;
