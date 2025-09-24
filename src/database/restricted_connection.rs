@@ -19,6 +19,7 @@ use tracing::instrument;
 /// queries for the current user. Note that raw SQL [`Statement`] is not allowed
 /// currently.
 #[derive(Debug, Clone)]
+#[cfg_attr(docsrs, doc(cfg(feature = "rbac")))]
 pub struct RestrictedConnection {
     pub(crate) user_id: UserId,
     pub(crate) conn: DatabaseConnection,

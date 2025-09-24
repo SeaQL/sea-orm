@@ -517,6 +517,7 @@ pub mod metric;
 /// Types and methods to perform queries
 pub mod query;
 #[cfg(feature = "rbac")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rbac")))]
 pub mod rbac;
 /// Types that defines the schemas of an Entity
 pub mod schema;
