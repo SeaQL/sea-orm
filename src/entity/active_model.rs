@@ -1,5 +1,5 @@
 use crate::{
-    ConnectionTrait, DeleteResult, EntityTrait, IdenStatic, Iterable, PrimaryKeyArity,
+    ColumnTrait, ConnectionTrait, DeleteResult, EntityTrait, IdenStatic, Iterable, PrimaryKeyArity,
     PrimaryKeyToColumn, PrimaryKeyTrait, Value, error::*,
 };
 use async_trait::async_trait;
@@ -126,13 +126,8 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     /// Set the Value of a ActiveModel field, panic if failed
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) {
-        self.try_set(c, v).unwrap_or_else(|e| {
-            panic!(
-                "Failed to set value for {}.{}: {e:?}",
-                Self::Entity::default().as_str(),
-                c.as_str()
-            )
-        })
+        self.try_set(c, v)
+            .unwrap_or_else(|e| panic!("Failed to set value for {:?}: {e:?}", c.as_column_ref()))
     }
 
     /// Set the Value of a ActiveModel field, return error if failed

@@ -1,7 +1,7 @@
 use crate::{
-    ActiveModelBehavior, ActiveModelTrait, ConnectionTrait, DbErr, DeleteResult, EntityTrait,
-    IntoActiveModel, Linked, QueryFilter, QueryResult, Related, Select, SelectModel, SelectorRaw,
-    Statement, TryGetError,
+    ActiveModelBehavior, ActiveModelTrait, ColumnTrait, ConnectionTrait, DbErr, DeleteResult,
+    EntityTrait, IntoActiveModel, Linked, QueryFilter, QueryResult, Related, Select, SelectModel,
+    SelectorRaw, Statement, TryGetError,
 };
 use async_trait::async_trait;
 pub use sea_query::Value;
@@ -13,11 +13,17 @@ pub trait ModelTrait: Clone + Send + Debug {
     #[allow(missing_docs)]
     type Entity: EntityTrait;
 
-    /// Get the [Value] of a column from an Entity
+    /// Get the [Value] of a column from a Model
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> Value;
 
-    /// Set the [Value] of a column in an Entity
-    fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
+    /// Set the Value of a Model field, panic if failed
+    fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) {
+        self.try_set(c, v)
+            .unwrap_or_else(|e| panic!("Failed to set value for {:?}: {e:?}", c.as_column_ref()))
+    }
+
+    /// Set the Value of a Model field, return error if failed
+    fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
 
     /// Find related Models
     fn find_related<R>(&self, _: R) -> Select<R>

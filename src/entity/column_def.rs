@@ -117,6 +117,7 @@ mod tests {
 
     #[test]
     fn test_col_from_str() {
+        use crate::IdenStatic;
         use std::str::FromStr;
 
         assert!(matches!(
@@ -136,9 +137,14 @@ mod tests {
             Ok(fruit::Column::CakeId)
         ));
         assert!(matches!(
+            fruit::Column::from_str("CakeId"),
+            Err(crate::ColumnFromStrErr(_))
+        ));
+        assert!(matches!(
             fruit::Column::from_str("does_not_exist"),
             Err(crate::ColumnFromStrErr(_))
         ));
+        assert!(matches!(fruit::Column::CakeId.as_str(), "cake_id"));
     }
 
     #[test]

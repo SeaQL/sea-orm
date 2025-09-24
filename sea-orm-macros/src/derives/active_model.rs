@@ -125,8 +125,8 @@ fn derive_active_model(ident: &Ident, all_fields: IntoIter<Field>) -> syn::Resul
 
             fn try_set(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column, v: sea_orm::Value) -> Result<(), sea_orm::DbErr> {
                 match c {
-                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::set(sea_orm::sea_query::ValueType::try_from(v).map_err(|e| sea_orm::DbErr::Type(e.to_string()))?),)*
-                    _ => return Err(sea_orm::DbErr::Type(format!("This ActiveModel does not have this field: {}", sea_orm::IdenStatic::as_str(&c)))),
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::Set(sea_orm::sea_query::ValueType::try_from(v).map_err(|e| sea_orm::DbErr::Type(e.to_string()))?),)*
+                    _ => return Err(sea_orm::DbErr::Type(format!("ActiveModel does not have this field: {:?}", sea_orm::ColumnTrait::as_column_ref(&c)))),
                 }
                 Ok(())
             }
