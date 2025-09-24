@@ -18,7 +18,7 @@ futures-util = { version = "0.3" }
 async-trait = { version = "0.1" }
 
 sqlparser = "0.40"
-sea-orm = { path = "../../", default-features = false, features = ["proxy", "debug-print"] }
+sea-orm = { path = "../../", default-features = false, features = ["macros", "proxy", "debug-print"] }
 gluesql = { version = "0.15", default-features = false, features = ["memory-storage"] }
 
 [dev-dependencies]
