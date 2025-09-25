@@ -318,6 +318,37 @@ pub trait ActiveModelTrait {
 
 ### Breaking Changes
 
+Please read [SeaQuery's breaking changes](https://github.com/SeaQL/sea-query/blob/master/CHANGELOG.md#breaking-changes) as well. But for most compile errors, you can simply add `use sea_orm::ExprTrait;` in scope.
+```rust
+error[E0599]: no method named `like` found for enum `sea_query::Expr` in the current scope
+    |
+    |         Expr::col((self.entity_name(), *self)).like(s)
+    |
+    |     fn like<L>(self, like: L) -> Expr
+    |        ---- the method is available for `sea_query::Expr` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `ExprTrait` which provides `like` is implemented but not in scope; perhaps you want to import it
+    |
+ -> + use sea_query::ExprTrait;
+```
+```rust
+error[E0308]: mismatched types
+  --> src/sqlite/discovery.rs:27:57
+   |
+   |             .and_where(Expr::col(Alias::new("type")).eq("table"))
+   |                                                      -- ^^^^^^^ expected `&Expr`, found `&str`
+   |                                                      |
+   |                                                      arguments to this method are incorrect
+   |
+   = note: expected reference `&sea_query::Expr`
+              found reference `&'static str`
+```
+```rust
+88  |     .add_option(..)
+    |     ^ the trait `From<bool>` is not implemented for `sea_orm::Condition`
+```
+
 * Removed `runtime-actix` feature flag. It's been an alias of `runtime-tokio` for more than a year, so there should be no impact.
 * Enabled `sqlite-use-returning-for-3_35` by default. SQLite `3.35` was released in 2021, it should be the default by now.
 * Now implemented `impl<T: ModelTrait + FromQueryResult> PartialModelTrait for T`, there may be a potential conflict https://github.com/SeaQL/sea-orm/pull/2642
