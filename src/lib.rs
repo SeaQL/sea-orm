@@ -137,7 +137,7 @@
 //!
 //! ### Select
 //! SeaORM models one-to-many and many-to-many relationships at the Entity level,
-//! so you can express a many‑to‑many traversal in a single method call without manually writing the joins.
+//! so you can express a many‑to‑many traversal via a junction table in a single method call without manually writing the joins.
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {

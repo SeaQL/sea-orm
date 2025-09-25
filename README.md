@@ -95,7 +95,7 @@ impl Related<super::fruit::Entity> for Entity {
 
 ### Select
 SeaORM models one-to-many and many-to-many relationships at the Entity level,
-so you can express a many‑to‑many traversal in a single method call without manually writing the joins.
+so you can express a many‑to‑many traversal via a junction table in a single method call without manually writing the joins.
 ```rust
 // find all models
 let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
