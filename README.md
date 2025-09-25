@@ -313,7 +313,10 @@ let cake: Option<CakeWithBakery> = CakeWithBakery::find_by_statement(raw_sql!(
 
 ## 🧭 Seaography: instant GraphQL API
 
-[Seaography](https://github.com/SeaQL/seaography) is a GraphQL framework built on top of SeaORM. Seaography allows you to build GraphQL resolvers quickly. With just a few commands, you can launch a GraphQL server from SeaORM entities!
+[Seaography](https://github.com/SeaQL/seaography) is a GraphQL framework built for SeaORM.
+Seaography allows you to build GraphQL resolvers quickly.
+With just a few commands, you can launch a fullly-featured GraphQL server from SeaORM entities,
+complete with filter, pagination, relational queries and mutations!
 
 Look at the [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example) to learn more.
 
@@ -323,12 +326,16 @@ Look at the [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/ex
 
 [SeaORM Pro](https://www.sea-ql.org/sea-orm-pro/) is an admin panel solution allowing you to quickly and easily launch an admin panel for your application - frontend development skills not required, but certainly nice to have!
 
+SeaORM Pro will be updated to support the latest features in SeaORM 2.0.
+
 Features:
 
 + Full CRUD
 + Built on React + GraphQL
 + Built-in GraphQL resolver
-+ Customize the UI with simple TOML
++ Customize the UI with TOML config
++ Custom GraphQL endpoints *(new in 2.0)*
++ Role Based Access Control *(new in 2.0)*
 
 Learn More
 
@@ -339,30 +346,26 @@ Learn More
 ![](https://raw.githubusercontent.com/SeaQL/sea-orm/refs/heads/master/docs/sea-orm-pro-dark.png#gh-dark-mode-only)
 ![](https://raw.githubusercontent.com/SeaQL/sea-orm/refs/heads/master/docs/sea-orm-pro-light.png#gh-light-mode-only)
 
+## SQL Server Support
+
+[SQL Server for SeaORM](https://www.sea-ql.org/SeaORM-X/) offers the same SeaORM API for MSSQL. We ported all test cases and examples, complemented by MSSQL specific documentation. If you are building enterprise software, you can [request commercial access](https://forms.office.com/r/1MuRPJmYBR). It is currently based on SeaORM 1.0, but we will offer free upgrade to existing users when SeaORM 2.0 is finalized.
+
 ## Releases
 
-[SeaORM 1.0](https://www.sea-ql.org/blog/2024-08-04-sea-orm-1.0/) is a stable release. The 1.x version will be updated until at least October 2025, and we'll decide whether to release a 2.0 version or extend the 1.x life cycle.
+SeaORM 2.0 has reached its release candidate phase. We'd love for you to try it out and help shape the final release by [sharing your feedback](https://github.com/SeaQL/sea-orm/discussions/2548).
 
-It doesn't mean that SeaORM is 'done', we've designed an architecture to allow us to deliver new features without major breaking changes. In fact, more features are coming!
+SeaORM 2.0 is shaping up to be our most significant release yet - with a few breaking changes, plenty of enhancements, and a clear focus on developer experience.
+
++ [A Sneak Peek at SeaORM 2.0](https://www.sea-ql.org/blog/2025-09-16-sea-orm-2.0/)
++ [SeaORM 2.0: A closer look](https://www.sea-ql.org/blog/2025-09-24-sea-orm-2.0/)
+
+If you make extensive use of SeaORM's underlying query builder, we recommend checking out our blog post on SeaQuery 1.0 release:
+
++ [The road to SeaQuery 1.0](https://www.sea-ql.org/blog/2025-08-30-sea-query-1.0/)
+
+It doesn't mean that SeaORM is 'done', we've designed an architecture to allow us to deliver new features without major breaking changes.
 
 + [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
-
-### Who's using SeaORM?
-
-Here is a short list of awesome open source software built with SeaORM. [Full list here](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to submit yours!
-
-| Project | GitHub | Tagline |
-|---------|--------|---------|
-| [Zed](https://github.com/zed-industries/zed) | ![GitHub stars](https://img.shields.io/github/stars/zed-industries/zed.svg?style=social) | A high-performance, multiplayer code editor |
-| [OpenObserve](https://github.com/openobserve/openobserve) | ![GitHub stars](https://img.shields.io/github/stars/openobserve/openobserve.svg?style=social) | Open-source observability platform |
-| [RisingWave](https://github.com/risingwavelabs/risingwave) | ![GitHub stars](https://img.shields.io/github/stars/risingwavelabs/risingwave.svg?style=social) | Stream processing and management platform |
-| [LLDAP](https://github.com/nitnelave/lldap) | ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | A light LDAP server for user management |
-| [Warpgate](https://github.com/warp-tech/warpgate) | ![GitHub stars](https://img.shields.io/github/stars/warp-tech/warpgate.svg?style=social) | Smart SSH bastion that works with any SSH client |
-| [Svix](https://github.com/svix/svix-webhooks) | ![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social) | The enterprise ready webhooks service |
-| [Ryot](https://github.com/IgnisDa/ryot) | ![GitHub stars](https://img.shields.io/github/stars/ignisda/ryot.svg?style=social) | The only self hosted tracker you will ever need |
-| [Lapdev](https://github.com/lapce/lapdev) | ![GitHub stars](https://img.shields.io/github/stars/lapce/lapdev.svg?style=social) | Self-hosted remote development enviroment |
-| [System Initiative](https://github.com/systeminit/si) | ![GitHub stars](https://img.shields.io/github/stars/systeminit/si.svg?style=social) | DevOps Automation Platform |
-| [OctoBase](https://github.com/toeverything/OctoBase) | ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend |
 
 ## License
 
@@ -386,6 +389,26 @@ We invite you to participate, contribute and together help build Rust's future.
 A big shout out to our contributors!
 
 [![Contributors](https://opencollective.com/sea-orm/contributors.svg?width=1000&button=false)](https://github.com/SeaQL/sea-orm/graphs/contributors)
+
+## Who's using SeaORM?
+
+SeaORM is trusted by companies and startups for both internal tools and public‑facing applications, thanks to its ergonomics and the familiarity it brings from dynamic languages.
+Built on async Rust, it combines high performance and a strong type system without sacrificing developer productivity.
+
+Here is a short list of awesome open source software built with SeaORM. [Full list here](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to submit yours!
+
+| Project | GitHub | Tagline |
+|---------|--------|---------|
+| [Zed](https://github.com/zed-industries/zed) | ![GitHub stars](https://img.shields.io/github/stars/zed-industries/zed.svg?style=social) | A high-performance, multiplayer code editor |
+| [OpenObserve](https://github.com/openobserve/openobserve) | ![GitHub stars](https://img.shields.io/github/stars/openobserve/openobserve.svg?style=social) | Open-source observability platform |
+| [RisingWave](https://github.com/risingwavelabs/risingwave) | ![GitHub stars](https://img.shields.io/github/stars/risingwavelabs/risingwave.svg?style=social) | Stream processing and management platform |
+| [LLDAP](https://github.com/nitnelave/lldap) | ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | A light LDAP server for user management |
+| [Warpgate](https://github.com/warp-tech/warpgate) | ![GitHub stars](https://img.shields.io/github/stars/warp-tech/warpgate.svg?style=social) | Smart SSH bastion that works with any SSH client |
+| [Svix](https://github.com/svix/svix-webhooks) | ![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social) | The enterprise ready webhooks service |
+| [Ryot](https://github.com/IgnisDa/ryot) | ![GitHub stars](https://img.shields.io/github/stars/ignisda/ryot.svg?style=social) | The only self hosted tracker you will ever need |
+| [Lapdev](https://github.com/lapce/lapdev) | ![GitHub stars](https://img.shields.io/github/stars/lapce/lapdev.svg?style=social) | Self-hosted remote development enviroment |
+| [System Initiative](https://github.com/systeminit/si) | ![GitHub stars](https://img.shields.io/github/stars/systeminit/si.svg?style=social) | DevOps Automation Platform |
+| [OctoBase](https://github.com/toeverything/OctoBase) | ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend |
 
 ## Sponsorship
 
