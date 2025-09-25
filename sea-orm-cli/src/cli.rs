@@ -52,6 +52,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum Commands {
     #[command(
@@ -61,7 +62,7 @@ pub enum Commands {
     )]
     Generate {
         #[command(subcommand)]
-        command: Box<GenerateSubcommands>,
+        command: GenerateSubcommands,
     },
     #[command(about = "Migration related commands", display_order = 20)]
     Migrate {
@@ -368,7 +369,7 @@ pub async fn main() {
 
     match cli.command {
         Commands::Generate { command } => {
-            run_generate_command(*command, verbose)
+            run_generate_command(command, verbose)
                 .await
                 .unwrap_or_else(handle_error);
         }
