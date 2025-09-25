@@ -357,7 +357,6 @@ note: method defined here
 ```
 ```rust
 error[E0277]: the trait bound `sea_orm::Condition: From<bool>` is not satisfied
-   --> src/api/symbols.rs:367:21
     |
 367 |         .add_option(option)
     |          ---------- ^^^^^^ the trait `From<bool>` is not implemented for `sea_orm::Condition`
