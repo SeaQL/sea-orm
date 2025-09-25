@@ -61,7 +61,7 @@ pub enum Commands {
     )]
     Generate {
         #[command(subcommand)]
-        command: GenerateSubcommands,
+        command: Box<GenerateSubcommands>,
     },
     #[command(about = "Migration related commands", display_order = 20)]
     Migrate {
@@ -368,7 +368,7 @@ pub async fn main() {
 
     match cli.command {
         Commands::Generate { command } => {
-            run_generate_command(command, verbose)
+            run_generate_command(*command, verbose)
                 .await
                 .unwrap_or_else(handle_error);
         }
