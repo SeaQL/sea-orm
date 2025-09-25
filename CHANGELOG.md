@@ -330,7 +330,7 @@ error[E0599]: no method named `like` found for enum `sea_query::Expr` in the cur
     = help: items from traits can only be used if the trait is in scope
 help: trait `ExprTrait` which provides `like` is implemented but not in scope; perhaps you want to import it
     |
- -> + use sea_query::ExprTrait;
+ -> + use sea_orm::ExprTrait;
 ```
 ```rust
 error[E0308]: mismatched types
@@ -345,8 +345,26 @@ error[E0308]: mismatched types
               found reference `&'static str`
 ```
 ```rust
-88  |     .add_option(..)
-    |     ^ the trait `From<bool>` is not implemented for `sea_orm::Condition`
+error[E0308]: mismatched types
+    |
+390 |             Some(Expr::col(Name).eq(PgFunc::any(query.symbol)))
+    |                                  -- ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&Expr`, found `FunctionCall`
+    |                                  |
+    |                                  arguments to this method are incorrect
+    |
+note: method defined here
+   --> /rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library/core/src/cmp.rs:254:8
+```
+```rust
+error[E0277]: the trait bound `sea_orm::Condition: From<bool>` is not satisfied
+   --> src/api/symbols.rs:367:21
+    |
+367 |         .add_option(option)
+    |          ---------- ^^^^^^ the trait `From<bool>` is not implemented for `sea_orm::Condition`
+    |          |
+    |          required by a bound introduced by this call
+    |
+    = note: required for `bool` to implement `Into<sea_orm::Condition>`
 ```
 
 * Removed `runtime-actix` feature flag. It's been an alias of `runtime-tokio` for more than a year, so there should be no impact.
