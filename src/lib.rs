@@ -142,29 +142,27 @@
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! // find all models
-//! let cakes: Vec<cake::Model> = cake::Entity::find().all(db).await?;
+//! let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
 //!
 //! // find and filter
-//! let chocolate: Vec<cake::Model> = cake::Entity::find()
+//! let chocolate: Vec<cake::Model> = Cake::find()
 //!     .filter(cake::Column::Name.contains("chocolate"))
 //!     .all(db)
 //!     .await?;
 //!
 //! // find one model
-//! let cheese: Option<cake::Model> = cake::Entity::find_by_id(1).one(db).await?;
+//! let cheese: Option<cake::Model> = Cake::find_by_id(1).one(db).await?;
 //! let cheese: cake::Model = cheese.unwrap();
 //!
 //! // find related models (lazy)
 //! let fruits: Vec<fruit::Model> = cheese.find_related(Fruit).all(db).await?;
 //!
 //! // find related models (eager): for 1-1 relations
-//! let cake_with_fruit: Vec<(cake::Model, Option<fruit::Model>)> = cake::Entity::find()
-//!     .find_also_related(Fruit)
-//!     .all(db)
-//!     .await?;
+//! let cake_with_fruit: Vec<(cake::Model, Option<fruit::Model>)> =
+//!     Cake::find().find_also_related(Fruit).all(db).await?;
 //!
 //! // find related models (eager): works for both 1-N and M-N relations
-//! let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> = cake::Entity::find()
+//! let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> = Cake::find()
 //!     .find_with_related(Fruit) // for M-N relations, two joins are performed
 //!     .all(db) // rows are automatically consolidated by left entity
 //!     .await?;
@@ -190,7 +188,7 @@
 //!     fruit: Option<fruit::Model>, // this can be a regular or another partial model
 //! }
 //!
-//! let cakes: Vec<CakeWithFruit> = cake::Entity::find()
+//! let cakes: Vec<CakeWithFruit> = Cake::find()
 //!     .left_join(fruit::Entity) // no need to specify join condition
 //!     .into_partial_model() // only the columns in the partial model will be selected
 //!     .all(db)
@@ -378,9 +376,10 @@
 //! # struct Item { id: i32 }
 //! let item = Item { id: 2 }; // nested parameter access
 //!
-//! let cake: Option<cake::Model> = cake::Entity::find()
+//! let cake: Option<cake::Model> = Cake::find()
 //!     .from_raw_sql(raw_sql!(
-//!         Sqlite, r#"SELECT "id", "name" FROM "cake" WHERE id = {item.id}"#
+//!         Sqlite,
+//!         r#"SELECT "id", "name" FROM "cake" WHERE id = {item.id}"#
 //!     ))
 //!     .one(db)
 //!     .await?;
@@ -392,7 +391,7 @@
 //! # async fn functio(db: &DbConn) -> Result<(), DbErr> {
 //! # use sea_orm::{query::*, FromQueryResult, raw_sql};
 //! #[derive(FromQueryResult)]
-//! struct Cake {
+//! struct CakeWithBakery {
 //!     name: String,
 //!     #[sea_orm(nested)]
 //!     bakery: Option<Bakery>,
@@ -407,7 +406,7 @@
 //! let cake_ids = [2, 3, 4]; // expanded by the `..` operator
 //!
 //! // can use many APIs with raw SQL, including nested select
-//! let cake: Option<Cake> = Cake::find_by_statement(raw_sql!(
+//! let cake: Option<CakeWithBakery> = CakeWithBakery::find_by_statement(raw_sql!(
 //!     Sqlite,
 //!     r#"SELECT "cake"."name", "bakery"."name" AS "bakery_name"
 //!        FROM "cake"
