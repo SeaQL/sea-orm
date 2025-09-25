@@ -65,7 +65,10 @@ Integration examples:
 
 ## A quick taste of SeaORM
 
+Let's have a quick walk through of the unique features of SeaORM.
+
 ### Entity
+You don't have to write this by hand! Entity files can be generated from an existing database.
 ```rust
 use sea_orm::entity::prelude::*;
 
@@ -91,32 +94,42 @@ impl Related<super::fruit::Entity> for Entity {
 ```
 
 ### Select
-SeaORM models one-to-many and many-to-many relationships at the Entity level.
-Many-to-many join can traverse the junction table in a single method call.
+SeaORM models one-to-many and many-to-many relationships at the Entity level,
+so you can express a many‑to‑many traversal in a single method call without manually writing the joins.
 ```rust
 // find all models
-let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
+let cakes: Vec<cake::Model> = cake::Entity::find().all(db).await?;
 
 // find and filter
-let chocolate: Vec<cake::Model> = Cake::find()
+let chocolate: Vec<cake::Model> = cake::Entity::find()
     .filter(cake::Column::Name.contains("chocolate"))
     .all(db)
     .await?;
 
 // find one model
-let cheese: Option<cake::Model> = Cake::find_by_id(1).one(db).await?;
+let cheese: Option<cake::Model> = cake::Entity::find_by_id(1).one(db).await?;
 let cheese: cake::Model = cheese.unwrap();
 
 // find related models (lazy)
 let fruits: Vec<fruit::Model> = cheese.find_related(Fruit).all(db).await?;
 
+// find related models (eager): for 1-1 relations
+let cake_with_fruit: Vec<(cake::Model, Option<fruit::Model>)> = cake::Entity::find()
+    .find_also_related(Fruit)
+    .all(db)
+    .await?;
+
 // find related models (eager): works for both 1-N and M-N relations
-let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> =
-    Cake::find().find_with_related(Fruit).all(db).await?;
+let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> = cake::Entity::find()
+    .find_with_related(Fruit) // for M-N relations, two joins are performed
+    .all(db) // rows are automatically consolidated by left entity
+    .await?;
 ```
 
 ### Nested Select
 
+Partial models prevent overfetching by letting you querying only the fields
+you need; it also makes writing deeply nested relational queries simple.
 ```rust
 use sea_orm::DerivePartialModel;
 
@@ -131,12 +144,15 @@ struct CakeWithFruit {
 
 let cakes: Vec<CakeWithFruit> = cake::Entity::find()
     .left_join(fruit::Entity) // no need to specify join condition
-    .into_partial_model() // only the columns in the target struct will be selected
+    .into_partial_model() // only the columns in the partial model will be selected
     .all(db)
     .await?;
 ```
 
 ### Insert
+SeaORM's ActiveModel lets you work directly with Rust data structures and
+persist them through a simple API.
+It's easy to insert large batches of rows from different data sources.
 ```rust
 let apple = fruit::ActiveModel {
     name: Set("Apple".to_owned()),
@@ -148,8 +164,13 @@ let pear = fruit::ActiveModel {
     ..Default::default()
 };
 
-// insert one
-let pear = pear.insert(db).await?;
+// insert one: Active Record style
+let apple = apple.insert(db).await?;
+apple.id == 1;
+
+// insert one: repository style
+let result = Fruit::insert(apple).exec(db).await?;
+result.last_insert_id == 1;
 
 // insert many returning last insert id
 let result = Fruit::insert_many([apple, pear]).exec(db).await?;
@@ -157,6 +178,7 @@ result.last_insert_id == Some(2);
 ```
 
 ### Insert (advanced)
+You can take advantage of database specific features to perform upsert and idempotent insert.
 ```rust
 // insert many with returning (if supported by database)
 let models: Vec<fruit::Model> = Fruit::insert_many([apple, pear])
@@ -164,7 +186,7 @@ let models: Vec<fruit::Model> = Fruit::insert_many([apple, pear])
     .await?;
 models[0]
     == fruit::Model {
-        id: 1,
+        id: 1, // database assigned value
         name: "Apple".to_owned(),
         cake_id: None,
     };
@@ -179,26 +201,32 @@ matches!(result, TryInsertResult::Conflicted);
 ```
 
 ### Update
+ActiveModel avoids race conditions by updating only the fields you've changed,
+never over‑writing untouched columns.
+You can also craft complex bulk update queries with a fluent query building API.
 ```rust
+use fruit::Column::CakeId;
 use sea_orm::sea_query::{Expr, Value};
 
 let pear: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
 let mut pear: fruit::ActiveModel = pear.unwrap().into();
 
-pear.name = Set("Sweet pear".to_owned());
+pear.name = Set("Sweet pear".to_owned()); // update value of a single field
 
-// update one: only changed columns will be updated (not all columns)
+// update one: only changed columns will be updated
 let pear: fruit::Model = pear.update(db).await?;
 
-// update many: UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."name" LIKE '%Apple%'
+// update many: UPDATE "fruit" SET "cake_id" = "cake_id" + 2
+//               WHERE "fruit"."name" LIKE '%Apple%'
 Fruit::update_many()
-    .col_expr(fruit::Column::CakeId, Expr::value(Value::Int(None)))
+    .col_expr(CakeId, Expr::col(CakeId).add(Expr::val(2)))
     .filter(fruit::Column::Name.contains("Apple"))
     .exec(db)
     .await?;
 
 ```
 ### Save
+You can perform "insert or update" operation with ActiveModel, making it easy to compose transactional operations.
 ```rust
 let banana = fruit::ActiveModel {
     id: NotSet,
@@ -209,25 +237,27 @@ let banana = fruit::ActiveModel {
 // create, because primary key `id` is `NotSet`
 let mut banana = banana.save(db).await?;
 
+banana.id == Unchanged(2);
 banana.name = Set("Banana Mongo".to_owned());
 
-// update, because primary key `id` is `Set`
+// update, because primary key `id` is present
 let banana = banana.save(db).await?;
 
 ```
 ### Delete
+The same ActiveModel API consistent with insert and update.
 ```rust
-// delete one
-let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
-let orange: fruit::Model = orange.unwrap();
-fruit::Entity::delete(orange.into_active_model())
-    .exec(db)
-    .await?;
-
-// or simply
+// delete one: Active Record style
 let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
 let orange: fruit::Model = orange.unwrap();
 orange.delete(db).await?;
+
+// delete one: repository style
+let orange = fruit::ActiveModel {
+    id: Set(2),
+    ..Default::default()
+};
+fruit::Entity::delete(orange).exec(db).await?;
 
 // delete many: DELETE FROM "fruit" WHERE "fruit"."name" LIKE '%Orange%'
 fruit::Entity::delete_many()
@@ -237,10 +267,23 @@ fruit::Entity::delete_many()
 
 ```
 ### Ergonomic Raw SQL
+Let SeaORM handle 90% of all the transactional queries.
+When your query is too complex to express, SeaORM still offer convenience in writing raw SQL.
+
 The `raw_sql!` macro is like the `format!` macro but without the risk of SQL injection.
 It supports nested parameter interpolation, array and tuple expansion, and even repeating group,
 offering great flexibility in crafting complex queries.
 
+```rust
+let item = Item { id: 2 }; // nested parameter access
+
+let cake: Option<cake::Model> = cake::Entity::find()
+    .from_raw_sql(raw_sql!(
+        Sqlite, r#"SELECT "id", "name" FROM "cake" WHERE id = {item.id}"#
+    ))
+    .one(db)
+    .await?;
+```
 ```rust
 #[derive(FromQueryResult)]
 struct Cake {
@@ -362,7 +405,7 @@ We're immensely grateful to QDX for sponsoring the development of SeaORM, the SQ
 
 ### Silver Sponsors
 
-We’re grateful to our silver sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
+We're grateful to our silver sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
 
 <table><tr>
 <td><a href="https://www.digitalocean.com/">
