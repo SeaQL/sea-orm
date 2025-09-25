@@ -1,22 +1,23 @@
-use futures::Future;
 use std::collections::HashSet;
 use std::fmt::Display;
+use std::future::Future;
 use std::pin::Pin;
 use std::time::SystemTime;
 use tracing::info;
 
 use sea_orm::sea_query::{
-    self, extension::postgres::Type, Alias, Expr, ForeignKey, IntoIden, JoinType, Order, Query,
-    SelectStatement, SimpleExpr, Table,
+    self, Alias, Expr, ExprTrait, ForeignKey, IntoIden, JoinType, Order, Query, SelectStatement,
+    SimpleExpr, Table, extension::postgres::Type,
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue, Condition, ConnectionTrait, DbBackend, DbErr, DeriveIden,
     DynIden, EntityTrait, FromQueryResult, Iterable, QueryFilter, Schema, Statement,
     TransactionTrait,
 };
-use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
+#[allow(unused_imports)]
+use sea_schema::probe::SchemaProbe;
 
-use super::{seaql_migrations, IntoSchemaManagerConnection, MigrationTrait, SchemaManager};
+use super::{IntoSchemaManagerConnection, MigrationTrait, SchemaManager, seaql_migrations};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /// Status of migration
@@ -170,7 +171,7 @@ pub trait MigratorTrait: Send {
             .create_table_from_entity(seaql_migrations::Entity)
             .table_name(table_name);
         stmt.if_not_exists();
-        db.execute(builder.build(&stmt)).await.map(|_| ())
+        db.execute(&stmt).await.map(|_| ())
     }
 
     /// Check the status of all migrations
@@ -268,6 +269,10 @@ where
             let manager = SchemaManager::new(db);
             f(&manager).await
         }
+        db => Err(DbErr::BackendNotSupported {
+            db: db.as_str(),
+            ctx: "exec_with_connection",
+        }),
     }
 }
 
@@ -283,7 +288,7 @@ where
     // Temporarily disable the foreign key check
     if db_backend == DbBackend::Sqlite {
         info!("Disabling foreign key check");
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             db_backend,
             "PRAGMA foreign_keys = OFF".to_owned(),
         ))
@@ -295,7 +300,7 @@ where
     if db_backend == DbBackend::MySql {
         info!("Dropping all foreign keys");
         let stmt = query_mysql_foreign_keys(db);
-        let rows = db.query_all(db_backend.build(&stmt)).await?;
+        let rows = db.query_all(&stmt).await?;
         for row in rows.into_iter() {
             let constraint_name: String = row.try_get("", "CONSTRAINT_NAME")?;
             let table_name: String = row.try_get("", "TABLE_NAME")?;
@@ -306,15 +311,15 @@ where
             let mut stmt = ForeignKey::drop();
             stmt.table(Alias::new(table_name.as_str()))
                 .name(constraint_name.as_str());
-            db.execute(db_backend.build(&stmt)).await?;
+            db.execute(&stmt).await?;
             info!("Foreign key '{}' has been dropped", constraint_name);
         }
         info!("All foreign keys dropped");
     }
 
     // Drop all tables
-    let stmt = query_tables(db).await;
-    let rows = db.query_all(db_backend.build(&stmt)).await?;
+    let stmt = query_tables(db)?;
+    let rows = db.query_all(&stmt).await?;
     for row in rows.into_iter() {
         let table_name: String = row.try_get("", "table_name")?;
         info!("Dropping table '{}'", table_name);
@@ -322,7 +327,7 @@ where
         stmt.table(Alias::new(table_name.as_str()))
             .if_exists()
             .cascade();
-        db.execute(db_backend.build(&stmt)).await?;
+        db.execute(&stmt).await?;
         info!("Table '{}' has been dropped", table_name);
     }
 
@@ -330,13 +335,13 @@ where
     if db_backend == DbBackend::Postgres {
         info!("Dropping all types");
         let stmt = query_pg_types(db);
-        let rows = db.query_all(db_backend.build(&stmt)).await?;
+        let rows = db.query_all(&stmt).await?;
         for row in rows {
             let type_name: String = row.try_get("", "typname")?;
             info!("Dropping type '{}'", type_name);
             let mut stmt = Type::drop();
             stmt.name(Alias::new(&type_name));
-            db.execute(db_backend.build(&stmt)).await?;
+            db.execute(&stmt).await?;
             info!("Type '{}' has been dropped", type_name);
         }
     }
@@ -344,7 +349,7 @@ where
     // Restore the foreign key check
     if db_backend == DbBackend::Sqlite {
         info!("Restoring foreign key check");
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             db_backend,
             "PRAGMA foreign_keys = ON".to_owned(),
         ))
@@ -437,25 +442,39 @@ where
     Ok(())
 }
 
-async fn query_tables<C>(db: &C) -> SelectStatement
+fn query_tables<C>(db: &C) -> Result<SelectStatement, DbErr>
 where
     C: ConnectionTrait,
 {
     match db.get_database_backend() {
-        DbBackend::MySql => MySql.query_tables(),
-        DbBackend::Postgres => Postgres.query_tables(),
-        DbBackend::Sqlite => Sqlite.query_tables(),
+        #[cfg(feature = "sqlx-mysql")]
+        DbBackend::MySql => Ok(sea_schema::mysql::MySql.query_tables()),
+        #[cfg(feature = "sqlx-postgres")]
+        DbBackend::Postgres => Ok(sea_schema::postgres::Postgres.query_tables()),
+        #[cfg(feature = "sqlx-sqlite")]
+        DbBackend::Sqlite => Ok(sea_schema::sqlite::Sqlite.query_tables()),
+        #[allow(unreachable_patterns)]
+        other => Err(DbErr::BackendNotSupported {
+            db: other.as_str(),
+            ctx: "query_tables",
+        }),
     }
 }
 
+// this function is only called after checking db backend, the panic is unreachable
 fn get_current_schema<C>(db: &C) -> SimpleExpr
 where
     C: ConnectionTrait,
 {
     match db.get_database_backend() {
-        DbBackend::MySql => MySql::get_current_schema(),
-        DbBackend::Postgres => Postgres::get_current_schema(),
-        DbBackend::Sqlite => unimplemented!(),
+        #[cfg(feature = "sqlx-mysql")]
+        DbBackend::MySql => sea_schema::mysql::MySql::get_current_schema(),
+        #[cfg(feature = "sqlx-postgres")]
+        DbBackend::Postgres => sea_schema::postgres::Postgres::get_current_schema(),
+        #[cfg(feature = "sqlx-sqlite")]
+        DbBackend::Sqlite => sea_schema::sqlite::Sqlite::get_current_schema(),
+        #[allow(unreachable_patterns)]
+        other => panic!("{other:?} feature is off"),
     }
 }
 
@@ -487,7 +506,7 @@ where
     ))
     .cond_where(
         Condition::all()
-            .add(Expr::expr(get_current_schema(db)).equals((
+            .add(get_current_schema(db).equals((
                 InformationSchema::TableConstraints,
                 InformationSchema::TableSchema,
             )))
@@ -532,10 +551,7 @@ where
         )
         .cond_where(
             Condition::all()
-                .add(
-                    Expr::expr(get_current_schema(db))
-                        .equals((PgNamespace::Table, PgNamespace::Nspname)),
-                )
+                .add(get_current_schema(db).equals((PgNamespace::Table, PgNamespace::Nspname)))
                 .add(Expr::col((PgType::Table, PgType::Typelem)).eq(0)),
         );
     stmt

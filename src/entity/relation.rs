@@ -1,7 +1,9 @@
-use crate::{unpack_table_ref, EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select};
+use crate::{
+    EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select, join_tbl_on_condition,
+};
 use core::marker::PhantomData;
 use sea_query::{
-    Alias, Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoIden, JoinType, SeaRc,
+    Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoIden, JoinType, SeaRc,
     TableForeignKey, TableRef,
 };
 use std::fmt::Debug;
@@ -21,7 +23,7 @@ pub type ForeignKeyAction = sea_query::ForeignKeyAction;
 
 /// Defines the relations of an Entity
 pub trait RelationTrait: Iterable + Debug + 'static {
-    /// The method to call
+    /// Creates a [`RelationDef`]
     fn def(&self) -> RelationDef;
 }
 
@@ -96,15 +98,74 @@ fn debug_on_condition(
         Some(func) => {
             d.field(
                 "on_condition",
-                &func(
-                    SeaRc::new(Alias::new("left")),
-                    SeaRc::new(Alias::new("right")),
-                ),
+                &func(SeaRc::new("left"), SeaRc::new("right")),
             );
         }
         None => {
             d.field("on_condition", &Option::<Condition>::None);
         }
+    }
+}
+
+/// Idiomatically generate the join condition.
+///
+/// This allows using [RelationDef] directly where [`sea_query`] expects an [`IntoCondition`].
+///
+/// ## Examples
+///
+/// ```
+/// use sea_orm::sea_query::*;
+/// use sea_orm::tests_cfg::{cake, fruit};
+/// use sea_orm::*;
+///
+/// let query = Query::select()
+///     .from(fruit::Entity)
+///     .inner_join(cake::Entity, fruit::Relation::Cake.def())
+///     .to_owned();
+///
+/// assert_eq!(
+///     query.to_string(MysqlQueryBuilder),
+///     r#"SELECT  FROM `fruit` INNER JOIN `cake` ON `fruit`.`cake_id` = `cake`.`id`"#
+/// );
+/// assert_eq!(
+///     query.to_string(PostgresQueryBuilder),
+///     r#"SELECT  FROM "fruit" INNER JOIN "cake" ON "fruit"."cake_id" = "cake"."id""#
+/// );
+/// assert_eq!(
+///     query.to_string(SqliteQueryBuilder),
+///     r#"SELECT  FROM "fruit" INNER JOIN "cake" ON "fruit"."cake_id" = "cake"."id""#
+/// );
+/// ```
+impl From<RelationDef> for Condition {
+    fn from(mut rel: RelationDef) -> Condition {
+        // Use table alias (if any) to construct the join condition
+        let from_tbl = match rel.from_tbl.sea_orm_table_alias() {
+            Some(alias) => alias,
+            None => rel.from_tbl.sea_orm_table(),
+        };
+        let to_tbl = match rel.to_tbl.sea_orm_table_alias() {
+            Some(alias) => alias,
+            None => rel.to_tbl.sea_orm_table(),
+        };
+        let owner_keys = rel.from_col;
+        let foreign_keys = rel.to_col;
+
+        let mut condition = match rel.condition_type {
+            ConditionType::All => Condition::all(),
+            ConditionType::Any => Condition::any(),
+        };
+
+        condition = condition.add(join_tbl_on_condition(
+            SeaRc::clone(from_tbl),
+            SeaRc::clone(to_tbl),
+            owner_keys,
+            foreign_keys,
+        ));
+        if let Some(f) = rel.on_condition.take() {
+            condition = condition.add(f(from_tbl.clone(), to_tbl.clone()));
+        }
+
+        condition
     }
 }
 
@@ -179,14 +240,14 @@ impl RelationDef {
     ///
     /// ```
     /// use sea_orm::{
+    ///     DbBackend,
     ///     entity::*,
     ///     query::*,
     ///     tests_cfg::{cake, cake_filling},
-    ///     DbBackend,
     /// };
     /// use sea_query::Alias;
     ///
-    /// let cf = Alias::new("cf");
+    /// let cf = "cf";
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -228,7 +289,7 @@ impl RelationDef {
     ///
     /// ```
     /// use sea_orm::{entity::*, query::*, DbBackend, tests_cfg::{cake, cake_filling}};
-    /// use sea_query::{Expr, IntoCondition};
+    /// use sea_query::{Expr, ExprTrait, IntoCondition};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -266,7 +327,7 @@ impl RelationDef {
     ///
     /// ```
     /// use sea_orm::{entity::*, query::*, DbBackend, tests_cfg::{cake, cake_filling}};
-    /// use sea_query::{Expr, IntoCondition, ConditionType};
+    /// use sea_query::{Expr, ExprTrait, IntoCondition, ConditionType};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -436,7 +497,7 @@ macro_rules! set_foreign_key_stmt {
         let name = if let Some(name) = $relation.fk_name {
             name
         } else {
-            let from_tbl = unpack_table_ref(&$relation.from_tbl);
+            let from_tbl = &$relation.from_tbl.sea_orm_table().clone();
             format!("fk-{}-{}", from_tbl.to_string(), from_cols.join("-"))
         };
         $foreign_key.name(&name);
@@ -448,23 +509,23 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
         let mut foreign_key_stmt = Self::new();
         set_foreign_key_stmt!(relation, foreign_key_stmt);
         foreign_key_stmt
-            .from_tbl(unpack_table_ref(&relation.from_tbl))
-            .to_tbl(unpack_table_ref(&relation.to_tbl))
+            .from_tbl(relation.from_tbl.sea_orm_table().clone())
+            .to_tbl(relation.to_tbl.sea_orm_table().clone())
             .take()
     }
 }
 
 /// Creates a column definition for example to update a table.
 /// ```
-/// use sea_query::{Alias, IntoIden, MysqlQueryBuilder, TableAlterStatement, TableRef, ConditionType};
+/// use sea_query::{Alias, IntoIden, MysqlQueryBuilder, TableAlterStatement, IntoTableRef, ConditionType};
 /// use sea_orm::{EnumIter, Iden, Identity, PrimaryKeyTrait, RelationDef, RelationTrait, RelationType};
 ///
 /// let relation = RelationDef {
 ///     rel_type: RelationType::HasOne,
-///     from_tbl: TableRef::Table(Alias::new("foo").into_iden()),
-///     to_tbl: TableRef::Table(Alias::new("bar").into_iden()),
-///     from_col: Identity::Unary(Alias::new("bar_id").into_iden()),
-///     to_col: Identity::Unary(Alias::new("bar_id").into_iden()),
+///     from_tbl: "foo".into_table_ref(),
+///     to_tbl: "bar".into_table_ref(),
+///     from_col: Identity::Unary("bar_id".into_iden()),
+///     to_col: Identity::Unary("bar_id".into_iden()),
 ///     is_owner: false,
 ///     on_delete: None,
 ///     on_update: None,
@@ -474,7 +535,7 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
 /// };
 ///
 /// let mut alter_table = TableAlterStatement::new()
-///     .table(TableRef::Table(Alias::new("foo").into_iden()))
+///     .table("foo")
 ///     .add_foreign_key(&mut relation.into()).take();
 /// assert_eq!(
 ///     alter_table.to_string(MysqlQueryBuilder::default()),
@@ -486,8 +547,8 @@ impl From<RelationDef> for TableForeignKey {
         let mut foreign_key = Self::new();
         set_foreign_key_stmt!(relation, foreign_key);
         foreign_key
-            .from_tbl(unpack_table_ref(&relation.from_tbl))
-            .to_tbl(unpack_table_ref(&relation.to_tbl))
+            .from_tbl(relation.from_tbl.sea_orm_table().clone())
+            .to_tbl(relation.to_tbl.sea_orm_table().clone())
             .take()
     }
 }
@@ -495,8 +556,8 @@ impl From<RelationDef> for TableForeignKey {
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests_cfg::{cake, fruit},
         RelationBuilder, RelationDef,
+        tests_cfg::{cake, fruit},
     };
 
     #[test]

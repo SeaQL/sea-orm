@@ -4,14 +4,14 @@ use std::ops::DerefMut;
 use rocket::fairing::{self, Fairing, Info, Kind};
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
-use rocket::{error, info_, Build, Ignite, Phase, Rocket, Sentinel};
+use rocket::{Build, Ignite, Phase, Rocket, Sentinel, error, info_};
 
 use rocket::figment::providers::Serialized;
 use rocket::yansi::Paint;
 
 #[cfg(feature = "rocket_okapi")]
 use rocket_okapi::{
-    gen::OpenApiGenerator,
+    r#gen::OpenApiGenerator,
     request::{OpenApiFromRequest, RequestHeaderInput},
 };
 
@@ -180,7 +180,7 @@ pub struct Initializer<D: Database>(Option<&'static str>, PhantomData<fn() -> D>
 ///   status `InternalServerError`. A [`Sentinel`] guards this condition, and so
 ///   this type of failure is unlikely to occur. A `None` error is returned.
 ///   * If a connection is not available within `connect_timeout` seconds or
-///   another error occurs, the gaurd _fails_ with status `ServiceUnavailable`
+///   another error occurs, the guard _fails_ with status `ServiceUnavailable`
 ///   and the error is returned in `Some`.
 pub struct Connection<'a, D: Database>(&'a <D::Pool as Pool>::Connection);
 

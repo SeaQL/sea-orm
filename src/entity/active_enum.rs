@@ -1,5 +1,5 @@
 use crate::{ColIdx, ColumnDef, DbErr, Iterable, QueryResult, TryFromU64, TryGetError, TryGetable};
-use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
+use sea_query::{DynIden, Expr, ExprTrait, Nullable, SimpleExpr, Value, ValueType};
 
 /// A Rust representation of enum defined in database.
 ///
@@ -157,7 +157,10 @@ macro_rules! impl_active_enum_value {
                 _res: &QueryResult,
                 _index: I,
             ) -> Result<Vec<Self>, TryGetError> {
-                panic!("Not supported by `postgres-array`")
+                Err(TryGetError::DbErr(DbErr::BackendNotSupported {
+                    db: "Postgres",
+                    ctx: "ActiveEnumValue::try_get_vec_by",
+                }))
             }
         }
     };
@@ -175,7 +178,10 @@ macro_rules! impl_active_enum_value_with_pg_array {
                     <Vec<Self>>::try_get_by(_res, _index)
                 }
                 #[cfg(not(feature = "postgres-array"))]
-                panic!("`postgres-array` is not enabled")
+                Err(TryGetError::DbErr(DbErr::BackendNotSupported {
+                    db: "Postgres",
+                    ctx: "ActiveEnumValue::try_get_vec_by (`postgres-array` not enabled)",
+                }))
             }
         }
     };
@@ -197,7 +203,7 @@ where
 {
     fn try_from_u64(_: u64) -> Result<Self, DbErr> {
         Err(DbErr::ConvertFromU64(
-            "Fail to construct ActiveEnum from a u64, if your primary key consist of a ActiveEnum field, its auto increment should be set to false."
+            "Fail to construct ActiveEnum from a u64, if your primary key consist of a ActiveEnum field, its auto increment should be set to false.",
         ))
     }
 }

@@ -11,7 +11,7 @@ mod traits;
 mod update;
 mod util;
 
-pub use combine::{SelectA, SelectB};
+pub use combine::{SelectA, SelectB, SelectC};
 pub use delete::*;
 pub use helper::*;
 pub use insert::*;
@@ -27,3 +27,4 @@ pub use crate::{
     ConnectionTrait, CursorTrait, InsertResult, PaginatorTrait, Statement, StreamTrait,
     TransactionTrait, UpdateResult, Value, Values,
 };
+pub use sea_query::ExprTrait;

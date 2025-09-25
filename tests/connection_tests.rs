@@ -2,7 +2,7 @@
 
 pub mod common;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, setup::*};
 use pretty_assertions::assert_eq;
 use sea_orm::prelude::*;
 
@@ -137,6 +137,26 @@ pub async fn connection_ping_closed_postgres() {
     }
 
     tokio::join!(transaction_blocked(&db), transaction(&db));
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+#[cfg(feature = "sqlx-postgres")]
+pub async fn connection_with_search_path_postgres() {
+    let ctx = TestContext::new("connection_with_search_path").await;
+
+    let base_url = std::env::var("DATABASE_URL").unwrap();
+    let mut opt = sea_orm::ConnectOptions::new(format!("{base_url}/connection_with_search_path"));
+    opt
+        // The connection pool has a single connection only
+        .max_connections(1)
+        // A controlled connection acquire timeout
+        .acquire_timeout(std::time::Duration::from_secs(2))
+        .set_schema_search_path("schema-with-special-characters");
+
+    let db = sea_orm::Database::connect(opt).await;
+    assert!(db.is_ok());
 
     ctx.delete().await;
 }

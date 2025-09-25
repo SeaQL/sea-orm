@@ -1,10 +1,10 @@
 use crate::{
-    error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, Iterable,
-    ModelTrait, PartialModelTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait,
-    QueryResult, QuerySelect, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement,
-    StreamTrait, TryGetableMany,
+    ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait,
+    PartialModelTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryResult,
+    QuerySelect, Select, SelectA, SelectB, SelectC, SelectThree, SelectTwo, SelectTwoMany,
+    Statement, StreamTrait, TryGetableMany, error::*,
 };
-use futures::{Stream, TryStreamExt};
+use futures_util::{Stream, TryStreamExt};
 use sea_query::{SelectStatement, Value};
 use std::collections::HashMap;
 use std::{hash::Hash, marker::PhantomData, pin::Pin};
@@ -19,7 +19,7 @@ where
     S: SelectorTrait,
 {
     pub(crate) query: SelectStatement,
-    selector: S,
+    selector: PhantomData<S>,
 }
 
 /// Performs a raw `SELECT` operation on a model
@@ -29,8 +29,7 @@ where
     S: SelectorTrait,
 {
     pub(crate) stmt: Statement,
-    #[allow(dead_code)]
-    selector: S,
+    pub(super) selector: PhantomData<S>,
 }
 
 /// A Trait for any type that can perform SELECT queries
@@ -62,7 +61,7 @@ where
     model: PhantomData<T>,
 }
 
-/// Defines a type to get a Model
+/// Helper class to handle query result for 1 Model
 #[derive(Debug)]
 pub struct SelectModel<M>
 where
@@ -71,7 +70,7 @@ where
     model: PhantomData<M>,
 }
 
-/// Defines a type to get two Models
+/// Helper class to handle query result for 2 Models
 #[derive(Clone, Debug)]
 pub struct SelectTwoModel<M, N>
 where
@@ -79,6 +78,30 @@ where
     N: FromQueryResult,
 {
     model: PhantomData<(M, N)>,
+}
+
+/// Helper class to handle query result for 3 Models
+#[derive(Clone, Debug)]
+pub struct SelectThreeModel<M, N, O>
+where
+    M: FromQueryResult,
+    N: FromQueryResult,
+    O: FromQueryResult,
+{
+    model: PhantomData<(M, N, O)>,
+}
+
+impl<T, C> Default for SelectGetableValue<T, C>
+where
+    T: TryGetableMany,
+    C: strum::IntoEnumIterator + sea_query::Iden,
+{
+    fn default() -> Self {
+        Self {
+            columns: PhantomData,
+            model: PhantomData,
+        }
+    }
 }
 
 impl<T, C> SelectorTrait for SelectGetableValue<T, C>
@@ -131,6 +154,23 @@ where
     }
 }
 
+impl<M, N, O> SelectorTrait for SelectThreeModel<M, N, O>
+where
+    M: FromQueryResult + Sized,
+    N: FromQueryResult + Sized,
+    O: FromQueryResult + Sized,
+{
+    type Item = (M, Option<N>, Option<O>);
+
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
+        Ok((
+            M::from_query_result(&res, SelectA.as_str())?,
+            N::from_query_result_optional(&res, SelectB.as_str())?,
+            O::from_query_result_optional(&res, SelectC.as_str())?,
+        ))
+    }
+}
+
 impl<E> Select<E>
 where
     E: EntityTrait,
@@ -140,7 +180,7 @@ where
     pub fn from_raw_sql(self, stmt: Statement) -> SelectorRaw<SelectModel<E::Model>> {
         SelectorRaw {
             stmt,
-            selector: SelectModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -151,7 +191,7 @@ where
     {
         Selector {
             query: self.query,
-            selector: SelectModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -164,11 +204,11 @@ where
     ///     entity::*,
     ///     query::*,
     ///     tests_cfg::cake::{self, Entity as Cake},
-    ///     DbBackend, DerivePartialModel, FromQueryResult,
+    ///     DbBackend, DerivePartialModel,
     /// };
     /// use sea_query::{Expr, Func, SimpleExpr};
     ///
-    /// #[derive(DerivePartialModel, FromQueryResult)]
+    /// #[derive(DerivePartialModel)]
     /// #[sea_orm(entity = "Cake")]
     /// struct PartialCake {
     ///     name: String,
@@ -183,7 +223,7 @@ where
     ///         .into_partial_model::<PartialCake>()
     ///         .into_statement(DbBackend::Sqlite)
     ///         .to_string(),
-    ///     r#"SELECT "cake"."name", UPPER("cake"."name") AS "name_upper" FROM "cake""#
+    ///     r#"SELECT "cake"."name" AS "name", UPPER("cake"."name") AS "name_upper" FROM "cake""#
     /// );
     /// # }
     /// ```
@@ -199,7 +239,7 @@ where
     pub fn into_json(self) -> Selector<SelectModel<JsonValue>> {
         Selector {
             query: self.query,
-            selector: SelectModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -221,7 +261,7 @@ where
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveColumn, EnumIter};
+    /// use sea_orm::{DeriveColumn, EnumIter, entity::*, query::*, tests_cfg::cake};
     ///
     /// #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
     /// enum QueryAs {
@@ -269,7 +309,7 @@ where
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveColumn, EnumIter};
+    /// use sea_orm::{DeriveColumn, EnumIter, entity::*, query::*, tests_cfg::cake};
     ///
     /// #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
     /// enum QueryAs {
@@ -310,7 +350,10 @@ where
         T: TryGetableMany,
         C: strum::IntoEnumIterator + sea_query::Iden,
     {
-        Selector::<SelectGetableValue<T, C>>::with_columns(self.query)
+        Selector {
+            query: self.query,
+            selector: PhantomData,
+        }
     }
 
     /// ```
@@ -408,11 +451,14 @@ where
     where
         T: TryGetableMany,
     {
-        Selector::<SelectGetableTuple<T>>::into_tuple(self.query)
+        Selector {
+            query: self.query,
+            selector: PhantomData,
+        }
     }
 
     /// Get one Model from the SELECT query
-    pub async fn one<'a, C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
+    pub async fn one<C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -420,7 +466,7 @@ where
     }
 
     /// Get all Models from the SELECT query
-    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
+    pub async fn all<C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -464,7 +510,7 @@ where
     {
         Selector {
             query: self.query,
-            selector: SelectTwoModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -485,12 +531,12 @@ where
     pub fn into_json(self) -> Selector<SelectTwoModel<JsonValue, JsonValue>> {
         Selector {
             query: self.query,
-            selector: SelectTwoModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
     /// Get one Model from the Select query
-    pub async fn one<'a, C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
+    pub async fn one<C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -498,7 +544,7 @@ where
     }
 
     /// Get all Models from the Select query
-    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
+    pub async fn all<C>(self, db: &C) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -543,7 +589,7 @@ where
     {
         Selector {
             query: self.query,
-            selector: SelectTwoModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -564,7 +610,7 @@ where
     pub fn into_json(self) -> Selector<SelectTwoModel<JsonValue, JsonValue>> {
         Selector {
             query: self.query,
-            selector: SelectTwoModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -600,7 +646,7 @@ where
     /// > then use [`ModelTrait::find_related`] on the model.
     /// >
     /// > See https://www.sea-ql.org/SeaORM/docs/basic-crud/select#lazy-loading for details.
-    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
+    pub async fn all<C>(self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -618,69 +664,131 @@ where
     // we should only count the number of items of the parent model
 }
 
+impl<E, F, G> SelectThree<E, F, G>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+{
+    /// Perform a conversion into a [SelectThreeModel]
+    pub fn into_model<M, N, O>(self) -> Selector<SelectThreeModel<M, N, O>>
+    where
+        M: FromQueryResult,
+        N: FromQueryResult,
+        O: FromQueryResult,
+    {
+        Selector {
+            query: self.query,
+            selector: PhantomData,
+        }
+    }
+
+    /// Perform a conversion into a [SelectThreeModel] with [PartialModel](PartialModelTrait)
+    pub fn into_partial_model<M, N, O>(self) -> Selector<SelectThreeModel<M, N, O>>
+    where
+        M: PartialModelTrait,
+        N: PartialModelTrait,
+        O: PartialModelTrait,
+    {
+        let select = QuerySelect::select_only(self);
+        let select = M::select_cols(select);
+        let select = N::select_cols(select);
+        select.into_model::<M, N, O>()
+    }
+
+    /// Convert the Models into JsonValue
+    #[cfg(feature = "with-json")]
+    pub fn into_json(self) -> Selector<SelectThreeModel<JsonValue, JsonValue, JsonValue>> {
+        Selector {
+            query: self.query,
+            selector: PhantomData,
+        }
+    }
+
+    /// Get one Model from the Select query
+    pub async fn one<C>(
+        self,
+        db: &C,
+    ) -> Result<Option<(E::Model, Option<F::Model>, Option<G::Model>)>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().one(db).await
+    }
+
+    /// Get all Models from the Select query
+    pub async fn all<C>(
+        self,
+        db: &C,
+    ) -> Result<Vec<(E::Model, Option<F::Model>, Option<G::Model>)>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().all(db).await
+    }
+
+    /// Stream the results of a Select operation on a Model
+    pub async fn stream<'a: 'b, 'b, C>(
+        self,
+        db: &'a C,
+    ) -> Result<
+        impl Stream<Item = Result<(E::Model, Option<F::Model>, Option<G::Model>), DbErr>> + 'b,
+        DbErr,
+    >
+    where
+        C: ConnectionTrait + StreamTrait + Send,
+    {
+        self.into_model().stream(db).await
+    }
+
+    /// Stream the result of the operation with PartialModel
+    pub async fn stream_partial_model<'a: 'b, 'b, C, M, N, O>(
+        self,
+        db: &'a C,
+    ) -> Result<impl Stream<Item = Result<(M, Option<N>, Option<O>), DbErr>> + 'b + Send, DbErr>
+    where
+        C: ConnectionTrait + StreamTrait + Send,
+        M: PartialModelTrait + Send + 'b,
+        N: PartialModelTrait + Send + 'b,
+        O: PartialModelTrait + Send + 'b,
+    {
+        self.into_partial_model().stream(db).await
+    }
+}
+
 impl<S> Selector<S>
 where
     S: SelectorTrait,
 {
-    /// Create `Selector` from Statement and columns. Executing this `Selector`
-    /// will return a type `T` which implement `TryGetableMany`.
-    pub fn with_columns<T, C>(query: SelectStatement) -> Selector<SelectGetableValue<T, C>>
-    where
-        T: TryGetableMany,
-        C: strum::IntoEnumIterator + sea_query::Iden,
-    {
-        Selector {
-            query,
-            selector: SelectGetableValue {
-                columns: PhantomData,
-                model: PhantomData,
-            },
-        }
-    }
-
-    /// Get tuple from query result based on column index
-    pub fn into_tuple<T>(query: SelectStatement) -> Selector<SelectGetableTuple<T>>
-    where
-        T: TryGetableMany,
-    {
-        Selector {
-            query,
-            selector: SelectGetableTuple { model: PhantomData },
-        }
-    }
-
-    fn into_selector_raw<C>(self, db: &C) -> SelectorRaw<S>
-    where
-        C: ConnectionTrait,
-    {
-        let builder = db.get_database_backend();
-        let stmt = builder.build(&self.query);
-        SelectorRaw {
-            stmt,
-            selector: self.selector,
-        }
-    }
-
     /// Get the SQL statement
     pub fn into_statement(self, builder: DbBackend) -> Statement {
         builder.build(&self.query)
     }
 
     /// Get an item from the Select query
-    pub async fn one<'a, C>(mut self, db: &C) -> Result<Option<S::Item>, DbErr>
+    pub async fn one<C>(mut self, db: &C) -> Result<Option<S::Item>, DbErr>
     where
         C: ConnectionTrait,
     {
         self.query.limit(1);
-        self.into_selector_raw(db).one(db).await
+        let row = db.query_one(&self.query).await?;
+        match row {
+            Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
+            None => Ok(None),
+        }
     }
 
     /// Get all items from the Select query
-    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
+    pub async fn all<C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
     where
         C: ConnectionTrait,
     {
-        self.into_selector_raw(db).all(db).await
+        let rows = db.query_all(&self.query).await?;
+        let mut models = Vec::new();
+        for row in rows.into_iter() {
+            models.push(S::from_raw_query_result(row)?);
+        }
+        Ok(models)
     }
 
     /// Stream the results of the Select operation
@@ -693,7 +801,10 @@ where
         S: 'b,
         S::Item: Send,
     {
-        self.into_selector_raw(db).stream(db).await
+        let stream = db.stream(&self.query).await?;
+        Ok(Box::pin(stream.and_then(|row| {
+            futures_util::future::ready(S::from_raw_query_result(row))
+        })))
     }
 }
 
@@ -708,23 +819,7 @@ where
     {
         SelectorRaw {
             stmt,
-            selector: SelectModel { model: PhantomData },
-        }
-    }
-
-    /// Create `SelectorRaw` from Statement and columns. Executing this `SelectorRaw` will
-    /// return a type `T` which implement `TryGetableMany`.
-    pub fn with_columns<T, C>(stmt: Statement) -> SelectorRaw<SelectGetableValue<T, C>>
-    where
-        T: TryGetableMany,
-        C: strum::IntoEnumIterator + sea_query::Iden,
-    {
-        SelectorRaw {
-            stmt,
-            selector: SelectGetableValue {
-                columns: PhantomData,
-                model: PhantomData,
-            },
+            selector: PhantomData,
         }
     }
 
@@ -748,7 +843,7 @@ where
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, FromQueryResult};
+    /// use sea_orm::{FromQueryResult, entity::*, query::*, tests_cfg::cake};
     ///
     /// #[derive(Debug, PartialEq, FromQueryResult)]
     /// struct SelectResult {
@@ -798,7 +893,7 @@ where
     {
         SelectorRaw {
             stmt: self.stmt,
-            selector: SelectModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -862,7 +957,7 @@ where
     pub fn into_json(self) -> SelectorRaw<SelectModel<JsonValue>> {
         SelectorRaw {
             stmt: self.stmt,
-            selector: SelectModel { model: PhantomData },
+            selector: PhantomData,
         }
     }
 
@@ -888,13 +983,14 @@ where
     /// #     ])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    /// use sea_orm::{entity::*, query::*, raw_sql, tests_cfg::cake};
+    ///
+    /// let id = 1;
     ///
     /// let _: Option<cake::Model> = cake::Entity::find()
-    ///     .from_raw_sql(Statement::from_sql_and_values(
-    ///         DbBackend::Postgres,
-    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#,
-    ///         [1.into()],
+    ///     .from_raw_sql(raw_sql!(
+    ///         Postgres,
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = {id}"#
     ///     ))
     ///     .one(&db)
     ///     .await?;
@@ -911,11 +1007,11 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn one<'a, C>(self, db: &C) -> Result<Option<S::Item>, DbErr>
+    pub async fn one<C>(self, db: &C) -> Result<Option<S::Item>, DbErr>
     where
         C: ConnectionTrait,
     {
-        let row = db.query_one(self.stmt).await?;
+        let row = db.query_one_raw(self.stmt).await?;
         match row {
             Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
             None => Ok(None),
@@ -939,13 +1035,12 @@ where
     /// #     ])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    /// use sea_orm::{entity::*, query::*, raw_sql, tests_cfg::cake};
     ///
     /// let _: Vec<cake::Model> = cake::Entity::find()
-    ///     .from_raw_sql(Statement::from_sql_and_values(
-    ///         DbBackend::Postgres,
-    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
-    ///         [],
+    ///     .from_raw_sql(raw_sql!(
+    ///         Postgres,
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake""#
     ///     ))
     ///     .all(&db)
     ///     .await?;
@@ -962,11 +1057,11 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
+    pub async fn all<C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
     where
         C: ConnectionTrait,
     {
-        let rows = db.query_all(self.stmt).await?;
+        let rows = db.query_all_raw(self.stmt).await?;
         let mut models = Vec::new();
         for row in rows.into_iter() {
             models.push(S::from_raw_query_result(row)?);
@@ -984,9 +1079,9 @@ where
         S: 'b,
         S::Item: Send,
     {
-        let stream = db.stream(self.stmt).await?;
+        let stream = db.stream_raw(self.stmt).await?;
         Ok(Box::pin(stream.and_then(|row| {
-            futures::future::ready(S::from_raw_query_result(row))
+            futures_util::future::ready(S::from_raw_query_result(row))
         })))
     }
 }

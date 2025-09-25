@@ -61,7 +61,7 @@ where
 
     let db = &match db.get_database_backend() {
         DbBackend::MySql => {
-            db.execute(Statement::from_string(
+            db.execute_raw(Statement::from_string(
                 db.get_database_backend(),
                 format!("CREATE DATABASE IF NOT EXISTS `{db_name}`;"),
             ))
@@ -71,12 +71,12 @@ where
             db_connect(url).await?
         }
         DbBackend::Postgres => {
-            db.execute(Statement::from_string(
+            db.execute_raw(Statement::from_string(
                 db.get_database_backend(),
                 format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
             ))
             .await?;
-            db.execute(Statement::from_string(
+            db.execute_raw(Statement::from_string(
                 db.get_database_backend(),
                 format!("CREATE DATABASE \"{db_name}\";"),
             ))
@@ -85,7 +85,7 @@ where
             let url = format!("{url}/{db_name}");
             let db = db_connect(url).await?;
 
-            db.execute(Statement::from_string(
+            db.execute_raw(Statement::from_string(
                 db.get_database_backend(),
                 format!("CREATE SCHEMA IF NOT EXISTS \"{schema}\";"),
             ))
@@ -94,6 +94,12 @@ where
             db
         }
         DbBackend::Sqlite => db,
+        db => {
+            return Err(DbErr::BackendNotSupported {
+                db: db.as_str(),
+                ctx: "run_migration",
+            });
+        }
     };
     let manager = SchemaManager::new(db);
 
@@ -153,7 +159,9 @@ where
         println!("\nRoll back changes when encounter errors");
 
         // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
-        std::env::set_var("ABORT_MIGRATION", "YES");
+        unsafe {
+            std::env::set_var("ABORT_MIGRATION", "YES");
+        }
 
         // Should throw an error
         println!("\nMigrator::up");
@@ -172,7 +180,9 @@ where
         assert!(!manager.has_table("fruit").await?);
 
         // Unset the flag
-        std::env::remove_var("ABORT_MIGRATION");
+        unsafe {
+            std::env::remove_var("ABORT_MIGRATION");
+        }
     }
 
     println!("\nMigrator::up");
@@ -203,7 +213,9 @@ where
         println!("\nRoll back changes when encounter errors");
 
         // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
-        std::env::set_var("ABORT_MIGRATION", "YES");
+        unsafe {
+            std::env::set_var("ABORT_MIGRATION", "YES");
+        }
 
         // Should throw an error
         println!("\nMigrator::down");
@@ -222,7 +234,9 @@ where
         assert!(manager.has_table("fruit").await?);
 
         // Unset the flag
-        std::env::remove_var("ABORT_MIGRATION");
+        unsafe {
+            std::env::remove_var("ABORT_MIGRATION");
+        }
     }
 
     println!("\nMigrator::down");

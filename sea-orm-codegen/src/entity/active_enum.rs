@@ -19,6 +19,7 @@ impl ActiveEnum {
         with_copy_enums: bool,
         extra_derives: &TokenStream,
         extra_attributes: &TokenStream,
+        frontend_format: bool,
     ) -> TokenStream {
         let enum_name = &self.enum_name.to_string();
         let enum_iden = format_ident!("{}", enum_name.to_upper_camel_case());
@@ -29,7 +30,7 @@ impl ActiveEnum {
             } else {
                 let variant_name = v.to_upper_camel_case();
                 if variant_name.is_empty() {
-                    println!("Warning: item '{}' in the enumeration '{}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.", v, enum_name);
+                    println!("Warning: item '{v}' in the enumeration '{enum_name}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.");
                     let mut ss = String::new();
                     for c in v.chars() {
                         if c.len_utf8() > 1 {
@@ -52,15 +53,27 @@ impl ActiveEnum {
             quote! {}
         };
 
-        quote! {
-            #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum #copy_derive #serde_derive #extra_derives)]
-            #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = #enum_name)]
-            #extra_attributes
-            pub enum #enum_iden {
-                #(
-                    #[sea_orm(string_value = #values)]
-                    #variants,
-                )*
+        if frontend_format {
+            quote! {
+                #[derive(Debug, Clone, PartialEq, Eq #copy_derive #serde_derive #extra_derives)]
+                #extra_attributes
+                pub enum #enum_iden {
+                    #(
+                        #variants,
+                    )*
+                }
+            }
+        } else {
+            quote! {
+                #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum #copy_derive #serde_derive #extra_derives)]
+                #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = #enum_name)]
+                #extra_attributes
+                pub enum #enum_iden {
+                    #(
+                        #[sea_orm(string_value = #values)]
+                        #variants,
+                    )*
+                }
             }
         }
     }
@@ -100,6 +113,7 @@ mod tests {
                 true,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
             )
             .to_string(),
             quote!(
@@ -149,6 +163,7 @@ mod tests {
                 true,
                 &bonus_derive(["specta::Type", "ts_rs::TS"]),
                 &TokenStream::new(),
+                false,
             )
             .to_string(),
             build_generated_enum(),
@@ -184,7 +199,8 @@ mod tests {
                 &WithSerde::None,
                 true,
                 &TokenStream::new(),
-                &bonus_attributes([r#"serde(rename_all = "camelCase")"#])
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
+                false,
             )
             .to_string(),
             quote!(
@@ -216,7 +232,8 @@ mod tests {
                 &WithSerde::None,
                 true,
                 &TokenStream::new(),
-                &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"])
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
+                false,
             )
             .to_string(),
             quote!(
@@ -263,6 +280,7 @@ mod tests {
                 true,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
             )
             .to_string(),
             quote!(

@@ -1,23 +1,29 @@
 use crate::{
-    ActiveModelBehavior, ActiveModelTrait, ConnectionTrait, DbErr, DeleteResult, EntityTrait,
-    IntoActiveModel, Linked, QueryFilter, QueryResult, Related, Select, SelectModel, SelectorRaw,
-    Statement,
+    ActiveModelBehavior, ActiveModelTrait, ColumnTrait, ConnectionTrait, DbErr, DeleteResult,
+    EntityTrait, IntoActiveModel, Linked, QueryFilter, QueryResult, Related, Select, SelectModel,
+    SelectorRaw, Statement, TryGetError,
 };
 use async_trait::async_trait;
 pub use sea_query::Value;
 use std::fmt::Debug;
 
-/// A Trait for a Model
+/// The interface for Model, implemented by data structs
 #[async_trait]
 pub trait ModelTrait: Clone + Send + Debug {
     #[allow(missing_docs)]
     type Entity: EntityTrait;
 
-    /// Get the [Value] of a column from an Entity
+    /// Get the [Value] of a column from a Model
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> Value;
 
-    /// Set the [Value] of a column in an Entity
-    fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
+    /// Set the Value of a Model field, panic if failed
+    fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) {
+        self.try_set(c, v)
+            .unwrap_or_else(|e| panic!("Failed to set value for {:?}: {e:?}", c.as_column_ref()))
+    }
+
+    /// Set the Value of a Model field, return error if failed
+    fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
 
     /// Find related Models
     fn find_related<R>(&self, _: R) -> Select<R>
@@ -51,12 +57,36 @@ pub trait ModelTrait: Clone + Send + Debug {
 /// A Trait for implementing a [QueryResult]
 pub trait FromQueryResult: Sized {
     /// Instantiate a Model from a [QueryResult]
+    ///
+    /// NOTE: Please also override `from_query_result_nullable` when manually implementing.
+    ///       The future default implementation will be along the lines of:
+    ///
+    /// ```rust,ignore
+    /// fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
+    ///     (Self::from_query_result_nullable(res, pre)?)
+    /// }
+    /// ```
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr>;
 
     /// Transform the error from instantiating a Model from a [QueryResult]
     /// and converting it to an [Option]
     fn from_query_result_optional(res: &QueryResult, pre: &str) -> Result<Option<Self>, DbErr> {
         Ok(Self::from_query_result(res, pre).ok())
+
+        // would really like to do the following, but can't without version bump:
+        // match Self::from_query_result_nullable(res, pre) {
+        //     Ok(v) => Ok(Some(v)),
+        //     Err(TryGetError::Null(_)) => Ok(None),
+        //     Err(TryGetError::DbErr(err)) => Err(err),
+        // }
+    }
+
+    /// Transform the error from instantiating a Model from a [QueryResult]
+    /// and converting it to an [Option]
+    ///
+    /// NOTE: This will most likely stop being a provided method in the next major version!
+    fn from_query_result_nullable(res: &QueryResult, pre: &str) -> Result<Self, TryGetError> {
+        Self::from_query_result(res, pre).map_err(TryGetError::DbErr)
     }
 
     /// ```
@@ -75,7 +105,7 @@ pub trait FromQueryResult: Sized {
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{query::*, FromQueryResult};
+    /// use sea_orm::{FromQueryResult, query::*};
     ///
     /// #[derive(Debug, PartialEq, FromQueryResult)]
     /// struct SelectResult {
@@ -113,6 +143,28 @@ pub trait FromQueryResult: Sized {
     /// ```
     fn find_by_statement(stmt: Statement) -> SelectorRaw<SelectModel<Self>> {
         SelectorRaw::<SelectModel<Self>>::from_statement(stmt)
+    }
+}
+
+impl<T: FromQueryResult> FromQueryResult for Option<T> {
+    fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
+        Ok(Self::from_query_result_nullable(res, pre)?)
+    }
+
+    fn from_query_result_optional(res: &QueryResult, pre: &str) -> Result<Option<Self>, DbErr> {
+        match Self::from_query_result_nullable(res, pre) {
+            Ok(v) => Ok(Some(v)),
+            Err(TryGetError::Null(_)) => Ok(None),
+            Err(TryGetError::DbErr(err)) => Err(err),
+        }
+    }
+
+    fn from_query_result_nullable(res: &QueryResult, pre: &str) -> Result<Self, TryGetError> {
+        match T::from_query_result_nullable(res, pre) {
+            Ok(v) => Ok(Some(v)),
+            Err(TryGetError::Null(_)) => Ok(None),
+            Err(err @ TryGetError::DbErr(_)) => Err(err),
+        }
     }
 }
 

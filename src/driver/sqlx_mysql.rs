@@ -1,20 +1,21 @@
-use futures::lock::Mutex;
+use futures_util::lock::Mutex;
 use log::LevelFilter;
 use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
+    Connection, Executor, MySql, MySqlPool,
     mysql::{MySqlConnectOptions, MySqlQueryResult, MySqlRow},
     pool::PoolConnection,
-    Connection, Executor, MySql, MySqlPool,
 };
 
-use sea_query_binder::SqlxValues;
+use sea_query_sqlx::SqlxValues;
 use tracing::instrument;
 
 use crate::{
-    debug_print, error::*, executor::*, AccessMode, ConnectOptions, DatabaseConnection,
-    DatabaseTransaction, DbBackend, IsolationLevel, QueryStream, Statement, TransactionError,
+    AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
+    DbBackend, IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*,
+    executor::*,
 };
 
 use super::sqlx_common::*;
@@ -36,6 +37,21 @@ impl std::fmt::Debug for SqlxMySqlPoolConnection {
     }
 }
 
+impl From<MySqlPool> for SqlxMySqlPoolConnection {
+    fn from(pool: MySqlPool) -> Self {
+        SqlxMySqlPoolConnection {
+            pool,
+            metric_callback: None,
+        }
+    }
+}
+
+impl From<MySqlPool> for DatabaseConnection {
+    fn from(pool: MySqlPool) -> Self {
+        DatabaseConnectionType::SqlxMySqlPoolConnection(pool.into()).into()
+    }
+}
+
 impl SqlxMySqlConnector {
     /// Check if the URI provided corresponds to `mysql://` for a MySQL database
     pub fn accepts(string: &str) -> bool {
@@ -45,41 +61,52 @@ impl SqlxMySqlConnector {
     /// Add configuration options for the MySQL database
     #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
-        let mut opt = options
+        let mut sqlx_opts = options
             .url
             .parse::<MySqlConnectOptions>()
             .map_err(sqlx_error_to_conn_err)?;
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
-            opt = opt.disable_statement_logging();
+            sqlx_opts = sqlx_opts.disable_statement_logging();
         } else {
-            opt = opt.log_statements(options.sqlx_logging_level);
+            sqlx_opts = sqlx_opts.log_statements(options.sqlx_logging_level);
             if options.sqlx_slow_statements_logging_level != LevelFilter::Off {
-                opt = opt.log_slow_statements(
+                sqlx_opts = sqlx_opts.log_slow_statements(
                     options.sqlx_slow_statements_logging_level,
                     options.sqlx_slow_statements_logging_threshold,
                 );
             }
         }
-        match options.sqlx_pool_options().connect_with(opt).await {
-            Ok(pool) => Ok(DatabaseConnection::SqlxMySqlPoolConnection(
-                SqlxMySqlPoolConnection {
-                    pool,
-                    metric_callback: None,
-                },
-            )),
-            Err(e) => Err(sqlx_error_to_conn_err(e)),
+        if let Some(f) = &options.mysql_opts_fn {
+            sqlx_opts = f(sqlx_opts);
         }
+        let pool = if options.connect_lazy {
+            options.sqlx_pool_options().connect_lazy_with(sqlx_opts)
+        } else {
+            options
+                .sqlx_pool_options()
+                .connect_with(sqlx_opts)
+                .await
+                .map_err(sqlx_error_to_conn_err)?
+        };
+        Ok(
+            DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
+                pool,
+                metric_callback: None,
+            })
+            .into(),
+        )
     }
 }
 
 impl SqlxMySqlConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_mysql_pool(pool: MySqlPool) -> DatabaseConnection {
-        DatabaseConnection::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
+        DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
             pool,
             metric_callback: None,
         })
+        .into()
     }
 }
 
@@ -188,7 +215,7 @@ impl SqlxMySqlPoolConnection {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
         let transaction = DatabaseTransaction::new_mysql(
@@ -218,8 +245,14 @@ impl SqlxMySqlPoolConnection {
         }
     }
 
-    /// Explicitly close the MySQL connection
+    /// Explicitly close the MySQL connection.
+    /// See [`Self::close_by_ref`] for usage with references.
     pub async fn close(self) -> Result<(), DbErr> {
+        self.close_by_ref().await
+    }
+
+    /// Explicitly close the MySQL connection
+    pub async fn close_by_ref(&self) -> Result<(), DbErr> {
         self.pool.close().await;
         Ok(())
     }
@@ -254,18 +287,19 @@ pub(crate) async fn set_transaction_config(
     isolation_level: Option<IsolationLevel>,
     access_mode: Option<AccessMode>,
 ) -> Result<(), DbErr> {
+    let mut settings = Vec::new();
+
     if let Some(isolation_level) = isolation_level {
-        let stmt = Statement {
-            sql: format!("SET TRANSACTION ISOLATION LEVEL {isolation_level}"),
-            values: None,
-            db_backend: DbBackend::MySql,
-        };
-        let query = sqlx_query(&stmt);
-        conn.execute(query).await.map_err(sqlx_error_to_exec_err)?;
+        settings.push(format!("ISOLATION LEVEL {isolation_level}"));
     }
+
     if let Some(access_mode) = access_mode {
+        settings.push(access_mode.to_string());
+    }
+
+    if !settings.is_empty() {
         let stmt = Statement {
-            sql: format!("SET TRANSACTION {access_mode}"),
+            sql: format!("SET TRANSACTION {}", settings.join(", ")),
             values: None,
             db_backend: DbBackend::MySql,
         };

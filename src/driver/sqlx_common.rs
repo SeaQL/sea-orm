@@ -2,17 +2,17 @@ use crate::{ConnAcquireErr, ConnectOptions, DbErr, RuntimeErr};
 
 /// Converts an [sqlx::error] execution error to a [DbErr]
 pub fn sqlx_error_to_exec_err(err: sqlx::Error) -> DbErr {
-    DbErr::Exec(RuntimeErr::SqlxError(err))
+    DbErr::Exec(RuntimeErr::SqlxError(err.into()))
 }
 
 /// Converts an [sqlx::error] query error to a [DbErr]
 pub fn sqlx_error_to_query_err(err: sqlx::Error) -> DbErr {
-    DbErr::Query(RuntimeErr::SqlxError(err))
+    DbErr::Query(RuntimeErr::SqlxError(err.into()))
 }
 
 /// Converts an [sqlx::error] connection error to a [DbErr]
 pub fn sqlx_error_to_conn_err(err: sqlx::Error) -> DbErr {
-    DbErr::Conn(RuntimeErr::SqlxError(err))
+    DbErr::Conn(RuntimeErr::SqlxError(err.into()))
 }
 
 /// Converts an [sqlx::error] error to a [DbErr]
@@ -31,7 +31,7 @@ pub fn sqlx_conn_acquire_err(sqlx_err: sqlx::Error) -> DbErr {
     match sqlx_err {
         sqlx::Error::PoolTimedOut => DbErr::ConnectionAcquire(ConnAcquireErr::Timeout),
         sqlx::Error::PoolClosed => DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed),
-        _ => DbErr::Conn(RuntimeErr::SqlxError(sqlx_err)),
+        _ => DbErr::Conn(RuntimeErr::SqlxError(sqlx_err.into())),
     }
 }
 

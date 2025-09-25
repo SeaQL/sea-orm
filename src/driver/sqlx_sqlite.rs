@@ -1,21 +1,21 @@
-use futures::lock::Mutex;
+use futures_util::lock::Mutex;
 use log::LevelFilter;
 use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
+    Connection, Executor, Sqlite, SqlitePool,
     pool::PoolConnection,
     sqlite::{SqliteConnectOptions, SqliteQueryResult, SqliteRow},
-    Connection, Executor, Sqlite, SqlitePool,
 };
 
-use sea_query_binder::SqlxValues;
+use sea_query_sqlx::SqlxValues;
 use tracing::{instrument, warn};
 
 use crate::{
-    debug_print, error::*, executor::*, sqlx_error_to_exec_err, AccessMode, ConnectOptions,
-    DatabaseConnection, DatabaseTransaction, IsolationLevel, QueryStream, Statement,
-    TransactionError,
+    AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
+    IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
+    sqlx_error_to_exec_err,
 };
 
 use super::sqlx_common::*;
@@ -37,6 +37,21 @@ impl std::fmt::Debug for SqlxSqlitePoolConnection {
     }
 }
 
+impl From<SqlitePool> for SqlxSqlitePoolConnection {
+    fn from(pool: SqlitePool) -> Self {
+        SqlxSqlitePoolConnection {
+            pool,
+            metric_callback: None,
+        }
+    }
+}
+
+impl From<SqlitePool> for DatabaseConnection {
+    fn from(pool: SqlitePool) -> Self {
+        DatabaseConnectionType::SqlxSqlitePoolConnection(pool.into()).into()
+    }
+}
+
 impl SqlxSqliteConnector {
     /// Check if the URI provided corresponds to `sqlite:` for a SQLite database
     pub fn accepts(string: &str) -> bool {
@@ -47,55 +62,67 @@ impl SqlxSqliteConnector {
     #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let mut options = options;
-        let mut opt = options
+        let mut sqlx_opts = options
             .url
             .parse::<SqliteConnectOptions>()
             .map_err(sqlx_error_to_conn_err)?;
         if let Some(sqlcipher_key) = &options.sqlcipher_key {
-            opt = opt.pragma("key", sqlcipher_key.clone());
+            sqlx_opts = sqlx_opts.pragma("key", sqlcipher_key.clone());
         }
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
-            opt = opt.disable_statement_logging();
+            sqlx_opts = sqlx_opts.disable_statement_logging();
         } else {
-            opt = opt.log_statements(options.sqlx_logging_level);
+            sqlx_opts = sqlx_opts.log_statements(options.sqlx_logging_level);
             if options.sqlx_slow_statements_logging_level != LevelFilter::Off {
-                opt = opt.log_slow_statements(
+                sqlx_opts = sqlx_opts.log_slow_statements(
                     options.sqlx_slow_statements_logging_level,
                     options.sqlx_slow_statements_logging_threshold,
                 );
             }
         }
+
         if options.get_max_connections().is_none() {
             options.max_connections(1);
         }
-        match options.sqlx_pool_options().connect_with(opt).await {
-            Ok(pool) => {
-                let pool = SqlxSqlitePoolConnection {
-                    pool,
-                    metric_callback: None,
-                };
 
-                #[cfg(feature = "sqlite-use-returning-for-3_35")]
-                {
-                    let version = get_version(&pool).await?;
-                    ensure_returning_version(&version)?;
-                }
-
-                Ok(DatabaseConnection::SqlxSqlitePoolConnection(pool))
-            }
-            Err(e) => Err(sqlx_error_to_conn_err(e)),
+        if let Some(f) = &options.sqlite_opts_fn {
+            sqlx_opts = f(sqlx_opts);
         }
+
+        let pool = if options.connect_lazy {
+            options.sqlx_pool_options().connect_lazy_with(sqlx_opts)
+        } else {
+            options
+                .sqlx_pool_options()
+                .connect_with(sqlx_opts)
+                .await
+                .map_err(sqlx_error_to_conn_err)?
+        };
+
+        let pool = SqlxSqlitePoolConnection {
+            pool,
+            metric_callback: None,
+        };
+
+        #[cfg(feature = "sqlite-use-returning-for-3_35")]
+        {
+            let version = get_version(&pool).await?;
+            ensure_returning_version(&version)?;
+        }
+
+        Ok(DatabaseConnectionType::SqlxSqlitePoolConnection(pool).into())
     }
 }
 
 impl SqlxSqliteConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_sqlite_pool(pool: SqlitePool) -> DatabaseConnection {
-        DatabaseConnection::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection {
+        DatabaseConnectionType::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection {
             pool,
             metric_callback: None,
         })
+        .into()
     }
 }
 
@@ -204,7 +231,7 @@ impl SqlxSqlitePoolConnection {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
         let transaction = DatabaseTransaction::new_sqlite(
@@ -234,8 +261,14 @@ impl SqlxSqlitePoolConnection {
         }
     }
 
-    /// Explicitly close the SQLite connection
+    /// Explicitly close the SQLite connection.
+    /// See [`Self::close_by_ref`] for usage with references.
     pub async fn close(self) -> Result<(), DbErr> {
+        self.close_by_ref().await
+    }
+
+    /// Explicitly close the SQLite connection
+    pub async fn close_by_ref(&self) -> Result<(), DbErr> {
         self.pool.close().await;
         Ok(())
     }

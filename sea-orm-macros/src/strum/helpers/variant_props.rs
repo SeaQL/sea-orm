@@ -1,7 +1,7 @@
 use std::default::Default;
 use syn::{Ident, LitStr, Variant};
 
-use super::metadata::{kw, VariantExt, VariantMeta};
+use super::metadata::{VariantExt, VariantMeta, kw};
 use super::occurrence_error;
 
 pub trait HasStrumVariantProperties {

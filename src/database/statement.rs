@@ -1,5 +1,7 @@
 use crate::DbBackend;
-use sea_query::{inject_parameters, MysqlQueryBuilder, PostgresQueryBuilder, SqliteQueryBuilder};
+#[cfg(feature = "rbac")]
+pub use sea_query::audit::{AuditTrait, Error as AuditError, QueryAccessAudit};
+use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, SqliteQueryBuilder, inject_parameters};
 pub use sea_query::{Value, Values};
 use std::fmt;
 
@@ -16,9 +18,13 @@ pub struct Statement {
 }
 
 /// Any type that can build a [Statement]
-pub trait StatementBuilder {
-    /// Method to call in order to build a [Statement]
+pub trait StatementBuilder: Sync {
+    /// Method to build a [Statement]
     fn build(&self, db_backend: &DbBackend) -> Statement;
+
+    #[cfg(feature = "rbac")]
+    /// Method to audit access request of query
+    fn audit(&self) -> Result<QueryAccessAudit, AuditError>;
 }
 
 impl Statement {
@@ -60,11 +66,15 @@ impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self.values {
             Some(values) => {
-                let string = inject_parameters(
-                    &self.sql,
-                    values.0.clone(),
-                    self.db_backend.get_query_builder().as_ref(),
-                );
+                let string = match self.db_backend {
+                    DbBackend::MySql => inject_parameters(&self.sql, &values.0, &MysqlQueryBuilder),
+                    DbBackend::Postgres => {
+                        inject_parameters(&self.sql, &values.0, &PostgresQueryBuilder)
+                    }
+                    DbBackend::Sqlite => {
+                        inject_parameters(&self.sql, &values.0, &SqliteQueryBuilder)
+                    }
+                };
                 write!(f, "{}", &string)
             }
             None => {
@@ -100,6 +110,11 @@ macro_rules! build_query_stmt {
                 let stmt = build_any_stmt!(self, db_backend);
                 Statement::from_string_values_tuple(*db_backend, stmt)
             }
+
+            #[cfg(feature = "rbac")]
+            fn audit(&self) -> Result<QueryAccessAudit, AuditError> {
+                AuditTrait::audit(self)
+            }
         }
     };
 }
@@ -116,6 +131,11 @@ macro_rules! build_schema_stmt {
             fn build(&self, db_backend: &DbBackend) -> Statement {
                 let stmt = build_any_stmt!(self, db_backend);
                 Statement::from_string(*db_backend, stmt)
+            }
+
+            #[cfg(feature = "rbac")]
+            fn audit(&self) -> Result<QueryAccessAudit, AuditError> {
+                todo!("Audit not supported for {} yet", stringify!($stmt))
             }
         }
     };
@@ -137,6 +157,11 @@ macro_rules! build_type_stmt {
             fn build(&self, db_backend: &DbBackend) -> Statement {
                 let stmt = build_postgres_stmt!(self, db_backend);
                 Statement::from_string(*db_backend, stmt)
+            }
+
+            #[cfg(feature = "rbac")]
+            fn audit(&self) -> Result<QueryAccessAudit, AuditError> {
+                todo!("Audit not supported for {} yet", stringify!($stmt))
             }
         }
     };

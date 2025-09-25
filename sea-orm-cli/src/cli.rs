@@ -1,4 +1,4 @@
-use clap::{ArgGroup, Parser, Subcommand, ValueEnum};
+use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueEnum};
 #[cfg(feature = "codegen")]
 use dotenvy::dotenv;
 
@@ -38,8 +38,8 @@ AUTHORS:
   Join our Discord server to chat with others in the SeaQL community!
     - Invitation: https://discord.com/invite/uCPdDXzbdv
 
-  SeaQL Community Survey 2024
-    - Link: https://sea-ql.org/community-survey
+  SeaQL Community Survey 2025
+    - Link: https://www.sea-ql.org/community-survey/
 
   If you like what we do, consider starring, sharing and contributing!
 "#
@@ -69,6 +69,7 @@ pub enum Commands {
             global = true,
             short = 'd',
             long,
+            env = "MIGRATION_DIR",
             help = "Migration script directory.
 If your migrations are in their own crate,
 you can provide the root of that crate.
@@ -94,7 +95,8 @@ you should provide the directory of that submodule.",
             short = 'u',
             long,
             env = "DATABASE_URL",
-            help = "Database URL"
+            help = "Database URL",
+            hide_env_values = true
         )]
         database_url: Option<String>,
 
@@ -164,7 +166,7 @@ pub enum MigrateSubcommands {
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum GenerateSubcommands {
     #[command(about = "Generate entity")]
-    #[command(group(ArgGroup::new("formats").args(&["compact_format", "expanded_format"])))]
+    #[command(group(ArgGroup::new("formats").args(&["compact_format", "expanded_format", "frontend_format"])))]
     #[command(group(ArgGroup::new("group-tables").args(&["tables", "include_hidden_tables"])))]
     Entity {
         #[arg(long, help = "Generate entity file of compact format")]
@@ -172,6 +174,9 @@ pub enum GenerateSubcommands {
 
         #[arg(long, help = "Generate entity file of expanded format")]
         expanded_format: bool,
+
+        #[arg(long, help = "Generate entity file of frontend format")]
+        frontend_format: bool,
 
         #[arg(
             long,
@@ -203,6 +208,13 @@ pub enum GenerateSubcommands {
         max_connections: u32,
 
         #[arg(
+            long,
+            default_value = "30",
+            long_help = "Acquire timeout in seconds of the connection used for schema discovery"
+        )]
+        acquire_timeout: u64,
+
+        #[arg(
             short = 'o',
             long,
             default_value = "./",
@@ -220,8 +232,21 @@ pub enum GenerateSubcommands {
         )]
         database_schema: Option<String>,
 
-        #[arg(short = 'u', long, env = "DATABASE_URL", help = "Database URL")]
+        #[arg(
+            short = 'u',
+            long,
+            env = "DATABASE_URL",
+            help = "Database URL",
+            hide_env_values = true
+        )]
         database_url: String,
+
+        #[arg(
+            long,
+            default_value = "all",
+            help = "Generate prelude.rs file (all, none, all-allow-unused-imports)"
+        )]
+        with_prelude: String,
 
         #[arg(
             long,
@@ -311,6 +336,17 @@ pub enum GenerateSubcommands {
             long_help = "Generate helper Enumerations that are used by Seaography."
         )]
         seaography: bool,
+
+        #[arg(
+            long,
+            default_value = "true",
+            default_missing_value = "true",
+            num_args = 0..=1,
+            require_equals = true,
+            action = ArgAction::Set,
+            long_help = "Generate empty ActiveModelBehavior impls."
+        )]
+        impl_active_model_behavior: bool,
     },
 }
 

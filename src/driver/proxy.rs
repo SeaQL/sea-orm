@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, ProxyDatabaseTrait,
-    QueryResult, Statement,
+    DatabaseConnection, DatabaseConnectionType, DbBackend, ExecResult, ProxyDatabaseTrait,
+    QueryResult, Statement, debug_print, error::*,
 };
 use std::{fmt::Debug, sync::Arc};
 use tracing::instrument;
@@ -31,9 +31,12 @@ impl ProxyDatabaseConnector {
         db_type: DbBackend,
         func: Arc<Box<dyn ProxyDatabaseTrait>>,
     ) -> Result<DatabaseConnection, DbErr> {
-        Ok(DatabaseConnection::ProxyDatabaseConnection(Arc::new(
-            ProxyDatabaseConnection::new(db_type, func),
-        )))
+        Ok(
+            DatabaseConnectionType::ProxyDatabaseConnection(Arc::new(
+                ProxyDatabaseConnection::new(db_type, func),
+            ))
+            .into(),
+        )
     }
 }
 
@@ -105,6 +108,12 @@ impl ProxyDatabaseConnection {
         self.proxy.rollback().await
     }
 
+    /// Start rollback a transaction
+    #[instrument(level = "trace")]
+    pub fn start_rollback(&self) {
+        self.proxy.start_rollback()
+    }
+
     /// Checks if a connection to the database is still valid.
     pub async fn ping(&self) -> Result<(), DbErr> {
         self.proxy.ping().await
@@ -134,7 +143,7 @@ impl crate::DatabaseTransaction {
         inner: Arc<crate::ProxyDatabaseConnection>,
         metric_callback: Option<crate::metric::Callback>,
     ) -> Result<crate::DatabaseTransaction, DbErr> {
-        use futures::lock::Mutex;
+        use futures_util::lock::Mutex;
         let backend = inner.get_database_backend();
         Self::begin(
             Arc::new(Mutex::new(crate::InnerConnection::Proxy(inner))),

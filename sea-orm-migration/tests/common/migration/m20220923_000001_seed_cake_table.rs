@@ -12,7 +12,7 @@ impl MigrationTrait for Migration {
             .values_panic(["Tiramisu".into()])
             .to_owned();
 
-        manager.exec_stmt(insert).await?;
+        manager.execute(insert).await?;
 
         Ok(())
     }
@@ -23,7 +23,7 @@ impl MigrationTrait for Migration {
             .and_where(Expr::col(Cake::Name).eq("Tiramisu"))
             .to_owned();
 
-        manager.exec_stmt(delete).await?;
+        manager.execute(delete).await?;
 
         Ok(())
     }

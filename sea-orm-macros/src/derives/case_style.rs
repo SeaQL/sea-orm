@@ -4,9 +4,9 @@ use heck::{
 };
 use std::str::FromStr;
 use syn::{
+    Ident, LitStr,
     meta::ParseNestedMeta,
     parse::{Parse, ParseStream},
-    Ident, LitStr,
 };
 
 #[allow(clippy::enum_variant_names)]
@@ -46,8 +46,7 @@ impl Parse for CaseStyle {
             syn::Error::new_spanned(
                 &text,
                 format!(
-                    "Unexpected case style for serialize_all: `{}`. Valid values are: `{:?}`",
-                    val, VALID_CASE_STYLES
+                    "Unexpected case style for serialize_all: `{val}`. Valid values are: `{VALID_CASE_STYLES:?}`",
                 ),
             )
         })
@@ -111,7 +110,7 @@ impl CaseStyleHelpers for Ident {
     }
 }
 
-impl<'meta> TryFrom<&ParseNestedMeta<'meta>> for CaseStyle {
+impl TryFrom<&ParseNestedMeta<'_>> for CaseStyle {
     type Error = syn::Error;
 
     fn try_from(value: &ParseNestedMeta) -> Result<Self, Self::Error> {

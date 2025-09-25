@@ -1,12 +1,13 @@
 use super::{IntoSchemaManagerConnection, SchemaManagerConnection};
 use sea_orm::sea_query::{
-    extension::postgres::{TypeAlterStatement, TypeCreateStatement, TypeDropStatement},
     ForeignKeyCreateStatement, ForeignKeyDropStatement, IndexCreateStatement, IndexDropStatement,
-    TableAlterStatement, TableCreateStatement, TableDropStatement, TableRenameStatement,
-    TableTruncateStatement,
+    SelectStatement, TableAlterStatement, TableCreateStatement, TableDropStatement,
+    TableRenameStatement, TableTruncateStatement,
+    extension::postgres::{TypeAlterStatement, TypeCreateStatement, TypeDropStatement},
 };
 use sea_orm::{ConnectionTrait, DbBackend, DbErr, StatementBuilder};
-use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
+#[allow(unused_imports)]
+use sea_schema::probe::SchemaProbe;
 
 /// Helper struct for writing migration scripts in migration file
 pub struct SchemaManager<'c> {
@@ -23,12 +24,19 @@ impl<'c> SchemaManager<'c> {
         }
     }
 
+    pub async fn execute<S>(&self, stmt: S) -> Result<(), DbErr>
+    where
+        S: StatementBuilder,
+    {
+        self.conn.execute(&stmt).await.map(|_| ())
+    }
+
+    #[doc(hidden)]
     pub async fn exec_stmt<S>(&self, stmt: S) -> Result<(), DbErr>
     where
         S: StatementBuilder,
     {
-        let builder = self.conn.get_database_backend();
-        self.conn.execute(builder.build(&stmt)).await.map(|_| ())
+        self.conn.execute(&stmt).await.map(|_| ())
     }
 
     pub fn get_database_backend(&self) -> DbBackend {
@@ -41,61 +49,61 @@ impl<'c> SchemaManager<'c> {
 }
 
 /// Schema Creation
-impl<'c> SchemaManager<'c> {
+impl SchemaManager<'_> {
     pub async fn create_table(&self, stmt: TableCreateStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn create_index(&self, stmt: IndexCreateStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn create_foreign_key(&self, stmt: ForeignKeyCreateStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn create_type(&self, stmt: TypeCreateStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 }
 
 /// Schema Mutation
-impl<'c> SchemaManager<'c> {
+impl SchemaManager<'_> {
     pub async fn alter_table(&self, stmt: TableAlterStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn drop_table(&self, stmt: TableDropStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn rename_table(&self, stmt: TableRenameStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn truncate_table(&self, stmt: TableTruncateStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn drop_index(&self, stmt: IndexDropStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn drop_foreign_key(&self, stmt: ForeignKeyDropStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn alter_type(&self, stmt: TypeAlterStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 
     pub async fn drop_type(&self, stmt: TypeDropStatement) -> Result<(), DbErr> {
-        self.exec_stmt(stmt).await
+        self.execute(stmt).await
     }
 }
 
 /// Schema Inspection.
-impl<'c> SchemaManager<'c> {
+impl SchemaManager<'_> {
     pub async fn has_table<T>(&self, table: T) -> Result<bool, DbErr>
     where
         T: AsRef<str>,
@@ -103,42 +111,62 @@ impl<'c> SchemaManager<'c> {
         has_table(&self.conn, table).await
     }
 
-    pub async fn has_column<T, C>(&self, table: T, column: C) -> Result<bool, DbErr>
+    pub async fn has_column<T, C>(&self, _table: T, _column: C) -> Result<bool, DbErr>
     where
         T: AsRef<str>,
         C: AsRef<str>,
     {
-        let stmt = match self.conn.get_database_backend() {
-            DbBackend::MySql => MySql.has_column(table, column),
-            DbBackend::Postgres => Postgres.has_column(table, column),
-            DbBackend::Sqlite => Sqlite.has_column(table, column),
+        let _stmt: SelectStatement = match self.conn.get_database_backend() {
+            #[cfg(feature = "sqlx-mysql")]
+            DbBackend::MySql => sea_schema::mysql::MySql.has_column(_table, _column),
+            #[cfg(feature = "sqlx-postgres")]
+            DbBackend::Postgres => sea_schema::postgres::Postgres.has_column(_table, _column),
+            #[cfg(feature = "sqlx-sqlite")]
+            DbBackend::Sqlite => sea_schema::sqlite::Sqlite.has_column(_table, _column),
+            #[allow(unreachable_patterns)]
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "has_column",
+                });
+            }
         };
 
-        let builder = self.conn.get_database_backend();
+        #[allow(unreachable_code)]
         let res = self
             .conn
-            .query_one(builder.build(&stmt))
+            .query_one(&_stmt)
             .await?
             .ok_or_else(|| DbErr::Custom("Failed to check column exists".to_owned()))?;
 
         res.try_get("", "has_column")
     }
 
-    pub async fn has_index<T, I>(&self, table: T, index: I) -> Result<bool, DbErr>
+    pub async fn has_index<T, I>(&self, _table: T, _index: I) -> Result<bool, DbErr>
     where
         T: AsRef<str>,
         I: AsRef<str>,
     {
-        let stmt = match self.conn.get_database_backend() {
-            DbBackend::MySql => MySql.has_index(table, index),
-            DbBackend::Postgres => Postgres.has_index(table, index),
-            DbBackend::Sqlite => Sqlite.has_index(table, index),
+        let _stmt: SelectStatement = match self.conn.get_database_backend() {
+            #[cfg(feature = "sqlx-mysql")]
+            DbBackend::MySql => sea_schema::mysql::MySql.has_index(_table, _index),
+            #[cfg(feature = "sqlx-postgres")]
+            DbBackend::Postgres => sea_schema::postgres::Postgres.has_index(_table, _index),
+            #[cfg(feature = "sqlx-sqlite")]
+            DbBackend::Sqlite => sea_schema::sqlite::Sqlite.has_index(_table, _index),
+            #[allow(unreachable_patterns)]
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "has_index",
+                });
+            }
         };
 
-        let builder = self.conn.get_database_backend();
+        #[allow(unreachable_code)]
         let res = self
             .conn
-            .query_one(builder.build(&stmt))
+            .query_one(&_stmt)
             .await?
             .ok_or_else(|| DbErr::Custom("Failed to check index exists".to_owned()))?;
 
@@ -146,20 +174,30 @@ impl<'c> SchemaManager<'c> {
     }
 }
 
-pub(crate) async fn has_table<C, T>(conn: &C, table: T) -> Result<bool, DbErr>
+pub(crate) async fn has_table<C, T>(conn: &C, _table: T) -> Result<bool, DbErr>
 where
     C: ConnectionTrait,
     T: AsRef<str>,
 {
-    let stmt = match conn.get_database_backend() {
-        DbBackend::MySql => MySql.has_table(table),
-        DbBackend::Postgres => Postgres.has_table(table),
-        DbBackend::Sqlite => Sqlite.has_table(table),
+    let _stmt: SelectStatement = match conn.get_database_backend() {
+        #[cfg(feature = "sqlx-mysql")]
+        DbBackend::MySql => sea_schema::mysql::MySql.has_table(_table),
+        #[cfg(feature = "sqlx-postgres")]
+        DbBackend::Postgres => sea_schema::postgres::Postgres.has_table(_table),
+        #[cfg(feature = "sqlx-sqlite")]
+        DbBackend::Sqlite => sea_schema::sqlite::Sqlite.has_table(_table),
+        #[allow(unreachable_patterns)]
+        other => {
+            return Err(DbErr::BackendNotSupported {
+                db: other.as_str(),
+                ctx: "has_table",
+            });
+        }
     };
 
-    let builder = conn.get_database_backend();
+    #[allow(unreachable_code)]
     let res = conn
-        .query_one(builder.build(&stmt))
+        .query_one(&_stmt)
         .await?
         .ok_or_else(|| DbErr::Custom("Failed to check table exists".to_owned()))?;
 

@@ -1,8 +1,8 @@
 use crate::{
-    util::unpack_table_ref, ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error,
-    PrimaryKey, Relation, RelationType,
+    ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation,
+    RelationType,
 };
-use sea_query::{ColumnSpec, TableCreateStatement};
+use sea_query::TableCreateStatement;
 use std::collections::{BTreeMap, HashMap};
 
 #[derive(Clone, Debug)]
@@ -15,19 +15,11 @@ impl EntityTransformer {
         let mut entities = BTreeMap::new();
         for table_create in table_create_stmts.into_iter() {
             let table_name = match table_create.get_table_name() {
-                Some(table_ref) => match table_ref {
-                    sea_query::TableRef::Table(t)
-                    | sea_query::TableRef::SchemaTable(_, t)
-                    | sea_query::TableRef::DatabaseSchemaTable(_, _, t)
-                    | sea_query::TableRef::TableAlias(t, _)
-                    | sea_query::TableRef::SchemaTableAlias(_, t, _)
-                    | sea_query::TableRef::DatabaseSchemaTableAlias(_, _, t, _) => t.to_string(),
-                    _ => unimplemented!(),
-                },
+                Some(table_ref) => table_ref.sea_orm_table().to_string(),
                 None => {
                     return Err(Error::TransformError(
                         "Table name should not be empty".into(),
-                    ))
+                    ));
                 }
             };
             let mut primary_keys: Vec<PrimaryKey> = Vec::new();
@@ -35,10 +27,7 @@ impl EntityTransformer {
                 .get_columns()
                 .iter()
                 .map(|col_def| {
-                    let primary_key = col_def
-                        .get_column_spec()
-                        .iter()
-                        .any(|spec| matches!(spec, ColumnSpec::PrimaryKey));
+                    let primary_key = col_def.get_column_spec().primary_key;
                     if primary_key {
                         primary_keys.push(PrimaryKey {
                             name: col_def.get_column_name(),
@@ -57,7 +46,7 @@ impl EntityTransformer {
                         > 0;
                     col
                 })
-                .map(|col| {
+                .inspect(|col| {
                     if let sea_query::ColumnType::Enum { name, variants } = col.get_inner_col_type()
                     {
                         enums.insert(
@@ -68,7 +57,6 @@ impl EntityTransformer {
                             },
                         );
                     }
-                    col
                 })
                 .collect();
             let mut ref_table_counts: BTreeMap<String, usize> = BTreeMap::new();
@@ -77,7 +65,7 @@ impl EntityTransformer {
                 .iter()
                 .map(|fk_create_stmt| fk_create_stmt.get_foreign_key())
                 .map(|tbl_fk| {
-                    let ref_tbl = unpack_table_ref(tbl_fk.get_ref_table().unwrap());
+                    let ref_tbl = tbl_fk.get_ref_table().unwrap().sea_orm_table().to_string();
                     if let Some(count) = ref_table_counts.get_mut(&ref_tbl) {
                         if *count == 0 {
                             *count = 1;
@@ -399,6 +387,7 @@ mod tests {
                     &Default::default(),
                     &Default::default(),
                     false,
+                    true,
                 )
                 .into_iter()
                 .skip(1)

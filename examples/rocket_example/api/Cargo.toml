@@ -2,7 +2,8 @@
 name = "rocket-example-api"
 version = "0.1.0"
 authors = ["Sam Samai <sam@studio2pi.com.au>"]
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 publish = false
 
 [dependencies]
@@ -11,12 +12,12 @@ async-trait = { version = "0.1" }
 rocket-example-service = { path = "../service" }
 futures = { version = "0.3" }
 futures-util = { version = "0.3" }
-rocket = { version = "0.5.0", features = ["json"] }
-rocket_dyn_templates = { version = "0.1.0-rc.1", features = ["tera"] }
+rocket = { version = "0.5", features = ["json"] }
+rocket_dyn_templates = { version = "0.2", features = ["tera"] }
 serde_json = { version = "1" }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
-tokio = "1.29.0"
+tokio = "1.41"
 
 [dependencies.sea-orm-rocket]
 path = "../../../sea-orm-rocket/lib" # remove this line in your own project and uncomment the following line

@@ -1,5 +1,9 @@
-use crate::{error::*, SelectGetableValue, SelectorRaw, Statement};
-use std::fmt;
+pub use crate::error::TryGetError;
+use crate::{
+    SelectGetableValue, SelectorRaw, Statement,
+    error::{DbErr, type_err},
+};
+use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use crate::debug_print;
@@ -49,15 +53,6 @@ pub trait TryGetable: Sized {
     }
 }
 
-/// An error from trying to get a row from a Model
-#[derive(Debug)]
-pub enum TryGetError {
-    /// A database error was encountered as defined in [crate::DbErr]
-    DbErr(DbErr),
-    /// A null value was encountered
-    Null(String),
-}
-
 impl From<TryGetError> for DbErr {
     fn from(e: TryGetError) -> DbErr {
         match e {
@@ -87,6 +82,15 @@ impl QueryResult {
         Ok(T::try_get_by(self, index)?)
     }
 
+    /// Get a value from the query result with an ColIdx
+    pub fn try_get_by_nullable<T, I>(&self, index: I) -> Result<T, TryGetError>
+    where
+        T: TryGetable,
+        I: ColIdx,
+    {
+        T::try_get_by(self, index)
+    }
+
     /// Get a value from the query result with prefixed column name
     pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, DbErr>
     where
@@ -95,12 +99,28 @@ impl QueryResult {
         Ok(T::try_get(self, pre, col)?)
     }
 
+    /// Get a value from the query result with prefixed column name
+    pub fn try_get_nullable<T>(&self, pre: &str, col: &str) -> Result<T, TryGetError>
+    where
+        T: TryGetable,
+    {
+        T::try_get(self, pre, col)
+    }
+
     /// Get a value from the query result based on the order in the select expressions
     pub fn try_get_by_index<T>(&self, idx: usize) -> Result<T, DbErr>
     where
         T: TryGetable,
     {
         Ok(T::try_get_by_index(self, idx)?)
+    }
+
+    /// Get a value from the query result based on the order in the select expressions
+    pub fn try_get_by_index_nullable<T>(&self, idx: usize) -> Result<T, TryGetError>
+    where
+        T: TryGetable,
+    {
+        T::try_get_by_index(self, idx)
     }
 
     /// Get a tuple value from the query result with prefixed column name
@@ -153,11 +173,61 @@ impl QueryResult {
             _ => unreachable!(),
         }
     }
+
+    /// Access the underlying `MySqlRow` if we use the MySQL backend.
+    #[cfg(feature = "sqlx-mysql")]
+    pub fn try_as_mysql_row(&self) -> Option<&sqlx::mysql::MySqlRow> {
+        match &self.row {
+            QueryResultRow::SqlxMySql(mysql_row) => Some(mysql_row),
+            #[allow(unreachable_patterns)]
+            _ => None,
+        }
+    }
+
+    /// Access the underlying `PgRow` if we use the Postgres backend.
+    #[cfg(feature = "sqlx-postgres")]
+    pub fn try_as_pg_row(&self) -> Option<&sqlx::postgres::PgRow> {
+        match &self.row {
+            QueryResultRow::SqlxPostgres(pg_row) => Some(pg_row),
+            #[allow(unreachable_patterns)]
+            _ => None,
+        }
+    }
+
+    /// Access the underlying `SqliteRow` if we use the SQLite backend.
+    #[cfg(feature = "sqlx-sqlite")]
+    pub fn try_as_sqlite_row(&self) -> Option<&sqlx::sqlite::SqliteRow> {
+        match &self.row {
+            QueryResultRow::SqlxSqlite(sqlite_row) => Some(sqlite_row),
+            #[allow(unreachable_patterns)]
+            _ => None,
+        }
+    }
+
+    /// Access the underlying `MockRow` if we use a mock.
+    #[cfg(feature = "mock")]
+    pub fn try_as_mock_row(&self) -> Option<&crate::MockRow> {
+        match &self.row {
+            QueryResultRow::Mock(mock_row) => Some(mock_row),
+            #[allow(unreachable_patterns)]
+            _ => None,
+        }
+    }
+
+    /// Access the underlying `ProxyRow` if we use a proxy.
+    #[cfg(feature = "proxy")]
+    pub fn try_as_proxy_row(&self) -> Option<&crate::ProxyRow> {
+        match &self.row {
+            QueryResultRow::Proxy(proxy_row) => Some(proxy_row),
+            #[allow(unreachable_patterns)]
+            _ => None,
+        }
+    }
 }
 
 #[allow(unused_variables)]
-impl fmt::Debug for QueryResultRow {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Debug for QueryResultRow {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             Self::SqlxMySql(row) => write!(f, "{row:?}"),
@@ -183,16 +253,22 @@ impl<T: TryGetable> TryGetable for Option<T> {
             Ok(v) => Ok(Some(v)),
             Err(TryGetError::Null(_)) => Ok(None),
             #[cfg(feature = "sqlx-dep")]
-            Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::SqlxError(
-                sqlx::Error::ColumnNotFound(_),
-            )))) => Ok(None),
+            Err(TryGetError::DbErr(DbErr::Query(crate::RuntimeErr::SqlxError(err)))) => {
+                use std::ops::Deref;
+                match err.deref() {
+                    sqlx::Error::ColumnNotFound(_) => Ok(None),
+                    _ => Err(TryGetError::DbErr(DbErr::Query(
+                        crate::RuntimeErr::SqlxError(err),
+                    ))),
+                }
+            }
             Err(e) => Err(e),
         }
     }
 }
 
 /// Column Index, used by [`TryGetable`]. Implemented for `&str` and `usize`
-pub trait ColIdx: std::fmt::Debug + Copy {
+pub trait ColIdx: Debug + Copy {
     #[cfg(feature = "sqlx-mysql")]
     /// Type surrogate
     type SqlxMySqlIndex: sqlx::ColumnIndex<sqlx::mysql::MySqlRow>;
@@ -408,6 +484,48 @@ macro_rules! try_getable_mysql {
 }
 
 #[allow(unused_macros)]
+macro_rules! try_getable_postgres {
+    ( $type: ty ) => {
+        impl TryGetable for $type {
+            #[allow(unused_variables)]
+            fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+                match &res.row {
+                    #[cfg(feature = "sqlx-mysql")]
+                    QueryResultRow::SqlxMySql(_) => Err(type_err(format!(
+                        "{} unsupported by sqlx-mysql",
+                        stringify!($type)
+                    ))
+                    .into()),
+                    #[cfg(feature = "sqlx-postgres")]
+                    QueryResultRow::SqlxPostgres(row) => row
+                        .try_get::<Option<$type>, _>(idx.as_sqlx_postgres_index())
+                        .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                    #[cfg(feature = "sqlx-sqlite")]
+                    QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
+                        "{} unsupported by sqlx-sqlite",
+                        stringify!($type)
+                    ))
+                    .into()),
+                    #[cfg(feature = "mock")]
+                    QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        err_null_idx_col(idx)
+                    }),
+                    #[cfg(feature = "proxy")]
+                    QueryResultRow::Proxy(row) => row.try_get(idx).map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        err_null_idx_col(idx)
+                    }),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
+                }
+            }
+        }
+    };
+}
+
+#[allow(unused_macros)]
 macro_rules! try_getable_date_time {
     ( $type: ty ) => {
         impl TryGetable for $type {
@@ -526,7 +644,7 @@ impl TryGetable for Decimal {
                         DbErr::TryIntoErr {
                             from: "f64",
                             into: "Decimal",
-                            source: Box::new(e),
+                            source: Arc::new(e),
                         }
                         .into()
                     }),
@@ -579,7 +697,7 @@ impl TryGetable for BigDecimal {
                         DbErr::TryIntoErr {
                             from: "f64",
                             into: "BigDecimal",
-                            source: Box::new(e),
+                            source: Arc::new(e),
                         }
                         .into()
                     }),
@@ -615,7 +733,34 @@ macro_rules! try_getable_uuid {
                     QueryResultRow::SqlxMySql(row) => row
                         .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_mysql_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
+                        .or_else(|_| {
+                            // MariaDB's UUID type stores UUIDs as hyphenated strings.
+                            // reference: https://github.com/SeaQL/sea-orm/pull/2485
+                            row.try_get::<Option<Vec<u8>>, _>(idx.as_sqlx_mysql_index())
+                                .map_err(|e| sqlx_error_to_query_err(e).into())
+                                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
+                                .map(|bytes| {
+                                    String::from_utf8(bytes).map_err(|e| {
+                                        DbErr::TryIntoErr {
+                                            from: "Vec<u8>",
+                                            into: "String",
+                                            source: Arc::new(e),
+                                        }
+                                        .into()
+                                    })
+                                })?
+                                .and_then(|s| {
+                                    uuid::Uuid::parse_str(&s).map_err(|e| {
+                                        DbErr::TryIntoErr {
+                                            from: "String",
+                                            into: "uuid::Uuid",
+                                            source: Arc::new(e),
+                                        }
+                                        .into()
+                                    })
+                                })
+                        }),
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => row
                         .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_postgres_index())
@@ -661,6 +806,9 @@ try_getable_uuid!(uuid::fmt::Simple, uuid::Uuid::simple);
 
 #[cfg(feature = "with-uuid")]
 try_getable_uuid!(uuid::fmt::Urn, uuid::Uuid::urn);
+
+#[cfg(feature = "with-ipnetwork")]
+try_getable_postgres!(ipnetwork::IpNetwork);
 
 impl TryGetable for u32 {
     #[allow(unused_variables)]
@@ -718,7 +866,7 @@ impl TryGetable for String {
                         DbErr::TryIntoErr {
                             from: "Vec<u8>",
                             into: "String",
-                            source: Box::new(e),
+                            source: Arc::new(e),
                         }
                         .into()
                     })
@@ -810,6 +958,7 @@ mod postgres_array {
     try_getable_postgres_array!(f32);
     try_getable_postgres_array!(f64);
     try_getable_postgres_array!(String);
+    try_getable_postgres_array!(Vec<u8>);
 
     #[cfg(feature = "with-json")]
     try_getable_postgres_array!(serde_json::Value);
@@ -849,6 +998,9 @@ mod postgres_array {
 
     #[cfg(feature = "with-bigdecimal")]
     try_getable_postgres_array!(bigdecimal::BigDecimal);
+
+    #[cfg(feature = "with-ipnetwork")]
+    try_getable_postgres_array!(ipnetwork::IpNetwork);
 
     #[allow(unused_macros)]
     macro_rules! try_getable_postgres_array_uuid {
@@ -955,6 +1107,40 @@ mod postgres_array {
     }
 }
 
+#[cfg(feature = "postgres-vector")]
+impl TryGetable for pgvector::Vector {
+    #[allow(unused_variables)]
+    fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        match &res.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(_) => {
+                Err(type_err("Vector unsupported by sqlx-mysql").into())
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => row
+                .try_get::<Option<pgvector::Vector>, _>(idx.as_sqlx_postgres_index())
+                .map_err(|e| sqlx_error_to_query_err(e).into())
+                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(_) => {
+                Err(type_err("Vector unsupported by sqlx-sqlite").into())
+            }
+            #[cfg(feature = "mock")]
+            QueryResultRow::Mock(row) => row.try_get::<pgvector::Vector, _>(idx).map_err(|e| {
+                debug_print!("{:#?}", e.to_string());
+                err_null_idx_col(idx)
+            }),
+            #[cfg(feature = "proxy")]
+            QueryResultRow::Proxy(row) => row.try_get::<pgvector::Vector, _>(idx).map_err(|e| {
+                debug_print!("{:#?}", e.to_string());
+                err_null_idx_col(idx)
+            }),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        }
+    }
+}
+
 // TryGetableMany //
 
 /// An interface to get a tuple value from the query result
@@ -985,7 +1171,7 @@ pub trait TryGetableMany: Sized {
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveIden, EnumIter, TryGetableMany};
+    /// use sea_orm::{DeriveIden, EnumIter, TryGetableMany, entity::*, query::*, tests_cfg::cake};
     ///
     /// #[derive(EnumIter, DeriveIden)]
     /// enum ResultCol {
@@ -1026,7 +1212,10 @@ pub trait TryGetableMany: Sized {
     where
         C: strum::IntoEnumIterator + sea_query::Iden,
     {
-        SelectorRaw::<SelectGetableValue<Self, C>>::with_columns(stmt)
+        SelectorRaw {
+            stmt,
+            selector: PhantomData,
+        }
     }
 }
 
@@ -1162,7 +1351,9 @@ where
                     debug_print!("{:#?}", e.to_string());
                     err_null_idx_col(idx)
                 })
-                .and_then(|json| serde_json::from_value(json).map_err(|e| json_err(e).into())),
+                .and_then(|json| {
+                    serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
+                }),
             #[cfg(feature = "proxy")]
             QueryResultRow::Proxy(row) => row
                 .try_get::<serde_json::Value, I>(idx)
@@ -1170,7 +1361,9 @@ where
                     debug_print!("{:#?}", e.to_string());
                     err_null_idx_col(idx)
                 })
-                .and_then(|json| serde_json::from_value(json).map_err(|e| json_err(e).into())),
+                .and_then(|json| {
+                    serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
+                }),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -1182,7 +1375,7 @@ where
             serde_json::Value::Array(values) => {
                 let mut res = Vec::new();
                 for item in values {
-                    res.push(serde_json::from_value(item).map_err(json_err)?);
+                    res.push(serde_json::from_value(item).map_err(crate::error::json_err)?);
                 }
                 Ok(res)
             }
@@ -1266,7 +1459,7 @@ macro_rules! try_from_u64_numeric {
                 n.try_into().map_err(|e| DbErr::TryIntoErr {
                     from: stringify!(u64),
                     into: stringify!($type),
-                    source: Box::new(e),
+                    source: Arc::new(e),
                 })
             }
         }
@@ -1338,13 +1531,15 @@ try_from_u64_err!(rust_decimal::Decimal);
 #[cfg(feature = "with-uuid")]
 try_from_u64_err!(uuid::Uuid);
 
+#[cfg(feature = "with-ipnetwork")]
+try_from_u64_err!(ipnetwork::IpNetwork);
+
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
-    use sea_query::Value;
-
     use super::*;
+    use crate::RuntimeErr;
+    use sea_query::Value;
+    use std::collections::BTreeMap;
 
     #[test]
     fn from_try_get_error() {
@@ -1366,27 +1561,29 @@ mod tests {
     #[test]
     fn build_with_query() {
         use sea_orm::{DbBackend, Statement};
-        use sea_query::*;
+        use sea_query::{
+            ColumnRef, CommonTableExpression, Cycle, Expr, ExprTrait, JoinType, SelectStatement,
+            UnionType, WithClause,
+        };
 
         let base_query = SelectStatement::new()
-            .column(Alias::new("id"))
+            .column("id")
             .expr(1i32)
-            .column(Alias::new("next"))
-            .column(Alias::new("value"))
-            .from(Alias::new("table"))
+            .column("next")
+            .column("value")
+            .from("table")
             .to_owned();
 
         let cte_referencing = SelectStatement::new()
-            .column(Alias::new("id"))
-            .expr(Expr::col(Alias::new("depth")).add(1i32))
-            .column(Alias::new("next"))
-            .column(Alias::new("value"))
-            .from(Alias::new("table"))
+            .column("id")
+            .expr(Expr::col("depth").add(1i32))
+            .column("next")
+            .column("value")
+            .from("table")
             .join(
                 JoinType::InnerJoin,
-                Alias::new("cte_traversal"),
-                Expr::col((Alias::new("cte_traversal"), Alias::new("next")))
-                    .equals((Alias::new("table"), Alias::new("id"))),
+                "cte_traversal",
+                Expr::col(("cte_traversal", "next")).equals(("table", "id")),
             )
             .to_owned();
 
@@ -1397,27 +1594,22 @@ mod tests {
                     .union(UnionType::All, cte_referencing)
                     .to_owned(),
             )
-            .columns([
-                Alias::new("id"),
-                Alias::new("depth"),
-                Alias::new("next"),
-                Alias::new("value"),
-            ])
-            .table_name(Alias::new("cte_traversal"))
+            .columns(["id", "depth", "next", "value"])
+            .table_name("cte_traversal")
             .to_owned();
 
         let select = SelectStatement::new()
-            .column(ColumnRef::Asterisk)
-            .from(Alias::new("cte_traversal"))
+            .column(ColumnRef::Asterisk(None))
+            .from("cte_traversal")
             .to_owned();
 
         let with_clause = WithClause::new()
             .recursive(true)
             .cte(common_table_expression)
             .cycle(Cycle::new_from_expr_set_using(
-                SimpleExpr::Column(ColumnRef::Column(Alias::new("id").into_iden())),
-                Alias::new("looped"),
-                Alias::new("traversal_path"),
+                Expr::column("id"),
+                "looped",
+                "traversal_path",
             ))
             .to_owned();
 
@@ -1437,10 +1629,7 @@ mod tests {
     fn column_names_from_query_result() {
         let mut values = BTreeMap::new();
         values.insert("id".to_string(), Value::Int(Some(1)));
-        values.insert(
-            "name".to_string(),
-            Value::String(Some(Box::new("Abc".to_owned()))),
-        );
+        values.insert("name".to_string(), Value::String(Some("Abc".to_owned())));
         let query_result = QueryResult {
             row: QueryResultRow::Mock(crate::MockRow { values }),
         };

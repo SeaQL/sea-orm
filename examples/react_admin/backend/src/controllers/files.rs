@@ -120,7 +120,7 @@ pub fn routes() -> Routes {
     // Bind the routes
     Routes::new()
         .prefix("files")
-        .add("/upload/:notes_id", post(upload))
-        .add("/list/:notes_id", get(list))
-        .add("/view/:files_id", get(view))
+        .add("/upload/{notes_id}", post(upload))
+        .add("/list/{notes_id}", get(list))
+        .add("/view/{files_id}", get(view))
 }

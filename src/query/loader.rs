@@ -1,10 +1,15 @@
 use crate::{
-    error::*, Condition, ConnectionTrait, DbErr, EntityTrait, Identity, ModelTrait, QueryFilter,
-    Related, RelationType, Select,
+    Condition, ConnectionTrait, DbErr, EntityTrait, Identity, ModelTrait, QueryFilter, Related,
+    RelationType, Select, error::*,
 };
 use async_trait::async_trait;
-use sea_query::{ColumnRef, DynIden, Expr, IntoColumnRef, SimpleExpr, TableRef, ValueTuple};
-use std::{collections::HashMap, str::FromStr};
+use sea_query::{
+    ColumnRef, DynIden, Expr, ExprTrait, IntoColumnRef, SimpleExpr, TableRef, ValueTuple,
+};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+};
 
 /// Entity, or a Select<Entity>; to be used as parameters in [`LoaderTrait`]
 pub trait EntityOrSelect<E: EntityTrait>: Send {
@@ -147,10 +152,10 @@ where
             return Ok(Vec::new());
         }
 
-        let keys: Vec<ValueTuple> = self
+        let keys = self
             .iter()
-            .map(|model: &M| extract_key(&rel_def.from_col, model))
-            .collect();
+            .map(|model| extract_key(&rel_def.from_col, model))
+            .collect::<Result<Vec<_>, _>>()?;
 
         let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
@@ -158,17 +163,16 @@ where
 
         let data = stmt.all(db).await?;
 
-        let hashmap: HashMap<ValueTuple, <R as EntityTrait>::Model> = data.into_iter().fold(
-            HashMap::new(),
-            |mut acc, value: <R as EntityTrait>::Model| {
-                {
-                    let key = extract_key(&rel_def.to_col, &value);
+        let hashmap = data.into_iter().try_fold(
+            HashMap::<ValueTuple, <R as EntityTrait>::Model>::new(),
+            |mut acc, value| {
+                extract_key(&rel_def.to_col, &value).map(|key| {
                     acc.insert(key, value);
-                }
 
-                acc
+                    acc
+                })
             },
-        );
+        )?;
 
         let result: Vec<Option<<R as EntityTrait>::Model>> =
             keys.iter().map(|key| hashmap.get(key).cloned()).collect();
@@ -198,10 +202,10 @@ where
             return Ok(Vec::new());
         }
 
-        let keys: Vec<ValueTuple> = self
+        let keys = self
             .iter()
-            .map(|model: &M| extract_key(&rel_def.from_col, model))
-            .collect();
+            .map(|model| extract_key(&rel_def.from_col, model))
+            .collect::<Result<Vec<_>, _>>()?;
 
         let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
@@ -216,16 +220,15 @@ where
                     acc
                 });
 
-        data.into_iter()
-            .for_each(|value: <R as EntityTrait>::Model| {
-                let key = extract_key(&rel_def.to_col, &value);
+        for value in data {
+            let key = extract_key(&rel_def.to_col, &value)?;
 
-                let vec = hashmap
-                    .get_mut(&key)
-                    .expect("Failed at finding key on hashmap");
+            let vec = hashmap.get_mut(&key).ok_or_else(|| {
+                DbErr::RecordNotFound(format!("Loader: failed to find model for {key:?}"))
+            })?;
 
-                vec.push(value);
-            });
+            vec.push(value);
+        }
 
         let result: Vec<Vec<R::Model>> = keys
             .iter()
@@ -271,10 +274,10 @@ where
                 return Ok(Vec::new());
             }
 
-            let pkeys: Vec<ValueTuple> = self
+            let pkeys = self
                 .iter()
-                .map(|model: &M| extract_key(&via_rel.from_col, model))
-                .collect();
+                .map(|model| extract_key(&via_rel.from_col, model))
+                .collect::<Result<Vec<_>, _>>()?;
 
             // Map of M::PK -> Vec<R::PK>
             let mut keymap: HashMap<ValueTuple, Vec<ValueTuple>> = Default::default();
@@ -283,13 +286,13 @@ where
                 let condition = prepare_condition(&via_rel.to_tbl, &via_rel.to_col, &pkeys);
                 let stmt = V::find().filter(condition);
                 let data = stmt.all(db).await?;
-                data.into_iter().for_each(|model| {
-                    let pk = extract_key(&via_rel.to_col, &model);
+                for model in data {
+                    let pk = extract_key(&via_rel.to_col, &model)?;
                     let entry = keymap.entry(pk).or_default();
 
-                    let fk = extract_key(&rel_def.from_col, &model);
+                    let fk = extract_key(&rel_def.from_col, &model)?;
                     entry.push(fk);
-                });
+                }
 
                 keymap.values().flatten().cloned().collect()
             };
@@ -298,16 +301,19 @@ where
 
             let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
 
-            let data = stmt.all(db).await?;
+            let models = stmt.all(db).await?;
 
             // Map of R::PK -> R::Model
-            let data: HashMap<ValueTuple, <R as EntityTrait>::Model> = data
-                .into_iter()
-                .map(|model| {
-                    let key = extract_key(&rel_def.to_col, &model);
-                    (key, model)
-                })
-                .collect();
+            let data = models.into_iter().try_fold(
+                HashMap::<ValueTuple, <R as EntityTrait>::Model>::new(),
+                |mut acc, model| {
+                    extract_key(&rel_def.to_col, &model).map(|key| {
+                        acc.insert(key, model);
+
+                        acc
+                    })
+                },
+            )?;
 
             let result: Vec<Vec<R::Model>> = pkeys
                 .into_iter()
@@ -335,48 +341,48 @@ fn cmp_table_ref(left: &TableRef, right: &TableRef) -> bool {
     format!("{left:?}") == format!("{right:?}")
 }
 
-fn extract_key<Model>(target_col: &Identity, model: &Model) -> ValueTuple
+fn extract_key<Model>(target_col: &Identity, model: &Model) -> Result<ValueTuple, DbErr>
 where
     Model: ModelTrait,
 {
-    match target_col {
+    Ok(match target_col {
         Identity::Unary(a) => {
+            let a = a.to_string();
             let column_a =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &a.to_string(),
-                )
-                .unwrap_or_else(|_| panic!("Failed at mapping string to column A:1"));
+                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(&a)
+                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}' to column A:1")))?;
             ValueTuple::One(model.get(column_a))
         }
         Identity::Binary(a, b) => {
+            let a = a.to_string();
+            let b = b.to_string();
             let column_a =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &a.to_string(),
-                )
-                .unwrap_or_else(|_| panic!("Failed at mapping string to column A:2"));
+                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(&a)
+                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}' to column A:2")))?;
             let column_b =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &b.to_string(),
-                )
-                .unwrap_or_else(|_| panic!("Failed at mapping string to column B:2"));
+                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(&b)
+                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{b}' to column B:2")))?;
             ValueTuple::Two(model.get(column_a), model.get(column_b))
         }
         Identity::Ternary(a, b, c) => {
+            let a = a.to_string();
+            let b = b.to_string();
+            let c = c.to_string();
             let column_a =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &a.to_string(),
                 )
-                .unwrap_or_else(|_| panic!("Failed at mapping string to column A:3"));
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}' to column A:3")))?;
             let column_b =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &b.to_string(),
                 )
-                .unwrap_or_else(|_| panic!("Failed at mapping string to column B:3"));
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{b}' to column B:3")))?;
             let column_c =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &c.to_string(),
                 )
-                .unwrap_or_else(|_| panic!("Failed at mapping string to column C:3"));
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{c}' to column C:3")))?;
             ValueTuple::Three(
                 model.get(column_a),
                 model.get(column_b),
@@ -384,23 +390,29 @@ where
             )
         }
         Identity::Many(cols) => {
-            let values = cols.iter().map(|col| {
+            let mut values = Vec::new();
+            for col in cols {
                 let col_name = col.to_string();
-                let column = <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &col_name,
-                )
-                .unwrap_or_else(|_| panic!("Failed at mapping '{}' to column", col_name));
-                model.get(column)
-            })
-            .collect();
+                let column =
+                    <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
+                        &col_name,
+                    )
+                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{col_name}' to colum")))?;
+                values.push(model.get(column))
+            }
             ValueTuple::Many(values)
         }
-    }
+    })
 }
 
 fn prepare_condition(table: &TableRef, col: &Identity, keys: &[ValueTuple]) -> Condition {
-    // TODO when value is hashable, retain only unique values
-    let keys = keys.to_owned();
+    let keys = if !keys.is_empty() {
+        let set: HashSet<_> = keys.iter().cloned().collect();
+        set.into_iter().collect()
+    } else {
+        Vec::new()
+    };
+
     match col {
         Identity::Unary(column_a) => {
             let column_a = table_column(table, column_a);
@@ -431,11 +443,7 @@ fn prepare_condition(table: &TableRef, col: &Identity, keys: &[ValueTuple]) -> C
 }
 
 fn table_column(tbl: &TableRef, col: &DynIden) -> ColumnRef {
-    match tbl.to_owned() {
-        TableRef::Table(tbl) => (tbl, col.clone()).into_column_ref(),
-        TableRef::SchemaTable(sch, tbl) => (sch, tbl, col.clone()).into_column_ref(),
-        val => unimplemented!("Unsupported TableRef {val:?}"),
-    }
+    (tbl.sea_orm_table().to_owned(), col.clone()).into_column_ref()
 }
 
 #[cfg(test)]
@@ -493,7 +501,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_one() {
-        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[cake_model(1), cake_model(2)]])
@@ -511,7 +519,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_one_same_cake() {
-        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[cake_model(1), cake_model(2)]])
@@ -529,7 +537,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_one_empty() {
-        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[cake_model(1), cake_model(2)]])
@@ -547,7 +555,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many() {
-        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[fruit_model(1, Some(1))]])
@@ -565,7 +573,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_same_fruit() {
-        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[fruit_model(1, Some(1)), fruit_model(2, Some(1))]])
@@ -589,7 +597,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_empty() {
-        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, MockDatabase};
+        use sea_orm::{DbBackend, MockDatabase, entity::prelude::*, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
@@ -607,7 +615,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_to_many_base() {
-        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, IntoMockRow, LoaderTrait, MockDatabase, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
@@ -628,7 +636,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_to_many_complex() {
-        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, IntoMockRow, LoaderTrait, MockDatabase, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
@@ -668,7 +676,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_to_many_empty() {
-        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
+        use sea_orm::{DbBackend, IntoMockRow, LoaderTrait, MockDatabase, tests_cfg::*};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
@@ -687,5 +695,64 @@ mod tests {
         let empty_vec: Vec<Vec<filling::Model>> = vec![];
 
         assert_eq!(fillings, empty_vec);
+    }
+
+    #[tokio::test]
+    async fn test_load_one_duplicate_keys() {
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[cake_model(1), cake_model(2)]])
+            .into_connection();
+
+        let fruits = vec![
+            fruit_model(1, Some(1)),
+            fruit_model(2, Some(1)),
+            fruit_model(3, Some(1)),
+            fruit_model(4, Some(1)),
+        ];
+
+        let cakes = fruits
+            .load_one(cake::Entity::find(), &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(cakes.len(), 4);
+        for cake in &cakes {
+            assert_eq!(cake, &Some(cake_model(1)));
+        }
+        let logs = db.into_transaction_log();
+        let sql = format!("{:?}", logs[0]);
+
+        let values_count = sql.matches("$1").count();
+        assert_eq!(values_count, 1, "Duplicate values were not removed");
+    }
+
+    #[tokio::test]
+    async fn test_load_many_duplicate_keys() {
+        use sea_orm::{DbBackend, LoaderTrait, MockDatabase, entity::prelude::*, tests_cfg::*};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                fruit_model(1, Some(1)),
+                fruit_model(2, Some(1)),
+                fruit_model(3, Some(2)),
+            ]])
+            .into_connection();
+
+        let cakes = vec![cake_model(1), cake_model(1), cake_model(2), cake_model(2)];
+
+        let fruits = cakes
+            .load_many(fruit::Entity::find(), &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(fruits.len(), 4);
+
+        let logs = db.into_transaction_log();
+        let sql = format!("{:?}", logs[0]);
+
+        let values_count = sql.matches("$1").count() + sql.matches("$2").count();
+        assert_eq!(values_count, 2, "Duplicate values were not removed");
     }
 }

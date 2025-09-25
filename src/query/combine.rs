@@ -1,8 +1,10 @@
 use crate::{
-    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectTwo, SelectTwoMany,
+    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectThree, SelectTwo,
+    SelectTwoMany,
 };
 use core::marker::PhantomData;
-use sea_query::{Alias, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
+use sea_query::{Iden, IntoIden, Order, SelectExpr, SelectStatement, SimpleExpr};
+use std::borrow::Cow;
 
 macro_rules! select_def {
     ( $ident: ident, $str: expr ) => {
@@ -11,13 +13,17 @@ macro_rules! select_def {
         pub struct $ident;
 
         impl Iden for $ident {
-            fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-                write!(s, "{}", self.as_str()).unwrap();
+            fn quoted(&self) -> Cow<'static, str> {
+                Cow::Borrowed(IdenStatic::as_str(self))
+            }
+
+            fn unquoted(&self) -> &str {
+                IdenStatic::as_str(self)
             }
         }
 
         impl IdenStatic for $ident {
-            fn as_str(&self) -> &str {
+            fn as_str(&self) -> &'static str {
                 $str
             }
         }
@@ -26,6 +32,7 @@ macro_rules! select_def {
 
 select_def!(SelectA, "A_");
 select_def!(SelectB, "B_");
+select_def!(SelectC, "C_");
 
 impl<E> Select<E>
 where
@@ -36,24 +43,20 @@ where
             match &sel.alias {
                 Some(alias) => {
                     let alias = format!("{}{}", pre, alias.to_string().as_str());
-                    sel.alias = Some(SeaRc::new(Alias::new(alias)));
+                    sel.alias = Some(alias.into_iden());
                 }
                 None => {
                     let col = match &sel.expr {
-                        SimpleExpr::Column(col_ref) => match &col_ref {
-                            ColumnRef::Column(col)
-                            | ColumnRef::TableColumn(_, col)
-                            | ColumnRef::SchemaTableColumn(_, _, col) => col,
-                            ColumnRef::Asterisk | ColumnRef::TableAsterisk(_) => {
-                                panic!("cannot apply alias for Column with asterisk")
+                        SimpleExpr::Column(col_ref) => match col_ref.column() {
+                            Some(col) => col,
+                            None => {
+                                panic!("cannot apply alias for Column with asterisk");
                             }
                         },
                         SimpleExpr::AsEnum(_, simple_expr) => match simple_expr.as_ref() {
-                            SimpleExpr::Column(col_ref) => match &col_ref {
-                                ColumnRef::Column(col)
-                                | ColumnRef::TableColumn(_, col)
-                                | ColumnRef::SchemaTableColumn(_, _, col) => col,
-                                ColumnRef::Asterisk | ColumnRef::TableAsterisk(_) => {
+                            SimpleExpr::Column(col_ref) => match col_ref.column() {
+                                Some(col) => col,
+                                None => {
                                     panic!("cannot apply alias for AsEnum with asterisk")
                                 }
                             },
@@ -64,14 +67,14 @@ where
                         _ => panic!("cannot apply alias for expr other than Column or AsEnum"),
                     };
                     let alias = format!("{}{}", pre, col.to_string().as_str());
-                    sel.alias = Some(SeaRc::new(Alias::new(alias)));
+                    sel.alias = Some(alias.into_iden());
                 }
             };
         });
         self
     }
 
-    /// Selects and Entity and returns it together with the Entity from `Self`
+    /// Selects extra Entity and returns it together with the Entity from `Self`
     pub fn select_also<F>(mut self, _: F) -> SelectTwo<E, F>
     where
         F: EntityTrait,
@@ -95,6 +98,14 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
+    /// Selects extra Entity and returns it together with the Entities from `Self`
+    pub fn select_also<G>(self, _: G) -> SelectThree<E, F, G>
+    where
+        G: EntityTrait,
+    {
+        SelectThree::new(self.into_query())
+    }
+
     pub(crate) fn new(query: SelectStatement) -> Self {
         Self::new_without_prepare(query).prepare_select()
     }
@@ -107,7 +118,7 @@ where
     }
 
     fn prepare_select(mut self) -> Self {
-        prepare_select_two::<F, Self>(&mut self);
+        prepare_select_col::<F, _, _>(&mut self, SelectB);
         self
     }
 }
@@ -131,7 +142,7 @@ where
     }
 
     fn prepare_select(mut self) -> Self {
-        prepare_select_two::<F, Self>(&mut self);
+        prepare_select_col::<F, _, _>(&mut self, SelectB);
         self
     }
 
@@ -143,16 +154,40 @@ where
     }
 }
 
-fn prepare_select_two<F, S>(selector: &mut S)
+impl<E, F, G> SelectThree<E, F, G>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+{
+    pub(crate) fn new(query: SelectStatement) -> Self {
+        Self::new_without_prepare(query).prepare_select()
+    }
+
+    pub(crate) fn new_without_prepare(query: SelectStatement) -> Self {
+        Self {
+            query,
+            entity: PhantomData,
+        }
+    }
+
+    fn prepare_select(mut self) -> Self {
+        prepare_select_col::<G, _, _>(&mut self, SelectC);
+        self
+    }
+}
+
+fn prepare_select_col<F, S, A>(selector: &mut S, alias: A)
 where
     F: EntityTrait,
     S: QueryTrait<QueryStatement = SelectStatement>,
+    A: IdenStatic,
 {
     for col in <F::Column as Iterable>::iter() {
-        let alias = format!("{}{}", SelectB.as_str(), col.as_str());
+        let alias = format!("{}{}", alias.as_str(), col.as_str());
         selector.query().expr(SelectExpr {
             expr: col.select_as(col.into_expr()),
-            alias: Some(SeaRc::new(Alias::new(alias))),
+            alias: Some(alias.into_iden()),
             window: None,
         });
     }

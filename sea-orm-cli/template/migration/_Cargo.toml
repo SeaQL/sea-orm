@@ -1,7 +1,8 @@
 [package]
 name = "migration"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 publish = false
 
 [lib]
@@ -9,7 +10,7 @@ name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
-async-std = { version = "1", features = ["attributes", "tokio1"] }
+tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
 
 [dependencies.sea-orm-migration]
 version = "<sea-orm-migration-version>"

@@ -2,9 +2,9 @@
 
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -78,6 +78,7 @@ pub async fn create_and_update_metadata(db: &DatabaseConnection) -> Result<(), D
         value: Set("0.22".to_owned()),
         ..metadata.clone().into_active_model()
     })
+    .validate()?
     .filter(metadata::Column::Uuid.eq(Uuid::default()))
     .exec(db)
     .await;

@@ -1,6 +1,6 @@
 use crate::{ColumnTrait, EntityTrait, IdenStatic};
 use sea_query::{Alias, DynIden, Iden, IntoIden, SeaRc};
-use std::fmt;
+use std::{borrow::Cow, fmt::Write};
 
 /// List of column identifier
 #[derive(Debug, Clone)]
@@ -13,6 +13,18 @@ pub enum Identity {
     Ternary(DynIden, DynIden, DynIden),
     /// Column identifier consists of more than 3 columns
     Many(Vec<DynIden>),
+}
+
+impl Identity {
+    /// Get arity for this value
+    pub fn arity(&self) -> usize {
+        match self {
+            Self::Unary(_) => 1,
+            Self::Binary(_, _) => 2,
+            Self::Ternary(_, _, _) => 3,
+            Self::Many(vec) => vec.len(),
+        }
+    }
 }
 
 impl IntoIterator for Identity {
@@ -30,26 +42,30 @@ impl IntoIterator for Identity {
 }
 
 impl Iden for Identity {
-    fn unquoted(&self, s: &mut dyn fmt::Write) {
+    fn quoted(&self) -> Cow<'static, str> {
         match self {
-            Identity::Unary(iden) => {
-                write!(s, "{}", iden.to_string()).unwrap();
-            }
-            Identity::Binary(iden1, iden2) => {
-                write!(s, "{}", iden1.to_string()).unwrap();
-                write!(s, "{}", iden2.to_string()).unwrap();
-            }
-            Identity::Ternary(iden1, iden2, iden3) => {
-                write!(s, "{}", iden1.to_string()).unwrap();
-                write!(s, "{}", iden2.to_string()).unwrap();
-                write!(s, "{}", iden3.to_string()).unwrap();
-            }
+            Identity::Unary(iden) => iden.inner(),
+            Identity::Binary(iden1, iden2) => Cow::Owned(format!("{iden1}{iden2}")),
+            Identity::Ternary(iden1, iden2, iden3) => Cow::Owned(format!("{iden1}{iden2}{iden3}")),
             Identity::Many(vec) => {
+                let mut s = String::new();
                 for iden in vec.iter() {
-                    write!(s, "{}", iden.to_string()).unwrap();
+                    write!(&mut s, "{iden}").expect("Infallible");
                 }
+                Cow::Owned(s)
             }
         }
+    }
+
+    fn to_string(&self) -> String {
+        match self.quoted() {
+            Cow::Borrowed(s) => s.to_owned(),
+            Cow::Owned(s) => s,
+        }
+    }
+
+    fn unquoted(&self) -> &str {
+        panic!("Should not call this")
     }
 }
 

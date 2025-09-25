@@ -1,10 +1,10 @@
 use crate::{
-    error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel,
-    SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait,
+    ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel, SelectThree,
+    SelectThreeModel, SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait, error::*,
 };
 use async_stream::stream;
-use futures::Stream;
-use sea_query::{Alias, Expr, SelectStatement};
+use futures_util::Stream;
+use sea_query::{Expr, SelectStatement};
 use std::{marker::PhantomData, pin::Pin};
 
 /// Pin a Model so that stream operations can be performed on the model
@@ -48,9 +48,7 @@ where
             .limit(self.page_size)
             .offset(self.page_size * page)
             .to_owned();
-        let builder = self.db.get_database_backend();
-        let stmt = builder.build(&query);
-        let rows = self.db.query_all(stmt).await?;
+        let rows = self.db.query_all(&query).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
             // TODO: Error handling
@@ -66,8 +64,8 @@ where
 
     /// Get the total number of items
     pub async fn num_items(&self) -> Result<u64, DbErr> {
-        let builder = self.db.get_database_backend();
-        let stmt = SelectStatement::new()
+        let db_backend = self.db.get_database_backend();
+        let query = SelectStatement::new()
             .expr(Expr::cust("COUNT(*) AS num_items"))
             .from_subquery(
                 self.query
@@ -76,15 +74,14 @@ where
                     .reset_offset()
                     .clear_order_by()
                     .to_owned(),
-                Alias::new("sub_query"),
+                "sub_query",
             )
             .to_owned();
-        let stmt = builder.build(&stmt);
-        let result = match self.db.query_one(stmt).await? {
+        let result = match self.db.query_one(&query).await? {
             Some(res) => res,
             None => return Ok(0),
         };
-        let num_items = match builder {
+        let num_items = match db_backend {
             DbBackend::Postgres => result.try_get::<i64>("", "num_items")? as u64,
             _ => result.try_get::<i32>("", "num_items")? as u64,
         };
@@ -254,7 +251,7 @@ where
     type Selector = S;
     fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, S> {
         assert!(page_size != 0, "page_size should not be zero");
-        let sql = self.stmt.sql.trim()[6..].trim();
+        let sql = self.stmt.sql.trim()[6..].trim().to_owned();
         let mut query = SelectStatement::new();
         query.expr(if let Some(values) = self.stmt.values {
             Expr::cust_with_values(sql, values.0)
@@ -300,19 +297,36 @@ where
     }
 }
 
+impl<'db, C, M, N, O, E, F, G> PaginatorTrait<'db, C> for SelectThree<E, F, G>
+where
+    C: ConnectionTrait,
+    E: EntityTrait<Model = M>,
+    F: EntityTrait<Model = N>,
+    G: EntityTrait<Model = O>,
+    M: FromQueryResult + Sized + Send + Sync + 'db,
+    N: FromQueryResult + Sized + Send + Sync + 'db,
+    O: FromQueryResult + Sized + Send + Sync + 'db,
+{
+    type Selector = SelectThreeModel<M, N, O>;
+
+    fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, Self::Selector> {
+        self.into_model().paginate(db, page_size)
+    }
+}
+
 #[cfg(test)]
 #[cfg(feature = "mock")]
 mod tests {
     use super::*;
     use crate::entity::prelude::*;
-    use crate::{tests_cfg::*, ConnectionTrait, Statement};
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
-    use futures::TryStreamExt;
-    use once_cell::sync::Lazy;
+    use crate::{Statement, tests_cfg::*};
+    use futures_util::TryStreamExt;
     use pretty_assertions::assert_eq;
-    use sea_query::{Alias, Expr, SelectStatement, Value};
+    use sea_query::{Expr, SelectStatement, Value};
+    use std::sync::LazyLock;
 
-    static RAW_STMT: Lazy<Statement> = Lazy::new(|| {
+    static RAW_STMT: LazyLock<Statement> = LazyLock::new(|| {
         Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
@@ -329,7 +343,7 @@ mod tests {
             },
             fruit::Model {
                 id: 2,
-                name: "Rasberry".into(),
+                name: "Raspberry".into(),
                 cake_id: Some(1),
             },
         ];
@@ -514,7 +528,7 @@ mod tests {
 
         let select = SelectStatement::new()
             .expr(Expr::cust("COUNT(*) AS num_items"))
-            .from_subquery(sub_query, Alias::new("sub_query"))
+            .from_subquery(sub_query, "sub_query")
             .to_owned();
 
         let query_builder = db.get_database_backend();
@@ -548,7 +562,7 @@ mod tests {
 
         let select = SelectStatement::new()
             .expr(Expr::cust("COUNT(*) AS num_items"))
-            .from_subquery(sub_query, Alias::new("sub_query"))
+            .from_subquery(sub_query, "sub_query")
             .to_owned();
 
         let query_builder = db.get_database_backend();

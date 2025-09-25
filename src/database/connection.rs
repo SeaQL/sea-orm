@@ -1,28 +1,48 @@
 use crate::{
-    DatabaseTransaction, DbBackend, DbErr, ExecResult, QueryResult, Statement, TransactionError,
+    DbBackend, DbErr, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError,
 };
-use futures::Stream;
+use futures_util::Stream;
 use std::{future::Future, pin::Pin};
 
 /// The generic API for a database connection that can perform query or execute statements.
 /// It abstracts database connection and transaction
 #[async_trait::async_trait]
 pub trait ConnectionTrait: Sync {
-    /// Fetch the database backend as specified in [DbBackend].
-    /// This depends on feature flags enabled.
+    /// Get the database backend for the connection. This depends on feature flags enabled.
     fn get_database_backend(&self) -> DbBackend;
 
     /// Execute a [Statement]
-    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr>;
+    async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr>;
+
+    /// Execute a [QueryStatement]
+    async fn execute<S: StatementBuilder>(&self, stmt: &S) -> Result<ExecResult, DbErr> {
+        let db_backend = self.get_database_backend();
+        let stmt = db_backend.build(stmt);
+        self.execute_raw(stmt).await
+    }
 
     /// Execute a unprepared [Statement]
     async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr>;
 
-    /// Execute a [Statement] and return a query
-    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr>;
+    /// Execute a [Statement] and return a single row of `QueryResult`
+    async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr>;
 
-    /// Execute a [Statement] and return a collection Vec<[QueryResult]> on success
-    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
+    /// Execute a [QueryStatement] and return a single row of `QueryResult`
+    async fn query_one<S: StatementBuilder>(&self, stmt: &S) -> Result<Option<QueryResult>, DbErr> {
+        let db_backend = self.get_database_backend();
+        let stmt = db_backend.build(stmt);
+        self.query_one_raw(stmt).await
+    }
+
+    /// Execute a [Statement] and return a vector of `QueryResult`
+    async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
+
+    /// Execute a [QueryStatement] and return a vector of `QueryResult`
+    async fn query_all<S: StatementBuilder>(&self, stmt: &S) -> Result<Vec<QueryResult>, DbErr> {
+        let db_backend = self.get_database_backend();
+        let stmt = db_backend.build(stmt);
+        self.query_all_raw(stmt).await
+    }
 
     /// Check if the connection supports `RETURNING` syntax on insert and update
     fn support_returning(&self) -> bool {
@@ -43,11 +63,24 @@ pub trait StreamTrait: Send + Sync {
     where
         Self: 'a;
 
+    /// Get the database backend for the connection. This depends on feature flags enabled.
+    fn get_database_backend(&self) -> DbBackend;
+
     /// Execute a [Statement] and return a stream of results
-    fn stream<'a>(
+    fn stream_raw<'a>(
         &'a self,
         stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>>;
+
+    /// Execute a [QueryStatement] and return a stream of results
+    fn stream<'a, S: StatementBuilder + Sync>(
+        &'a self,
+        stmt: &S,
+    ) -> Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>> {
+        let db_backend = self.get_database_backend();
+        let stmt = db_backend.build(stmt);
+        self.stream_raw(stmt)
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -95,9 +128,12 @@ impl std::fmt::Display for AccessMode {
 /// Spawn database transaction
 #[async_trait::async_trait]
 pub trait TransactionTrait {
+    /// The concrete type for the transaction
+    type Transaction: ConnectionTrait + TransactionTrait + TransactionSession;
+
     /// Execute SQL `BEGIN` transaction.
     /// Returns a Transaction that can be committed or rolled back
-    async fn begin(&self) -> Result<DatabaseTransaction, DbErr>;
+    async fn begin(&self) -> Result<Self::Transaction, DbErr>;
 
     /// Execute SQL `BEGIN` transaction with isolation level and/or access mode.
     /// Returns a Transaction that can be committed or rolled back
@@ -105,18 +141,18 @@ pub trait TransactionTrait {
         &self,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
-    ) -> Result<DatabaseTransaction, DbErr>;
+    ) -> Result<Self::Transaction, DbErr>;
 
     /// Execute the function inside a transaction.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
     async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
-                &'c DatabaseTransaction,
+                &'c Self::Transaction,
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send;
+        E: std::fmt::Display + std::fmt::Debug + Send;
 
     /// Execute the function inside a transaction with isolation level and/or access mode.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
@@ -128,9 +164,19 @@ pub trait TransactionTrait {
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
-                &'c DatabaseTransaction,
+                &'c Self::Transaction,
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
             + Send,
         T: Send,
-        E: std::error::Error + Send;
+        E: std::fmt::Display + std::fmt::Debug + Send;
+}
+
+/// Represents an open transaction
+#[async_trait::async_trait]
+pub trait TransactionSession {
+    /// Commit a transaction
+    async fn commit(self) -> Result<(), DbErr>;
+
+    /// Rolls back a transaction explicitly
+    async fn rollback(self) -> Result<(), DbErr>;
 }

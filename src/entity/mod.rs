@@ -32,7 +32,7 @@
 ///
 /// /// The [EntityName] describes the name of a table
 /// impl EntityName for Entity {
-///     fn table_name(&self) -> &str {
+///     fn table_name(&self) -> &'static str {
 ///         "filling"
 ///     }
 /// }
@@ -100,6 +100,7 @@ mod active_enum;
 mod active_model;
 mod base_entity;
 mod column;
+mod column_def;
 mod identity;
 mod link;
 mod model;
@@ -118,5 +119,6 @@ pub use link::*;
 pub use model::*;
 pub use partial_model::*;
 // pub use prelude::*;
+pub use column_def::*;
 pub use primary_key::*;
 pub use relation::*;

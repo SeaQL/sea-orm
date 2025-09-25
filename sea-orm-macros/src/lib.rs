@@ -2,13 +2,15 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 
-use syn::{parse_macro_input, DeriveInput, Error};
+use syn::{DeriveInput, Error, parse_macro_input};
 
 #[cfg(feature = "derive")]
 mod derives;
 
 #[cfg(feature = "strum")]
 mod strum;
+
+mod raw_sql;
 
 /// Create an Entity
 ///
@@ -21,7 +23,7 @@ mod strum;
 /// pub struct Entity;
 ///
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -134,7 +136,7 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
 /// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
 #[cfg(feature = "derive")]
-#[proc_macro_derive(DeriveEntityModel, attributes(sea_orm))]
+#[proc_macro_derive(DeriveEntityModel, attributes(sea_orm, seaography))]
 pub fn derive_entity_model(input: TokenStream) -> TokenStream {
     let input_ts = input.clone();
     let DeriveInput {
@@ -174,7 +176,7 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
 /// # pub struct Entity;
 /// #
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -226,7 +228,7 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
 pub fn derive_primary_key(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
 
-    match derives::expand_derive_primary_key(ident, data) {
+    match derives::expand_derive_primary_key(&ident, &data) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
@@ -258,40 +260,6 @@ pub fn derive_column(input: TokenStream) -> TokenStream {
     }
 }
 
-/// Derive a column if column names are not in snake-case
-///
-/// ### Usage
-///
-/// ```
-/// use sea_orm::entity::prelude::*;
-///
-/// #[derive(Copy, Clone, Debug, EnumIter, DeriveCustomColumn)]
-/// pub enum Column {
-///     Id,
-///     Name,
-///     VendorId,
-/// }
-///
-/// impl IdenStatic for Column {
-///     fn as_str(&self) -> &str {
-///         match self {
-///             Self::Id => "id",
-///             _ => self.default_as_str(),
-///         }
-///     }
-/// }
-/// ```
-#[cfg(feature = "derive")]
-#[proc_macro_derive(DeriveCustomColumn)]
-pub fn derive_custom_column(input: TokenStream) -> TokenStream {
-    let DeriveInput { ident, data, .. } = parse_macro_input!(input);
-
-    match derives::expand_derive_custom_column(&ident, &data) {
-        Ok(ts) => ts.into(),
-        Err(e) => e.to_compile_error().into(),
-    }
-}
-
 /// The DeriveModel derive macro will implement ModelTrait for Model,
 /// which provides setters and getters for all attributes in the mod
 /// It also implements FromQueryResult to convert a query result into the corresponding Model.
@@ -311,7 +279,7 @@ pub fn derive_custom_column(input: TokenStream) -> TokenStream {
 /// # pub struct Entity;
 /// #
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -384,7 +352,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 /// # pub struct Entity;
 /// #
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -470,7 +438,7 @@ pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
 /// # pub struct Entity;
 /// #
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -540,11 +508,11 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 ///         - Possible values: `String`, `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`
 ///         - Note that value has to be passed as string, i.e. `rs_type = "i8"`
 ///     - `db_type`: Define `ColumnType` returned by `ActiveEnum::db_type()`
-///         - Possible values: all available enum variants of `ColumnType`, e.g. `String(None)`, `String(Some(1))`, `Integer`
+///         - Possible values: all available enum variants of `ColumnType`, e.g. `String(StringLen::None)`, `String(StringLen::N(1))`, `Integer`
 ///         - Note that value has to be passed as string, i.e. `db_type = "Integer"`
 ///     - `enum_name`: Define `String` returned by `ActiveEnum::name()`
 ///         - This attribute is optional with default value being the name of enum in camel-case
-///         - Note that value has to be passed as string, i.e. `db_type = "Integer"`
+///         - Note that value has to be passed as string, i.e. `enum_name = "MyEnum"`
 ///
 /// - For enum variant
 ///     - `string_value` or `num_value`:
@@ -558,7 +526,7 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 /// # Usage
 ///
 /// ```
-/// use sea_orm::{entity::prelude::*, DeriveActiveEnum};
+/// use sea_orm::{DeriveActiveEnum, entity::prelude::*};
 ///
 /// #[derive(EnumIter, DeriveActiveEnum)]
 /// #[sea_orm(rs_type = "i32", db_type = "Integer")]
@@ -580,33 +548,56 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 /// Convert a query result into the corresponding Model.
 ///
 /// ### Attributes
-/// - `skip`: Will not try to pull this field from the query result. And set it to the default value of the type.
+///
+/// - `skip`: will not try to pull this field from the query result. And set it to the default value of the type.
+/// - `nested`: allows nesting models. can be any type that implements `FromQueryResult`
+/// - `alias` / `from_alias`: get the value from this column alias
 ///
 /// ### Usage
 ///
-/// ```
-/// use sea_orm::{entity::prelude::*, FromQueryResult};
+/// For more complete examples, please refer to https://github.com/SeaQL/sea-orm/blob/master/tests/from_query_result_tests.rs
 ///
-/// #[derive(Debug, FromQueryResult)]
-/// struct SelectResult {
+/// ```
+/// use sea_orm::{FromQueryResult, entity::prelude::*};
+///
+/// #[derive(FromQueryResult)]
+/// struct Cake {
+///     id: i32,
 ///     name: String,
-///     num_of_fruits: i32,
+///     #[sea_orm(nested)]
+///     bakery: Option<CakeBakery>,
 ///     #[sea_orm(skip)]
 ///     skip_me: i32,
+/// }
+///
+/// #[derive(FromQueryResult)]
+/// struct CakeBakery {
+///     #[sea_orm(alias = "bakery_id")]
+///     id: i32,
+///     #[sea_orm(alias = "bakery_name")]
+///     title: String,
+/// }
+/// ```
+///
+/// You can compose this with regular Models, if there's no column collision:
+///
+/// ```ignore
+/// #[derive(FromQueryResult)]
+/// struct CakePlain {
+///     id: i32,
+///     name: String,
+///     price: Decimal,
+///     #[sea_orm(nested)]
+///     baker: Option<cakes_bakers::Model>,
 /// }
 /// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(FromQueryResult, attributes(sea_orm))]
 pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
-    let DeriveInput {
-        ident,
-        data,
-        generics,
-        ..
-    } = parse_macro_input!(input);
+    let derive_input = parse_macro_input!(input);
 
-    match derives::expand_derive_from_query_result(ident, data, generics) {
-        Ok(ts) => ts.into(),
+    match derives::expand_derive_from_query_result(derive_input) {
+        Ok(token_stream) => token_stream.into(),
         Err(e) => e.to_compile_error().into(),
     }
 }
@@ -675,13 +666,9 @@ pub fn derive_relation(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(DeriveRelatedEntity, attributes(sea_orm))]
 pub fn derive_related_entity(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    if cfg!(feature = "seaography") {
-        derives::expand_derive_related_entity(input)
-            .unwrap_or_else(Error::into_compile_error)
-            .into()
-    } else {
-        TokenStream::new()
-    }
+    derives::expand_derive_related_entity(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
 }
 
 /// The DeriveMigrationName derive macro will implement `sea_orm_migration::MigrationName` for a migration.
@@ -723,15 +710,18 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
     }
 }
 
-/// The DerivePartialModel derive macro will implement `sea_orm::PartialModelTrait` for simplify partial model queries.
+/// The DerivePartialModel derive macro will implement [`sea_orm::PartialModelTrait`] for simplify partial model queries.
+/// Since 2.0, this macro cannot be used with the `FromQueryResult` macro.
 ///
 /// ## Usage
 ///
-/// ```rust
-/// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
-/// use serde::{Deserialize, Serialize};
+/// For more complete examples, please refer to https://github.com/SeaQL/sea-orm/blob/master/tests/partial_model_tests.rs
 ///
-/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
+/// ```rust
+/// use sea_orm::sea_query::ExprTrait;
+/// use sea_orm::{DerivePartialModel, entity::prelude::*};
+///
+/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 /// #[sea_orm(table_name = "posts")]
 /// pub struct Model {
 ///     #[sea_orm(primary_key)]
@@ -740,18 +730,11 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///     #[sea_orm(column_type = "Text")]
 ///     pub text: String,
 /// }
-/// # #[derive(Copy, Clone, Debug, EnumIter)]
+/// # #[derive(Copy, Clone, Debug, DeriveRelation, EnumIter)]
 /// # pub enum Relation {}
-/// #
-/// # impl RelationTrait for Relation {
-/// #     fn def(&self) -> RelationDef {
-/// #         panic!("No Relation");
-/// #     }
-/// # }
-/// #
 /// # impl ActiveModelBehavior for ActiveModel {}
 ///
-/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// #[derive(Debug, DerivePartialModel)]
 /// #[sea_orm(entity = "Entity")]
 /// struct SelectResult {
 ///     title: String,
@@ -762,28 +745,128 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// If all fields in the partial model is `from_expr`, the `entity` can be ignore.
+/// If all fields in the partial model is `from_expr`, the specifying the `entity` can be skipped.
 /// ```
-/// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
+/// use sea_orm::{
+///     DerivePartialModel,
+///     entity::prelude::*,
+///     sea_query::{Expr, ExprTrait},
+/// };
 ///
-/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// #[derive(Debug, DerivePartialModel)]
 /// struct SelectResult {
 ///     #[sea_orm(from_expr = "Expr::val(1).add(1)")]
 ///     sum: i32,
 /// }
 /// ```
 ///
-/// A field cannot have attributes `from_col` and `from_expr` at the same time.
+/// Since SeaORM 1.1.7, `DerivePartialModel` can also derive `FromQueryResult`.
+/// This is necessary to support nested partial models.
+/// Since 2.0, `from_query_result` is implemented by default, unless `from_query_result = "false"`.
+///
+/// ```
+/// use sea_orm::DerivePartialModel;
+/// #
+/// # mod cake {
+/// # use sea_orm::entity::prelude::*;
+/// # #[derive(Clone, Debug, DeriveEntityModel)]
+/// # #[sea_orm(table_name = "cake")]
+/// # pub struct Model {
+/// #     #[sea_orm(primary_key)]
+/// #     pub id: i32,
+/// #     pub name: String,
+/// # }
+/// # #[derive(Copy, Clone, Debug, DeriveRelation, EnumIter)]
+/// # pub enum Relation {}
+/// # impl ActiveModelBehavior for ActiveModel {}
+/// # }
+/// #
+/// # mod bakery {
+/// # use sea_orm::entity::prelude::*;
+/// # #[derive(Clone, Debug, DeriveEntityModel)]
+/// # #[sea_orm(table_name = "bakery")]
+/// # pub struct Model {
+/// #     #[sea_orm(primary_key)]
+/// #     pub id: i32,
+/// #     pub name: String,
+/// # }
+/// # #[derive(Copy, Clone, Debug, DeriveRelation, EnumIter)]
+/// # pub enum Relation {}
+/// # impl ActiveModelBehavior for ActiveModel {}
+/// # }
+///
+/// #[derive(DerivePartialModel)]
+/// #[sea_orm(entity = "cake::Entity")]
+/// struct Cake {
+///     id: i32,
+///     name: String,
+///     #[sea_orm(nested)]
+///     bakery: Option<Bakery>,
+///     #[sea_orm(skip)]
+///     ignore: String,
+/// }
+///
+/// #[derive(DerivePartialModel)]
+/// #[sea_orm(entity = "bakery::Entity")]
+/// struct Bakery {
+///     id: i32,
+///     #[sea_orm(from_col = "Name")]
+///     title: String,
+/// }
+///
+/// // In addition, there's an `alias` attribute to select the columns from an alias:
+///
+/// #[derive(DerivePartialModel)]
+/// #[sea_orm(entity = "bakery::Entity", alias = "factory")]
+/// struct Factory {
+///     id: i32,
+///     #[sea_orm(from_col = "name")]
+///     plant: String,
+/// }
+///
+/// #[derive(DerivePartialModel)]
+/// #[sea_orm(entity = "cake::Entity")]
+/// struct CakeFactory {
+///     id: i32,
+///     name: String,
+///     #[sea_orm(nested)]
+///     bakery: Option<Factory>,
+/// }
+/// ```
+///
+/// ```ignore
+/// let cake: CakeFactory = cake::Entity::find()
+///     .join_as(
+///         JoinType::LeftJoin,
+///         cake::Relation::Bakery.def(),
+///         "factory",
+///     )
+///     .order_by_asc(cake::Column::Id)
+///     .into_partial_model()
+///     .one(&db)
+///     .await
+///     .unwrap()
+///     .unwrap()
+///
+/// SELECT
+///     "cake"."id" AS "id", "cake"."name" AS "name",
+///     "factory"."id" AS "bakery_id", "factory"."name" AS "bakery_plant"
+/// FROM "cake"
+/// LEFT JOIN "bakery" AS "factory" ON "cake"."bakery_id" = "factory"."id"
+/// LIMIT 1
+/// ```
+///
+/// A field cannot have attributes `from_col`, `from_expr` or `nested` at the same time.
 /// Or, it will result in a compile error.
 ///
 /// ```compile_fail
-/// use sea_orm::{entity::prelude::*, FromQueryResult, DerivePartialModel, sea_query::Expr};
+/// use sea_orm::{entity::prelude::*, DerivePartialModel, sea_query::Expr};
 ///
-/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// #[derive(Debug, DerivePartialModel)]
 /// #[sea_orm(entity = "Entity")]
 /// struct SelectResult {
 ///     #[sea_orm(from_expr = "Expr::val(1).add(1)", from_col = "foo")]
-///     sum: i32
+///     sum: i32,
 /// }
 /// ```
 #[cfg(feature = "derive")]
@@ -848,6 +931,8 @@ pub fn enum_iter(input: TokenStream) -> TokenStream {
 /// This procedure macro implements `From<T> for Value`, `sea_orm::TryGetTable`, and
 /// `sea_query::ValueType` for the wrapper type `T`.
 ///
+/// The wrapped type must be `sea_orm::Value` compatible.
+///
 /// ## Usage
 ///
 /// ```rust
@@ -855,6 +940,85 @@ pub fn enum_iter(input: TokenStream) -> TokenStream {
 ///
 /// #[derive(DeriveValueType)]
 /// struct MyString(String);
+///
+/// #[derive(DeriveValueType)]
+/// struct MyNumber(i32);
+/// ```
+///
+/// It's also possible to derive value type for enum-strings.
+/// Basically the underlying type is String, and the custom must implement methods `to_str` and `from_str`.
+///
+/// ## Example
+///
+/// ```rust
+/// use sea_orm::{DeriveValueType, sea_query::ValueTypeErr};
+///
+/// #[derive(DeriveValueType)]
+/// #[sea_orm(value_type = "String")]
+/// pub enum Tag {
+///     Hard,
+///     Soft,
+/// }
+///
+/// impl std::fmt::Display for Tag {
+///     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+///         write!(
+///             f,
+///             "{}",
+///             match self {
+///                 Self::Hard => "hard",
+///                 Self::Soft => "soft",
+///             }
+///         )
+///     }
+/// }
+///
+/// impl std::str::FromStr for Tag {
+///     type Err = ValueTypeErr;
+///
+///     fn from_str(s: &str) -> Result<Self, Self::Err> {
+///         Ok(match s {
+///             "hard" => Self::Hard,
+///             "soft" => Self::Soft,
+///             _ => return Err(ValueTypeErr),
+///         })
+///     }
+/// }
+/// ```
+///
+/// `from_str` defaults to `std::str::FromStr::from_str`. `to_str` defaults to `std::string::ToString::to_string`.
+/// They can be overridden with custom functions.
+///
+/// ```rust
+/// use sea_orm::{DeriveValueType, sea_query::ValueTypeErr};
+///
+/// #[derive(DeriveValueType)]
+/// #[sea_orm(
+///     value_type = "String",
+///     from_str = "Tag::from_str",
+///     to_str = "Tag::to_str"
+/// )]
+/// pub enum Tag {
+///     Color,
+///     Grey,
+/// }
+///
+/// impl Tag {
+///     fn to_str(&self) -> &'static str {
+///         match self {
+///             Self::Color => "color",
+///             Self::Grey => "grey",
+///         }
+///     }
+///
+///     fn from_str(s: &str) -> Result<Self, ValueTypeErr> {
+///         Ok(match s {
+///             "color" => Self::Color,
+///             "grey" => Self::Grey,
+///             _ => return Err(ValueTypeErr),
+///         })
+///     }
+/// }
 /// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveValueType, attributes(sea_orm))]
@@ -876,7 +1040,7 @@ pub fn derive_active_enum_display(input: TokenStream) -> TokenStream {
     }
 }
 
-/// The DeriveIden derive macro will implement `sea_orm::sea_query::Iden` for simplify Iden implementation.
+/// The DeriveIden derive macro will implement `sea_orm::Iden` for simplify Iden implementation.
 ///
 /// ## Usage
 ///
@@ -907,6 +1071,14 @@ pub fn derive_iden(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
 
     match derives::expand_derive_iden(derive_input) {
+        Ok(token_stream) => token_stream.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+#[proc_macro]
+pub fn raw_sql(input: TokenStream) -> TokenStream {
+    match raw_sql::expand(input) {
         Ok(token_stream) => token_stream.into(),
         Err(e) => e.to_compile_error().into(),
     }

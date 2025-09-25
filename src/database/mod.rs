@@ -1,4 +1,17 @@
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-postgres",
+    feature = "sqlx-sqlite",
+))]
+use std::sync::Arc;
 use std::time::Duration;
+
+#[cfg(feature = "sqlx-mysql")]
+use sqlx::mysql::MySqlConnectOptions;
+#[cfg(feature = "sqlx-postgres")]
+use sqlx::postgres::PgConnectOptions;
+#[cfg(feature = "sqlx-sqlite")]
+use sqlx::sqlite::SqliteConnectOptions;
 
 mod connection;
 mod db_connection;
@@ -8,6 +21,8 @@ mod mock;
 #[cfg(feature = "proxy")]
 #[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
 mod proxy;
+#[cfg(feature = "rbac")]
+mod restricted_connection;
 mod statement;
 mod stream;
 mod transaction;
@@ -20,6 +35,8 @@ pub use mock::*;
 #[cfg(feature = "proxy")]
 #[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
 pub use proxy::*;
+#[cfg(feature = "rbac")]
+pub use restricted_connection::*;
 pub use statement::*;
 use std::borrow::Cow;
 pub use stream::*;
@@ -33,7 +50,7 @@ use crate::error::*;
 pub struct Database;
 
 /// Defines the configuration options of a database
-#[derive(Debug, Clone)]
+#[derive(derive_more::Debug, Clone)]
 pub struct ConnectOptions {
     /// The URI of the database
     pub(crate) url: String,
@@ -63,16 +80,39 @@ pub struct ConnectOptions {
     /// Schema search path (PostgreSQL only)
     pub(crate) schema_search_path: Option<String>,
     pub(crate) test_before_acquire: bool,
+    /// Only establish connections to the DB as needed. If set to `true`, the db connection will
+    /// be created using SQLx's [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy)
+    /// method.
+    pub(crate) connect_lazy: bool,
+    #[cfg(feature = "sqlx-mysql")]
+    #[debug(skip)]
+    pub(crate) mysql_opts_fn:
+        Option<Arc<dyn Fn(MySqlConnectOptions) -> MySqlConnectOptions + Send + Sync>>,
+    #[cfg(feature = "sqlx-postgres")]
+    #[debug(skip)]
+    pub(crate) pg_opts_fn: Option<Arc<dyn Fn(PgConnectOptions) -> PgConnectOptions + Send + Sync>>,
+    #[cfg(feature = "sqlx-sqlite")]
+    #[debug(skip)]
+    pub(crate) sqlite_opts_fn:
+        Option<Arc<dyn Fn(SqliteConnectOptions) -> SqliteConnectOptions + Send + Sync>>,
 }
 
 impl Database {
-    /// Method to create a [DatabaseConnection] on a database
+    /// Method to create a [DatabaseConnection] on a database. This method will return an error
+    /// if the database is not available.
     #[instrument(level = "trace", skip(opt))]
     pub async fn connect<C>(opt: C) -> Result<DatabaseConnection, DbErr>
     where
         C: Into<ConnectOptions>,
     {
         let opt: ConnectOptions = opt.into();
+
+        if url::Url::parse(&opt.url).is_err() {
+            return Err(conn_err(format!(
+                "The connection string '{}' cannot be parsed.",
+                opt.url
+            )));
+        }
 
         #[cfg(feature = "sqlx-mysql")]
         if DbBackend::MySql.is_prefix_of(&opt.url) {
@@ -157,6 +197,13 @@ impl ConnectOptions {
             sqlcipher_key: None,
             schema_search_path: None,
             test_before_acquire: true,
+            connect_lazy: false,
+            #[cfg(feature = "sqlx-mysql")]
+            mysql_opts_fn: None,
+            #[cfg(feature = "sqlx-postgres")]
+            pg_opts_fn: None,
+            #[cfg(feature = "sqlx-sqlite")]
+            sqlite_opts_fn: None,
         }
     }
 
@@ -295,6 +342,54 @@ impl ConnectOptions {
     /// If true, the connection will be pinged upon acquiring from the pool (default true).
     pub fn test_before_acquire(&mut self, value: bool) -> &mut Self {
         self.test_before_acquire = value;
+        self
+    }
+
+    /// If set to `true`, the db connection pool will be created using SQLx's
+    /// [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy) method.
+    pub fn connect_lazy(&mut self, value: bool) -> &mut Self {
+        self.connect_lazy = value;
+        self
+    }
+
+    /// Get whether DB connections will be established when the pool is created or only as needed.
+    pub fn get_connect_lazy(&self) -> bool {
+        self.connect_lazy
+    }
+
+    #[cfg(feature = "sqlx-mysql")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "sqlx-mysql")))]
+    /// Apply a function to modify the underlying [`MySqlConnectOptions`] before
+    /// creating the connection pool.
+    pub fn map_sqlx_mysql_opts<F>(&mut self, f: F) -> &mut Self
+    where
+        F: Fn(MySqlConnectOptions) -> MySqlConnectOptions + Send + Sync + 'static,
+    {
+        self.mysql_opts_fn = Some(Arc::new(f));
+        self
+    }
+
+    #[cfg(feature = "sqlx-postgres")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "sqlx-postgres")))]
+    /// Apply a function to modify the underlying [`PgConnectOptions`] before
+    /// creating the connection pool.
+    pub fn map_sqlx_postgres_opts<F>(&mut self, f: F) -> &mut Self
+    where
+        F: Fn(PgConnectOptions) -> PgConnectOptions + Send + Sync + 'static,
+    {
+        self.pg_opts_fn = Some(Arc::new(f));
+        self
+    }
+
+    #[cfg(feature = "sqlx-sqlite")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "sqlx-sqlite")))]
+    /// Apply a function to modify the underlying [`SqliteConnectOptions`] before
+    /// creating the connection pool.
+    pub fn map_sqlx_sqlite_opts<F>(&mut self, f: F) -> &mut Self
+    where
+        F: Fn(SqliteConnectOptions) -> SqliteConnectOptions + Send + Sync + 'static,
+    {
+        self.sqlite_opts_fn = Some(Arc::new(f));
         self
     }
 }

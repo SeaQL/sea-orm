@@ -1,6 +1,4 @@
-use crate::{
-    join_tbl_on_condition, unpack_table_ref, EntityTrait, QuerySelect, RelationDef, Select,
-};
+use crate::{EntityTrait, QuerySelect, RelationDef, Select, join_tbl_on_condition};
 use sea_query::{Alias, Condition, IntoIden, JoinType, SeaRc};
 
 /// Same as [RelationDef]
@@ -25,7 +23,7 @@ pub trait Linked {
             let to_tbl = if i > 0 {
                 Alias::new(format!("r{}", i - 1)).into_iden()
             } else {
-                unpack_table_ref(&rel.to_tbl)
+                rel.to_tbl.sea_orm_table().clone()
             };
             let table_ref = rel.from_tbl;
 

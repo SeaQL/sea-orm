@@ -1,26 +1,21 @@
-use bae::FromAttributes;
-use proc_macro2::{Span, TokenStream};
-use quote::{quote, quote_spanned};
+use proc_macro2::TokenStream;
+use quote::{format_ident, quote, quote_spanned};
+use syn::{Meta, PathArguments, PathSegment, punctuated::Punctuated, token::Comma};
 
-/// Attributes to derive an ActiveModel
-#[derive(Default, FromAttributes)]
-pub struct SeaOrm {
-    pub active_model: Option<syn::Ident>,
-}
+use super::util::GetMeta;
 
 enum Error {
     InputNotStruct,
     Syn(syn::Error),
 }
 
-struct IntoActiveModel {
-    attrs: SeaOrm,
-    fields: syn::punctuated::Punctuated<syn::Field, syn::token::Comma>,
-    field_idents: Vec<syn::Ident>,
-    ident: syn::Ident,
+pub(super) struct DeriveIntoActiveModel {
+    pub ident: syn::Ident,
+    pub active_model: Option<syn::Type>,
+    pub fields: Vec<syn::Ident>,
 }
 
-impl IntoActiveModel {
+impl DeriveIntoActiveModel {
     fn new(input: syn::DeriveInput) -> Result<Self, Error> {
         let fields = match input.data {
             syn::Data::Struct(syn::DataStruct {
@@ -30,22 +25,31 @@ impl IntoActiveModel {
             _ => return Err(Error::InputNotStruct),
         };
 
-        let attrs = SeaOrm::try_from_attributes(&input.attrs)
-            .map_err(Error::Syn)?
-            .unwrap_or_default();
+        let mut active_model = None;
 
-        let ident = input.ident;
+        for attr in input.attrs.iter() {
+            if !attr.path().is_ident("sea_orm") {
+                continue;
+            }
+
+            if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
+                for meta in list {
+                    if let Some(s) = meta.get_as_kv("active_model") {
+                        active_model = Some(syn::parse_str::<syn::Type>(&s).map_err(Error::Syn)?);
+                    }
+                }
+            }
+        }
 
         let field_idents = fields
             .iter()
             .map(|field| field.ident.as_ref().unwrap().clone())
             .collect();
 
-        Ok(IntoActiveModel {
-            attrs,
-            fields,
-            field_idents,
-            ident,
+        Ok(Self {
+            ident: input.ident,
+            active_model,
+            fields: field_idents,
         })
     }
 
@@ -55,33 +59,51 @@ impl IntoActiveModel {
         Ok(expanded_impl_into_active_model)
     }
 
-    fn impl_into_active_model(&self) -> TokenStream {
+    pub(super) fn impl_into_active_model(&self) -> TokenStream {
         let Self {
-            attrs,
             ident,
-            field_idents,
+            active_model,
             fields,
         } = self;
 
-        let active_model_ident = attrs
-            .active_model
+        let mut active_model_ident = active_model
             .clone()
-            .unwrap_or_else(|| syn::Ident::new("ActiveModel", Span::call_site()));
+            .unwrap_or_else(|| syn::parse_str::<syn::Type>("ActiveModel").unwrap());
 
-        let expanded_fields_into_active_model = fields.iter().map(|field| {
-            let field_ident = field.ident.as_ref().unwrap();
+        let type_alias_definition = if is_qualified_type(&active_model_ident) {
+            let type_alias = format_ident!("ActiveModelFor{ident}");
+            let type_def = quote!( type #type_alias = #active_model_ident; );
+            active_model_ident = syn::Type::Path(syn::TypePath {
+                qself: None,
+                path: syn::Path {
+                    leading_colon: None,
+                    segments: [PathSegment {
+                        ident: type_alias,
+                        arguments: PathArguments::None,
+                    }]
+                    .into_iter()
+                    .collect(),
+                },
+            });
+            type_def
+        } else {
+            quote!()
+        };
 
+        let expanded_fields = fields.iter().map(|field_ident| {
             quote!(
                 sea_orm::IntoActiveValue::<_>::into_active_value(self.#field_ident).into()
             )
         });
 
         quote!(
+            #type_alias_definition
+
             #[automatically_derived]
             impl sea_orm::IntoActiveModel<#active_model_ident> for #ident {
                 fn into_active_model(self) -> #active_model_ident {
                     #active_model_ident {
-                        #( #field_idents: #expanded_fields_into_active_model, )*
+                        #( #fields: #expanded_fields, )*
                         ..::std::default::Default::default()
                     }
                 }
@@ -94,11 +116,15 @@ impl IntoActiveModel {
 pub fn expand_into_active_model(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     let ident_span = input.ident.span();
 
-    match IntoActiveModel::new(input) {
+    match DeriveIntoActiveModel::new(input) {
         Ok(model) => model.expand(),
         Err(Error::InputNotStruct) => Ok(quote_spanned! {
             ident_span => compile_error!("you can only derive IntoActiveModel on structs");
         }),
         Err(Error::Syn(err)) => Err(err),
     }
+}
+
+fn is_qualified_type(ty: &syn::Type) -> bool {
+    matches!(ty, syn::Type::Path(syn::TypePath { qself: Some(_), .. }))
 }

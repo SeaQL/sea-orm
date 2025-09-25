@@ -1,39 +1,58 @@
 use crate::{
-    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyArity,
-    PrimaryKeyToColumn, PrimaryKeyTrait, Value,
+    ColumnTrait, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyArity,
+    PrimaryKeyToColumn, PrimaryKeyTrait, Value, error::*,
 };
 use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
 use std::fmt::Debug;
 
-pub use ActiveValue::NotSet;
+pub use ActiveValue::{NotSet, Set, Unchanged};
 
-/// Defines a stateful value used in ActiveModel.
+/// The state of a field in an [ActiveModel][ActiveModelTrait].
 ///
-/// There are three possible state represented by three enum variants.
-/// - [ActiveValue::Set]: A defined [Value] actively being set
-/// - [ActiveValue::Unchanged]: A defined [Value] remain unchanged
-/// - [ActiveValue::NotSet]: An undefined [Value]
+/// There are three possible states represented by three enum variants:
 ///
-/// The stateful value is useful when constructing UPDATE SQL statement,
-/// see an example below.
+/// - [Set] - a value that's explicitly set by the application and sent to the database.
+/// - [Unchanged] - an existing, unchanged value from the database.
+/// - [NotSet] - an undefined value (nothing is sent to the database).
+///
+/// The difference between these states is useful
+/// when constructing `INSERT` and `UPDATE` SQL statements (see an example below).
+/// It's also useful for knowing which fields have changed in a record.
 ///
 /// # Examples
 ///
 /// ```
 /// use sea_orm::tests_cfg::{cake, fruit};
-/// use sea_orm::{entity::*, query::*, DbBackend};
+/// use sea_orm::{DbBackend, entity::*, query::*};
 ///
-/// // The code snipped below does an UPDATE operation on a `ActiveValue`
+/// // Here, we use `NotSet` to let the database automatically generate an `id`.
+/// // This is different from `Set(None)` that explicitly sets `cake_id` to `NULL`.
 /// assert_eq!(
-///     Update::one(fruit::ActiveModel {
-///         id: ActiveValue::set(1),
-///         name: ActiveValue::set("Orange".to_owned()),
-///         cake_id: ActiveValue::not_set(),
+///     Insert::one(fruit::ActiveModel {
+///         id: ActiveValue::NotSet,
+///         name: ActiveValue::Set("Orange".to_owned()),
+///         cake_id: ActiveValue::Set(None),
 ///     })
 ///     .build(DbBackend::Postgres)
 ///     .to_string(),
-///     r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#
+///     r#"INSERT INTO "fruit" ("name", "cake_id") VALUES ('Orange', NULL)"#
+/// );
+///
+/// // Here, we update the record, set `cake_id` to the new value
+/// // and use `NotSet` to avoid updating the `name` field.
+/// // `id` is the primary key, so it's used in the condition and not updated.
+/// assert_eq!(
+///     Update::one(fruit::ActiveModel {
+///         id: ActiveValue::Unchanged(1),
+///         name: ActiveValue::NotSet,
+///         cake_id: ActiveValue::Set(Some(2)),
+///     })
+///     .validate()
+///     .unwrap()
+///     .build(DbBackend::Postgres)
+///     .to_string(),
+///     r#"UPDATE "fruit" SET "cake_id" = 2 WHERE "fruit"."id" = 1"#
 /// );
 /// ```
 #[derive(Clone, Debug)]
@@ -41,21 +60,33 @@ pub enum ActiveValue<V>
 where
     V: Into<Value>,
 {
-    /// A defined [Value] actively being set
+    /// A [Value] that's explicitly set by the application and sent to the database.
+    ///
+    /// Use this to insert or set a specific value.
+    ///
+    /// When editing an existing value, you can use [set_if_not_equals][ActiveValue::set_if_not_equals]
+    /// to preserve the [Unchanged] state when the new value is the same as the old one.
+    /// Then you can meaningfully use methods like [ActiveModelTrait::is_changed].
     Set(V),
-    /// A defined [Value] remain unchanged
+    /// An existing, unchanged [Value] from the database.
+    ///
+    /// You get these when you query an existing [Model][crate::ModelTrait]
+    /// from the database and convert it into an [ActiveModel][ActiveModelTrait].
+    ///
+    /// When you edit it, you can use [set_if_not_equals][ActiveValue::set_if_not_equals]
+    /// to preserve this "unchanged" state if the new value is the same as the old one.
+    /// Then you can meaningfully use methods like [ActiveModelTrait::is_changed].
     Unchanged(V),
-    /// An undefined [Value]
+    /// An undefined [Value]. Nothing is sent to the database.
+    ///
+    /// When you create a new [ActiveModel][ActiveModelTrait],
+    /// its fields are [NotSet][ActiveValue::NotSet] by default.
+    ///
+    /// This can be useful when:
+    ///
+    /// - You insert a new record and want the database to generate a default value (e.g., an id).
+    /// - In an `UPDATE` statement, you don't want to update some field.
     NotSet,
-}
-
-/// Defines a set operation on an [ActiveValue]
-#[allow(non_snake_case)]
-pub fn Set<V>(v: V) -> ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    ActiveValue::set(v)
 }
 
 /// Defines an not set operation on an [ActiveValue]
@@ -71,18 +102,17 @@ where
     ActiveValue::not_set()
 }
 
-/// Defines an unchanged operation on an [ActiveValue]
-#[allow(non_snake_case)]
-pub fn Unchanged<V>(value: V) -> ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    ActiveValue::unchanged(value)
-}
-
-/// A Trait for ActiveModel to perform Create, Update or Delete operation.
-/// The type must also implement the [EntityTrait].
-/// See module level docs [crate::entity] for a full example
+/// `ActiveModel` is a type for constructing `INSERT` and `UPDATE` statements for a particular table.
+///
+/// Like [Model][ModelTrait], it represents a database record and each field represents a column.
+///
+/// But unlike [Model][ModelTrait], it also stores [additional state][ActiveValue] for every field,
+/// and fields are not guaranteed to have a value.
+///
+/// This allows you to:
+///
+/// - omit columns from the query,
+/// - know which columns have changed after editing a record.
 #[async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
     /// The Entity this ActiveModel belongs to
@@ -94,8 +124,14 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Get a immutable [ActiveValue] from an ActiveModel
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
 
-    /// Set the Value into an ActiveModel
-    fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
+    /// Set the Value of a ActiveModel field, panic if failed
+    fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) {
+        self.try_set(c, v)
+            .unwrap_or_else(|e| panic!("Failed to set value for {:?}: {e:?}", c.as_column_ref()))
+    }
+
+    /// Set the Value of a ActiveModel field, return error if failed
+    fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
 
     /// Set the state of an [ActiveValue] to the not set state
     fn not_set(&mut self, c: <Self::Entity as EntityTrait>::Column);
@@ -103,8 +139,11 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Check the state of a [ActiveValue]
     fn is_not_set(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
 
-    /// The default implementation of the ActiveModel
+    /// Create an ActiveModel with all fields to NotSet
     fn default() -> Self;
+
+    /// Create an ActiveModel with all fields to Set(default_value) if Default is implemented, NotSet otherwise
+    fn default_values() -> Self;
 
     /// Reset the value from [ActiveValue::Unchanged] to [ActiveValue::Set],
     /// leaving [ActiveValue::NotSet] untouched.
@@ -491,9 +530,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     #[cfg(feature = "with-json")]
     fn set_from_json(&mut self, json: serde_json::Value) -> Result<(), DbErr>
     where
+        Self: crate::TryIntoModel<<Self::Entity as EntityTrait>::Model>,
         <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
-            serde::de::Deserialize<'de>,
+            serde::de::Deserialize<'de> + serde::Serialize,
     {
         use crate::Iterable;
 
@@ -519,19 +559,48 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     /// Create ActiveModel from a JSON value
     #[cfg(feature = "with-json")]
-    fn from_json(json: serde_json::Value) -> Result<Self, DbErr>
+    fn from_json(mut json: serde_json::Value) -> Result<Self, DbErr>
     where
+        Self: crate::TryIntoModel<<Self::Entity as EntityTrait>::Model>,
         <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
-            serde::de::Deserialize<'de>,
+            serde::de::Deserialize<'de> + serde::Serialize,
     {
-        use crate::{Iden, Iterable};
+        use crate::{IdenStatic, Iterable};
+
+        let serde_json::Value::Object(obj) = &json else {
+            return Err(DbErr::Json(format!(
+                "invalid type: expected JSON object for {}",
+                <<Self as ActiveModelTrait>::Entity as IdenStatic>::as_str(&Default::default())
+            )));
+        };
 
         // Mark down which attribute exists in the JSON object
-        let json_keys: Vec<(<Self::Entity as EntityTrait>::Column, bool)> =
-            <<Self::Entity as EntityTrait>::Column>::iter()
-                .map(|col| (col, json.get(col.to_string()).is_some()))
-                .collect();
+        let mut json_keys: Vec<(<Self::Entity as EntityTrait>::Column, bool)> = Vec::new();
+
+        for col in <<Self::Entity as EntityTrait>::Column>::iter() {
+            let key = col.as_str();
+            let has_key = obj.contains_key(key);
+            json_keys.push((col, has_key));
+        }
+
+        // Create dummy model with dummy values
+        let dummy_model = Self::default_values();
+        if let Ok(dummy_model) = dummy_model.try_into_model() {
+            if let Ok(mut dummy_json) = serde_json::to_value(&dummy_model) {
+                let serde_json::Value::Object(merged) = &mut dummy_json else {
+                    unreachable!();
+                };
+                let serde_json::Value::Object(obj) = json else {
+                    unreachable!();
+                };
+                // overwrite dummy values with input values
+                for (key, value) in obj {
+                    merged.insert(key, value);
+                }
+                json = dummy_json;
+            }
+        }
 
         // Convert JSON object into ActiveModel via Model
         let model: <Self::Entity as EntityTrait>::Model =
@@ -572,7 +641,7 @@ pub trait ActiveModelTrait: Clone + Debug {
 ///
 /// /// The [EntityName] describes the name of a table
 /// impl EntityName for Entity {
-///     fn table_name(&self) -> &str {
+///     fn table_name(&self) -> &'static str {
 ///         "cake"
 ///     }
 /// }
@@ -759,6 +828,10 @@ impl_into_active_value!(crate::prelude::TimeDateTime);
 #[cfg(feature = "with-time")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
 impl_into_active_value!(crate::prelude::TimeDateTimeWithTimeZone);
+
+#[cfg(feature = "with-ipnetwork")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-ipnetwork")))]
+impl_into_active_value!(crate::prelude::IpNetwork);
 
 impl<V> Default for ActiveValue<V>
 where
@@ -955,7 +1028,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{entity::*, tests_cfg::*, DbErr};
+    use crate::{DbErr, entity::*, tests_cfg::*};
     use pretty_assertions::assert_eq;
 
     #[cfg(feature = "with-json")]
@@ -995,19 +1068,35 @@ mod tests {
     #[test]
     #[cfg(feature = "macros")]
     fn test_derive_into_active_model_2() {
-        mod my_fruit {
-            pub use super::fruit::*;
-            use crate as sea_orm;
-            use crate::entity::prelude::*;
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
 
-            #[derive(DeriveIntoActiveModel)]
-            pub struct UpdateFruit {
-                pub cake_id: Option<Option<i32>>,
-            }
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel")]
+        struct FruitName {
+            name: String,
         }
 
         assert_eq!(
-            my_fruit::UpdateFruit {
+            FruitName {
+                name: "Apple Pie".to_owned(),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple Pie".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "<fruit::Entity as EntityTrait>::ActiveModel")]
+        struct FruitCake {
+            cake_id: Option<Option<i32>>,
+        }
+
+        assert_eq!(
+            FruitCake {
                 cake_id: Some(Some(1)),
             }
             .into_active_model(),
@@ -1019,7 +1108,7 @@ mod tests {
         );
 
         assert_eq!(
-            my_fruit::UpdateFruit {
+            FruitCake {
                 cake_id: Some(None),
             }
             .into_active_model(),
@@ -1031,7 +1120,7 @@ mod tests {
         );
 
         assert_eq!(
-            my_fruit::UpdateFruit { cake_id: None }.into_active_model(),
+            FruitCake { cake_id: None }.into_active_model(),
             fruit::ActiveModel {
                 id: NotSet,
                 name: NotSet,
@@ -1188,16 +1277,53 @@ mod tests {
 
     #[test]
     #[cfg(feature = "with-json")]
-    #[should_panic(
-        expected = r#"called `Result::unwrap()` on an `Err` value: Json("missing field `id`")"#
-    )]
     fn test_active_model_set_from_json_1() {
-        let mut cake: cake::ActiveModel = Default::default();
+        assert_eq!(
+            cake::ActiveModel::from_json(json!({
+                "id": 1,
+                "name": "Apple Pie",
+            }))
+            .unwrap(),
+            cake::ActiveModel {
+                id: Set(1),
+                name: Set("Apple Pie".to_owned()),
+            }
+        );
 
+        assert_eq!(
+            cake::ActiveModel::from_json(json!({
+                "id": 1,
+            }))
+            .unwrap(),
+            cake::ActiveModel {
+                id: Set(1),
+                name: NotSet,
+            }
+        );
+
+        assert_eq!(
+            cake::ActiveModel::from_json(json!({
+                "name": "Apple Pie",
+            }))
+            .unwrap(),
+            cake::ActiveModel {
+                id: NotSet,
+                name: Set("Apple Pie".to_owned()),
+            }
+        );
+
+        let mut cake: cake::ActiveModel = Default::default();
         cake.set_from_json(json!({
             "name": "Apple Pie",
         }))
         .unwrap();
+        assert_eq!(
+            cake,
+            cake::ActiveModel {
+                id: NotSet,
+                name: Set("Apple Pie".to_owned()),
+            }
+        );
     }
 
     #[test]
@@ -1492,5 +1618,26 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn test_active_model_default_values() {
+        assert_eq!(
+            fruit::ActiveModel::default_values(),
+            fruit::ActiveModel {
+                id: Set(0),
+                name: Set("".into()),
+                cake_id: Set(None),
+            },
+        );
+
+        assert_eq!(
+            lunch_set::ActiveModel::default_values(),
+            lunch_set::ActiveModel {
+                id: Set(0),
+                name: Set("".into()),
+                tea: NotSet,
+            },
+        );
     }
 }

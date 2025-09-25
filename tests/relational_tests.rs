@@ -2,13 +2,15 @@
 
 pub mod common;
 
-pub use chrono::offset::Utc;
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, setup::*};
 use pretty_assertions::assert_eq;
-pub use rust_decimal::prelude::*;
-use sea_orm::{entity::*, query::*, DbErr, DerivePartialModel, FromQueryResult};
-use sea_query::{Expr, Func, SimpleExpr};
-pub use uuid::Uuid;
+use sea_orm::sea_query::{Expr, Func, SimpleExpr};
+use sea_orm::{
+    DbErr, DerivePartialModel, FromQueryResult,
+    entity::*,
+    prelude::{ChronoUtc, DateTimeUtc, Decimal, Uuid},
+    query::*,
+};
 
 // Run the test locally:
 // DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std-native-tls --test relational_tests
@@ -73,7 +75,7 @@ pub async fn left_join() {
     assert_eq!(result.name.as_str(), "Baker 1");
     assert_eq!(result.bakery_name, Some("SeaSide Bakery".to_string()));
 
-    #[derive(DerivePartialModel, FromQueryResult, Debug, PartialEq)]
+    #[derive(DerivePartialModel, Debug, PartialEq)]
     #[sea_orm(entity = "Baker")]
     struct PartialSelectResult {
         name: String,
@@ -148,7 +150,7 @@ pub async fn right_join() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(15.10)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -230,7 +232,7 @@ pub async fn inner_join() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(15.10)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -242,7 +244,7 @@ pub async fn inner_join() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(100.00)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -269,14 +271,18 @@ pub async fn inner_join() {
         .unwrap();
 
     assert_eq!(results.len(), 2);
-    assert!(results
-        .iter()
-        .any(|result| result.name == customer_kate.name.clone()
-            && result.order_total == Some(kate_order_1.total)));
-    assert!(results
-        .iter()
-        .any(|result| result.name == customer_kate.name.clone()
-            && result.order_total == Some(kate_order_2.total)));
+    assert!(
+        results
+            .iter()
+            .any(|result| result.name == customer_kate.name.clone()
+                && result.order_total == Some(kate_order_1.total))
+    );
+    assert!(
+        results
+            .iter()
+            .any(|result| result.name == customer_kate.name.clone()
+                && result.order_total == Some(kate_order_2.total))
+    );
 
     ctx.delete().await;
 }
@@ -307,7 +313,7 @@ pub async fn group_by() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(99.95)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -319,7 +325,7 @@ pub async fn group_by() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(200.00)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -402,7 +408,7 @@ pub async fn having() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(100.00)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -414,7 +420,7 @@ pub async fn having() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(12.00)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -434,7 +440,7 @@ pub async fn having() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_bob.id),
         total: Set(rust_dec(50.0)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -446,7 +452,7 @@ pub async fn having() {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_bob.id),
         total: Set(rust_dec(50.0)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -505,8 +511,9 @@ pub async fn related() -> Result<(), DbErr> {
         })),
         bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
         ..Default::default()
-    };
-    let _baker_bob_res = Baker::insert(baker_bob).exec(&ctx.db).await?;
+    }
+    .insert(&ctx.db)
+    .await?;
 
     // Bobby's Baker
     let baker_bobby = baker::ActiveModel {
@@ -537,8 +544,9 @@ pub async fn related() -> Result<(), DbErr> {
         })),
         bakery_id: Set(Some(terres_bakery_res.last_insert_id)),
         ..Default::default()
-    };
-    let _baker_ada_res = Baker::insert(baker_ada).exec(&ctx.db).await?;
+    }
+    .insert(&ctx.db)
+    .await?;
 
     // Stone Bakery, with no baker
     let stone_bakery = bakery::ActiveModel {
@@ -547,6 +555,30 @@ pub async fn related() -> Result<(), DbErr> {
         ..Default::default()
     };
     let _stone_bakery_res = Bakery::insert(stone_bakery).exec(&ctx.db).await?;
+
+    let cake = cake::ActiveModel {
+        name: Set("Chocolate".to_owned()),
+        price: Set("1.2".parse().unwrap()),
+        gluten_free: Set(false),
+        bakery_id: Set(None),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await?;
+
+    cakes_bakers::ActiveModel {
+        cake_id: Set(cake.id),
+        baker_id: Set(baker_bob.id),
+    }
+    .insert(&ctx.db)
+    .await?;
+
+    cakes_bakers::ActiveModel {
+        cake_id: Set(cake.id),
+        baker_id: Set(baker_ada.id),
+    }
+    .insert(&ctx.db)
+    .await?;
 
     #[derive(Debug, FromQueryResult, PartialEq)]
     struct BakerLite {
@@ -719,6 +751,29 @@ pub async fn related() -> Result<(), DbErr> {
         ]
     );
 
+    let select_cake_with_baker = Cake::find().find_with_related(Baker);
+
+    assert_eq!(
+        select_cake_with_baker
+            .build(sea_orm::DatabaseBackend::MySql)
+            .to_string(),
+        [
+            "SELECT",
+            "`cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`, `cake`.`price` AS `A_price`,",
+            "`cake`.`bakery_id` AS `A_bakery_id`, `cake`.`gluten_free` AS `A_gluten_free`,",
+            "`cake`.`serial` AS `A_serial`, `baker`.`id` AS `B_id`, `baker`.`name` AS `B_name`,",
+            "`baker`.`contact_details` AS `B_contact_details`, `baker`.`bakery_id` AS `B_bakery_id`",
+            "FROM `cake` LEFT JOIN `cakes_bakers` ON `cake`.`id` = `cakes_bakers`.`cake_id`",
+            "LEFT JOIN `baker` ON `cakes_bakers`.`baker_id` = `baker`.`id`",
+            "ORDER BY `cake`.`id` ASC"
+        ].join(" ")
+    );
+
+    assert_eq!(
+        select_cake_with_baker.all(&ctx.db).await?,
+        [(cake.try_into_model().unwrap(), vec![baker_bob, baker_ada])]
+    );
+
     ctx.delete().await;
 
     Ok(())
@@ -833,7 +888,7 @@ pub async fn linked() -> Result<(), DbErr> {
         bakery_id: Set(seaside_bakery_res.last_insert_id),
         customer_id: Set(customer_kate_res.last_insert_id),
         total: Set(rust_dec(15.10)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
         ..Default::default()
     };
     let kate_order_1_res = Order::insert(kate_order_1).exec(&ctx.db).await?;
@@ -850,7 +905,7 @@ pub async fn linked() -> Result<(), DbErr> {
         bakery_id: Set(seaside_bakery_res.last_insert_id),
         customer_id: Set(customer_kate_res.last_insert_id),
         total: Set(rust_dec(29.7)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
         ..Default::default()
     };
     let kate_order_2_res = Order::insert(kate_order_2).exec(&ctx.db).await?;
@@ -875,7 +930,7 @@ pub async fn linked() -> Result<(), DbErr> {
         bakery_id: Set(seaside_bakery_res.last_insert_id),
         customer_id: Set(customer_kara_res.last_insert_id),
         total: Set(rust_dec(15.10)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
         ..Default::default()
     };
     let kara_order_1_res = Order::insert(kara_order_1).exec(&ctx.db).await?;
@@ -892,7 +947,7 @@ pub async fn linked() -> Result<(), DbErr> {
         bakery_id: Set(seaside_bakery_res.last_insert_id),
         customer_id: Set(customer_kara_res.last_insert_id),
         total: Set(rust_dec(29.7)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
         ..Default::default()
     };
     let kara_order_2_res = Order::insert(kara_order_2).exec(&ctx.db).await?;
@@ -922,15 +977,15 @@ pub async fn linked() -> Result<(), DbErr> {
         .select_only()
         .column_as(baker::Column::Name, (SelectA, baker::Column::Name))
         .column_as(
-            Expr::col((Alias::new("r4"), customer::Column::Name)),
+            Expr::col(("r4", customer::Column::Name)),
             (SelectB, customer::Column::Name),
         )
         .group_by(baker::Column::Id)
-        .group_by(Expr::col((Alias::new("r4"), customer::Column::Id)))
+        .group_by(Expr::col(("r4", customer::Column::Id)))
         .group_by(baker::Column::Name)
-        .group_by(Expr::col((Alias::new("r4"), customer::Column::Name)))
+        .group_by(Expr::col(("r4", customer::Column::Name)))
         .order_by_asc(baker::Column::Id)
-        .order_by_asc(Expr::col((Alias::new("r4"), customer::Column::Id)))
+        .order_by_asc(Expr::col(("r4", customer::Column::Id)))
         .into_model()
         .all(&ctx.db)
         .await?;
@@ -996,7 +1051,7 @@ pub async fn linked() -> Result<(), DbErr> {
     let select_baker_with_customer = Baker::find()
         .find_with_linked(baker::BakedForCustomer)
         .order_by_asc(baker::Column::Id)
-        .order_by_asc(Expr::col((Alias::new("r4"), customer::Column::Id)));
+        .order_by_asc(Expr::col(("r4", customer::Column::Id)));
 
     assert_eq!(
         select_baker_with_customer
@@ -1081,6 +1136,101 @@ pub async fn linked() -> Result<(), DbErr> {
             ),
         ]
     );
+
+    ctx.delete().await;
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+pub async fn select_three() -> Result<(), DbErr> {
+    use common::bakery_chain::*;
+
+    let ctx = TestContext::new("test_select_three").await;
+    create_tables(&ctx.db).await?;
+
+    seed_data::init_1(&ctx, true).await;
+
+    let items: Vec<(order::Model, Option<customer::Model>)> = order::Entity::find()
+        .find_also_related(customer::Entity)
+        .order_by_asc(order::Column::Id)
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    let order = order::Model {
+        id: 101,
+        total: Decimal::from(10),
+        bakery_id: 42,
+        customer_id: 11,
+        placed_at: "2020-01-01T00:00:00Z".parse().unwrap(),
+    };
+
+    let customer = customer::Model {
+        id: 11,
+        name: "Bob".to_owned(),
+        notes: Some("Sweet tooth".to_owned()),
+    };
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].0, order);
+    assert_eq!(items[0].1.as_ref().unwrap(), &customer);
+
+    let items: Vec<(
+        order::Model,
+        Option<customer::Model>,
+        Option<lineitem::Model>,
+    )> = order::Entity::find()
+        .find_also_related(customer::Entity)
+        .find_also_related(lineitem::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    let line_1 = lineitem::Model {
+        id: 1,
+        price: 2.into(),
+        quantity: 2,
+        order_id: 101,
+        cake_id: 13,
+    };
+
+    let line_2 = lineitem::Model {
+        id: 2,
+        price: 3.into(),
+        quantity: 2,
+        order_id: 101,
+        cake_id: 15,
+    };
+
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[0].0, order);
+    assert_eq!(items[0].1.as_ref().unwrap(), &customer);
+    assert_eq!(items[1].1.as_ref().unwrap(), &customer);
+
+    assert_eq!(items[1].0, order);
+    assert_eq!(items[0].2.as_ref().unwrap(), &line_1);
+    assert_eq!(items[1].2.as_ref().unwrap(), &line_2);
+
+    let items: Vec<(order::Model, Option<lineitem::Model>, Option<cake::Model>)> =
+        order::Entity::find()
+            .find_also_related(lineitem::Entity)
+            .and_also_related(cake::Entity)
+            .order_by_asc(order::Column::Id)
+            .order_by_asc(lineitem::Column::Id)
+            .all(&ctx.db)
+            .await
+            .unwrap();
+
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[0].0, order);
+    assert_eq!(items[0].1.as_ref().unwrap(), &line_1);
+    assert_eq!(items[0].2.as_ref().unwrap().name, "Cheesecake");
+
+    assert_eq!(items[1].0, order);
+    assert_eq!(items[1].1.as_ref().unwrap(), &line_2);
+    assert_eq!(items[1].2.as_ref().unwrap().name, "Chocolate");
 
     ctx.delete().await;
 

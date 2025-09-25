@@ -1,9 +1,10 @@
+use core::time;
 use sea_orm_codegen::{
     DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
-    WithSerde,
+    WithPrelude, WithSerde,
 };
 use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
-use tracing_subscriber::{prelude::*, EnvFilter};
+use tracing_subscriber::{EnvFilter, prelude::*};
 use url::Url;
 
 use crate::{DateTimeCrate, GenerateSubcommands};
@@ -16,13 +17,16 @@ pub async fn run_generate_command(
         GenerateSubcommands::Entity {
             compact_format: _,
             expanded_format,
+            frontend_format,
             include_hidden_tables,
             tables,
             ignore_tables,
             max_connections,
+            acquire_timeout,
             output_dir,
             database_schema,
             database_url,
+            with_prelude,
             with_serde,
             serde_skip_deserializing_primary_key,
             serde_skip_hidden_column,
@@ -35,6 +39,7 @@ pub async fn run_generate_command(
             enum_extra_attributes,
             column_extra_derives,
             seaography,
+            impl_active_model_behavior,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -78,7 +83,7 @@ pub async fn run_generate_command(
 
             let filter_skip_tables = |table: &String| -> bool { !ignore_tables.contains(table) };
 
-            let database_name = if !is_sqlite {
+            let _database_name = if !is_sqlite {
                 // The database name should be the first element of the path string
                 //
                 // Throwing an error if there is no database name since it might be
@@ -110,69 +115,104 @@ pub async fn run_generate_command(
 
             let (schema_name, table_stmts) = match url.scheme() {
                 "mysql" => {
-                    use sea_schema::mysql::discovery::SchemaDiscovery;
-                    use sqlx::MySql;
+                    #[cfg(not(feature = "sqlx-mysql"))]
+                    {
+                        panic!("mysql feature is off")
+                    }
+                    #[cfg(feature = "sqlx-mysql")]
+                    {
+                        use sea_schema::mysql::discovery::SchemaDiscovery;
+                        use sqlx::MySql;
 
-                    println!("Connecting to MySQL ...");
-                    let connection =
-                        sqlx_connect::<MySql>(max_connections, url.as_str(), None).await?;
-                    println!("Discovering schema ...");
-                    let schema_discovery = SchemaDiscovery::new(connection, database_name);
-                    let schema = schema_discovery.discover().await?;
-                    let table_stmts = schema
-                        .tables
-                        .into_iter()
-                        .filter(|schema| filter_tables(&schema.info.name))
-                        .filter(|schema| filter_hidden_tables(&schema.info.name))
-                        .filter(|schema| filter_skip_tables(&schema.info.name))
-                        .map(|schema| schema.write())
-                        .collect();
-                    (None, table_stmts)
+                        println!("Connecting to MySQL ...");
+                        let connection = sqlx_connect::<MySql>(
+                            max_connections,
+                            acquire_timeout,
+                            url.as_str(),
+                            None,
+                        )
+                        .await?;
+                        println!("Discovering schema ...");
+                        let schema_discovery = SchemaDiscovery::new(connection, _database_name);
+                        let schema = schema_discovery.discover().await?;
+                        let table_stmts = schema
+                            .tables
+                            .into_iter()
+                            .filter(|schema| filter_tables(&schema.info.name))
+                            .filter(|schema| filter_hidden_tables(&schema.info.name))
+                            .filter(|schema| filter_skip_tables(&schema.info.name))
+                            .map(|schema| schema.write())
+                            .collect();
+                        (None, table_stmts)
+                    }
                 }
                 "sqlite" => {
-                    use sea_schema::sqlite::discovery::SchemaDiscovery;
-                    use sqlx::Sqlite;
+                    #[cfg(not(feature = "sqlx-sqlite"))]
+                    {
+                        panic!("sqlite feature is off")
+                    }
+                    #[cfg(feature = "sqlx-sqlite")]
+                    {
+                        use sea_schema::sqlite::discovery::SchemaDiscovery;
+                        use sqlx::Sqlite;
 
-                    println!("Connecting to SQLite ...");
-                    let connection =
-                        sqlx_connect::<Sqlite>(max_connections, url.as_str(), None).await?;
-                    println!("Discovering schema ...");
-                    let schema_discovery = SchemaDiscovery::new(connection);
-                    let schema = schema_discovery
-                        .discover()
-                        .await?
-                        .merge_indexes_into_table();
-                    let table_stmts = schema
-                        .tables
-                        .into_iter()
-                        .filter(|schema| filter_tables(&schema.name))
-                        .filter(|schema| filter_hidden_tables(&schema.name))
-                        .filter(|schema| filter_skip_tables(&schema.name))
-                        .map(|schema| schema.write())
-                        .collect();
-                    (None, table_stmts)
+                        println!("Connecting to SQLite ...");
+                        let connection = sqlx_connect::<Sqlite>(
+                            max_connections,
+                            acquire_timeout,
+                            url.as_str(),
+                            None,
+                        )
+                        .await?;
+                        println!("Discovering schema ...");
+                        let schema_discovery = SchemaDiscovery::new(connection);
+                        let schema = schema_discovery
+                            .discover()
+                            .await?
+                            .merge_indexes_into_table();
+                        let table_stmts = schema
+                            .tables
+                            .into_iter()
+                            .filter(|schema| filter_tables(&schema.name))
+                            .filter(|schema| filter_hidden_tables(&schema.name))
+                            .filter(|schema| filter_skip_tables(&schema.name))
+                            .map(|schema| schema.write())
+                            .collect();
+                        (None, table_stmts)
+                    }
                 }
                 "postgres" | "postgresql" => {
-                    use sea_schema::postgres::discovery::SchemaDiscovery;
-                    use sqlx::Postgres;
+                    #[cfg(not(feature = "sqlx-postgres"))]
+                    {
+                        panic!("postgres feature is off")
+                    }
+                    #[cfg(feature = "sqlx-postgres")]
+                    {
+                        use sea_schema::postgres::discovery::SchemaDiscovery;
+                        use sqlx::Postgres;
 
-                    println!("Connecting to Postgres ...");
-                    let schema = database_schema.as_deref().unwrap_or("public");
-                    let connection =
-                        sqlx_connect::<Postgres>(max_connections, url.as_str(), Some(schema))
-                            .await?;
-                    println!("Discovering schema ...");
-                    let schema_discovery = SchemaDiscovery::new(connection, schema);
-                    let schema = schema_discovery.discover().await?;
-                    let table_stmts = schema
-                        .tables
-                        .into_iter()
-                        .filter(|schema| filter_tables(&schema.info.name))
-                        .filter(|schema| filter_hidden_tables(&schema.info.name))
-                        .filter(|schema| filter_skip_tables(&schema.info.name))
-                        .map(|schema| schema.write())
-                        .collect();
-                    (database_schema, table_stmts)
+                        println!("Connecting to Postgres ...");
+                        let schema = database_schema.as_deref().unwrap_or("public");
+                        let connection = sqlx_connect::<Postgres>(
+                            max_connections,
+                            acquire_timeout,
+                            url.as_str(),
+                            Some(schema),
+                        )
+                        .await?;
+                        println!("Discovering schema ...");
+                        let schema_discovery = SchemaDiscovery::new(connection, schema);
+                        let schema = schema_discovery.discover().await?;
+                        let table_stmts = schema
+                            .tables
+                            .into_iter()
+                            .filter(|schema| filter_tables(&schema.info.name))
+                            .filter(|schema| filter_hidden_tables(&schema.info.name))
+                            .filter(|schema| filter_skip_tables(&schema.info.name))
+                            .map(|schema| schema.write())
+                            .collect();
+                        (database_schema, table_stmts)
+                    }
                 }
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
@@ -180,6 +220,8 @@ pub async fn run_generate_command(
 
             let writer_context = EntityWriterContext::new(
                 expanded_format,
+                frontend_format,
+                WithPrelude::from_str(&with_prelude).expect("Invalid prelude option"),
                 WithSerde::from_str(&with_serde).expect("Invalid serde derive option"),
                 with_copy_enums,
                 date_time_crate.into(),
@@ -193,6 +235,7 @@ pub async fn run_generate_command(
                 enum_extra_attributes,
                 column_extra_derives,
                 seaography,
+                impl_active_model_behavior,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
@@ -224,6 +267,7 @@ pub async fn run_generate_command(
 
 async fn sqlx_connect<DB>(
     max_connections: u32,
+    acquire_timeout: u64,
     url: &str,
     schema: Option<&str>,
 ) -> Result<sqlx::Pool<DB>, Box<dyn Error>>
@@ -231,7 +275,9 @@ where
     DB: sqlx::Database,
     for<'a> &'a mut <DB as sqlx::Database>::Connection: sqlx::Executor<'a>,
 {
-    let mut pool_options = sqlx::pool::PoolOptions::<DB>::new().max_connections(max_connections);
+    let mut pool_options = sqlx::pool::PoolOptions::<DB>::new()
+        .max_connections(max_connections)
+        .acquire_timeout(time::Duration::from_secs(acquire_timeout));
     // Set search_path for Postgres, E.g. Some("public") by default
     // MySQL & SQLite connection initialize with schema `None`
     if let Some(schema) = schema {
@@ -317,25 +363,6 @@ mod tests {
             "entity",
             "--database-url",
             "mysql://root:root@localhost:3306/",
-        ]);
-
-        match cli.command {
-            Commands::Generate { command } => {
-                smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: PoolTimedOut")]
-    fn test_generate_entity_no_password() {
-        let cli = Cli::parse_from([
-            "sea-orm-cli",
-            "generate",
-            "entity",
-            "--database-url",
-            "mysql://root:@localhost:3306/database",
         ]);
 
         match cli.command {

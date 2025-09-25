@@ -1,6 +1,6 @@
 use crate::{
-    join_tbl_on_condition, unpack_table_ref, ColumnTrait, EntityTrait, IdenStatic, Iterable,
-    Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
+    ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QuerySelect, Related, Select, SelectA,
+    SelectB, SelectThree, SelectTwo, SelectTwoMany, join_tbl_on_condition,
 };
 pub use sea_query::JoinType;
 use sea_query::{Alias, Condition, Expr, IntoIden, SeaRc, SelectExpr};
@@ -74,7 +74,7 @@ where
             let from_tbl = if i > 0 {
                 Alias::new(format!("r{}", i - 1)).into_iden()
             } else {
-                unpack_table_ref(&rel.from_tbl)
+                rel.from_tbl.sea_orm_table().clone()
             };
             let table_ref = rel.to_tbl;
 
@@ -101,7 +101,7 @@ where
             ));
             select_two.query().expr(SelectExpr {
                 expr: col.select_as(expr),
-                alias: Some(SeaRc::new(Alias::new(alias))),
+                alias: Some(alias.into_iden()),
                 window: None,
             });
         }
@@ -120,7 +120,7 @@ where
             let from_tbl = if i > 0 {
                 Alias::new(format!("r{}", i - 1)).into_iden()
             } else {
-                unpack_table_ref(&rel.from_tbl)
+                rel.from_tbl.sea_orm_table().clone()
             };
             let table_ref = rel.to_tbl;
 
@@ -147,11 +147,37 @@ where
             ));
             select_two_many.query().expr(SelectExpr {
                 expr: col.select_as(expr),
-                alias: Some(SeaRc::new(Alias::new(alias))),
+                alias: Some(alias.into_iden()),
                 window: None,
             });
         }
         select_two_many
+    }
+}
+
+impl<E, F> SelectTwo<E, F>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+{
+    /// Left Join with an Entity Related to the first Entity
+    pub fn find_also_related<R>(self, r: R) -> SelectThree<E, F, R>
+    where
+        R: EntityTrait,
+        E: Related<R>,
+    {
+        self.join_join(JoinType::LeftJoin, E::to(), E::via())
+            .select_also(r)
+    }
+
+    /// Left Join with an Entity Related to the second Entity
+    pub fn and_also_related<R>(self, r: R) -> SelectThree<E, F, R>
+    where
+        R: EntityTrait,
+        F: Related<R>,
+    {
+        self.join_join(JoinType::LeftJoin, F::to(), F::via())
+            .select_also(r)
     }
 }
 
@@ -163,7 +189,7 @@ mod tests {
         RelationTrait,
     };
     use pretty_assertions::assert_eq;
-    use sea_query::{Alias, ConditionType, Expr, IntoCondition, JoinType};
+    use sea_query::{ConditionType, Expr, ExprTrait, IntoCondition, JoinType};
 
     #[test]
     fn join_1() {
@@ -551,7 +577,7 @@ mod tests {
         assert_eq!(
             cake::Entity::find()
                 .column_as(
-                    Expr::col((Alias::new("fruit_alias"), fruit::Column::Name)),
+                    Expr::col(("fruit_alias", fruit::Column::Name)),
                     "fruit_name"
                 )
                 .join_as(
@@ -563,7 +589,7 @@ mod tests {
                                 .like("%tropical%")
                                 .into_condition()
                         }),
-                    Alias::new("fruit_alias")
+                    "fruit_alias"
                 )
                 .build(DbBackend::MySql)
                 .to_string(),
@@ -580,7 +606,7 @@ mod tests {
         assert_eq!(
             cake::Entity::find()
                 .column_as(
-                    Expr::col((Alias::new("cake_filling_alias"), cake_filling::Column::CakeId)),
+                    Expr::col(("cake_filling_alias", cake_filling::Column::CakeId)),
                     "cake_filling_cake_id"
                 )
                 .join(JoinType::LeftJoin, cake::Relation::TropicalFruit.def())
@@ -593,7 +619,7 @@ mod tests {
                                 .gt(10)
                                 .into_condition()
                         }),
-                    Alias::new("cake_filling_alias")
+                    "cake_filling_alias"
                 )
                 .build(DbBackend::MySql)
                 .to_string(),
@@ -611,7 +637,7 @@ mod tests {
         assert_eq!(
             cake::Entity::find()
                 .column_as(
-                    Expr::col((Alias::new("cake_filling_alias"), cake_filling::Column::CakeId)),
+                    Expr::col(("cake_filling_alias", cake_filling::Column::CakeId)),
                     "cake_filling_cake_id"
                 )
                 .join(JoinType::LeftJoin, cake::Relation::OrTropicalFruit.def())
@@ -625,7 +651,7 @@ mod tests {
                                 .gt(10)
                                 .into_condition()
                         }),
-                    Alias::new("cake_filling_alias")
+                    "cake_filling_alias"
                 )
                 .build(DbBackend::MySql)
                 .to_string(),

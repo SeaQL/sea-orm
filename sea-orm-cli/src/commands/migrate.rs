@@ -48,6 +48,7 @@ pub fn run_migrate_command(
             };
             // Construct the arguments that will be supplied to `cargo` command
             let mut args = vec!["run", "--manifest-path", &manifest_path, "--", subcommand];
+            let mut envs = vec![];
 
             let mut num: String = "".to_string();
             if let Some(steps) = steps {
@@ -57,17 +58,17 @@ pub fn run_migrate_command(
                 args.extend(["-n", &num])
             }
             if let Some(database_url) = &database_url {
-                args.extend(["-u", database_url]);
+                envs.push(("DATABASE_URL", database_url));
             }
             if let Some(database_schema) = &database_schema {
-                args.extend(["-s", database_schema]);
+                envs.push(("DATABASE_SCHEMA", database_schema));
             }
             if verbose {
                 args.push("-v");
             }
             // Run migrator CLI on user's behalf
             println!("Running `cargo {}`", args.join(" "));
-            let exit_status = Command::new("cargo").args(args).status()?; // Get the status code
+            let exit_status = Command::new("cargo").args(args).envs(envs).status()?; // Get the status code
             if !exit_status.success() {
                 // Propagate the error if any
                 return Err("Fail to run migration".into());

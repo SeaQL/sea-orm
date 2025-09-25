@@ -14,24 +14,11 @@ pub struct Model {
     pub ignored_attr: i32,
 }
 
-// If your column names are not in snake-case, derive `DeriveCustomColumn` here.
-#[derive(Copy, Clone, Debug, EnumIter, DeriveCustomColumn)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
     Name,
     VendorId,
-}
-
-// Then, customize each column names here.
-impl IdenStatic for Column {
-    fn as_str(&self) -> &str {
-        match self {
-            // Override column names
-            Self::Id => "id",
-            // Leave all other columns using default snake-case values
-            _ => self.default_as_str(),
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]

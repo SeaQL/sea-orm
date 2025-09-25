@@ -6,41 +6,46 @@ use std::sync::Arc;
 use std::vec;
 
 pub use common::{
+    TestContext,
     features::{
-        value_type::{value_type_general, value_type_pg, Boolbean, Integer, StringVec},
+        value_type::{
+            MyInteger, StringVec, Tag1, Tag2, value_type_general, value_type_pg, value_type_pk,
+        },
         *,
     },
     setup::*,
-    TestContext,
 };
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 use sea_query::{ArrayType, ColumnType, Value, ValueType, ValueTypeErr};
 
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
-    let ctx = TestContext::new("value_type_tests").await;
-    create_tables(&ctx.db).await?;
-    insert_value(&ctx.db).await?;
-    ctx.delete().await;
-
-    if cfg!(feature = "sqlx-postgres") {
-        let ctx = TestContext::new("value_type_postgres_tests").await;
-        create_tables(&ctx.db).await?;
-        postgres_insert_value(&ctx.db).await?;
-        ctx.delete().await;
-    }
-
     type_test();
     conversion_test();
+
+    let ctx = TestContext::new("value_type_tests").await;
+
+    create_value_type_table(&ctx.db).await?;
+    insert_value_general(&ctx.db).await?;
+    insert_value_pk(&ctx.db).await?;
+
+    if cfg!(feature = "sqlx-postgres") {
+        create_value_type_postgres_table(&ctx.db).await?;
+        insert_value_postgres(&ctx.db).await?;
+    }
+
+    ctx.delete().await;
 
     Ok(())
 }
 
-pub async fn insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
+pub async fn insert_value_general(db: &DatabaseConnection) -> Result<(), DbErr> {
     let model = value_type_general::Model {
         id: 1,
         number: 48.into(),
+        tag_1: Tag1::Hard,
+        tag_2: Tag2::Grey,
     };
     let result = model.clone().into_active_model().insert(db).await?;
     assert_eq!(result, model);
@@ -48,7 +53,30 @@ pub async fn insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
     Ok(())
 }
 
-pub async fn postgres_insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
+pub async fn insert_value_pk(db: &DatabaseConnection) -> Result<(), DbErr> {
+    let model = value_type_pk::Model {
+        id: MyInteger(1),
+        val: MyInteger(2),
+    };
+    let result = model.clone().into_active_model().insert(db).await?;
+    assert_eq!(result, model);
+
+    let mut model = result.into_active_model();
+    model.val = Set(MyInteger(3));
+    model.save(db).await?;
+    assert_eq!(
+        value_type_pk::Entity::find_by_id(MyInteger(1))
+            .one(db)
+            .await?
+            .unwrap()
+            .val,
+        MyInteger(3)
+    );
+
+    Ok(())
+}
+
+pub async fn insert_value_postgres(db: &DatabaseConnection) -> Result<(), DbErr> {
     let model = value_type_pg::Model {
         id: 1,
         number: 48.into(),
@@ -61,15 +89,15 @@ pub async fn postgres_insert_value(db: &DatabaseConnection) -> Result<(), DbErr>
 }
 
 pub fn type_test() {
+    assert_eq!(MyInteger::type_name(), "MyInteger");
     assert_eq!(StringVec::type_name(), "StringVec");
 
-    // custom types
-    assert_eq!(Integer::array_type(), ArrayType::Int);
-    assert_eq!(Integer::array_type(), ArrayType::Int);
-    assert_eq!(Boolbean::column_type(), ColumnType::Boolean);
-    assert_eq!(Boolbean::array_type(), ArrayType::Bool);
+    assert_eq!(MyInteger::column_type(), ColumnType::Integer);
+    assert_eq!(MyInteger::array_type(), ArrayType::Int);
 
-    // self implied
+    assert!(matches!(Tag1::column_type(), ColumnType::String(_)));
+    assert_eq!(Tag1::array_type(), ArrayType::String);
+
     assert_eq!(
         StringVec::column_type(),
         ColumnType::Array(Arc::new(ColumnType::String(StringLen::None)))
@@ -92,12 +120,12 @@ pub fn conversion_test() {
     );
 
     let value_random_int = Value::Int(Some(523));
-    let unwrap_int = Integer::unwrap(value_random_int.clone());
+    let unwrap_int = MyInteger::unwrap(value_random_int.clone());
     let try_from_int =
-        <Integer as ValueType>::try_from(value_random_int).expect("should be ok to convert");
+        <MyInteger as ValueType>::try_from(value_random_int).expect("should be ok to convert");
 
     // tests for unwrap and try_from
-    let direct_int: Integer = 523.into();
+    let direct_int: MyInteger = 523.into();
     assert_eq!(direct_int, unwrap_int);
     assert_eq!(direct_int, try_from_int);
 

@@ -135,11 +135,7 @@ impl DeriveModel {
         let entity_ident = &self.entity_ident;
         let ignore_attrs = &self.ignore_attrs;
         let ignore = |(ident, ignore): (&'a Ident, &bool)| -> Option<&'a Ident> {
-            if *ignore {
-                None
-            } else {
-                Some(ident)
-            }
+            if *ignore { None } else { Some(ident) }
         };
         let field_idents: Vec<&Ident> = self
             .field_idents
@@ -168,11 +164,12 @@ impl DeriveModel {
                     }
                 }
 
-                fn set(&mut self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column, v: sea_orm::Value) {
+                fn try_set(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column, v: sea_orm::Value) -> Result<(), sea_orm::DbErr> {
                     match c {
-                        #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents => self.#field_idents = v.unwrap(),)*
-                        _ => panic!(#missing_field_msg),
+                        #(<Self::Entity as sea_orm::EntityTrait>::Column::#column_idents => self.#field_idents = sea_orm::sea_query::ValueType::try_from(v).map_err(|e| sea_orm::DbErr::Type(e.to_string()))?,)*
+                        _ => return Err(sea_orm::DbErr::Type(#missing_field_msg.to_owned())),
                     }
+                    Ok(())
                 }
             }
         )

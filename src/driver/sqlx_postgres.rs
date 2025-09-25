@@ -1,20 +1,21 @@
-use futures::lock::Mutex;
+use futures_util::lock::Mutex;
 use log::LevelFilter;
 use sea_query::Values;
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::{fmt::Write, future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
+    Connection, Executor, PgPool, Postgres,
     pool::PoolConnection,
     postgres::{PgConnectOptions, PgQueryResult, PgRow},
-    Connection, Executor, PgPool, Postgres,
 };
 
-use sea_query_binder::SqlxValues;
+use sea_query_sqlx::SqlxValues;
 use tracing::instrument;
 
 use crate::{
-    debug_print, error::*, executor::*, AccessMode, ConnectOptions, DatabaseConnection,
-    DatabaseTransaction, DbBackend, IsolationLevel, QueryStream, Statement, TransactionError,
+    AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
+    DbBackend, IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*,
+    executor::*,
 };
 
 use super::sqlx_common::*;
@@ -36,6 +37,21 @@ impl std::fmt::Debug for SqlxPostgresPoolConnection {
     }
 }
 
+impl From<PgPool> for SqlxPostgresPoolConnection {
+    fn from(pool: PgPool) -> Self {
+        SqlxPostgresPoolConnection {
+            pool,
+            metric_callback: None,
+        }
+    }
+}
+
+impl From<PgPool> for DatabaseConnection {
+    fn from(pool: PgPool) -> Self {
+        DatabaseConnectionType::SqlxPostgresPoolConnection(pool.into()).into()
+    }
+}
+
 impl SqlxPostgresConnector {
     /// Check if the URI provided corresponds to `postgres://` for a PostgreSQL database
     pub fn accepts(string: &str) -> bool {
@@ -45,26 +61,46 @@ impl SqlxPostgresConnector {
     /// Add configuration options for the PostgreSQL database
     #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
-        let mut opt = options
+        let mut sqlx_opts = options
             .url
             .parse::<PgConnectOptions>()
             .map_err(sqlx_error_to_conn_err)?;
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
-            opt = opt.disable_statement_logging();
+            sqlx_opts = sqlx_opts.disable_statement_logging();
         } else {
-            opt = opt.log_statements(options.sqlx_logging_level);
+            sqlx_opts = sqlx_opts.log_statements(options.sqlx_logging_level);
             if options.sqlx_slow_statements_logging_level != LevelFilter::Off {
-                opt = opt.log_slow_statements(
+                sqlx_opts = sqlx_opts.log_slow_statements(
                     options.sqlx_slow_statements_logging_level,
                     options.sqlx_slow_statements_logging_threshold,
                 );
             }
         }
-        let set_search_path_sql = options
-            .schema_search_path
-            .as_ref()
-            .map(|schema| format!("SET search_path = {schema}"));
+
+        if let Some(f) = &options.pg_opts_fn {
+            sqlx_opts = f(sqlx_opts);
+        }
+
+        let set_search_path_sql = options.schema_search_path.as_ref().map(|schema| {
+            let mut string = "SET search_path = ".to_owned();
+            if schema.starts_with('"') {
+                write!(&mut string, "{schema}").expect("Infallible");
+            } else {
+                for (i, schema) in schema.split(',').enumerate() {
+                    if i > 0 {
+                        write!(&mut string, ",").expect("Infallible");
+                    }
+                    if schema.starts_with('"') {
+                        write!(&mut string, "{schema}").expect("Infallible");
+                    } else {
+                        write!(&mut string, "\"{schema}\"").expect("Infallible");
+                    }
+                }
+            }
+            string
+        });
+        let lazy = options.connect_lazy;
         let mut pool_options = options.sqlx_pool_options();
         if let Some(sql) = set_search_path_sql {
             pool_options = pool_options.after_connect(move |conn, _| {
@@ -76,25 +112,32 @@ impl SqlxPostgresConnector {
                 })
             });
         }
-        match pool_options.connect_with(opt).await {
-            Ok(pool) => Ok(DatabaseConnection::SqlxPostgresPoolConnection(
-                SqlxPostgresPoolConnection {
-                    pool,
-                    metric_callback: None,
-                },
-            )),
-            Err(e) => Err(sqlx_error_to_conn_err(e)),
-        }
+        let pool = if lazy {
+            pool_options.connect_lazy_with(sqlx_opts)
+        } else {
+            pool_options
+                .connect_with(sqlx_opts)
+                .await
+                .map_err(sqlx_error_to_conn_err)?
+        };
+        Ok(
+            DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
+                pool,
+                metric_callback: None,
+            })
+            .into(),
+        )
     }
 }
 
 impl SqlxPostgresConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_postgres_pool(pool: PgPool) -> DatabaseConnection {
-        DatabaseConnection::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
+        DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
             pool,
             metric_callback: None,
         })
+        .into()
     }
 }
 
@@ -203,7 +246,7 @@ impl SqlxPostgresPoolConnection {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
         let transaction = DatabaseTransaction::new_postgres(
@@ -233,8 +276,14 @@ impl SqlxPostgresPoolConnection {
         }
     }
 
-    /// Explicitly close the Postgres connection
+    /// Explicitly close the Postgres connection.
+    /// See [`Self::close_by_ref`] for usage with references.
     pub async fn close(self) -> Result<(), DbErr> {
+        self.close_by_ref().await
+    }
+
+    /// Explicitly close the Postgres connection
+    pub async fn close_by_ref(&self) -> Result<(), DbErr> {
         self.pool.close().await;
         Ok(())
     }
@@ -561,7 +610,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 row.try_get::<Vec<ipnetwork::IpNetwork>, _>(c.ordinal())
                                     .expect("Failed to get ip address array")
                                     .iter()
-                                    .map(|val| Value::IpNetwork(Some(Box::new(val.clone()))))
+                                    .map(|val| Value::IpNetwork(Some(Box::new(*val))))
                                     .collect(),
                             )),
                         ),
@@ -598,7 +647,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 row.try_get::<Vec<chrono::NaiveDateTime>, _>(c.ordinal())
                                     .expect("Failed to get timestamp array")
                                     .iter()
-                                    .map(|val| Value::ChronoDateTime(Some(Box::new(val.clone()))))
+                                    .map(|val| Value::ChronoDateTime(Some(Box::new(*val))))
                                     .collect(),
                             )),
                         ),
@@ -634,7 +683,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 row.try_get::<Vec<chrono::NaiveDate>, _>(c.ordinal())
                                     .expect("Failed to get date array")
                                     .iter()
-                                    .map(|val| Value::ChronoDate(Some(Box::new(val.clone()))))
+                                    .map(|val| Value::ChronoDate(Some(Box::new(*val))))
                                     .collect(),
                             )),
                         ),
@@ -670,7 +719,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 row.try_get::<Vec<chrono::NaiveTime>, _>(c.ordinal())
                                     .expect("Failed to get time array")
                                     .iter()
-                                    .map(|val| Value::ChronoTime(Some(Box::new(val.clone()))))
+                                    .map(|val| Value::ChronoTime(Some(Box::new(*val))))
                                     .collect(),
                             )),
                         ),
@@ -706,9 +755,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 row.try_get::<Vec<chrono::DateTime<chrono::Utc>>, _>(c.ordinal())
                                     .expect("Failed to get timestamptz array")
                                     .iter()
-                                    .map(|val| {
-                                        Value::ChronoDateTimeUtc(Some(Box::new(val.clone())))
-                                    })
+                                    .map(|val| Value::ChronoDateTimeUtc(Some(Box::new(*val))))
                                     .collect(),
                             )),
                         ),
@@ -744,7 +791,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 row.try_get::<Vec<chrono::NaiveTime>, _>(c.ordinal())
                                     .expect("Failed to get timetz array")
                                     .iter()
-                                    .map(|val| Value::ChronoTime(Some(Box::new(val.clone()))))
+                                    .map(|val| Value::ChronoTime(Some(Box::new(*val))))
                                     .collect(),
                             )),
                         ),
@@ -776,7 +823,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 row.try_get::<Vec<uuid::Uuid>, _>(c.ordinal())
                                     .expect("Failed to get uuid array")
                                     .iter()
-                                    .map(|val| Value::Uuid(Some(Box::new(val.clone()))))
+                                    .map(|val| Value::Uuid(Some(Box::new(*val))))
                                     .collect(),
                             )),
                         ),

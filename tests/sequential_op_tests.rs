@@ -2,10 +2,9 @@
 
 pub mod common;
 
-use chrono::offset::Utc;
-use common::{bakery_chain::*, setup::*, TestContext};
+use common::{TestContext, bakery_chain::*, setup::*};
 use rust_decimal::prelude::*;
-use sea_orm::{entity::*, query::*, DatabaseConnection, FromQueryResult};
+use sea_orm::{DatabaseConnection, FromQueryResult, entity::*, prelude::ChronoUtc, query::*};
 use uuid::Uuid;
 
 // Run the test locally:
@@ -68,13 +67,27 @@ async fn seed_data(db: &DatabaseConnection) {
         ..Default::default()
     };
 
-    let cake_insert_res = Cake::insert(mud_cake)
+    let mud_cake = Cake::insert(mud_cake)
+        .exec(db)
+        .await
+        .expect("could not insert cake");
+
+    let choc_cake = cake::ActiveModel {
+        name: Set("Choc Cake".to_owned()),
+        price: Set(rust_dec(9.25)),
+        gluten_free: Set(false),
+        serial: Set(Uuid::new_v4()),
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        ..Default::default()
+    };
+
+    let choc_cake = Cake::insert(choc_cake)
         .exec(db)
         .await
         .expect("could not insert cake");
 
     let cake_baker = cakes_bakers::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id),
+        cake_id: Set(mud_cake.last_insert_id),
         baker_id: Set(baker_1.id.clone().unwrap()),
     };
 
@@ -99,7 +112,7 @@ async fn seed_data(db: &DatabaseConnection) {
         bakery_id: Set(bakery.id.clone().unwrap()),
         customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(rust_dec(99.95)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -108,7 +121,7 @@ async fn seed_data(db: &DatabaseConnection) {
     .expect("could not insert order");
 
     let _lineitem = lineitem::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id),
+        cake_id: Set(mud_cake.last_insert_id),
         price: Set(rust_dec(10.00)),
         quantity: Set(12),
         order_id: Set(kate_order_1.id.clone().unwrap()),
@@ -119,7 +132,7 @@ async fn seed_data(db: &DatabaseConnection) {
     .expect("could not insert order");
 
     let _lineitem2 = lineitem::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id),
+        cake_id: Set(choc_cake.last_insert_id),
         price: Set(rust_dec(50.00)),
         quantity: Set(2),
         order_id: Set(kate_order_1.id.clone().unwrap()),
@@ -128,6 +141,19 @@ async fn seed_data(db: &DatabaseConnection) {
     .save(db)
     .await
     .expect("could not insert order");
+
+    assert!(
+        lineitem::ActiveModel {
+            cake_id: Set(choc_cake.last_insert_id),
+            price: Set(rust_dec(50.00)),
+            quantity: Set(2),
+            order_id: Set(kate_order_1.id.clone().unwrap()),
+            ..Default::default()
+        }
+        .save(db)
+        .await
+        .is_err()
+    ); // violates unique key
 }
 
 async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model> {
@@ -240,7 +266,7 @@ async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
         bakery_id: Set(cake.bakery_id.unwrap()),
         customer_id: Set(another_customer.id.clone().unwrap()),
         total: Set(rust_dec(200.00)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
