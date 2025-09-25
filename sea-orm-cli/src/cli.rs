@@ -52,6 +52,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum Commands {
     #[command(
@@ -322,6 +323,13 @@ pub enum GenerateSubcommands {
             help = r#"Add extra attributes to generated enums, no need for `#[]` (comma separated), e.g. `--enum-extra-attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
         )]
         enum_extra_attributes: Vec<String>,
+
+        #[arg(
+            long,
+            value_delimiter = ',',
+            help = "Add extra derive macros to generated column enum (comma separated), e.g. `--column-extra-derives 'async_graphql::Enum','CustomDerive'`"
+        )]
+        column_extra_derives: Vec<String>,
 
         #[arg(
             long,
