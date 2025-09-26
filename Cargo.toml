@@ -51,7 +51,6 @@ derive_more = { version = "2", features = ["debug"] }
 [dev-dependencies]
 smol = { version = "1.2" }
 smol-potat = { version = "1.1" }
-async-std = { version = "1", features = ["attributes", "tokio1"] }
 futures = { version = "0.3" }
 tokio = { version = "1.6", features = ["full"] }
 maplit = { version = "1" }
