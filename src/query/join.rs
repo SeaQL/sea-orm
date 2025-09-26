@@ -1,10 +1,10 @@
 use crate::{
-    ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QuerySelect, Related, Select, SelectA,
-    SelectB, SelectThree, SelectTwo, SelectTwoMany, TopologyChain, TopologyStar,
+    ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QuerySelect, QueryTrait, Related,
+    Select, SelectA, SelectB, SelectThree, SelectTwo, SelectTwoMany, TopologyChain, TopologyStar,
     join_tbl_on_condition,
 };
 pub use sea_query::JoinType;
-use sea_query::{Alias, Condition, Expr, IntoIden, SeaRc, SelectExpr, SelectStatement};
+use sea_query::{Condition, Expr, IntoIden, SelectExpr};
 
 impl<E> Select<E>
 where
@@ -69,7 +69,7 @@ where
         L: Linked<FromEntity = E, ToEntity = T>,
         T: EntityTrait,
     {
-        SelectTwo::new_without_prepare(self.join_with_linked(l))
+        SelectTwo::new_without_prepare(self.left_join_linked(l).into_query())
     }
 
     /// Left Join with a Linked Entity and select Entity as a `Vec`.
@@ -78,41 +78,42 @@ where
         L: Linked<FromEntity = E, ToEntity = T>,
         T: EntityTrait,
     {
-        SelectTwoMany::new_without_prepare(self.join_with_linked(l))
+        SelectTwoMany::new_without_prepare(self.left_join_linked(l).into_query())
     }
 
-    fn join_with_linked<L, T>(mut self, l: L) -> SelectStatement
+    /// Left Join with a Linked Entity.
+    pub fn left_join_linked<L, T>(mut self, l: L) -> Self
     where
         L: Linked<FromEntity = E, ToEntity = T>,
         T: EntityTrait,
     {
         for (i, mut rel) in l.link().into_iter().enumerate() {
-            let to_tbl = Alias::new(format!("r{i}")).into_iden();
+            let to_tbl = format!("r{i}").into_iden();
             let from_tbl = if i > 0 {
-                Alias::new(format!("r{}", i - 1)).into_iden()
+                format!("r{}", i - 1).into_iden()
             } else {
                 rel.from_tbl.sea_orm_table().clone()
             };
             let table_ref = rel.to_tbl;
 
             let mut condition = Condition::all().add(join_tbl_on_condition(
-                SeaRc::clone(&from_tbl),
-                SeaRc::clone(&to_tbl),
+                from_tbl.clone(),
+                to_tbl.clone(),
                 rel.from_col,
                 rel.to_col,
             ));
             if let Some(f) = rel.on_condition.take() {
-                condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
+                condition = condition.add(f(from_tbl.clone(), to_tbl.clone()));
             }
 
-            self.query()
+            self.query
                 .join_as(JoinType::LeftJoin, table_ref, to_tbl, condition);
         }
         self = self.apply_alias(SelectA.as_str());
         for col in <T::Column as Iterable>::iter() {
             let alias = format!("{}{}", SelectB.as_str(), col.as_str());
             let expr = Expr::col((
-                Alias::new(format!("r{}", l.link().len() - 1)).into_iden(),
+                format!("r{}", l.link().len() - 1).into_iden(),
                 col.into_iden(),
             ));
             self.query.expr(SelectExpr {
@@ -121,7 +122,7 @@ where
                 window: None,
             });
         }
-        self.query
+        self
     }
 }
 
@@ -131,23 +132,27 @@ where
     F: EntityTrait,
 {
     /// Left Join with an Entity Related to the first Entity
-    pub fn find_also_related<R>(self, r: R) -> SelectThree<E, F, R, TopologyStar>
+    pub fn find_also_related<R>(self, _: R) -> SelectThree<E, F, R, TopologyStar>
     where
         R: EntityTrait,
         E: Related<R>,
     {
-        self.join_join(JoinType::LeftJoin, E::to(), E::via())
-            .select_also(r)
+        SelectThree::new(
+            self.join_join(JoinType::LeftJoin, E::to(), E::via())
+                .into_query(),
+        )
     }
 
     /// Left Join with an Entity Related to the second Entity
-    pub fn and_also_related<R>(self, r: R) -> SelectThree<E, F, R, TopologyChain>
+    pub fn and_also_related<R>(self, _: R) -> SelectThree<E, F, R, TopologyChain>
     where
         R: EntityTrait,
         F: Related<R>,
     {
-        self.join_join(JoinType::LeftJoin, F::to(), F::via())
-            .select_also(r)
+        SelectThree::new(
+            self.join_join(JoinType::LeftJoin, F::to(), F::via())
+                .into_query(),
+        )
     }
 }
 

@@ -77,7 +77,7 @@ struct NestOption {
     foo: Option<SimpleTest>,
 }
 
-#[derive(DerivePartialModel)]
+#[derive(Debug, DerivePartialModel)]
 #[sea_orm(entity = "bakery::Entity")]
 struct Bakery {
     id: i32,
@@ -85,7 +85,7 @@ struct Bakery {
     title: String,
 }
 
-#[derive(DerivePartialModel)]
+#[derive(Debug, DerivePartialModel)]
 #[sea_orm(entity = "cake::Entity", into_active_model)]
 struct Cake {
     id: i32,
@@ -105,7 +105,7 @@ struct BakeryDetails {
     profit: f64,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default, PartialEq, Eq)]
 struct Ignore {}
 
 #[sea_orm_macros::test]
@@ -150,7 +150,32 @@ async fn partial_model_left_join_exists() {
     assert_eq!(cake.id, 13);
     assert_eq!(cake.name, "Cheesecake");
     assert!(matches!(cake.bakery, Some(Bakery { id: 42, .. })));
-    assert_eq!(cake.bakery.unwrap().title, "cool little bakery");
+    assert_eq!(cake.bakery.as_ref().unwrap().title, "cool little bakery");
+
+    #[derive(Debug, DerivePartialModel)]
+    #[sea_orm(entity = "cake::Entity", into_active_model)]
+    struct Cake2 {
+        id: i32,
+        name: String,
+        #[sea_orm(nested, alias = "r0")]
+        bakery: Option<Bakery>,
+        #[sea_orm(skip)]
+        ignore: Ignore,
+    }
+
+    let cake2: Cake2 = cake::Entity::find()
+        .left_join_linked(cake::ToBakery)
+        .order_by_asc(cake::Column::Id)
+        .into_partial_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(
+        format!("{cake:?}").trim_start_matches("Cake "),
+        format!("{cake2:?}").trim_start_matches("Cake2 ")
+    );
 
     ctx.delete().await;
 }

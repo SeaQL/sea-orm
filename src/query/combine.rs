@@ -98,15 +98,6 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
-    /// Selects extra Entity and returns it together with the Entities from `Self`
-    pub(crate) fn select_also<G, TOP>(self, _: G) -> SelectThree<E, F, G, TOP>
-    where
-        G: EntityTrait,
-        TOP: Topology,
-    {
-        SelectThree::new(self.into_query())
-    }
-
     pub(crate) fn new(query: SelectStatement) -> Self {
         Self::new_without_prepare(query).prepare_select()
     }

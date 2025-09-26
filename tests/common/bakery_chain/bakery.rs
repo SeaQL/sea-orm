@@ -38,3 +38,14 @@ impl Related<super::cake::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+pub struct ToBaker;
+
+impl Linked for ToBaker {
+    type FromEntity = Entity;
+    type ToEntity = super::baker::Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![Relation::Baker.def()]
+    }
+}

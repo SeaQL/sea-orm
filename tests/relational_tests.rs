@@ -693,8 +693,10 @@ pub async fn related() -> Result<(), DbErr> {
         .join(" ")
     );
 
+    let select_bakery_with_baker_result = select_bakery_with_baker.all(&ctx.db).await?;
+
     assert_eq!(
-        select_bakery_with_baker.all(&ctx.db).await?,
+        select_bakery_with_baker_result,
         [
             (
                 bakery::Model {
@@ -749,6 +751,15 @@ pub async fn related() -> Result<(), DbErr> {
                 vec![]
             ),
         ]
+    );
+
+    assert_eq!(
+        select_bakery_with_baker_result,
+        Bakery::find()
+            .find_with_linked(bakery::ToBaker)
+            .order_by_asc(bakery::Column::Id)
+            .all(&ctx.db)
+            .await?
     );
 
     let select_cake_with_baker = Cake::find().find_with_related(Baker);
