@@ -260,6 +260,87 @@ let cake: Option<Cake> = Cake::find_by_statement(raw_sql!(
 .one(db)
 .await?;
 ```
+* Added `consolidate` method to `SelectThree`. This output has different shape depending on the topology of the join.
+```rust
+// Order -> Customer
+//       -> Lineitem
+
+let items: Vec<(order::Model, Option<customer::Model>, Option<lineitem::Model>)> =
+    order::Entity::find()
+        .find_also_related(customer::Entity)
+        .find_also_related(lineitem::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .all(&ctx.db)
+        .await?;
+
+// flat result
+assert_eq!(
+    items,
+    vec![
+        (order, Some(customer), Some(line_1)),
+        (order, Some(customer), Some(line_2)),
+    ]
+);
+
+let items: Vec<(order::Model, Vec<customer::Model>, Vec<lineitem::Model>)> =
+    order::Entity::find()
+        .find_also_related(customer::Entity)
+        .find_also_related(lineitem::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .consolidate() // <-
+        .all(&ctx.db)
+        .await?;
+
+// consolidated by order
+assert_eq!(
+    items,
+    vec![(
+        order,
+        vec![customer],
+        vec![line_1, line_2]
+    )]
+);
+
+// Order -> Lineitem -> Cake
+let items: Vec<(order::Model, Option<lineitem::Model>, Option<cake::Model>)> =
+    order::Entity::find()
+        .find_also_related(lineitem::Entity)
+        .and_also_related(cake::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .all(&ctx.db)
+        .await?;
+
+// flat result
+assert_eq!(
+    items,
+    vec![
+        (order, Some(line_1), Some(cake_1)),
+        (order, Some(line_2), Some(cake_2)),
+    ]
+);
+
+let items: Vec<(order::Model, Vec<(lineitem::Model, Vec<cake::Model>)>)> =
+    order::Entity::find()
+        .find_also_related(lineitem::Entity)
+        .and_also_related(cake::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .consolidate() // <-
+        .all(&ctx.db)
+        .await?;
+
+// consolidated by order first, then by line
+assert_eq!(
+    items,
+    vec![(
+        order,
+        vec![(line_1, vec![cake_1]), (line_2, vec![cake_2])]
+    )]
+);
+```
 
 ### Enhancements
 
@@ -484,6 +565,8 @@ Update::one(active_model)
 ```rust
   - fn get_query_builder(&self) -> Box<dyn QueryBuilder>
 ```
+* A number of methods has been removed from `SelectTwoMany`: `into_partial_model`, `into_json`, `stream`. These methods are same as those in `SelectTwo`.
+Please use `Cake::find().find_also_related(Fruit).into_json()` instead.
 
 ### Upgrades
 
