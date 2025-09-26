@@ -1,3 +1,4 @@
+mod consolidate;
 mod cursor;
 mod delete;
 mod execute;
@@ -8,6 +9,7 @@ mod returning;
 mod select;
 mod update;
 
+use consolidate::*;
 pub use cursor::*;
 pub use delete::*;
 pub use execute::*;
