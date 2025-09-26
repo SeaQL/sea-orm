@@ -1,3 +1,4 @@
+#![allow(clippy::type_complexity)]
 use crate::{
     EntityTrait, Iterable, ModelTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait,
 };

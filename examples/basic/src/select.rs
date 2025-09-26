@@ -258,7 +258,7 @@ async fn find_together_json(db: &DbConn) -> Result<(), DbErr> {
     print!("find cakes and fruits: ");
 
     let cakes_fruits = Cake::find()
-        .find_with_related(Fruit)
+        .find_also_related(Fruit)
         .into_json()
         .all(db)
         .await?;
