@@ -1,8 +1,11 @@
-use super::consolidate_query_result;
+use super::{
+    consolidate_query_result, consolidate_query_result_chain, consolidate_query_result_tee,
+};
 use crate::{
     ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, PartialModelTrait,
-    QueryResult, QuerySelect, Select, SelectA, SelectB, SelectC, SelectThree, SelectTwo,
-    SelectTwoMany, Statement, StreamTrait, TryGetableMany, error::*,
+    QueryResult, QuerySelect, Select, SelectA, SelectB, SelectC, SelectThree, SelectThreeMany,
+    SelectTwo, SelectTwoMany, Statement, StreamTrait, Topology, TopologyChain, TopologyStar,
+    TryGetableMany, error::*,
 };
 use futures_util::{Stream, TryStreamExt};
 use sea_query::SelectStatement;
@@ -592,52 +595,7 @@ where
         }
     }
 
-    /// Performs a conversion to [Selector] with partial model
-    fn into_partial_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
-    where
-        M: PartialModelTrait,
-        N: PartialModelTrait,
-    {
-        let select = self.select_only();
-        let select = M::select_cols(select);
-        let select = N::select_cols(select);
-        select.into_model()
-    }
-
-    /// Convert the results to JSON
-    #[cfg(feature = "with-json")]
-    pub fn into_json(self) -> Selector<SelectTwoModel<JsonValue, JsonValue>> {
-        Selector {
-            query: self.query,
-            selector: PhantomData,
-        }
-    }
-
-    /// Stream the result of the operation
-    pub async fn stream<'a: 'b, 'b, C>(
-        self,
-        db: &'a C,
-    ) -> Result<impl Stream<Item = Result<(E::Model, Option<F::Model>), DbErr>> + 'b + Send, DbErr>
-    where
-        C: ConnectionTrait + StreamTrait + Send,
-    {
-        self.into_model().stream(db).await
-    }
-
-    /// Stream the result of the operation with PartialModel
-    pub async fn stream_partial_model<'a: 'b, 'b, C, M, N>(
-        self,
-        db: &'a C,
-    ) -> Result<impl Stream<Item = Result<(M, Option<N>), DbErr>> + 'b + Send, DbErr>
-    where
-        C: ConnectionTrait + StreamTrait + Send,
-        M: PartialModelTrait + Send + 'b,
-        N: PartialModelTrait + Send + 'b,
-    {
-        self.into_partial_model().stream(db).await
-    }
-
-    /// Get all Models from the select operation
+    /// Get all Models from the select operation and consolidate result based on left Model.
     ///
     /// > `SelectTwoMany::one()` method has been dropped (#486)
     /// >
@@ -663,11 +621,12 @@ where
     // we should only count the number of items of the parent model
 }
 
-impl<E, F, G> SelectThree<E, F, G>
+impl<E, F, G, TOP> SelectThree<E, F, G, TOP>
 where
     E: EntityTrait,
     F: EntityTrait,
     G: EntityTrait,
+    TOP: Topology,
 {
     /// Perform a conversion into a [SelectThreeModel]
     pub fn into_model<M, N, O>(self) -> Selector<SelectThreeModel<M, N, O>>
@@ -752,6 +711,73 @@ where
         O: PartialModelTrait + Send + 'b,
     {
         self.into_partial_model().stream(db).await
+    }
+
+    /// Consolidate query result by first / second model depending on join topology
+    pub fn consolidate(self) -> SelectThreeMany<E, F, G, TOP> {
+        SelectThreeMany {
+            query: self.query,
+            entity: self.entity,
+        }
+    }
+}
+
+impl<E, F, G, TOP> SelectThreeMany<E, F, G, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    TOP: Topology,
+{
+    /// Performs a conversion to [Selector]
+    fn into_model<M, N, O>(self) -> Selector<SelectThreeModel<M, N, O>>
+    where
+        M: FromQueryResult,
+        N: FromQueryResult,
+        O: FromQueryResult,
+    {
+        Selector {
+            query: self.query,
+            selector: PhantomData,
+        }
+    }
+}
+
+impl<E, F, G> SelectThreeMany<E, F, G, TopologyStar>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+{
+    /// Execute query and consolidate rows by E
+    pub async fn all<C>(
+        self,
+        db: &C,
+    ) -> Result<Vec<(E::Model, Vec<F::Model>, Vec<G::Model>)>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        let rows = self.into_model().all(db).await?;
+        Ok(consolidate_query_result_tee::<E, F, G>(rows))
+    }
+}
+
+impl<E, F, G> SelectThreeMany<E, F, G, TopologyChain>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+{
+    /// Execute query and consolidate rows in two passes, first by E, then by F
+    pub async fn all<C>(
+        self,
+        db: &C,
+    ) -> Result<Vec<(E::Model, Vec<(F::Model, Vec<G::Model>)>)>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        let rows = self.into_model().all(db).await?;
+        Ok(consolidate_query_result_chain::<E, F, G>(rows))
     }
 }
 

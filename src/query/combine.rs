@@ -1,6 +1,6 @@
 use crate::{
     ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectThree, SelectTwo,
-    SelectTwoMany,
+    SelectTwoMany, Topology,
 };
 use core::marker::PhantomData;
 use sea_query::{Iden, IntoIden, Order, SelectExpr, SelectStatement, SimpleExpr};
@@ -99,9 +99,10 @@ where
     F: EntityTrait,
 {
     /// Selects extra Entity and returns it together with the Entities from `Self`
-    pub fn select_also<G>(self, _: G) -> SelectThree<E, F, G>
+    pub(crate) fn select_also<G, TOP>(self, _: G) -> SelectThree<E, F, G, TOP>
     where
         G: EntityTrait,
+        TOP: Topology,
     {
         SelectThree::new(self.into_query())
     }
@@ -154,11 +155,12 @@ where
     }
 }
 
-impl<E, F, G> SelectThree<E, F, G>
+impl<E, F, G, TOP> SelectThree<E, F, G, TOP>
 where
     E: EntityTrait,
     F: EntityTrait,
     G: EntityTrait,
+    TOP: Topology,
 {
     pub(crate) fn new(query: SelectStatement) -> Self {
         Self::new_without_prepare(query).prepare_select()

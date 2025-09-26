@@ -1,8 +1,8 @@
 use crate::common::TestContext;
 use crate::local::{bakery, create_tables, worker};
 use sea_orm::{
-    DbBackend, DerivePartialModel, FromQueryResult, IntoActiveModel, JoinType, NotSet, QueryOrder,
-    QuerySelect, QueryTrait, Set, prelude::*, sea_query::Alias,
+    DbBackend, DerivePartialModel, IntoActiveModel, JoinType, NotSet, QueryOrder, QuerySelect,
+    QueryTrait, Set, prelude::*, sea_query::Alias,
 };
 
 #[derive(DerivePartialModel)]

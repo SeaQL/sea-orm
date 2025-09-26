@@ -1171,22 +1171,10 @@ pub async fn select_three() -> Result<(), DbErr> {
         name: "Bob".to_owned(),
         notes: Some("Sweet tooth".to_owned()),
     };
+
     assert_eq!(items.len(), 1);
     assert_eq!(items[0].0, order);
     assert_eq!(items[0].1.as_ref().unwrap(), &customer);
-
-    let items: Vec<(
-        order::Model,
-        Option<customer::Model>,
-        Option<lineitem::Model>,
-    )> = order::Entity::find()
-        .find_also_related(customer::Entity)
-        .find_also_related(lineitem::Entity)
-        .order_by_asc(order::Column::Id)
-        .order_by_asc(lineitem::Column::Id)
-        .all(&ctx.db)
-        .await
-        .unwrap();
 
     let line_1 = lineitem::Model {
         id: 1,
@@ -1204,14 +1192,58 @@ pub async fn select_three() -> Result<(), DbErr> {
         cake_id: 15,
     };
 
-    assert_eq!(items.len(), 2);
-    assert_eq!(items[0].0, order);
-    assert_eq!(items[0].1.as_ref().unwrap(), &customer);
-    assert_eq!(items[1].1.as_ref().unwrap(), &customer);
+    let cake_1 = cake::Entity::find_by_id(13)
+        .one(&ctx.db)
+        .await
+        .unwrap()
+        .unwrap();
 
-    assert_eq!(items[1].0, order);
-    assert_eq!(items[0].2.as_ref().unwrap(), &line_1);
-    assert_eq!(items[1].2.as_ref().unwrap(), &line_2);
+    let cake_2 = cake::Entity::find_by_id(15)
+        .one(&ctx.db)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let items: Vec<(
+        order::Model,
+        Option<customer::Model>,
+        Option<lineitem::Model>,
+    )> = order::Entity::find()
+        .find_also_related(customer::Entity)
+        .find_also_related(lineitem::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        items,
+        vec![
+            (order.clone(), Some(customer.clone()), Some(line_1.clone())),
+            (order.clone(), Some(customer.clone()), Some(line_2.clone())),
+        ]
+    );
+
+    let items: Vec<(order::Model, Vec<customer::Model>, Vec<lineitem::Model>)> =
+        order::Entity::find()
+            .find_also_related(customer::Entity)
+            .find_also_related(lineitem::Entity)
+            .order_by_asc(order::Column::Id)
+            .order_by_asc(lineitem::Column::Id)
+            .consolidate()
+            .all(&ctx.db)
+            .await
+            .unwrap();
+
+    assert_eq!(
+        items,
+        vec![(
+            order.clone(),
+            vec![customer.clone()],
+            vec![line_1.clone(), line_2.clone()]
+        )]
+    );
 
     let items: Vec<(order::Model, Option<lineitem::Model>, Option<cake::Model>)> =
         order::Entity::find()
@@ -1223,14 +1255,32 @@ pub async fn select_three() -> Result<(), DbErr> {
             .await
             .unwrap();
 
-    assert_eq!(items.len(), 2);
-    assert_eq!(items[0].0, order);
-    assert_eq!(items[0].1.as_ref().unwrap(), &line_1);
-    assert_eq!(items[0].2.as_ref().unwrap().name, "Cheesecake");
+    assert_eq!(
+        items,
+        vec![
+            (order.clone(), Some(line_1.clone()), Some(cake_1.clone())),
+            (order.clone(), Some(line_2.clone()), Some(cake_2.clone())),
+        ]
+    );
 
-    assert_eq!(items[1].0, order);
-    assert_eq!(items[1].1.as_ref().unwrap(), &line_2);
-    assert_eq!(items[1].2.as_ref().unwrap().name, "Chocolate");
+    let items: Vec<(order::Model, Vec<(lineitem::Model, Vec<cake::Model>)>)> =
+        order::Entity::find()
+            .find_also_related(lineitem::Entity)
+            .and_also_related(cake::Entity)
+            .order_by_asc(order::Column::Id)
+            .order_by_asc(lineitem::Column::Id)
+            .consolidate()
+            .all(&ctx.db)
+            .await
+            .unwrap();
+
+    assert_eq!(
+        items,
+        vec![(
+            order.clone(),
+            vec![(line_1, vec![cake_1]), (line_2, vec![cake_2])]
+        )]
+    );
 
     ctx.delete().await;
 

@@ -1,6 +1,7 @@
 use crate::{
     ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel, SelectThree,
-    SelectThreeModel, SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait, error::*,
+    SelectThreeModel, SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait, Topology,
+    error::*,
 };
 use async_stream::stream;
 use futures_util::Stream;
@@ -297,7 +298,7 @@ where
     }
 }
 
-impl<'db, C, M, N, O, E, F, G> PaginatorTrait<'db, C> for SelectThree<E, F, G>
+impl<'db, C, M, N, O, E, F, G, TOP> PaginatorTrait<'db, C> for SelectThree<E, F, G, TOP>
 where
     C: ConnectionTrait,
     E: EntityTrait<Model = M>,
@@ -306,6 +307,7 @@ where
     M: FromQueryResult + Sized + Send + Sync + 'db,
     N: FromQueryResult + Sized + Send + Sync + 'db,
     O: FromQueryResult + Sized + Send + Sync + 'db,
+    TOP: Topology,
 {
     type Selector = SelectThreeModel<M, N, O>;
 

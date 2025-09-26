@@ -1,7 +1,7 @@
 use crate::{
     ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IdentityOf, IntoIdentity,
     PartialModelTrait, PrimaryKeyToColumn, QuerySelect, Select, SelectModel, SelectThree,
-    SelectThreeModel, SelectTwo, SelectTwoModel, SelectorTrait,
+    SelectThreeModel, SelectTwo, SelectTwoModel, SelectorTrait, Topology,
 };
 use sea_query::{
     Condition, DynIden, Expr, ExprTrait, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr,
@@ -399,7 +399,7 @@ where
     type Selector = SelectTwoModel<M, N>;
 }
 
-impl<E, F, G, M, N, O> CursorTrait for SelectThree<E, F, G>
+impl<E, F, G, M, N, O, TOP> CursorTrait for SelectThree<E, F, G, TOP>
 where
     E: EntityTrait<Model = M>,
     F: EntityTrait<Model = N>,
@@ -407,6 +407,7 @@ where
     M: FromQueryResult + Sized + Send + Sync,
     N: FromQueryResult + Sized + Send + Sync,
     O: FromQueryResult + Sized + Send + Sync,
+    TOP: Topology,
 {
     type Selector = SelectThreeModel<M, N, O>;
 }
@@ -463,7 +464,7 @@ where
     }
 }
 
-impl<E, F, G, M, N, O> SelectThree<E, F, G>
+impl<E, F, G, M, N, O, TOP> SelectThree<E, F, G, TOP>
 where
     E: EntityTrait<Model = M>,
     F: EntityTrait<Model = N>,
@@ -471,6 +472,7 @@ where
     M: FromQueryResult + Sized + Send + Sync,
     N: FromQueryResult + Sized + Send + Sync,
     O: FromQueryResult + Sized + Send + Sync,
+    TOP: Topology,
 {
     /// Convert into a cursor using column of first entity
     pub fn cursor_by<C>(self, order_columns: C) -> Cursor<SelectThreeModel<M, N, O>>

@@ -1,6 +1,7 @@
 use crate::{
     ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QuerySelect, Related, Select, SelectA,
-    SelectB, SelectThree, SelectTwo, SelectTwoMany, join_tbl_on_condition,
+    SelectB, SelectThree, SelectTwo, SelectTwoMany, TopologyChain, TopologyStar,
+    join_tbl_on_condition,
 };
 pub use sea_query::JoinType;
 use sea_query::{Alias, Condition, Expr, IntoIden, SeaRc, SelectExpr, SelectStatement};
@@ -130,7 +131,7 @@ where
     F: EntityTrait,
 {
     /// Left Join with an Entity Related to the first Entity
-    pub fn find_also_related<R>(self, r: R) -> SelectThree<E, F, R>
+    pub fn find_also_related<R>(self, r: R) -> SelectThree<E, F, R, TopologyStar>
     where
         R: EntityTrait,
         E: Related<R>,
@@ -140,7 +141,7 @@ where
     }
 
     /// Left Join with an Entity Related to the second Entity
-    pub fn and_also_related<R>(self, r: R) -> SelectThree<E, F, R>
+    pub fn and_also_related<R>(self, r: R) -> SelectThree<E, F, R, TopologyChain>
     where
         R: EntityTrait,
         F: Related<R>,

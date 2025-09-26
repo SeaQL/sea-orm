@@ -35,16 +35,44 @@ where
     pub(crate) entity: PhantomData<(E, F)>,
 }
 
-/// Defines a structure to perform a SELECT operation on two Models
+/// Topology of multi-joins
+pub trait Topology {}
+
+/// A star topology
+#[derive(Debug)]
+pub struct TopologyStar;
+
+/// A chain topology
+#[derive(Debug)]
+pub struct TopologyChain;
+
+impl Topology for TopologyStar {}
+impl Topology for TopologyChain {}
+
+/// Perform a SELECT operation on three Models
 #[derive(Clone, Debug)]
-pub struct SelectThree<E, F, G>
+pub struct SelectThree<E, F, G, TOP>
 where
     E: EntityTrait,
     F: EntityTrait,
     G: EntityTrait,
+    TOP: Topology,
 {
     pub(crate) query: SelectStatement,
-    pub(crate) entity: PhantomData<(E, F, G)>,
+    pub(crate) entity: PhantomData<(E, F, G, TOP)>,
+}
+
+/// Perform a SELECT operation on three Models with results consolidated
+#[derive(Clone, Debug)]
+pub struct SelectThreeMany<E, F, G, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, TOP)>,
 }
 
 /// Performs a conversion to [SimpleExpr]
@@ -97,11 +125,12 @@ macro_rules! impl_query_trait {
             }
         }
 
-        impl<E, F, G> $trait for SelectThree<E, F, G>
+        impl<E, F, G, TOP> $trait for SelectThree<E, F, G, TOP>
         where
             E: EntityTrait,
             F: EntityTrait,
             G: EntityTrait,
+            TOP: Topology,
         {
             type QueryStatement = SelectStatement;
 
@@ -216,11 +245,12 @@ macro_rules! select_two {
 select_two!(SelectTwo);
 select_two!(SelectTwoMany);
 
-impl<E, F, G> QueryTrait for SelectThree<E, F, G>
+impl<E, F, G, TOP> QueryTrait for SelectThree<E, F, G, TOP>
 where
     E: EntityTrait,
     F: EntityTrait,
     G: EntityTrait,
+    TOP: Topology,
 {
     type QueryStatement = SelectStatement;
     fn query(&mut self) -> &mut SelectStatement {
