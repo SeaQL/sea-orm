@@ -51,7 +51,6 @@ impl Related<super::lineitem::Entity> for Entity {
 }
 
 pub struct ToBakery;
-
 impl Linked for ToBakery {
     type FromEntity = super::cake::Entity;
     type ToEntity = super::bakery::Entity;

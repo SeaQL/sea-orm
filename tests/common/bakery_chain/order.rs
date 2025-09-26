@@ -50,4 +50,24 @@ impl Related<super::lineitem::Entity> for Entity {
     }
 }
 
+pub struct ToCustomer;
+impl Linked for ToCustomer {
+    type FromEntity = Entity;
+    type ToEntity = super::customer::Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![Relation::Customer.def()]
+    }
+}
+
+pub struct ToLineitem;
+impl Linked for ToLineitem {
+    type FromEntity = Entity;
+    type ToEntity = super::lineitem::Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![Relation::Lineitem.def()]
+    }
+}
+
 impl ActiveModelBehavior for ActiveModel {}

@@ -11,6 +11,7 @@ where
 {
     pub(crate) query: SelectStatement,
     pub(crate) entity: PhantomData<E>,
+    pub(crate) linked_index: usize,
 }
 
 /// Defines a structure to perform a SELECT operation on two Models
@@ -183,6 +184,7 @@ where
         Self {
             query: SelectStatement::new(),
             entity: PhantomData,
+            linked_index: 0,
         }
         .prepare_select()
         .prepare_from()
