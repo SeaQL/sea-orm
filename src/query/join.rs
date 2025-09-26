@@ -3,7 +3,7 @@ use crate::{
     SelectB, SelectThree, SelectTwo, SelectTwoMany, join_tbl_on_condition,
 };
 pub use sea_query::JoinType;
-use sea_query::{Alias, Condition, Expr, IntoIden, SeaRc, SelectExpr};
+use sea_query::{Alias, Condition, Expr, IntoIden, SeaRc, SelectExpr, SelectStatement};
 
 impl<E> Select<E>
 where
@@ -68,44 +68,7 @@ where
         L: Linked<FromEntity = E, ToEntity = T>,
         T: EntityTrait,
     {
-        let mut slf = self;
-        for (i, mut rel) in l.link().into_iter().enumerate() {
-            let to_tbl = Alias::new(format!("r{i}")).into_iden();
-            let from_tbl = if i > 0 {
-                Alias::new(format!("r{}", i - 1)).into_iden()
-            } else {
-                rel.from_tbl.sea_orm_table().clone()
-            };
-            let table_ref = rel.to_tbl;
-
-            let mut condition = Condition::all().add(join_tbl_on_condition(
-                SeaRc::clone(&from_tbl),
-                SeaRc::clone(&to_tbl),
-                rel.from_col,
-                rel.to_col,
-            ));
-            if let Some(f) = rel.on_condition.take() {
-                condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
-            }
-
-            slf.query()
-                .join_as(JoinType::LeftJoin, table_ref, to_tbl, condition);
-        }
-        slf = slf.apply_alias(SelectA.as_str());
-        let mut select_two = SelectTwo::new_without_prepare(slf.query);
-        for col in <T::Column as Iterable>::iter() {
-            let alias = format!("{}{}", SelectB.as_str(), col.as_str());
-            let expr = Expr::col((
-                Alias::new(format!("r{}", l.link().len() - 1)).into_iden(),
-                col.into_iden(),
-            ));
-            select_two.query().expr(SelectExpr {
-                expr: col.select_as(expr),
-                alias: Some(alias.into_iden()),
-                window: None,
-            });
-        }
-        select_two
+        SelectTwo::new_without_prepare(self.join_with_linked(l))
     }
 
     /// Left Join with a Linked Entity and select Entity as a `Vec`.
@@ -114,7 +77,14 @@ where
         L: Linked<FromEntity = E, ToEntity = T>,
         T: EntityTrait,
     {
-        let mut slf = self;
+        SelectTwoMany::new_without_prepare(self.join_with_linked(l))
+    }
+
+    fn join_with_linked<L, T>(mut self, l: L) -> SelectStatement
+    where
+        L: Linked<FromEntity = E, ToEntity = T>,
+        T: EntityTrait,
+    {
         for (i, mut rel) in l.link().into_iter().enumerate() {
             let to_tbl = Alias::new(format!("r{i}")).into_iden();
             let from_tbl = if i > 0 {
@@ -134,24 +104,23 @@ where
                 condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
             }
 
-            slf.query()
+            self.query()
                 .join_as(JoinType::LeftJoin, table_ref, to_tbl, condition);
         }
-        slf = slf.apply_alias(SelectA.as_str());
-        let mut select_two_many = SelectTwoMany::new_without_prepare(slf.query);
+        self = self.apply_alias(SelectA.as_str());
         for col in <T::Column as Iterable>::iter() {
             let alias = format!("{}{}", SelectB.as_str(), col.as_str());
             let expr = Expr::col((
                 Alias::new(format!("r{}", l.link().len() - 1)).into_iden(),
                 col.into_iden(),
             ));
-            select_two_many.query().expr(SelectExpr {
+            self.query.expr(SelectExpr {
                 expr: col.select_as(expr),
                 alias: Some(alias.into_iden()),
                 window: None,
             });
         }
-        select_two_many
+        self.query
     }
 }
 
