@@ -8,9 +8,8 @@ on:
       - "src/**"
       - "sea-orm-cli/**"
       - "sea-orm-codegen/**"
-      - "sea-orm-macros/**"
       - "sea-orm-migration/**"
-      - "sea-orm-rocket/**"
+      - "sea-orm-rocket/lib/**"
       - ".github/workflows/semver.yml"
   push:
     branches:
@@ -22,9 +21,8 @@ on:
       - "src/**"
       - "sea-orm-cli/**"
       - "sea-orm-codegen/**"
-      - "sea-orm-macros/**"
       - "sea-orm-migration/**"
-      - "sea-orm-rocket/**"
+      - "sea-orm-rocket/lib/**"
       - ".github/workflows/semver.yml"
   workflow_dispatch:
 
@@ -42,9 +40,7 @@ jobs:
       core: ${{ steps.build-matrix.outputs.core }}
       cli: ${{ steps.build-matrix.outputs.cli }}
       codegen: ${{ steps.build-matrix.outputs.codegen }}
-      macros: ${{ steps.build-matrix.outputs.macros }}
       migration: ${{ steps.build-matrix.outputs.migration }}
-      rocket_codegen: ${{ steps.build-matrix.outputs.rocket_codegen }}
       rocket_lib: ${{ steps.build-matrix.outputs.rocket_lib }}
       workflows: ${{ steps.build-matrix.outputs.workflows }}
     steps:
@@ -61,13 +57,8 @@ jobs:
               - 'sea-orm-cli/**'
             codegen:
               - 'sea-orm-codegen/**'
-            macros:
-              - 'sea-orm-macros/**'
             migration:
               - 'sea-orm-migration/**'
-            rocket_codegen:
-              - 'sea-orm-rocket/codegen/**'
-              - 'sea-orm-rocket/Cargo.toml'
             rocket_lib:
               - 'sea-orm-rocket/lib/**'
               - 'sea-orm-rocket/Cargo.toml'
@@ -81,9 +72,7 @@ jobs:
           CORE_CHANGED: ${{ steps.filter.outputs.core }}
           CLI_CHANGED: ${{ steps.filter.outputs.cli }}
           CODEGEN_CHANGED: ${{ steps.filter.outputs.codegen }}
-          MACROS_CHANGED: ${{ steps.filter.outputs.macros }}
           MIGRATION_CHANGED: ${{ steps.filter.outputs.migration }}
-          ROCKET_CODEGEN_CHANGED: ${{ steps.filter.outputs.rocket_codegen }}
           ROCKET_LIB_CHANGED: ${{ steps.filter.outputs.rocket_lib }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
         with:
@@ -91,19 +80,17 @@ jobs:
             const event = process.env.EVENT_NAME;
             const workflowsChanged = process.env.WORKFLOWS_CHANGED === 'true';
             const entries = [
-              { id: 'core', name: 'core', manifest: 'Cargo.toml', changed: process.env.CORE_CHANGED === 'true' },
+              { id: 'core', name: 'core', manifest: './Cargo.toml', changed: process.env.CORE_CHANGED === 'true' },
               { id: 'cli', name: 'cli', manifest: 'sea-orm-cli/Cargo.toml', changed: process.env.CLI_CHANGED === 'true' },
               { id: 'codegen', name: 'codegen', manifest: 'sea-orm-codegen/Cargo.toml', changed: process.env.CODEGEN_CHANGED === 'true' },
-              { id: 'macros', name: 'macros', manifest: 'sea-orm-macros/Cargo.toml', changed: process.env.MACROS_CHANGED === 'true' },
               { id: 'migration', name: 'migration', manifest: 'sea-orm-migration/Cargo.toml', changed: process.env.MIGRATION_CHANGED === 'true' },
-              { id: 'rocket_codegen', name: 'rocket/codegen', manifest: 'sea-orm-rocket/codegen/Cargo.toml', changed: process.env.ROCKET_CODEGEN_CHANGED === 'true' },
               { id: 'rocket_lib', name: 'rocket/lib', manifest: 'sea-orm-rocket/lib/Cargo.toml', changed: process.env.ROCKET_LIB_CHANGED === 'true' }
             ];
 
             const shouldRunAll = event === 'workflow_dispatch' || workflowsChanged;
             const selected = shouldRunAll ? entries : entries.filter((entry) => entry.changed);
             const matrix = {
-              crate: selected.map(({ id, name, manifest }) => ({ id, name, manifest }))
+              include: selected.map(({ id, name, manifest }) => ({ id, name, manifest }))
             };
 
             core.setOutput('matrix', JSON.stringify(matrix));
@@ -117,7 +104,7 @@ jobs:
             core.setOutput('workflows', workflowsChanged ? 'true' : 'false');
 
   semver:
-    name: Semver Check (${{ matrix.crate.name }})
+    name: Semver Check (${{ matrix.name }})
     needs: detect
     if: ${{ needs.detect.outputs.has_matrix == 'true' }}
     runs-on: ubuntu-latest
@@ -129,4 +116,4 @@ jobs:
       - name: Semver checks
         uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
-          manifest-path: ${{ matrix.crate.manifest }}
+          manifest-path: ${{ matrix.manifest }}
