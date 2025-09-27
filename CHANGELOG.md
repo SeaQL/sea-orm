@@ -396,6 +396,38 @@ pub trait ActiveModelTrait {
     fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
 }
 ```
+* `Linked` can now be used in partial select, in case `Related` cannot be defined
+```rust
+pub struct ToBakery;
+impl Linked for ToBakery {
+    type FromEntity = super::cake::Entity;
+    type ToEntity = super::bakery::Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![Relation::Bakery.def()]
+    }
+}
+
+#[derive(Debug, DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity", into_active_model)]
+struct Cake2 {
+    id: i32,
+    name: String,
+    #[sea_orm(nested, alias = "r0")]
+    bakery: Option<Bakery>,
+    #[sea_orm(skip)]
+    ignore: Ignore,
+}
+
+let cake2: Cake2 = cake::Entity::find()
+    .left_join_linked(ToBakery)
+    .order_by_asc(cake::Column::Id)
+    .into_partial_model()
+    .one(&ctx.db)
+    .await?
+    .unwrap();
+```
+* `RelationDef` now implements `Clone`. `on_condition` is changed to `Arc` but this is a minor breaking change.
 
 ### Breaking Changes
 
