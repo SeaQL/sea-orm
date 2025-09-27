@@ -3,29 +3,29 @@ name: semver
 on:
   pull_request:
     paths:
-      - 'Cargo.lock'
-      - 'Cargo.toml'
-      - 'src/**'
-      - 'sea-orm-cli/**'
-      - 'sea-orm-codegen/**'
-      - 'sea-orm-macros/**'
-      - 'sea-orm-migration/**'
-      - 'sea-orm-rocket/**'
-      - '.github/workflows/semver.yml'
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "src/**"
+      - "sea-orm-cli/**"
+      - "sea-orm-codegen/**"
+      - "sea-orm-macros/**"
+      - "sea-orm-migration/**"
+      - "sea-orm-rocket/**"
+      - ".github/workflows/semver.yml"
   push:
     branches:
       - master
-      - '1.*.x'
+      - "1.*.x"
     paths:
-      - 'Cargo.lock'
-      - 'Cargo.toml'
-      - 'src/**'
-      - 'sea-orm-cli/**'
-      - 'sea-orm-codegen/**'
-      - 'sea-orm-macros/**'
-      - 'sea-orm-migration/**'
-      - 'sea-orm-rocket/**'
-      - '.github/workflows/semver.yml'
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "src/**"
+      - "sea-orm-cli/**"
+      - "sea-orm-codegen/**"
+      - "sea-orm-macros/**"
+      - "sea-orm-migration/**"
+      - "sea-orm-rocket/**"
+      - ".github/workflows/semver.yml"
   workflow_dispatch:
 
 concurrency:
@@ -38,6 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.build-matrix.outputs.matrix }}
+      has_matrix: ${{ steps.build-matrix.outputs.has_matrix }}
       core: ${{ steps.build-matrix.outputs.core }}
       cli: ${{ steps.build-matrix.outputs.cli }}
       codegen: ${{ steps.build-matrix.outputs.codegen }}
@@ -101,9 +102,12 @@ jobs:
 
             const shouldRunAll = event === 'workflow_dispatch' || workflowsChanged;
             const selected = shouldRunAll ? entries : entries.filter((entry) => entry.changed);
-            const matrix = selected.map(({ id, name, manifest }) => ({ id, name, manifest }));
+            const matrix = {
+              crate: selected.map(({ id, name, manifest }) => ({ id, name, manifest }))
+            };
 
             core.setOutput('matrix', JSON.stringify(matrix));
+            core.setOutput('has_matrix', selected.length > 0 ? 'true' : 'false');
 
             for (const entry of entries) {
               const shouldRun = shouldRunAll || entry.changed ? 'true' : 'false';
@@ -113,9 +117,9 @@ jobs:
             core.setOutput('workflows', workflowsChanged ? 'true' : 'false');
 
   semver:
-    name: Semver Check (${{ matrix.name }})
+    name: Semver Check (${{ matrix.crate.name }})
     needs: detect
-    if: ${{ needs.detect.outputs.matrix != '[]' }}
+    if: ${{ needs.detect.outputs.has_matrix == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -125,4 +129,4 @@ jobs:
       - name: Semver checks
         uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
-          manifest-path: ${{ matrix.manifest }}
+          manifest-path: ${{ matrix.crate.manifest }}
