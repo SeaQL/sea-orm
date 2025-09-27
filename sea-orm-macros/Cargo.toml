@@ -1,6 +1,6 @@
 [package]
 name = "sea-orm-macros"
-version = "2.0.0-rc.8"
+version = "2.0.0-rc.9"
 authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
 edition = "2024"
 description = "Derive macros for SeaORM"
