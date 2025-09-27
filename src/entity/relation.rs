@@ -6,7 +6,7 @@ use sea_query::{
     Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoIden, JoinType, SeaRc,
     TableForeignKey, TableRef,
 };
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Arc};
 
 /// Defines the type of relationship
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -47,6 +47,7 @@ where
 }
 
 /// Defines a relationship
+#[derive(derive_more::Debug, Clone)]
 pub struct RelationDef {
     /// The type of relationship defined in [RelationType]
     pub rel_type: RelationType,
@@ -67,44 +68,12 @@ pub struct RelationDef {
     /// `UPDATE` Operation is performed
     pub on_update: Option<ForeignKeyAction>,
     /// Custom join ON condition
-    pub on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
+    #[debug("{}", on_condition.is_some())]
+    pub on_condition: Option<Arc<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
     /// The name of foreign key constraint
     pub fk_name: Option<String>,
     /// Condition type of join on expression
     pub condition_type: ConditionType,
-}
-
-impl std::fmt::Debug for RelationDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut d = f.debug_struct("RelationDef");
-        d.field("rel_type", &self.rel_type)
-            .field("from_tbl", &self.from_tbl)
-            .field("to_tbl", &self.to_tbl)
-            .field("from_col", &self.from_col)
-            .field("to_col", &self.to_col)
-            .field("is_owner", &self.is_owner)
-            .field("on_delete", &self.on_delete)
-            .field("on_update", &self.on_update);
-        debug_on_condition(&mut d, &self.on_condition);
-        d.field("fk_name", &self.fk_name).finish()
-    }
-}
-
-fn debug_on_condition(
-    d: &mut core::fmt::DebugStruct<'_, '_>,
-    on_condition: &Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
-) {
-    match on_condition {
-        Some(func) => {
-            d.field(
-                "on_condition",
-                &func(SeaRc::new("left"), SeaRc::new("right")),
-            );
-        }
-        None => {
-            d.field("on_condition", &Option::<Condition>::None);
-        }
-    }
 }
 
 /// Idiomatically generate the join condition.
@@ -170,6 +139,7 @@ impl From<RelationDef> for Condition {
 }
 
 /// Defines a helper to build a relation
+#[derive(derive_more::Debug)]
 pub struct RelationBuilder<E, R>
 where
     E: EntityTrait,
@@ -184,30 +154,10 @@ where
     is_owner: bool,
     on_delete: Option<ForeignKeyAction>,
     on_update: Option<ForeignKeyAction>,
-    on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
+    #[debug("{}", on_condition.is_some())]
+    on_condition: Option<Arc<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
     fk_name: Option<String>,
     condition_type: ConditionType,
-}
-
-impl<E, R> std::fmt::Debug for RelationBuilder<E, R>
-where
-    E: EntityTrait,
-    R: EntityTrait,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut d = f.debug_struct("RelationBuilder");
-        d.field("entities", &self.entities)
-            .field("rel_type", &self.rel_type)
-            .field("from_tbl", &self.from_tbl)
-            .field("to_tbl", &self.to_tbl)
-            .field("from_col", &self.from_col)
-            .field("to_col", &self.to_col)
-            .field("is_owner", &self.is_owner)
-            .field("on_delete", &self.on_delete)
-            .field("on_update", &self.on_update);
-        debug_on_condition(&mut d, &self.on_condition);
-        d.field("fk_name", &self.fk_name).finish()
-    }
 }
 
 impl RelationDef {
@@ -317,7 +267,7 @@ impl RelationDef {
     where
         F: Fn(DynIden, DynIden) -> Condition + 'static + Send + Sync,
     {
-        self.on_condition = Some(Box::new(f));
+        self.on_condition = Some(Arc::new(f));
         self
     }
 
@@ -435,7 +385,7 @@ where
     where
         F: Fn(DynIden, DynIden) -> Condition + 'static + Send + Sync,
     {
-        self.on_condition = Some(Box::new(f));
+        self.on_condition = Some(Arc::new(f));
         self
     }
 

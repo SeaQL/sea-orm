@@ -47,43 +47,48 @@ mod private {
             let ident = &self.ident;
             let entity_ident = &self.entity_ident;
 
-            let variant_implementations: Vec<TokenStream> = self
-                .variants
-                .iter()
-                .map(|variant| {
-                    let attr = related_attr::SeaOrm::from_attributes(&variant.attrs)?;
+            let mut get_relation_impl = Vec::new();
+            let mut get_relation_name_impl = Vec::new();
+            let mut get_related_entity_filter_impl = Vec::new();
 
-                    let enum_name = &variant.ident;
+            for variant in &self.variants {
+                let attr = related_attr::SeaOrm::from_attributes(&variant.attrs)?;
 
-                    let target_entity = attr
-                        .entity
-                        .as_ref()
-                        .map(Self::parse_lit_string)
-                        .ok_or_else(|| {
-                            syn::Error::new_spanned(variant, "Missing value for 'entity'")
-                        })??;
+                let enum_name = &variant.ident;
 
-                    let def = match attr.def {
-                        Some(def) => Some(Self::parse_lit_string(&def).map_err(|_| {
-                            syn::Error::new_spanned(variant, "Missing value for 'def'")
-                        })?),
-                        None => None,
-                    };
+                let target_entity = attr
+                    .entity
+                    .as_ref()
+                    .map(Self::parse_lit_string)
+                    .ok_or_else(|| {
+                        syn::Error::new_spanned(variant, "Missing value for 'entity'")
+                    })??;
 
-                    let name = enum_name.to_string().to_lower_camel_case();
+                let def = match attr.def {
+                    Some(def) => Some(Self::parse_lit_string(&def).map_err(|_| {
+                        syn::Error::new_spanned(variant, "Missing value for 'def'")
+                    })?),
+                    None => None,
+                };
 
-                    if let Some(def) = def {
-                        Result::<_, syn::Error>::Ok(quote! {
-                            Self::#enum_name => builder.get_relation::<#entity_ident, #target_entity>(#name, #def)
-                        })
-                    } else {
-                        Result::<_, syn::Error>::Ok(quote! {
-                            Self::#enum_name => via_builder.get_relation::<#entity_ident, #target_entity>(#name)
-                        })
-                    }
+                let name = enum_name.to_string().to_lower_camel_case();
 
-                })
-                .collect::<Result<Vec<_>, _>>()?;
+                get_relation_impl.push(if let Some(def) = &def {
+                    quote! { Self::#enum_name => builder.get_relation::<#entity_ident, #target_entity>(#name, #def) }
+                } else {
+                    quote! { Self::#enum_name => via_builder.get_relation::<#entity_ident, #target_entity>(#name) }
+                });
+                get_relation_name_impl.push(if let Some(def) = &def {
+                    quote! { Self::#enum_name => builder.get_relation_name::<#entity_ident, #target_entity>(#name, #def) }
+                } else {
+                    quote! { Self::#enum_name => via_builder.get_relation_name::<#entity_ident, #target_entity>(#name) }
+                });
+                get_related_entity_filter_impl.push(if let Some(def) = &def {
+                    quote! { Self::#enum_name => builder.get_relation::<#entity_ident, #target_entity>(#name, #def) }
+                } else {
+                    quote! { Self::#enum_name => builder.get_relation_via::<#entity_ident, #target_entity>(#name) }
+                });
+            }
 
             // Get the path of the `async-graphql` on the application's Cargo.toml
             let async_graphql_crate = match crate_name("async-graphql") {
@@ -103,11 +108,25 @@ mod private {
                         let builder = seaography::EntityObjectRelationBuilder { context };
                         let via_builder = seaography::EntityObjectViaRelationBuilder { context };
                         match self {
-                            #(#variant_implementations,)*
+                            #(#get_relation_impl,)*
                             _ => panic!("No relations for this entity"),
                         }
                     }
-
+                    fn get_relation_name(&self, context: & 'static seaography::BuilderContext) -> String {
+                        let builder = seaography::EntityObjectRelationBuilder { context };
+                        let via_builder = seaography::EntityObjectViaRelationBuilder { context };
+                        match self {
+                            #(#get_relation_name_impl,)*
+                            _ => panic!("No relations for this entity"),
+                        }
+                    }
+                    fn get_related_entity_filter(&self, context: & 'static seaography::BuilderContext) -> seaography::RelatedEntityFilterField {
+                        let builder = seaography::RelatedEntityFilterBuilder { context };
+                        match self {
+                            #(#get_related_entity_filter_impl,)*
+                            _ => panic!("No relations for this entity"),
+                        }
+                    }
                 }
             })
         }
