@@ -344,6 +344,8 @@ assert_eq!(
 
 ### Enhancements
 
+* [sea-orm-cli] Added `--column-extra-derives` https://github.com/SeaQL/sea-orm/pull/2212
+* Added `Model::try_set`
 * Added new error variant `BackendNotSupported`. Previously, it panics with e.g. "Database backend doesn't support RETURNING" https://github.com/SeaQL/sea-orm/pull/2630
 ```rust
 let result = cake::Entity::insert_many([])
