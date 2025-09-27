@@ -68,7 +68,7 @@ Integration examples:
 Let's have a quick walk through of the unique features of SeaORM.
 
 ### Entity
-You don't have to write this by hand! Entity files can be generated from an existing database.
+You don't have to write this by hand! Entity files can be generated from an existing database with `sea-orm-cli`.
 ```rust
 use sea_orm::entity::prelude::*;
 
@@ -94,8 +94,8 @@ impl Related<super::fruit::Entity> for Entity {
 ```
 
 ### Select
-SeaORM models one-to-many and many-to-many relationships at the Entity level,
-so you can express a many‑to‑many traversal via a junction table in a single method call without manually writing the joins.
+SeaORM models 1-N and M-N relationships at the Entity level,
+letting you traverse many-to-many links through a junction table in a single call.
 ```rust
 // find all models
 let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
@@ -200,7 +200,7 @@ matches!(result, TryInsertResult::Conflicted);
 
 ### Update
 ActiveModel avoids race conditions by updating only the fields you've changed,
-never over‑writing untouched columns.
+never overwriting untouched columns.
 You can also craft complex bulk update queries with a fluent query building API.
 ```rust
 use fruit::Column::CakeId;
@@ -221,7 +221,6 @@ Fruit::update_many()
     .filter(fruit::Column::Name.contains("Apple"))
     .exec(db)
     .await?;
-
 ```
 ### Save
 You can perform "insert or update" operation with ActiveModel, making it easy to compose transactional operations.
@@ -240,7 +239,6 @@ banana.name = Set("Banana Mongo".to_owned());
 
 // update, because primary key `id` is present
 let banana = banana.save(db).await?;
-
 ```
 ### Delete
 The same ActiveModel API consistent with insert and update.

@@ -78,7 +78,7 @@
 //! Let's have a quick walk through of the unique features of SeaORM.
 //!
 //! ### Entity
-//! You don't have to write this by hand! Entity files can be generated from an existing database.
+//! You don't have to write this by hand! Entity files can be generated from an existing database with `sea-orm-cli`.
 //! ```
 //! # #[cfg(feature = "macros")]
 //! # mod entities {
@@ -136,8 +136,8 @@
 //! ```
 //!
 //! ### Select
-//! SeaORM models one-to-many and many-to-many relationships at the Entity level,
-//! so you can express a many‑to‑many traversal via a junction table in a single method call without manually writing the joins.
+//! SeaORM models 1-N and M-N relationships at the Entity level,
+//! letting you traverse many-to-many links through a junction table in a single call.
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
@@ -285,7 +285,7 @@
 //!
 //! ### Update
 //! ActiveModel avoids race conditions by updating only the fields you've changed,
-//! never over‑writing untouched columns.
+//! never overwriting untouched columns.
 //! You can also craft complex bulk update queries with a fluent query building API.
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
@@ -308,7 +308,6 @@
 //!     .filter(fruit::Column::Name.contains("Apple"))
 //!     .exec(db)
 //!     .await?;
-//!
 //! # Ok(())
 //! # }
 //! ```
@@ -331,7 +330,6 @@
 //!
 //! // update, because primary key `id` is present
 //! let banana = banana.save(db).await?;
-//!
 //! # Ok(())
 //! # }
 //! ```
