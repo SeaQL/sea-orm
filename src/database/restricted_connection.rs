@@ -139,9 +139,18 @@ impl RestrictedConnection {
     }
 
     /// Returns `()` if the current user can execute / query the given SQL statement.
-    /// Returns `DbErr` otherwise.
+    /// Returns `DbErr::AccessDenied` otherwise.
     pub fn user_can_run<S: StatementBuilder>(&self, stmt: &S) -> Result<(), DbErr> {
         self.conn.rbac.user_can_run(self.user_id, stmt)
+    }
+
+    /// Returns true if the current user can perform action on resource
+    pub fn user_can<P, R>(&self, permission: P, resource: R) -> Result<bool, DbErr>
+    where
+        P: Into<PermissionRequest>,
+        R: Into<ResourceRequest>,
+    {
+        self.conn.rbac.user_can(self.user_id, permission, resource)
     }
 
     /// Get current user's role and associated permissions.
@@ -183,9 +192,18 @@ impl RestrictedTransaction {
     }
 
     /// Returns `()` if the current user can execute / query the given SQL statement.
-    /// Returns `DbErr` otherwise.
+    /// Returns `DbErr::AccessDenied` otherwise.
     pub fn user_can_run<S: StatementBuilder>(&self, stmt: &S) -> Result<(), DbErr> {
         self.rbac.user_can_run(self.user_id, stmt)
+    }
+
+    /// Returns true if the current user can perform action on resource
+    pub fn user_can<P, R>(&self, permission: P, resource: R) -> Result<bool, DbErr>
+    where
+        P: Into<PermissionRequest>,
+        R: Into<ResourceRequest>,
+    {
+        self.rbac.user_can(self.user_id, permission, resource)
     }
 }
 
@@ -388,6 +406,22 @@ impl RbacEngineMount {
         *inner = Some(engine);
     }
 
+    pub fn user_can<P, R>(&self, user_id: UserId, permission: P, resource: R) -> Result<bool, DbErr>
+    where
+        P: Into<PermissionRequest>,
+        R: Into<ResourceRequest>,
+    {
+        let permission = permission.into();
+        let resource = resource.into();
+        // There is nothing we can do if RwLock is poisoned.
+        let holder = self.inner.read().expect("RBAC Engine died");
+        // Constructor of this struct should ensure engine is not None.
+        let engine = holder.as_ref().expect("RBAC Engine not set");
+        engine
+            .user_can(user_id, permission, resource)
+            .map_err(map_err)
+    }
+
     pub fn user_can_run<S: StatementBuilder>(
         &self,
         user_id: UserId,
@@ -397,11 +431,11 @@ impl RbacEngineMount {
             Ok(audit) => audit,
             Err(err) => return Err(DbErr::RbacError(err.to_string())),
         };
+        // There is nothing we can do if RwLock is poisoned.
+        let holder = self.inner.read().expect("RBAC Engine died");
+        // Constructor of this struct should ensure engine is not None.
+        let engine = holder.as_ref().expect("RBAC Engine not set");
         for request in audit.requests {
-            // There is nothing we can do if RwLock is poisoned.
-            let holder = self.inner.read().expect("RBAC Engine died");
-            // Constructor of this struct should ensure engine is not None.
-            let engine = holder.as_ref().expect("RBAC Engine not set");
             let permission = || PermissionRequest {
                 action: request.access_type.as_str().to_owned(),
             };
@@ -413,19 +447,9 @@ impl RbacEngineMount {
                 .user_can(user_id, permission(), resource())
                 .map_err(map_err)?
             {
-                let r = resource();
                 return Err(DbErr::AccessDenied {
                     permission: permission().action.to_owned(),
-                    resource: format!(
-                        "{}{}{}",
-                        if let Some(schema) = &r.schema {
-                            schema
-                        } else {
-                            ""
-                        },
-                        if r.schema.is_some() { "." } else { "" },
-                        r.table
-                    ),
+                    resource: resource().to_string(),
                 });
             }
         }

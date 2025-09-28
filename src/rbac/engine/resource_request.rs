@@ -38,3 +38,19 @@ impl From<Resource> for ResourceRequest {
         }
     }
 }
+
+impl std::fmt::Display for ResourceRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}{}{}",
+            if let Some(schema) = &self.schema {
+                schema
+            } else {
+                ""
+            },
+            if self.schema.is_some() { "." } else { "" },
+            self.table
+        )
+    }
+}
