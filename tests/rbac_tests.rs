@@ -5,7 +5,8 @@ pub mod common;
 pub use common::{TestContext, bakery_chain::*, setup::*};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DbConn, DbErr, EntityName, EntityTrait, IntoActiveModel, NotSet,
-    QueryFilter, Set, TransactionTrait, entity::prelude::ChronoUtc,
+    QueryFilter, RestrictedConnection, RestrictedTransaction, Set, TransactionTrait,
+    entity::prelude::ChronoUtc,
 };
 
 #[sea_orm_macros::test]
@@ -112,10 +113,8 @@ async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
     let manager = RbacUserId(2);
     let public = RbacUserId(3);
 
-    {
+    async fn admin_create_bakery(db: RestrictedConnection) -> Result<(), DbErr> {
         // only admin can create bakery
-        let db = db.restricted_for(admin)?;
-
         let seaside_bakery = bakery::ActiveModel {
             name: Set("SeaSide Bakery".to_owned()),
             profit_margin: Set(10.2),
@@ -125,7 +124,10 @@ async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
         let bakery: Option<bakery::Model> = Bakery::find_by_id(res.last_insert_id).one(&db).await?;
 
         assert_eq!(bakery.unwrap().name, "SeaSide Bakery");
+        Ok(())
     }
+
+    admin_create_bakery(db.restricted_for(admin)?).await?;
 
     // manager / public can't create bakery
     for user in [manager, public] {
@@ -185,7 +187,7 @@ async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
         .await
         .expect("insert succeeds");
 
-        let txn = db.begin().await?;
+        let txn: RestrictedTransaction = db.begin().await?;
 
         baker::Entity::insert(baker::ActiveModel {
             name: Set("Master Baker".to_owned()),

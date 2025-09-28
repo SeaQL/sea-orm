@@ -113,7 +113,7 @@ macro_rules! build_query_stmt {
 
             #[cfg(feature = "rbac")]
             fn audit(&self) -> Result<QueryAccessAudit, AuditError> {
-                Err(AuditError::UnsupportedQuery)
+                AuditTrait::audit(self)
             }
         }
     };
@@ -161,7 +161,7 @@ macro_rules! build_type_stmt {
 
             #[cfg(feature = "rbac")]
             fn audit(&self) -> Result<QueryAccessAudit, AuditError> {
-                todo!("Audit not supported for {} yet", stringify!($stmt))
+                Err(AuditError::UnsupportedQuery)
             }
         }
     };
