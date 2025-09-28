@@ -113,7 +113,7 @@ macro_rules! build_query_stmt {
 
             #[cfg(feature = "rbac")]
             fn audit(&self) -> Result<QueryAccessAudit, AuditError> {
-                AuditTrait::audit(self)
+                Err(AuditError::UnsupportedQuery)
             }
         }
     };
