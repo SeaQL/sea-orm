@@ -62,20 +62,20 @@ impl SqlxSqliteConnector {
     #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let mut options = options;
-        let mut opt = options
+        let mut sqlx_opts = options
             .url
             .parse::<SqliteConnectOptions>()
             .map_err(sqlx_error_to_conn_err)?;
         if let Some(sqlcipher_key) = &options.sqlcipher_key {
-            opt = opt.pragma("key", sqlcipher_key.clone());
+            sqlx_opts = sqlx_opts.pragma("key", sqlcipher_key.clone());
         }
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
-            opt = opt.disable_statement_logging();
+            sqlx_opts = sqlx_opts.disable_statement_logging();
         } else {
-            opt = opt.log_statements(options.sqlx_logging_level);
+            sqlx_opts = sqlx_opts.log_statements(options.sqlx_logging_level);
             if options.sqlx_slow_statements_logging_level != LevelFilter::Off {
-                opt = opt.log_slow_statements(
+                sqlx_opts = sqlx_opts.log_slow_statements(
                     options.sqlx_slow_statements_logging_level,
                     options.sqlx_slow_statements_logging_threshold,
                 );
@@ -86,12 +86,16 @@ impl SqlxSqliteConnector {
             options.max_connections(1);
         }
 
+        if let Some(f) = &options.sqlite_opts_fn {
+            sqlx_opts = f(sqlx_opts);
+        }
+
         let pool = if options.connect_lazy {
-            options.sqlx_pool_options().connect_lazy_with(opt)
+            options.sqlx_pool_options().connect_lazy_with(sqlx_opts)
         } else {
             options
                 .sqlx_pool_options()
-                .connect_with(opt)
+                .connect_with(sqlx_opts)
                 .await
                 .map_err(sqlx_error_to_conn_err)?
         };
