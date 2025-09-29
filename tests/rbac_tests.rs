@@ -5,8 +5,7 @@ pub mod common;
 pub use common::{TestContext, bakery_chain::*, setup::*};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DbConn, DbErr, EntityName, EntityTrait, IntoActiveModel, NotSet,
-    QueryFilter, RestrictedConnection, RestrictedTransaction, Set, TransactionTrait,
-    entity::prelude::ChronoUtc,
+    QueryFilter, Set, TransactionTrait, entity::prelude::ChronoUtc,
 };
 
 #[sea_orm_macros::test]
@@ -106,9 +105,10 @@ async fn rbac_setup(db: &DbConn) -> Result<(), DbErr> {
 
 #[cfg(feature = "rbac")]
 async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
+    use sea_orm::{RestrictedConnection, RestrictedTransaction, rbac::RbacUserId};
+
     db.load_rbac().await?;
 
-    use sea_orm::rbac::RbacUserId;
     let admin = RbacUserId(1);
     let manager = RbacUserId(2);
     let public = RbacUserId(3);
