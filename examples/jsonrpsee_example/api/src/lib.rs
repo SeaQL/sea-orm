@@ -8,7 +8,8 @@ use jsonrpsee::types::error::ErrorObjectOwned;
 use jsonrpsee_example_service::sea_orm::{Database, DatabaseConnection};
 use jsonrpsee_example_service::{Mutation, Query};
 use log::info;
-use migration::{Migrator, MigratorTrait};
+use migration::{Migrator as MigrationMigrator, MigratorTrait as MigrationTrait};
+use seeder::{Migrator as SeederMigrator, MigratorTrait as SeederTrait};
 use simplelog::*;
 use std::fmt::Display;
 use std::net::SocketAddr;
@@ -111,7 +112,8 @@ async fn start() -> std::io::Result<()> {
 
     // create post table if not exists
     let conn = Database::connect(&db_url).await.unwrap();
-    Migrator::up(&conn, None).await.unwrap();
+    MigrationMigrator::up(&conn, None).await.unwrap();
+    SeederMigrator::up(&conn, None).await.unwrap();
 
     let server = ServerBuilder::default()
         .build(server_url.parse::<SocketAddr>().unwrap())
