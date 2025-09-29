@@ -27,19 +27,14 @@ uuid = { version = "1", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
 seaography = { version = "1.1", features = ["with-decimal", "with-chrono"] }
-async-graphql = { version = "7.0", features = [
-  "decimal",
-  "chrono",
-  "dataloader",
-  "dynamic-schema",
-] }
+async-graphql = { version = "7.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }
 async-graphql-axum = { version = "7.0" }
 lazy_static = { version = "1.4" }
 tower-service = { version = "0.3" }
 
 [dependencies.sea-orm]
-path = "../../"                                                               # remove this line in your own project
-version = "~1.1.16"                                                           # sea-orm version
+path = "../../" # remove this line in your own project
+version = "~1.1.16" # sea-orm version
 features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"]
 
 [[bin]]
