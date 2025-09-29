@@ -660,6 +660,7 @@ impl DbBackend {
         match self {
             Self::Postgres => true,
             Self::Sqlite if cfg!(feature = "sqlite-use-returning-for-3_35") => true,
+            Self::MySql if cfg!(feature = "mariadb-use-returning") => true,
             _ => false,
         }
     }
