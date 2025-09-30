@@ -165,13 +165,13 @@ where
         E: Related<R>,
         C: IntoCondition,
     {
-        let mut to = Some(E::to());
-        let via = E::via();
+        let mut to = None;
         let mut condition = condition.into_condition();
-        condition = condition.add(if let Some(via) = via {
+        condition = condition.add(if let Some(via) = E::via() {
+            to = Some(E::to());
             via
         } else {
-            to.take().expect("is Some")
+            E::to()
         });
         let mut subquery = R::find()
             .select_only()
