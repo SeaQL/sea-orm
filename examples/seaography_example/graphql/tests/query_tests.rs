@@ -4,8 +4,7 @@ use seaography::async_graphql;
 
 async fn schema() -> Schema {
     let database = Database::connect(
-        std::env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "sqlite://seaography_example/bakery.db".into()),
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://../bakery.db".into()),
     )
     .await
     .unwrap();
