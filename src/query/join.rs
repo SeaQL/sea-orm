@@ -171,7 +171,7 @@ where
         condition = condition.add(if let Some(via) = via {
             via
         } else {
-            to.take().unwrap()
+            to.take().expect("is Some")
         });
         let mut subquery = R::find()
             .select_only()
