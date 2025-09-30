@@ -808,6 +808,25 @@ pub trait QueryFilter: Sized {
     }
 
     /// Apply a where condition using the model's primary key
+    /// ```
+    /// # use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::{cake, fruit}};
+    /// assert_eq!(
+    ///     fruit::Entity::find()
+    ///         .left_join(cake::Entity)
+    ///         .belongs_to(&cake::Model {
+    ///             id: 12,
+    ///             name: "".into(),
+    ///         })
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     [
+    ///         "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
+    ///         "LEFT JOIN `cake` ON `fruit`.`cake_id` = `cake`.`id`",
+    ///         "WHERE `cake`.`id` = 12",
+    ///     ]
+    ///     .join(" ")
+    /// );
+    /// ```
     fn belongs_to<M>(mut self, model: &M) -> Self
     where
         M: ModelTrait,
@@ -819,7 +838,29 @@ pub trait QueryFilter: Sized {
         self
     }
 
-    /// Perform a check to determine table belongs to a Model through it's name alias
+    /// Like `belongs_to`, but via a table alias
+    /// ```
+    /// # use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::{cake, fruit}};
+    /// assert_eq!(
+    ///     fruit::Entity::find()
+    ///         .join_as(JoinType::LeftJoin, fruit::Relation::Cake.def(), "puff")
+    ///         .belongs_to_tbl_alias(
+    ///             &cake::Model {
+    ///                 id: 12,
+    ///                 name: "".into(),
+    ///             },
+    ///             "puff"
+    ///         )
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     [
+    ///         "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
+    ///         "LEFT JOIN `cake` AS `puff` ON `fruit`.`cake_id` = `puff`.`id`",
+    ///         "WHERE `puff`.`id` = 12",
+    ///     ]
+    ///     .join(" ")
+    /// );
+    /// ```
     fn belongs_to_tbl_alias<M>(mut self, model: &M, tbl_alias: &str) -> Self
     where
         M: ModelTrait,
