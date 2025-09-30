@@ -2,7 +2,7 @@ use dto::dto;
 use rocket::serde::json::Json;
 use rocket_okapi_example_service::{Mutation, Query};
 
-use sea_orm_rocket::Connection;
+use rocket_db_pools::Connection;
 
 use rocket_okapi::okapi::openapi3::OpenApi;
 
@@ -30,12 +30,12 @@ pub type DataResult<'a, T> =
 #[openapi(tag = "POST")]
 #[post("/", data = "<post_data>")]
 async fn create(
-    conn: Connection<'_, Db>,
+    conn: Connection<Db>,
     post_data: DataResult<'_, post::Model>,
 ) -> R<Option<String>> {
     let db = conn.into_inner();
     let form = post_data?.into_inner();
-    let cmd = Mutation::create_post(db, form);
+    let cmd = Mutation::create_post(&db, form);
     match cmd.await {
         Ok(_) => Ok(Json(Some("Post successfully added.".to_string()))),
         Err(e) => {
@@ -53,7 +53,7 @@ async fn create(
 #[openapi(tag = "POST")]
 #[post("/<id>", data = "<post_data>")]
 async fn update(
-    conn: Connection<'_, Db>,
+    conn: Connection<Db>,
     id: i32,
     post_data: DataResult<'_, post::Model>,
 ) -> R<Option<String>> {
@@ -61,7 +61,7 @@ async fn update(
 
     let form = post_data?.into_inner();
 
-    let cmd = Mutation::update_post_by_id(db, id, form);
+    let cmd = Mutation::update_post_by_id(&db, id, form);
     match cmd.await {
         Ok(_) => Ok(Json(Some("Post successfully updated.".to_string()))),
         Err(e) => {
@@ -79,7 +79,7 @@ async fn update(
 #[openapi(tag = "POST")]
 #[get("/?<page>&<posts_per_page>")]
 async fn list(
-    conn: Connection<'_, Db>,
+    conn: Connection<Db>,
     page: Option<u64>,
     posts_per_page: Option<u64>,
 ) -> R<dto::PostsDto> {
@@ -97,7 +97,7 @@ async fn list(
         return Err(m);
     }
 
-    let (posts, num_pages) = Query::find_posts_in_page(db, page, posts_per_page)
+    let (posts, num_pages) = Query::find_posts_in_page(&db, page, posts_per_page)
         .await
         .expect("Cannot find posts in page");
 
@@ -112,10 +112,10 @@ async fn list(
 /// # get post by Id
 #[openapi(tag = "POST")]
 #[get("/<id>")]
-async fn get_by_id(conn: Connection<'_, Db>, id: i32) -> R<Option<post::Model>> {
+async fn get_by_id(conn: Connection<Db>, id: i32) -> R<Option<post::Model>> {
     let db = conn.into_inner();
 
-    let post: Option<post::Model> = Query::find_post_by_id(db, id)
+    let post: Option<post::Model> = Query::find_post_by_id(&db, id)
         .await
         .expect("could not find post");
     Ok(Json(post))
@@ -124,10 +124,10 @@ async fn get_by_id(conn: Connection<'_, Db>, id: i32) -> R<Option<post::Model>> 
 /// # delete post by Id
 #[openapi(tag = "POST")]
 #[delete("/<id>")]
-async fn delete(conn: Connection<'_, Db>, id: i32) -> R<Option<String>> {
+async fn delete(conn: Connection<Db>, id: i32) -> R<Option<String>> {
     let db = conn.into_inner();
 
-    let cmd = Mutation::delete_post(db, id);
+    let cmd = Mutation::delete_post(&db, id);
     match cmd.await {
         Ok(_) => Ok(Json(Some("Post successfully deleted.".to_string()))),
         Err(e) => {
@@ -144,10 +144,10 @@ async fn delete(conn: Connection<'_, Db>, id: i32) -> R<Option<String>> {
 /// # delete all posts
 #[openapi(tag = "POST")]
 #[delete("/")]
-async fn destroy(conn: Connection<'_, Db>) -> R<Option<String>> {
+async fn destroy(conn: Connection<Db>) -> R<Option<String>> {
     let db = conn.into_inner();
 
-    let cmd = Mutation::delete_all_posts(db);
+    let cmd = Mutation::delete_all_posts(&db);
 
     match cmd.await {
         Ok(_) => Ok(Json(Some(

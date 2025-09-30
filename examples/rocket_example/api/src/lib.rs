@@ -12,7 +12,7 @@ use rocket_example_service::{Mutation, Query};
 use serde_json::json;
 
 use migration::MigratorTrait;
-use sea_orm_rocket::{Connection, Database};
+use rocket_db_pools::{Connection, Database};
 
 mod pool;
 use pool::Db;
@@ -28,12 +28,12 @@ async fn new() -> Template {
 }
 
 #[post("/", data = "<post_form>")]
-async fn create(conn: Connection<'_, Db>, post_form: Form<post::Model>) -> Flash<Redirect> {
+async fn create(conn: Connection<Db>, post_form: Form<post::Model>) -> Flash<Redirect> {
     let db = conn.into_inner();
 
     let form = post_form.into_inner();
 
-    Mutation::create_post(db, form)
+    Mutation::create_post(&db, form)
         .await
         .expect("could not insert post");
 
@@ -42,7 +42,7 @@ async fn create(conn: Connection<'_, Db>, post_form: Form<post::Model>) -> Flash
 
 #[post("/<id>", data = "<post_form>")]
 async fn update(
-    conn: Connection<'_, Db>,
+    conn: Connection<Db>,
     id: i32,
     post_form: Form<post::Model>,
 ) -> Flash<Redirect> {
@@ -50,7 +50,7 @@ async fn update(
 
     let form = post_form.into_inner();
 
-    Mutation::update_post_by_id(db, id, form)
+    Mutation::update_post_by_id(&db, id, form)
         .await
         .expect("could not update post");
 
@@ -59,7 +59,7 @@ async fn update(
 
 #[get("/?<page>&<posts_per_page>")]
 async fn list(
-    conn: Connection<'_, Db>,
+    conn: Connection<Db>,
     page: Option<u64>,
     posts_per_page: Option<u64>,
     flash: Option<FlashMessage<'_>>,
@@ -73,7 +73,7 @@ async fn list(
         panic!("Page number cannot be zero");
     }
 
-    let (posts, num_pages) = Query::find_posts_in_page(db, page, posts_per_page)
+    let (posts, num_pages) = Query::find_posts_in_page(&db, page, posts_per_page)
         .await
         .expect("Cannot find posts in page");
 
@@ -90,10 +90,10 @@ async fn list(
 }
 
 #[get("/<id>")]
-async fn edit(conn: Connection<'_, Db>, id: i32) -> Template {
+async fn edit(conn: Connection<Db>, id: i32) -> Template {
     let db = conn.into_inner();
 
-    let post: Option<post::Model> = Query::find_post_by_id(db, id)
+    let post: Option<post::Model> = Query::find_post_by_id(&db, id)
         .await
         .expect("could not find post");
 
@@ -106,10 +106,10 @@ async fn edit(conn: Connection<'_, Db>, id: i32) -> Template {
 }
 
 #[delete("/<id>")]
-async fn delete(conn: Connection<'_, Db>, id: i32) -> Flash<Redirect> {
+async fn delete(conn: Connection<Db>, id: i32) -> Flash<Redirect> {
     let db = conn.into_inner();
 
-    Mutation::delete_post(db, id)
+    Mutation::delete_post(&db, id)
         .await
         .expect("could not delete post");
 
@@ -117,10 +117,10 @@ async fn delete(conn: Connection<'_, Db>, id: i32) -> Flash<Redirect> {
 }
 
 #[delete("/")]
-async fn destroy(conn: Connection<'_, Db>) -> Result<(), rocket::response::Debug<String>> {
+async fn destroy(conn: Connection<Db>) -> Result<(), rocket::response::Debug<String>> {
     let db = conn.into_inner();
 
-    Mutation::delete_all_posts(db)
+    Mutation::delete_all_posts(&db)
         .await
         .map_err(|e| e.to_string())?;
 

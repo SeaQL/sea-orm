@@ -5,7 +5,7 @@ use rocket::fairing::{self, AdHoc};
 use rocket::{Build, Rocket};
 
 use migration::MigratorTrait;
-use sea_orm_rocket::Database;
+use rocket_db_pools::Database;
 
 use rocket_okapi::mount_endpoints_and_merged_docs;
 use rocket_okapi::okapi::openapi3::OpenApi;
