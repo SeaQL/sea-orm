@@ -3,10 +3,11 @@ use sea_orm::Database;
 use seaography::async_graphql;
 
 async fn schema() -> Schema {
-    let database =
-        Database::connect(std::env::var("DATABASE_URL").expect("Please provide `DATABASE_URL`"))
-            .await
-            .unwrap();
+    let database = Database::connect(
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "seaography_example/bakery.db".into()),
+    )
+    .await
+    .unwrap();
     sea_orm_seaography_example::query_root::schema(database, None, None).unwrap()
 }
 

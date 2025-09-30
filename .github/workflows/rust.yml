@@ -253,28 +253,28 @@ jobs:
       matrix:
         path:
           [
-            examples/actix_example,
-            examples/axum_example,
-            examples/basic,
-            examples/graphql_example,
-            examples/jsonrpsee_example,
-            examples/loco_example,
-            examples/loco_starter,
-            examples/loco_seaography,
-            examples/poem_example,
-            examples/proxy_gluesql_example,
-            examples/react_admin,
-            examples/rocket_example,
-            examples/rocket_okapi_example,
-            examples/salvo_example,
-            examples/seaography_example,
-            examples/tonic_example,
+            actix_example,
+            axum_example,
+            basic,
+            graphql_example,
+            jsonrpsee_example,
+            loco_example,
+            loco_starter,
+            loco_seaography,
+            poem_example,
+            proxy_gluesql_example,
+            react_admin,
+            rocket_example,
+            rocket_okapi_example,
+            salvo_example,
+            seaography_example,
+            tonic_example,
           ]
     steps:
       - uses: actions/checkout@v4
       - if: ${{ contains(matrix.path, 'tonic_example') }}
         uses: arduino/setup-protoc@v3
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
       - uses: actions/cache@v4
@@ -285,12 +285,12 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-examples-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
-      - uses: dtolnay/rust-toolchain@stable
-      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo update --manifest-path {}
-      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {} --no-run
-      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
-      - run: ${{'! '}}${{ '[ -d "' }}${{ matrix.path }}${{ '/service" ]' }} || find ${{ matrix.path }}/service -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {} --features mock
+      - working-directory: ./examples/
+        run: |
+          find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
+          find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo update --manifest-path {}
+          find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
+          ${{'! '}}${{ '[ -d "' }}${{ matrix.path }}${{ '/service" ]' }} || find ${{ matrix.path }}/service -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {} --features mock
 
   issues-matrix:
     name: Issues Matrix
