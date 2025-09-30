@@ -97,7 +97,7 @@ where
                 ColumnType::Enum { name, .. } => name,
                 _ => unreachable!(),
             };
-            db.execute(Type::drop().name(SeaRc::clone(name)).if_exists().cascade())
+            db.execute(Type::drop().name(name.clone()).if_exists().cascade())
                 .await?;
         }
     }

@@ -82,7 +82,7 @@ where
                 });
             }
             let condition = self.apply_filter(values, |c, v| {
-                let exp = Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c)));
+                let exp = Expr::col((self.table.clone(), c.clone()));
                 if self.sort_asc { exp.gt(v) } else { exp.lt(v) }
             });
             self.query.cond_where(condition);
@@ -96,7 +96,7 @@ where
                 });
             }
             let condition = self.apply_filter(values, |c, v| {
-                let exp = Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c)));
+                let exp = Expr::col((self.table.clone(), c.clone()));
                 if self.sort_asc { exp.lt(v) } else { exp.gt(v) }
             });
             self.query.cond_where(condition);
@@ -114,28 +114,20 @@ where
             (Identity::Binary(c1, c2), ValueTuple::Two(v1, v2)) => Condition::any()
                 .add(
                     Condition::all()
-                        .add(
-                            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c1))).eq(v1.clone()),
-                        )
+                        .add(Expr::col((self.table.clone(), c1.clone())).eq(v1.clone()))
                         .add(f(c2, v2)),
                 )
                 .add(f(c1, v1)),
             (Identity::Ternary(c1, c2, c3), ValueTuple::Three(v1, v2, v3)) => Condition::any()
                 .add(
                     Condition::all()
-                        .add(
-                            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c1))).eq(v1.clone()),
-                        )
-                        .add(
-                            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c2))).eq(v2.clone()),
-                        )
+                        .add(Expr::col((self.table.clone(), c1.clone())).eq(v1.clone()))
+                        .add(Expr::col((self.table.clone(), c2.clone())).eq(v2.clone()))
                         .add(f(c3, v3)),
                 )
                 .add(
                     Condition::all()
-                        .add(
-                            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c1))).eq(v1.clone()),
-                        )
+                        .add(Expr::col((self.table.clone(), c1.clone())).eq(v1.clone()))
                         .add(f(c2, v2)),
                 )
                 .add(f(c1, v1)),
@@ -176,7 +168,7 @@ where
                                     // Construct a equal expression,
                                     // except for the last one being greater than or less than expression
                                     let expr = if i != (n - 1) {
-                                        Expr::col((SeaRc::clone(&self.table), SeaRc::clone(col)))
+                                        Expr::col((self.table.clone(), col.clone()))
                                             .eq(val)
                                     } else {
                                         f(col, val)
@@ -245,8 +237,8 @@ where
         let ord = self.resolve_sort_order();
 
         let query = &mut self.query;
-        let order = |query: &mut SelectStatement, col| {
-            query.order_by((SeaRc::clone(&self.table), SeaRc::clone(col)), ord.clone());
+        let order = |query: &mut SelectStatement, col: &DynIden| {
+            query.order_by((self.table.clone(), col.clone()), ord.clone());
         };
         match &self.order_columns {
             Identity::Unary(c1) => {

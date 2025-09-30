@@ -432,7 +432,7 @@ where
             }
         }
         _ => match col_type.get_enum_name() {
-            Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
+            Some(enum_name) => f(expr, enum_name.clone(), col_type),
             None => expr,
         },
     }

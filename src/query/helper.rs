@@ -407,7 +407,7 @@ pub trait QuerySelect: Sized {
         I: IntoIden,
     {
         let alias = alias.into_iden();
-        rel.to_tbl = rel.to_tbl.alias(SeaRc::clone(&alias));
+        rel.to_tbl = rel.to_tbl.alias(alias.clone());
         self.query().join(join, rel.to_tbl.clone(), rel);
         self
     }
@@ -420,7 +420,7 @@ pub trait QuerySelect: Sized {
         I: IntoIden,
     {
         let alias = alias.into_iden();
-        rel.from_tbl = rel.from_tbl.alias(SeaRc::clone(&alias));
+        rel.from_tbl = rel.from_tbl.alias(alias.clone());
         self.query().join(join, rel.from_tbl.clone(), rel);
         self
     }
@@ -882,10 +882,8 @@ pub(crate) fn join_tbl_on_condition(
 ) -> Condition {
     let mut cond = Condition::all();
     for (owner_key, foreign_key) in owner_keys.into_iter().zip(foreign_keys.into_iter()) {
-        cond = cond.add(
-            Expr::col((SeaRc::clone(&from_tbl), owner_key))
-                .equals((SeaRc::clone(&to_tbl), foreign_key)),
-        );
+        cond = cond
+            .add(Expr::col((from_tbl.clone(), owner_key)).equals((to_tbl.clone(), foreign_key)));
     }
     cond
 }

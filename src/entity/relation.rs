@@ -3,7 +3,7 @@ use crate::{
 };
 use core::marker::PhantomData;
 use sea_query::{
-    Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoIden, JoinType, SeaRc,
+    Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoIden, JoinType,
     TableForeignKey, TableRef,
 };
 use std::{fmt::Debug, sync::Arc};
@@ -83,9 +83,8 @@ pub struct RelationDef {
 /// ## Examples
 ///
 /// ```
-/// use sea_orm::sea_query::*;
 /// use sea_orm::tests_cfg::{cake, fruit};
-/// use sea_orm::*;
+/// use sea_orm::{entity::*, sea_query::*};
 ///
 /// let query = Query::select()
 ///     .from(fruit::Entity)
@@ -125,8 +124,8 @@ impl From<RelationDef> for Condition {
         };
 
         condition = condition.add(join_tbl_on_condition(
-            SeaRc::clone(from_tbl),
-            SeaRc::clone(to_tbl),
+            from_tbl.clone(),
+            to_tbl.clone(),
             owner_keys,
             foreign_keys,
         ));

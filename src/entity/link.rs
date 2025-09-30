@@ -1,5 +1,5 @@
 use crate::{EntityTrait, QuerySelect, RelationDef, Select, join_tbl_on_condition};
-use sea_query::{Alias, Condition, IntoIden, JoinType, SeaRc};
+use sea_query::{Condition, IntoIden, JoinType};
 
 /// Same as [RelationDef]
 pub type LinkDef = RelationDef;
@@ -19,22 +19,22 @@ pub trait Linked {
     fn find_linked(&self) -> Select<Self::ToEntity> {
         let mut select = Select::new();
         for (i, mut rel) in self.link().into_iter().rev().enumerate() {
-            let from_tbl = Alias::new(format!("r{i}")).into_iden();
+            let from_tbl = format!("r{i}").into_iden();
             let to_tbl = if i > 0 {
-                Alias::new(format!("r{}", i - 1)).into_iden()
+                format!("r{}", i - 1).into_iden()
             } else {
                 rel.to_tbl.sea_orm_table().clone()
             };
             let table_ref = rel.from_tbl;
 
             let mut condition = Condition::all().add(join_tbl_on_condition(
-                SeaRc::clone(&from_tbl),
-                SeaRc::clone(&to_tbl),
+                from_tbl.clone(),
+                to_tbl.clone(),
                 rel.from_col,
                 rel.to_col,
             ));
             if let Some(f) = rel.on_condition.take() {
-                condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
+                condition = condition.add(f(from_tbl.clone(), to_tbl.clone()));
             }
 
             select
