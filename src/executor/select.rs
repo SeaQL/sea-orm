@@ -714,6 +714,28 @@ where
     }
 
     /// Consolidate query result by first / second model depending on join topology
+    /// ```
+    /// # use sea_orm::{tests_cfg::*, *};
+    /// # async fn function(db: &DbConn) -> Result<(), DbErr> {
+    /// // fruit -> cake -> filling
+    /// let items: Vec<(fruit::Model, Vec<(cake::Model, Vec<filling::Model>)>)> = fruit::Entity::find()
+    ///     .find_also_related(cake::Entity)
+    ///     .and_also_related(filling::Entity)
+    ///     .consolidate()
+    ///     .all(db)
+    ///     .await?;
+    ///
+    /// // cake -> fruit
+    /// //      -> filling
+    /// let items: Vec<(cake::Model, Vec<fruit::Model>, Vec<filling::Model>)> = cake::Entity::find()
+    ///     .find_also_related(fruit::Entity)
+    ///     .find_also_related(filling::Entity)
+    ///     .consolidate()
+    ///     .all(db)
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn consolidate(self) -> SelectThreeMany<E, F, G, TOP> {
         SelectThreeMany {
             query: self.query,

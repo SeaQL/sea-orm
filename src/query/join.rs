@@ -1,10 +1,10 @@
 use crate::{
-    ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QuerySelect, QueryTrait, Related,
-    Select, SelectA, SelectB, SelectThree, SelectTwo, SelectTwoMany, TopologyChain, TopologyStar,
-    join_tbl_on_condition,
+    ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QueryFilter, QuerySelect, QueryTrait,
+    Related, Select, SelectA, SelectB, SelectThree, SelectTwo, SelectTwoMany, TopologyChain,
+    TopologyStar, join_tbl_on_condition,
 };
 pub use sea_query::JoinType;
-use sea_query::{Condition, Expr, IntoIden, SelectExpr};
+use sea_query::{Condition, Expr, IntoCondition, IntoIden, SelectExpr};
 
 impl<E> Select<E>
 where
@@ -124,6 +124,65 @@ where
                 window: None,
             });
         }
+        self
+    }
+
+    /// Filter by condition on the related Entity. Uses `EXISTS` SQL statement under the hood.
+    /// ```
+    /// # use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::{cake, fruit, filling}};
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .has_related(fruit::Entity, fruit::Column::Name.eq("Mango"))
+    ///         .build(DbBackend::Sqlite)
+    ///         .to_string(),
+    ///     [
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
+    ///         r#"WHERE EXISTS(SELECT 1 FROM "fruit""#,
+    ///         r#"WHERE "fruit"."name" = 'Mango'"#,
+    ///         r#"AND "cake"."id" = "fruit"."cake_id")"#,
+    ///     ]
+    ///     .join(" ")
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .has_related(filling::Entity, filling::Column::Name.eq("Marmalade"))
+    ///         .build(DbBackend::Sqlite)
+    ///         .to_string(),
+    ///     [
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
+    ///         r#"WHERE EXISTS(SELECT 1 FROM "filling""#,
+    ///         r#"INNER JOIN "cake_filling" ON "cake_filling"."filling_id" = "filling"."id""#,
+    ///         r#"WHERE "filling"."name" = 'Marmalade'"#,
+    ///         r#"AND "cake"."id" = "cake_filling"."cake_id")"#,
+    ///     ]
+    ///     .join(" ")
+    /// );
+    /// ```
+    pub fn has_related<R, C>(mut self, _: R, condition: C) -> Self
+    where
+        R: EntityTrait,
+        E: Related<R>,
+        C: IntoCondition,
+    {
+        let mut to = Some(E::to());
+        let via = E::via();
+        let mut condition = condition.into_condition();
+        condition = condition.add(if let Some(via) = via {
+            via
+        } else {
+            to.take().unwrap()
+        });
+        let mut subquery = R::find()
+            .select_only()
+            .expr(Expr::cust("1"))
+            .filter(condition)
+            .into_query();
+        if let Some(to) = to {
+            // join the junction table
+            subquery.inner_join(to.from_tbl.clone(), to);
+        }
+        self.query.cond_where(Expr::exists(subquery));
         self
     }
 }
