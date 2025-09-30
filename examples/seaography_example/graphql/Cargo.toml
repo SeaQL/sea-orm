@@ -1,27 +1,19 @@
 [package]
+edition = "2021"
 name = "sea-orm-seaography-example"
 version = "0.1.0"
-edition = "2024"
-rust-version = "1.85.0"
 
 [dependencies]
-poem = { version = "3.0" }
-async-graphql = { version = "7.0.17" }
-async-graphql-poem = { version = "7.0" }
+axum = { version = "0.7" }
+async-graphql-axum = { version = "7.0" }
 dotenv = "0.15.0"
+sea-orm = { version = "~2.0.0-rc", features = ["sqlx-sqlite", "runtime-async-std-native-tls", "seaography"] }
 tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
 tracing = { version = "0.1.37" }
 tracing-subscriber = { version = "0.3.17" }
 
-[dependencies.sea-orm]
-path = "../../../" # remove this line in your own project
-version = "~2.0.0-rc.9" # sea-orm version
-features = ["sqlx-sqlite", "runtime-async-std-native-tls", "seaography"]
-
 [dependencies.seaography]
-version = "~2.0.0-rc" # seaography version
-git = "https://github.com/SeaQL/seaography.git"
-branch = "main"
+version = "~2.0.0-rc.2" # seaography version
 features = ["with-decimal", "with-chrono"]
 
 [dev-dependencies]
@@ -29,7 +21,3 @@ serde_json = { version = "1.0.103" }
 
 [workspace]
 members = []
-
-[patch.crates-io]
-sea-orm = { path = "../../../" }
-sea-orm-migration = { path = "../../../sea-orm-migration" }

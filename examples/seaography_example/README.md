@@ -8,13 +8,15 @@
 |:--:| 
 | The Bakery schema |
 
-## Specify a database url
+## Running the project
 
-```
+Specify a database url
+
+```sh
 export DATABASE_URL="sqlite://../bakery.db"
 ```
 
-## Running the project
+Then, run
 
 ```sh
 cd graphql
@@ -22,6 +24,40 @@ cargo run
 ```
 
 ## Run some queries
+
+### Find chocolate cakes and know where to buy them
+
+```graphql
+{
+  cake(filters: { name: { contains: "Chocolate" } }) {
+    nodes {
+      name
+      price
+      bakery {
+        name
+      }
+    }
+  }
+}
+```
+
+### Find all cakes baked by Alice
+
+```graphql
+{
+  cake(having: { baker: { name: { eq: "Alice" } } }) {
+    nodes {
+      name
+      price
+      baker {
+        nodes {
+          name
+        }
+      }
+    }
+  }
+}
+```
 
 ### Bakery -> Cake -> Baker
 
@@ -46,23 +82,6 @@ cargo run
 }
 ```
 
-### List gluten-free cakes and know where to buy them
-
-```graphql
-{
-  cake(filters: { glutenFree: { eq: 1 } }) {
-    nodes {
-      name
-      price
-      glutenFree
-      bakery {
-        name
-      }
-    }
-  }
-}
-```
-
 ## Starting from scratch
 
 ### Setup the Database
@@ -77,13 +96,18 @@ cargo run
 ### Install Seaography
 
 ```sh
-cargo install seaography-cli@^1.1.3
+cargo install sea-orm-cli@^2.0.0-rc
+cargo install seaography-cli@^2.0.0-rc
 ```
 
 ### Generate GraphQL project
 
 ```sh
+export DATABASE_URL="sqlite://bakery.db"
+```
+
+```sh
 rm -rf graphql # this entire folder is generated
 sea-orm-cli generate entity --output-dir graphql/src/entities --seaography
-seaography-cli graphql graphql/src/entities $DATABASE_URL sea-orm-seaography-example
+seaography-cli --framework axum graphql graphql/src/entities $DATABASE_URL sea-orm-seaography-example
 ```

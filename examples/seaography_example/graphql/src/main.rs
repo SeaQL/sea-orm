@@ -1,16 +1,20 @@
-use async_graphql::http::{GraphQLPlaygroundConfig, playground_source};
-use async_graphql_poem::GraphQL;
+use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
+use async_graphql_axum::GraphQL;
+use axum::{
+    response::{self, IntoResponse},
+    routing::get,
+    Router,
+};
 use dotenv::dotenv;
-use poem::{IntoResponse, Route, Server, get, handler, listener::TcpListener, web::Html};
 use sea_orm::Database;
 use seaography::{async_graphql, lazy_static};
 use std::env;
+use tokio::net::TcpListener;
 
 lazy_static::lazy_static! { static ref URL : String = env :: var ("URL") . unwrap_or ("localhost:8000" . into ()) ; static ref ENDPOINT : String = env :: var ("ENDPOINT") . unwrap_or ("/" . into ()) ; static ref DATABASE_URL : String = env :: var ("DATABASE_URL") . expect ("DATABASE_URL environment variable not set") ; static ref DEPTH_LIMIT : Option < usize > = env :: var ("DEPTH_LIMIT") . map_or (None , | data | Some (data . parse () . expect ("DEPTH_LIMIT is not a number"))) ; static ref COMPLEXITY_LIMIT : Option < usize > = env :: var ("COMPLEXITY_LIMIT") . map_or (None , | data | { Some (data . parse () . expect ("COMPLEXITY_LIMIT is not a number")) }) ; }
 
-#[handler]
-async fn graphql_playground() -> impl IntoResponse {
-    Html(playground_source(GraphQLPlaygroundConfig::new(&ENDPOINT)))
+async fn graphiql() -> impl IntoResponse {
+    response::Html(playground_source(GraphQLPlaygroundConfig::new(&*ENDPOINT)))
 }
 
 #[tokio::main]
@@ -26,13 +30,9 @@ async fn main() {
     let schema =
         sea_orm_seaography_example::query_root::schema(database, *DEPTH_LIMIT, *COMPLEXITY_LIMIT)
             .unwrap();
-    let app = Route::new().at(
-        &*ENDPOINT,
-        get(graphql_playground).post(GraphQL::new(schema)),
-    );
+    let app = Router::new().route("/", get(graphiql).post_service(GraphQL::new(schema)));
     println!("Visit GraphQL Playground at http://{}", *URL);
-    Server::new(TcpListener::bind(&*URL))
-        .run(app)
+    axum::serve(TcpListener::bind(&*URL).await.unwrap(), app)
         .await
-        .expect("Fail to start web server");
+        .unwrap();
 }

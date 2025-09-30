@@ -164,6 +164,16 @@ impl MigrationTrait for Migration {
         };
         CakeBaker::insert(rel).exec(db).await?;
         let rel = cake_baker::ActiveModel {
+            cake_id: Set(cheese_1),
+            baker_id: Set(bob),
+        };
+        CakeBaker::insert(rel).exec(db).await?;
+        let rel = cake_baker::ActiveModel {
+            cake_id: Set(cheese_2),
+            baker_id: Set(alice),
+        };
+        CakeBaker::insert(rel).exec(db).await?;
+        let rel = cake_baker::ActiveModel {
             cake_id: Set(cheese_2),
             baker_id: Set(bob),
         };
