@@ -29,10 +29,7 @@ pub type DataResult<'a, T> =
 /// # Add a new post
 #[openapi(tag = "POST")]
 #[post("/", data = "<post_data>")]
-async fn create(
-    conn: Connection<Db>,
-    post_data: DataResult<'_, post::Model>,
-) -> R<Option<String>> {
+async fn create(conn: Connection<Db>, post_data: DataResult<'_, post::Model>) -> R<Option<String>> {
     let db = conn.into_inner();
     let form = post_data?.into_inner();
     let cmd = Mutation::create_post(&db, form);

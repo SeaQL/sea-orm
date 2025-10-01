@@ -41,11 +41,7 @@ async fn create(conn: Connection<Db>, post_form: Form<post::Model>) -> Flash<Red
 }
 
 #[post("/<id>", data = "<post_form>")]
-async fn update(
-    conn: Connection<Db>,
-    id: i32,
-    post_form: Form<post::Model>,
-) -> Flash<Redirect> {
+async fn update(conn: Connection<Db>, id: i32, post_form: Form<post::Model>) -> Flash<Redirect> {
     let db = conn.into_inner();
 
     let form = post_form.into_inner();
