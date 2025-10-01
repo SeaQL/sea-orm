@@ -63,9 +63,9 @@ curl --location --request POST 'http://127.0.0.1:8000' \
 
 ```
 
-Run mock test on the service logic crate:
+Run tests on the service logic crate:
 
 ```bash
 cd service
-cargo test --features mock
+cargo test
 ```

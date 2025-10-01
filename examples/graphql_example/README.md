@@ -12,11 +12,11 @@
 
 1. Visit [localhost:3000/api/graphql](http://localhost:3000/api/graphql) in browser
 
-Run mock test on the service logic crate:
+Run tests on the service logic crate:
 
 ```bash
 cd service
-cargo test --features mock
+cargo test
 ```
 
 Run migration:

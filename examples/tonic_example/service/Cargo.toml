@@ -16,16 +16,9 @@ features = [
     "debug-print",
     "runtime-tokio-rustls",
     # "sqlx-mysql",
-    "sqlx-postgres",
-    # "sqlx-sqlite",
+    # "sqlx-postgres",
+    "sqlx-sqlite",
 ]
 
 [dev-dependencies]
 tokio = { version = "1.20.0", features = ["macros", "rt"] }
-
-[features]
-mock = ["sea-orm/mock"]
-
-[[test]]
-name = "mock"
-required-features = ["mock"]
