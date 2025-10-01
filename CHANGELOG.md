@@ -343,7 +343,7 @@ assert_eq!(
 ```
 * Added `Select::has_related`
 ```rust
-// cake -> fruit
+// cake -> fruit: find all cakes containing mango
 assert_eq!(
     cake::Entity::find()
         .has_related(fruit::Entity, fruit::Column::Name.eq("Mango"))
@@ -357,7 +357,7 @@ assert_eq!(
     ]
     .join(" ")
 );
-// cake -> cake_filling -> filling
+// cake -> cake_filling -> filling: find all cakes with orange fillings
 assert_eq!(
     cake::Entity::find()
         .has_related(filling::Entity, filling::Column::Name.eq("Marmalade"))

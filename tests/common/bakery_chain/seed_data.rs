@@ -98,3 +98,153 @@ pub async fn init_1(ctx: &TestContext, link: bool) {
         .expect("insert succeeds");
     }
 }
+
+pub async fn init_2(ctx: &TestContext) -> Result<(), DbErr> {
+    let db = &ctx.db;
+
+    let bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    };
+    let sea = Bakery::insert(bakery).exec(db).await?.last_insert_id;
+
+    let bakery = bakery::ActiveModel {
+        name: Set("LakeSide Bakery".to_owned()),
+        profit_margin: Set(5.8),
+        ..Default::default()
+    };
+    let lake = Bakery::insert(bakery).exec(db).await?.last_insert_id;
+
+    let alice = baker::ActiveModel {
+        name: Set("Alice".to_owned()),
+        contact_details: Set("+44 15273388".into()),
+        bakery_id: Set(Some(sea)),
+        ..Default::default()
+    };
+    let alice = Baker::insert(alice).exec(db).await?.last_insert_id;
+
+    let bob = baker::ActiveModel {
+        name: Set("Bob".to_owned()),
+        contact_details: Set("+852 12345678".into()),
+        bakery_id: Set(Some(lake)),
+        ..Default::default()
+    };
+    let bob = Baker::insert(bob).exec(db).await?.last_insert_id;
+
+    let cake = cake::ActiveModel {
+        name: Set("Chocolate Cake".to_owned()),
+        price: Set("10.25".parse().unwrap()),
+        gluten_free: Set(false),
+        bakery_id: Set(Some(sea)),
+        ..Default::default()
+    };
+    let choco = Cake::insert(cake).exec(db).await?.last_insert_id;
+
+    let cake = cake::ActiveModel {
+        name: Set("Double Chocolate".to_owned()),
+        price: Set("12.5".parse().unwrap()),
+        gluten_free: Set(false),
+        bakery_id: Set(Some(sea)),
+        ..Default::default()
+    };
+    let double_1 = Cake::insert(cake.clone()).exec(db).await?.last_insert_id;
+
+    let mut cake = cake::ActiveModel {
+        name: Set("Lemon Cake".to_owned()),
+        price: Set("8.8".parse().unwrap()),
+        gluten_free: Set(true),
+        bakery_id: Set(Some(sea)),
+        ..Default::default()
+    };
+    let lemon_1 = Cake::insert(cake.clone()).exec(db).await?.last_insert_id;
+    cake.bakery_id = Set(Some(lake));
+    let _lemon_2 = Cake::insert(cake).exec(db).await?.last_insert_id;
+
+    let cake = cake::ActiveModel {
+        name: Set("Strawberry Cake".to_owned()),
+        price: Set("9.9".parse().unwrap()),
+        gluten_free: Set(false),
+        bakery_id: Set(Some(lake)),
+        ..Default::default()
+    };
+    let straw_2 = Cake::insert(cake).exec(db).await?.last_insert_id;
+
+    let cake = cake::ActiveModel {
+        name: Set("Orange Cake".to_owned()),
+        price: Set("6.5".parse().unwrap()),
+        gluten_free: Set(true),
+        bakery_id: Set(Some(lake)),
+        ..Default::default()
+    };
+    let orange = Cake::insert(cake).exec(db).await?.last_insert_id;
+
+    let mut cake = cake::ActiveModel {
+        name: Set("New York Cheese".to_owned()),
+        price: Set("12.5".parse().unwrap()),
+        gluten_free: Set(false),
+        bakery_id: Set(Some(sea)),
+        ..Default::default()
+    };
+    let cheese_1 = Cake::insert(cake.clone()).exec(db).await?.last_insert_id;
+    cake.bakery_id = Set(Some(lake));
+    let cheese_2 = Cake::insert(cake).exec(db).await?.last_insert_id;
+
+    let rel = cakes_bakers::ActiveModel {
+        cake_id: Set(choco),
+        baker_id: Set(alice),
+    };
+    CakesBakers::insert(rel).exec(db).await?;
+
+    let rel = cakes_bakers::ActiveModel {
+        cake_id: Set(double_1),
+        baker_id: Set(alice),
+    };
+    CakesBakers::insert(rel).exec(db).await?;
+
+    let rel = cakes_bakers::ActiveModel {
+        cake_id: Set(lemon_1),
+        baker_id: Set(alice),
+    };
+    CakesBakers::insert(rel).exec(db).await?;
+    let rel = cakes_bakers::ActiveModel {
+        cake_id: Set(lemon_1),
+        baker_id: Set(bob),
+    };
+    CakesBakers::insert(rel).exec(db).await?;
+
+    let rel = cakes_bakers::ActiveModel {
+        cake_id: Set(straw_2),
+        baker_id: Set(bob),
+    };
+    CakesBakers::insert(rel).exec(db).await?;
+
+    let rel = cakes_bakers::ActiveModel {
+        cake_id: Set(orange),
+        baker_id: Set(bob),
+    };
+    CakesBakers::insert(rel).exec(db).await?;
+
+    let rel = cakes_bakers::ActiveModel {
+        cake_id: Set(cheese_1),
+        baker_id: Set(alice),
+    };
+    CakesBakers::insert(rel).exec(db).await?;
+    let rel = cakes_bakers::ActiveModel {
+        cake_id: Set(cheese_1),
+        baker_id: Set(bob),
+    };
+    CakesBakers::insert(rel).exec(db).await?;
+    let rel = cakes_bakers::ActiveModel {
+        cake_id: Set(cheese_2),
+        baker_id: Set(alice),
+    };
+    CakesBakers::insert(rel).exec(db).await?;
+    let rel = cakes_bakers::ActiveModel {
+        cake_id: Set(cheese_2),
+        baker_id: Set(bob),
+    };
+    CakesBakers::insert(rel).exec(db).await?;
+
+    Ok(())
+}

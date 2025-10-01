@@ -1297,3 +1297,75 @@ pub async fn select_three() -> Result<(), DbErr> {
 
     Ok(())
 }
+
+#[sea_orm_macros::test]
+pub async fn select_has_related() -> Result<(), DbErr> {
+    use common::bakery_chain::*;
+
+    let ctx = TestContext::new("test_select_has_related").await;
+    create_tables(&ctx.db).await?;
+    let db = &ctx.db;
+    seed_data::init_2(&ctx).await?;
+
+    let bakery: Vec<bakery::Model> = bakery::Entity::find()
+        .has_related(cake::Entity, cake::Column::Name.contains("Chocolate"))
+        .all(db)
+        .await?;
+
+    assert_eq!(bakery.len(), 1);
+    assert_eq!(bakery[0].name, "SeaSide Bakery");
+
+    let bakery: Vec<bakery::Model> = bakery::Entity::find()
+        .has_related(cake::Entity, cake::Column::Name.contains("Lemon"))
+        .order_by_asc(bakery::Column::Id)
+        .all(db)
+        .await?;
+
+    assert_eq!(bakery.len(), 2);
+    assert_eq!(bakery[0].name, "SeaSide Bakery");
+    assert_eq!(bakery[1].name, "LakeSide Bakery");
+
+    let cake: Option<cake::Model> = cake::Entity::find()
+        .has_related(bakery::Entity, bakery::Column::Name.eq("SeaSide Bakery"))
+        .order_by_asc(cake::Column::Name)
+        .one(db)
+        .await?;
+
+    assert_eq!(cake.unwrap().name, "Chocolate Cake");
+
+    let baker: Vec<baker::Model> = baker::Entity::find()
+        .has_related(cake::Entity, cake::Column::Name.contains("Chocolate"))
+        .all(db)
+        .await?;
+
+    assert_eq!(baker.len(), 1);
+    assert_eq!(baker[0].name, "Alice");
+
+    let baker: Vec<baker::Model> = baker::Entity::find()
+        .has_related(cake::Entity, cake::Column::Name.contains("Strawberry"))
+        .all(db)
+        .await?;
+
+    assert_eq!(baker.len(), 1);
+    assert_eq!(baker[0].name, "Bob");
+
+    let baker: Vec<baker::Model> = baker::Entity::find()
+        .has_related(cake::Entity, cake::Column::Name.contains("Lemon"))
+        .order_by_asc(baker::Column::Id)
+        .all(db)
+        .await?;
+
+    assert_eq!(baker.len(), 2);
+    assert_eq!(baker[0].name, "Alice");
+    assert_eq!(baker[1].name, "Bob");
+
+    let cake: Option<cake::Model> = cake::Entity::find()
+        .has_related(baker::Entity, baker::Column::Name.eq("Alice"))
+        .order_by_asc(cake::Column::Name)
+        .one(db)
+        .await?;
+
+    assert_eq!(cake.unwrap().name, "Chocolate Cake");
+
+    Ok(())
+}
