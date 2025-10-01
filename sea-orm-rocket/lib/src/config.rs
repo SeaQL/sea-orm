@@ -85,5 +85,6 @@ pub struct Config {
     pub idle_timeout: Option<u64>,
 
     /// Enable SQLx statement logging (default true)
+    #[serde(default)]
     pub sqlx_logging: bool,
 }
