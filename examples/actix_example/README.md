@@ -17,11 +17,11 @@ cargo install systemfd cargo-watch
 systemfd --no-pid -s http::8000 -- cargo watch -x run
 ```
 
-Run mock test on the service logic crate:
+Run tests on the service logic crate:
 
 ```bash
 cd service
-cargo test --features mock
+cargo test
 ```
 
 Run migration:

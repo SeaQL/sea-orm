@@ -10,11 +10,11 @@
 
 1. Visit [localhost:8000](http://localhost:8000) in browser
 
-Run mock test on the service logic crate:
+Run tests on the service logic crate:
 
 ```bash
 cd service
-cargo test --features mock
+cargo test
 ```
 
 Run migration:
