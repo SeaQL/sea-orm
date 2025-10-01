@@ -26,8 +26,6 @@ axum = { version = "0.8", features = ["multipart"] }
 include_dir = "0.7"
 uuid = { version = "1.6.0", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
-
-async-graphql = { version = "7.0.17", features = ["decimal", "chrono", "dataloader", "dynamic-schema"] }
 async-graphql-axum = { version = "7.0" }
 lazy_static = { version = "1.4" }
 tower-service = { version = "0.3" }
