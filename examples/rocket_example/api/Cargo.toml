@@ -14,6 +14,7 @@ futures = { version = "0.3" }
 futures-util = { version = "0.3" }
 rocket = { version = "0.5", features = ["json"] }
 rocket_dyn_templates = { version = "0.2", features = ["tera"] }
+rocket_db_pools = "0.2"
 serde_json = { version = "1" }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
