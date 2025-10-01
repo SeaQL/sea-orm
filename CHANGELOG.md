@@ -341,6 +341,38 @@ assert_eq!(
     )]
 );
 ```
+* Added `Select::has_related`
+```rust
+// cake -> fruit
+assert_eq!(
+    cake::Entity::find()
+        .has_related(fruit::Entity, fruit::Column::Name.eq("Mango"))
+        .build(DbBackend::Sqlite)
+        .to_string(),
+    [
+        r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
+        r#"WHERE EXISTS(SELECT 1 FROM "fruit""#,
+        r#"WHERE "fruit"."name" = 'Mango'"#,
+        r#"AND "cake"."id" = "fruit"."cake_id")"#,
+    ]
+    .join(" ")
+);
+// cake -> cake_filling -> filling
+assert_eq!(
+    cake::Entity::find()
+        .has_related(filling::Entity, filling::Column::Name.eq("Marmalade"))
+        .build(DbBackend::Sqlite)
+        .to_string(),
+    [
+        r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
+        r#"WHERE EXISTS(SELECT 1 FROM "filling""#,
+        r#"INNER JOIN "cake_filling" ON "cake_filling"."filling_id" = "filling"."id""#,
+        r#"WHERE "filling"."name" = 'Marmalade'"#,
+        r#"AND "cake"."id" = "cake_filling"."cake_id")"#,
+    ]
+    .join(" ")
+);
+```
 
 ### Enhancements
 
