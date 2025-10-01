@@ -3,7 +3,7 @@ use rocket_example_service::sea_orm;
 use async_trait::async_trait;
 use rocket_db_pools::Database;
 use sea_orm::ConnectOptions;
-use sea_orm_rocket::{rocket::figment::Figment, Config};
+use sea_orm_rocket::{Config, rocket::figment::Figment};
 use std::time::Duration;
 
 #[derive(Database, Debug)]

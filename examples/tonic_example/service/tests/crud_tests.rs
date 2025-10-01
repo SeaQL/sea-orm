@@ -1,6 +1,6 @@
 use entity::post;
-use tonic_example_service::{Mutation, Query};
 use sea_orm::{ConnectionTrait, Database, Schema};
+use tonic_example_service::{Mutation, Query};
 
 #[tokio::test]
 async fn main() {
