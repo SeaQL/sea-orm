@@ -1,5 +1,5 @@
 use entity::post;
-use salvo_okapi_example_service::{Mutation, Query};
+use salvo_example_service::{Mutation, Query};
 use sea_orm::{ConnectionTrait, Database, Schema};
 
 #[tokio::test]

@@ -1,5 +1,5 @@
 use entity::post;
-use tonic_okapi_example_service::{Mutation, Query};
+use tonic_example_service::{Mutation, Query};
 use sea_orm::{ConnectionTrait, Database, Schema};
 
 #[tokio::test]
