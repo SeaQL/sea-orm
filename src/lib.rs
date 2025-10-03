@@ -430,7 +430,7 @@
 //!
 //! ## 🖥️ SeaORM Pro: Professional Admin Panel
 //!
-//! [SeaORM Pro](https://www.sea-ql.org/sea-orm-pro/) is an admin panel solution allowing you to quickly and easily launch an admin panel for your application - frontend development skills not required, but certainly nice to have!
+//! [SeaORM Pro](https://github.com/SeaQL/sea-orm-pro/) is an admin panel solution allowing you to quickly and easily launch an admin panel for your application - frontend development skills not required, but certainly nice to have!
 //!
 //! SeaORM Pro will be updated to support the latest features in SeaORM 2.0.
 //!
@@ -446,11 +446,10 @@
 //! Learn More
 //!
 //! + [Example Repo](https://github.com/SeaQL/sea-orm-pro)
-//! + [Getting Started with Loco](https://www.sea-ql.org/sea-orm-pro/docs/install-and-config/getting-started-loco/)
-//! + [Getting Started with Axum](https://www.sea-ql.org/sea-orm-pro/docs/install-and-config/getting-started-axum/)
+//! + [Getting Started](https://www.sea-ql.org/sea-orm-pro/docs/install-and-config/getting-started/)
 //!
-//! ![](https://raw.githubusercontent.com/SeaQL/sea-orm/refs/heads/master/docs/sea-orm-pro-dark.png#gh-dark-mode-only)
-//! ![](https://raw.githubusercontent.com/SeaQL/sea-orm/refs/heads/master/docs/sea-orm-pro-light.png#gh-light-mode-only)
+//! [![](https://raw.githubusercontent.com/SeaQL/sea-orm/refs/heads/master/docs/sea-orm-pro-dark.png#gh-dark-mode-only)](https://www.sea-ql.org/sea-orm-pro/)
+//! [![](https://raw.githubusercontent.com/SeaQL/sea-orm/refs/heads/master/docs/sea-orm-pro-light.png#gh-light-mode-only)](https://www.sea-ql.org/sea-orm-pro/)
 //!
 //! ## SQL Server Support
 //!
@@ -464,6 +463,7 @@
 //!
 //! + [A Sneak Peek at SeaORM 2.0](https://www.sea-ql.org/blog/2025-09-16-sea-orm-2.0/)
 //! + [SeaORM 2.0: A closer look](https://www.sea-ql.org/blog/2025-09-24-sea-orm-2.0/)
+//! + [Role Based Access Control in SeaORM 2.0](https://www.sea-ql.org/blog/2025-09-30-sea-orm-rbac/)
 //!
 //! If you make extensive use of SeaORM's underlying query builder, we recommend checking out our blog post on SeaQuery 1.0 release:
 //!
