@@ -687,6 +687,150 @@ pub async fn transaction_nested() {
 }
 
 #[sea_orm_macros::test]
+pub async fn transaction_manager_nested() -> Result<(), sea_orm::DbErr> {
+    let ctx = TestContext::new("transaction_nested_test").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    let txn = ctx.db.begin().await?;
+    let _ = seaside_bakery().save(&txn).await?;
+    let _ = top_bakery().save(&txn).await?;
+
+    // Try nested transaction committed
+    {
+        let txn = txn.begin().await?;
+        let _ = bakery::ActiveModel {
+            name: Set("Nested Bakery".to_owned()),
+            profit_margin: Set(88.88),
+            ..Default::default()
+        }
+        .save(&txn)
+        .await?;
+
+        let bakeries = Bakery::find()
+            .filter(bakery::Column::Name.contains("Bakery"))
+            .all(&txn)
+            .await?;
+
+        assert_eq!(bakeries.len(), 3);
+
+        // Try nested-nested transaction rollbacked
+        {
+            let txn = txn.begin().await?;
+            let _ = bakery::ActiveModel {
+                name: Set("Rock n Roll Bakery".to_owned()),
+                profit_margin: Set(28.8),
+                ..Default::default()
+            }
+            .save(&txn)
+            .await?;
+
+            let bakeries = Bakery::find()
+                .filter(bakery::Column::Name.contains("Bakery"))
+                .all(&txn)
+                .await?;
+
+            assert_eq!(bakeries.len(), 4);
+        }
+
+        let bakeries = Bakery::find()
+            .filter(bakery::Column::Name.contains("Bakery"))
+            .all(&txn)
+            .await?;
+
+        assert_eq!(bakeries.len(), 3);
+
+        // Try nested-nested transaction committed
+        {
+            let txn = txn.begin().await?;
+            let _ = bakery::ActiveModel {
+                name: Set("Rock n Roll Bakery".to_owned()),
+                profit_margin: Set(28.8),
+                ..Default::default()
+            }
+            .save(&txn)
+            .await?;
+
+            let bakeries = Bakery::find()
+                .filter(bakery::Column::Name.contains("Bakery"))
+                .all(&txn)
+                .await?;
+
+            assert_eq!(bakeries.len(), 4);
+            txn.commit().await?;
+        }
+
+        txn.commit().await?;
+    }
+
+    // Try nested transaction rollbacked
+    {
+        let txn = txn.begin().await?;
+        let _ = bakery::ActiveModel {
+            name: Set("Rock n Roll Bakery".to_owned()),
+            profit_margin: Set(28.8),
+            ..Default::default()
+        }
+        .save(&txn)
+        .await?;
+
+        let bakeries = Bakery::find()
+            .filter(bakery::Column::Name.contains("Bakery"))
+            .all(&txn)
+            .await?;
+
+        assert_eq!(bakeries.len(), 5);
+
+        // Try nested-nested transaction committed
+        {
+            let txn = txn.begin().await?;
+            let _ = bakery::ActiveModel {
+                name: Set("Rock n Roll Bakery".to_owned()),
+                profit_margin: Set(28.8),
+                ..Default::default()
+            }
+            .save(&txn)
+            .await?;
+
+            let bakeries = Bakery::find()
+                .filter(bakery::Column::Name.contains("Bakery"))
+                .all(&txn)
+                .await?;
+
+            assert_eq!(bakeries.len(), 6);
+            txn.commit().await?;
+        }
+
+        let bakeries = Bakery::find()
+            .filter(bakery::Column::Name.contains("Bakery"))
+            .all(&txn)
+            .await?;
+
+        assert_eq!(bakeries.len(), 6);
+    }
+
+    let bakeries = Bakery::find()
+        .filter(bakery::Column::Name.contains("Bakery"))
+        .all(&txn)
+        .await?;
+
+    assert_eq!(bakeries.len(), 4);
+
+    txn.commit().await?;
+
+    let bakeries = Bakery::find()
+        .filter(bakery::Column::Name.contains("Bakery"))
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(bakeries.len(), 4);
+
+    ctx.delete().await;
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
 #[cfg(feature = "rbac")]
 pub async fn rbac_transaction_nested() {
     use sea_orm::rbac::{RbacEngine, RbacSnapshot, RbacUserId};

@@ -1490,6 +1490,14 @@ mod tests {
 
         fruit.set(fruit::Column::Name, "apple".into());
         assert!(fruit.is_changed());
+
+        let mut fruit = fruit::Model {
+            id: 1,
+            name: "".into(),
+            cake_id: None,
+        };
+        fruit.set("name".parse().unwrap(), "orange".into());
+        assert_eq!(fruit.name, "orange");
     }
 
     #[test]
