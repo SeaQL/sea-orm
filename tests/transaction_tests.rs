@@ -688,7 +688,7 @@ pub async fn transaction_nested() {
 
 #[sea_orm_macros::test]
 pub async fn transaction_manager_nested() -> Result<(), sea_orm::DbErr> {
-    let ctx = TestContext::new("transaction_nested_test").await;
+    let ctx = TestContext::new("transaction_manager_nested").await;
     create_tables(&ctx.db).await.unwrap();
 
     let txn = ctx.db.begin().await?;
