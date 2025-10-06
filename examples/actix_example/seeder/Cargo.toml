@@ -9,7 +9,7 @@ name = "seeder"
 path = "src/lib.rs"
 
 [dependencies]
-async-std = { version = "1", features = ["attributes", "tokio1"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
 

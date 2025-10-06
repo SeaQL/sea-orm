@@ -9,7 +9,7 @@ publish = false
 [workspace]
 
 [dependencies]
-async-std = { version = "1.12", features = ["attributes", "tokio1"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 serde_json = { version = "1" }
 serde = { version = "1" }
 futures = { version = "0.3" }

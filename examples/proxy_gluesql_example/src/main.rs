@@ -131,7 +131,7 @@ impl ProxyDatabaseTrait for ProxyDb {
     }
 }
 
-#[async_std::main]
+#[tokio::main]
 async fn main() {
     let mem = MemoryStorage::default();
     let mut glue = Glue::new(mem);

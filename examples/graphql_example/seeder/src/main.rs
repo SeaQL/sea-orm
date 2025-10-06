@@ -3,7 +3,7 @@ use sea_orm_migration::prelude::*;
 #[cfg(debug_assertions)]
 use dotenvy::dotenv;
 
-#[async_std::main]
+#[tokio::main]
 async fn main() {
     #[cfg(debug_assertions)]
     dotenv().ok();

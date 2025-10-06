@@ -12,7 +12,7 @@ name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
-async-std = { version = "1", features = ["attributes", "tokio1"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [dependencies.sea-orm]
 path = "../../../" # remove this line in your own project
@@ -22,6 +22,6 @@ version = "~2.0.0-rc.9" # sea-orm version
 path = "../../../sea-orm-migration" # remove this line in your own project
 version = "~2.0.0-rc.9" # sea-orm-migration version
 features = [
-  "runtime-async-std-native-tls",
+  "runtime-tokio-native-tls",
   "sqlx-sqlite",
 ]

@@ -10,7 +10,7 @@ name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
-async-std = { version = "1", features = ["attributes", "tokio1"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 loco-rs = { version = "0.16" }
 
 [dependencies.sea-orm-migration]

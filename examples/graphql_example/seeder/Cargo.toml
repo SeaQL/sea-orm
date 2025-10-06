@@ -10,7 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 dotenvy = "0.15.0"
-async-std = { version = "1", features = ["attributes", "tokio1"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
 
