@@ -1013,6 +1013,20 @@ where
     }
 }
 
+impl<U, V> PartialEq<Option<U>> for ActiveValue<V>
+where
+    U: Into<Value>,
+    V: Into<Value> + std::cmp::PartialEq<U>,
+{
+    fn eq(&self, other: &Option<U>) -> bool {
+        match (self, other) {
+            (Self::Set(value) | Self::Unchanged(value), Some(other)) => value.eq(other),
+            (Self::NotSet, None) => true,
+            (Self::NotSet, Some(_)) | (_, None) => false,
+        }
+    }
+}
+
 impl<V> From<ActiveValue<V>> for ActiveValue<Option<V>>
 where
     V: Into<Value> + Nullable,
@@ -1498,6 +1512,16 @@ mod tests {
         };
         fruit.set("name".parse().unwrap(), "orange".into());
         assert_eq!(fruit.name, "orange");
+    }
+
+    #[test]
+    fn test_active_value_partialeq() {
+        assert!(ActiveValue::Set(2) == Some(2));
+        assert!(ActiveValue::Set(2) != Some(3));
+        assert!(ActiveValue::<u8>::NotSet != Some(3));
+        assert!(ActiveValue::<u8>::NotSet == None::<u8>);
+        assert!(ActiveValue::Unchanged(String::from("hi")) == Some("hi"));
+        assert!(ActiveValue::Unchanged(String::from("hi")) != Some("bye"));
     }
 
     #[test]
