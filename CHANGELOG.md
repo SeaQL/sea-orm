@@ -16,6 +16,7 @@ opt.map_sqlx_postgres_opts(|pg_opt: PgConnectOptions| {
     pg_opt.ssl_mode(PgSslMode::Require)
 });
 ```
+* Added `mariadb-use-returning` to use returning syntax for MariaDB https://github.com/SeaQL/sea-orm/pull/2710
 
 ## 1.1.16 - 2025-09-11
 
