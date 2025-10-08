@@ -6,7 +6,7 @@ pub use common::{TestContext, bakery_chain::*, setup::*};
 use pretty_assertions::assert_eq;
 use sea_orm::sea_query::{Expr, Func, SimpleExpr};
 use sea_orm::{
-    DbErr, DerivePartialModel, FromQueryResult,
+    DbBackend, DbErr, DerivePartialModel, FromQueryResult,
     entity::*,
     prelude::{ChronoUtc, DateTimeUtc, Decimal, Uuid},
     query::*,
@@ -1330,6 +1330,20 @@ pub async fn select_has_related() -> Result<(), DbErr> {
         .order_by_asc(cake::Column::Name)
         .one(db)
         .await?;
+
+    assert_eq!(
+        cake::Entity::find()
+            .has_related(bakery::Entity, bakery::Column::Name.eq("SeaSide Bakery"))
+            .build(DbBackend::Sqlite)
+            .to_string(),
+        [
+            r#"SELECT "cake"."id", "cake"."name", "cake"."price", "cake"."bakery_id", "cake"."gluten_free", "cake"."serial" FROM "cake""#,
+            r#"WHERE EXISTS(SELECT 1 FROM "bakery""#,
+            r#"WHERE "bakery"."name" = 'SeaSide Bakery'"#,
+            r#"AND "cake"."bakery_id" = "bakery"."id")"#,
+        ]
+        .join(" ")
+    );
 
     assert_eq!(cake.unwrap().name, "Chocolate Cake");
 
