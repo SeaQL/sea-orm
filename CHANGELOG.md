@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 1.1.17 - pending
+## 1.1.17 - 2025-10-09
 
 ### New Features
 
@@ -17,6 +17,7 @@ opt.map_sqlx_postgres_opts(|pg_opt: PgConnectOptions| {
 });
 ```
 * Added `mariadb-use-returning` to use returning syntax for MariaDB https://github.com/SeaQL/sea-orm/pull/2710
+* Released `sea-orm-rocket` 0.6 https://github.com/SeaQL/sea-orm/pull/2732
 
 ## 1.1.16 - 2025-09-11
 
