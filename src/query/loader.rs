@@ -212,7 +212,7 @@ where
 
             // The idea is to do a SelectTwo with join, then extract key via a dynamic model
             // i.e. select (baker + cake_baker) and extract cake_id from result rows
-            // SELECT "baker"."id", "baker"."name", "baker"."contact_details", "baker"."bakery_id", 
+            // SELECT "baker"."id", "baker"."name", "baker"."contact_details", "baker"."bakery_id",
             //     "cakes_bakers"."cake_id" <- extra select
             // FROM "baker" <- target
             // INNER JOIN "cakes_bakers" <- junction
