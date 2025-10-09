@@ -211,12 +211,19 @@ where
             );
 
             // The idea is to do a SelectTwo with join, then extract key via a dynamic model
-            // i.e. select (filling + cake_filling) and extract cake_id from result rows
+            // i.e. select (baker + cake_baker) and extract cake_id from result rows
+            // SELECT "baker"."id", "baker"."name", "baker"."contact_details", "baker"."bakery_id", 
+            //     "cakes_bakers"."cake_id" <- extra select
+            // FROM "baker" <- target
+            // INNER JOIN "cakes_bakers" <- junction
+            //     ON "cakes_bakers"."baker_id" = "baker"."id" <- relation
+            // WHERE "cakes_bakers"."cake_id" IN (..)
 
             let data = stmt
                 .select_also_dyn_model(
                     via_def.to_tbl.sea_orm_table().clone(),
                     dynamic::ModelType {
+                        // we uses the left Model's type but the right Model's field
                         fields: extract_col_type::<M>(&via_def.from_col, &via_def.to_col)?,
                     },
                 )
