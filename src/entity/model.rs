@@ -4,6 +4,7 @@ use crate::{
     SelectorRaw, Statement, TryGetError,
 };
 use async_trait::async_trait;
+use sea_query::ArrayType;
 pub use sea_query::Value;
 use std::fmt::Debug;
 
@@ -15,6 +16,9 @@ pub trait ModelTrait: Clone + Send + Debug {
 
     /// Get the [Value] of a column from a Model
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> Value;
+
+    /// Get the Value Type of a column from the Model
+    fn get_value_type(c: <Self::Entity as EntityTrait>::Column) -> ArrayType;
 
     /// Set the Value of a Model field, panic if failed
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) {

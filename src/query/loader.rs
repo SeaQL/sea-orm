@@ -1,6 +1,6 @@
 use crate::{
-    Condition, ConnectionTrait, DbErr, EntityTrait, Identity, ModelTrait, QueryFilter, Related,
-    RelationType, Select, error::*,
+    Condition, ConnectionTrait, DbErr, EntityTrait, Identity, JoinType, ModelTrait, QueryFilter,
+    QuerySelect, Related, RelationType, Select, dynamic, error::*,
 };
 use async_trait::async_trait;
 use sea_query::{
@@ -192,15 +192,64 @@ where
             return Ok(Vec::new());
         }
 
-        let (keys, stmt, related_key) = if let Some(_via_def) =
+        if let Some(via_def) =
             <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::via()
         {
-            return Err(query_err("Relation is ManyToMany instead of HasMany"));
+            let keys = self
+                .iter()
+                .map(|model| extract_key(&via_def.from_col, model))
+                .collect::<Result<Vec<_>, _>>()?;
+
+            let condition = prepare_condition(&via_def.to_tbl, &via_def.to_col, &keys);
+
+            let stmt = <Select<R> as QueryFilter>::filter(
+                stmt.select().join_rev(
+                    JoinType::InnerJoin,
+                    <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to(),
+                ),
+                condition,
+            );
+
             // The idea is to do a SelectTwo with join, then extract key via a dynamic model
-            // i.e. select (filling + cake_filling) and somehow extract cake_id from result rows
+            // i.e. select (filling + cake_filling) and extract cake_id from result rows
+
+            let data = stmt
+                .select_also_dyn_model(
+                    via_def.to_tbl.sea_orm_table().clone(),
+                    dynamic::ModelType {
+                        fields: extract_col_type::<M>(&via_def.from_col, &via_def.to_col)?,
+                    },
+                )
+                .all(db)
+                .await?;
+
+            let mut hashmap: HashMap<ValueTuple, Vec<<R as EntityTrait>::Model>> = keys
+                .iter()
+                .fold(HashMap::new(), |mut acc, key: &ValueTuple| {
+                    acc.insert(key.clone(), Vec::new());
+                    acc
+                });
+
+            for (item, key) in data {
+                let key = dyn_model_to_key(key)?;
+
+                let vec = hashmap.get_mut(&key).ok_or_else(|| {
+                    DbErr::RecordNotFound(format!("Loader: failed to find model for {key:?}"))
+                })?;
+
+                vec.push(item);
+            }
+
+            let result: Vec<Vec<R::Model>> = keys
+                .iter()
+                .map(|key: &ValueTuple| hashmap.get(key).cloned().unwrap_or_default())
+                .collect();
+
+            Ok(result)
         } else {
             let rel_def =
                 <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
+
             let keys = self
                 .iter()
                 .map(|model| extract_key(&rel_def.from_col, model))
@@ -210,34 +259,32 @@ where
 
             let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
 
-            (keys, stmt, rel_def.to_col)
-        };
+            let data = stmt.all(db).await?;
 
-        let data = stmt.all(db).await?;
-
-        let mut hashmap: HashMap<ValueTuple, Vec<<R as EntityTrait>::Model>> =
-            keys.iter()
+            let mut hashmap: HashMap<ValueTuple, Vec<<R as EntityTrait>::Model>> = keys
+                .iter()
                 .fold(HashMap::new(), |mut acc, key: &ValueTuple| {
                     acc.insert(key.clone(), Vec::new());
                     acc
                 });
 
-        for value in data {
-            let key = extract_key(&related_key, &value)?;
+            for value in data {
+                let key = extract_key(&rel_def.to_col, &value)?;
 
-            let vec = hashmap.get_mut(&key).ok_or_else(|| {
-                DbErr::RecordNotFound(format!("Loader: failed to find model for {key:?}"))
-            })?;
+                let vec = hashmap.get_mut(&key).ok_or_else(|| {
+                    DbErr::RecordNotFound(format!("Loader: failed to find model for {key:?}"))
+                })?;
 
-            vec.push(value);
+                vec.push(value);
+            }
+
+            let result: Vec<Vec<R::Model>> = keys
+                .iter()
+                .map(|key: &ValueTuple| hashmap.get(key).cloned().unwrap_or_default())
+                .collect();
+
+            Ok(result)
         }
-
-        let result: Vec<Vec<R::Model>> = keys
-            .iter()
-            .map(|key: &ValueTuple| hashmap.get(key).cloned().unwrap_or_default())
-            .collect();
-
-        Ok(result)
     }
 
     async fn load_many_to_many<R, S, V, C>(
@@ -339,8 +386,7 @@ where
 }
 
 fn cmp_table_ref(left: &TableRef, right: &TableRef) -> bool {
-    // not ideal; but
-    format!("{left:?}") == format!("{right:?}")
+    left == right
 }
 
 fn extract_key<Model>(target_col: &Identity, model: &Model) -> Result<ValueTuple, DbErr>
@@ -404,6 +450,107 @@ where
             }
             ValueTuple::Many(values)
         }
+    })
+}
+
+fn extract_col_type<Model>(
+    left: &Identity,
+    right: &Identity,
+) -> Result<Vec<dynamic::FieldType>, DbErr>
+where
+    Model: ModelTrait,
+{
+    Ok(match (left, right) {
+        (Identity::Unary(a), Identity::Unary(aa)) => {
+            let col_a =
+                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
+                    &a.inner(),
+                )
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}'")))?;
+            vec![dynamic::FieldType::new(
+                aa.clone(),
+                Model::get_value_type(col_a),
+            )]
+        }
+        (Identity::Binary(a, b), Identity::Binary(aa, bb)) => {
+            let col_a =
+                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
+                    &a.inner(),
+                )
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}'")))?;
+            let col_b =
+                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
+                    &b.inner(),
+                )
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{b}'")))?;
+            vec![
+                dynamic::FieldType::new(aa.clone(), Model::get_value_type(col_a)),
+                dynamic::FieldType::new(bb.clone(), Model::get_value_type(col_b)),
+            ]
+        }
+        (Identity::Ternary(a, b, c), Identity::Ternary(aa, bb, cc)) => {
+            let col_a =
+                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
+                    &a.inner(),
+                )
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}'")))?;
+            let col_b =
+                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
+                    &b.inner(),
+                )
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{b}'")))?;
+            let col_c =
+                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
+                    &c.inner(),
+                )
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{c}'")))?;
+            vec![
+                dynamic::FieldType::new(aa.clone(), Model::get_value_type(col_a)),
+                dynamic::FieldType::new(bb.clone(), Model::get_value_type(col_b)),
+                dynamic::FieldType::new(cc.clone(), Model::get_value_type(col_c)),
+            ]
+        }
+        (Identity::Many(left), Identity::Many(right)) => {
+            let mut vec = Vec::new();
+            for (a, aa) in left.iter().zip(right) {
+                let col_a =
+                    <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
+                        &a.inner(),
+                    )
+                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}'")))?;
+                vec.push(dynamic::FieldType::new(
+                    aa.clone(),
+                    Model::get_value_type(col_a),
+                ));
+            }
+            vec
+        }
+        _ => {
+            return Err(DbErr::Type(format!(
+                "Identity mismatch: {left:?} != {right:?}"
+            )));
+        }
+    })
+}
+
+#[allow(clippy::unwrap_used)]
+fn dyn_model_to_key(dyn_model: dynamic::Model) -> Result<ValueTuple, DbErr> {
+    Ok(match dyn_model.fields.len() {
+        0 => return Err(DbErr::Type("Identity zero?".into())),
+        1 => ValueTuple::One(dyn_model.fields.into_iter().next().unwrap().value),
+        2 => {
+            let mut iter = dyn_model.fields.into_iter();
+            ValueTuple::Two(iter.next().unwrap().value, iter.next().unwrap().value)
+        }
+        3 => {
+            let mut iter = dyn_model.fields.into_iter();
+            ValueTuple::Three(
+                iter.next().unwrap().value,
+                iter.next().unwrap().value,
+                iter.next().unwrap().value,
+            )
+        }
+        _ => ValueTuple::Many(dyn_model.fields.into_iter().map(|v| v.value).collect()),
     })
 }
 

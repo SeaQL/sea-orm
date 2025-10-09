@@ -221,6 +221,70 @@ async fn loader_load_many_to_many() -> Result<(), DbErr> {
     Ok(())
 }
 
+#[sea_orm_macros::test]
+async fn loader_load_many_to_many_dyn() -> Result<(), DbErr> {
+    let ctx = TestContext::new("loader_test_load_many_to_many_dyn").await;
+    create_tables(&ctx.db).await?;
+
+    let bakery_1 = insert_bakery(&ctx.db, "SeaSide Bakery").await?;
+
+    let baker_1 = insert_baker(&ctx.db, "Jane", bakery_1.id).await?;
+    let baker_2 = insert_baker(&ctx.db, "Peter", bakery_1.id).await?;
+    let baker_3 = insert_baker(&ctx.db, "Fred", bakery_1.id).await?; // does not make cake
+
+    let cake_1 = insert_cake(&ctx.db, "Cheesecake", None).await?;
+    let cake_2 = insert_cake(&ctx.db, "Coffee", None).await?;
+    let cake_3 = insert_cake(&ctx.db, "Chiffon", None).await?;
+    let cake_4 = insert_cake(&ctx.db, "Apple Pie", None).await?; // no one makes apple pie
+
+    insert_cake_baker(&ctx.db, baker_1.id, cake_1.id).await?;
+    insert_cake_baker(&ctx.db, baker_1.id, cake_2.id).await?;
+    insert_cake_baker(&ctx.db, baker_2.id, cake_2.id).await?;
+    insert_cake_baker(&ctx.db, baker_2.id, cake_3.id).await?;
+
+    let bakers = baker::Entity::find().all(&ctx.db).await?;
+    let cakes = bakers.load_many(cake::Entity, &ctx.db).await?;
+
+    assert_eq!(bakers, [baker_1.clone(), baker_2.clone(), baker_3.clone()]);
+    assert_eq!(
+        cakes,
+        [
+            vec![cake_1.clone(), cake_2.clone()],
+            vec![cake_2.clone(), cake_3.clone()],
+            vec![]
+        ]
+    );
+
+    // same, but apply restrictions on cakes
+
+    let cakes = bakers
+        .load_many_to_many(
+            cake::Entity::find().filter(cake::Column::Name.like("Ch%")),
+            cakes_bakers::Entity,
+            &ctx.db,
+        )
+        .await?;
+    assert_eq!(cakes, [vec![cake_1.clone()], vec![cake_3.clone()], vec![]]);
+
+    // now, start again from cakes
+
+    let cakes = cake::Entity::find().all(&ctx.db).await?;
+    let bakers = cakes.load_many(baker::Entity, &ctx.db).await?;
+
+    assert_eq!(cakes, [cake_1, cake_2, cake_3, cake_4]);
+    assert_eq!(
+        bakers,
+        [
+            vec![baker_1.clone()],
+            vec![baker_1.clone(), baker_2.clone()],
+            vec![baker_2.clone()],
+            vec![]
+        ]
+    );
+
+    Ok(())
+}
+
 pub async fn insert_bakery(db: &DbConn, name: &str) -> Result<bakery::Model, DbErr> {
     bakery::ActiveModel {
         name: Set(name.to_owned()),

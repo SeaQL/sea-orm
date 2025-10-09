@@ -99,7 +99,7 @@
 mod active_enum;
 mod active_model;
 mod base_entity;
-mod column;
+pub(crate) mod column;
 mod column_def;
 mod identity;
 mod link;

@@ -573,6 +573,7 @@
 mod database;
 mod docs;
 mod driver;
+pub mod dynamic;
 /// Module for the Entity type and operations
 pub mod entity;
 /// Error types for all database operations

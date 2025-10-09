@@ -2,57 +2,66 @@ use crate::{
     ColumnDef, ColumnType, DbBackend, EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable,
 };
 use sea_query::{
-    Alias, BinOper, DynIden, Expr, ExprTrait, IntoIden, IntoLikeExpr, SeaRc, SelectStatement,
-    SimpleExpr, Value,
+    BinOper, DynIden, Expr, ExprTrait, IntoIden, IntoLikeExpr, SeaRc, SelectStatement, SimpleExpr,
+    Value,
 };
 use std::{borrow::Cow, str::FromStr};
 
-macro_rules! bind_oper {
-    ( $op: ident, $bin_op: ident ) => {
-        #[allow(missing_docs)]
-        fn $op<V>(&self, v: V) -> SimpleExpr
-        where
-            V: Into<Value>,
-        {
-            let expr = self.save_as(Expr::val(v));
-            Expr::col((self.entity_name(), *self)).binary(BinOper::$bin_op, expr)
-        }
-    };
+pub(crate) mod methods {
+    macro_rules! bind_oper {
+        ($vis:vis $op:ident, $bin_op:ident) => {
+            #[allow(missing_docs)]
+            $vis fn $op<V>(&self, v: V) -> SimpleExpr
+            where
+                V: Into<Value>,
+            {
+                let expr = self.save_as(Expr::val(v));
+                Expr::col(self.as_column_ref()).binary(BinOper::$bin_op, expr)
+            }
+        };
+    }
+
+    macro_rules! bind_func_no_params {
+        ($vis:vis $func:ident) => {
+            /// See also SeaQuery's method with same name.
+            $vis fn $func(&self) -> SimpleExpr {
+                Expr::col(self.as_column_ref()).$func()
+            }
+        };
+    }
+
+    macro_rules! bind_vec_func {
+        ($vis:vis $func:ident) => {
+            #[allow(missing_docs)]
+            #[allow(clippy::wrong_self_convention)]
+            $vis fn $func<V, I>(&self, v: I) -> SimpleExpr
+            where
+                V: Into<Value>,
+                I: IntoIterator<Item = V>,
+            {
+                let v_with_enum_cast = v.into_iter().map(|v| self.save_as(Expr::val(v)));
+                Expr::col(self.as_column_ref()).$func(v_with_enum_cast)
+            }
+        };
+    }
+
+    macro_rules! bind_subquery_func {
+        ($vis:vis $func:ident) => {
+            #[allow(clippy::wrong_self_convention)]
+            #[allow(missing_docs)]
+            $vis fn $func(&self, s: SelectStatement) -> SimpleExpr {
+                Expr::col(self.as_column_ref()).$func(s)
+            }
+        };
+    }
+
+    pub(crate) use bind_func_no_params;
+    pub(crate) use bind_oper;
+    pub(crate) use bind_subquery_func;
+    pub(crate) use bind_vec_func;
 }
 
-macro_rules! bind_func_no_params {
-    ( $func: ident ) => {
-        /// See also SeaQuery's method with same name.
-        fn $func(&self) -> SimpleExpr {
-            Expr::col((self.entity_name(), *self)).$func()
-        }
-    };
-}
-
-macro_rules! bind_vec_func {
-    ( $func: ident ) => {
-        #[allow(missing_docs)]
-        #[allow(clippy::wrong_self_convention)]
-        fn $func<V, I>(&self, v: I) -> SimpleExpr
-        where
-            V: Into<Value>,
-            I: IntoIterator<Item = V>,
-        {
-            let v_with_enum_cast = v.into_iter().map(|v| self.save_as(Expr::val(v)));
-            Expr::col((self.entity_name(), *self)).$func(v_with_enum_cast)
-        }
-    };
-}
-
-macro_rules! bind_subquery_func {
-    ( $func: ident ) => {
-        #[allow(clippy::wrong_self_convention)]
-        #[allow(missing_docs)]
-        fn $func(&self, s: SelectStatement) -> SimpleExpr {
-            Expr::col((self.entity_name(), *self)).$func(s)
-        }
-    };
-}
+use methods::*;
 
 // LINT: when the operand value does not match column type
 /// API for working with a `Column`. Mostly a wrapper of the identically named methods in [`sea_query::Expr`]
@@ -100,7 +109,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     where
         V: Into<Value>,
     {
-        Expr::col((self.entity_name(), *self)).between(a, b)
+        Expr::col(self.as_column_ref()).between(a, b)
     }
 
     /// ```
@@ -118,7 +127,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     where
         V: Into<Value>,
     {
-        Expr::col((self.entity_name(), *self)).not_between(a, b)
+        Expr::col(self.as_column_ref()).not_between(a, b)
     }
 
     /// ```
@@ -136,7 +145,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     where
         T: IntoLikeExpr,
     {
-        Expr::col((self.entity_name(), *self)).like(s)
+        Expr::col(self.as_column_ref()).like(s)
     }
 
     /// ```
@@ -154,7 +163,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     where
         T: IntoLikeExpr,
     {
-        Expr::col((self.entity_name(), *self)).not_like(s)
+        Expr::col(self.as_column_ref()).not_like(s)
     }
 
     /// This is a simplified shorthand for a more general `like` method.
@@ -178,7 +187,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         T: Into<String>,
     {
         let pattern = format!("{}%", s.into());
-        Expr::col((self.entity_name(), *self)).like(pattern)
+        Expr::col(self.as_column_ref()).like(pattern)
     }
 
     /// This is a simplified shorthand for a more general `like` method.
@@ -202,7 +211,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         T: Into<String>,
     {
         let pattern = format!("%{}", s.into());
-        Expr::col((self.entity_name(), *self)).like(pattern)
+        Expr::col(self.as_column_ref()).like(pattern)
     }
 
     /// This is a simplified shorthand for a more general `like` method.
@@ -226,7 +235,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         T: Into<String>,
     {
         let pattern = format!("%{}%", s.into());
-        Expr::col((self.entity_name(), *self)).like(pattern)
+        Expr::col(self.as_column_ref()).like(pattern)
     }
 
     bind_func_no_params!(max);
@@ -241,7 +250,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     where
         V: Into<Value>,
     {
-        Expr::col((self.entity_name(), *self)).if_null(v)
+        Expr::col(self.as_column_ref()).if_null(v)
     }
 
     bind_vec_func!(is_in);
@@ -268,7 +277,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         use sea_query::extension::postgres::PgFunc;
 
         let vec: Vec<_> = v.into_iter().collect();
-        Expr::col((self.entity_name(), *self)).eq(PgFunc::any(vec))
+        Expr::col(self.as_column_ref()).eq(PgFunc::any(vec))
     }
 
     bind_subquery_func!(in_subquery);
@@ -295,31 +304,18 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
 
     /// Cast enum column as text; do nothing if `self` is not an enum.
     fn select_enum_as(&self, expr: Expr) -> SimpleExpr {
-        cast_enum_as(expr, self, |col, _, col_type| {
-            let type_name = match col_type {
-                ColumnType::Array(_) => TextArray.into_iden(),
-                _ => Text.into_iden(),
-            };
-            col.as_enum(type_name)
-        })
+        cast_enum_as(expr, &self.def(), select_enum_as)
     }
 
     /// Cast value of a column into the correct type for database storage.
-    /// It only cast text as enum type if it's an enum column.
+    /// By default, it only cast text as enum type if it's an enum column.
     fn save_as(&self, val: Expr) -> SimpleExpr {
         self.save_enum_as(val)
     }
 
     /// Cast value of an enum column as enum type; do nothing if `self` is not an enum.
-    /// Will also transform `Array(Vec<Json>)` into `Json(Vec<Json>)` if the column type is `Json`.
     fn save_enum_as(&self, val: Expr) -> SimpleExpr {
-        cast_enum_as(val, self, |col, enum_name, col_type| {
-            let type_name = match col_type {
-                ColumnType::Array(_) => Alias::new(format!("{enum_name}[]")).into_iden(),
-                _ => enum_name,
-            };
-            col.as_enum(type_name)
-        })
+        cast_enum_as(val, &self.def(), save_enum_as)
     }
 }
 
@@ -399,12 +395,26 @@ impl Iden for TextArray {
     }
 }
 
-fn cast_enum_as<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
+pub(crate) fn select_enum_as(col: Expr, _: DynIden, col_type: &ColumnType) -> SimpleExpr {
+    let type_name = match col_type {
+        ColumnType::Array(_) => TextArray.into_iden(),
+        _ => Text.into_iden(),
+    };
+    col.as_enum(type_name)
+}
+
+pub(crate) fn save_enum_as(col: Expr, enum_name: DynIden, col_type: &ColumnType) -> SimpleExpr {
+    let type_name = match col_type {
+        ColumnType::Array(_) => format!("{enum_name}[]").into_iden(),
+        _ => enum_name,
+    };
+    col.as_enum(type_name)
+}
+
+pub(crate) fn cast_enum_as<F>(expr: Expr, col_def: &ColumnDef, f: F) -> SimpleExpr
 where
-    C: ColumnTrait,
     F: Fn(Expr, DynIden, &ColumnType) -> SimpleExpr,
 {
-    let col_def = col.def();
     let col_type = col_def.get_column_type();
 
     match col_type {

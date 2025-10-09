@@ -4,7 +4,7 @@ use crate::{
     QueryFilter, Related, RelationBuilder, RelationTrait, RelationType, Select, Update, UpdateMany,
     UpdateOne,
 };
-use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
+use sea_query::{Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 use std::fmt::Debug;
 pub use strum::IntoEnumIterator as Iterable;
 
@@ -32,7 +32,7 @@ pub trait EntityName: IdenStatic + Default {
     /// Get the [TableRef] from invoking the `self.schema_name()`
     fn table_ref(&self) -> TableRef {
         match self.schema_name() {
-            Some(schema) => (Alias::new(schema).into_iden(), self.into_iden()).into_table_ref(),
+            Some(schema) => (schema.to_owned(), self.into_iden()).into_table_ref(),
             None => self.into_table_ref(),
         }
     }

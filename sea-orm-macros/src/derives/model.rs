@@ -17,6 +17,7 @@ struct DeriveModel {
     column_idents: Vec<syn::Ident>,
     entity_ident: syn::Ident,
     field_idents: Vec<syn::Ident>,
+    field_types: Vec<syn::Type>,
     ident: syn::Ident,
     ignore_attrs: Vec<bool>,
 }
@@ -42,6 +43,8 @@ impl DeriveModel {
             .iter()
             .map(|field| field.ident.as_ref().unwrap().clone())
             .collect();
+
+        let field_types = fields.iter().map(|field| field.ty.clone()).collect();
 
         let column_idents = fields
             .iter()
@@ -83,6 +86,7 @@ impl DeriveModel {
             column_idents,
             entity_ident,
             field_idents,
+            field_types,
             ident,
             ignore_attrs,
         })
@@ -149,6 +153,18 @@ impl DeriveModel {
             .zip(ignore_attrs)
             .filter_map(ignore)
             .collect();
+        let get_field_type: Vec<TokenStream> = self
+            .field_types
+            .iter()
+            .zip(ignore_attrs)
+            .filter_map(|(ty, ignore)| {
+                if *ignore {
+                    None
+                } else {
+                    Some(quote!(<#ty as sea_orm::sea_query::ValueType>::array_type()))
+                }
+            })
+            .collect();
 
         let missing_field_msg = format!("field does not exist on {ident}");
 
@@ -160,7 +176,12 @@ impl DeriveModel {
                 fn get(&self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) -> sea_orm::Value {
                     match c {
                         #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents => self.#field_idents.clone().into(),)*
-                        _ => panic!(#missing_field_msg),
+                    }
+                }
+
+                fn get_value_type(c: <Self::Entity as EntityTrait>::Column) -> sea_orm::sea_query::ArrayType {
+                    match c {
+                        #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents => #get_field_type,)*
                     }
                 }
 
