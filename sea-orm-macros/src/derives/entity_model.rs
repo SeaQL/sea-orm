@@ -277,12 +277,12 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
                     if let Some(select_as) = select_as {
                         columns_select_as.push(quote! {
-                            Self::#field_name => ::sea_query::ExprTrait::cast_as(expr, #select_as)
+                            Self::#field_name => sea_orm::sea_query::ExprTrait::cast_as(expr, #select_as)
                         });
                     }
                     if let Some(save_as) = save_as {
                         columns_save_as.push(quote! {
-                            Self::#field_name => ::sea_query::ExprTrait::cast_as(val, #save_as)
+                            Self::#field_name => sea_orm::sea_query::ExprTrait::cast_as(val, #save_as)
                         });
                     }
 
