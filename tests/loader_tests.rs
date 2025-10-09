@@ -103,9 +103,22 @@ async fn loader_load_many() -> Result<(), DbErr> {
         bakeries,
         [
             Some(bakery_1.clone()),
-            Some(bakery_1),
+            Some(bakery_1.clone()),
             Some(bakery_2.clone()),
-            Some(bakery_2)
+            Some(bakery_2.clone())
+        ]
+    );
+
+    // following should be equivalent
+    let bakeries = bakers.load_many(bakery::Entity::find(), &ctx.db).await?;
+
+    assert_eq!(
+        bakeries,
+        [
+            vec![bakery_1.clone()],
+            vec![bakery_1.clone()],
+            vec![bakery_2.clone()],
+            vec![bakery_2.clone()],
         ]
     );
 

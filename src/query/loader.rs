@@ -188,28 +188,30 @@ where
         S: EntityOrSelect<R>,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
     {
-        // we verify that is HasMany relation
-
-        if <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::via().is_some() {
-            return Err(query_err("Relation is ManyToMany instead of HasMany"));
-        }
-        let rel_def = <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
-        if rel_def.rel_type == RelationType::HasOne {
-            return Err(query_err("Relation is HasOne instead of HasMany"));
-        }
-
         if self.is_empty() {
             return Ok(Vec::new());
         }
 
-        let keys = self
-            .iter()
-            .map(|model| extract_key(&rel_def.from_col, model))
-            .collect::<Result<Vec<_>, _>>()?;
+        let (keys, stmt, related_key) = if let Some(_via_def) =
+            <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::via()
+        {
+            return Err(query_err("Relation is ManyToMany instead of HasMany"));
+            // The idea is to do a SelectTwo with join, then extract key via a dynamic model
+            // i.e. select (filling + cake_filling) and somehow extract cake_id from result rows
+        } else {
+            let rel_def =
+                <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
+            let keys = self
+                .iter()
+                .map(|model| extract_key(&rel_def.from_col, model))
+                .collect::<Result<Vec<_>, _>>()?;
 
-        let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
+            let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
-        let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
+            let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
+
+            (keys, stmt, rel_def.to_col)
+        };
 
         let data = stmt.all(db).await?;
 
@@ -221,7 +223,7 @@ where
                 });
 
         for value in data {
-            let key = extract_key(&rel_def.to_col, &value)?;
+            let key = extract_key(&related_key, &value)?;
 
             let vec = hashmap.get_mut(&key).ok_or_else(|| {
                 DbErr::RecordNotFound(format!("Loader: failed to find model for {key:?}"))
