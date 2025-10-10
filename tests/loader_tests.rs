@@ -285,6 +285,84 @@ async fn loader_load_many_to_many_dyn() -> Result<(), DbErr> {
     Ok(())
 }
 
+#[sea_orm_macros::test]
+async fn cake_entity_loader() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_cake_entity_loader").await;
+    let db = &ctx.db;
+    create_tables(db).await?;
+
+    let bakery_1 = insert_bakery(db, "SeaSide Bakery").await?;
+    let bakery_2 = insert_bakery(db, "LakeSide Bakery").await?;
+
+    let baker_1 = insert_baker(db, "Jane", bakery_1.id).await?;
+    let baker_2 = insert_baker(db, "Peter", bakery_1.id).await?;
+    let baker_3 = insert_baker(db, "Fred", bakery_1.id).await?; // does not make cake
+
+    let cake_1 = insert_cake_alt(db, "Cheesecake", Some(bakery_1.id)).await?;
+    let cake_2 = insert_cake_alt(db, "Coffee", Some(bakery_1.id)).await?;
+    let cake_3 = insert_cake_alt(db, "Chiffon", Some(bakery_2.id)).await?;
+    let cake_4 = insert_cake_alt(db, "Apple Pie", None).await?; // no one makes apple pie
+
+    insert_cake_baker(db, baker_1.id, cake_1.id).await?;
+    insert_cake_baker(db, baker_1.id, cake_2.id).await?;
+    insert_cake_baker(db, baker_2.id, cake_2.id).await?;
+    insert_cake_baker(db, baker_2.id, cake_3.id).await?;
+
+    let cakes = cake_loader::Entity::loader().all(db).await?;
+    assert_eq!(
+        cakes,
+        [
+            cake_1.clone(),
+            cake_2.clone(),
+            cake_3.clone(),
+            cake_4.clone()
+        ]
+    );
+
+    let cakes = cake_loader::Entity::loader()
+        .with(bakery::Entity)
+        .all(db)
+        .await?;
+    assert_eq!(
+        cakes,
+        [
+            cake_1.clone(),
+            cake_2.clone(),
+            cake_3.clone(),
+            cake_4.clone()
+        ]
+    );
+    assert_eq!(cakes[0].bakery.get(), Some(&bakery_1));
+    assert_eq!(cakes[1].bakery.get(), Some(&bakery_1));
+    assert_eq!(cakes[2].bakery.get(), Some(&bakery_2));
+    assert_eq!(cakes[3].bakery.get(), None);
+
+    let cakes = cake_loader::Entity::loader()
+        .with(bakery::Entity)
+        .with(baker::Entity)
+        .all(db)
+        .await?;
+    assert_eq!(
+        cakes,
+        [
+            cake_1.clone(),
+            cake_2.clone(),
+            cake_3.clone(),
+            cake_4.clone()
+        ]
+    );
+    assert_eq!(cakes[0].bakery.get(), Some(&bakery_1));
+    assert_eq!(cakes[1].bakery.get(), Some(&bakery_1));
+    assert_eq!(cakes[2].bakery.get(), Some(&bakery_2));
+    assert_eq!(cakes[3].bakery.get(), None);
+    assert_eq!(cakes[0].bakers.get(), [baker_1.clone()]);
+    assert_eq!(cakes[1].bakers.get(), [baker_1.clone(), baker_2.clone()]);
+    assert_eq!(cakes[2].bakers.get(), [baker_2.clone()]);
+    assert_eq!(cakes[3].bakers.get(), []);
+
+    Ok(())
+}
+
 pub async fn insert_bakery(db: &DbConn, name: &str) -> Result<bakery::Model, DbErr> {
     bakery::ActiveModel {
         name: Set(name.to_owned()),
@@ -312,6 +390,22 @@ pub async fn insert_cake(
     bakery_id: Option<i32>,
 ) -> Result<cake::Model, DbErr> {
     cake::ActiveModel {
+        name: Set(name.to_owned()),
+        price: Set(rust_decimal::Decimal::ONE),
+        gluten_free: Set(false),
+        bakery_id: Set(bakery_id),
+        ..Default::default()
+    }
+    .insert(db)
+    .await
+}
+
+pub async fn insert_cake_alt(
+    db: &DbConn,
+    name: &str,
+    bakery_id: Option<i32>,
+) -> Result<cake_loader::Model, DbErr> {
+    cake_loader::ActiveModel {
         name: Set(name.to_owned()),
         price: Set(rust_decimal::Decimal::ONE),
         gluten_free: Set(false),

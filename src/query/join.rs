@@ -46,6 +46,15 @@ where
     }
 
     /// Left Join with a Related Entity and select both Entity.
+    pub fn find_also<R>(self, _: E, r: R) -> SelectTwo<E, R>
+    where
+        R: EntityTrait,
+        E: Related<R>,
+    {
+        self.left_join(r).select_also(r)
+    }
+
+    /// Left Join with a Related Entity and select both Entity.
     pub fn find_also_related<R>(self, r: R) -> SelectTwo<E, R>
     where
         R: EntityTrait,
@@ -192,6 +201,18 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
+    /// Left Join with a Related Entity and select both Entity.
+    pub fn find_also<G, R>(self, _: G, _: R) -> SelectThree<E, F, R, TopologyStar>
+    where
+        R: EntityTrait,
+        G: EntityTrait + Related<R>,
+    {
+        SelectThree::new(
+            self.join_join(JoinType::LeftJoin, G::to(), G::via())
+                .into_query(),
+        )
+    }
+
     /// Left Join with an Entity Related to the first Entity
     pub fn find_also_related<R>(self, _: R) -> SelectThree<E, F, R, TopologyStar>
     where

@@ -1,6 +1,7 @@
 pub mod baker;
 pub mod bakery;
 pub mod cake;
+pub mod cake_loader;
 pub mod cakes_bakers;
 pub mod customer;
 pub mod lineitem;
