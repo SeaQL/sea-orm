@@ -1,4 +1,4 @@
-use sea_orm::{ConnectionTrait, compound::*, entity::prelude::*};
+use sea_orm::{compound::*, entity::prelude::*};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(table_name = "cake")]
@@ -11,9 +11,9 @@ pub struct Model {
     pub bakery_id: Option<i32>,
     pub gluten_free: bool,
     pub serial: Uuid,
-    #[sea_orm(related = "Bakery")]
+    #[sea_orm(relation = "Bakery")]
     pub bakery: BelongsTo<super::bakery::Entity>,
-    #[sea_orm(related = "Baker", via = "cakes_bakers::Cake")]
+    #[sea_orm(relation = "Baker", via = "cakes_bakers::Cake")]
     pub bakers: HasMany<super::baker::Entity>,
 }
 
@@ -39,7 +39,8 @@ impl ActiveModelBehavior for ActiveModel {
     }
 }
 
-// intended to be generated
+/* // Following will be generated
+
 pub struct EntityLoader {
     select: sea_orm::Select<Entity>,
     with: EntityLoaderWith,
@@ -79,6 +80,16 @@ impl Entity {
 }
 
 impl EntityLoader {
+    pub async fn one<C: sea_orm::ConnectionTrait>(
+        mut self,
+        db: &C,
+    ) -> Result<Option<Model>, DbErr> {
+        use sea_orm::QuerySelect;
+
+        self.select = self.select.limit(1);
+        Ok(self.all(db).await?.into_iter().next())
+    }
+
     pub fn with<R>(mut self, entity: R) -> Self
     where
         R: EntityTrait,
@@ -93,17 +104,9 @@ impl EntityLoader {
         self
     }
 
-    pub async fn one<C: sea_orm::ConnectionTrait>(
-        mut self,
-        db: &C,
-    ) -> Result<Option<Model>, DbErr> {
-        use sea_orm::QuerySelect;
-
-        self.select = self.select.limit(1);
-        Ok(self.all(db).await?.into_iter().next())
-    }
-
     pub async fn all<C: sea_orm::ConnectionTrait>(self, db: &C) -> Result<Vec<Model>, DbErr> {
+        use sea_orm::ConnectionTrait;
+
         let select = if self.with.bakery {
             self.select.find_also(Entity, super::bakery::Entity)
         } else {
@@ -131,3 +134,5 @@ impl EntityLoader {
         Ok(cakes)
     }
 }
+
+*/

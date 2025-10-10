@@ -45,7 +45,7 @@ pub mod compound_attr {
     /// Attributes for compound model fields
     #[derive(Default, FromAttributes)]
     pub struct SeaOrm {
-        pub related: Option<syn::LitStr>,
+        pub relation: Option<syn::LitStr>,
         pub via: Option<syn::LitStr>,
     }
 }

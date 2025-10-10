@@ -39,8 +39,8 @@ pub(crate) fn field_not_ignored(field: &Field) -> bool {
 
 pub(crate) fn is_compound_field(field_type: &str) -> bool {
     field_type.starts_with("BelongsTo<")
-        || field_type.starts_with("HasMany<")
         || field_type.starts_with("HasOne<")
+        || field_type.starts_with("HasMany<")
 }
 
 pub(crate) fn format_field_ident(field: Field) -> Ident {
