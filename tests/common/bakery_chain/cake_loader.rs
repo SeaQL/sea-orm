@@ -62,6 +62,8 @@ impl sea_orm::QueryOrder for EntityLoader {
     }
 }
 
+impl sea_orm::compound::EntityLoaderTrait<Entity> for EntityLoader {}
+
 impl Entity {
     pub fn loader() -> EntityLoader {
         EntityLoader {

@@ -807,6 +807,14 @@ pub trait QueryFilter: Sized {
         self
     }
 
+    /// Like [`Self::filter`], but without consuming self
+    fn filter_mut<F>(&mut self, filter: F)
+    where
+        F: IntoCondition,
+    {
+        self.query().cond_where(filter.into_condition());
+    }
+
     /// Apply a where condition using the model's primary key
     /// ```
     /// # use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::{cake, fruit}};

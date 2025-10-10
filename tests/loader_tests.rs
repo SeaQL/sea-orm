@@ -287,6 +287,8 @@ async fn loader_load_many_to_many_dyn() -> Result<(), DbErr> {
 
 #[sea_orm_macros::test]
 async fn cake_entity_loader() -> Result<(), DbErr> {
+    use sea_orm::compound::EntityLoaderTrait;
+
     let ctx = TestContext::new("test_cake_entity_loader").await;
     let db = &ctx.db;
     create_tables(db).await?;
@@ -363,6 +365,16 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cake_with_bakery, cake_1);
     assert_eq!(cake_with_bakery.bakery.get(), Some(&bakery_1));
     assert!(cake_with_bakery.bakers.get().is_empty());
+
+    assert_eq!(
+        cake_loader::Entity::loader()
+            .filter_by_id(cake_2.id)
+            .with(bakery::Entity)
+            .one(db)
+            .await?
+            .unwrap(),
+        cake_2
+    );
 
     let cakes = cake_loader::Entity::loader()
         .with(bakery::Entity)

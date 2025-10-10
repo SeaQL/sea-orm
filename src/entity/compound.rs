@@ -1,6 +1,26 @@
 #![allow(missing_docs)]
-use super::EntityTrait;
+use super::{ColumnTrait, EntityTrait, PrimaryKeyToColumn, PrimaryKeyTrait};
+use crate::{Iterable, QueryFilter};
+use sea_query::IntoValueTuple;
 use std::marker::PhantomData;
+
+pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter {
+    fn filter_by_id<T>(mut self, values: T) -> Self
+    where
+        T: Into<<E::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+    {
+        let mut keys = E::PrimaryKey::iter();
+        for v in values.into().into_value_tuple() {
+            if let Some(key) = keys.next() {
+                let col = key.into_column();
+                self.filter_mut(col.eq(v));
+            } else {
+                unreachable!("primary key arity mismatch");
+            }
+        }
+        self
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct BelongsTo<E: EntityTrait> {
