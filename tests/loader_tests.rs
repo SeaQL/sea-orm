@@ -310,7 +310,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     insert_cake_baker(db, baker_2.id, cake_2.id).await?;
     insert_cake_baker(db, baker_2.id, cake_3.id).await?;
 
-    let cakes = cake_loader::Entity::loader().all(db).await?;
+    let cakes = cake_loader::Entity::load().all(db).await?;
     assert_eq!(
         cakes,
         [
@@ -321,7 +321,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         ]
     );
 
-    let cakes = cake_loader::Entity::loader()
+    let cakes = cake_loader::Entity::load()
         .filter(cake::Column::Name.like("Ch%"))
         .all(db)
         .await?;
@@ -330,7 +330,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert!(cakes[0].bakery.get().is_none());
 
     assert_eq!(
-        cake_loader::Entity::loader()
+        cake_loader::Entity::load()
             .filter(cake::Column::Name.like("Ch%"))
             .order_by_desc(cake::Column::Name)
             .one(db)
@@ -338,7 +338,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         Some(cake_3.clone())
     );
 
-    let mut cakes = cake_loader::Entity::loader()
+    let mut cakes = cake_loader::Entity::load()
         .with(bakery::Entity)
         .all(db)
         .await?;
@@ -359,7 +359,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         ]
     );
 
-    let mut cake_with_bakery = cake_loader::Entity::loader()
+    let mut cake_with_bakery = cake_loader::Entity::load()
         .filter(cake::Column::Name.eq("Cheesecake"))
         .with(bakery::Entity)
         .one(db)
@@ -372,7 +372,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cake_with_bakery, cake_1);
 
     assert_eq!(
-        cake_loader::Entity::loader()
+        cake_loader::Entity::load()
             .filter_by_id(cake_2.id)
             .with(bakery::Entity)
             .one(db)
@@ -385,7 +385,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         }
     );
 
-    let cakes = cake_loader::Entity::loader()
+    let cakes = cake_loader::Entity::load()
         .with(bakery::Entity)
         .with(baker::Entity)
         .all(db)
@@ -416,7 +416,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[2].bakers.get(), [baker_2.clone()]);
     assert_eq!(cakes[3].bakers.get(), []);
 
-    let mut cake_with_bakery_baker = cake_loader::Entity::loader()
+    let mut cake_with_bakery_baker = cake_loader::Entity::load()
         .filter(cake::Column::Name.eq("Chiffon"))
         .with(bakery::Entity)
         .with(baker::Entity)
