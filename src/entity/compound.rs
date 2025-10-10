@@ -19,15 +19,6 @@ impl<E: EntityTrait> Default for BelongsTo<E> {
     }
 }
 
-impl<E: EntityTrait> PartialEq for BelongsTo<E> {
-    fn eq(&self, _: &Self) -> bool {
-        // same type regard as true
-        true
-    }
-}
-
-impl<E: EntityTrait> Eq for BelongsTo<E> {}
-
 impl<E: EntityTrait> BelongsTo<E> {
     pub fn get(&self) -> Option<&E::Model> {
         self.item.as_deref()
@@ -53,15 +44,6 @@ impl<E: EntityTrait> Default for HasMany<E> {
     }
 }
 
-impl<E: EntityTrait> PartialEq for HasMany<E> {
-    fn eq(&self, _: &Self) -> bool {
-        // same type regard as true
-        true
-    }
-}
-
-impl<E: EntityTrait> Eq for HasMany<E> {}
-
 impl<E: EntityTrait> HasMany<E> {
     pub fn get(&self) -> &[E::Model] {
         &self.items
@@ -71,3 +53,19 @@ impl<E: EntityTrait> HasMany<E> {
         self.items = items
     }
 }
+
+macro_rules! impl_partial_eq_eq {
+    ($ty:ident) => {
+        impl<E: EntityTrait> PartialEq for $ty<E> {
+            fn eq(&self, _: &Self) -> bool {
+                // same type regard as true
+                true
+            }
+        }
+
+        impl<E: EntityTrait> Eq for $ty<E> {}
+    };
+}
+
+impl_partial_eq_eq!(BelongsTo);
+impl_partial_eq_eq!(HasMany);
