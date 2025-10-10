@@ -42,8 +42,13 @@ impl ActiveModelBehavior for ActiveModel {
 // intended to be generated
 pub struct EntityLoader {
     select: sea_orm::Select<Entity>,
-    with_bakery: bool,
-    with_baker: bool,
+    with: EntityLoaderWith,
+}
+
+#[derive(Debug, Default)]
+struct EntityLoaderWith {
+    bakery: bool,
+    baker: bool,
 }
 
 impl sea_orm::QueryFilter for EntityLoader {
@@ -68,19 +73,22 @@ impl Entity {
     pub fn loader() -> EntityLoader {
         EntityLoader {
             select: Entity::find(),
-            with_bakery: false,
-            with_baker: false,
+            with: Default::default(),
         }
     }
 }
 
 impl EntityLoader {
-    pub fn with<E: EntityTrait>(mut self, entity: E) -> Self {
+    pub fn with<R>(mut self, entity: R) -> Self
+    where
+        R: EntityTrait,
+        Entity: Related<R>,
+    {
         if entity.table_ref() == super::bakery::Entity.table_ref() {
-            self.with_bakery = true;
+            self.with.bakery = true;
         }
         if entity.table_ref() == super::baker::Entity.table_ref() {
-            self.with_baker = true;
+            self.with.baker = true;
         }
         self
     }
@@ -96,7 +104,7 @@ impl EntityLoader {
     }
 
     pub async fn all<C: sea_orm::ConnectionTrait>(self, db: &C) -> Result<Vec<Model>, DbErr> {
-        let select = if self.with_bakery {
+        let select = if self.with.bakery {
             self.select.find_also(Entity, super::bakery::Entity)
         } else {
             // select also but without join
@@ -112,7 +120,7 @@ impl EntityLoader {
             cakes.push(cake);
         }
 
-        if self.with_baker {
+        if self.with.baker {
             let bakers = cakes.load_many(super::baker::Entity, db).await?;
 
             for (cake, bakers) in cakes.iter_mut().zip(bakers) {

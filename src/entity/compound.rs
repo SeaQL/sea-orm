@@ -23,14 +23,16 @@ pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter {
 }
 
 #[derive(Debug, Clone)]
-pub struct BelongsTo<E: EntityTrait> {
+pub struct HasOne<E: EntityTrait> {
     phantom: PhantomData<E>,
     pub(crate) item: Option<Box<E::Model>>,
 }
 
+pub type BelongsTo<E> = HasOne<E>;
+
 // TODO impl serde
 
-impl<E: EntityTrait> Default for BelongsTo<E> {
+impl<E: EntityTrait> Default for HasOne<E> {
     fn default() -> Self {
         Self {
             phantom: PhantomData,
@@ -39,7 +41,7 @@ impl<E: EntityTrait> Default for BelongsTo<E> {
     }
 }
 
-impl<E: EntityTrait> BelongsTo<E> {
+impl<E: EntityTrait> HasOne<E> {
     pub fn get(&self) -> Option<&E::Model> {
         self.item.as_deref()
     }
@@ -87,5 +89,5 @@ macro_rules! impl_partial_eq_eq {
     };
 }
 
-impl_partial_eq_eq!(BelongsTo);
+impl_partial_eq_eq!(HasOne);
 impl_partial_eq_eq!(HasMany);
