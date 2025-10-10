@@ -201,6 +201,16 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
+    /// Only used by Entity loader
+    #[doc(hidden)]
+    pub fn select_also_fake<R>(self, _: R) -> SelectThree<E, F, R, TopologyStar>
+    where
+        R: EntityTrait,
+    {
+        // select also but without join
+        SelectThree::new(self.into_query())
+    }
+
     /// Left Join with a Related Entity and select both Entity.
     pub fn find_also<G, R>(self, _: G, _: R) -> SelectThree<E, F, R, TopologyStar>
     where

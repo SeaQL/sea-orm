@@ -1,4 +1,5 @@
 pub mod bakery_chain;
+pub mod bakery_dense;
 pub mod features;
 pub mod runtime;
 pub mod setup;

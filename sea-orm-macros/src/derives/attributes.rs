@@ -47,6 +47,10 @@ pub mod compound_attr {
     pub struct SeaOrm {
         pub relation: Option<syn::LitStr>,
         pub via: Option<syn::LitStr>,
+        pub from: Option<syn::LitStr>,
+        pub to: Option<syn::LitStr>,
+        pub on_update: Option<syn::LitStr>,
+        pub on_delete: Option<syn::LitStr>,
     }
 }
 

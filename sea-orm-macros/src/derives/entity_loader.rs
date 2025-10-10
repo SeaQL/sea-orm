@@ -28,6 +28,8 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
     let mut assemble_one = TokenStream::new();
     let mut load_many = TokenStream::new();
 
+    one_fields.push(quote!(mut model));
+
     for entity in schema.fields.iter() {
         let field = &entity.field;
         let is_one = entity.is_one;
@@ -41,13 +43,12 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
         });
 
         if is_one {
-            one_fields.push(field);
+            one_fields.push(quote!(#field));
 
             select_impl.extend(quote! {
                 let select = if self.with.#field {
                     select.find_also(Entity, #entity)
                 } else {
-                    // select also but without join
                     select.select_also_fake(#entity)
                 };
             });
@@ -132,14 +133,12 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
 
             #select_impl
 
-            let one_models = select.all(db).await?;
+            let models = select.all(db).await?;
 
-            let mut models = Vec::new();
-
-            for (mut model, #one_fields) in one_models {
+            let mut models = models.into_iter().map(|(#one_fields)| {
                 #assemble_one
-                models.push(model);
-            }
+                model
+            }).collect::<Vec<_>>();
 
             #load_many
 

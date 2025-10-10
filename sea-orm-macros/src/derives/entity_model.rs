@@ -407,14 +407,30 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         }
     };
 
+    let mut relation_enum_variants: Punctuated<_, Comma> = Punctuated::new();
+
     let related_def = {
         let mut ts = TokenStream::new();
 
-        for (attrs, field_type) in impl_related {
+        for (attrs, field_type) in impl_related.iter() {
+            if let Some(var) = relation_enum_variant(attrs, field_type) {
+                relation_enum_variants.push(var);
+            }
             ts.extend(impl_related_trait(attrs, field_type));
         }
 
         ts
+    };
+
+    let relation_enum = if !impl_related.is_empty() {
+        quote! {
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {
+                #relation_enum_variants
+            }
+        }
+    } else {
+        quote!()
     };
 
     let entity_loader = if !entity_loader_schema.is_empty() {
@@ -465,18 +481,68 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
         #primary_key
 
+        #relation_enum
+
         #related_def
 
         #entity_loader
     })
 }
 
-fn impl_related_trait(attr: compound_attr::SeaOrm, ty: String) -> TokenStream {
-    if let Some(related) = attr.relation {
-        let related = related.value();
-        let related_entity: TokenStream = extract_compound_entity(&ty).parse().unwrap();
+fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<TokenStream> {
+    let related: Ident = attr.relation.as_ref().unwrap().parse().unwrap();
+    let related_entity = extract_compound_entity(ty);
+    if ty.starts_with("BelongsTo<") {
+        let from = format!(
+            "Column::{}",
+            attr.from
+                .as_ref()
+                .expect("Must specify `from` and `to`")
+                .value()
+        );
+        let to = format!(
+            "{}::Column::{}",
+            related_entity.trim_end_matches("::Entity"),
+            attr.to
+                .as_ref()
+                .expect("Must specify `from` and `to`")
+                .value()
+        );
+        let belongs_to: TokenStream = "belongs_to".parse().unwrap();
+        let mut extra: Punctuated<_, Comma> = Punctuated::new();
+        if let Some(on_update) = &attr.on_update {
+            let tag: TokenStream = "on_update".parse().unwrap();
+            extra.push(quote!(#tag = #on_update))
+        }
+        if let Some(on_delete) = &attr.on_delete {
+            let tag: TokenStream = "on_delete".parse().unwrap();
+            extra.push(quote!(#tag = #on_delete))
+        }
 
-        if let Some(via) = attr.via {
+        Some(quote! {
+            #[sea_orm(#belongs_to = #related_entity, from = #from, to = #to, #extra)]
+            #related
+        })
+    } else if ty.starts_with("HasMany<") && attr.via.is_none() {
+        // skip junction relation
+
+        let has_many: TokenStream = "has_many".parse().unwrap();
+
+        Some(quote! {
+            #[sea_orm(#has_many = #related_entity)]
+            #related
+        })
+    } else {
+        return None;
+    }
+}
+
+fn impl_related_trait(attr: &compound_attr::SeaOrm, ty: &str) -> TokenStream {
+    if let Some(related) = &attr.relation {
+        let related = related.value();
+        let related_entity: TokenStream = extract_compound_entity(ty).parse().unwrap();
+
+        if let Some(via) = &attr.via {
             let via = via.value();
             let (junction, via_related) = via
                 .split_once("::")

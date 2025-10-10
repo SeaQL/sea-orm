@@ -1,4 +1,4 @@
-use sea_orm::{compound::*, entity::prelude::*};
+use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(table_name = "cake")]
@@ -11,22 +11,10 @@ pub struct Model {
     pub bakery_id: Option<i32>,
     pub gluten_free: bool,
     pub serial: Uuid,
-    #[sea_orm(relation = "Bakery")]
+    #[sea_orm(relation = "Bakery", from = "BakeryId", to = "Id")]
     pub bakery: BelongsTo<super::bakery::Entity>,
     #[sea_orm(relation = "Baker", via = "cakes_bakers::Cake")]
     pub bakers: HasMany<super::baker::Entity>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::bakery::Entity",
-        from = "Column::BakeryId",
-        to = "super::bakery::Column::Id",
-        on_update = "Cascade",
-        on_delete = "SetNull"
-    )]
-    Bakery,
 }
 
 impl ActiveModelBehavior for ActiveModel {
@@ -105,8 +93,6 @@ impl EntityLoader {
     }
 
     pub async fn all<C: sea_orm::ConnectionTrait>(self, db: &C) -> Result<Vec<Model>, DbErr> {
-        use sea_orm::ConnectionTrait;
-
         let select = if self.with.bakery {
             self.select.find_also(Entity, super::bakery::Entity)
         } else {

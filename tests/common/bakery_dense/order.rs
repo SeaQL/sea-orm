@@ -1,0 +1,21 @@
+use sea_orm::entity::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[sea_orm(table_name = "order")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    #[sea_orm(column_type = "Decimal(Some((16, 4)))")]
+    pub total: Decimal,
+    pub bakery_id: i32,
+    pub customer_id: i32,
+    pub placed_at: DateTimeUtc,
+    #[sea_orm(relation = "Bakery", from = "BakeryId", to = "Id")]
+    pub bakery: BelongsTo<super::bakery::Entity>,
+    #[sea_orm(relation = "Customer", from = "CustomerId", to = "Id")]
+    pub customer: BelongsTo<super::customer::Entity>,
+    #[sea_orm(relation = "Lineitem")]
+    pub lineitems: HasMany<super::lineitem::Entity>,
+}
+
+impl ActiveModelBehavior for ActiveModel {}
