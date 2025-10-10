@@ -1,5 +1,5 @@
 use super::case_style::{CaseStyle, CaseStyleHelpers};
-use super::util::{escape_rust_keyword, trim_starting_raw_identifier};
+use super::util::{escape_rust_keyword, is_compound_field, trim_starting_raw_identifier};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
@@ -259,6 +259,15 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         },
                     };
 
+                    let field_type = &field.ty;
+                    let field_type = quote! { #field_type }
+                        .to_string() // e.g.: "Option < String >"
+                        .replace(' ', ""); // Remove spaces
+
+                    if is_compound_field(&field_type) {
+                        continue;
+                    }
+
                     if ignore {
                         continue;
                     } else {
@@ -286,10 +295,6 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         });
                     }
 
-                    let field_type = &field.ty;
-                    let field_type = quote! { #field_type }
-                        .to_string() //E.g.: "Option < String >"
-                        .replace(' ', ""); // Remove spaces
                     let field_type = if field_type.starts_with("Option<") {
                         nullable = true;
                         &field_type[7..(field_type.len() - 1)] // Extract `T` out of `Option<T>`

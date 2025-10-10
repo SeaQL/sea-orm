@@ -24,7 +24,23 @@ pub(crate) fn field_not_ignored(field: &Field) -> bool {
             }
         }
     }
+
+    let field_type = &field.ty;
+    let field_type = quote::quote! { #field_type }
+        .to_string() // e.g.: "Option < String >"
+        .replace(' ', ""); // Remove spaces
+
+    if is_compound_field(&field_type) {
+        return false;
+    }
+
     true
+}
+
+pub(crate) fn is_compound_field(field_type: &str) -> bool {
+    field_type.starts_with("BelongsTo<")
+        || field_type.starts_with("HasMany<")
+        || field_type.starts_with("HasOne<")
 }
 
 pub(crate) fn format_field_ident(field: Field) -> Ident {

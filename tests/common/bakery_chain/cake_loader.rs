@@ -11,9 +11,7 @@ pub struct Model {
     pub bakery_id: Option<i32>,
     pub gluten_free: bool,
     pub serial: Uuid,
-    #[sea_orm(ignore)]
     pub bakery: BelongsTo<super::bakery::Entity>,
-    #[sea_orm(ignore)]
     pub bakers: HasMany<super::baker::Entity>,
 }
 
