@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 
-use super::attributes::{derive_attr, field_attr};
+use super::attributes::{derive_attr, relation_attr};
 
 enum Error {
     InputNotEnum,
@@ -64,7 +64,7 @@ impl DeriveRelation {
             .iter()
             .map(|variant| {
                 let variant_ident = &variant.ident;
-                let attr = field_attr::SeaOrm::from_attributes(&variant.attrs)?;
+                let attr = relation_attr::SeaOrm::from_attributes(&variant.attrs)?;
                 let mut relation_type = quote! { error };
                 let related_to = if attr.belongs_to.is_some() {
                     relation_type = quote! { belongs_to };

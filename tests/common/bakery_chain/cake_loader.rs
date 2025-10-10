@@ -11,7 +11,9 @@ pub struct Model {
     pub bakery_id: Option<i32>,
     pub gluten_free: bool,
     pub serial: Uuid,
+    #[sea_orm(related = "Bakery")]
     pub bakery: BelongsTo<super::bakery::Entity>,
+    #[sea_orm(related = "Baker", via = "cakes_bakers::Cake")]
     pub bakers: HasMany<super::baker::Entity>,
 }
 
@@ -25,22 +27,6 @@ pub enum Relation {
         on_delete = "SetNull"
     )]
     Bakery,
-}
-
-impl Related<super::bakery::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Bakery.def()
-    }
-}
-
-impl Related<super::baker::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::cakes_bakers::Relation::Baker.def()
-    }
-
-    fn via() -> Option<RelationDef> {
-        Some(super::cakes_bakers::Relation::Cake.def().rev())
-    }
 }
 
 impl ActiveModelBehavior for ActiveModel {
@@ -91,7 +77,7 @@ impl EntityLoader {
         if entity.table_ref() == super::bakery::Entity.table_ref() {
             self.with_bakery = true;
         }
-        if entity.table_ref() == super::bakery::Entity.table_ref() {
+        if entity.table_ref() == super::baker::Entity.table_ref() {
             self.with_baker = true;
         }
         self

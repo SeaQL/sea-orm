@@ -19,10 +19,10 @@ pub mod derive_attr {
     }
 }
 
-pub mod field_attr {
+pub mod relation_attr {
     use bae::FromAttributes;
 
-    /// Operations for Models and ActiveModels
+    /// Attributes for Relation enum
     #[derive(Default, FromAttributes)]
     pub struct SeaOrm {
         pub belongs_to: Option<syn::Lit>,
@@ -39,11 +39,22 @@ pub mod field_attr {
     }
 }
 
+pub mod compound_attr {
+    use bae::FromAttributes;
+
+    /// Attributes for compound model fields
+    #[derive(Default, FromAttributes)]
+    pub struct SeaOrm {
+        pub related: Option<syn::LitStr>,
+        pub via: Option<syn::LitStr>,
+    }
+}
+
 #[cfg(feature = "seaography")]
 pub mod related_attr {
     use bae::FromAttributes;
 
-    /// Operations for RelatedEntity enumeration
+    /// Attributes for RelatedEntity enum
     #[derive(Default, FromAttributes)]
     pub struct SeaOrm {
         ///

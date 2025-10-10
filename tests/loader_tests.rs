@@ -324,6 +324,8 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .all(db)
         .await?;
     assert_eq!(cakes, [cake_1.clone(), cake_3.clone()]);
+    assert!(cakes[0].bakers.get().is_empty());
+    assert!(cakes[0].bakery.get().is_none());
 
     assert_eq!(
         cake_loader::Entity::loader()
@@ -360,6 +362,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .unwrap();
     assert_eq!(cake_with_bakery, cake_1);
     assert_eq!(cake_with_bakery.bakery.get(), Some(&bakery_1));
+    assert!(cake_with_bakery.bakers.get().is_empty());
 
     let cakes = cake_loader::Entity::loader()
         .with(bakery::Entity)
