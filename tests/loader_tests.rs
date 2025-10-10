@@ -315,8 +315,23 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             cake_1.clone(),
             cake_2.clone(),
             cake_3.clone(),
-            cake_4.clone()
+            cake_4.clone(),
         ]
+    );
+
+    let cakes = cake_loader::Entity::loader()
+        .filter(cake::Column::Name.like("Ch%"))
+        .all(db)
+        .await?;
+    assert_eq!(cakes, [cake_1.clone(), cake_3.clone()]);
+
+    assert_eq!(
+        cake_loader::Entity::loader()
+            .filter(cake::Column::Name.like("Ch%"))
+            .order_by_desc(cake::Column::Name)
+            .one(db)
+            .await?,
+        Some(cake_3.clone())
     );
 
     let cakes = cake_loader::Entity::loader()
@@ -329,13 +344,22 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             cake_1.clone(),
             cake_2.clone(),
             cake_3.clone(),
-            cake_4.clone()
+            cake_4.clone(),
         ]
     );
     assert_eq!(cakes[0].bakery.get(), Some(&bakery_1));
     assert_eq!(cakes[1].bakery.get(), Some(&bakery_1));
     assert_eq!(cakes[2].bakery.get(), Some(&bakery_2));
     assert_eq!(cakes[3].bakery.get(), None);
+
+    let cake_with_bakery = cake_loader::Entity::loader()
+        .filter(cake::Column::Name.eq("Cheesecake"))
+        .with(bakery::Entity)
+        .one(db)
+        .await?
+        .unwrap();
+    assert_eq!(cake_with_bakery, cake_1);
+    assert_eq!(cake_with_bakery.bakery.get(), Some(&bakery_1));
 
     let cakes = cake_loader::Entity::loader()
         .with(bakery::Entity)
@@ -359,6 +383,17 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[1].bakers.get(), [baker_1.clone(), baker_2.clone()]);
     assert_eq!(cakes[2].bakers.get(), [baker_2.clone()]);
     assert_eq!(cakes[3].bakers.get(), []);
+
+    let cake_with_bakery_baker = cake_loader::Entity::loader()
+        .filter(cake::Column::Name.eq("Chiffon"))
+        .with(bakery::Entity)
+        .with(baker::Entity)
+        .one(db)
+        .await?
+        .unwrap();
+    assert_eq!(cake_with_bakery_baker, cake_3);
+    assert_eq!(cake_with_bakery_baker.bakery.get(), Some(&bakery_2));
+    assert_eq!(cake_with_bakery_baker.bakers.get(), [baker_2.clone()]);
 
     Ok(())
 }

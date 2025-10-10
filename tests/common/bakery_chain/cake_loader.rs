@@ -56,15 +56,35 @@ impl ActiveModelBehavior for ActiveModel {
 }
 
 // intended to be generated
-#[derive(Default)]
 pub struct EntityLoader {
+    select: sea_orm::Select<Entity>,
     with_bakery: bool,
     with_baker: bool,
 }
 
+impl sea_orm::QueryFilter for EntityLoader {
+    type QueryStatement = <sea_orm::Select<Entity> as sea_orm::QueryFilter>::QueryStatement;
+
+    fn query(&mut self) -> &mut Self::QueryStatement {
+        sea_orm::QueryFilter::query(&mut self.select)
+    }
+}
+
+impl sea_orm::QueryOrder for EntityLoader {
+    type QueryStatement = <sea_orm::Select<Entity> as sea_orm::QueryOrder>::QueryStatement;
+
+    fn query(&mut self) -> &mut Self::QueryStatement {
+        sea_orm::QueryOrder::query(&mut self.select)
+    }
+}
+
 impl Entity {
     pub fn loader() -> EntityLoader {
-        Default::default()
+        EntityLoader {
+            select: Entity::find(),
+            with_bakery: false,
+            with_baker: false,
+        }
     }
 }
 
@@ -79,16 +99,25 @@ impl EntityLoader {
         self
     }
 
+    pub async fn one<C: sea_orm::ConnectionTrait>(
+        mut self,
+        db: &C,
+    ) -> Result<Option<Model>, DbErr> {
+        use sea_orm::QuerySelect;
+
+        self.select = self.select.limit(1);
+        Ok(self.all(db).await?.into_iter().next())
+    }
+
     pub async fn all<C: sea_orm::ConnectionTrait>(self, db: &C) -> Result<Vec<Model>, DbErr> {
-        let query = Entity::find();
-        let query = if self.with_bakery {
-            query.find_also(Entity, super::bakery::Entity)
+        let select = if self.with_bakery {
+            self.select.find_also(Entity, super::bakery::Entity)
         } else {
             // select also but without join
-            query.select_also_fake(super::bakery::Entity)
+            self.select.select_also_fake(super::bakery::Entity)
         };
 
-        let models = query.all(db).await?;
+        let models = select.all(db).await?;
 
         let mut cakes = Vec::new();
 

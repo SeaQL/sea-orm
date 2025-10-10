@@ -8,6 +8,8 @@ pub struct BelongsTo<E: EntityTrait> {
     pub(crate) item: Option<Box<E::Model>>,
 }
 
+// TODO impl serde
+
 impl<E: EntityTrait> Default for BelongsTo<E> {
     fn default() -> Self {
         Self {
