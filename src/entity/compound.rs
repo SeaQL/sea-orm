@@ -22,8 +22,9 @@ pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(derive_more::Debug, Clone)]
 pub struct HasOne<E: EntityTrait> {
+    #[debug(skip)]
     phantom: PhantomData<E>,
     pub(crate) item: Option<Box<E::Model>>,
 }
@@ -46,13 +47,18 @@ impl<E: EntityTrait> HasOne<E> {
         self.item.as_deref()
     }
 
-    pub fn set(&mut self, item: Option<Box<E::Model>>) {
-        self.item = item
+    pub fn set<T: Into<Box<E::Model>>>(&mut self, item: Option<T>) {
+        self.item = item.map(Into::into);
+    }
+
+    pub fn take(&mut self) -> Option<Box<E::Model>> {
+        self.item.take()
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(derive_more::Debug, Clone)]
 pub struct HasMany<E: EntityTrait> {
+    #[debug(skip)]
     phantom: PhantomData<E>,
     pub(crate) items: Vec<E::Model>,
 }
@@ -74,20 +80,32 @@ impl<E: EntityTrait> HasMany<E> {
     pub fn set(&mut self, items: Vec<E::Model>) {
         self.items = items
     }
+
+    pub fn take(&mut self) -> Vec<E::Model> {
+        std::mem::take(&mut self.items)
+    }
 }
 
 macro_rules! impl_partial_eq_eq {
-    ($ty:ident) => {
-        impl<E: EntityTrait> PartialEq for $ty<E> {
-            fn eq(&self, _: &Self) -> bool {
-                // same type regard as true
-                true
+    ($ty:ident, $field:ident) => {
+        impl<E> PartialEq for $ty<E>
+        where
+            E: EntityTrait,
+            E::Model: PartialEq,
+        {
+            fn eq(&self, other: &Self) -> bool {
+                self.$field == other.$field
             }
         }
 
-        impl<E: EntityTrait> Eq for $ty<E> {}
+        impl<E> Eq for $ty<E>
+        where
+            E: EntityTrait,
+            E::Model: Eq,
+        {
+        }
     };
 }
 
-impl_partial_eq_eq!(HasOne);
-impl_partial_eq_eq!(HasMany);
+impl_partial_eq_eq!(HasOne, item);
+impl_partial_eq_eq!(HasMany, items);

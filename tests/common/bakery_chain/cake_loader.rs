@@ -1,6 +1,6 @@
 use sea_orm::{ConnectionTrait, compound::*, entity::prelude::*};
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(table_name = "cake")]
 pub struct Model {
     #[sea_orm(primary_key)]
@@ -116,7 +116,7 @@ impl EntityLoader {
         let mut cakes = Vec::new();
 
         for (mut cake, bakery) in models {
-            cake.bakery.set(bakery.map(Box::new));
+            cake.bakery.set(bakery);
             cakes.push(cake);
         }
 
