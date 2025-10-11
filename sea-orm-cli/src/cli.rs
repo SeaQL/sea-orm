@@ -16,8 +16,6 @@ use crate::{handle_error, run_generate_command, run_migrate_command};
 
 {all-args}{after-help}
 
-AUTHORS:
-    {author}
 "#,
     about = r#"
    ____                 ___   ____   __  __        /\

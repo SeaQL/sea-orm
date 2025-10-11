@@ -4,7 +4,7 @@ use quote::{format_ident, quote};
 use sea_query::DynIden;
 use std::fmt::Write;
 
-use crate::WithSerde;
+use crate::{EntityFormat, WithSerde};
 
 #[derive(Clone, Debug)]
 pub struct ActiveEnum {
@@ -19,7 +19,7 @@ impl ActiveEnum {
         with_copy_enums: bool,
         extra_derives: &TokenStream,
         extra_attributes: &TokenStream,
-        frontend_format: bool,
+        entity_format: EntityFormat,
     ) -> TokenStream {
         let enum_name = &self.enum_name.to_string();
         let enum_iden = format_ident!("{}", enum_name.to_upper_camel_case());
@@ -53,7 +53,7 @@ impl ActiveEnum {
             quote! {}
         };
 
-        if frontend_format {
+        if entity_format == EntityFormat::Frontend {
             quote! {
                 #[derive(Debug, Clone, PartialEq, Eq #copy_derive #serde_derive #extra_derives)]
                 #extra_attributes
@@ -113,7 +113,7 @@ mod tests {
                 true,
                 &TokenStream::new(),
                 &TokenStream::new(),
-                false,
+                EntityFormat::Compact,
             )
             .to_string(),
             quote!(
@@ -163,7 +163,7 @@ mod tests {
                 true,
                 &bonus_derive(["specta::Type", "ts_rs::TS"]),
                 &TokenStream::new(),
-                false,
+                EntityFormat::Compact,
             )
             .to_string(),
             build_generated_enum(),
@@ -200,7 +200,7 @@ mod tests {
                 true,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
-                false,
+                EntityFormat::Compact,
             )
             .to_string(),
             quote!(
@@ -233,7 +233,7 @@ mod tests {
                 true,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
-                false,
+                EntityFormat::Compact,
             )
             .to_string(),
             quote!(
@@ -280,7 +280,7 @@ mod tests {
                 true,
                 &TokenStream::new(),
                 &TokenStream::new(),
-                false,
+                EntityFormat::Compact,
             )
             .to_string(),
             quote!(
