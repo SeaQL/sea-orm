@@ -139,45 +139,7 @@ where
         S: EntityOrSelect<R>,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
     {
-        // we verify that is HasOne relation
-        if <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::via().is_some() {
-            return Err(query_err("Relation is ManytoMany instead of HasOne"));
-        }
-        let rel_def = <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
-        if rel_def.rel_type == RelationType::HasMany {
-            return Err(query_err("Relation is HasMany instead of HasOne"));
-        }
-
-        if self.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let keys = self
-            .iter()
-            .map(|model| extract_key(&rel_def.from_col, model))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
-
-        let stmt = QueryFilter::filter(stmt.select(), condition);
-
-        let data = stmt.all(db).await?;
-
-        let hashmap = data.into_iter().try_fold(
-            HashMap::<ValueTuple, <R as EntityTrait>::Model>::new(),
-            |mut acc, value| {
-                extract_key(&rel_def.to_col, &value).map(|key| {
-                    acc.insert(key, value);
-
-                    acc
-                })
-            },
-        )?;
-
-        let result: Vec<Option<<R as EntityTrait>::Model>> =
-            keys.iter().map(|key| hashmap.get(key).cloned()).collect();
-
-        Ok(result)
+        loader_impl(self, stmt, db).await
     }
 
     async fn load_many<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
@@ -188,110 +150,7 @@ where
         S: EntityOrSelect<R>,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
     {
-        if self.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        if let Some(via_def) =
-            <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::via()
-        {
-            let keys = self
-                .iter()
-                .map(|model| extract_key(&via_def.from_col, model))
-                .collect::<Result<Vec<_>, _>>()?;
-
-            let condition = prepare_condition(&via_def.to_tbl, &via_def.to_col, &keys);
-
-            let stmt = QueryFilter::filter(
-                stmt.select().join_rev(
-                    JoinType::InnerJoin,
-                    <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to(),
-                ),
-                condition,
-            );
-
-            // The idea is to do a SelectTwo with join, then extract key via a dynamic model
-            // i.e. select (baker + cake_baker) and extract cake_id from result rows
-            // SELECT "baker"."id", "baker"."name", "baker"."contact_details", "baker"."bakery_id",
-            //     "cakes_bakers"."cake_id" <- extra select
-            // FROM "baker" <- target
-            // INNER JOIN "cakes_bakers" <- junction
-            //     ON "cakes_bakers"."baker_id" = "baker"."id" <- relation
-            // WHERE "cakes_bakers"."cake_id" IN (..)
-
-            let data = stmt
-                .select_also_dyn_model(
-                    via_def.to_tbl.sea_orm_table().clone(),
-                    dynamic::ModelType {
-                        // we uses the left Model's type but the right Model's field
-                        fields: extract_col_type::<M>(&via_def.from_col, &via_def.to_col)?,
-                    },
-                )
-                .all(db)
-                .await?;
-
-            let mut hashmap: HashMap<ValueTuple, Vec<<R as EntityTrait>::Model>> = keys
-                .iter()
-                .fold(HashMap::new(), |mut acc, key: &ValueTuple| {
-                    acc.insert(key.clone(), Vec::new());
-                    acc
-                });
-
-            for (item, key) in data {
-                let key = dyn_model_to_key(key)?;
-
-                let vec = hashmap.get_mut(&key).ok_or_else(|| {
-                    DbErr::RecordNotFound(format!("Loader: failed to find model for {key:?}"))
-                })?;
-
-                vec.push(item);
-            }
-
-            let result: Vec<Vec<R::Model>> = keys
-                .iter()
-                .map(|key: &ValueTuple| hashmap.get(key).cloned().unwrap_or_default())
-                .collect();
-
-            Ok(result)
-        } else {
-            let rel_def =
-                <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
-
-            let keys = self
-                .iter()
-                .map(|model| extract_key(&rel_def.from_col, model))
-                .collect::<Result<Vec<_>, _>>()?;
-
-            let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
-
-            let stmt = QueryFilter::filter(stmt.select(), condition);
-
-            let data = stmt.all(db).await?;
-
-            let mut hashmap: HashMap<ValueTuple, Vec<<R as EntityTrait>::Model>> = keys
-                .iter()
-                .fold(HashMap::new(), |mut acc, key: &ValueTuple| {
-                    acc.insert(key.clone(), Vec::new());
-                    acc
-                });
-
-            for value in data {
-                let key = extract_key(&rel_def.to_col, &value)?;
-
-                let vec = hashmap.get_mut(&key).ok_or_else(|| {
-                    DbErr::RecordNotFound(format!("Loader: failed to find model for {key:?}"))
-                })?;
-
-                vec.push(value);
-            }
-
-            let result: Vec<Vec<R::Model>> = keys
-                .iter()
-                .map(|key: &ValueTuple| hashmap.get(key).cloned().unwrap_or_default())
-                .collect();
-
-            Ok(result)
-        }
+        loader_impl(self, stmt, db).await
     }
 
     async fn load_many_to_many<R, S, V, C>(
@@ -390,6 +249,132 @@ where
             return Err(query_err("Relation is not ManyToMany"));
         }
     }
+}
+
+trait Container: Default + Clone {
+    type Item;
+    fn add(&mut self, item: Self::Item);
+}
+
+impl<T: Clone> Container for Vec<T> {
+    type Item = T;
+    fn add(&mut self, item: Self::Item) {
+        self.push(item);
+    }
+}
+
+impl<T: Clone> Container for Option<T> {
+    type Item = T;
+    fn add(&mut self, item: Self::Item) {
+        self.replace(item);
+    }
+}
+
+async fn loader_impl<M, R, S, C, T>(items: &[M], stmt: S, db: &C) -> Result<Vec<T>, DbErr>
+where
+    M: ModelTrait + Sync,
+    C: ConnectionTrait,
+    R: EntityTrait,
+    R::Model: Send + Sync,
+    S: EntityOrSelect<R>,
+    M::Entity: Related<R>,
+    T: Container<Item = R::Model>,
+{
+    if items.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let (keys, hashmap) = if let Some(via_def) = <M::Entity as Related<R>>::via() {
+        let keys = items
+            .iter()
+            .map(|model| extract_key(&via_def.from_col, model))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let condition = prepare_condition(&via_def.to_tbl, &via_def.to_col, &keys);
+
+        let stmt = QueryFilter::filter(
+            stmt.select()
+                .join_rev(JoinType::InnerJoin, <M::Entity as Related<R>>::to()),
+            condition,
+        );
+
+        // The idea is to do a SelectTwo with join, then extract key via a dynamic model
+        // i.e. select (baker + cake_baker) and extract cake_id from result rows
+        // SELECT "baker"."id", "baker"."name", "baker"."contact_details", "baker"."bakery_id",
+        //     "cakes_bakers"."cake_id" <- extra select
+        // FROM "baker" <- target
+        // INNER JOIN "cakes_bakers" <- junction
+        //     ON "cakes_bakers"."baker_id" = "baker"."id" <- relation
+        // WHERE "cakes_bakers"."cake_id" IN (..)
+
+        let data = stmt
+            .select_also_dyn_model(
+                via_def.to_tbl.sea_orm_table().clone(),
+                dynamic::ModelType {
+                    // we uses the left Model's type but the right Model's field
+                    fields: extract_col_type::<M>(&via_def.from_col, &via_def.to_col)?,
+                },
+            )
+            .all(db)
+            .await?;
+
+        let mut hashmap: HashMap<ValueTuple, T> =
+            keys.iter()
+                .fold(HashMap::new(), |mut acc, key: &ValueTuple| {
+                    acc.insert(key.clone(), T::default());
+                    acc
+                });
+
+        for (item, key) in data {
+            let key = dyn_model_to_key(key)?;
+
+            let vec = hashmap.get_mut(&key).ok_or_else(|| {
+                DbErr::RecordNotFound(format!("Loader: failed to find model for {key:?}"))
+            })?;
+
+            vec.add(item);
+        }
+
+        (keys, hashmap)
+    } else {
+        let rel_def = <M::Entity as Related<R>>::to();
+
+        let keys = items
+            .iter()
+            .map(|model| extract_key(&rel_def.from_col, model))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
+
+        let stmt = QueryFilter::filter(stmt.select(), condition);
+
+        let data = stmt.all(db).await?;
+
+        let mut hashmap: HashMap<ValueTuple, T> = Default::default();
+
+        for item in data {
+            let key = extract_key(&rel_def.to_col, &item)?;
+            if !hashmap.contains_key(&key) {
+                let mut holder = T::default();
+                holder.add(item);
+                hashmap.insert(key, holder);
+            } else {
+                let holder = hashmap.get_mut(&key).ok_or_else(|| {
+                    DbErr::RecordNotFound(format!("Loader: failed to find model for {key:?}"))
+                })?;
+                holder.add(item);
+            }
+        }
+
+        (keys, hashmap)
+    };
+
+    let result: Vec<T> = keys
+        .iter()
+        .map(|key: &ValueTuple| hashmap.get(key).cloned().unwrap_or_default())
+        .collect();
+
+    Ok(result)
 }
 
 fn cmp_table_ref(left: &TableRef, right: &TableRef) -> bool {
