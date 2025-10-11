@@ -15,6 +15,8 @@ pub use crate::{
     DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, DeriveValueType,
 };
 
+pub use super::compound::{BelongsTo, HasMany, HasOne};
+
 pub use async_trait;
 
 #[cfg(feature = "with-json")]

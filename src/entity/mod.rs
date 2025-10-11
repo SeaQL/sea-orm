@@ -101,6 +101,7 @@ mod active_model;
 mod base_entity;
 pub(crate) mod column;
 mod column_def;
+pub mod compound;
 mod identity;
 mod link;
 mod model;

@@ -7,6 +7,7 @@ mod case_style;
 mod column;
 mod derive_iden;
 mod entity;
+mod entity_loader;
 mod entity_model;
 mod from_query_result;
 mod into_active_model;

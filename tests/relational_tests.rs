@@ -1236,6 +1236,28 @@ pub async fn select_three() -> Result<(), DbErr> {
         ]
     );
 
+    // same, just different API
+    let items: Vec<(
+        order::Model,
+        Option<customer::Model>,
+        Option<lineitem::Model>,
+    )> = order::Entity::find()
+        .find_also(order::Entity, customer::Entity)
+        .find_also(order::Entity, lineitem::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        items,
+        vec![
+            (order.clone(), Some(customer.clone()), Some(line_1.clone())),
+            (order.clone(), Some(customer.clone()), Some(line_2.clone())),
+        ]
+    );
+
     let items: Vec<(order::Model, Vec<customer::Model>, Vec<lineitem::Model>)> =
         order::Entity::find()
             .find_also_related(customer::Entity)
