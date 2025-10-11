@@ -23,6 +23,7 @@ quote = { version = "1", default-features = false }
 heck = { version = "0.5", default-features = false }
 proc-macro2 = { version = "1", default-features = false }
 tracing = { version = "0.1", default-features = false, features = ["log"] }
+pluralizer = { version = "0.5" }
 
 [dev-dependencies]
 pretty_assertions = { version = "0.7" }

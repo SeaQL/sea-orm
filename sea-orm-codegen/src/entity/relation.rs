@@ -6,7 +6,7 @@ use syn::{punctuated::Punctuated, token::Comma};
 
 use crate::util::escape_rust_keyword;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum RelationType {
     HasOne,
     HasMany,

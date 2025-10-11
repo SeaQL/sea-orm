@@ -15,6 +15,7 @@ pub async fn run_generate_command(
 ) -> Result<(), Box<dyn Error>> {
     match command {
         GenerateSubcommands::Entity {
+            entity_format,
             compact_format: _,
             expanded_format,
             frontend_format,
@@ -223,6 +224,8 @@ pub async fn run_generate_command(
                     EntityFormat::Expanded
                 } else if frontend_format {
                     EntityFormat::Frontend
+                } else if let Some(entity_format) = entity_format {
+                    EntityFormat::from_str(&entity_format).expect("Invalid prelude option")
                 } else {
                     EntityFormat::default()
                 },

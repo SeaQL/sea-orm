@@ -3,7 +3,7 @@
 pub mod common;
 
 pub use common::{TestContext, bakery_chain::create_tables, bakery_dense::*, setup::*};
-use sea_orm::{DbConn, DbErr, RuntimeErr, entity::*, query::*};
+use sea_orm::{DbConn, DbErr, RuntimeErr, Set, prelude::*, query::*};
 
 #[sea_orm_macros::test]
 async fn cake_entity_loader() -> Result<(), DbErr> {

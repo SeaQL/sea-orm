@@ -134,8 +134,8 @@ impl EntityWriter {
     }
 
     pub fn gen_compact_relation_enum(entity: &Entity) -> TokenStream {
-        let relation_enum_name = entity.get_relation_enum_name();
         let attrs = entity.get_relation_attrs();
+        let relation_enum_name = entity.get_relation_enum_name();
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
             pub enum Relation {
