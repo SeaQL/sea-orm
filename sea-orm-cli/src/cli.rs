@@ -229,7 +229,9 @@ pub enum GenerateSubcommands {
             env = "DATABASE_SCHEMA",
             long_help = "Database schema\n \
                         - For MySQL, this argument is ignored.\n \
-                        - For PostgreSQL, this argument is optional with default value 'public'."
+                        - For PostgreSQL, this argument is optional with default value 'public'.\n \
+                        - Note: Types (such as enums) can be referenced from other schemas (e.g., 'public') \
+                        even when generating entities for a different schema."
         )]
         database_schema: Option<String>,
 
