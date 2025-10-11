@@ -159,7 +159,7 @@ where
 
         let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
-        let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
+        let stmt = QueryFilter::filter(stmt.select(), condition);
 
         let data = stmt.all(db).await?;
 
@@ -202,7 +202,7 @@ where
 
             let condition = prepare_condition(&via_def.to_tbl, &via_def.to_col, &keys);
 
-            let stmt = <Select<R> as QueryFilter>::filter(
+            let stmt = QueryFilter::filter(
                 stmt.select().join_rev(
                     JoinType::InnerJoin,
                     <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to(),
@@ -264,7 +264,7 @@ where
 
             let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
-            let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
+            let stmt = QueryFilter::filter(stmt.select(), condition);
 
             let data = stmt.all(db).await?;
 
@@ -355,7 +355,7 @@ where
 
             let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
-            let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
+            let stmt = QueryFilter::filter(stmt.select(), condition);
 
             let models = stmt.all(db).await?;
 

@@ -2,7 +2,12 @@
 
 pub mod common;
 
-pub use common::{TestContext, bakery_chain::create_tables, bakery_dense::*, setup::*};
+pub use common::{
+    TestContext,
+    bakery_chain::{create_tables, seed_data},
+    bakery_dense::*,
+    setup::*,
+};
 use sea_orm::{DbConn, DbErr, RuntimeErr, Set, prelude::*, query::*};
 
 #[sea_orm_macros::test]
@@ -160,6 +165,32 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(bakers[2].cakes.get(), []);
 
     Ok(())
+}
+
+#[sea_orm_macros::test]
+async fn entity_loader_join_three() {
+    let ctx = TestContext::new("entity_loader_join_three").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    seed_data::init_1(&ctx, true).await;
+
+    let db = &ctx.db;
+
+    let order = order::Entity::load()
+        .with(customer::Entity)
+        .with(lineitem::Entity)
+        .order_by_asc(order::Column::Id)
+        .one(db)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(order.id, 101);
+    assert_eq!(order.total, 10.into());
+    assert_eq!(order.customer.get().unwrap().name, "Bob");
+    let lineitems = order.lineitems.get();
+    assert_eq!(lineitems[0].price, 2.into());
+    assert_eq!(lineitems[1].price, 3.into());
 }
 
 pub async fn insert_bakery(db: &DbConn, name: &str) -> Result<bakery::Model, DbErr> {
