@@ -8,8 +8,18 @@ pub struct Model {
     pub name: String,
     #[sea_orm(column_type = "Text", nullable)]
     pub notes: Option<String>,
-    #[sea_orm(relation = "Order")]
-    pub orders: HasMany<super::order::Entity>,
+}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+    #[sea_orm(has_many = "super::order::Entity")]
+    Order,
+}
+
+impl Related<super::order::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Order.def()
+    }
 }
 
 impl ActiveModelBehavior for ActiveModel {}

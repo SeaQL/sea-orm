@@ -146,6 +146,19 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     cake_with_bakery_baker.bakers.take();
     assert_eq!(cake_with_bakery_baker, cake_3);
 
+    // start again from baker
+
+    let bakers = baker::Entity::find().all(db).await?;
+    assert_eq!(bakers, [baker_1.clone(), baker_2.clone(), baker_3.clone()]);
+
+    let bakers = baker::Entity::load().with(cake::Entity).all(db).await?;
+    assert_eq!(bakers[0].id, baker_1.id);
+    assert_eq!(bakers[1].id, baker_2.id);
+    assert_eq!(bakers[2].id, baker_3.id);
+    assert_eq!(bakers[0].cakes.get(), [cake_1.clone(), cake_2.clone()]);
+    assert_eq!(bakers[1].cakes.get(), [cake_2.clone(), cake_3.clone()]);
+    assert_eq!(bakers[2].cakes.get(), []);
+
     Ok(())
 }
 

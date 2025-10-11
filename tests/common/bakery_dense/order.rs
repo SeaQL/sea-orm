@@ -10,11 +10,11 @@ pub struct Model {
     pub bakery_id: i32,
     pub customer_id: i32,
     pub placed_at: DateTimeUtc,
-    #[sea_orm(relation = "Bakery", from = "BakeryId", to = "Id")]
+    #[sea_orm(relation, from = "BakeryId", to = "Id")]
     pub bakery: BelongsTo<super::bakery::Entity>,
-    #[sea_orm(relation = "Customer", from = "CustomerId", to = "Id")]
+    #[sea_orm(relation, from = "CustomerId", to = "Id")]
     pub customer: BelongsTo<super::customer::Entity>,
-    #[sea_orm(relation = "Lineitem")]
+    #[sea_orm(relation)]
     pub lineitems: HasMany<super::lineitem::Entity>,
 }
 

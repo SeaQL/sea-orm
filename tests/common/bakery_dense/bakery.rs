@@ -7,11 +7,11 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub profit_margin: f64,
-    #[sea_orm(relation = "Baker")]
+    #[sea_orm(relation)]
     pub bakers: HasMany<super::baker::Entity>,
-    #[sea_orm(relation = "Order")]
+    #[sea_orm(relation)]
     pub orders: HasMany<super::order::Entity>,
-    #[sea_orm(relation = "Cake")]
+    #[sea_orm(relation)]
     pub cakes: HasMany<super::cake::Entity>,
 }
 

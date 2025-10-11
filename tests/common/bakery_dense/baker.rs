@@ -9,15 +9,15 @@ pub struct Model {
     pub contact_details: Json,
     pub bakery_id: Option<i32>,
     #[sea_orm(
-        relation = "Bakery",
+        relation,
         from = "BakeryId",
         to = "Id",
         on_update = "Cascade",
         on_delete = "SetNull"
     )]
     pub bakery: BelongsTo<super::bakery::Entity>,
-    #[sea_orm(relation = "Cake", via = "cakes_bakers::Baker")]
-    pub cakes: HasMany<super::baker::Entity>,
+    #[sea_orm(relation, via = "cakes_bakers::Baker")]
+    pub cakes: HasMany<super::cake::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -11,9 +11,9 @@ pub struct Model {
     pub bakery_id: Option<i32>,
     pub gluten_free: bool,
     pub serial: Uuid,
-    #[sea_orm(relation = "Bakery", from = "BakeryId", to = "Id")]
+    #[sea_orm(relation, from = "BakeryId", to = "Id")]
     pub bakery: BelongsTo<super::bakery::Entity>,
-    #[sea_orm(relation = "Baker", via = "cakes_bakers::Cake")]
+    #[sea_orm(relation, via = "cakes_bakers")]
     pub bakers: HasMany<super::baker::Entity>,
 }
 

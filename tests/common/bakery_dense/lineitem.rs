@@ -9,10 +9,38 @@ pub struct Model {
     pub quantity: i32,
     pub order_id: i32,
     pub cake_id: i32,
-    #[sea_orm(relation = "Order", from = "OrderId", to = "Id")]
     pub order: BelongsTo<super::order::Entity>,
-    #[sea_orm(relation = "Cake", from = "CakeId", to = "Id")]
     pub cake: BelongsTo<super::cake::Entity>,
+}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::order::Entity",
+        from = "Column::OrderId",
+        to = "super::order::Column::Id",
+        on_update = "Cascade",
+        on_delete = "Cascade"
+    )]
+    Order,
+    #[sea_orm(
+        belongs_to = "super::cake::Entity",
+        from = "Column::CakeId",
+        to = "super::cake::Column::Id"
+    )]
+    Cake,
+}
+
+impl Related<super::order::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Order.def()
+    }
+}
+
+impl Related<super::cake::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Cake.def()
+    }
 }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -7,9 +7,9 @@ pub struct Model {
     pub cake_id: i32,
     #[sea_orm(primary_key)]
     pub baker_id: i32,
-    #[sea_orm(relation = "Cake", from = "CakeId", to = "Id")]
+    #[sea_orm(relation, from = "CakeId", to = "Id")]
     pub cake: BelongsTo<super::cake::Entity>,
-    #[sea_orm(relation = "Baker", from = "BakerId", to = "Id")]
+    #[sea_orm(relation, from = "BakerId", to = "Id")]
     pub baker: BelongsTo<super::baker::Entity>,
 }
 
