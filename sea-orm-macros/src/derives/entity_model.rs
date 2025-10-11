@@ -643,5 +643,5 @@ fn infer_relation_name_from_entity(s: &str) -> &str {
     if let Some((_, suffix)) = s.rsplit_once("::") {
         return suffix;
     }
-    return s;
+    s
 }

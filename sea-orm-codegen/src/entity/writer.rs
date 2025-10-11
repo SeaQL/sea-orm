@@ -2897,4 +2897,54 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_gen_dense_code_blocks() -> io::Result<()> {
+        let entities = setup();
+        const ENTITY_FILES: [&str; 13] = [
+            include_str!("../../tests/dense/cake.rs"),
+            include_str!("../../tests/dense/cake_filling.rs"),
+            include_str!("../../tests/dense/cake_filling_price.rs"),
+            include_str!("../../tests/dense/filling.rs"),
+            include_str!("../../tests/dense/fruit.rs"),
+            include_str!("../../tests/dense/vendor.rs"),
+            include_str!("../../tests/dense/rust_keyword.rs"),
+            include_str!("../../tests/dense/cake_with_float.rs"),
+            include_str!("../../tests/dense/cake_with_double.rs"),
+            include_str!("../../tests/dense/collection.rs"),
+            include_str!("../../tests/dense/collection_float.rs"),
+            include_str!("../../tests/dense/parent.rs"),
+            include_str!("../../tests/dense/child.rs"),
+        ];
+
+        assert_eq!(entities.len(), ENTITY_FILES.len());
+
+        for (i, entity) in entities.iter().enumerate() {
+            assert_eq!(
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
+                EntityWriter::gen_dense_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &crate::DateTimeCrate::Chrono,
+                    &None,
+                    false,
+                    false,
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    false,
+                    true,
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+        }
+
+        Ok(())
+    }
 }

@@ -1,5 +1,5 @@
 use super::*;
-use crate::RelationType;
+use crate::{Relation, RelationType};
 
 impl EntityWriter {
     #[allow(clippy::too_many_arguments)]
@@ -31,11 +31,14 @@ impl EntityWriter {
                 model_extra_attributes,
             ),
         ];
+        if entity.relations.is_empty() && entity.conjunct_relations.is_empty() {
+            code_blocks.push(Self::gen_compact_relation_enum(entity));
+        }
         if impl_active_model_behavior {
-            code_blocks.extend([Self::impl_active_model_behavior()]);
+            code_blocks.push(Self::impl_active_model_behavior());
         }
         if seaography {
-            code_blocks.extend([Self::gen_related_entity(entity)]);
+            code_blocks.push(Self::gen_related_entity(entity));
         }
         code_blocks
     }
@@ -140,9 +143,21 @@ impl EntityWriter {
                             |x| x.to_string(),
                             map_punctuated,
                         );
+                        let on_update = if let Some(action) = &rel.on_update {
+                            let action = Relation::get_foreign_key_action(action);
+                            quote!(, on_update = #action)
+                        } else {
+                            quote!()
+                        };
+                        let on_delete = if let Some(action) = &rel.on_delete {
+                            let action = Relation::get_foreign_key_action(action);
+                            quote!(, on_delete = #action)
+                        } else {
+                            quote!()
+                        };
                         (
                             format_ident!("BelongsTo"),
-                            quote!(#[sea_orm(relation, from = #from, to = #to)]),
+                            quote!(#[sea_orm(relation, from = #from, to = #to #on_update #on_delete)]),
                         )
                     }
                 };
@@ -179,6 +194,10 @@ impl EntityWriter {
                 #[sea_orm(relation, via = #via_entity)]
                 pub #field: HasMany<super::#to_entity::Entity>
             });
+        }
+
+        if !compound_objects.is_empty() {
+            compound_objects.push_punct(<syn::Token![,]>::default());
         }
 
         quote! {
