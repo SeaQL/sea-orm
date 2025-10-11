@@ -544,7 +544,7 @@ fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<Token
             #related_enum
         })
     } else {
-        return None;
+        None
     }
 }
 
