@@ -249,6 +249,55 @@ async fn entity_loader_join_three() {
 
     let db = &ctx.db;
 
+    // verify basics
+    let cake_13 = cake::Entity::find_by_id(13).one(db).await.unwrap();
+    let cake_15 = cake::Entity::find_by_id(15).one(db).await.unwrap();
+
+    let lineitems = lineitem::Entity::load().all(db).await.unwrap();
+    assert_eq!(lineitems[0].cake_id, 13);
+    assert_eq!(lineitems[1].cake_id, 15);
+    assert_eq!(lineitems[0].order_id, 101);
+    assert_eq!(lineitems[1].order_id, 101);
+
+    // lineitem join order
+    let lineitems = lineitem::Entity::load()
+        .with(order::Entity)
+        .all(db)
+        .await
+        .unwrap();
+    assert_eq!(lineitems[0].order.get().unwrap().id, 101);
+    assert_eq!(lineitems[0].order.get().unwrap().total, 10.into());
+    assert_eq!(lineitems[1].order.get().unwrap().id, 101);
+    assert_eq!(lineitems[1].order.get().unwrap().total, 10.into());
+
+    // lineitem join cake
+    let lineitems = lineitem::Entity::load()
+        .with(cake::Entity)
+        .all(db)
+        .await
+        .unwrap();
+    assert_eq!(lineitems[0].cake.get().unwrap().id, 13);
+    assert_eq!(lineitems[0].cake.get().unwrap().name, "Cheesecake");
+    assert_eq!(lineitems[1].cake.get().unwrap().id, 15);
+    assert_eq!(lineitems[1].cake.get().unwrap().name, "Chocolate");
+
+    // lineitem join order + cake
+    let lineitems = lineitem::Entity::load()
+        .with(order::Entity)
+        .with(cake::Entity)
+        .all(db)
+        .await
+        .unwrap();
+    assert_eq!(lineitems[0].order.get().unwrap().id, 101);
+    assert_eq!(lineitems[0].order.get().unwrap().total, 10.into());
+    assert_eq!(lineitems[1].order.get().unwrap().id, 101);
+    assert_eq!(lineitems[1].order.get().unwrap().total, 10.into());
+    assert_eq!(lineitems[0].cake.get().unwrap().id, 13);
+    assert_eq!(lineitems[0].cake.get().unwrap().name, "Cheesecake");
+    assert_eq!(lineitems[1].cake.get().unwrap().id, 15);
+    assert_eq!(lineitems[1].cake.get().unwrap().name, "Chocolate");
+
+    // 1 layer select
     let order = order::Entity::load()
         .with(customer::Entity)
         .with(lineitem::Entity)
@@ -258,12 +307,91 @@ async fn entity_loader_join_three() {
         .unwrap()
         .unwrap();
 
-    assert_eq!(order.id, 101);
-    assert_eq!(order.total, 10.into());
-    assert_eq!(order.customer.get().unwrap().name, "Bob");
-    let lineitems = order.lineitems.get();
-    assert_eq!(lineitems[0].price, 2.into());
-    assert_eq!(lineitems[1].price, 3.into());
+    assert_eq!(
+        order,
+        order::Model {
+            id: 101,
+            total: 10.into(),
+            bakery_id: 42,
+            customer_id: 11,
+            placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
+            bakery: BelongsTo::default(),
+            customer: BelongsTo::new(customer::Model {
+                id: 11,
+                name: "Bob".to_owned(),
+                notes: Some("Sweet tooth".into()),
+                orders: HasMany::default(),
+            }),
+            lineitems: HasMany::new(vec![
+                lineitem::Model {
+                    id: 1,
+                    price: 2.into(),
+                    quantity: 2,
+                    order_id: 101,
+                    cake_id: 13,
+                    order: BelongsTo::default(),
+                    cake: BelongsTo::default(),
+                },
+                lineitem::Model {
+                    id: 2,
+                    price: 3.into(),
+                    quantity: 2,
+                    order_id: 101,
+                    cake_id: 15,
+                    order: BelongsTo::default(),
+                    cake: BelongsTo::default(),
+                }
+            ]),
+        }
+    );
+
+    // 2 layers
+    let order = order::Entity::load()
+        .with(customer::Entity)
+        .nest(lineitem::Entity, cake::Entity)
+        .order_by_asc(order::Column::Id)
+        .one(db)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        order,
+        order::Model {
+            id: 101,
+            total: 10.into(),
+            bakery_id: 42,
+            customer_id: 11,
+            placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
+            bakery: BelongsTo::default(),
+            customer: BelongsTo::new(customer::Model {
+                id: 11,
+                name: "Bob".to_owned(),
+                notes: Some("Sweet tooth".into()),
+                orders: HasMany::default(),
+            }),
+            lineitems: HasMany::new(vec![
+                lineitem::Model {
+                    id: 1,
+                    price: 2.into(),
+                    quantity: 2,
+                    order_id: 101,
+                    cake_id: 13,
+                    order: BelongsTo::default(),
+                    cake: BelongsTo::new(cake_13),
+                },
+                lineitem::Model {
+                    id: 2,
+                    price: 3.into(),
+                    quantity: 2,
+                    order_id: 101,
+                    cake_id: 15,
+                    order: BelongsTo::default(),
+                    cake: BelongsTo::new(cake_15),
+                }
+            ]),
+        }
+    );
 }
 
 pub async fn insert_bakery(db: &DbConn, name: &str) -> Result<bakery::Model, DbErr> {

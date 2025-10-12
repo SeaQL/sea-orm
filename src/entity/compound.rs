@@ -37,9 +37,9 @@ impl<E: EntityTrait> Default for HasOne<E> {
 }
 
 impl<E: EntityTrait> HasOne<E> {
-    pub fn new<T: Into<Box<E::Model>>>(item: Option<T>) -> Self {
+    pub fn new<T: Into<Option<E::Model>>>(item: T) -> Self {
         Self {
-            item: item.map(Into::into),
+            item: item.into().map(Into::into),
         }
     }
 

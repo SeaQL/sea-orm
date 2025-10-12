@@ -32,13 +32,15 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
     let mut load_many = TokenStream::new();
     let mut load_one_nest = TokenStream::new();
     let mut load_many_nest = TokenStream::new();
+    let mut load_one_nest_nest = TokenStream::new();
+    let mut load_many_nest_nest = TokenStream::new();
+    let mut arity = 1;
 
     one_fields.push(quote!(mut model));
 
     for entity_field in schema.fields.iter() {
         let field = &entity_field.field;
         let is_one = entity_field.is_one;
-        let mut arity = 1;
         let entity: TokenStream = entity_field.entity.parse().unwrap();
         let entity_module: TokenStream = entity_field
             .entity
@@ -102,10 +104,22 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                     }
                 }
             });
+            load_one_nest_nest.extend(quote! {
+                if with.#field {
+                    let #field = models.as_slice().load_one(#entity, db).await?;
+
+                    for (models, #field) in models.iter_mut().zip(#field) {
+                        for (model, #field) in models.iter_mut().zip(#field) {
+                            model.#field.set(#field);
+                        }
+                    }
+                }
+            });
         } else {
             load_many.extend(quote! {
                 if with.#field {
                     let #field = models.load_many(#entity, db).await?;
+                    let #field = #entity_module::EntityLoader::load_nest_nest(#field, &nest.#field, db).await?;
 
                     for (model, #field) in models.iter_mut().zip(#field) {
                         model.#field.set(#field);
@@ -118,6 +132,17 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
 
                     for (model, #field) in models.iter_mut().zip(#field) {
                         if let Some(model) = model.as_mut() {
+                            model.#field.set(#field);
+                        }
+                    }
+                }
+            });
+            load_many_nest_nest.extend(quote! {
+                if with.#field {
+                    let #field = models.as_slice().load_many(#entity, db).await?;
+
+                    for (models, #field) in models.iter_mut().zip(#field) {
+                        for (model, #field) in models.iter_mut().zip(#field) {
                             model.#field.set(#field);
                         }
                     }
@@ -238,6 +263,13 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
         pub async fn load_nest<C: sea_orm::ConnectionTrait>(mut models: Vec<Option<Model>>, with: &EntityLoaderWith, db: &C) -> Result<Vec<Option<Model>>, DbErr> {
             #load_one_nest
             #load_many_nest
+            Ok(models)
+        }
+
+        pub async fn load_nest_nest<C: sea_orm::ConnectionTrait>(mut models: Vec<Vec<Model>>, with: &EntityLoaderWith, db: &C) -> Result<Vec<Vec<Model>>, DbErr> {
+            use sea_orm::NestedLoaderTrait;
+            #load_one_nest_nest
+            #load_many_nest_nest
             Ok(models)
         }
     }

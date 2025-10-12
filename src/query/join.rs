@@ -208,7 +208,7 @@ where
         R: EntityTrait,
     {
         // select also but without join
-        SelectThree::new(self.into_query())
+        SelectThree::new_without_prepare(self.into_query())
     }
 
     /// Left Join with a Related Entity and select both Entity.
