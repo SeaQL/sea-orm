@@ -57,8 +57,7 @@ impl EntityWriter {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
         let column_rs_types = entity.get_column_rs_types(date_time_crate);
-        // let if_eq_needed = false;
-        // FIXME we have to walk the entire relational graph to figure this out
+        let if_eq_needed = entity.get_eq_needed();
         let primary_keys: Vec<String> = entity
             .primary_keys
             .iter()
@@ -201,7 +200,8 @@ impl EntityWriter {
         }
 
         quote! {
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel #extra_derive #model_extra_derives)]
+            #[sea_orm::model]
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel #if_eq_needed #extra_derive #model_extra_derives)]
             #[sea_orm(
                 #schema_name
                 table_name = #table_name

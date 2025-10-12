@@ -115,7 +115,6 @@ pub use active_enum::*;
 pub use active_model::*;
 pub use base_entity::*;
 pub use column::*;
-pub use compound::EntityLoaderTrait;
 pub use identity::*;
 pub use link::*;
 pub use model::*;
