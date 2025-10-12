@@ -5,17 +5,16 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[sea_orm::model]
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[cfg_attr(feature = "with-json", derive(Serialize, Deserialize))]
-#[sea_orm(table_name = "cake")]
+#[sea_orm(table_name = "ingredient")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
-    #[sea_orm(relation)]
-    pub fruit: HasOne<super::fruit::Entity>,
-    #[sea_orm(relation, via = "cake_filling")]
-    pub fillings: HasMany<super::filling::Entity>,
+    pub filling_id: Option<i32>,
+    #[sea_orm(relation, from = "FillingId", to = "Id")]
+    pub filling: BelongsTo<super::filling::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -15,6 +15,7 @@ pub struct Model {
     pub vendor_id: Option<i32>,
     #[sea_orm(ignore)]
     pub ignored_attr: i32,
+    pub ingredients: HasMany<super::ingredient::Entity>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -25,6 +26,14 @@ pub enum Relation {
         to = "super::vendor::Column::Id"
     )]
     Vendor,
+    #[sea_orm(has_many = "super::ingredient::Entity")]
+    Ingredient,
+}
+
+impl Related<super::ingredient::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Ingredient.def()
+    }
 }
 
 impl Related<super::cake::Entity> for Entity {

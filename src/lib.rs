@@ -84,57 +84,112 @@
 //! # mod entities {
 //! # mod fruit {
 //! # use sea_orm::entity::prelude::*;
-//! # #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+//! # #[sea_orm::model]
+//! # #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 //! # #[sea_orm(table_name = "fruit")]
 //! # pub struct Model {
 //! #     #[sea_orm(primary_key)]
 //! #     pub id: i32,
 //! #     pub name: String,
 //! #     pub cake_id: Option<i32>,
+//! #     #[sea_orm(relation, from = "CakeId", to = "Id")]
+//! #     pub cake: BelongsTo<super::cake::Entity>,
 //! # }
-//! # #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-//! # pub enum Relation {
-//! #     #[sea_orm(
-//! #         belongs_to = "super::cake::Entity",
-//! #         from = "Column::CakeId",
-//! #         to = "super::cake::Column::Id"
-//! #     )]
-//! #     Cake,
+//! # impl ActiveModelBehavior for ActiveModel {}
 //! # }
-//! # impl Related<super::cake::Entity> for Entity {
-//! #     fn to() -> RelationDef {
-//! #         Relation::Cake.def()
-//! #     }
+//! # mod filling {
+//! # use sea_orm::entity::prelude::*;
+//! # #[sea_orm::model]
+//! # #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+//! # #[sea_orm(table_name = "filling")]
+//! # pub struct Model {
+//! #     #[sea_orm(primary_key)]
+//! #     pub id: i32,
+//! #     pub name: String,
+//! #     #[sea_orm(relation, via = "cake_filling")]
+//! #     pub cakes: HasMany<super::cake::Entity>,
+//! # }
+//! # impl ActiveModelBehavior for ActiveModel {}
+//! # }
+//! # mod cake_filling {
+//! # use sea_orm::entity::prelude::*;
+//! # #[sea_orm::model]
+//! # #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+//! # #[sea_orm(table_name = "cake_filling")]
+//! # pub struct Model {
+//! #     #[sea_orm(primary_key, auto_increment = false)]
+//! #     pub cake_id: i32,
+//! #     #[sea_orm(primary_key, auto_increment = false)]
+//! #     pub filling_id: i32,
+//! #     #[sea_orm(relation, from = "CakeId", to = "Id")]
+//! #     pub cake: BelongsTo<super::cake::Entity> ,
+//! #     #[sea_orm(relation, from = "FillingId", to = "Id")]
+//! #     pub filling: BelongsTo<super::filling::Entity> ,
 //! # }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! # }
 //! # mod cake {
 //! use sea_orm::entity::prelude::*;
 //!
-//! #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+//! #[sea_orm::model]
+//! #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 //! #[sea_orm(table_name = "cake")]
 //! pub struct Model {
 //!     #[sea_orm(primary_key)]
 //!     pub id: i32,
 //!     pub name: String,
-//! }
-//!
-//! #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-//! pub enum Relation {
-//!     #[sea_orm(has_many = "super::fruit::Entity")]
-//!     Fruit,
-//! }
-//!
-//! impl Related<super::fruit::Entity> for Entity {
-//!     fn to() -> RelationDef {
-//!         Relation::Fruit.def()
-//!     }
+//!     #[sea_orm(relation)]
+//!     pub fruit: HasOne<super::fruit::Entity>,
+//!     #[sea_orm(relation, via = "cake_filling")]
+//!     pub fillings: HasMany<super::filling::Entity>,
 //! }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! # }
 //! # }
 //! ```
+//! ### Entity Loader
 //!
+//! It's a breeze to work with nested data structures.
+//! The Entity Loader intelligently uses join for 1-1 and data loader for 1-N relations.
+//! ```
+//! # use sea_orm::{DbConn, error::*, prelude::*, entity::*, query::*, tests_cfg::*};
+//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
+//! // join paths:
+//! // cake -> fruit
+//! //      -> filling -> ingredient
+//! let super_cake = cake::Entity::load()
+//!     .filter_by_id(42)
+//!     .with(fruit::Entity) // 1-1 uses join
+//!     .with((filling::Entity, ingredient::Entity)) // M-N uses data loader
+//!     .one(db)
+//!     .await?
+//!     .unwrap();
+//!
+//! super_cake
+//!     == cake::ModelEx {
+//!         id: 42,
+//!         name: "Black Forest".into(),
+//!         fruit: HasOne::new(Some(fruit::ModelEx {
+//! #           id: 1,
+//!             name: "Cherry".into(),
+//! #           cake_id: Some(1),
+//!         })),
+//!         fillings: HasMany::new(vec![filling::ModelEx {
+//! #           id: 2,
+//!             name: "Chocolate".into(),
+//! #           vendor_id: None,
+//! #           ignored_attr: 0,
+//!             ingredients: HasMany::new(vec![ingredient::ModelEx {
+//! #               id: 3,
+//!                 name: "Syrup".into(),
+//! #               filling_id: Some(2),
+//! #               filling: Default::default(),
+//!             }]),
+//!         }]),
+//!     };
+//! # Ok(())
+//! # }
+//! ```
 //! ### Select
 //! SeaORM models 1-N and M-N relationships at the Entity level,
 //! letting you traverse many-to-many links through a junction table in a single call.
@@ -155,21 +210,20 @@
 //! let cheese: cake::Model = cheese.unwrap();
 //!
 //! // find related models (lazy)
-//! let fruits: Vec<fruit::Model> = cheese.find_related(Fruit).all(db).await?;
+//! let fruit: Option<fruit::Model> = cheese.find_related(Fruit).one(db).await?;
 //!
 //! // find related models (eager): for 1-1 relations
 //! let cake_with_fruit: Vec<(cake::Model, Option<fruit::Model>)> =
 //!     Cake::find().find_also_related(Fruit).all(db).await?;
 //!
 //! // find related models (eager): works for both 1-N and M-N relations
-//! let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> = Cake::find()
-//!     .find_with_related(Fruit) // for M-N relations, two joins are performed
+//! let cake_with_fillings: Vec<(cake::Model, Vec<filling::Model>)> = Cake::find()
+//!     .find_with_related(Filling) // for M-N relations, two joins are performed
 //!     .all(db) // rows are automatically consolidated by left entity
 //!     .await?;
 //! # Ok(())
 //! # }
 //! ```
-//!
 //! ### Nested Select
 //!
 //! Partial models prevent overfetching by letting you querying only the fields

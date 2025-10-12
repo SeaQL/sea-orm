@@ -11,6 +11,7 @@ pub mod entity_linked;
 pub mod filling;
 pub mod fruit;
 pub mod indexes;
+pub mod ingredient;
 pub mod lunch_set;
 pub mod lunch_set_expanded;
 pub mod rust_keyword;
