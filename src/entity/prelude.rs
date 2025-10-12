@@ -11,7 +11,7 @@ pub use crate::{
 #[cfg(feature = "macros")]
 pub use crate::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveDisplay,
-    DeriveEntity, DeriveEntityModel, DeriveIden, DeriveIntoActiveModel, DeriveModel,
+    DeriveEntity, DeriveEntityModel, DeriveIden, DeriveIntoActiveModel, DeriveModel, DeriveModelEx,
     DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, DeriveValueType,
 };
 

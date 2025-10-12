@@ -24,6 +24,12 @@ pub enum Relation {
     )]
     Cake,
     #[sea_orm(
+        belongs_to = "super::cake_compact::Entity",
+        from = "Column::CakeId",
+        to = "super::cake_compact::Column::Id"
+    )]
+    CakeCompact,
+    #[sea_orm(
         belongs_to = "super::cake_expanded::Entity",
         from = "Column::CakeId",
         to = "super::cake_expanded::Column::Id"
@@ -34,6 +40,12 @@ pub enum Relation {
 impl Related<super::cake::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Cake.def()
+    }
+}
+
+impl Related<super::cake_compact::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::CakeCompact.def()
     }
 }
 

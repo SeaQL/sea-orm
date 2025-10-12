@@ -14,12 +14,6 @@ pub struct EntityLoaderField {
     pub entity: String,
 }
 
-impl EntityLoaderSchema {
-    pub fn is_empty(&self) -> bool {
-        self.fields.is_empty()
-    }
-}
-
 pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
     let mut field_bools: Punctuated<_, Comma> = Punctuated::new();
     let mut field_nests: Punctuated<_, Comma> = Punctuated::new();
@@ -224,7 +218,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
         pub async fn one<C: sea_orm::ConnectionTrait>(
             mut self,
             db: &C,
-        ) -> Result<Option<Model>, sea_orm::DbErr> {
+        ) -> Result<Option<ModelEx>, sea_orm::DbErr> {
             use sea_orm::QuerySelect;
 
             self.select = self.select.limit(1);
@@ -248,7 +242,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             self
         }
 
-        pub async fn all<C: sea_orm::ConnectionTrait>(mut self, db: &C) -> Result<Vec<Model>, sea_orm::DbErr> {
+        pub async fn all<C: sea_orm::ConnectionTrait>(mut self, db: &C) -> Result<Vec<ModelEx>, sea_orm::DbErr> {
             let select = self.select;
 
             #select_impl
@@ -265,19 +259,19 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             Ok(models)
         }
 
-        pub async fn load<C: sea_orm::ConnectionTrait>(mut models: Vec<Model>, with: &EntityLoaderWith, nest: &EntityLoaderNest, db: &C) -> Result<Vec<Model>, DbErr> {
+        pub async fn load<C: sea_orm::ConnectionTrait>(mut models: Vec<ModelEx>, with: &EntityLoaderWith, nest: &EntityLoaderNest, db: &C) -> Result<Vec<ModelEx>, DbErr> {
             #load_one
             #load_many
             Ok(models)
         }
 
-        pub async fn load_nest<C: sea_orm::ConnectionTrait>(mut models: Vec<Option<Model>>, with: &EntityLoaderWith, db: &C) -> Result<Vec<Option<Model>>, DbErr> {
+        pub async fn load_nest<C: sea_orm::ConnectionTrait>(mut models: Vec<Option<ModelEx>>, with: &EntityLoaderWith, db: &C) -> Result<Vec<Option<ModelEx>>, DbErr> {
             #load_one_nest
             #load_many_nest
             Ok(models)
         }
 
-        pub async fn load_nest_nest<C: sea_orm::ConnectionTrait>(mut models: Vec<Vec<Model>>, with: &EntityLoaderWith, db: &C) -> Result<Vec<Vec<Model>>, DbErr> {
+        pub async fn load_nest_nest<C: sea_orm::ConnectionTrait>(mut models: Vec<Vec<ModelEx>>, with: &EntityLoaderWith, db: &C) -> Result<Vec<Vec<ModelEx>>, DbErr> {
             use sea_orm::NestedLoaderTrait;
             #load_one_nest_nest
             #load_many_nest_nest
