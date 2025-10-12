@@ -217,7 +217,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     // cake -> bakery -> baker
 
     let cakes = cake::Entity::load()
-        .nest(bakery::Entity, baker::Entity)
+        .with((bakery::Entity, baker::Entity))
         .all(db)
         .await?;
     assert_eq!(cakes[0].bakery.get().unwrap().name, bakery_1.name);
@@ -348,7 +348,7 @@ async fn entity_loader_join_three() {
     // 2 layers
     let order = order::Entity::load()
         .with(customer::Entity)
-        .nest(lineitem::Entity, cake::Entity)
+        .with((lineitem::Entity, cake::Entity))
         .order_by_asc(order::Column::Id)
         .one(db)
         .await

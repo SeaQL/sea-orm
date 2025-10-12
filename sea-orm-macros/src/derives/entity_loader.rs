@@ -57,9 +57,10 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             }
         });
         with_nest_impl.extend(quote! {
-            if entity.table_ref() == #entity.table_ref() {
+            if left == #entity.table_ref() {
                 self.with.#field = true;
-                self.nest.#field.set(nested.table_ref());
+                self.nest.#field.set(right);
+                return self;
             }
         });
 
@@ -178,6 +179,19 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
         }
     }
 
+    impl std::fmt::Debug for EntityLoader {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("EntityLoader")
+            .field("select", &match (Entity::default().schema_name(), Entity::default().table_name()) {
+                (Some(s), t) => format!("{s}.{t}"),
+                (None, t) => t.to_owned(),
+            })
+            .field("with", &self.with)
+            .field("nest", &self.nest)
+            .finish()
+        }
+    }
+
     impl sea_orm::QueryFilter for EntityLoader {
         type QueryStatement = <sea_orm::Select<Entity> as sea_orm::QueryFilter>::QueryStatement;
 
@@ -217,22 +231,19 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             Ok(self.all(db).await?.into_iter().next())
         }
 
-        pub fn with<R>(mut self, entity: R) -> Self
-        where
-            R: EntityTrait,
-            Entity: Related<R>,
-        {
-            self.with.set(entity.table_ref());
+        pub fn with<T: sea_orm::compound::EntityLoaderWithParam<Entity>>(mut self, param: T) -> Self {
+            match param.into_with_param() {
+                (left, None) => self.with_1(left),
+                (left, Some(right)) => self.with_2(left, right),
+            }
+        }
+
+        fn with_1(mut self, table_ref: sea_orm::sea_query::TableRef) -> Self {
+            self.with.set(table_ref);
             self
         }
 
-        pub fn nest<R, S>(mut self, entity: R, nested: S) -> Self
-        where
-            R: EntityTrait,
-            Entity: Related<R>,
-            S: EntityTrait,
-            R: Related<S>,
-        {
+        fn with_2(mut self, left: sea_orm::sea_query::TableRef, right: sea_orm::sea_query::TableRef) -> Self {
             #with_nest_impl
             self
         }

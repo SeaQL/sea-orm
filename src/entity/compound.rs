@@ -1,7 +1,7 @@
 #![allow(missing_docs)]
 use super::{ColumnTrait, EntityTrait, PrimaryKeyToColumn, PrimaryKeyTrait};
-use crate::{Iterable, QueryFilter};
-use sea_query::IntoValueTuple;
+use crate::{Iterable, QueryFilter, Related};
+use sea_query::{IntoValueTuple, TableRef};
 
 pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter {
     fn filter_by_id<T>(mut self, values: T) -> Self
@@ -19,6 +19,10 @@ pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter {
         }
         self
     }
+}
+
+pub trait EntityLoaderWithParam<E: EntityTrait> {
+    fn into_with_param(self) -> (TableRef, Option<TableRef>);
 }
 
 #[derive(Debug, Clone)]
@@ -84,6 +88,30 @@ impl<E: EntityTrait> HasMany<E> {
 
     pub fn take(&mut self) -> Vec<E::Model> {
         std::mem::take(&mut self.items)
+    }
+}
+
+impl<E, R> EntityLoaderWithParam<E> for R
+where
+    E: EntityTrait,
+    R: EntityTrait,
+    E: Related<R>,
+{
+    fn into_with_param(self) -> (TableRef, Option<TableRef>) {
+        (self.table_ref(), None)
+    }
+}
+
+impl<E, R, S> EntityLoaderWithParam<E> for (R, S)
+where
+    E: EntityTrait,
+    R: EntityTrait,
+    E: Related<R>,
+    S: EntityTrait,
+    R: Related<S>,
+{
+    fn into_with_param(self) -> (TableRef, Option<TableRef>) {
+        (self.0.table_ref(), Some(self.1.table_ref()))
     }
 }
 
