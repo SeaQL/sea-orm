@@ -30,7 +30,7 @@ pub trait LoaderTrait {
         R: EntityTrait,
         R::Model: Send + Sync,
         S: EntityOrSelect<R>,
-        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>;
+        <Self::Model as ModelTrait>::Entity: Related<R>;
 
     /// Used to eager load has_many relations
     async fn load_many<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
@@ -39,7 +39,7 @@ pub trait LoaderTrait {
         R: EntityTrait,
         R::Model: Send + Sync,
         S: EntityOrSelect<R>,
-        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>;
+        <Self::Model as ModelTrait>::Entity: Related<R>;
 
     /// Used to eager load many_to_many relations
     async fn load_many_to_many<R, S, V, C>(
@@ -55,7 +55,32 @@ pub trait LoaderTrait {
         S: EntityOrSelect<R>,
         V: EntityTrait,
         V::Model: Send + Sync,
-        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>;
+        <Self::Model as ModelTrait>::Entity: Related<R>;
+}
+
+/// This trait implements the Data Loader API for nested loading
+#[async_trait]
+pub trait NestedLoaderTrait {
+    /// Source model
+    type Model: ModelTrait;
+
+    /// Used to eager load has_one relations
+    async fn load_one<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<Option<R::Model>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
+        <Self::Model as ModelTrait>::Entity: Related<R>;
+
+    /// Used to eager load has_many relations
+    async fn load_many<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<Vec<R::Model>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
+        <Self::Model as ModelTrait>::Entity: Related<R>;
 }
 
 impl<E> EntityOrSelect<E> for E
@@ -89,7 +114,7 @@ where
         R: EntityTrait,
         R::Model: Send + Sync,
         S: EntityOrSelect<R>,
-        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
+        <Self::Model as ModelTrait>::Entity: Related<R>,
     {
         self.as_slice().load_one(stmt, db).await
     }
@@ -100,7 +125,7 @@ where
         R: EntityTrait,
         R::Model: Send + Sync,
         S: EntityOrSelect<R>,
-        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
+        <Self::Model as ModelTrait>::Entity: Related<R>,
     {
         self.as_slice().load_many(stmt, db).await
     }
@@ -118,7 +143,7 @@ where
         S: EntityOrSelect<R>,
         V: EntityTrait,
         V::Model: Send + Sync,
-        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
+        <Self::Model as ModelTrait>::Entity: Related<R>,
     {
         self.as_slice().load_many_to_many(stmt, via, db).await
     }
@@ -137,9 +162,13 @@ where
         R: EntityTrait,
         R::Model: Send + Sync,
         S: EntityOrSelect<R>,
-        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
+        <Self::Model as ModelTrait>::Entity: Related<R>,
     {
-        loader_impl(self, stmt, db).await
+        let rel_def = <<Self::Model as ModelTrait>::Entity as Related<R>>::to();
+        if rel_def.rel_type != RelationType::HasOne {
+            return Err(query_err("Relation is HasMany instead of HasOne"));
+        }
+        loader_impl(self.iter(), stmt.select(), db).await
     }
 
     async fn load_many<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
@@ -148,9 +177,9 @@ where
         R: EntityTrait,
         R::Model: Send + Sync,
         S: EntityOrSelect<R>,
-        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
+        <Self::Model as ModelTrait>::Entity: Related<R>,
     {
-        loader_impl(self, stmt, db).await
+        loader_impl(self.iter(), stmt.select(), db).await
     }
 
     async fn load_many_to_many<R, S, V, C>(
@@ -166,13 +195,10 @@ where
         S: EntityOrSelect<R>,
         V: EntityTrait,
         V::Model: Send + Sync,
-        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
+        <Self::Model as ModelTrait>::Entity: Related<R>,
     {
-        if let Some(via_rel) =
-            <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::via()
-        {
-            let rel_def =
-                <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
+        if let Some(via_rel) = <<Self::Model as ModelTrait>::Entity as Related<R>>::via() {
+            let rel_def = <<Self::Model as ModelTrait>::Entity as Related<R>>::to();
             if rel_def.rel_type != RelationType::HasOne {
                 return Err(query_err("Relation to is not HasOne"));
             }
@@ -251,6 +277,133 @@ where
     }
 }
 
+#[async_trait]
+impl<M> LoaderTrait for &[Option<M>]
+where
+    M: ModelTrait + Sync,
+{
+    type Model = M;
+
+    async fn load_one<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Option<R::Model>>, DbErr>
+    where
+        C: ConnectionTrait,
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
+        <Self::Model as ModelTrait>::Entity: Related<R>,
+    {
+        let rel_def = <<Self::Model as ModelTrait>::Entity as Related<R>>::to();
+        if rel_def.rel_type != RelationType::HasOne {
+            return Err(query_err("Relation is HasMany instead of HasOne"));
+        }
+        let items: Vec<Option<R::Model>> =
+            loader_impl(self.iter().filter_map(|o| o.as_ref()), stmt.select(), db).await?;
+        Ok(assemble_options(self, items))
+    }
+
+    async fn load_many<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
+    where
+        C: ConnectionTrait,
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
+        <Self::Model as ModelTrait>::Entity: Related<R>,
+    {
+        let items: Vec<Vec<R::Model>> =
+            loader_impl(self.iter().filter_map(|o| o.as_ref()), stmt.select(), db).await?;
+        Ok(assemble_options(self, items))
+    }
+
+    /// Not implemented. Please use load_many
+    async fn load_many_to_many<R, S, V, C>(
+        &self,
+        _stmt: S,
+        _via: V,
+        _db: &C,
+    ) -> Result<Vec<Vec<R::Model>>, DbErr>
+    where
+        C: ConnectionTrait,
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
+        V: EntityTrait,
+        V::Model: Send + Sync,
+        <Self::Model as ModelTrait>::Entity: Related<R>,
+    {
+        unimplemented!("Please use load_many")
+    }
+}
+
+fn assemble_options<I, T: Default>(input: &[Option<I>], items: Vec<T>) -> Vec<T> {
+    let mut items = items.into_iter();
+    let mut output = Vec::new();
+    for input in input.iter() {
+        if input.is_some() {
+            output.push(items.next().unwrap_or_default());
+        } else {
+            output.push(T::default());
+        }
+    }
+    output
+}
+
+#[async_trait]
+impl<M> NestedLoaderTrait for &[Vec<M>]
+where
+    M: ModelTrait + Sync,
+{
+    type Model = M;
+
+    async fn load_one<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<Option<R::Model>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
+        <Self::Model as ModelTrait>::Entity: Related<R>,
+    {
+        let rel_def = <<Self::Model as ModelTrait>::Entity as Related<R>>::to();
+        if rel_def.rel_type != RelationType::HasOne {
+            return Err(query_err("Relation is HasMany instead of HasOne"));
+        }
+        let items: Vec<Option<R::Model>> =
+            loader_impl(self.iter().flatten(), stmt.select(), db).await?;
+        Ok(assemble_vectors(self, items))
+    }
+
+    async fn load_many<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<Vec<R::Model>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
+        <Self::Model as ModelTrait>::Entity: Related<R>,
+    {
+        let items: Vec<Vec<R::Model>> =
+            loader_impl(self.iter().flatten(), stmt.select(), db).await?;
+        Ok(assemble_vectors(self, items))
+    }
+}
+
+fn assemble_vectors<I, T: Default>(input: &[Vec<I>], items: Vec<T>) -> Vec<Vec<T>> {
+    let mut items = items.into_iter();
+
+    let mut output = Vec::new();
+
+    for input in input.iter() {
+        output.push(Vec::new());
+
+        for _inner in input.iter() {
+            output
+                .last_mut()
+                .unwrap()
+                .push(items.next().unwrap_or_default());
+        }
+    }
+
+    output
+}
+
 trait Container: Default + Clone {
     type Item;
     fn add(&mut self, item: Self::Item);
@@ -270,31 +423,33 @@ impl<T: Clone> Container for Option<T> {
     }
 }
 
-async fn loader_impl<M, R, S, C, T>(items: &[M], stmt: S, db: &C) -> Result<Vec<T>, DbErr>
+async fn loader_impl<'a, Model, Iter, R, C, T>(
+    items: Iter,
+    stmt: Select<R>,
+    db: &C,
+) -> Result<Vec<T>, DbErr>
 where
-    M: ModelTrait + Sync,
+    Model: ModelTrait + Sync + 'a,
+    Iter: Iterator<Item = &'a Model> + 'a,
     C: ConnectionTrait,
     R: EntityTrait,
     R::Model: Send + Sync,
-    S: EntityOrSelect<R>,
-    M::Entity: Related<R>,
+    Model::Entity: Related<R>,
     T: Container<Item = R::Model>,
 {
-    if items.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let (keys, hashmap) = if let Some(via_def) = <M::Entity as Related<R>>::via() {
+    let (keys, hashmap) = if let Some(via_def) = <Model::Entity as Related<R>>::via() {
         let keys = items
-            .iter()
             .map(|model| extract_key(&via_def.from_col, model))
             .collect::<Result<Vec<_>, _>>()?;
+
+        if keys.is_empty() {
+            return Ok(Vec::new());
+        }
 
         let condition = prepare_condition(&via_def.to_tbl, &via_def.to_col, &keys);
 
         let stmt = QueryFilter::filter(
-            stmt.select()
-                .join_rev(JoinType::InnerJoin, <M::Entity as Related<R>>::to()),
+            stmt.join_rev(JoinType::InnerJoin, <Model::Entity as Related<R>>::to()),
             condition,
         );
 
@@ -312,7 +467,7 @@ where
                 via_def.to_tbl.sea_orm_table().clone(),
                 dynamic::ModelType {
                     // we uses the left Model's type but the right Model's field
-                    fields: extract_col_type::<M>(&via_def.from_col, &via_def.to_col)?,
+                    fields: extract_col_type::<Model>(&via_def.from_col, &via_def.to_col)?,
                 },
             )
             .all(db)
@@ -337,16 +492,19 @@ where
 
         (keys, hashmap)
     } else {
-        let rel_def = <M::Entity as Related<R>>::to();
+        let rel_def = <Model::Entity as Related<R>>::to();
 
         let keys = items
-            .iter()
             .map(|model| extract_key(&rel_def.from_col, model))
             .collect::<Result<Vec<_>, _>>()?;
 
+        if keys.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
-        let stmt = QueryFilter::filter(stmt.select(), condition);
+        let stmt = QueryFilter::filter(stmt, condition);
 
         let data = stmt.all(db).await?;
 
@@ -895,5 +1053,15 @@ mod tests {
 
         let values_count = sql.matches("$1").count() + sql.matches("$2").count();
         assert_eq!(values_count, 2, "Duplicate values were not removed");
+    }
+
+    #[test]
+    fn test_assemble_vectors() {
+        use super::assemble_vectors;
+
+        assert_eq!(
+            assemble_vectors(&[vec![1], vec![], vec![2, 3], vec![]], vec![11, 22, 33]),
+            [vec![11], vec![], vec![22, 33], vec![]]
+        );
     }
 }

@@ -23,7 +23,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
 
     let baker_1 = insert_baker(db, "Jane", bakery_1.id).await?;
     let baker_2 = insert_baker(db, "Peter", bakery_1.id).await?;
-    let baker_3 = insert_baker(db, "Fred", bakery_1.id).await?; // does not make cake
+    let baker_3 = insert_baker(db, "Fred", bakery_2.id).await?; // does not make cake
 
     let cake_1 = insert_cake(db, "Cheesecake", Some(bakery_1.id)).await?;
     let cake_2 = insert_cake(db, "Coffee", Some(bakery_1.id)).await?;
@@ -68,8 +68,26 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[1].bakery.get(), Some(&bakery_1));
     assert_eq!(cakes[2].bakery.get(), Some(&bakery_2));
     assert_eq!(cakes[3].bakery.get(), None);
+
+    // alternative API
+    assert_eq!(
+        cakes,
+        cake::EntityLoader::load(
+            cake::Entity::find().all(db).await?,
+            &cake::EntityLoaderWith {
+                bakery: true,
+                lineitems: false,
+                bakers: false,
+            },
+            &Default::default(),
+            db
+        )
+        .await?
+    );
+
+    // verify the cakes as well
     cakes.iter_mut().for_each(|cake| {
-        cake.bakery.take();
+        cake.bakery.take(); // has to remove bakery otherwise comparison would fail
     });
     assert_eq!(
         cakes,
@@ -163,6 +181,61 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(bakers[0].cakes.get(), [cake_1.clone(), cake_2.clone()]);
     assert_eq!(bakers[1].cakes.get(), [cake_2.clone(), cake_3.clone()]);
     assert_eq!(bakers[2].cakes.get(), []);
+
+    // alternative API
+    assert_eq!(
+        bakers,
+        baker::EntityLoader::load(
+            baker::Entity::find().all(db).await?,
+            &baker::EntityLoaderWith {
+                cakes: true,
+                bakery: false,
+            },
+            &Default::default(),
+            db
+        )
+        .await?
+    );
+
+    // 2 many
+    // bakery -> baker
+    //        -> cake
+
+    let bakeries = bakery::Entity::load()
+        .with(baker::Entity)
+        .with(cake::Entity)
+        .order_by_asc(bakery::Column::Id)
+        .all(db)
+        .await?;
+
+    assert_eq!(bakeries[0].bakers.get(), [baker_1.clone(), baker_2.clone()]);
+    assert_eq!(bakeries[1].bakers.get(), [baker_3.clone()]);
+    assert_eq!(bakeries[0].cakes.get(), [cake_1.clone(), cake_2.clone()]);
+    assert_eq!(bakeries[1].cakes.get(), [cake_3.clone()]);
+
+    // nested
+    // cake -> bakery -> baker
+
+    let cakes = cake::Entity::load()
+        .nest(bakery::Entity, baker::Entity)
+        .all(db)
+        .await?;
+    assert_eq!(cakes[0].bakery.get().unwrap().name, bakery_1.name);
+    assert_eq!(cakes[1].bakery.get().unwrap().name, bakery_1.name);
+    assert_eq!(cakes[2].bakery.get().unwrap().name, bakery_2.name);
+    assert_eq!(cakes[3].bakery.get(), None);
+    assert_eq!(
+        cakes[0].bakery.get().unwrap().bakers.get(),
+        [baker_1.clone(), baker_2.clone()]
+    );
+    assert_eq!(
+        cakes[1].bakery.get().unwrap().bakers.get(),
+        [baker_1.clone(), baker_2.clone()]
+    );
+    assert_eq!(
+        cakes[2].bakery.get().unwrap().bakers.get(),
+        [baker_3.clone()]
+    );
 
     Ok(())
 }

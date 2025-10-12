@@ -96,8 +96,20 @@ impl EntityLoader {
         self
     }
 
-    pub async fn all<C: sea_orm::ConnectionTrait>(self, db: &C) -> Result<Vec<Model>, DbErr> {
+    pub async fn load<C: sea_orm::ConnectionTrait>(Vec<Model>, with: &EntityLoaderWith, nest: &EntityLoaderNest, db: &C) -> Result<Vec<Model>, DbErr> {
+        if self.with.baker {
+            let bakers = cakes.load_many(super::baker::Entity, db).await?;
+            super::baker::EntityLoader::load_nest_nest(bakers, &nest.baker).await?;
+
+            for (cake, bakers) in cakes.iter_mut().zip(bakers) {
+                cake.bakers.set(bakers);
+            }
+        }
+    }
+
+    pub async fn all<C: sea_orm::ConnectionTrait>(mut self, db: &C) -> Result<Vec<Model>, DbErr> {
         let select = if self.with.bakery {
+            self.with.bakery = false;
             self.select.find_also(Entity, super::bakery::Entity)
         } else {
             // select also but without join
@@ -113,15 +125,7 @@ impl EntityLoader {
             cakes.push(cake);
         }
 
-        if self.with.baker {
-            let bakers = cakes.load_many(super::baker::Entity, db).await?;
-
-            nested_load_many(bakers, self.nested.baker).await;
-
-            for (cake, bakers) in cakes.iter_mut().zip(bakers) {
-                cake.bakers.set(bakers)
-            }
-        }
+        let cakes = Self::load(cakes, &self.with, db).await?;
 
         Ok(cakes)
     }

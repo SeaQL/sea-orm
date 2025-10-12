@@ -22,47 +22,104 @@ impl EntityLoaderSchema {
 
 pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
     let mut field_bools: Punctuated<_, Comma> = Punctuated::new();
+    let mut field_nests: Punctuated<_, Comma> = Punctuated::new();
     let mut one_fields: Punctuated<_, Comma> = Punctuated::new();
     let mut with_impl = TokenStream::new();
+    let mut with_nest_impl = TokenStream::new();
     let mut select_impl = TokenStream::new();
     let mut assemble_one = TokenStream::new();
+    let mut load_one = TokenStream::new();
     let mut load_many = TokenStream::new();
+    let mut load_one_nest = TokenStream::new();
+    let mut load_many_nest = TokenStream::new();
 
     one_fields.push(quote!(mut model));
 
-    for entity in schema.fields.iter() {
-        let field = &entity.field;
-        let is_one = entity.is_one;
-        let entity: TokenStream = entity.entity.parse().unwrap();
-        field_bools.push(quote!(#field: bool));
+    for entity_field in schema.fields.iter() {
+        let field = &entity_field.field;
+        let is_one = entity_field.is_one;
+        let mut arity = 1;
+        let entity: TokenStream = entity_field.entity.parse().unwrap();
+        let entity_module: TokenStream = entity_field
+            .entity
+            .trim_end_matches("::Entity")
+            .parse()
+            .unwrap();
+
+        field_bools.push(quote!(pub #field: bool));
+        field_nests.push(quote!(pub #field: #entity_module::EntityLoaderWith));
 
         with_impl.extend(quote! {
+            if target == #entity.table_ref() {
+                self.#field = true;
+            }
+        });
+        with_nest_impl.extend(quote! {
             if entity.table_ref() == #entity.table_ref() {
                 self.with.#field = true;
+                self.nest.#field.set(nested.table_ref());
             }
         });
 
         if is_one {
-            one_fields.push(quote!(#field));
+            arity += 1;
+            if arity <= 3 {
+                // do not go beyond SelectThree
+                one_fields.push(quote!(#field));
 
-            select_impl.extend(quote! {
-                let select = if self.with.#field {
-                    select.find_also(Entity, #entity)
-                } else {
-                    select.select_also_fake(#entity)
-                };
+                select_impl.extend(quote! {
+                    let select = if self.with.#field && self.nest.#field.is_empty() {
+                        self.with.#field = false;
+                        select.find_also(Entity, #entity)
+                    } else {
+                        select.select_also_fake(#entity)
+                    };
+                });
+
+                assemble_one.extend(quote! {
+                    model.#field.set(#field);
+                });
+            }
+
+            load_one.extend(quote! {
+                if with.#field {
+                    let #field = models.load_one(#entity, db).await?;
+                    let #field = #entity_module::EntityLoader::load_nest(#field, &nest.#field, db).await?;
+
+                    for (model, #field) in models.iter_mut().zip(#field) {
+                        model.#field.set(#field);
+                    }
+                }
             });
+            load_one_nest.extend(quote! {
+                if with.#field {
+                    let #field = models.as_slice().load_one(#entity, db).await?;
 
-            assemble_one.extend(quote! {
-                model.#field.set(#field);
+                    for (model, #field) in models.iter_mut().zip(#field) {
+                        if let Some(model) = model.as_mut() {
+                            model.#field.set(#field);
+                        }
+                    }
+                }
             });
         } else {
             load_many.extend(quote! {
-                if self.with.#field {
+                if with.#field {
                     let #field = models.load_many(#entity, db).await?;
 
                     for (model, #field) in models.iter_mut().zip(#field) {
                         model.#field.set(#field);
+                    }
+                }
+            });
+            load_many_nest.extend(quote! {
+                if with.#field {
+                    let #field = models.as_slice().load_many(#entity, db).await?;
+
+                    for (model, #field) in models.iter_mut().zip(#field) {
+                        if let Some(model) = model.as_mut() {
+                            model.#field.set(#field);
+                        }
                     }
                 }
             });
@@ -74,11 +131,26 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
     pub struct EntityLoader {
         select: sea_orm::Select<Entity>,
         with: EntityLoaderWith,
+        nest: EntityLoaderNest,
     }
 
-    #[derive(Debug, Default)]
-    struct EntityLoaderWith {
+    #[derive(Debug, Default, PartialEq, Eq)]
+    pub struct EntityLoaderWith {
         #field_bools
+    }
+
+    #[derive(Debug, Default, PartialEq, Eq)]
+    pub struct EntityLoaderNest {
+        #field_nests
+    }
+
+    impl EntityLoaderWith {
+        pub fn is_empty(&self) -> bool {
+            self == &Self::default()
+        }
+        pub fn set(&mut self, target: sea_orm::sea_query::TableRef) {
+            #with_impl
+        }
     }
 
     impl sea_orm::QueryFilter for EntityLoader {
@@ -104,6 +176,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             EntityLoader {
                 select: Entity::find(),
                 with: Default::default(),
+                nest: Default::default(),
             }
         }
     }
@@ -124,24 +197,47 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             R: EntityTrait,
             Entity: Related<R>,
         {
-            #with_impl
+            self.with.set(entity.table_ref());
             self
         }
 
-        pub async fn all<C: sea_orm::ConnectionTrait>(self, db: &C) -> Result<Vec<Model>, sea_orm::DbErr> {
+        pub fn nest<R, S>(mut self, entity: R, nested: S) -> Self
+        where
+            R: EntityTrait,
+            Entity: Related<R>,
+            S: EntityTrait,
+            R: Related<S>,
+        {
+            #with_nest_impl
+            self
+        }
+
+        pub async fn all<C: sea_orm::ConnectionTrait>(mut self, db: &C) -> Result<Vec<Model>, sea_orm::DbErr> {
             let select = self.select;
 
             #select_impl
 
             let models = select.all(db).await?;
 
-            let mut models = models.into_iter().map(|(#one_fields)| {
+            let models = models.into_iter().map(|(#one_fields)| {
                 #assemble_one
                 model
             }).collect::<Vec<_>>();
 
-            #load_many
+            let models = Self::load(models, &self.with, &self.nest, db).await?;
 
+            Ok(models)
+        }
+
+        pub async fn load<C: sea_orm::ConnectionTrait>(mut models: Vec<Model>, with: &EntityLoaderWith, nest: &EntityLoaderNest, db: &C) -> Result<Vec<Model>, DbErr> {
+            #load_one
+            #load_many
+            Ok(models)
+        }
+
+        pub async fn load_nest<C: sea_orm::ConnectionTrait>(mut models: Vec<Option<Model>>, with: &EntityLoaderWith, db: &C) -> Result<Vec<Option<Model>>, DbErr> {
+            #load_one_nest
+            #load_many_nest
             Ok(models)
         }
     }
