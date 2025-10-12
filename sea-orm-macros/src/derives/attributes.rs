@@ -8,6 +8,7 @@ pub mod derive_attr {
         pub column: Option<syn::Ident>,
         pub entity: Option<syn::Ident>,
         pub model: Option<syn::Ident>,
+        pub model_ex: Option<syn::Ident>,
         pub active_model: Option<syn::Ident>,
         pub primary_key: Option<syn::Ident>,
         pub relation: Option<syn::Ident>,

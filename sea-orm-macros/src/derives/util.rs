@@ -44,7 +44,11 @@ pub(crate) fn is_compound_field(field_type: &str) -> bool {
 }
 
 pub(crate) fn format_field_ident(field: Field) -> Ident {
-    format_ident!("{}", field.ident.unwrap().to_string())
+    format_field_ident_ref(&field)
+}
+
+pub(crate) fn format_field_ident_ref(field: &Field) -> Ident {
+    format_ident!("{}", field.ident.as_ref().unwrap().to_string())
 }
 
 pub(crate) fn trim_starting_raw_identifier<T>(string: T) -> String

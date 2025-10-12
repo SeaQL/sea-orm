@@ -27,7 +27,7 @@ pub trait EntityLoaderWithParam<E: EntityTrait> {
 
 #[derive(Debug, Clone)]
 pub struct HasOne<E: EntityTrait> {
-    pub(crate) item: Option<Box<E::Model>>,
+    pub(crate) item: Option<Box<E::ModelEx>>,
 }
 
 pub type BelongsTo<E> = HasOne<E>;
@@ -41,28 +41,28 @@ impl<E: EntityTrait> Default for HasOne<E> {
 }
 
 impl<E: EntityTrait> HasOne<E> {
-    pub fn new<T: Into<Option<E::Model>>>(item: T) -> Self {
+    pub fn new<T: Into<E::ModelEx>>(item: Option<T>) -> Self {
         Self {
-            item: item.into().map(Into::into),
+            item: item.map(Into::into).map(Into::into),
         }
     }
 
-    pub fn get(&self) -> Option<&E::Model> {
+    pub fn get(&self) -> Option<&E::ModelEx> {
         self.item.as_deref()
     }
 
-    pub fn set<T: Into<Box<E::Model>>>(&mut self, item: Option<T>) {
-        self.item = item.map(Into::into);
+    pub fn set<T: Into<E::ModelEx>>(&mut self, item: Option<T>) {
+        self.item = item.map(Into::into).map(Into::into);
     }
 
-    pub fn take(&mut self) -> Option<Box<E::Model>> {
+    pub fn take(&mut self) -> Option<Box<E::ModelEx>> {
         self.item.take()
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct HasMany<E: EntityTrait> {
-    pub(crate) items: Vec<E::Model>,
+    pub(crate) items: Vec<E::ModelEx>,
 }
 
 impl<E: EntityTrait> Default for HasMany<E> {
@@ -74,19 +74,23 @@ impl<E: EntityTrait> Default for HasMany<E> {
 }
 
 impl<E: EntityTrait> HasMany<E> {
-    pub fn new(items: Vec<E::Model>) -> Self {
+    pub fn new(items: Vec<E::ModelEx>) -> Self {
         Self { items }
     }
 
-    pub fn get(&self) -> &[E::Model] {
+    pub fn new_item(items: Vec<E::ModelEx>) -> Self {
+        Self { items }
+    }
+
+    pub fn get(&self) -> &[E::ModelEx] {
         &self.items
     }
 
-    pub fn set(&mut self, items: Vec<E::Model>) {
+    pub fn set(&mut self, items: Vec<E::ModelEx>) {
         self.items = items
     }
 
-    pub fn take(&mut self) -> Vec<E::Model> {
+    pub fn take(&mut self) -> Vec<E::ModelEx> {
         std::mem::take(&mut self.items)
     }
 }
@@ -120,7 +124,7 @@ macro_rules! impl_partial_eq_eq {
         impl<E> PartialEq for $ty<E>
         where
             E: EntityTrait,
-            E::Model: PartialEq,
+            E::ModelEx: PartialEq,
         {
             fn eq(&self, other: &Self) -> bool {
                 self.$field == other.$field
@@ -130,7 +134,7 @@ macro_rules! impl_partial_eq_eq {
         impl<E> Eq for $ty<E>
         where
             E: EntityTrait,
-            E::Model: Eq,
+            E::ModelEx: Eq,
         {
         }
     };
@@ -144,7 +148,7 @@ macro_rules! impl_serde {
         impl<E> serde::Serialize for $ty<E>
         where
             E: EntityTrait,
-            E::Model: serde::Serialize,
+            E::ModelEx: serde::Serialize,
         {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
@@ -157,7 +161,7 @@ macro_rules! impl_serde {
         impl<'de, E> serde::Deserialize<'de> for $ty<E>
         where
             E: EntityTrait,
-            E::Model: serde::Deserialize<'de>,
+            E::ModelEx: serde::Deserialize<'de>,
         {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
@@ -170,7 +174,32 @@ macro_rules! impl_serde {
 }
 
 #[cfg(feature = "with-json")]
-impl_serde!(HasOne, item, Option<E::Model>);
+impl_serde!(HasOne, item, Option<E::ModelEx>);
 
 #[cfg(feature = "with-json")]
-impl_serde!(HasMany, items, Vec<E::Model>);
+impl_serde!(HasMany, items, Vec<E::ModelEx>);
+
+#[cfg(test)]
+mod test {
+    use crate::ModelTrait;
+    use crate::tests_cfg::cake;
+
+    #[test]
+    fn test_model_ex_convert() {
+        let cake = cake::Model {
+            id: 12,
+            name: "hello".into(),
+        };
+        let cake_ex: cake::ModelEx = cake.clone().into();
+
+        assert_eq!(cake, cake_ex);
+        assert_eq!(cake_ex, cake);
+        assert_eq!(cake.id, cake_ex.id);
+        assert_eq!(cake.name, cake_ex.name);
+
+        assert_eq!(cake_ex.get(cake::Column::Id), 12i32.into());
+        assert_eq!(cake_ex.get(cake::Column::Name), "hello".into());
+
+        assert_eq!(cake::Model::from(cake_ex), cake);
+    }
+}

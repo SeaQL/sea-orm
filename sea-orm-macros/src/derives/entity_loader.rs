@@ -30,7 +30,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
     let mut load_many_nest_nest = TokenStream::new();
     let mut arity = 1;
 
-    one_fields.push(quote!(mut model));
+    one_fields.push(quote!(model));
 
     for entity_field in schema.fields.iter() {
         let field = &entity_field.field;
@@ -80,7 +80,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
 
             load_one.extend(quote! {
                 if with.#field {
-                    let #field = models.load_one(#entity, db).await?;
+                    let #field = models.as_slice().load_one_ex(#entity, db).await?;
                     let #field = #entity_module::EntityLoader::load_nest(#field, &nest.#field, db).await?;
 
                     for (model, #field) in models.iter_mut().zip(#field) {
@@ -90,7 +90,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             });
             load_one_nest.extend(quote! {
                 if with.#field {
-                    let #field = models.as_slice().load_one(#entity, db).await?;
+                    let #field = models.as_slice().load_one_ex(#entity, db).await?;
 
                     for (model, #field) in models.iter_mut().zip(#field) {
                         if let Some(model) = model.as_mut() {
@@ -101,7 +101,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             });
             load_one_nest_nest.extend(quote! {
                 if with.#field {
-                    let #field = models.as_slice().load_one(#entity, db).await?;
+                    let #field = models.as_slice().load_one_ex(#entity, db).await?;
 
                     for (models, #field) in models.iter_mut().zip(#field) {
                         for (model, #field) in models.iter_mut().zip(#field) {
@@ -113,7 +113,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
         } else {
             load_many.extend(quote! {
                 if with.#field {
-                    let #field = models.load_many(#entity, db).await?;
+                    let #field = models.as_slice().load_many_ex(#entity, db).await?;
                     let #field = #entity_module::EntityLoader::load_nest_nest(#field, &nest.#field, db).await?;
 
                     for (model, #field) in models.iter_mut().zip(#field) {
@@ -123,7 +123,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             });
             load_many_nest.extend(quote! {
                 if with.#field {
-                    let #field = models.as_slice().load_many(#entity, db).await?;
+                    let #field = models.as_slice().load_many_ex(#entity, db).await?;
 
                     for (model, #field) in models.iter_mut().zip(#field) {
                         if let Some(model) = model.as_mut() {
@@ -134,7 +134,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             });
             load_many_nest_nest.extend(quote! {
                 if with.#field {
-                    let #field = models.as_slice().load_many(#entity, db).await?;
+                    let #field = models.as_slice().load_many_ex(#entity, db).await?;
 
                     for (models, #field) in models.iter_mut().zip(#field) {
                         for (model, #field) in models.iter_mut().zip(#field) {
@@ -250,6 +250,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             let models = select.all(db).await?;
 
             let models = models.into_iter().map(|(#one_fields)| {
+                let mut model = model.into_ex();
                 #assemble_one
                 model
             }).collect::<Vec<_>>();
@@ -260,12 +261,14 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
         }
 
         pub async fn load<C: sea_orm::ConnectionTrait>(mut models: Vec<ModelEx>, with: &EntityLoaderWith, nest: &EntityLoaderNest, db: &C) -> Result<Vec<ModelEx>, DbErr> {
+            use sea_orm::LoaderTraitEx;
             #load_one
             #load_many
             Ok(models)
         }
 
         pub async fn load_nest<C: sea_orm::ConnectionTrait>(mut models: Vec<Option<ModelEx>>, with: &EntityLoaderWith, db: &C) -> Result<Vec<Option<ModelEx>>, DbErr> {
+            use sea_orm::LoaderTraitEx;
             #load_one_nest
             #load_many_nest
             Ok(models)

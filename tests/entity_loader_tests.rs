@@ -59,21 +59,31 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             .filter(cake::Column::Name.like("Ch%"))
             .order_by_desc(cake::Column::Name)
             .one(db)
-            .await?,
-        Some(cake_3.clone())
+            .await?
+            .unwrap(),
+        cake_3
     );
 
-    let mut cakes = cake::Entity::load().with(bakery::Entity).all(db).await?;
-    assert_eq!(cakes[0].bakery.get(), Some(&bakery_1));
-    assert_eq!(cakes[1].bakery.get(), Some(&bakery_1));
-    assert_eq!(cakes[2].bakery.get(), Some(&bakery_2));
+    let cakes = cake::Entity::load().with(bakery::Entity).all(db).await?;
+    assert_eq!(
+        cakes,
+        [
+            cake_1.clone(),
+            cake_2.clone(),
+            cake_3.clone(),
+            cake_4.clone(),
+        ]
+    );
+    assert_eq!(cakes[0].bakery.get().unwrap(), &bakery_1);
+    assert_eq!(cakes[1].bakery.get().unwrap(), &bakery_1);
+    assert_eq!(cakes[2].bakery.get().unwrap(), &bakery_2);
     assert_eq!(cakes[3].bakery.get(), None);
 
     // alternative API
     assert_eq!(
         cakes,
         cake::EntityLoader::load(
-            cake::Entity::find().all(db).await?,
+            cake::Entity::load().all(db).await?,
             &cake::EntityLoaderWith {
                 bakery: true,
                 lineitems: false,
@@ -85,27 +95,13 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .await?
     );
 
-    // verify the cakes as well
-    cakes.iter_mut().for_each(|cake| {
-        cake.bakery.take(); // has to remove bakery otherwise comparison would fail
-    });
-    assert_eq!(
-        cakes,
-        [
-            cake_1.clone(),
-            cake_2.clone(),
-            cake_3.clone(),
-            cake_4.clone(),
-        ]
-    );
-
     let mut cake_with_bakery = cake::Entity::load()
         .filter(cake::Column::Name.eq("Cheesecake"))
         .with(bakery::Entity)
         .one(db)
         .await?
         .unwrap();
-    assert_eq!(cake_with_bakery.bakery.get(), Some(&bakery_1));
+    assert_eq!(cake_with_bakery.bakery.get().unwrap(), &bakery_1);
     assert!(cake_with_bakery.bakers.get().is_empty());
     cake_with_bakery.bakery.take();
     cake_with_bakery.bakers.take();
@@ -119,8 +115,8 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             .await?
             .unwrap(),
         {
-            let mut cake_2 = cake_2.clone();
-            cake_2.bakery.set(Some(bakery_1.clone()));
+            let mut cake_2 = cake_2.clone().into_ex();
+            cake_2.bakery.set(Some(bakery_1.clone().into_ex()));
             cake_2
         }
     );
@@ -147,14 +143,14 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             cake_4.clone()
         ]
     );
-    assert_eq!(cakes[0].bakery.get(), Some(&bakery_1));
-    assert_eq!(cakes[1].bakery.get(), Some(&bakery_1));
-    assert_eq!(cakes[2].bakery.get(), Some(&bakery_2));
+    assert_eq!(cakes[0].bakery.get().unwrap(), &bakery_1);
+    assert_eq!(cakes[1].bakery.get().unwrap(), &bakery_1);
+    assert_eq!(cakes[2].bakery.get().unwrap(), &bakery_2);
     assert_eq!(cakes[3].bakery.get(), None);
     assert_eq!(cakes[0].bakers.get(), [baker_1.clone()]);
     assert_eq!(cakes[1].bakers.get(), [baker_1.clone(), baker_2.clone()]);
     assert_eq!(cakes[2].bakers.get(), [baker_2.clone()]);
-    assert_eq!(cakes[3].bakers.get(), []);
+    assert!(cakes[3].bakers.get().is_empty());
 
     let mut cake_with_bakery_baker = cake::Entity::load()
         .filter(cake::Column::Name.eq("Chiffon"))
@@ -163,7 +159,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .one(db)
         .await?
         .unwrap();
-    assert_eq!(cake_with_bakery_baker.bakery.get(), Some(&bakery_2));
+    assert_eq!(cake_with_bakery_baker.bakery.get().unwrap(), &bakery_2);
     assert_eq!(cake_with_bakery_baker.bakers.get(), [baker_2.clone()]);
     cake_with_bakery_baker.bakery.take();
     cake_with_bakery_baker.bakers.take();
@@ -180,13 +176,13 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(bakers[2].id, baker_3.id);
     assert_eq!(bakers[0].cakes.get(), [cake_1.clone(), cake_2.clone()]);
     assert_eq!(bakers[1].cakes.get(), [cake_2.clone(), cake_3.clone()]);
-    assert_eq!(bakers[2].cakes.get(), []);
+    assert!(bakers[2].cakes.get().is_empty());
 
     // alternative API
     assert_eq!(
         bakers,
         baker::EntityLoader::load(
-            baker::Entity::find().all(db).await?,
+            baker::Entity::load().all(db).await?,
             &baker::EntityLoaderWith {
                 cakes: true,
                 bakery: false,
@@ -309,21 +305,21 @@ async fn entity_loader_join_three() {
 
     assert_eq!(
         order,
-        order::Model {
+        order::ModelEx {
             id: 101,
             total: 10.into(),
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
             bakery: BelongsTo::default(),
-            customer: BelongsTo::new(customer::Model {
+            customer: BelongsTo::new(Some(customer::ModelEx {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
                 orders: HasMany::default(),
-            }),
+            })),
             lineitems: HasMany::new(vec![
-                lineitem::Model {
+                lineitem::ModelEx {
                     id: 1,
                     price: 2.into(),
                     quantity: 2,
@@ -332,7 +328,7 @@ async fn entity_loader_join_three() {
                     order: BelongsTo::default(),
                     cake: BelongsTo::default(),
                 },
-                lineitem::Model {
+                lineitem::ModelEx {
                     id: 2,
                     price: 3.into(),
                     quantity: 2,
@@ -357,21 +353,21 @@ async fn entity_loader_join_three() {
 
     assert_eq!(
         order,
-        order::Model {
+        order::ModelEx {
             id: 101,
             total: 10.into(),
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
             bakery: BelongsTo::default(),
-            customer: BelongsTo::new(customer::Model {
+            customer: BelongsTo::new(Some(customer::ModelEx {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
                 orders: HasMany::default(),
-            }),
+            })),
             lineitems: HasMany::new(vec![
-                lineitem::Model {
+                lineitem::ModelEx {
                     id: 1,
                     price: 2.into(),
                     quantity: 2,
@@ -380,7 +376,7 @@ async fn entity_loader_join_three() {
                     order: BelongsTo::default(),
                     cake: BelongsTo::new(cake_13),
                 },
-                lineitem::Model {
+                lineitem::ModelEx {
                     id: 2,
                     price: 3.into(),
                     quantity: 2,
@@ -392,6 +388,22 @@ async fn entity_loader_join_three() {
             ]),
         }
     );
+}
+
+#[sea_orm_macros::test]
+async fn entity_loader_exp() -> Result<(), DbErr> {
+    let ctx = TestContext::new("entity_loader_exp").await;
+    create_tables(&ctx.db).await.unwrap();
+    seed_data::init_1(&ctx, true).await;
+    let db = &ctx.db;
+
+    let loader = lineitem::Entity::load()
+        .with(cake::Entity)
+        .with(order::Entity);
+    println!("{loader:?}");
+    loader.all(db).await?;
+
+    Ok(())
 }
 
 pub async fn insert_bakery(db: &DbConn, name: &str) -> Result<bakery::Model, DbErr> {

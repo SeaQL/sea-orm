@@ -6,37 +6,36 @@ use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::iter::FromIterator;
-use syn::{Expr, Ident, LitStr};
+use syn::{Attribute, Data, Expr, Ident, LitStr};
 
-enum Error {
+pub(crate) enum DeriveModelError {
     InputNotStruct,
     Syn(syn::Error),
 }
 
-struct DeriveModel {
-    column_idents: Vec<syn::Ident>,
-    entity_ident: syn::Ident,
-    field_idents: Vec<syn::Ident>,
+pub(crate) struct DeriveModel {
+    column_idents: Vec<Ident>,
+    entity_ident: Ident,
+    field_idents: Vec<Ident>,
     field_types: Vec<syn::Type>,
-    ident: syn::Ident,
+    ident: Ident,
     ignore_attrs: Vec<bool>,
 }
 
 impl DeriveModel {
-    fn new(input: syn::DeriveInput) -> Result<Self, Error> {
-        let fields = match input.data {
+    pub fn new(ident: &Ident, data: &Data, attrs: &[Attribute]) -> Result<Self, DeriveModelError> {
+        let fields = match data {
             syn::Data::Struct(syn::DataStruct {
                 fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
                 ..
             }) => named,
-            _ => return Err(Error::InputNotStruct),
+            _ => return Err(DeriveModelError::InputNotStruct),
         };
 
-        let sea_attr = derive_attr::SeaOrm::try_from_attributes(&input.attrs)
-            .map_err(Error::Syn)?
+        let sea_attr = derive_attr::SeaOrm::try_from_attributes(attrs)
+            .map_err(DeriveModelError::Syn)?
             .unwrap_or_default();
 
-        let ident = input.ident;
         let entity_ident = sea_attr.entity.unwrap_or_else(|| format_ident!("Entity"));
 
         let field_idents = fields
@@ -71,7 +70,7 @@ impl DeriveModel {
 
                             Ok(())
                         })
-                        .map_err(Error::Syn)
+                        .map_err(DeriveModelError::Syn)
                     })?;
                 Ok(ident)
             })
@@ -87,7 +86,7 @@ impl DeriveModel {
             entity_ident,
             field_idents,
             field_types,
-            ident,
+            ident: ident.clone(),
             ignore_attrs,
         })
     }
@@ -134,7 +133,7 @@ impl DeriveModel {
         )
     }
 
-    fn impl_model_trait<'a>(&'a self) -> TokenStream {
+    pub fn impl_model_trait<'a>(&'a self) -> TokenStream {
         let ident = &self.ident;
         let entity_ident = &self.entity_ident;
         let ignore_attrs = &self.ignore_attrs;
@@ -197,14 +196,23 @@ impl DeriveModel {
     }
 }
 
+impl DeriveModelError {
+    pub fn unwrap(self) -> syn::Error {
+        match self {
+            Self::InputNotStruct => panic!("you can only derive DeriveModel on structs"),
+            Self::Syn(err) => err,
+        }
+    }
+}
+
 /// Method to derive an ActiveModel
 pub fn expand_derive_model(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     let ident_span = input.ident.span();
-    match DeriveModel::new(input) {
+    match DeriveModel::new(&input.ident, &input.data, &input.attrs) {
         Ok(model) => model.expand(),
-        Err(Error::InputNotStruct) => Ok(quote_spanned! {
+        Err(DeriveModelError::InputNotStruct) => Ok(quote_spanned! {
             ident_span => compile_error!("you can only derive DeriveModel on structs");
         }),
-        Err(Error::Syn(err)) => Err(err),
+        Err(DeriveModelError::Syn(err)) => Err(err),
     }
 }

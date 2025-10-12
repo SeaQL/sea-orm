@@ -4,6 +4,7 @@ use sea_orm::entity::prelude::*;
 #[cfg(feature = "with-json")]
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[cfg_attr(feature = "with-json", derive(Serialize, Deserialize))]
 #[sea_orm(table_name = "filling")]

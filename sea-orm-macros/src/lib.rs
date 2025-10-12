@@ -169,7 +169,7 @@ pub fn derive_model_ex(input: TokenStream) -> TokenStream {
         panic!("Struct name must be ModelEx");
     }
 
-    derives::expand_derive_model_ex(data, attrs)
+    derives::expand_derive_model_ex(ident, data, attrs)
         .unwrap_or_else(Error::into_compile_error)
         .into()
 }

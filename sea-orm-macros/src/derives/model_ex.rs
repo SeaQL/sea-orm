@@ -1,6 +1,7 @@
 use super::attributes::compound_attr;
 use super::entity_loader::{EntityLoaderField, EntityLoaderSchema, expand_entity_loader};
-use super::util::is_compound_field;
+use super::model::DeriveModel;
+use super::util::{format_field_ident_ref, is_compound_field};
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
@@ -15,7 +16,7 @@ pub fn expand_sea_orm_model(input: ItemStruct) -> syn::Result<TokenStream> {
     let vis = input.vis;
     let all_fields = input.fields;
 
-    let model_ex = Ident::new(&format!("{}Ex", model), model.span());
+    let model_ex = Ident::new(&format!("{model}Ex"), model.span());
     let mut model_ex_attrs = model_attrs.clone();
     for attr in &mut model_ex_attrs {
         if attr.path().is_ident("derive") {
@@ -54,6 +55,7 @@ pub fn expand_sea_orm_model(input: ItemStruct) -> syn::Result<TokenStream> {
 
     Ok(quote! {
         #(#model_attrs)*
+        #[sea_orm(model_ex)]
         #vis struct #model {
             #(#model_fields),*
         }
@@ -63,8 +65,14 @@ pub fn expand_sea_orm_model(input: ItemStruct) -> syn::Result<TokenStream> {
     })
 }
 
-pub fn expand_derive_model_ex(data: Data, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
+pub fn expand_derive_model_ex(
+    ident: Ident,
+    data: Data,
+    attrs: Vec<Attribute>,
+) -> syn::Result<TokenStream> {
     let mut table_name = None;
+    let mut model_fields: Vec<Ident> = Vec::new();
+    let mut compound_fields: Vec<Ident> = Vec::new();
     let mut impl_related = Vec::new();
     let mut entity_loader_schema = EntityLoaderSchema::default();
 
@@ -80,9 +88,9 @@ pub fn expand_derive_model_ex(data: Data, attrs: Vec<Attribute>) -> syn::Result<
             })
         })?;
 
-    if let Data::Struct(item_struct) = data {
-        if let Fields::Named(fields) = item_struct.fields {
-            for field in fields.named {
+    if let Data::Struct(item_struct) = &data {
+        if let Fields::Named(fields) = &item_struct.fields {
+            for field in &fields.named {
                 if let Some(ident) = &field.ident {
                     let field_type = &field.ty;
                     let field_type = quote! { #field_type }
@@ -107,11 +115,59 @@ pub fn expand_derive_model_ex(data: Data, attrs: Vec<Attribute>) -> syn::Result<
                         if let Ok(attrs) = compound_attr::SeaOrm::from_attributes(&field.attrs) {
                             impl_related.push((attrs, field_type));
                         }
+                        compound_fields.push(format_field_ident_ref(field));
+                    } else {
+                        model_fields.push(format_field_ident_ref(field));
                     }
                 }
             }
         }
     }
+
+    let impl_model_trait = DeriveModel::new(&ident, &data, &attrs)
+        .map_err(|err| err.unwrap())?
+        .impl_model_trait();
+
+    let impl_from_model = quote! {
+        impl Model {
+            pub fn into_ex(self) -> ModelEx {
+                self.into()
+            }
+        }
+
+        #[automatically_derived]
+        impl std::convert::From<Model> for ModelEx {
+            fn from(m: Model) -> Self {
+                Self {
+                    #(#model_fields: m.#model_fields,)*
+                    #(#compound_fields: Default::default(),)*
+                }
+            }
+        }
+
+        #[automatically_derived]
+        impl std::convert::From<ModelEx> for Model {
+            fn from(m: ModelEx) -> Self {
+                Self {
+                    #(#model_fields: m.#model_fields,)*
+                }
+            }
+        }
+
+        #[automatically_derived]
+        impl PartialEq<ModelEx> for Model {
+            fn eq(&self, other: &ModelEx) -> bool {
+                true #(&& self.#model_fields == other.#model_fields)*
+            }
+        }
+
+        #[automatically_derived]
+        impl PartialEq<Model> for ModelEx {
+            fn eq(&self, other: &Model) -> bool {
+                true #(&& self.#model_fields == other.#model_fields)*
+            }
+        }
+    };
 
     let mut relation_enum_variants: Punctuated<_, Comma> = Punctuated::new();
 
@@ -128,22 +184,30 @@ pub fn expand_derive_model_ex(data: Data, attrs: Vec<Attribute>) -> syn::Result<
         ts
     };
 
-    let relation_enum = quote! {
-        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-        pub enum Relation {
-            #relation_enum_variants
+    let relation_enum = if !impl_related.is_empty() {
+        quote! {
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {
+                #relation_enum_variants
+            }
         }
+    } else {
+        quote!()
     };
 
     let entity_loader = expand_entity_loader(entity_loader_schema);
 
     Ok(quote! {
+        #impl_from_model
+
+        #impl_model_trait
+
         #relation_enum
 
         #related_def
-    })
 
-    // #entity_loader
+        #entity_loader
+    })
 }
 
 fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<TokenStream> {

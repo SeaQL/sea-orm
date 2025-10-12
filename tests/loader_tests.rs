@@ -3,7 +3,7 @@
 pub mod common;
 
 pub use common::{TestContext, bakery_chain::*, setup::*};
-use sea_orm::{DbConn, DbErr, RuntimeErr, entity::*, query::*};
+use sea_orm::{DbConn, DbErr, LoaderTraitEx, RuntimeErr, entity::*, query::*};
 
 #[sea_orm_macros::test]
 async fn loader_load_one() -> Result<(), DbErr> {
@@ -33,13 +33,16 @@ async fn loader_load_one() -> Result<(), DbErr> {
     );
 
     let bakers = vec![
-        Some(baker_1.clone()),
+        Some(baker_1.clone().into_ex()),
         None,
-        Some(baker_2.clone()),
-        Some(baker_3.clone()),
+        Some(baker_2.clone().into_ex()),
+        Some(baker_3.clone().into_ex()),
         None,
     ];
-    let bakeries = bakers.as_slice().load_one(bakery::Entity, &ctx.db).await?;
+    let bakeries = bakers
+        .as_slice()
+        .load_one_ex(bakery::Entity, &ctx.db)
+        .await?;
     assert_eq!(
         bakeries,
         [
@@ -97,10 +100,15 @@ async fn loader_load_many() -> Result<(), DbErr> {
     );
 
     // test interlaced loader
-    let bakeries_sparse = vec![Some(bakery_1.clone()), None, Some(bakery_2.clone()), None];
+    let bakeries_sparse = vec![
+        Some(bakery_1.clone().into_ex()),
+        None,
+        Some(bakery_2.clone().into_ex()),
+        None,
+    ];
     let bakers = bakeries_sparse
         .as_slice()
-        .load_many(baker::Entity, &ctx.db)
+        .load_many_ex(baker::Entity, &ctx.db)
         .await?;
     assert_eq!(
         bakers,

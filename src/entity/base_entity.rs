@@ -55,6 +55,9 @@ pub trait EntityTrait: EntityName {
     type Model: ModelTrait<Entity = Self> + FromQueryResult;
 
     #[allow(missing_docs)]
+    type ModelEx: ModelTrait<Entity = Self>;
+
+    #[allow(missing_docs)]
     type ActiveModel: ActiveModelBehavior<Entity = Self>;
 
     #[allow(missing_docs)]

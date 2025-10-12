@@ -9,6 +9,7 @@ struct DeriveEntity {
     column_ident: syn::Ident,
     ident: syn::Ident,
     model_ident: syn::Ident,
+    model_ex_ident: syn::Ident,
     active_model_ident: syn::Ident,
     primary_key_ident: syn::Ident,
     relation_ident: syn::Ident,
@@ -23,6 +24,7 @@ impl DeriveEntity {
         let ident = input.ident;
         let column_ident = sea_attr.column.unwrap_or_else(|| format_ident!("Column"));
         let model_ident = sea_attr.model.unwrap_or_else(|| format_ident!("Model"));
+        let model_ex_ident = sea_attr.model_ex.unwrap_or_else(|| format_ident!("Model"));
         let active_model_ident = sea_attr
             .active_model
             .unwrap_or_else(|| format_ident!("ActiveModel"));
@@ -40,6 +42,7 @@ impl DeriveEntity {
             column_ident,
             ident,
             model_ident,
+            model_ex_ident,
             active_model_ident,
             primary_key_ident,
             relation_ident,
@@ -92,6 +95,7 @@ impl DeriveEntity {
         let Self {
             ident,
             model_ident,
+            model_ex_ident,
             active_model_ident,
             column_ident,
             primary_key_ident,
@@ -103,6 +107,8 @@ impl DeriveEntity {
             #[automatically_derived]
             impl sea_orm::entity::EntityTrait for #ident {
                 type Model = #model_ident;
+
+                type ModelEx = #model_ex_ident;
 
                 type ActiveModel = #active_model_ident;
 
