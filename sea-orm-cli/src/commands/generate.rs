@@ -225,7 +225,7 @@ pub async fn run_generate_command(
                 } else if frontend_format {
                     EntityFormat::Frontend
                 } else if let Some(entity_format) = entity_format {
-                    EntityFormat::from_str(&entity_format).expect("Invalid prelude option")
+                    EntityFormat::from_str(&entity_format).expect("Invalid entity-format option")
                 } else {
                     EntityFormat::default()
                 },
