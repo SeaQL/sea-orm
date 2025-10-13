@@ -169,23 +169,23 @@
 //!     == cake::ModelEx {
 //!         id: 42,
 //!         name: "Black Forest".into(),
-//!         fruit: HasOne::new(Some(fruit::ModelEx {
+//!         fruit: Some(fruit::ModelEx {
 //! #           id: 1,
 //!             name: "Cherry".into(),
 //! #           cake_id: Some(1),
-//!         })),
-//!         fillings: HasMany::new(vec![filling::ModelEx {
+//!         }.into()),
+//!         fillings: vec![filling::ModelEx {
 //! #           id: 2,
 //!             name: "Chocolate".into(),
 //! #           vendor_id: None,
 //! #           ignored_attr: 0,
-//!             ingredients: HasMany::new(vec![ingredient::ModelEx {
+//!             ingredients: vec![ingredient::ModelEx {
 //! #               id: 3,
 //!                 name: "Syrup".into(),
 //! #               filling_id: Some(2),
 //! #               filling: Default::default(),
-//!             }]),
-//!         }]),
+//!             }],
+//!         }],
 //!     };
 //! # Ok(())
 //! # }

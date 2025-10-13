@@ -51,8 +51,8 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .all(db)
         .await?;
     assert_eq!(cakes, [cake_1.clone(), cake_3.clone()]);
-    assert!(cakes[0].bakers.get().is_empty());
-    assert!(cakes[0].bakery.get().is_none());
+    assert!(cakes[0].bakers.is_empty());
+    assert!(cakes[0].bakery.is_none());
 
     assert_eq!(
         cake::Entity::load()
@@ -74,10 +74,10 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             cake_4.clone(),
         ]
     );
-    assert_eq!(cakes[0].bakery.get().unwrap(), &bakery_1);
-    assert_eq!(cakes[1].bakery.get().unwrap(), &bakery_1);
-    assert_eq!(cakes[2].bakery.get().unwrap(), &bakery_2);
-    assert_eq!(cakes[3].bakery.get(), None);
+    assert_eq!(cakes[0].bakery.as_deref().unwrap(), &bakery_1);
+    assert_eq!(cakes[1].bakery.as_deref().unwrap(), &bakery_1);
+    assert_eq!(cakes[2].bakery.as_deref().unwrap(), &bakery_2);
+    assert_eq!(cakes[3].bakery, None);
 
     // alternative API
     assert_eq!(
@@ -101,9 +101,9 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .one(db)
         .await?
         .unwrap();
-    assert_eq!(cake_with_bakery.bakery.get().unwrap(), &bakery_1);
-    assert!(cake_with_bakery.bakers.get().is_empty());
     assert_eq!(cake_with_bakery, cake_1);
+    assert_eq!(*cake_with_bakery.bakery.unwrap(), bakery_1);
+    assert!(cake_with_bakery.bakers.is_empty());
 
     assert_eq!(
         cake::Entity::load()
@@ -114,7 +114,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             .unwrap(),
         {
             let mut cake_2 = cake_2.clone().into_ex();
-            cake_2.bakery.set(Some(bakery_1.clone().into_ex()));
+            cake_2.bakery = Some(bakery_1.clone().into_ex().into());
             cake_2
         }
     );
@@ -133,14 +133,14 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             cake_4.clone()
         ]
     );
-    assert_eq!(cakes[0].bakery.get().unwrap(), &bakery_1);
-    assert_eq!(cakes[1].bakery.get().unwrap(), &bakery_1);
-    assert_eq!(cakes[2].bakery.get().unwrap(), &bakery_2);
-    assert_eq!(cakes[3].bakery.get(), None);
-    assert_eq!(cakes[0].bakers.get(), [baker_1.clone()]);
-    assert_eq!(cakes[1].bakers.get(), [baker_1.clone(), baker_2.clone()]);
-    assert_eq!(cakes[2].bakers.get(), [baker_2.clone()]);
-    assert!(cakes[3].bakers.get().is_empty());
+    assert_eq!(cakes[0].bakery.as_deref().unwrap(), &bakery_1);
+    assert_eq!(cakes[1].bakery.as_deref().unwrap(), &bakery_1);
+    assert_eq!(cakes[2].bakery.as_deref().unwrap(), &bakery_2);
+    assert_eq!(cakes[3].bakery, None);
+    assert_eq!(cakes[0].bakers, [baker_1.clone()]);
+    assert_eq!(cakes[1].bakers, [baker_1.clone(), baker_2.clone()]);
+    assert_eq!(cakes[2].bakers, [baker_2.clone()]);
+    assert!(cakes[3].bakers.is_empty());
 
     let cake_with_bakery_baker = cake::Entity::load()
         .filter(cake::Column::Name.eq("Chiffon"))
@@ -149,9 +149,9 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .one(db)
         .await?
         .unwrap();
-    assert_eq!(cake_with_bakery_baker.bakery.get().unwrap(), &bakery_2);
-    assert_eq!(cake_with_bakery_baker.bakers.get(), [baker_2.clone()]);
     assert_eq!(cake_with_bakery_baker, cake_3);
+    assert_eq!(*cake_with_bakery_baker.bakery.unwrap(), bakery_2);
+    assert_eq!(cake_with_bakery_baker.bakers, [baker_2.clone()]);
 
     // start again from baker
 
@@ -162,9 +162,9 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(bakers[0].id, baker_1.id);
     assert_eq!(bakers[1].id, baker_2.id);
     assert_eq!(bakers[2].id, baker_3.id);
-    assert_eq!(bakers[0].cakes.get(), [cake_1.clone(), cake_2.clone()]);
-    assert_eq!(bakers[1].cakes.get(), [cake_2.clone(), cake_3.clone()]);
-    assert!(bakers[2].cakes.get().is_empty());
+    assert_eq!(bakers[0].cakes, [cake_1.clone(), cake_2.clone()]);
+    assert_eq!(bakers[1].cakes, [cake_2.clone(), cake_3.clone()]);
+    assert!(bakers[2].cakes.is_empty());
 
     // alternative API
     assert_eq!(
@@ -192,10 +192,10 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .all(db)
         .await?;
 
-    assert_eq!(bakeries[0].bakers.get(), [baker_1.clone(), baker_2.clone()]);
-    assert_eq!(bakeries[1].bakers.get(), [baker_3.clone()]);
-    assert_eq!(bakeries[0].cakes.get(), [cake_1.clone(), cake_2.clone()]);
-    assert_eq!(bakeries[1].cakes.get(), [cake_3.clone()]);
+    assert_eq!(bakeries[0].bakers, [baker_1.clone(), baker_2.clone()]);
+    assert_eq!(bakeries[1].bakers, [baker_3.clone()]);
+    assert_eq!(bakeries[0].cakes, [cake_1.clone(), cake_2.clone()]);
+    assert_eq!(bakeries[1].cakes, [cake_3.clone()]);
 
     // nested
     // cake -> bakery -> baker
@@ -204,20 +204,20 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .with((bakery::Entity, baker::Entity))
         .all(db)
         .await?;
-    assert_eq!(cakes[0].bakery.get().unwrap().name, bakery_1.name);
-    assert_eq!(cakes[1].bakery.get().unwrap().name, bakery_1.name);
-    assert_eq!(cakes[2].bakery.get().unwrap().name, bakery_2.name);
-    assert_eq!(cakes[3].bakery.get(), None);
+    assert_eq!(cakes[0].bakery.as_deref().unwrap().name, bakery_1.name);
+    assert_eq!(cakes[1].bakery.as_deref().unwrap().name, bakery_1.name);
+    assert_eq!(cakes[2].bakery.as_deref().unwrap().name, bakery_2.name);
+    assert_eq!(cakes[3].bakery, None);
     assert_eq!(
-        cakes[0].bakery.get().unwrap().bakers.get(),
+        cakes[0].bakery.as_deref().unwrap().bakers,
         [baker_1.clone(), baker_2.clone()]
     );
     assert_eq!(
-        cakes[1].bakery.get().unwrap().bakers.get(),
+        cakes[1].bakery.as_deref().unwrap().bakers,
         [baker_1.clone(), baker_2.clone()]
     );
     assert_eq!(
-        cakes[2].bakery.get().unwrap().bakers.get(),
+        cakes[2].bakery.as_deref().unwrap().bakers,
         [baker_3.clone()]
     );
 
@@ -234,8 +234,8 @@ async fn entity_loader_join_three() {
     let db = &ctx.db;
 
     // verify basics
-    let cake_13 = cake::Entity::find_by_id(13).one(db).await.unwrap();
-    let cake_15 = cake::Entity::find_by_id(15).one(db).await.unwrap();
+    let cake_13 = cake::Entity::find_by_id(13).one(db).await.unwrap().unwrap();
+    let cake_15 = cake::Entity::find_by_id(15).one(db).await.unwrap().unwrap();
 
     let lineitems = lineitem::Entity::load().all(db).await.unwrap();
     assert_eq!(lineitems[0].cake_id, 13);
@@ -249,10 +249,10 @@ async fn entity_loader_join_three() {
         .all(db)
         .await
         .unwrap();
-    assert_eq!(lineitems[0].order.get().unwrap().id, 101);
-    assert_eq!(lineitems[0].order.get().unwrap().total, 10.into());
-    assert_eq!(lineitems[1].order.get().unwrap().id, 101);
-    assert_eq!(lineitems[1].order.get().unwrap().total, 10.into());
+    assert_eq!(lineitems[0].order.as_deref().unwrap().id, 101);
+    assert_eq!(lineitems[0].order.as_deref().unwrap().total, 10.into());
+    assert_eq!(lineitems[1].order.as_deref().unwrap().id, 101);
+    assert_eq!(lineitems[1].order.as_deref().unwrap().total, 10.into());
 
     // lineitem join cake
     let lineitems = lineitem::Entity::load()
@@ -260,10 +260,10 @@ async fn entity_loader_join_three() {
         .all(db)
         .await
         .unwrap();
-    assert_eq!(lineitems[0].cake.get().unwrap().id, 13);
-    assert_eq!(lineitems[0].cake.get().unwrap().name, "Cheesecake");
-    assert_eq!(lineitems[1].cake.get().unwrap().id, 15);
-    assert_eq!(lineitems[1].cake.get().unwrap().name, "Chocolate");
+    assert_eq!(lineitems[0].cake.as_deref().unwrap().id, 13);
+    assert_eq!(lineitems[0].cake.as_deref().unwrap().name, "Cheesecake");
+    assert_eq!(lineitems[1].cake.as_deref().unwrap().id, 15);
+    assert_eq!(lineitems[1].cake.as_deref().unwrap().name, "Chocolate");
 
     // lineitem join order + cake
     let lineitems = lineitem::Entity::load()
@@ -272,14 +272,14 @@ async fn entity_loader_join_three() {
         .all(db)
         .await
         .unwrap();
-    assert_eq!(lineitems[0].order.get().unwrap().id, 101);
-    assert_eq!(lineitems[0].order.get().unwrap().total, 10.into());
-    assert_eq!(lineitems[1].order.get().unwrap().id, 101);
-    assert_eq!(lineitems[1].order.get().unwrap().total, 10.into());
-    assert_eq!(lineitems[0].cake.get().unwrap().id, 13);
-    assert_eq!(lineitems[0].cake.get().unwrap().name, "Cheesecake");
-    assert_eq!(lineitems[1].cake.get().unwrap().id, 15);
-    assert_eq!(lineitems[1].cake.get().unwrap().name, "Chocolate");
+    assert_eq!(lineitems[0].order.as_deref().unwrap().id, 101);
+    assert_eq!(lineitems[0].order.as_deref().unwrap().total, 10.into());
+    assert_eq!(lineitems[1].order.as_deref().unwrap().id, 101);
+    assert_eq!(lineitems[1].order.as_deref().unwrap().total, 10.into());
+    assert_eq!(lineitems[0].cake.as_deref().unwrap().id, 13);
+    assert_eq!(lineitems[0].cake.as_deref().unwrap().name, "Cheesecake");
+    assert_eq!(lineitems[1].cake.as_deref().unwrap().id, 15);
+    assert_eq!(lineitems[1].cake.as_deref().unwrap().name, "Chocolate");
 
     // 1 layer select
     let order = order::Entity::load()
@@ -299,22 +299,25 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: BelongsTo::default(),
-            customer: BelongsTo::new(Some(customer::ModelEx {
-                id: 11,
-                name: "Bob".to_owned(),
-                notes: Some("Sweet tooth".into()),
-                orders: HasMany::default(),
-            })),
-            lineitems: HasMany::new(vec![
+            bakery: None,
+            customer: Some(
+                customer::ModelEx {
+                    id: 11,
+                    name: "Bob".to_owned(),
+                    notes: Some("Sweet tooth".into()),
+                    orders: vec![],
+                }
+                .into()
+            ),
+            lineitems: vec![
                 lineitem::ModelEx {
                     id: 1,
                     price: 2.into(),
                     quantity: 2,
                     order_id: 101,
                     cake_id: 13,
-                    order: BelongsTo::default(),
-                    cake: BelongsTo::default(),
+                    order: None,
+                    cake: None,
                 },
                 lineitem::ModelEx {
                     id: 2,
@@ -322,10 +325,10 @@ async fn entity_loader_join_three() {
                     quantity: 2,
                     order_id: 101,
                     cake_id: 15,
-                    order: BelongsTo::default(),
-                    cake: BelongsTo::default(),
+                    order: None,
+                    cake: None,
                 }
-            ]),
+            ],
         }
     );
 
@@ -347,22 +350,25 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: BelongsTo::default(),
-            customer: BelongsTo::new(Some(customer::ModelEx {
-                id: 11,
-                name: "Bob".to_owned(),
-                notes: Some("Sweet tooth".into()),
-                orders: HasMany::default(),
-            })),
-            lineitems: HasMany::new(vec![
+            bakery: None,
+            customer: Some(
+                customer::ModelEx {
+                    id: 11,
+                    name: "Bob".to_owned(),
+                    notes: Some("Sweet tooth".into()),
+                    orders: vec![],
+                }
+                .into()
+            ),
+            lineitems: vec![
                 lineitem::ModelEx {
                     id: 1,
                     price: 2.into(),
                     quantity: 2,
                     order_id: 101,
                     cake_id: 13,
-                    order: BelongsTo::default(),
-                    cake: BelongsTo::new(cake_13),
+                    order: None,
+                    cake: Some(cake_13.into_ex().into()),
                 },
                 lineitem::ModelEx {
                     id: 2,
@@ -370,10 +376,10 @@ async fn entity_loader_join_three() {
                     quantity: 2,
                     order_id: 101,
                     cake_id: 15,
-                    order: BelongsTo::default(),
-                    cake: BelongsTo::new(cake_15),
+                    order: None,
+                    cake: Some(cake_15.into_ex().into()),
                 }
-            ]),
+            ],
         }
     );
 }

@@ -105,15 +105,15 @@ super_cake
     == cake::ModelEx {
         id: 42,
         name: "Black Forest".into(),
-        fruit: HasOne::new(Some(fruit::ModelEx {
+        fruit: Some(fruit::ModelEx {
             name: "Cherry".into(),
-        })),
-        fillings: HasMany::new(vec![filling::ModelEx {
+        }.into()),
+        fillings: vec![filling::ModelEx {
             name: "Chocolate".into(),
-            ingredients: HasMany::new(vec![ingredient::ModelEx {
+            ingredients: vec![ingredient::ModelEx {
                 name: "Syrup".into(),
-            }]),
-        }]),
+            }],
+        }],
     };
 ```
 ### Select
