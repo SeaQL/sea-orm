@@ -13,8 +13,8 @@ pub struct Model {
     pub quantity: i32,
     pub order_id: i32,
     pub cake_id: i32,
-    pub order: BelongsTo<super::order::Entity>,
-    pub cake: BelongsTo<super::cake::Entity>,
+    pub order: Option<super::order::Entity>,
+    pub cake: Option<super::cake::Entity>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

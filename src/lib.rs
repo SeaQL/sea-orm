@@ -92,8 +92,8 @@
 //! #     pub id: i32,
 //! #     pub name: String,
 //! #     pub cake_id: Option<i32>,
-//! #     #[sea_orm(relation, from = "CakeId", to = "Id")]
-//! #     pub cake: BelongsTo<super::cake::Entity>,
+//! #     #[sea_orm(belongs_to, from = "CakeId", to = "Id")]
+//! #     pub cake: Option<super::cake::Entity>,
 //! # }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! # }
@@ -106,8 +106,8 @@
 //! #     #[sea_orm(primary_key)]
 //! #     pub id: i32,
 //! #     pub name: String,
-//! #     #[sea_orm(relation, via = "cake_filling")]
-//! #     pub cakes: HasMany<super::cake::Entity>,
+//! #     #[sea_orm(has_many, via = "cake_filling")]
+//! #     pub cakes: Vec<super::cake::Entity>,
 //! # }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! # }
@@ -121,10 +121,10 @@
 //! #     pub cake_id: i32,
 //! #     #[sea_orm(primary_key, auto_increment = false)]
 //! #     pub filling_id: i32,
-//! #     #[sea_orm(relation, from = "CakeId", to = "Id")]
-//! #     pub cake: BelongsTo<super::cake::Entity> ,
-//! #     #[sea_orm(relation, from = "FillingId", to = "Id")]
-//! #     pub filling: BelongsTo<super::filling::Entity> ,
+//! #     #[sea_orm(belongs_to, from = "CakeId", to = "Id")]
+//! #     pub cake: Option<super::cake::Entity> ,
+//! #     #[sea_orm(belongs_to, from = "FillingId", to = "Id")]
+//! #     pub filling: Option<super::filling::Entity> ,
 //! # }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! # }
@@ -138,10 +138,10 @@
 //!     #[sea_orm(primary_key)]
 //!     pub id: i32,
 //!     pub name: String,
-//!     #[sea_orm(relation)]
-//!     pub fruit: HasOne<super::fruit::Entity>,
-//!     #[sea_orm(relation, via = "cake_filling")] // M-N relation with junction
-//!     pub fillings: HasMany<super::filling::Entity>,
+//!     #[sea_orm(has_one)]
+//!     pub fruit: Option<super::fruit::Entity>,
+//!     #[sea_orm(has_many, via = "cake_filling")] // M-N relation with junction
+//!     pub fillings: Vec<super::filling::Entity>,
 //! }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! # }

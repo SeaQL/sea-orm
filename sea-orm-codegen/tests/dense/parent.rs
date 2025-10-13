@@ -10,8 +10,8 @@ pub struct Model {
     pub id1: i32,
     #[sea_orm(primary_key, auto_increment = false)]
     pub id2: i32,
-    #[sea_orm(relation)]
-    pub children: HasMany<super::child::Entity> ,
+    #[sea_orm(has_many)]
+    pub children: Vec<super::child::Entity> ,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

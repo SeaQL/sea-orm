@@ -14,7 +14,7 @@ pub fn expand_sea_orm_model(input: ItemStruct) -> syn::Result<TokenStream> {
     let model = input.ident;
     let model_attrs = input.attrs;
     let vis = input.vis;
-    let all_fields = input.fields;
+    let mut all_fields = input.fields;
 
     let model_ex = Ident::new(&format!("{model}Ex"), model.span());
     let mut model_ex_attrs = model_attrs.clone();
@@ -41,17 +41,25 @@ pub fn expand_sea_orm_model(input: ItemStruct) -> syn::Result<TokenStream> {
         }
     }
 
-    let model_fields: Vec<_> = all_fields
-        .iter()
-        .filter(|field| {
-            let field_type = &field.ty;
-            let field_type = quote! { #field_type }
-                .to_string() // e.g.: "Option < String >"
-                .replace(' ', ""); // Remove spaces
+    let mut model_fields = Vec::new();
 
-            !is_compound_field(&field_type)
-        })
-        .collect();
+    for field in all_fields.iter_mut() {
+        let field_type = &field.ty;
+        let field_type = quote! { #field_type }
+            .to_string() // e.g.: "Option < String >"
+            .replace(' ', ""); // Remove spaces
+
+        if is_compound_field(&field_type) {
+            let entity_path = extract_compound_entity(&field_type);
+            if field_type.starts_with("Option<") {
+                field.ty = syn::parse_str(&format!("HasOne < {entity_path} >"))?;
+            } else {
+                field.ty = syn::parse_str(&format!("HasMany < {entity_path} >"))?;
+            }
+        } else {
+            model_fields.push(field);
+        }
+    }
 
     Ok(quote! {
         #(#model_attrs)*
@@ -98,8 +106,7 @@ pub fn expand_derive_model_ex(
                         .replace(' ', ""); // Remove spaces
 
                     if is_compound_field(&field_type) {
-                        if field_type.starts_with("BelongsTo<") || field_type.starts_with("HasOne<")
-                        {
+                        if field_type.starts_with("HasOne<") {
                             entity_loader_schema.fields.push(EntityLoaderField {
                                 is_one: true,
                                 field: ident.clone(),
@@ -218,7 +225,7 @@ fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<Token
         &infer_relation_name_from_entity(related_entity).to_upper_camel_case(),
         Span::call_site(),
     );
-    if ty.starts_with("BelongsTo<") {
+    if attr.belongs_to.is_some() {
         let from = format!(
             "Column::{}",
             attr.from
@@ -249,7 +256,7 @@ fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<Token
             #[sea_orm(#belongs_to = #related_entity, from = #from, to = #to, #extra)]
             #related_enum
         })
-    } else if ty.starts_with("HasMany<") && attr.via.is_none() {
+    } else if attr.has_many.is_some() && attr.via.is_none() {
         // skip junction relation
 
         let has_many = Ident::new("has_many", Span::call_site());
@@ -258,7 +265,7 @@ fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<Token
             #[sea_orm(#has_many = #related_entity)]
             #related_enum
         })
-    } else if ty.starts_with("HasOne<") {
+    } else if attr.has_one.is_some() {
         let has_one = Ident::new("has_one", Span::call_site());
 
         Some(quote! {
@@ -275,7 +282,7 @@ fn impl_related_trait(
     ty: &str,
     table_name: &Option<LitStr>,
 ) -> syn::Result<TokenStream> {
-    if attr.relation.is_some() {
+    if attr.has_one.is_some() || attr.has_many.is_some() || attr.belongs_to.is_some() {
         let related_entity = extract_compound_entity(ty);
         let related_enum = infer_relation_name_from_entity(related_entity).to_upper_camel_case();
         let related_entity: TokenStream = related_entity.parse().unwrap();
@@ -351,12 +358,14 @@ fn impl_related_trait(
 }
 
 fn extract_compound_entity(ty: &str) -> &str {
-    if ty.starts_with("BelongsTo<") {
-        &ty["BelongsTo<".len()..(ty.len() - 1)]
-    } else if ty.starts_with("HasMany<") {
+    if ty.starts_with("HasMany<") {
         &ty["HasMany<".len()..(ty.len() - 1)]
     } else if ty.starts_with("HasOne<") {
         &ty["HasOne<".len()..(ty.len() - 1)]
+    } else if ty.starts_with("Option<") {
+        &ty["Option<".len()..(ty.len() - 1)]
+    } else if ty.starts_with("Vec<") {
+        &ty["Vec<".len()..(ty.len() - 1)]
     } else {
         panic!("`relation` attribute applied to non compound type: {ty}")
     }

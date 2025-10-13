@@ -124,10 +124,8 @@ impl EntityWriter {
         for rel in entity.relations.iter() {
             if !rel.self_referencing && rel.num_suffix == 0 && rel.impl_related {
                 let (rel_type, sea_orm_attr) = match rel.rel_type {
-                    RelationType::HasOne => (format_ident!("HasOne"), quote!(#[sea_orm(relation)])),
-                    RelationType::HasMany => {
-                        (format_ident!("HasMany"), quote!(#[sea_orm(relation)]))
-                    }
+                    RelationType::HasOne => (format_ident!("Option"), quote!(#[sea_orm(has_one)])),
+                    RelationType::HasMany => (format_ident!("Vec"), quote!(#[sea_orm(has_many)])),
                     RelationType::BelongsTo => {
                         let map_punctuated = |punctuated: Vec<String>| {
                             let len = punctuated.len();
@@ -155,8 +153,8 @@ impl EntityWriter {
                             quote!()
                         };
                         (
-                            format_ident!("BelongsTo"),
-                            quote!(#[sea_orm(relation, from = #from, to = #to #on_update #on_delete)]),
+                            format_ident!("Option"),
+                            quote!(#[sea_orm(belongs_to, from = #from, to = #to #on_update #on_delete)]),
                         )
                     }
                 };
@@ -190,8 +188,8 @@ impl EntityWriter {
             );
             let via_entity = via_entity.to_string();
             compound_objects.push(quote! {
-                #[sea_orm(relation, via = #via_entity)]
-                pub #field: HasMany<super::#to_entity::Entity>
+                #[sea_orm(has_many, via = #via_entity)]
+                pub #field: Vec<super::#to_entity::Entity>
             });
         }
 
@@ -215,5 +213,14 @@ impl EntityWriter {
                 #compound_objects
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    #[ignore]
+    fn test_name() {
+        panic!("{}", pluralizer::pluralize("filling", 2, false));
     }
 }

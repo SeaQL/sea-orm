@@ -15,7 +15,7 @@ pub use crate::{
     DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, DeriveValueType,
 };
 
-pub use super::compound::{BelongsTo, HasMany, HasOne};
+pub use super::compound::{HasMany, HasOne};
 
 pub use async_trait;
 

@@ -13,12 +13,12 @@ pub struct Model {
     pub bakery_id: i32,
     pub customer_id: i32,
     pub placed_at: DateTimeWithTimeZone,
-    #[sea_orm(relation, from = "BakeryId", to = "Id")]
-    pub bakery: BelongsTo<super::bakery::Entity>,
-    #[sea_orm(relation, from = "CustomerId", to = "Id")]
-    pub customer: BelongsTo<super::customer::Entity>,
-    #[sea_orm(relation)]
-    pub lineitems: HasMany<super::lineitem::Entity>,
+    #[sea_orm(belongs_to, from = "BakeryId", to = "Id")]
+    pub bakery: Option<super::bakery::Entity>,
+    #[sea_orm(belongs_to, from = "CustomerId", to = "Id")]
+    pub customer: Option<super::customer::Entity>,
+    #[sea_orm(has_many)]
+    pub lineitems: Vec<super::lineitem::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

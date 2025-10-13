@@ -13,8 +13,8 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub filling_id: Option<i32>,
-    #[sea_orm(relation, from = "FillingId", to = "Id")]
-    pub filling: BelongsTo<super::filling::Entity>,
+    #[sea_orm(belongs_to, from = "FillingId", to = "Id")]
+    pub filling: Option<super::filling::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

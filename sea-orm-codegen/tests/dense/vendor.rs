@@ -12,8 +12,8 @@ pub struct Model {
     pub name: String,
     #[sea_orm(column_name = "fruitId")]
     pub fruit_id: Option<i32> ,
-    #[sea_orm(relation, from = "FruitId", to = "Id")]
-    pub fruit: BelongsTo<super::fruit::Entity> ,
+    #[sea_orm(belongs_to, from = "FruitId", to = "Id")]
+    pub fruit: Option<super::fruit::Entity> ,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

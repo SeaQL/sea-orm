@@ -38,9 +38,10 @@ pub(crate) fn field_not_ignored(field: &Field) -> bool {
 }
 
 pub(crate) fn is_compound_field(field_type: &str) -> bool {
-    field_type.starts_with("BelongsTo<")
-        || field_type.starts_with("HasOne<")
-        || field_type.starts_with("HasMany<")
+    // for #[sea_orm::model]
+    ((field_type.starts_with("Option<") || field_type.starts_with("Vec<")) && field_type.ends_with("::Entity>"))
+    // for DeriveModelEx
+    || field_type.starts_with("HasOne<") || field_type.starts_with("HasMany<")
 }
 
 pub(crate) fn format_field_ident(field: Field) -> Ident {

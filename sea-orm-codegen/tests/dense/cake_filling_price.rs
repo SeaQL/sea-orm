@@ -12,11 +12,11 @@ pub struct Model {
     pub filling_id: i32,
     pub price: Decimal,
     #[sea_orm(
-        relation,
+        belongs_to,
         from = "(CakeId, FillingId)",
         to = "(CakeId, FillingId)"
     )]
-    pub cake_filling: BelongsTo<super::cake_filling::Entity> ,
+    pub cake_filling: Option<super::cake_filling::Entity> ,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

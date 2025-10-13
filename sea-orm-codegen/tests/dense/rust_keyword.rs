@@ -20,8 +20,8 @@ pub struct Model {
     pub fruit_id1: i32,
     pub fruit_id2: i32,
     pub cake_id: i32,
-    #[sea_orm(relation, from = "CakeId", to = "Id")]
-    pub cake: BelongsTo<super::cake::Entity> ,
+    #[sea_orm(belongs_to, from = "CakeId", to = "Id")]
+    pub cake: Option<super::cake::Entity> ,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

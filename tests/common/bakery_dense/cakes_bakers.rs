@@ -10,10 +10,10 @@ pub struct Model {
     pub cake_id: i32,
     #[sea_orm(primary_key, auto_increment = false)]
     pub baker_id: i32,
-    #[sea_orm(relation, from = "BakerId", to = "Id")]
-    pub baker: BelongsTo<super::baker::Entity>,
-    #[sea_orm(relation, from = "CakeId", to = "Id")]
-    pub cake: BelongsTo<super::cake::Entity>,
+    #[sea_orm(belongs_to, from = "BakerId", to = "Id")]
+    pub baker: Option<super::baker::Entity>,
+    #[sea_orm(belongs_to, from = "CakeId", to = "Id")]
+    pub cake: Option<super::cake::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

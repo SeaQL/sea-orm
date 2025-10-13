@@ -26,7 +26,6 @@ pub trait EntityLoaderWithParam<E: EntityTrait> {
 }
 
 pub type HasOne<E> = Option<Box<<E as EntityTrait>::ModelEx>>;
-pub type BelongsTo<E> = HasOne<E>;
 pub type HasMany<E> = Vec<<E as EntityTrait>::ModelEx>;
 
 impl<E, R> EntityLoaderWithParam<E> for R

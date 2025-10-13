@@ -12,10 +12,10 @@ pub struct Model {
     pub name: Option<String> ,
     #[sea_orm(column_type = "Double", nullable)]
     pub price: Option<f64> ,
-    #[sea_orm(relation)]
-    pub fruits: HasMany<super::fruit::Entity> ,
-    #[sea_orm(relation, via = "cake_filling")]
-    pub fillings: HasMany<super::filling::Entity> ,
+    #[sea_orm(has_many)]
+    pub fruits: Vec<super::fruit::Entity> ,
+    #[sea_orm(has_many, via = "cake_filling")]
+    pub fillings: Vec<super::filling::Entity> ,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

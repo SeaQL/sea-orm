@@ -79,10 +79,10 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
-    #[sea_orm(relation)]
-    pub fruit: HasOne<super::fruit::Entity>,
-    #[sea_orm(relation, via = "cake_filling")] // M-N relation with junction
-    pub fillings: HasMany<super::filling::Entity>,
+    #[sea_orm(has_one)]
+    pub fruit: Option<super::fruit::Entity>,
+    #[sea_orm(has_many, via = "cake_filling")] // M-N relation with junction
+    pub fillings: Vec<super::filling::Entity>,
 }
 ```
 ### Entity Loader

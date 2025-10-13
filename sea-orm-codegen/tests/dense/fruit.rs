@@ -10,10 +10,10 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub cake_id: Option<i32> ,
-    #[sea_orm(relation, from = "CakeId", to = "Id")]
-    pub cake: BelongsTo<super::cake::Entity> ,
-    #[sea_orm(relation)]
-    pub vendors: HasMany<super::vendor::Entity> ,
+    #[sea_orm(belongs_to, from = "CakeId", to = "Id")]
+    pub cake: Option<super::cake::Entity> ,
+    #[sea_orm(has_many)]
+    pub vendors: Vec<super::vendor::Entity> ,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

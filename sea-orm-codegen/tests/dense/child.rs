@@ -10,8 +10,8 @@ pub struct Model {
     pub id: i32,
     pub parent_id1: i32,
     pub parent_id2: i32,
-    #[sea_orm(relation, from = "(ParentId1, ParentId2)", to = "(Id1, Id2)")]
-    pub parent: BelongsTo<super::parent::Entity> ,
+    #[sea_orm(belongs_to, from = "(ParentId1, ParentId2)", to = "(Id1, Id2)")]
+    pub parent: Option<super::parent::Entity> ,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
