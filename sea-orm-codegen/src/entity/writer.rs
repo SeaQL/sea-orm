@@ -55,6 +55,7 @@ pub struct EntityWriterContext {
     pub(crate) lib: bool,
     pub(crate) serde_skip_hidden_column: bool,
     pub(crate) serde_skip_deserializing_primary_key: bool,
+    pub(crate) use_new_dir_structure: bool,
     pub(crate) model_extra_derives: TokenStream,
     pub(crate) model_extra_attributes: TokenStream,
     pub(crate) enum_extra_derives: TokenStream,
@@ -172,6 +173,7 @@ impl EntityWriterContext {
         date_time_crate: DateTimeCrate,
         schema_name: Option<String>,
         lib: bool,
+        use_new_dir_structure: bool,
         serde_skip_deserializing_primary_key: bool,
         serde_skip_hidden_column: bool,
         model_extra_derives: Vec<String>,
@@ -191,6 +193,7 @@ impl EntityWriterContext {
             date_time_crate,
             schema_name,
             lib,
+            use_new_dir_structure,
             serde_skip_deserializing_primary_key,
             serde_skip_hidden_column,
             model_extra_derives: bonus_derive(model_extra_derives),
@@ -209,9 +212,18 @@ impl EntityWriter {
         let mut files = Vec::new();
         files.extend(self.write_entities(context));
         let with_prelude = context.with_prelude != WithPrelude::None;
-        files.push(self.write_index_file(context.lib, with_prelude, context.seaography));
+        files.push(self.write_index_file(
+            context.lib,
+            with_prelude,
+            context.seaography,
+            context.use_new_dir_structure,
+        ));
         if with_prelude {
-            files.push(self.write_prelude(context.with_prelude, context.frontend_format));
+            files.push(self.write_prelude(
+                context.with_prelude,
+                context.frontend_format,
+                context.use_new_dir_structure,
+            ));
         }
         if !self.enums.is_empty() {
             files.push(self.write_sea_orm_active_enums(
@@ -229,7 +241,10 @@ impl EntityWriter {
         self.entities
             .iter()
             .map(|entity| {
-                let entity_file = format!("{}.rs", entity.get_table_name_snake_case());
+                let entity_file = match context.use_new_dir_structure {
+                    false => format!("{}.rs", entity.get_table_name_snake_case()),
+                    true => format!("entities/{}.rs", entity.get_table_name_snake_case()),
+                };
                 let column_info = entity
                     .columns
                     .iter()
@@ -304,7 +319,13 @@ impl EntityWriter {
             .collect()
     }
 
-    pub fn write_index_file(&self, lib: bool, prelude: bool, seaography: bool) -> OutputFile {
+    pub fn write_index_file(
+        &self,
+        lib: bool,
+        prelude: bool,
+        seaography: bool,
+        use_new_dir_structure: bool,
+    ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
         let code_blocks: Vec<TokenStream> = self.entities.iter().map(Self::gen_mod).collect();
@@ -335,7 +356,10 @@ impl EntityWriter {
 
         let file_name = match lib {
             true => "lib.rs".to_owned(),
-            false => "mod.rs".to_owned(),
+            false => match use_new_dir_structure {
+                true => "entities.rs".to_owned(),
+                false => "mod.rs".to_owned(),
+            },
         };
 
         OutputFile {
@@ -344,7 +368,12 @@ impl EntityWriter {
         }
     }
 
-    pub fn write_prelude(&self, with_prelude: WithPrelude, frontend_format: bool) -> OutputFile {
+    pub fn write_prelude(
+        &self,
+        with_prelude: WithPrelude,
+        frontend_format: bool,
+        use_new_dir_structure: bool,
+    ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
         if with_prelude == WithPrelude::AllAllowUnusedImports {
@@ -362,8 +391,12 @@ impl EntityWriter {
             })
             .collect();
         Self::write(&mut lines, code_blocks);
+        let file_name = match use_new_dir_structure {
+            true => "entities/prelude.rs".to_owned(),
+            false => "prelude.rs".to_owned(),
+        };
         OutputFile {
-            name: "prelude.rs".to_owned(),
+            name: file_name,
             content: lines.join("\n"),
         }
     }

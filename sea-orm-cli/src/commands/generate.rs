@@ -3,7 +3,14 @@ use sea_orm_codegen::{
     DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
     WithPrelude, WithSerde,
 };
-use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
+use std::{
+    error::Error,
+    fs,
+    io::Write,
+    path::{Path, PathBuf},
+    process::Command,
+    str::FromStr,
+};
 use tracing_subscriber::{EnvFilter, prelude::*};
 use url::Url;
 
@@ -28,6 +35,7 @@ pub async fn run_generate_command(
             database_url,
             with_prelude,
             with_serde,
+            use_new_dir_structure,
             serde_skip_deserializing_primary_key,
             serde_skip_hidden_column,
             with_copy_enums,
@@ -227,6 +235,7 @@ pub async fn run_generate_command(
                 date_time_crate.into(),
                 schema_name,
                 lib,
+                use_new_dir_structure,
                 serde_skip_deserializing_primary_key,
                 serde_skip_hidden_column,
                 model_extra_derives,
@@ -239,11 +248,15 @@ pub async fn run_generate_command(
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
-            let dir = Path::new(&output_dir);
-            fs::create_dir_all(dir)?;
-
+            let output_dir = Path::new(&(output_dir));
+            if use_new_dir_structure {
+                let entities_dir = output_dir.to_path_buf().join("entities");
+                fs::create_dir_all(&entities_dir)?;
+            } else {
+                fs::create_dir_all(output_dir)?;
+            }
             for OutputFile { name, content } in output.files.iter() {
-                let file_path = dir.join(name);
+                let file_path = output_dir.join(name);
                 println!("Writing {}", file_path.display());
                 let mut file = fs::File::create(file_path)?;
                 file.write_all(content.as_bytes())?;
@@ -251,7 +264,9 @@ pub async fn run_generate_command(
 
             // Format each of the files
             for OutputFile { name, .. } in output.files.iter() {
-                let exit_status = Command::new("rustfmt").arg(dir.join(name)).status()?; // Get the status code
+                let exit_status = Command::new("rustfmt")
+                    .arg(output_dir.join(name))
+                    .status()?; // Get the status code
                 if !exit_status.success() {
                     // Propagate the error if any
                     return Err(format!("Fail to format file `{name}`").into());

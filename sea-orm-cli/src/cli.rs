@@ -298,6 +298,13 @@ pub enum GenerateSubcommands {
 
         #[arg(
             long,
+            default_value = "false",
+            help = "Use the new directory structure when generating the entity files."
+        )]
+        use_new_dir_structure: bool,
+
+        #[arg(
+            long,
             value_delimiter = ',',
             help = "Add extra derive macros to generated model struct (comma separated), e.g. `--model-extra-derives 'ts_rs::Ts','CustomDerive'`"
         )]
