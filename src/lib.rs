@@ -194,6 +194,8 @@
 //!                 name: "Syrup".into(),
 //! #               filling_id: Some(2),
 //! #               filling: Default::default(),
+//! #               ingredient_id: None,
+//! #               ingredient: None,
 //!             }],
 //!         }],
 //!     };
