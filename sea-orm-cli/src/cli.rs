@@ -16,8 +16,6 @@ use crate::{handle_error, run_generate_command, run_migrate_command};
 
 {all-args}{after-help}
 
-AUTHORS:
-    {author}
 "#,
     about = r#"
    ____                 ___   ____   __  __        /\
@@ -170,6 +168,9 @@ pub enum GenerateSubcommands {
     #[command(group(ArgGroup::new("formats").args(&["compact_format", "expanded_format", "frontend_format"])))]
     #[command(group(ArgGroup::new("group-tables").args(&["tables", "include_hidden_tables"])))]
     Entity {
+        #[arg(long, help = "Which format to generate entity files in")]
+        entity_format: Option<String>,
+
         #[arg(long, help = "Generate entity file of compact format")]
         compact_format: bool,
 

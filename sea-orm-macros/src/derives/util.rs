@@ -24,11 +24,32 @@ pub(crate) fn field_not_ignored(field: &Field) -> bool {
             }
         }
     }
+
+    let field_type = &field.ty;
+    let field_type = quote::quote! { #field_type }
+        .to_string() // e.g.: "Option < String >"
+        .replace(' ', ""); // Remove spaces
+
+    if is_compound_field(&field_type) {
+        return false;
+    }
+
     true
 }
 
+pub(crate) fn is_compound_field(field_type: &str) -> bool {
+    // for #[sea_orm::model]
+    ((field_type.starts_with("Option<") || field_type.starts_with("Vec<")) && field_type.ends_with("::Entity>"))
+    // for DeriveModelEx
+    || field_type.starts_with("HasOne<") || field_type.starts_with("HasMany<")
+}
+
 pub(crate) fn format_field_ident(field: Field) -> Ident {
-    format_ident!("{}", field.ident.unwrap().to_string())
+    format_field_ident_ref(&field)
+}
+
+pub(crate) fn format_field_ident_ref(field: &Field) -> Ident {
+    format_ident!("{}", field.ident.as_ref().unwrap().to_string())
 }
 
 pub(crate) fn trim_starting_raw_identifier<T>(string: T) -> String

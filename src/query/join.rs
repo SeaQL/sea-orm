@@ -46,6 +46,15 @@ where
     }
 
     /// Left Join with a Related Entity and select both Entity.
+    pub fn find_also<R>(self, _: E, r: R) -> SelectTwo<E, R>
+    where
+        R: EntityTrait,
+        E: Related<R>,
+    {
+        self.left_join(r).select_also(r)
+    }
+
+    /// Left Join with a Related Entity and select both Entity.
     pub fn find_also_related<R>(self, r: R) -> SelectTwo<E, R>
     where
         R: EntityTrait,
@@ -192,6 +201,28 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
+    /// Only used by Entity loader
+    #[doc(hidden)]
+    pub fn select_also_fake<R>(self, _: R) -> SelectThree<E, F, R, TopologyStar>
+    where
+        R: EntityTrait,
+    {
+        // select also but without join
+        SelectThree::new_without_prepare(self.into_query())
+    }
+
+    /// Left Join with a Related Entity and select both Entity.
+    pub fn find_also<G, R>(self, _: G, _: R) -> SelectThree<E, F, R, TopologyStar>
+    where
+        R: EntityTrait,
+        G: EntityTrait + Related<R>,
+    {
+        SelectThree::new(
+            self.join_join(JoinType::LeftJoin, G::to(), G::via())
+                .into_query(),
+        )
+    }
+
     /// Left Join with an Entity Related to the first Entity
     pub fn find_also_related<R>(self, _: R) -> SelectThree<E, F, R, TopologyStar>
     where
@@ -219,7 +250,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_cfg::{cake, cake_filling, cake_filling_price, entity_linked, filling, fruit};
+    use crate::tests_cfg::{
+        cake, cake_compact, cake_filling, cake_filling_price, entity_linked, filling, fruit,
+    };
     use crate::{
         ColumnTrait, DbBackend, EntityTrait, ModelTrait, QueryFilter, QuerySelect, QueryTrait,
         RelationTrait,
@@ -471,8 +504,8 @@ mod tests {
     #[test]
     fn join_14() {
         assert_eq!(
-            cake::Entity::find()
-                .join(JoinType::LeftJoin, cake::Relation::TropicalFruit.def())
+            cake_compact::Entity::find()
+                .join(JoinType::LeftJoin, cake_compact::Relation::TropicalFruit.def())
                 .build(DbBackend::MySql)
                 .to_string(),
             [
@@ -571,8 +604,8 @@ mod tests {
     #[test]
     fn join_19() {
         assert_eq!(
-            cake::Entity::find()
-                .join(JoinType::LeftJoin, cake::Relation::TropicalFruit.def())
+            cake_compact::Entity::find()
+                .join(JoinType::LeftJoin, cake_compact::Relation::TropicalFruit.def())
                 .join(
                     JoinType::LeftJoin,
                     cake_filling::Relation::Cake
@@ -640,12 +673,12 @@ mod tests {
     #[test]
     fn join_21() {
         assert_eq!(
-            cake::Entity::find()
+            cake_compact::Entity::find()
                 .column_as(
                     Expr::col(("cake_filling_alias", cake_filling::Column::CakeId)),
                     "cake_filling_cake_id"
                 )
-                .join(JoinType::LeftJoin, cake::Relation::TropicalFruit.def())
+                .join(JoinType::LeftJoin, cake_compact::Relation::TropicalFruit.def())
                 .join_as_rev(
                     JoinType::LeftJoin,
                     cake_filling::Relation::Cake
@@ -671,12 +704,12 @@ mod tests {
     #[test]
     fn join_22() {
         assert_eq!(
-            cake::Entity::find()
+            cake_compact::Entity::find()
                 .column_as(
                     Expr::col(("cake_filling_alias", cake_filling::Column::CakeId)),
                     "cake_filling_cake_id"
                 )
-                .join(JoinType::LeftJoin, cake::Relation::OrTropicalFruit.def())
+                .join(JoinType::LeftJoin, cake_compact::Relation::OrTropicalFruit.def())
                 .join_as_rev(
                     JoinType::LeftJoin,
                     cake_filling::Relation::Cake

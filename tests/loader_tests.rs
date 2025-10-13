@@ -3,7 +3,7 @@
 pub mod common;
 
 pub use common::{TestContext, bakery_chain::*, setup::*};
-use sea_orm::{DbConn, DbErr, RuntimeErr, entity::*, query::*};
+use sea_orm::{DbConn, DbErr, LoaderTraitEx, RuntimeErr, entity::*, query::*};
 
 #[sea_orm_macros::test]
 async fn loader_load_one() -> Result<(), DbErr> {
@@ -26,8 +26,33 @@ async fn loader_load_one() -> Result<(), DbErr> {
     let bakers = baker::Entity::find().all(&ctx.db).await?;
     let bakeries = bakers.load_one(bakery::Entity, &ctx.db).await?;
 
-    assert_eq!(bakers, [baker_1, baker_2, baker_3]);
-    assert_eq!(bakeries, [Some(bakery_0.clone()), Some(bakery_0), None]);
+    assert_eq!(bakers, [baker_1.clone(), baker_2.clone(), baker_3.clone()]);
+    assert_eq!(
+        bakeries,
+        [Some(bakery_0.clone()), Some(bakery_0.clone()), None]
+    );
+
+    let bakers = vec![
+        Some(baker_1.clone().into_ex()),
+        None,
+        Some(baker_2.clone().into_ex()),
+        Some(baker_3.clone().into_ex()),
+        None,
+    ];
+    let bakeries = bakers
+        .as_slice()
+        .load_one_ex(bakery::Entity, &ctx.db)
+        .await?;
+    assert_eq!(
+        bakeries,
+        [
+            Some(bakery_0.clone()),
+            None,
+            Some(bakery_0.clone()),
+            None,
+            None
+        ]
+    );
 
     // has many find, should use load_many instead
     let bakeries = bakery::Entity::find().all(&ctx.db).await?;
@@ -71,6 +96,27 @@ async fn loader_load_many() -> Result<(), DbErr> {
             vec![baker_1.clone(), baker_2.clone()],
             vec![baker_3.clone(), baker_4.clone()],
             vec![]
+        ]
+    );
+
+    // test interlaced loader
+    let bakeries_sparse = vec![
+        Some(bakery_1.clone().into_ex()),
+        None,
+        Some(bakery_2.clone().into_ex()),
+        None,
+    ];
+    let bakers = bakeries_sparse
+        .as_slice()
+        .load_many_ex(baker::Entity, &ctx.db)
+        .await?;
+    assert_eq!(
+        bakers,
+        [
+            vec![baker_1.clone(), baker_2.clone()],
+            vec![],
+            vec![baker_3.clone(), baker_4.clone()],
+            vec![],
         ]
     );
 

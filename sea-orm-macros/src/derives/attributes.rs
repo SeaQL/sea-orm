@@ -8,6 +8,7 @@ pub mod derive_attr {
         pub column: Option<syn::Ident>,
         pub entity: Option<syn::Ident>,
         pub model: Option<syn::Ident>,
+        pub model_ex: Option<syn::Ident>,
         pub active_model: Option<syn::Ident>,
         pub primary_key: Option<syn::Ident>,
         pub relation: Option<syn::Ident>,
@@ -19,16 +20,16 @@ pub mod derive_attr {
     }
 }
 
-pub mod field_attr {
+pub mod relation_attr {
     use bae::FromAttributes;
 
-    /// Operations for Models and ActiveModels
+    /// Attributes for Relation enum
     #[derive(Default, FromAttributes)]
     pub struct SeaOrm {
         pub belongs_to: Option<syn::Lit>,
         pub has_one: Option<syn::Lit>,
         pub has_many: Option<syn::Lit>,
-        pub via: Option<syn::Lit>,
+        pub via_rel: Option<syn::Lit>,
         pub on_update: Option<syn::Lit>,
         pub on_delete: Option<syn::Lit>,
         pub on_condition: Option<syn::Lit>,
@@ -39,11 +40,30 @@ pub mod field_attr {
     }
 }
 
+pub mod compound_attr {
+    use bae::FromAttributes;
+
+    /// Attributes for compound model fields
+    #[derive(Default, FromAttributes)]
+    pub struct SeaOrm {
+        pub has_one: Option<()>,
+        pub has_many: Option<()>,
+        pub belongs_to: Option<()>,
+        pub self_ref: Option<()>,
+        pub via: Option<syn::LitStr>,
+        pub from: Option<syn::LitStr>,
+        pub to: Option<syn::LitStr>,
+        pub suffix: Option<syn::LitStr>,
+        pub on_update: Option<syn::LitStr>,
+        pub on_delete: Option<syn::LitStr>,
+    }
+}
+
 #[cfg(feature = "seaography")]
 pub mod related_attr {
     use bae::FromAttributes;
 
-    /// Operations for RelatedEntity enumeration
+    /// Attributes for RelatedEntity enum
     #[derive(Default, FromAttributes)]
     pub struct SeaOrm {
         ///

@@ -68,31 +68,64 @@ Integration examples:
 Let's have a quick walk through of the unique features of SeaORM.
 
 ### Entity
-You don't have to write this by hand! Entity files can be generated from an existing database with `sea-orm-cli`.
+You don't have to write this by hand! Entity files can be generated from an existing database with `sea-orm-cli`,
+following is generated with `--entity-format dense` (new in 2.0).
 ```rust
 use sea_orm::entity::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[sea_orm::model]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "cake")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_many = "super::fruit::Entity")]
-    Fruit,
-}
-
-impl Related<super::fruit::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Fruit.def()
-    }
+    #[sea_orm(has_one)]
+    pub fruit: HasOne<super::fruit::Entity>,
+    #[sea_orm(has_many, via = "cake_filling")] // M-N relation with junction
+    pub fillings: HasMany<super::filling::Entity>,
 }
 ```
+### Entity Loader
 
+The Entity Loader intelligently uses join for 1-1 and data loader for 1-N relations,
+eliminating the N+1 problem even when performing nested queries.
+```rust
+// join paths:
+// cake -> fruit
+//      -> filling -> ingredient
+
+let super_cake = cake::Entity::load()
+    .filter_by_id(42) // shorthand for .filter(cake::Column::Id.eq(42))
+    .with(fruit::Entity) // 1-1 uses join
+    .with((filling::Entity, ingredient::Entity)) // 1-N uses data loader
+    .one(db)
+    .await?
+    .unwrap();
+
+// 3 queries are executed under the hood:
+// 1. SELECT FROM cake JOIN fruit WHERE id = $
+// 2. SELECT FROM filling JOIN cake_filling WHERE cake_id IN (..)
+// 3. SELECT FROM ingredient WHERE filling_id IN (..)
+
+super_cake
+    == cake::ModelEx {
+        id: 42,
+        name: "Black Forest".into(),
+        fruit: Some(
+            fruit::ModelEx {
+                name: "Cherry".into(),
+            }
+            .into(),
+        ),
+        fillings: vec![filling::ModelEx {
+            name: "Chocolate".into(),
+            ingredients: vec![ingredient::ModelEx {
+                name: "Syrup".into(),
+            }],
+        }],
+    };
+```
 ### Select
 SeaORM models 1-N and M-N relationships at the Entity level,
 letting you traverse many-to-many links through a junction table in a single call.
@@ -111,19 +144,18 @@ let cheese: Option<cake::Model> = Cake::find_by_id(1).one(db).await?;
 let cheese: cake::Model = cheese.unwrap();
 
 // find related models (lazy)
-let fruits: Vec<fruit::Model> = cheese.find_related(Fruit).all(db).await?;
+let fruit: Option<fruit::Model> = cheese.find_related(Fruit).one(db).await?;
 
 // find related models (eager): for 1-1 relations
 let cake_with_fruit: Vec<(cake::Model, Option<fruit::Model>)> =
     Cake::find().find_also_related(Fruit).all(db).await?;
 
 // find related models (eager): works for both 1-N and M-N relations
-let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> = Cake::find()
-    .find_with_related(Fruit) // for M-N relations, two joins are performed
+let cake_with_fillings: Vec<(cake::Model, Vec<filling::Model>)> = Cake::find()
+    .find_with_related(Filling) // for M-N relations, two joins are performed
     .all(db) // rows are automatically consolidated by left entity
     .await?;
 ```
-
 ### Nested Select
 
 Partial models prevent overfetching by letting you querying only the fields

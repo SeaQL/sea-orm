@@ -1,7 +1,7 @@
 use core::time;
 use sea_orm_codegen::{
-    DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
-    WithPrelude, WithSerde,
+    DateTimeCrate as CodegenDateTimeCrate, EntityFormat, EntityTransformer, EntityWriterContext,
+    OutputFile, WithPrelude, WithSerde,
 };
 use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{EnvFilter, prelude::*};
@@ -15,6 +15,7 @@ pub async fn run_generate_command(
 ) -> Result<(), Box<dyn Error>> {
     match command {
         GenerateSubcommands::Entity {
+            entity_format,
             compact_format: _,
             expanded_format,
             frontend_format,
@@ -219,8 +220,15 @@ pub async fn run_generate_command(
             println!("... discovered.");
 
             let writer_context = EntityWriterContext::new(
-                expanded_format,
-                frontend_format,
+                if expanded_format {
+                    EntityFormat::Expanded
+                } else if frontend_format {
+                    EntityFormat::Frontend
+                } else if let Some(entity_format) = entity_format {
+                    EntityFormat::from_str(&entity_format).expect("Invalid prelude option")
+                } else {
+                    EntityFormat::default()
+                },
                 WithPrelude::from_str(&with_prelude).expect("Invalid prelude option"),
                 WithSerde::from_str(&with_serde).expect("Invalid serde derive option"),
                 with_copy_enums,

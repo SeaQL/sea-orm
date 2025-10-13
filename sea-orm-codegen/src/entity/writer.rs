@@ -6,6 +6,11 @@ use std::{collections::BTreeMap, str::FromStr};
 use syn::{punctuated::Punctuated, token::Comma};
 use tracing::info;
 
+mod compact;
+mod dense;
+mod expanded;
+mod frontend;
+
 #[derive(Clone, Debug)]
 pub struct EntityWriter {
     pub(crate) entities: Vec<Entity>,
@@ -21,7 +26,7 @@ pub struct OutputFile {
     pub content: String,
 }
 
-#[derive(Default, PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
 pub enum WithPrelude {
     #[default]
     All,
@@ -29,8 +34,9 @@ pub enum WithPrelude {
     AllAllowUnusedImports,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
 pub enum WithSerde {
+    #[default]
     None,
     Serialize,
     Deserialize,
@@ -43,10 +49,18 @@ pub enum DateTimeCrate {
     Time,
 }
 
+#[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
+pub enum EntityFormat {
+    #[default]
+    Compact,
+    Expanded,
+    Frontend,
+    Dense,
+}
+
 #[derive(Debug)]
 pub struct EntityWriterContext {
-    pub(crate) expanded_format: bool,
-    pub(crate) frontend_format: bool,
+    pub(crate) entity_format: EntityFormat,
     pub(crate) with_prelude: WithPrelude,
     pub(crate) with_serde: WithSerde,
     pub(crate) with_copy_enums: bool,
@@ -143,6 +157,24 @@ impl FromStr for WithPrelude {
     }
 }
 
+impl FromStr for EntityFormat {
+    type Err = crate::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "compact" => Self::Compact,
+            "expanded" => Self::Expanded,
+            "frontend" => Self::Frontend,
+            "dense" => Self::Dense,
+            v => {
+                return Err(crate::Error::TransformError(format!(
+                    "Unsupported enum variant '{v}'"
+                )));
+            }
+        })
+    }
+}
+
 impl FromStr for WithSerde {
     type Err = crate::Error;
 
@@ -164,8 +196,7 @@ impl FromStr for WithSerde {
 impl EntityWriterContext {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        expanded_format: bool,
-        frontend_format: bool,
+        entity_format: EntityFormat,
         with_prelude: WithPrelude,
         with_serde: WithSerde,
         with_copy_enums: bool,
@@ -183,8 +214,7 @@ impl EntityWriterContext {
         impl_active_model_behavior: bool,
     ) -> Self {
         Self {
-            expanded_format,
-            frontend_format,
+            entity_format,
             with_prelude,
             with_serde,
             with_copy_enums,
@@ -211,7 +241,7 @@ impl EntityWriter {
         let with_prelude = context.with_prelude != WithPrelude::None;
         files.push(self.write_index_file(context.lib, with_prelude, context.seaography));
         if with_prelude {
-            files.push(self.write_prelude(context.with_prelude, context.frontend_format));
+            files.push(self.write_prelude(context.with_prelude, context.entity_format));
         }
         if !self.enums.is_empty() {
             files.push(self.write_sea_orm_active_enums(
@@ -219,7 +249,7 @@ impl EntityWriter {
                 context.with_copy_enums,
                 &context.enum_extra_derives,
                 &context.enum_extra_attributes,
-                context.frontend_format,
+                context.entity_format,
             ));
         }
         WriterOutput { files }
@@ -252,7 +282,7 @@ impl EntityWriter {
 
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
-                let code_blocks = if context.frontend_format {
+                let code_blocks = if context.entity_format == EntityFormat::Frontend {
                     Self::gen_frontend_code_blocks(
                         entity,
                         &context.with_serde,
@@ -266,8 +296,22 @@ impl EntityWriter {
                         context.seaography,
                         context.impl_active_model_behavior,
                     )
-                } else if context.expanded_format {
+                } else if context.entity_format == EntityFormat::Expanded {
                     Self::gen_expanded_code_blocks(
+                        entity,
+                        &context.with_serde,
+                        &context.date_time_crate,
+                        &context.schema_name,
+                        serde_skip_deserializing_primary_key,
+                        serde_skip_hidden_column,
+                        &context.model_extra_derives,
+                        &context.model_extra_attributes,
+                        &context.column_extra_derives,
+                        context.seaography,
+                        context.impl_active_model_behavior,
+                    )
+                } else if context.entity_format == EntityFormat::Dense {
+                    Self::gen_dense_code_blocks(
                         entity,
                         &context.with_serde,
                         &context.date_time_crate,
@@ -344,7 +388,11 @@ impl EntityWriter {
         }
     }
 
-    pub fn write_prelude(&self, with_prelude: WithPrelude, frontend_format: bool) -> OutputFile {
+    pub fn write_prelude(
+        &self,
+        with_prelude: WithPrelude,
+        entity_format: EntityFormat,
+    ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
         if with_prelude == WithPrelude::AllAllowUnusedImports {
@@ -354,7 +402,7 @@ impl EntityWriter {
             .entities
             .iter()
             .map({
-                if frontend_format {
+                if entity_format == EntityFormat::Frontend {
                     Self::gen_prelude_use_model
                 } else {
                     Self::gen_prelude_use
@@ -374,11 +422,11 @@ impl EntityWriter {
         with_copy_enums: bool,
         extra_derives: &TokenStream,
         extra_attributes: &TokenStream,
-        frontend_format: bool,
+        entity_format: EntityFormat,
     ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        if frontend_format {
+        if entity_format == EntityFormat::Frontend {
             Self::write(&mut lines, vec![Self::gen_import_serde(with_serde)]);
         } else {
             Self::write(&mut lines, vec![Self::gen_import(with_serde)]);
@@ -393,7 +441,7 @@ impl EntityWriter {
                     with_copy_enums,
                     extra_derives,
                     extra_attributes,
-                    frontend_format,
+                    entity_format,
                 )
             })
             .collect();
@@ -425,126 +473,6 @@ impl EntityWriter {
     pub fn write_allow_unused_imports(lines: &mut Vec<String>) {
         lines.extend(vec!["#![allow(unused_imports)]".to_string()]);
         lines.push("".to_owned());
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn gen_expanded_code_blocks(
-        entity: &Entity,
-        with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
-        schema_name: &Option<String>,
-        serde_skip_deserializing_primary_key: bool,
-        serde_skip_hidden_column: bool,
-        model_extra_derives: &TokenStream,
-        model_extra_attributes: &TokenStream,
-        column_extra_derives: &TokenStream,
-        seaography: bool,
-        impl_active_model_behavior: bool,
-    ) -> Vec<TokenStream> {
-        let mut imports = Self::gen_import(with_serde);
-        imports.extend(Self::gen_import_active_enum(entity));
-        let mut code_blocks = vec![
-            imports,
-            Self::gen_entity_struct(),
-            Self::gen_impl_entity_name(entity, schema_name),
-            Self::gen_model_struct(
-                entity,
-                with_serde,
-                date_time_crate,
-                serde_skip_deserializing_primary_key,
-                serde_skip_hidden_column,
-                model_extra_derives,
-                model_extra_attributes,
-            ),
-            Self::gen_column_enum(entity, column_extra_derives),
-            Self::gen_primary_key_enum(entity),
-            Self::gen_impl_primary_key(entity, date_time_crate),
-            Self::gen_relation_enum(entity),
-            Self::gen_impl_column_trait(entity),
-            Self::gen_impl_relation_trait(entity),
-        ];
-        code_blocks.extend(Self::gen_impl_related(entity));
-        code_blocks.extend(Self::gen_impl_conjunct_related(entity));
-        if impl_active_model_behavior {
-            code_blocks.extend([Self::impl_active_model_behavior()]);
-        }
-        if seaography {
-            code_blocks.extend([Self::gen_related_entity(entity)]);
-        }
-        code_blocks
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn gen_compact_code_blocks(
-        entity: &Entity,
-        with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
-        schema_name: &Option<String>,
-        serde_skip_deserializing_primary_key: bool,
-        serde_skip_hidden_column: bool,
-        model_extra_derives: &TokenStream,
-        model_extra_attributes: &TokenStream,
-        _column_extra_derives: &TokenStream,
-        seaography: bool,
-        impl_active_model_behavior: bool,
-    ) -> Vec<TokenStream> {
-        let mut imports = Self::gen_import(with_serde);
-        imports.extend(Self::gen_import_active_enum(entity));
-        let mut code_blocks = vec![
-            imports,
-            Self::gen_compact_model_struct(
-                entity,
-                with_serde,
-                date_time_crate,
-                schema_name,
-                serde_skip_deserializing_primary_key,
-                serde_skip_hidden_column,
-                model_extra_derives,
-                model_extra_attributes,
-            ),
-            Self::gen_compact_relation_enum(entity),
-        ];
-        code_blocks.extend(Self::gen_impl_related(entity));
-        code_blocks.extend(Self::gen_impl_conjunct_related(entity));
-        if impl_active_model_behavior {
-            code_blocks.extend([Self::impl_active_model_behavior()]);
-        }
-        if seaography {
-            code_blocks.extend([Self::gen_related_entity(entity)]);
-        }
-        code_blocks
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn gen_frontend_code_blocks(
-        entity: &Entity,
-        with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
-        schema_name: &Option<String>,
-        serde_skip_deserializing_primary_key: bool,
-        serde_skip_hidden_column: bool,
-        model_extra_derives: &TokenStream,
-        model_extra_attributes: &TokenStream,
-        _column_extra_derives: &TokenStream,
-        _seaography: bool,
-        _impl_active_model_behavior: bool,
-    ) -> Vec<TokenStream> {
-        let mut imports = Self::gen_import_serde(with_serde);
-        imports.extend(Self::gen_import_active_enum(entity));
-        let code_blocks = vec![
-            imports,
-            Self::gen_frontend_model_struct(
-                entity,
-                with_serde,
-                date_time_crate,
-                schema_name,
-                serde_skip_deserializing_primary_key,
-                serde_skip_hidden_column,
-                model_extra_derives,
-                model_extra_attributes,
-            ),
-        ];
-        code_blocks
     }
 
     pub fn gen_import(with_serde: &WithSerde) -> TokenStream {
@@ -627,36 +555,6 @@ impl EntityWriter {
                 },
             )
             .0
-    }
-
-    pub fn gen_model_struct(
-        entity: &Entity,
-        with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
-        serde_skip_deserializing_primary_key: bool,
-        serde_skip_hidden_column: bool,
-        model_extra_derives: &TokenStream,
-        model_extra_attributes: &TokenStream,
-    ) -> TokenStream {
-        let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types(date_time_crate);
-        let if_eq_needed = entity.get_eq_needed();
-        let serde_attributes = entity.get_column_serde_attributes(
-            serde_skip_deserializing_primary_key,
-            serde_skip_hidden_column,
-        );
-        let extra_derive = with_serde.extra_derive();
-
-        quote! {
-            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel #if_eq_needed #extra_derive #model_extra_derives)]
-            #model_extra_attributes
-            pub struct Model {
-                #(
-                    #serde_attributes
-                    pub #column_names_snake_case: #column_rs_types,
-                )*
-            }
-        }
     }
 
     pub fn gen_column_enum(entity: &Entity, column_extra_derives: &TokenStream) -> TokenStream {
@@ -891,156 +789,6 @@ impl EntityWriter {
         let table_name_camel_case_ident = entity.get_table_name_camel_case_ident();
         quote! {
             pub use super::#table_name_snake_case_ident::Model as #table_name_camel_case_ident;
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn gen_compact_model_struct(
-        entity: &Entity,
-        with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
-        schema_name: &Option<String>,
-        serde_skip_deserializing_primary_key: bool,
-        serde_skip_hidden_column: bool,
-        model_extra_derives: &TokenStream,
-        model_extra_attributes: &TokenStream,
-    ) -> TokenStream {
-        let table_name = entity.table_name.as_str();
-        let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types(date_time_crate);
-        let if_eq_needed = entity.get_eq_needed();
-        let primary_keys: Vec<String> = entity
-            .primary_keys
-            .iter()
-            .map(|pk| pk.name.clone())
-            .collect();
-        let attrs: Vec<TokenStream> = entity
-            .columns
-            .iter()
-            .map(|col| {
-                let mut attrs: Punctuated<_, Comma> = Punctuated::new();
-                let is_primary_key = primary_keys.contains(&col.name);
-                if !col.is_snake_case_name() {
-                    let column_name = &col.name;
-                    attrs.push(quote! { column_name = #column_name });
-                }
-                if is_primary_key {
-                    attrs.push(quote! { primary_key });
-                    if !col.auto_increment {
-                        attrs.push(quote! { auto_increment = false });
-                    }
-                }
-                if let Some(ts) = col.get_col_type_attrs() {
-                    attrs.extend([ts]);
-                    if !col.not_null {
-                        attrs.push(quote! { nullable });
-                    }
-                };
-                if col.unique {
-                    attrs.push(quote! { unique });
-                }
-                let mut ts = quote! {};
-                if !attrs.is_empty() {
-                    for (i, attr) in attrs.into_iter().enumerate() {
-                        if i > 0 {
-                            ts = quote! { #ts, };
-                        }
-                        ts = quote! { #ts #attr };
-                    }
-                    ts = quote! { #[sea_orm(#ts)] };
-                }
-                let serde_attribute = col.get_serde_attribute(
-                    is_primary_key,
-                    serde_skip_deserializing_primary_key,
-                    serde_skip_hidden_column,
-                );
-                ts = quote! {
-                    #ts
-                    #serde_attribute
-                };
-                ts
-            })
-            .collect();
-        let schema_name = match Self::gen_schema_name(schema_name) {
-            Some(schema_name) => quote! {
-                schema_name = #schema_name,
-            },
-            None => quote! {},
-        };
-        let extra_derive = with_serde.extra_derive();
-
-        quote! {
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel #if_eq_needed #extra_derive #model_extra_derives)]
-            #[sea_orm(
-                #schema_name
-                table_name = #table_name
-            )]
-            #model_extra_attributes
-            pub struct Model {
-                #(
-                    #attrs
-                    pub #column_names_snake_case: #column_rs_types,
-                )*
-            }
-        }
-    }
-
-    pub fn gen_compact_relation_enum(entity: &Entity) -> TokenStream {
-        let relation_enum_name = entity.get_relation_enum_name();
-        let attrs = entity.get_relation_attrs();
-        quote! {
-            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-            pub enum Relation {
-                #(
-                    #attrs
-                    #relation_enum_name,
-                )*
-            }
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn gen_frontend_model_struct(
-        entity: &Entity,
-        with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
-        _schema_name: &Option<String>,
-        serde_skip_deserializing_primary_key: bool,
-        serde_skip_hidden_column: bool,
-        model_extra_derives: &TokenStream,
-        model_extra_attributes: &TokenStream,
-    ) -> TokenStream {
-        let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types(date_time_crate);
-        let if_eq_needed = entity.get_eq_needed();
-        let primary_keys: Vec<String> = entity
-            .primary_keys
-            .iter()
-            .map(|pk| pk.name.clone())
-            .collect();
-        let attrs: Vec<TokenStream> = entity
-            .columns
-            .iter()
-            .map(|col| {
-                let is_primary_key = primary_keys.contains(&col.name);
-                col.get_serde_attribute(
-                    is_primary_key,
-                    serde_skip_deserializing_primary_key,
-                    serde_skip_hidden_column,
-                )
-            })
-            .collect();
-        let extra_derive = with_serde.extra_derive();
-
-        quote! {
-            #[derive(Clone, Debug, PartialEq #if_eq_needed #extra_derive #model_extra_derives)]
-            #model_extra_attributes
-            pub struct Model {
-                #(
-                    #attrs
-                    pub #column_names_snake_case: #column_rs_types,
-                )*
-            }
         }
     }
 
@@ -3146,6 +2894,56 @@ mod tests {
             .to_string(),
             EntityWriter::gen_import_active_enum(&entities[1]).to_string()
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_gen_dense_code_blocks() -> io::Result<()> {
+        let entities = setup();
+        const ENTITY_FILES: [&str; 13] = [
+            include_str!("../../tests/dense/cake.rs"),
+            include_str!("../../tests/dense/cake_filling.rs"),
+            include_str!("../../tests/dense/cake_filling_price.rs"),
+            include_str!("../../tests/dense/filling.rs"),
+            include_str!("../../tests/dense/fruit.rs"),
+            include_str!("../../tests/dense/vendor.rs"),
+            include_str!("../../tests/dense/rust_keyword.rs"),
+            include_str!("../../tests/dense/cake_with_float.rs"),
+            include_str!("../../tests/dense/cake_with_double.rs"),
+            include_str!("../../tests/dense/collection.rs"),
+            include_str!("../../tests/dense/collection_float.rs"),
+            include_str!("../../tests/dense/parent.rs"),
+            include_str!("../../tests/dense/child.rs"),
+        ];
+
+        assert_eq!(entities.len(), ENTITY_FILES.len());
+
+        for (i, entity) in entities.iter().enumerate() {
+            assert_eq!(
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
+                EntityWriter::gen_dense_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &crate::DateTimeCrate::Chrono,
+                    &None,
+                    false,
+                    false,
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    false,
+                    true,
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+        }
 
         Ok(())
     }

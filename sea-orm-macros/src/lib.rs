@@ -157,6 +157,23 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
     ts
 }
 
+/// Derive a complex model with relational fields
+#[cfg(feature = "derive")]
+#[proc_macro_derive(DeriveModelEx, attributes(sea_orm, seaography))]
+pub fn derive_model_ex(input: TokenStream) -> TokenStream {
+    let DeriveInput {
+        ident, data, attrs, ..
+    } = parse_macro_input!(input as DeriveInput);
+
+    if ident != "ModelEx" {
+        panic!("Struct name must be ModelEx");
+    }
+
+    derives::expand_derive_model_ex(ident, data, attrs)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
 /// The DerivePrimaryKey derive macro will implement [PrimaryKeyToColumn]
 /// for PrimaryKey which defines tedious mappings between primary keys and columns.
 /// The [EnumIter] is also derived, allowing iteration over all enum variants.
@@ -1079,6 +1096,16 @@ pub fn derive_iden(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn raw_sql(input: TokenStream) -> TokenStream {
     match raw_sql::expand(input) {
+        Ok(token_stream) => token_stream.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+#[proc_macro_attribute]
+pub fn sea_orm_model(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as syn::ItemStruct);
+
+    match derives::expand_sea_orm_model(input) {
         Ok(token_stream) => token_stream.into(),
         Err(e) => e.to_compile_error().into(),
     }

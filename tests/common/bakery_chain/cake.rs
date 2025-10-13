@@ -1,6 +1,6 @@
-use crate::common::setup::rust_dec;
 use sea_orm::{ConnectionTrait, entity::prelude::*};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "cake")]
 pub struct Model {
@@ -74,7 +74,7 @@ impl ActiveModelBehavior for ActiveModel {
     where
         C: ConnectionTrait,
     {
-        if self.price.as_ref() == &rust_dec(0) {
+        if self.price.as_ref() == &Decimal::ZERO {
             Err(DbErr::Custom(format!(
                 "[before_save] Invalid Price, insert: {insert}"
             )))
@@ -87,7 +87,7 @@ impl ActiveModelBehavior for ActiveModel {
     where
         C: ConnectionTrait,
     {
-        if model.price < rust_dec(0) {
+        if model.price < Decimal::ZERO {
             Err(DbErr::Custom(format!(
                 "[after_save] Invalid Price, insert: {insert}"
             )))

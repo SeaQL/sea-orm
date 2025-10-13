@@ -83,6 +83,16 @@ where
         SelectTwo::new(self.into_query())
     }
 
+    /// Only used by Entity loader
+    #[doc(hidden)]
+    pub fn select_also_fake<F>(mut self, _: F) -> SelectTwo<E, F>
+    where
+        F: EntityTrait,
+    {
+        self = self.apply_alias(SelectA.as_str());
+        SelectTwo::new_without_prepare(self.into_query())
+    }
+
     /// Makes a SELECT operation in conjunction to another relation
     pub fn select_with<F>(mut self, _: F) -> SelectTwoMany<E, F>
     where
