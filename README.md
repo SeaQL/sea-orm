@@ -81,14 +81,14 @@ pub struct Model {
     pub name: String,
     #[sea_orm(relation)]
     pub fruit: HasOne<super::fruit::Entity>,
-    #[sea_orm(relation, via = "cake_filling")]
+    #[sea_orm(relation, via = "cake_filling")] // M-N relation with junction
     pub fillings: HasMany<super::filling::Entity>,
 }
 ```
 ### Entity Loader
 
-It's a breeze to work with nested data structures.
-The Entity Loader intelligently uses join for 1-1 and data loader for 1-N relations.
+The Entity Loader intelligently uses join for 1-1 and data loader for 1-N relations,
+eliminating the N+1 problem even when performing nested queries.
 ```rust
 // join paths:
 // cake -> fruit
@@ -96,7 +96,7 @@ The Entity Loader intelligently uses join for 1-1 and data loader for 1-N relati
 let super_cake = cake::Entity::load()
     .filter_by_id(42)
     .with(fruit::Entity) // 1-1 uses join
-    .with((filling::Entity, ingredient::Entity)) // M-N uses data loader
+    .with((filling::Entity, ingredient::Entity)) // 1-N uses data loader
     .one(db)
     .await?
     .unwrap();
