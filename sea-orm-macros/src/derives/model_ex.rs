@@ -51,7 +51,7 @@ pub fn expand_sea_orm_model(input: ItemStruct) -> syn::Result<TokenStream> {
 
         if is_compound_field(&field_type) {
             let entity_path = extract_compound_entity(&field_type);
-            if field_type.starts_with("Option<") {
+            if field_type.starts_with("Option<") || field_type.starts_with("HasOne<") {
                 field.ty = syn::parse_str(&format!("HasOne < {entity_path} >"))?;
             } else {
                 field.ty = syn::parse_str(&format!("HasMany < {entity_path} >"))?;

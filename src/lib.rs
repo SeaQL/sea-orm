@@ -78,7 +78,8 @@
 //! Let's have a quick walk through of the unique features of SeaORM.
 //!
 //! ### Entity
-//! You don't have to write this by hand! Entity files can be generated from an existing database with `sea-orm-cli`.
+//! You don't have to write this by hand! Entity files can be generated from an existing database with `sea-orm-cli`,
+//! following is generated with `--entity-format dense` (new in 2.0).
 //! ```
 //! # #[cfg(feature = "macros")]
 //! # mod entities {
@@ -157,23 +158,32 @@
 //! // join paths:
 //! // cake -> fruit
 //! //      -> filling -> ingredient
+//!
 //! let super_cake = cake::Entity::load()
-//!     .filter_by_id(42)
+//!     .filter_by_id(42) // shorthand for .filter(cake::Column::Id.eq(42))
 //!     .with(fruit::Entity) // 1-1 uses join
 //!     .with((filling::Entity, ingredient::Entity)) // 1-N uses data loader
 //!     .one(db)
 //!     .await?
 //!     .unwrap();
 //!
+//! // 3 queries are executed under the hood:
+//! // 1. SELECT FROM cake JOIN fruit WHERE id = $
+//! // 2. SELECT FROM filling JOIN cake_filling WHERE cake_id IN (..)
+//! // 3. SELECT FROM ingredient WHERE filling_id IN (..)
+//!
 //! super_cake
 //!     == cake::ModelEx {
 //!         id: 42,
 //!         name: "Black Forest".into(),
-//!         fruit: Some(fruit::ModelEx {
+//!         fruit: Some(
+//!             fruit::ModelEx {
 //! #           id: 1,
-//!             name: "Cherry".into(),
+//!                 name: "Cherry".into(),
 //! #           cake_id: Some(1),
-//!         }.into()),
+//!             }
+//!             .into(),
+//!         ),
 //!         fillings: vec![filling::ModelEx {
 //! #           id: 2,
 //!             name: "Chocolate".into(),
