@@ -11,7 +11,7 @@ pub struct Model {
     pub parent_id1: i32,
     pub parent_id2: i32,
     #[sea_orm(belongs_to, from = "(ParentId1, ParentId2)", to = "(Id1, Id2)")]
-    pub parent: Option<super::parent::Entity> ,
+    pub parent: HasOne<super::parent::Entity> ,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

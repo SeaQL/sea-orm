@@ -21,7 +21,7 @@ pub struct Model {
     pub fruit_id2: i32,
     pub cake_id: i32,
     #[sea_orm(belongs_to, from = "CakeId", to = "Id")]
-    pub cake: Option<super::cake::Entity> ,
+    pub cake: HasOne<super::cake::Entity> ,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

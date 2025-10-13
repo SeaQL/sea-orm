@@ -140,7 +140,7 @@
 //!     pub id: i32,
 //!     pub name: String,
 //!     #[sea_orm(has_one)]
-//!     pub fruit: Option<super::fruit::Entity>,
+//!     pub fruit: HasOne<super::fruit::Entity>,
 //!     #[sea_orm(has_many, via = "cake_filling")] // M-N relation with junction
 //!     pub fillings: Vec<super::filling::Entity>,
 //! }

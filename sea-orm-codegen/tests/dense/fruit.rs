@@ -11,7 +11,7 @@ pub struct Model {
     pub name: String,
     pub cake_id: Option<i32> ,
     #[sea_orm(belongs_to, from = "CakeId", to = "Id")]
-    pub cake: Option<super::cake::Entity> ,
+    pub cake: HasOne<super::cake::Entity> ,
     #[sea_orm(has_many)]
     pub vendors: Vec<super::vendor::Entity> ,
 }
