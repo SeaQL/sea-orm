@@ -13,14 +13,14 @@ pub struct Model {
     pub bakery_id: Option<i32>,
     #[sea_orm(
         belongs_to,
-        from = "BakeryId",
-        to = "Id",
+        from = "bakery_id",
+        to = "id",
         on_update = "Cascade",
         on_delete = "SetNull"
     )]
-    pub bakery: Option<super::bakery::Entity>,
+    pub bakery: HasOne<super::bakery::Entity>,
     #[sea_orm(has_many, via = "cakes_bakers::Baker")]
-    pub cakes: Vec<super::cake::Entity>,
+    pub cakes: HasMany<super::cake::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

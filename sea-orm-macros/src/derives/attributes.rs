@@ -29,7 +29,7 @@ pub mod relation_attr {
         pub belongs_to: Option<syn::Lit>,
         pub has_one: Option<syn::Lit>,
         pub has_many: Option<syn::Lit>,
-        pub via: Option<syn::Lit>,
+        pub via_rel: Option<syn::Lit>,
         pub on_update: Option<syn::Lit>,
         pub on_delete: Option<syn::Lit>,
         pub on_condition: Option<syn::Lit>,

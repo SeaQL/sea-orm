@@ -240,22 +240,23 @@ fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<Token
     if attr.belongs_to.is_some() {
         let belongs_to = Ident::new("belongs_to", Span::call_site());
 
-        let from = format!(
-            "Column::{}",
-            attr.from
+        let from = format_tuple(
+            "",
+            "Column",
+            &attr
+                .from
                 .as_ref()
                 .expect("Must specify `from` and `to` on belongs_to relation")
-                .value()
-                .to_upper_camel_case()
+                .value(),
         );
-        let to = format!(
-            "{}::Column::{}",
+        let to = format_tuple(
             related_entity.trim_end_matches("::Entity"),
-            attr.to
+            "Column",
+            &attr
+                .to
                 .as_ref()
                 .expect("Must specify `from` and `to` on belongs_to relation")
-                .value()
-                .to_upper_camel_case()
+                .value(),
         );
         let mut extra: Punctuated<_, Comma> = Punctuated::new();
         if let Some(on_update) = &attr.on_update {
@@ -281,21 +282,23 @@ fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<Token
         );
         let belongs_to = Ident::new("belongs_to", Span::call_site());
 
-        let from = format!(
-            "Column::{}",
-            attr.from
+        let from = format_tuple(
+            "",
+            "Column",
+            &attr
+                .from
                 .as_ref()
                 .expect("Must specify `from` and `to` on self_ref relation")
-                .value()
-                .to_upper_camel_case()
+                .value(),
         );
-        let to = format!(
-            "Column::{}",
-            attr.to
+        let to = format_tuple(
+            "",
+            "Column",
+            &attr
+                .to
                 .as_ref()
                 .expect("Must specify `from` and `to` on self_ref relation")
-                .value()
-                .to_upper_camel_case()
+                .value(),
         );
         let mut extra: Punctuated<_, Comma> = Punctuated::new();
         if let Some(on_update) = &attr.on_update {
@@ -432,4 +435,61 @@ fn infer_relation_name_from_entity(s: &str) -> &str {
         return suffix;
     }
     s
+}
+
+fn format_tuple(prefix: &str, middle: &str, suffix: &str) -> String {
+    use std::fmt::Write;
+
+    let parts = if suffix.starts_with('(') && suffix.ends_with(')') {
+        suffix[1..suffix.len() - 1]
+            .split(',')
+            .map(|s| s.trim())
+            .collect()
+    } else {
+        vec![suffix]
+    };
+
+    let mut output = String::new();
+    if parts.len() > 1 {
+        output.write_char('(').unwrap();
+    }
+    for (i, suffix) in parts.iter().enumerate() {
+        let mut part = String::new();
+        part.write_str(prefix).unwrap();
+        if !part.is_empty() {
+            part.write_str("::").unwrap();
+        }
+        part.write_str(middle).unwrap();
+        part.write_str("::").unwrap();
+        part.write_str(&suffix.to_upper_camel_case()).unwrap();
+
+        if i > 0 {
+            output.write_str(", ").unwrap();
+        }
+        output.write_str(&part).unwrap();
+    }
+    if parts.len() > 1 {
+        output.write_char(')').unwrap();
+    }
+
+    output
+}
+
+#[cfg(test)]
+mod test {
+    use super::format_tuple;
+
+    #[test]
+    fn test_format_tuple() {
+        assert_eq!(format_tuple("", "Column", "Id"), "Column::Id");
+        assert_eq!(format_tuple("super", "Column", "Id"), "super::Column::Id");
+        assert_eq!(
+            format_tuple("", "Column", "(A, B)"),
+            "(Column::A, Column::B)"
+        );
+        assert_eq!(
+            format_tuple("super", "Column", "(A, B)"),
+            "(super::Column::A, super::Column::B)"
+        );
+    }
 }

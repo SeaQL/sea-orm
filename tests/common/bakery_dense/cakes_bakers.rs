@@ -10,9 +10,9 @@ pub struct Model {
     pub cake_id: i32,
     #[sea_orm(primary_key, auto_increment = false)]
     pub baker_id: i32,
-    #[sea_orm(belongs_to, from = "BakerId", to = "Id")]
+    #[sea_orm(belongs_to, from = "baker_id", to = "id")]
     pub baker: Option<super::baker::Entity>,
-    #[sea_orm(belongs_to, from = "CakeId", to = "Id")]
+    #[sea_orm(belongs_to, from = "cake_id", to = "id")]
     pub cake: Option<super::cake::Entity>,
 }
 

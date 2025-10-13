@@ -15,11 +15,11 @@ pub struct Model {
     pub gluten_free: bool,
     pub serial: Uuid,
     #[sea_orm(belongs_to, from = "BakeryId", to = "Id")]
-    pub bakery: Option<super::bakery::Entity>,
+    pub bakery: HasOne<super::bakery::Entity>,
     #[sea_orm(has_many)]
-    pub lineitems: Vec<super::lineitem::Entity>,
+    pub lineitems: HasMany<super::lineitem::Entity>,
     #[sea_orm(has_many, via = "cakes_bakers")]
-    pub bakers: Vec<super::baker::Entity>,
+    pub bakers: HasMany<super::baker::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {

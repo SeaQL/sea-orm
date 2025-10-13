@@ -12,11 +12,11 @@ pub struct Model {
     #[sea_orm(column_type = "Double")]
     pub profit_margin: f64,
     #[sea_orm(has_many)]
-    pub bakers: Vec<super::baker::Entity>,
+    pub bakers: HasMany<super::baker::Entity>,
     #[sea_orm(has_many)]
-    pub cakes: Vec<super::cake::Entity>,
+    pub cakes: HasMany<super::cake::Entity>,
     #[sea_orm(has_many)]
-    pub orders: Vec<super::order::Entity>,
+    pub orders: HasMany<super::order::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -97,7 +97,7 @@ impl DeriveRelation {
                     ))
                 }??;
 
-                let mut result = if let (Some(has_many), Some(via)) = (&attr.has_many, &attr.via) {
+                let mut result = if let (Some(has_many), Some(via)) = (&attr.has_many, &attr.via_rel) {
                     let via: TokenStream = format!("{}::{}", lit_str(has_many)?.trim_end_matches("::Entity"), lit_str(via)?).parse().unwrap();
                     quote!(
                         Self::#variant_ident => #entity_ident::has_many_via(#related_to, #via)

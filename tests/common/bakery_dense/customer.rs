@@ -12,7 +12,7 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub notes: Option<String>,
     #[sea_orm(has_many)]
-    pub orders: Vec<super::order::Entity>,
+    pub orders: HasMany<super::order::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

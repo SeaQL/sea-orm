@@ -10,9 +10,9 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::bakery::Entity", via = "Relation::Manager")]
+    #[sea_orm(has_many = "super::bakery::Entity", via_rel = "Relation::Manager")]
     BakeryManager,
-    #[sea_orm(has_many = "super::bakery::Entity", via = "Relation::Cashier")]
+    #[sea_orm(has_many = "super::bakery::Entity", via_rel = "Relation::Cashier")]
     BakeryCashier,
 }
 

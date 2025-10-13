@@ -1,5 +1,6 @@
 use sea_orm::{ConnectionTrait, entity::prelude::*};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "cake")]
 pub struct Model {
