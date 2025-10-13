@@ -1,5 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
+use std::collections::HashMap;
 use syn::{Ident, punctuated::Punctuated, token::Comma};
 
 #[derive(Default)]
@@ -32,7 +33,16 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
 
     one_fields.push(quote!(model));
 
+    let mut seen = HashMap::new();
     for entity_field in schema.fields.iter() {
+        *seen.entry(&entity_field.entity).or_insert(0) += 1;
+    }
+
+    for entity_field in schema.fields.iter() {
+        if *seen.get(&entity_field.entity).unwrap() != 1 {
+            // prevent impl trait for same entity twice
+            continue;
+        }
         let field = &entity_field.field;
         let is_one = entity_field.is_one;
         let entity: TokenStream = entity_field.entity.parse().unwrap();

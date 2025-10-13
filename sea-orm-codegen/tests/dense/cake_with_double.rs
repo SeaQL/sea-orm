@@ -13,9 +13,9 @@ pub struct Model {
     #[sea_orm(column_type = "Double", nullable)]
     pub price: Option<f64> ,
     #[sea_orm(has_many)]
-    pub fruits: Vec<super::fruit::Entity> ,
+    pub fruits: HasMany<super::fruit::Entity> ,
     #[sea_orm(has_many, via = "cake_filling")]
-    pub fillings: Vec<super::filling::Entity> ,
+    pub fillings: HasMany<super::filling::Entity> ,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

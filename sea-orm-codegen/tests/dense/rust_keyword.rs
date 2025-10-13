@@ -20,7 +20,15 @@ pub struct Model {
     pub fruit_id1: i32,
     pub fruit_id2: i32,
     pub cake_id: i32,
-    #[sea_orm(belongs_to, from = "CakeId", to = "Id")]
+    #[sea_orm(self_ref, from = "self_id1", to = "id", suffix = "1")]
+    pub rust_keyword_1: HasOne<Entity> ,
+    #[sea_orm(self_ref, from = "self_id2", to = "id", suffix = "2")]
+    pub rust_keyword_2: HasOne<Entity> ,
+    #[sea_orm(belongs_to, from = "fruit_id1", to = "id", suffix = "1")]
+    pub fruit_1: HasOne<super::fruit::Entity> ,
+    #[sea_orm(belongs_to, from = "fruit_id2", to = "id", suffix = "2")]
+    pub fruit_2: HasOne<super::fruit::Entity> ,
+    #[sea_orm(belongs_to, from = "cake_id", to = "id")]
     pub cake: HasOne<super::cake::Entity> ,
 }
 

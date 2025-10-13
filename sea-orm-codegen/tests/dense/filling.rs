@@ -10,7 +10,7 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     #[sea_orm(has_many, via = "cake_filling")]
-    pub cakes: Vec<super::cake::Entity> ,
+    pub cakes: HasMany<super::cake::Entity> ,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

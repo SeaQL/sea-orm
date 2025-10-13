@@ -120,6 +120,36 @@ impl Entity {
         self.relations.iter().map(|rel| rel.get_attrs()).collect()
     }
 
+    /// Trimmed get_related_entity_attrs down to just the entity module
+    pub fn get_related_entity_modules(&self) -> Vec<Ident> {
+        // 1st step get conjunct relations data
+        let conjunct_related_attrs = self
+            .conjunct_relations
+            .iter()
+            .map(|conj| conj.get_to_snake_case());
+
+        // helper function that generates attributes for `Relation` data
+        let produce_relation_attrs = |rel: &Relation, _reverse: bool| match rel.get_module_name() {
+            Some(module_name) => module_name,
+            None => format_ident!("self"),
+        };
+
+        // 2nd step get reverse self relations data
+        let self_relations_reverse_attrs = self
+            .relations
+            .iter()
+            .filter(|rel| rel.self_referencing)
+            .map(|rel| produce_relation_attrs(rel, true));
+
+        // 3rd step get normal relations data
+        self.relations
+            .iter()
+            .map(|rel| produce_relation_attrs(rel, false))
+            .chain(self_relations_reverse_attrs)
+            .chain(conjunct_related_attrs)
+            .collect()
+    }
+
     /// Used to generate the attributes for the `enum RelatedEntity` that is useful to the Seaography project
     pub fn get_related_entity_attrs(&self) -> Vec<TokenStream> {
         // 1st step get conjunct relations data

@@ -13,8 +13,11 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub filling_id: Option<i32>,
-    #[sea_orm(belongs_to, from = "FillingId", to = "Id")]
+    pub ingredient_id: Option<i32>,
+    #[sea_orm(belongs_to, from = "filling_id", to = "id")]
     pub filling: Option<super::filling::Entity>,
+    #[sea_orm(self_ref, from = "IngredientId", to = "Id")]
+    pub ingredient: HasOne<Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

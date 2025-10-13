@@ -83,7 +83,7 @@ pub struct Model {
     #[sea_orm(has_one)]
     pub fruit: HasOne<super::fruit::Entity>,
     #[sea_orm(has_many, via = "cake_filling")] // M-N relation with junction
-    pub fillings: Vec<super::filling::Entity>,
+    pub fillings: HasMany<super::filling::Entity>,
 }
 ```
 ### Entity Loader

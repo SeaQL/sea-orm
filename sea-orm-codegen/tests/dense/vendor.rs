@@ -12,7 +12,7 @@ pub struct Model {
     pub name: String,
     #[sea_orm(column_name = "fruitId")]
     pub fruit_id: Option<i32> ,
-    #[sea_orm(belongs_to, from = "FruitId", to = "Id")]
+    #[sea_orm(belongs_to, from = "fruit_id", to = "id")]
     pub fruit: HasOne<super::fruit::Entity> ,
 }
 

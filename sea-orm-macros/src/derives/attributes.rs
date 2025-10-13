@@ -49,9 +49,11 @@ pub mod compound_attr {
         pub has_one: Option<()>,
         pub has_many: Option<()>,
         pub belongs_to: Option<()>,
+        pub self_ref: Option<()>,
         pub via: Option<syn::LitStr>,
         pub from: Option<syn::LitStr>,
         pub to: Option<syn::LitStr>,
+        pub suffix: Option<syn::LitStr>,
         pub on_update: Option<syn::LitStr>,
         pub on_delete: Option<syn::LitStr>,
     }

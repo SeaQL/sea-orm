@@ -10,9 +10,9 @@ pub struct Model {
     pub cake_id: i32,
     #[sea_orm(primary_key, auto_increment = false)]
     pub filling_id: i32,
-    #[sea_orm(belongs_to, from = "CakeId", to = "Id", on_update = "Cascade", on_delete = "Cascade")]
+    #[sea_orm(belongs_to, from = "cake_id", to = "id", on_update = "Cascade", on_delete = "Cascade")]
     pub cake: HasOne<super::cake::Entity> ,
-    #[sea_orm(belongs_to, from = "FillingId", to = "Id", on_update = "Cascade", on_delete = "Cascade")]
+    #[sea_orm(belongs_to, from = "filling_id", to = "id", on_update = "Cascade", on_delete = "Cascade")]
     pub filling: HasOne<super::filling::Entity> ,
 }
 

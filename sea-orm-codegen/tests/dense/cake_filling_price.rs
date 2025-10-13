@@ -13,8 +13,8 @@ pub struct Model {
     pub price: Decimal,
     #[sea_orm(
         belongs_to,
-        from = "(CakeId, FillingId)",
-        to = "(CakeId, FillingId)"
+        from = "(cake_id, filling_id)",
+        to = "(cake_id, filling_id)"
     )]
     pub cake_filling: HasOne<super::cake_filling::Entity> ,
 }

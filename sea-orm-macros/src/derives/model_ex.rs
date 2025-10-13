@@ -5,6 +5,7 @@ use super::util::{format_field_ident_ref, is_compound_field};
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
+use std::collections::HashMap;
 use syn::{
     Attribute, Data, Fields, ItemStruct, LitStr, Meta, parse_quote, punctuated::Punctuated,
     token::Comma,
@@ -106,7 +107,7 @@ pub fn expand_derive_model_ex(
                         .replace(' ', ""); // Remove spaces
 
                     if is_compound_field(&field_type) {
-                        if field_type.starts_with("HasOne<") {
+                        if field_type.starts_with("HasOne<") && field_type != "HasOne<Entity>" {
                             entity_loader_schema.fields.push(EntityLoaderField {
                                 is_one: true,
                                 field: ident.clone(),
@@ -181,12 +182,19 @@ pub fn expand_derive_model_ex(
 
     let related_def = {
         let mut ts = TokenStream::new();
+        let mut seen = HashMap::new();
+        for (_, field_type) in impl_related.iter() {
+            *seen.entry(field_type).or_insert(0) += 1;
+        }
 
         for (attrs, field_type) in impl_related.iter() {
             if let Some(var) = relation_enum_variant(attrs, field_type) {
                 relation_enum_variants.push(var);
             }
-            ts.extend(impl_related_trait(attrs, field_type, &table_name)?);
+            if *seen.get(field_type).unwrap() == 1 {
+                // prevent impl trait for same entity twice
+                ts.extend(impl_related_trait(attrs, field_type, &table_name)?);
+            }
         }
 
         ts
@@ -222,26 +230,33 @@ pub fn expand_derive_model_ex(
 fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<TokenStream> {
     let related_entity = extract_compound_entity(ty);
     let related_enum = Ident::new(
-        &infer_relation_name_from_entity(related_entity).to_upper_camel_case(),
+        &format!(
+            "{}{}",
+            infer_relation_name_from_entity(related_entity).to_upper_camel_case(),
+            attr.suffix.as_ref().map(|v| v.value()).unwrap_or_default()
+        ),
         Span::call_site(),
     );
     if attr.belongs_to.is_some() {
+        let belongs_to = Ident::new("belongs_to", Span::call_site());
+
         let from = format!(
             "Column::{}",
             attr.from
                 .as_ref()
-                .expect("Must specify `from` and `to` on BelongsTo relation")
+                .expect("Must specify `from` and `to` on belongs_to relation")
                 .value()
+                .to_upper_camel_case()
         );
         let to = format!(
             "{}::Column::{}",
             related_entity.trim_end_matches("::Entity"),
             attr.to
                 .as_ref()
-                .expect("Must specify `from` and `to` on BelongsTo relation")
+                .expect("Must specify `from` and `to` on belongs_to relation")
                 .value()
+                .to_upper_camel_case()
         );
-        let belongs_to = Ident::new("belongs_to", Span::call_site());
         let mut extra: Punctuated<_, Comma> = Punctuated::new();
         if let Some(on_update) = &attr.on_update {
             let tag = Ident::new("on_update", Span::call_site());
@@ -255,6 +270,46 @@ fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<Token
         Some(quote! {
             #[sea_orm(#belongs_to = #related_entity, from = #from, to = #to, #extra)]
             #related_enum
+        })
+    } else if attr.self_ref.is_some() {
+        let self_ref = Ident::new(
+            &format!(
+                "SelfRef{}",
+                attr.suffix.as_ref().map(|v| v.value()).unwrap_or_default()
+            ),
+            Span::call_site(),
+        );
+        let belongs_to = Ident::new("belongs_to", Span::call_site());
+
+        let from = format!(
+            "Column::{}",
+            attr.from
+                .as_ref()
+                .expect("Must specify `from` and `to` on self_ref relation")
+                .value()
+                .to_upper_camel_case()
+        );
+        let to = format!(
+            "Column::{}",
+            attr.to
+                .as_ref()
+                .expect("Must specify `from` and `to` on self_ref relation")
+                .value()
+                .to_upper_camel_case()
+        );
+        let mut extra: Punctuated<_, Comma> = Punctuated::new();
+        if let Some(on_update) = &attr.on_update {
+            let tag = Ident::new("on_update", Span::call_site());
+            extra.push(quote!(#tag = #on_update))
+        }
+        if let Some(on_delete) = &attr.on_delete {
+            let tag = Ident::new("on_delete", Span::call_site());
+            extra.push(quote!(#tag = #on_delete))
+        }
+
+        Some(quote! {
+            #[sea_orm(#belongs_to = "Entity", from = #from, to = #to, #extra)]
+            #self_ref
         })
     } else if attr.has_many.is_some() && attr.via.is_none() {
         // skip junction relation

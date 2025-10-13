@@ -10,7 +10,7 @@ pub struct Model {
     pub id: i32,
     pub parent_id1: i32,
     pub parent_id2: i32,
-    #[sea_orm(belongs_to, from = "(ParentId1, ParentId2)", to = "(Id1, Id2)")]
+    #[sea_orm(belongs_to, from = "(parent_id1, parent_id2)", to = "(id1, id2)")]
     pub parent: HasOne<super::parent::Entity> ,
 }
 
