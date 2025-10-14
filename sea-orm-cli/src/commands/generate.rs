@@ -257,8 +257,10 @@ pub async fn run_generate_command(
                 let file_path = dir.join(name);
                 println!("Writing {}", file_path.display());
 
-                if !["mod.rs", "lib.rs", "prelude.rs"].contains(&name)
-                    && file_path.exists()
+                if matches!(
+                    name.as_str(),
+                    "mod.rs" | "lib.rs" | "prelude.rs" | "sea_orm_active_enums.rs"
+                ) && file_path.exists()
                     && preserve_user_modifications
                 {
                     let prev_content = fs::read_to_string(&file_path)?;
