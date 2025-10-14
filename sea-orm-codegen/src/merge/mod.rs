@@ -147,6 +147,7 @@ impl<'a> Fold for Merger<'a> {
 }
 
 #[derive(Debug, Default)]
+#[doc(hidden)]
 pub struct MergeReport {
     pub output: String,
     pub warnings: Vec<String>,
@@ -185,7 +186,8 @@ impl MergeReport {
     }
 }
 
-pub fn merge_files(old_src: &str, new_src: &str) -> Result<String, MergeReport> {
+#[doc(hidden)]
+pub fn merge_entity_files(old_src: &str, new_src: &str) -> Result<String, MergeReport> {
     let new_file = match parse_file(new_src) {
         Ok(file) => file,
         Err(err) => {
@@ -380,40 +382,17 @@ fn is_doc_attribute(attr: &Attribute) -> bool {
 }
 
 fn render_file_with_spacing(file: syn::File) -> String {
-    #[derive(Clone, Copy, PartialEq, Eq)]
-    enum ItemKind {
-        Use,
-        Other,
-    }
-
-    enum Spacing {
-        Single,
-        Double,
-    }
-
     fn trim_trailing_newlines(s: &str) -> &str {
         s.trim_end_matches(['\n', '\r'])
     }
 
-    fn ensure_spacing(output: &mut String, spacing: Spacing) {
-        if output.is_empty() {
-            return;
-        }
-        if !output.ends_with('\n') {
-            output.push('\n');
-        }
-        if matches!(spacing, Spacing::Double) && !output.ends_with("\n\n") {
-            output.push('\n');
-        }
-    }
-
-    fn render_items_with_sep(items: &[&Item], separator: &str) -> Option<String> {
+    fn render_items_with_sep(items: &[Item], separator: &str) -> Option<String> {
         let mut rendered_parts = Vec::with_capacity(items.len());
         for item in items {
             let single_item_file = syn::File {
                 shebang: None,
                 attrs: Vec::new(),
-                items: vec![(*item).clone()],
+                items: vec![item.clone()],
             };
             let rendered = unparse(&single_item_file);
             let trimmed = trim_trailing_newlines(&rendered);
@@ -428,80 +407,66 @@ fn render_file_with_spacing(file: syn::File) -> String {
         }
     }
 
-    fn append_block(output: &mut String, block: &str, spacing: Spacing) {
-        if block.is_empty() {
-            return;
-        }
-        ensure_spacing(output, spacing);
-        output.push_str(block);
-        output.push('\n');
+    let syn::File {
+        shebang,
+        attrs,
+        items,
+    } = file;
+
+    let (use_items, other_items): (Vec<Item>, Vec<Item>) =
+        items.into_iter().partition(|it| matches!(it, Item::Use(_)));
+
+    let mut out = String::new();
+
+    if let Some(s) = shebang {
+        out.push_str(s.trim_end_matches('\n'));
+        out.push('\n');
     }
 
-    let mut output = String::new();
-
-    if let Some(shebang) = &file.shebang {
-        output.push_str(shebang.trim_end_matches('\n'));
-        output.push('\n');
-    }
-
-    if !file.attrs.is_empty() {
-        if !output.is_empty() && !output.ends_with('\n') {
-            output.push('\n');
+    if !attrs.is_empty() {
+        if !out.is_empty() && !out.ends_with('\n') {
+            out.push('\n');
         }
         let attrs_file = syn::File {
             shebang: None,
-            attrs: file.attrs.clone(),
-            items: Vec::new(),
+            attrs,
+            items: vec![],
         };
         let rendered = unparse(&attrs_file);
         let trimmed = trim_trailing_newlines(&rendered);
         if !trimmed.is_empty() {
-            output.push_str(trimmed);
-            output.push('\n');
+            out.push_str(trimmed);
+            out.push('\n');
         }
     }
 
-    let mut groups: Vec<(ItemKind, Vec<&Item>)> = Vec::new();
-    for item in &file.items {
-        let kind = if matches!(item, Item::Use(_)) {
-            ItemKind::Use
-        } else {
-            ItemKind::Other
-        };
-
-        match groups.last_mut() {
-            Some((prev_kind, items)) if *prev_kind == kind => items.push(item),
-            _ => groups.push((kind, vec![item])),
+    if let Some(block) = render_items_with_sep(&use_items, "\n") {
+        if !out.is_empty() && !out.ends_with('\n') {
+            out.push('\n');
+        }
+        if !block.is_empty() {
+            out.push_str(&block);
+            out.push('\n');
         }
     }
 
-    let mut prev_kind: Option<ItemKind> = None;
-    for (kind, items) in groups {
-        let separator = match kind {
-            ItemKind::Use => "\n",
-            ItemKind::Other => "\n\n",
-        };
-        let Some(block) = render_items_with_sep(&items, separator) else {
-            prev_kind = Some(kind);
-            continue;
-        };
-
-        let spacing = match (prev_kind, &kind) {
-            (None, _) => Spacing::Single,
-            (Some(ItemKind::Use), ItemKind::Use) => Spacing::Single,
-            _ => Spacing::Double,
-        };
-
-        append_block(&mut output, &block, spacing);
-
-        prev_kind = Some(kind);
+    if let Some(block) = render_items_with_sep(&other_items, "\n\n") {
+        if !out.is_empty() && !out.ends_with("\n\n") {
+            if out.ends_with('\n') {
+                out.push('\n');
+            } else {
+                out.push_str("\n\n");
+            }
+        }
+        out.push_str(&block);
+        out.push('\n');
     }
 
-    if !output.ends_with('\n') {
-        output.push('\n');
+    if !out.ends_with('\n') {
+        out.push('\n');
     }
 
-    output
+    out
 }
 
 #[cfg(test)]
@@ -562,7 +527,7 @@ mod tests {
             "#
         };
 
-        let merged = merge_files(old_file, curr).expect("merge failed");
+        let merged = merge_entity_files(old_file, curr).expect("merge failed");
         let expected = indoc! {r#"
             use sea_orm::entity::prelude::*;
             use crate::helpers::Helper;
@@ -629,7 +594,7 @@ mod tests {
             impl ActiveModelBehavior for ActiveModel {}
             "#};
 
-        let merged = merge_files(old_src, new_src).expect("merge should succeed");
+        let merged = merge_entity_files(old_src, new_src).expect("merge should succeed");
 
         let expected = indoc! {r#"
             use sea_orm::entity::prelude::*;
@@ -675,7 +640,7 @@ mod tests {
             "#
         };
 
-        let merged = merge_files(old_src, new_src).expect("merge should succeed");
+        let merged = merge_entity_files(old_src, new_src).expect("merge should succeed");
 
         let expected = indoc! {r#"
             use sea_orm::entity::prelude::*;
@@ -714,7 +679,7 @@ mod tests {
             "#
         };
 
-        let report = merge_files(old_src, new_src).unwrap_err();
+        let report = merge_entity_files(old_src, new_src).unwrap_err();
         assert!(report.fallback_applied);
 
         let expect = indoc! {r#"
@@ -768,7 +733,7 @@ mod tests {
             impl ActiveModelBehavior for ActiveModel {}
         "#};
 
-        let merged = merge_files(old_src, new_src).expect("merge should succeed");
+        let merged = merge_entity_files(old_src, new_src).expect("merge should succeed");
         let expected = indoc! {r#"
             use sea_orm::entity::prelude::*;
 
@@ -811,7 +776,7 @@ mod tests {
             impl ActiveModelBehavior for ActiveModel {}
         "#};
 
-        let merged = merge_files(old_src, new_src).expect("merge should succeed");
+        let merged = merge_entity_files(old_src, new_src).expect("merge should succeed");
         let expected = indoc! {r#"
             use sea_orm::entity::prelude::*;
 

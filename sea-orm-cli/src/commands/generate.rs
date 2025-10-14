@@ -1,7 +1,7 @@
 use core::time;
 use sea_orm_codegen::{
     DateTimeCrate as CodegenDateTimeCrate, EntityFormat, EntityTransformer, EntityWriterContext,
-    MergeReport, OutputFile, WithPrelude, WithSerde, merge_files,
+    MergeReport, OutputFile, WithPrelude, WithSerde, merge_entity_files,
 };
 use std::{error::Error, fs, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{EnvFilter, prelude::*};
@@ -257,14 +257,14 @@ pub async fn run_generate_command(
                 let file_path = dir.join(name);
                 println!("Writing {}", file_path.display());
 
-                if file_path.exists()
-                    && !file_path.ends_with("mod.rs")
-                    && !file_path.ends_with("lib.rs")
-                    && !file_path.ends_with("prelude.rs")
+                if matches!(
+                    name.as_str(),
+                    "mod.rs" | "lib.rs" | "prelude.rs" | "sea_orm_active_enums.rs"
+                ) && file_path.exists()
                     && preserve_user_modifications
                 {
                     let prev_content = fs::read_to_string(&file_path)?;
-                    match merge_files(&prev_content, content) {
+                    match merge_entity_files(&prev_content, content) {
                         Ok(merged) => {
                             fs::write(file_path, merged)?;
                         }
