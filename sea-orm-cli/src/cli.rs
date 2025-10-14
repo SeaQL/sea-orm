@@ -349,6 +349,17 @@ pub enum GenerateSubcommands {
             long_help = "Generate empty ActiveModelBehavior impls."
         )]
         impl_active_model_behavior: bool,
+
+        #[arg(
+            long,
+            default_value = "true",
+            default_missing_value = "true",
+            num_args = 0..=1,
+            require_equals = true,
+            action = ArgAction::Set,
+            long_help = "Preserve user modifications when regenerating entity files."
+        )]
+        preserve_user_modifications: bool,
     },
 }
 

@@ -1,9 +1,9 @@
 use core::time;
 use sea_orm_codegen::{
     DateTimeCrate as CodegenDateTimeCrate, EntityFormat, EntityTransformer, EntityWriterContext,
-    OutputFile, WithPrelude, WithSerde,
+    MergeReport, OutputFile, WithPrelude, WithSerde, merge_files,
 };
-use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
+use std::{error::Error, fs, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{EnvFilter, prelude::*};
 use url::Url;
 
@@ -41,6 +41,7 @@ pub async fn run_generate_command(
             column_extra_derives,
             seaography,
             impl_active_model_behavior,
+            preserve_user_modifications,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -250,11 +251,40 @@ pub async fn run_generate_command(
             let dir = Path::new(&output_dir);
             fs::create_dir_all(dir)?;
 
+            let mut merge_fallback_files: Vec<String> = Vec::new();
+
             for OutputFile { name, content } in output.files.iter() {
                 let file_path = dir.join(name);
                 println!("Writing {}", file_path.display());
-                let mut file = fs::File::create(file_path)?;
-                file.write_all(content.as_bytes())?;
+
+                if file_path.exists()
+                    && !file_path.ends_with("mod.rs")
+                    && !file_path.ends_with("lib.rs")
+                    && !file_path.ends_with("prelude.rs")
+                    && preserve_user_modifications
+                {
+                    let prev_content = fs::read_to_string(&file_path)?;
+                    match merge_files(&prev_content, content) {
+                        Ok(merged) => {
+                            fs::write(file_path, merged)?;
+                        }
+                        Err(MergeReport {
+                            output,
+                            warnings,
+                            fallback_applied,
+                        }) => {
+                            for message in warnings {
+                                eprintln!("{message}");
+                            }
+                            fs::write(file_path, output)?;
+                            if fallback_applied {
+                                merge_fallback_files.push(name.clone());
+                            }
+                        }
+                    }
+                } else {
+                    fs::write(file_path, content)?;
+                };
             }
 
             // Format each of the files
@@ -266,7 +296,16 @@ pub async fn run_generate_command(
                 }
             }
 
-            println!("... Done.");
+            if merge_fallback_files.is_empty() {
+                println!("... Done.");
+            } else {
+                return Err(format!(
+                    "Merge fallback applied for {} file(s): \n{}",
+                    merge_fallback_files.len(),
+                    merge_fallback_files.join("\n")
+                )
+                .into());
+            }
         }
     }
 
