@@ -76,6 +76,51 @@ where
     pub(crate) entity: PhantomData<(E, F, G, TOP)>,
 }
 
+/// Perform a SELECT operation on 4 Models
+#[derive(Clone, Debug)]
+pub struct SelectFour<E, F, G, H, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, H, TOP)>,
+}
+
+/// Perform a SELECT operation on 5 Models
+#[derive(Clone, Debug)]
+pub struct SelectFive<E, F, G, H, I, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+    I: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, H, I, TOP)>,
+}
+
+/// Perform a SELECT operation on 6 Models
+#[derive(Clone, Debug)]
+pub struct SelectSix<E, F, G, H, I, J, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+    I: EntityTrait,
+    J: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, H, I, J, TOP)>,
+}
+
 /// Performs a conversion to [SimpleExpr]
 pub trait IntoSimpleExpr {
     /// Method to perform the conversion
@@ -118,20 +163,6 @@ macro_rules! impl_query_trait {
         where
             E: EntityTrait,
             F: EntityTrait,
-        {
-            type QueryStatement = SelectStatement;
-
-            fn query(&mut self) -> &mut SelectStatement {
-                &mut self.query
-            }
-        }
-
-        impl<E, F, G, TOP> $trait for SelectThree<E, F, G, TOP>
-        where
-            E: EntityTrait,
-            F: EntityTrait,
-            G: EntityTrait,
-            TOP: Topology,
         {
             type QueryStatement = SelectStatement;
 
@@ -246,22 +277,3 @@ macro_rules! select_two {
 
 select_two!(SelectTwo);
 select_two!(SelectTwoMany);
-
-impl<E, F, G, TOP> QueryTrait for SelectThree<E, F, G, TOP>
-where
-    E: EntityTrait,
-    F: EntityTrait,
-    G: EntityTrait,
-    TOP: Topology,
-{
-    type QueryStatement = SelectStatement;
-    fn query(&mut self) -> &mut SelectStatement {
-        &mut self.query
-    }
-    fn as_query(&self) -> &SelectStatement {
-        &self.query
-    }
-    fn into_query(self) -> SelectStatement {
-        self.query
-    }
-}
