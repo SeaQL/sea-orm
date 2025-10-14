@@ -357,7 +357,12 @@ pub enum GenerateSubcommands {
             num_args = 0..=1,
             require_equals = true,
             action = ArgAction::Set,
-            long_help = "Preserve user modifications when regenerating entity files."
+            long_help = indoc::indoc! { "
+                Preserve user modifications when regenerating entity files.
+                Only supports:
+                    - Extra derives and attributes of `Model` and `Relation`
+                    - Impl blocks of `ActiveModelBehavior`"
+            }
         )]
         preserve_user_modifications: bool,
     },
