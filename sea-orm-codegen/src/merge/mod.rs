@@ -799,7 +799,6 @@ mod tests {
             impl ActiveModelBehavior for ActiveModel {}
         "#};
 
-
         let new_src = indoc! {r#"
             use sea_orm::entity::prelude::*;
 
