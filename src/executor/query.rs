@@ -824,10 +824,24 @@ impl TryGetable for u32 {
                 use sqlx::postgres::types::Oid;
                 // Since 0.6.0, SQLx has dropped direct mapping from PostgreSQL's OID to Rust's `u32`;
                 // Instead, `u32` was wrapped by a `sqlx::Oid`.
-                row.try_get::<Option<Oid>, _>(idx.as_sqlx_postgres_index())
-                    .map_err(|e| sqlx_error_to_query_err(e).into())
-                    .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
-                    .map(|oid| oid.0)
+                match row.try_get::<Option<Oid>, _>(idx.as_sqlx_postgres_index()) {
+                    Ok(opt) => opt.ok_or_else(|| err_null_idx_col(idx)).map(|oid| oid.0),
+                    Err(_) => row
+                        // Integers are always signed in PostgreSQL, so we try to get an `i32` and convert it to `u32`.
+                        .try_get::<i32, _>(idx.as_sqlx_postgres_index())
+                        .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .map(|v| {
+                            v.try_into().map_err(|e| {
+                                DbErr::TryIntoErr {
+                                    from: "i32",
+                                    into: "u32",
+                                    source: Arc::new(e),
+                                }
+                                .into()
+                            })
+                        })
+                        .and_then(|r| r),
+                }
             }
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => row
