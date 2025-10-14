@@ -451,12 +451,11 @@ fn render_file_with_spacing(file: syn::File) -> String {
     }
 
     if let Some(block) = render_items_with_sep(&other_items, "\n\n") {
-        if !out.is_empty() {
-            if !out.ends_with('\n') {
+        if !out.is_empty() && !out.ends_with("\n\n") {
+            if out.ends_with('\n') {
                 out.push('\n');
-            }
-            if !out.ends_with("\n\n") {
-                out.push('\n');
+            } else {
+                out.push_str("\n\n");
             }
         }
         out.push_str(&block);
