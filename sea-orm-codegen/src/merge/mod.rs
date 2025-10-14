@@ -374,7 +374,7 @@ fn render_file_with_spacing(file: syn::File) -> String {
     }
 
     fn trim_trailing_newlines(s: &str) -> &str {
-        s.trim_end_matches(|c| c == '\n' || c == '\r')
+        s.trim_end_matches(['\n', '\r'])
     }
 
     fn ensure_spacing(output: &mut String, spacing: Spacing) {

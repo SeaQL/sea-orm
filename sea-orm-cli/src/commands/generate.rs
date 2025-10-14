@@ -3,7 +3,7 @@ use sea_orm_codegen::{
     DateTimeCrate as CodegenDateTimeCrate, EntityFormat, EntityTransformer, EntityWriterContext,
     MergeReport, OutputFile, WithPrelude, WithSerde, merge_files,
 };
-use std::{error::Error, fs,  path::Path, process::Command, str::FromStr};
+use std::{error::Error, fs, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{EnvFilter, prelude::*};
 use url::Url;
 
