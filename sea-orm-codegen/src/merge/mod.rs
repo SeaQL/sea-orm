@@ -1,12 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
 use prettyplease::unparse;
-use syn::ItemUse;
 use syn::fold::{self, Fold};
 use syn::{
-    Attribute, Fields, Ident, Item, ItemImpl, Meta, Path, parse::Parser, parse_file,
+    Attribute, Fields, Ident, Item, ItemImpl, Path, parse::Parser, parse_file,
     punctuated::Punctuated,
 };
+use syn::{ItemUse, Meta};
 
 mod extract;
 use extract::*;
@@ -328,12 +328,30 @@ fn merge_non_derive_attribute(old_attr: &Attribute, new_attr: &Attribute) -> Opt
     let old_args = parse_attr(old_attr)?;
     let new_args = parse_attr(new_attr)?;
 
-    let mut seen = HashSet::new();
-    let merged: Vec<Meta> = old_args
-        .into_iter()
-        .chain(new_args)
-        .filter(|m| seen.insert(m.clone()))
-        .collect();
+    fn meta_key(meta: &Meta) -> &Path {
+        match meta {
+            Meta::Path(p) => p,
+            Meta::NameValue(nv) => &nv.path,
+            Meta::List(list) => &list.path,
+        }
+    }
+
+    let mut seen_keys = HashSet::<Path>::new();
+    let mut merged: Vec<Meta> = Vec::new();
+
+    for m in old_args.into_iter() {
+        // Always preserve old attribute values on key conflict
+        seen_keys.insert(meta_key(&m).clone());
+        merged.push(m);
+    }
+
+    for m in new_args.into_iter() {
+        let key = meta_key(&m);
+        if !seen_keys.contains(key) {
+            seen_keys.insert(key.clone());
+            merged.push(m);
+        }
+    }
 
     let path = old_attr.path();
     let tokens = quote::quote!(#[#path(#(#merged),*)]);
@@ -720,5 +738,93 @@ mod tests {
         "#};
 
         assert_eq!(report.output, expect)
+    }
+
+    #[test]
+    fn conflict_attrs_should_never_be_overwritten() {
+        let old_src = indoc! {r#"
+            use sea_orm::entity::prelude::*;
+
+            #[derive(DeriveEntityModel)]
+            #[serde(rename_all = "camelCase")]
+            pub struct Model {
+                #[serde(rename_all = "foo")]
+                pub id: i32,
+            }
+
+            impl ActiveModelBehavior for ActiveModel {}
+        "#};
+
+        let new_src = indoc! {r#"
+            use sea_orm::entity::prelude::*;
+
+            #[derive(DeriveEntityModel)]
+            #[serde(rename_all = "snake_case")]
+            pub struct Model {
+                #[serde(rename_all = "bar")]
+                pub id: i32,
+            }
+
+            impl ActiveModelBehavior for ActiveModel {}
+        "#};
+
+        let merged = merge_files(old_src, new_src).expect("merge should succeed");
+        let expected = indoc! {r#"
+            use sea_orm::entity::prelude::*;
+
+            #[derive(DeriveEntityModel)]
+            #[serde(rename_all = "camelCase")]
+            pub struct Model {
+                #[serde(rename_all = "foo")]
+                pub id: i32,
+            }
+
+            impl ActiveModelBehavior for ActiveModel {}
+        "#};
+
+        assert_eq!(merged, expected);
+    }
+
+    #[test]
+    fn conflict_attrs_should_be_merged() {
+        let old_src = indoc! {r#"
+            use sea_orm::entity::prelude::*;
+
+            #[derive(DeriveEntityModel)]
+            pub struct Model {
+                #[serde(rename = "oldId")]
+                pub id: i32,
+            }
+
+            impl ActiveModelBehavior for ActiveModel {}
+        "#};
+
+
+        let new_src = indoc! {r#"
+            use sea_orm::entity::prelude::*;
+
+            #[derive(DeriveEntityModel)]
+            pub struct Model {
+                #[serde(rename = "newId", default)]
+                pub id: i32,
+            }
+
+            impl ActiveModelBehavior for ActiveModel {}
+        "#};
+
+        let merged = merge_files(old_src, new_src).expect("merge should succeed");
+        let expected = indoc! {r#"
+            use sea_orm::entity::prelude::*;
+
+            #[derive(DeriveEntityModel)]
+            pub struct Model {
+                #[serde(rename = "oldId", default)]
+                pub id: i32,
+            }
+
+            impl ActiveModelBehavior for ActiveModel {}
+        "#};
+
+        assert_eq!(merged, expected);
     }
 }
