@@ -226,22 +226,46 @@ async fn test_select_six() -> Result<(), DbErr> {
     .insert(db)
     .await?;
 
-    let one = one::Entity::find().one(db).await?.unwrap();
+    let one = one::Entity::find()
+        .order_by_id_asc()
+        .one(db)
+        .await?
+        .unwrap();
     assert_eq!(one.id, 1);
 
-    let two = two::Entity::find().one(db).await?.unwrap();
+    let two = two::Entity::find()
+        .order_by_id_asc()
+        .one(db)
+        .await?
+        .unwrap();
     assert_eq!(two.id, 2);
 
-    let three = three::Entity::find().one(db).await?.unwrap();
+    let three = three::Entity::find()
+        .order_by_id_asc()
+        .one(db)
+        .await?
+        .unwrap();
     assert_eq!(three.id, 3);
 
-    let four = four::Entity::find().one(db).await?.unwrap();
+    let four = four::Entity::find()
+        .order_by_id_asc()
+        .one(db)
+        .await?
+        .unwrap();
     assert_eq!(four.id, 4);
 
-    let five = five::Entity::find().one(db).await?.unwrap();
+    let five = five::Entity::find()
+        .order_by_id_asc()
+        .one(db)
+        .await?
+        .unwrap();
     assert_eq!(five.id, 5);
 
-    let six = six::Entity::find().one(db).await?.unwrap();
+    let six = six::Entity::find()
+        .order_by_id_asc()
+        .one(db)
+        .await?
+        .unwrap();
     assert_eq!(six.id, 6);
 
     let (one, two) = one::Entity::find()

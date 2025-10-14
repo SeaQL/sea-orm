@@ -1,4 +1,7 @@
-use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect, QueryTrait};
+use crate::{
+    ColumnTrait, EntityTrait, Iterable, Order, PrimaryKeyToColumn, QueryFilter, QueryOrder,
+    QuerySelect, QueryTrait,
+};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use sea_query::{IntoColumnRef, SelectStatement, SimpleExpr};
@@ -234,6 +237,26 @@ where
 
     fn prepare_from(mut self) -> Self {
         self.query.from(E::default().table_ref());
+        self
+    }
+
+    /// Apply order by primary key to the query statement
+    pub fn order_by_id_asc(self) -> Self {
+        self.order_by_id(Order::Asc)
+    }
+
+    /// Apply order by primary key to the query statement
+    pub fn order_by_id_desc(self) -> Self {
+        self.order_by_id(Order::Desc)
+    }
+
+    /// Apply order by primary key to the query statement
+    pub fn order_by_id(mut self, order: Order) -> Self {
+        for key in E::PrimaryKey::iter() {
+            let col = key.into_column();
+            self.query
+                .order_by_expr(col.into_simple_expr(), order.clone());
+        }
         self
     }
 }
