@@ -284,6 +284,79 @@ async fn entity_loader_join_three() {
     // 1 layer select
     let order = order::Entity::load()
         .with(customer::Entity)
+        .order_by_asc(order::Column::Id)
+        .one(db)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        order,
+        order::ModelEx {
+            id: 101,
+            total: 10.into(),
+            bakery_id: 42,
+            customer_id: 11,
+            placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
+            bakery: None,
+            customer: Some(
+                customer::ModelEx {
+                    id: 11,
+                    name: "Bob".to_owned(),
+                    notes: Some("Sweet tooth".into()),
+                    orders: vec![],
+                }
+                .into()
+            ),
+            lineitems: vec![],
+        }
+    );
+
+    // 1 layer select
+    let order = order::Entity::load()
+        .with(bakery::Entity)
+        .with(customer::Entity)
+        .order_by_asc(order::Column::Id)
+        .one(db)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        order,
+        order::ModelEx {
+            id: 101,
+            total: 10.into(),
+            bakery_id: 42,
+            customer_id: 11,
+            placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
+            bakery: Some(
+                bakery::ModelEx {
+                    id: 42,
+                    name: "cool little bakery".into(),
+                    profit_margin: 4.1,
+                    bakers: vec![],
+                    cakes: vec![],
+                    orders: vec![],
+                }
+                .into()
+            ),
+            customer: Some(
+                customer::ModelEx {
+                    id: 11,
+                    name: "Bob".to_owned(),
+                    notes: Some("Sweet tooth".into()),
+                    orders: vec![],
+                }
+                .into()
+            ),
+            lineitems: vec![],
+        }
+    );
+
+    // 1 layer select
+    let order = order::Entity::load()
+        .with(customer::Entity)
         .with(lineitem::Entity)
         .order_by_asc(order::Column::Id)
         .one(db)

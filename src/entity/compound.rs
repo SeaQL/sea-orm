@@ -1,9 +1,10 @@
 #![allow(missing_docs)]
 use super::{ColumnTrait, EntityTrait, PrimaryKeyToColumn, PrimaryKeyTrait};
-use crate::{Iterable, QueryFilter, Related};
-use sea_query::{IntoValueTuple, TableRef};
+use crate::{IntoSimpleExpr, Iterable, QueryFilter, QueryOrder, Related};
+use sea_query::{IntoValueTuple, Order, TableRef};
 
-pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter {
+pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter + QueryOrder {
+    /// Find a model by primary key
     fn filter_by_id<T>(mut self, values: T) -> Self
     where
         T: Into<<E::PrimaryKey as PrimaryKeyTrait>::ValueType>,
@@ -16,6 +17,26 @@ pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter {
             } else {
                 unreachable!("primary key arity mismatch");
             }
+        }
+        self
+    }
+
+    /// Apply order by primary key to the query statement
+    fn order_by_id_asc(self) -> Self {
+        self.order_by_id(Order::Asc)
+    }
+
+    /// Apply order by primary key to the query statement
+    fn order_by_id_desc(self) -> Self {
+        self.order_by_id(Order::Desc)
+    }
+
+    /// Apply order by primary key to the query statement
+    fn order_by_id(mut self, order: Order) -> Self {
+        for key in E::PrimaryKey::iter() {
+            let col = key.into_column();
+            <Self as QueryOrder>::query(&mut self)
+                .order_by_expr(col.into_simple_expr(), order.clone());
         }
         self
     }
