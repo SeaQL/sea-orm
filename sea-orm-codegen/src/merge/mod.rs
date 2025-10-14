@@ -104,7 +104,7 @@ impl<'a> Fold for Merger<'a> {
         let mut uses: Vec<Item> = Vec::new();
         let mut others: Vec<Item> = Vec::new();
 
-        for item in file.items.into_iter() {
+        for item in file.items {
             match item {
                 Item::Use(u) => {
                     let u = fold::fold_item_use(self, u);
