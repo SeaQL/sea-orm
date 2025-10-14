@@ -257,7 +257,8 @@ pub async fn run_generate_command(
                 let file_path = dir.join(name);
                 println!("Writing {}", file_path.display());
 
-                if file_path.exists() && preserve_user_modifications {
+                // Nothing to preserve in mod.rs
+                if name != "mod.rs" && file_path.exists() && preserve_user_modifications {
                     let prev_content = fs::read_to_string(&file_path)?;
                     match merge_files(&prev_content, content) {
                         Ok(merged) => {
