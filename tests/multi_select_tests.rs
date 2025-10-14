@@ -92,6 +92,8 @@ mod five {
         pub four_id: i32,
         #[sea_orm(belongs_to, from = "four_id", to = "id")]
         pub four: Option<super::four::Entity>,
+        #[sea_orm(has_one)]
+        pub six: Option<super::six::Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -222,6 +224,16 @@ async fn test_select_six() -> Result<(), DbErr> {
     assert_eq!(two.unwrap().id, 2);
     assert_eq!(three.unwrap().id, 3);
 
+    let (two, one, three) = two::Entity::find()
+        .find_also_related(one::Entity)
+        .find_also_related(three::Entity)
+        .one(db)
+        .await?
+        .unwrap();
+    assert_eq!(one.unwrap().id, 1);
+    assert_eq!(two.id, 2);
+    assert_eq!(three.unwrap().id, 3);
+
     let (one, two, three, four) = one::Entity::find()
         .find_also(one::Entity, two::Entity)
         .find_also(two::Entity, three::Entity)
@@ -275,6 +287,28 @@ async fn test_select_six() -> Result<(), DbErr> {
     assert_eq!(four.unwrap().id, 4);
     assert_eq!(five.unwrap().id, 5);
     assert_eq!(six.unwrap().id, 6);
+
+    let (six, five, four) = six::Entity::find_by_id(6)
+        .find_also_related(five::Entity)
+        .and_also_related(four::Entity)
+        .one(db)
+        .await?
+        .unwrap();
+    assert_eq!(four.unwrap().id, 44);
+    assert_eq!(five.unwrap().id, 55);
+    assert_eq!(six.id, 6);
+
+    let (four, five, six) = four::Entity::find_by_id(44)
+        .find_also_related(five::Entity)
+        .and_also_related(six::Entity)
+        .one(db)
+        .await?
+        .unwrap();
+    assert_eq!(four.id, 44);
+    assert_eq!(five.unwrap().id, 55);
+    assert_eq!(six.unwrap().id, 6);
+
+    // below is EntityLoader
 
     let one_ex = one::Entity::load().one(db).await?.unwrap();
     assert_eq!(one_ex.id, 1);
