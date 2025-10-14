@@ -604,6 +604,7 @@ mod tests {
             pub struct Model {
                 pub id: i32,
                 pub name: String,
+                #[serde(rename = "bar")]
                 pub added: String,
             }
 
@@ -621,6 +622,7 @@ mod tests {
                 pub id: i32,
                 #[serde(rename = "name")]
                 pub name: String,
+                #[serde(rename = "bar")]
                 pub added: String,
             }
 
