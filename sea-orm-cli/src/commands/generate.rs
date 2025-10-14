@@ -251,25 +251,32 @@ pub async fn run_generate_command(
             let dir = Path::new(&output_dir);
             fs::create_dir_all(dir)?;
 
+            let mut merge_fallback_files: Vec<String> = Vec::new();
+
             for OutputFile { name, content } in output.files.iter() {
                 let file_path = dir.join(name);
                 println!("Writing {}", file_path.display());
 
                 if file_path.exists() && preserve_user_modifications {
                     let prev_content = fs::read_to_string(&file_path)?;
-                    let merged = match merge_files(&prev_content, content) {
-                        Ok(merged) => merged,
+                    match merge_files(&prev_content, content) {
+                        Ok(merged) => {
+                            fs::write(file_path, merged)?;
+                        }
                         Err(MergeReport {
-                            output, warnings, ..
+                            output,
+                            warnings,
+                            fallback_applied,
                         }) => {
                             for message in warnings {
                                 eprintln!("{message}");
                             }
-                            output
+                            fs::write(file_path, output)?;
+                            if fallback_applied {
+                                merge_fallback_files.push(name.clone());
+                            }
                         }
-                    };
-
-                    fs::write(file_path, merged)?;
+                    }
                 } else {
                     fs::write(file_path, content)?;
                 };
@@ -284,7 +291,16 @@ pub async fn run_generate_command(
                 }
             }
 
-            println!("... Done.");
+            if merge_fallback_files.is_empty() {
+                println!("... Done.");
+            } else {
+                return Err(format!(
+                    "Merge fallback applied for {} file(s): \n{}",
+                    merge_fallback_files.len(),
+                    merge_fallback_files.join("\n")
+                )
+                .into());
+            }
         }
     }
 
