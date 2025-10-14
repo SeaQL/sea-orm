@@ -147,6 +147,7 @@ impl<'a> Fold for Merger<'a> {
 }
 
 #[derive(Debug, Default)]
+#[doc(hidden)]
 pub struct MergeReport {
     pub output: String,
     pub warnings: Vec<String>,
@@ -185,7 +186,8 @@ impl MergeReport {
     }
 }
 
-pub fn merge_files(old_src: &str, new_src: &str) -> Result<String, MergeReport> {
+#[doc(hidden)]
+pub fn merge_entity_files(old_src: &str, new_src: &str) -> Result<String, MergeReport> {
     let new_file = match parse_file(new_src) {
         Ok(file) => file,
         Err(err) => {
@@ -562,7 +564,7 @@ mod tests {
             "#
         };
 
-        let merged = merge_files(old_file, curr).expect("merge failed");
+        let merged = merge_entity_files(old_file, curr).expect("merge failed");
         let expected = indoc! {r#"
             use sea_orm::entity::prelude::*;
             use crate::helpers::Helper;
@@ -629,7 +631,7 @@ mod tests {
             impl ActiveModelBehavior for ActiveModel {}
             "#};
 
-        let merged = merge_files(old_src, new_src).expect("merge should succeed");
+        let merged = merge_entity_files(old_src, new_src).expect("merge should succeed");
 
         let expected = indoc! {r#"
             use sea_orm::entity::prelude::*;
@@ -675,7 +677,7 @@ mod tests {
             "#
         };
 
-        let merged = merge_files(old_src, new_src).expect("merge should succeed");
+        let merged = merge_entity_files(old_src, new_src).expect("merge should succeed");
 
         let expected = indoc! {r#"
             use sea_orm::entity::prelude::*;
@@ -714,7 +716,7 @@ mod tests {
             "#
         };
 
-        let report = merge_files(old_src, new_src).unwrap_err();
+        let report = merge_entity_files(old_src, new_src).unwrap_err();
         assert!(report.fallback_applied);
 
         let expect = indoc! {r#"
@@ -768,7 +770,7 @@ mod tests {
             impl ActiveModelBehavior for ActiveModel {}
         "#};
 
-        let merged = merge_files(old_src, new_src).expect("merge should succeed");
+        let merged = merge_entity_files(old_src, new_src).expect("merge should succeed");
         let expected = indoc! {r#"
             use sea_orm::entity::prelude::*;
 
@@ -811,7 +813,7 @@ mod tests {
             impl ActiveModelBehavior for ActiveModel {}
         "#};
 
-        let merged = merge_files(old_src, new_src).expect("merge should succeed");
+        let merged = merge_entity_files(old_src, new_src).expect("merge should succeed");
         let expected = indoc! {r#"
             use sea_orm::entity::prelude::*;
 
