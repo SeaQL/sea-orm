@@ -1,6 +1,5 @@
 use crate::{
-    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectThree, SelectTwo,
-    SelectTwoMany, Topology,
+    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectTwo, SelectTwoMany,
 };
 use core::marker::PhantomData;
 use sea_query::{Iden, IntoIden, Order, SelectExpr, SelectStatement, SimpleExpr};
@@ -8,7 +7,7 @@ use std::borrow::Cow;
 
 macro_rules! select_def {
     ( $ident: ident, $str: expr ) => {
-        /// Implements the traits [Iden] and [IdenStatic] for a type
+        /// Implements the traits [Iden] for select alias
         #[derive(Debug, Clone, Copy)]
         pub struct $ident;
 
@@ -33,6 +32,9 @@ macro_rules! select_def {
 select_def!(SelectA, "A_");
 select_def!(SelectB, "B_");
 select_def!(SelectC, "C_");
+select_def!(SelectD, "D_");
+select_def!(SelectE, "E_");
+select_def!(SelectF, "F_");
 
 impl<E> Select<E>
 where
@@ -156,31 +158,7 @@ where
     }
 }
 
-impl<E, F, G, TOP> SelectThree<E, F, G, TOP>
-where
-    E: EntityTrait,
-    F: EntityTrait,
-    G: EntityTrait,
-    TOP: Topology,
-{
-    pub(crate) fn new(query: SelectStatement) -> Self {
-        Self::new_without_prepare(query).prepare_select()
-    }
-
-    pub(crate) fn new_without_prepare(query: SelectStatement) -> Self {
-        Self {
-            query,
-            entity: PhantomData,
-        }
-    }
-
-    fn prepare_select(mut self) -> Self {
-        prepare_select_col::<G, _, _>(&mut self, SelectC);
-        self
-    }
-}
-
-fn prepare_select_col<F, S, A>(selector: &mut S, alias: A)
+pub(crate) fn prepare_select_col<F, S, A>(selector: &mut S, alias: A)
 where
     F: EntityTrait,
     S: QueryTrait<QueryStatement = SelectStatement>,
