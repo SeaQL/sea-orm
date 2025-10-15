@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, Condition, ConnectionTrait, DbErr, EntityTrait, Identity, JoinType, ModelTrait,
-    QueryFilter, QuerySelect, Related, RelationType, Select, dynamic, error::*,
+    ColumnTrait, Condition, ConnectionTrait, DbBackend, DbErr, EntityTrait, Identity, JoinType,
+    ModelTrait, QueryFilter, QuerySelect, Related, RelationType, Select, dynamic, error::*,
 };
 use async_trait::async_trait;
 use itertools::Itertools;
@@ -260,6 +260,7 @@ where
                     &via_rel.from_col,
                     &via_rel.to_col,
                     &pkeys,
+                    db.get_database_backend(),
                 )?;
                 let stmt = V::find().filter(condition);
                 let data = stmt.all(db).await?;
@@ -279,6 +280,7 @@ where
                 &rel_def.from_col,
                 &rel_def.to_col,
                 &keys,
+                db.get_database_backend(),
             )?;
 
             let stmt = QueryFilter::filter(stmt.select(), condition);
@@ -517,8 +519,13 @@ where
             return Ok(Vec::new());
         }
 
-        let condition =
-            prepare_condition::<Model>(&via_def.to_tbl, &via_def.from_col, &via_def.to_col, &keys)?;
+        let condition = prepare_condition::<Model>(
+            &via_def.to_tbl,
+            &via_def.from_col,
+            &via_def.to_col,
+            &keys,
+            db.get_database_backend(),
+        )?;
 
         let stmt = QueryFilter::filter(
             stmt.join_rev(JoinType::InnerJoin, <Model::Entity as Related<R>>::to()),
@@ -574,8 +581,13 @@ where
             return Ok(Vec::new());
         }
 
-        let condition =
-            prepare_condition::<Model>(&rel_def.to_tbl, &rel_def.from_col, &rel_def.to_col, &keys)?;
+        let condition = prepare_condition::<Model>(
+            &rel_def.to_tbl,
+            &rel_def.from_col,
+            &rel_def.to_col,
+            &keys,
+            db.get_database_backend(),
+        )?;
 
         let stmt = QueryFilter::filter(stmt, condition);
 
@@ -700,10 +712,18 @@ fn prepare_condition<Model>(
     from: &Identity,
     to: &Identity,
     keys: &[ValueTuple],
+    backend: DbBackend,
 ) -> Result<Condition, DbErr>
 where
     Model: ModelTrait,
 {
+    fn arity_mismatch(expected: usize, actual: &ValueTuple) -> DbErr {
+        DbErr::Type(format!(
+            "Loader: arity mismatch: expected {expected}, got {} in {actual:?}",
+            actual.arity()
+        ))
+    }
+
     let mut keys = keys.iter().unique().peekable();
     let column_pairs = resolve_column_pairs::<Model>(table, from, to)?;
 
@@ -733,10 +753,7 @@ where
 
         for key in keys {
             if key.arity() != 1 {
-                return Err(DbErr::Type(format!(
-                    "Loader: key arity mismatch (expected {arity}, got {:?})",
-                    key
-                )));
+                return Err(arity_mismatch(1, key));
             }
 
             casted_values.push(
@@ -752,27 +769,52 @@ where
         return Ok(Expr::col(column_ref.clone()).is_in(casted_values).into());
     }
 
-    let mut outer = Condition::any();
-    for key in keys {
-        let key_arity = key.arity();
-        if arity != key_arity {
-            return Err(DbErr::Type(format!(
-                "Loader: key arity mismatch (expected {arity}, got {})",
-                key_arity
-            )));
+    let cond = if cfg!(feature = "sqlite-3_15") && matches!(backend, DbBackend::Sqlite) {
+        // SQLite supports row value expressions since 3.15.0
+        //  https://www.sqlite.org/releaselog/3_15_0.html
+        let mut outer = Condition::any();
+        for key in keys {
+            let key_arity = key.arity();
+            if arity != key_arity {
+                return Err(arity_mismatch(arity, key));
+            }
+
+            let mut inner = Condition::all();
+            for ((column_ref, model_column), value) in
+                column_pairs.iter().zip(key.clone().into_iter())
+            {
+                inner = inner
+                    .add(Expr::col(column_ref.clone()).eq(model_column.save_as(Expr::val(value))));
+            }
+
+            outer = outer.add(inner);
         }
 
-        let mut inner = Condition::all();
-        for ((column_ref, model_column), value) in column_pairs.iter().zip(key.clone().into_iter())
-        {
-            inner =
-                inner.add(Expr::col(column_ref.clone()).eq(model_column.save_as(Expr::val(value))));
-        }
+        outer
+    } else {
+        // Build `(c1, c2, ...) IN ((v11, v12, ...), (v21, v22, ...), ...)`
+        let values = keys
+            .map(|key| {
+                let key_arity = key.arity();
+                if arity != key_arity {
+                    Err(arity_mismatch(arity, key))
+                } else {
+                    Ok(key.clone())
+                }
+            })
+            .collect::<Result<Vec<_>, DbErr>>()?;
 
-        outer = outer.add(inner);
-    }
+        let expr = Expr::tuple(
+            column_pairs
+                .iter()
+                .map(|(column_ref, _)| Expr::col(column_ref.clone())),
+        )
+        .in_tuples(values);
 
-    Ok(outer)
+        expr.into()
+    };
+
+    Ok(cond)
 }
 
 type ColumnPairs<M> = Vec<(
