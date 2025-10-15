@@ -769,7 +769,7 @@ where
         return Ok(Expr::col(column_ref.clone()).is_in(casted_values).into());
     }
 
-    let cond = if cfg!(feature = "sqlite-3_15") && matches!(backend, DbBackend::Sqlite) {
+    let cond = if cfg!(not(feature = "sqlite-3_15")) && matches!(backend, DbBackend::Sqlite) {
         // SQLite supports row value expressions since 3.15.0
         //  https://www.sqlite.org/releaselog/3_15_0.html
         let mut outer = Condition::any();

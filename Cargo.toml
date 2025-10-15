@@ -73,6 +73,7 @@ default = [
     "with-uuid",
     "with-time",
     "sqlite-use-returning-for-3_35",
+    "sqlite-3_15",
 ]
 macros = ["sea-orm-macros/derive"]
 mock = []
