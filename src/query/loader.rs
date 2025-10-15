@@ -260,7 +260,7 @@ where
                     &via_rel.from_col,
                     &via_rel.to_col,
                     &pkeys,
-                    db.get_database_backend(),
+                    db,
                 )?;
                 let stmt = V::find().filter(condition);
                 let data = stmt.all(db).await?;
@@ -280,7 +280,7 @@ where
                 &rel_def.from_col,
                 &rel_def.to_col,
                 &keys,
-                db.get_database_backend(),
+                db,
             )?;
 
             let stmt = QueryFilter::filter(stmt.select(), condition);
@@ -524,7 +524,7 @@ where
             &via_def.from_col,
             &via_def.to_col,
             &keys,
-            db.get_database_backend(),
+            db,
         )?;
 
         let stmt = QueryFilter::filter(
@@ -586,7 +586,7 @@ where
             &rel_def.from_col,
             &rel_def.to_col,
             &keys,
-            db.get_database_backend(),
+            db,
         )?;
 
         let stmt = QueryFilter::filter(stmt, condition);
@@ -670,14 +670,14 @@ where
     let vec = left
         .iter()
         .zip_eq(right.iter())
-        .map(|(a, aa)| {
+        .map(|(l, r)| {
             let col_a =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &a.inner(),
+                    &l.inner(),
                 )
-                .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}'")))?;
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{l}'")))?;
             Ok(dynamic::FieldType::new(
-                aa.clone(),
+                r.clone(),
                 Model::get_value_type(col_a),
             ))
         })
@@ -707,50 +707,122 @@ fn dyn_model_to_key(dyn_model: dynamic::Model) -> Result<ValueTuple, DbErr> {
     })
 }
 
-// Perf: Perhaps we could lift the is_postgres check and then implement a simpler method for other database backends that doesn't require type casting.
-// But in any case, these computations are very lightweight.
+fn arity_mismatch(expected: usize, actual: &ValueTuple) -> DbErr {
+    DbErr::Type(format!(
+        "Loader: arity mismatch: expected {expected}, got {} in {actual:?}",
+        actual.arity()
+    ))
+}
+
+#[inline]
 fn prepare_condition<Model>(
     table: &TableRef,
     from: &Identity,
     to: &Identity,
     keys: &[ValueTuple],
-    backend: DbBackend,
+    db: &impl ConnectionTrait,
 ) -> Result<Condition, DbErr>
 where
     Model: ModelTrait,
 {
-    fn arity_mismatch(expected: usize, actual: &ValueTuple) -> DbErr {
-        DbErr::Type(format!(
-            "Loader: arity mismatch: expected {expected}, got {} in {actual:?}",
-            actual.arity()
-        ))
+    let db_backend = db.get_database_backend();
+    if matches!(db_backend, DbBackend::Postgres) {
+        prepare_condition_with_save_as::<Model>(table, from, to, keys)
+    } else {
+        prepare_condition_simple(table, to, keys, db_backend)
     }
+}
 
+fn prepare_condition_with_save_as<Model>(
+    table: &TableRef,
+    from: &Identity,
+    to: &Identity,
+    keys: &[ValueTuple],
+) -> Result<Condition, DbErr>
+where
+    Model: ModelTrait,
+{
     let keys = keys.iter().unique();
-    let column_pairs = resolve_column_pairs::<Model>(table, from, to)?;
+    let (from_cols, to_cols) = resolve_column_pairs::<Model>(table, from, to)?;
 
-    if column_pairs.is_empty() {
+    if from_cols.is_empty() || to_cols.is_empty() {
         return Err(DbErr::Type(format!(
             "Loader: resolved zero columns for identities {from:?} -> {to:?}"
         )));
     }
 
-    let arity = column_pairs.len();
+    let arity = from_cols.len();
+
+    // Build `(c1, c2, ...) IN ((v11, v12, ...), (v21, v22, ...), ...)`
+    let values = keys
+        .map(|key| {
+            let key_arity = key.arity();
+            if arity != key_arity {
+                return Err(arity_mismatch(arity, key));
+            }
+
+            // For Postgres, we need to use `AS` to cast the value to the correct type
+
+            let value_iter = key.clone().into_iter().map(Expr::val);
+
+            let tuple_exprs: Vec<_> = from_cols
+                .iter()
+                .zip(value_iter)
+                .map(|(model_column, value)| model_column.save_as(value))
+                .collect();
+
+            Ok(Expr::tuple(tuple_exprs))
+        })
+        .collect::<Result<Vec<_>, DbErr>>()?;
+
+    let table_columns = to
+        .iter()
+        .cloned()
+        .map(|col| table_column(table, &col))
+        .map(Expr::col)
+        .collect_vec();
+
+    let expr = Expr::tuple(table_columns).is_in(values);
+
+    Ok(expr.into())
+}
+
+// For loaders that do not require calling save_as
+fn prepare_condition_simple(
+    table: &TableRef,
+    to: &Identity,
+    keys: &[ValueTuple],
+    backend: DbBackend,
+) -> Result<Condition, DbErr> {
+    let arity = to.arity();
+    let keys = keys.iter().unique();
+
+    let table_columns = to
+        .iter()
+        .cloned()
+        .map(|col| table_column(table, &col))
+        .map(Expr::col)
+        .collect_vec();
 
     if cfg!(not(feature = "sqlite-3_15")) && matches!(backend, DbBackend::Sqlite) {
         // SQLite supports row value expressions since 3.15.0
         // https://www.sqlite.org/releaselog/3_15_0.html
         let mut outer = Condition::any();
+
         for key in keys {
             let key_arity = key.arity();
             if arity != key_arity {
                 return Err(arity_mismatch(arity, key));
             }
 
-            let mut inner = Condition::all();
-            for ((column_ref, _), value) in column_pairs.iter().zip(key.clone().into_iter()) {
-                inner = inner.add(Expr::col(column_ref.clone()).eq(Expr::val(value)));
-            }
+            let table_columns = table_columns.iter().cloned();
+            let values = key.clone().into_iter().map(Expr::val);
+
+            let inner = table_columns
+                .zip(values)
+                .fold(Condition::all(), |cond, (column, value)| {
+                    cond.add(column.eq(value))
+                });
 
             outer = outer.add(inner);
         }
@@ -765,36 +837,21 @@ where
                     return Err(arity_mismatch(arity, key));
                 }
 
-                // For Postgres, we need to use `AS` to cast the value to the correct type
-                let tuple_exprs: Vec<_> = if matches!(backend, DbBackend::Postgres) {
-                    key.clone()
-                        .into_iter()
-                        .zip(column_pairs.iter().map(|(_, model_column)| model_column))
-                        .map(|(v, model_column)| model_column.save_as(Expr::val(v)))
-                        .collect()
-                } else {
-                    key.clone().into_iter().map(Expr::val).collect()
-                };
+                let tuple_exprs = key.clone().into_iter().map(Expr::val);
 
                 Ok(Expr::tuple(tuple_exprs))
             })
             .collect::<Result<Vec<_>, DbErr>>()?;
 
-        let expr = Expr::tuple(
-            column_pairs
-                .iter()
-                .map(|(column_ref, _)| Expr::col(column_ref.clone())),
-        )
-        .is_in(values);
+        let expr = Expr::tuple(table_columns).is_in(values);
 
         Ok(expr.into())
     }
 }
 
-type ColumnPairs<M> = Vec<(
-    ColumnRef,
-    <<M as ModelTrait>::Entity as EntityTrait>::Column,
-)>;
+type ModelColumn<M> = <<M as ModelTrait>::Entity as EntityTrait>::Column;
+
+type ColumnPairs<M> = (Vec<ModelColumn<M>>, Vec<ColumnRef>);
 
 fn resolve_column_pairs<Model>(
     table: &TableRef,
@@ -803,7 +860,7 @@ fn resolve_column_pairs<Model>(
 ) -> Result<ColumnPairs<Model>, DbErr>
 where
     Model: ModelTrait,
-    <<Model as ModelTrait>::Entity as EntityTrait>::Column: ColumnTrait + Clone,
+    ModelColumn<Model>: ColumnTrait,
 {
     let from_columns = parse_identity_columns::<Model>(from)?;
     let to_columns = column_refs_from_identity(table, to);
@@ -814,7 +871,7 @@ where
         )));
     }
 
-    Ok(to_columns.into_iter().zip(from_columns).collect())
+    Ok((from_columns, to_columns))
 }
 
 fn column_refs_from_identity(table: &TableRef, identity: &Identity) -> Vec<ColumnRef> {
@@ -824,9 +881,7 @@ fn column_refs_from_identity(table: &TableRef, identity: &Identity) -> Vec<Colum
         .collect()
 }
 
-fn parse_identity_columns<Model>(
-    identity: &Identity,
-) -> Result<Vec<<<Model as ModelTrait>::Entity as EntityTrait>::Column>, DbErr>
+fn parse_identity_columns<Model>(identity: &Identity) -> Result<Vec<ModelColumn<Model>>, DbErr>
 where
     Model: ModelTrait,
 {
