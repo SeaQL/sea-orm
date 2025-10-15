@@ -257,7 +257,7 @@ pub async fn run_generate_command(
                 let file_path = dir.join(name);
                 println!("Writing {}", file_path.display());
 
-                if matches!(
+                if !matches!(
                     name.as_str(),
                     "mod.rs" | "lib.rs" | "prelude.rs" | "sea_orm_active_enums.rs"
                 ) && file_path.exists()

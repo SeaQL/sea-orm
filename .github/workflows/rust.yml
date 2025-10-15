@@ -358,8 +358,8 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-sqlite-tests-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features default,rbac,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features default,rbac,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
@@ -409,8 +409,8 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-mysql-tests-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features default,rbac,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features default,rbac,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
@@ -462,8 +462,8 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-pg-tests-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features default,rbac,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features default,rbac,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   postgres:
     name: Postgres
@@ -509,7 +509,7 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features default,rbac,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features default,rbac,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
