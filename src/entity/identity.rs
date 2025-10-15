@@ -25,6 +25,13 @@ impl Identity {
             Self::Many(vec) => vec.len(),
         }
     }
+
+    pub(crate) fn iter(&self) -> Iter<'_> {
+        Iter {
+            identity: self,
+            index: 0,
+        }
+    }
 }
 
 impl IntoIterator for Identity {
@@ -66,6 +73,41 @@ impl Iden for Identity {
 
     fn unquoted(&self) -> &str {
         panic!("Should not call this")
+    }
+}
+
+pub(crate) struct Iter<'a> {
+    identity: &'a Identity,
+    index: usize,
+}
+
+impl<'a> Iterator for Iter<'a> {
+    type Item = &'a DynIden;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = match self.identity {
+            Identity::Unary(iden1) => {
+                if self.index == 0 {
+                    Some(iden1)
+                } else {
+                    None
+                }
+            }
+            Identity::Binary(iden1, iden2) => match self.index {
+                0 => Some(iden1),
+                1 => Some(iden2),
+                _ => None,
+            },
+            Identity::Ternary(iden1, iden2, iden3) => match self.index {
+                0 => Some(iden1),
+                1 => Some(iden2),
+                2 => Some(iden3),
+                _ => None,
+            },
+            Identity::Many(vec) => vec.get(self.index),
+        };
+        self.index += 1;
+        result
     }
 }
 
