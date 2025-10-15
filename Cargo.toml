@@ -47,6 +47,7 @@ ouroboros = { version = "0.18", default-features = false }
 url = { version = "2.2", default-features = false }
 thiserror = { version = "2", default-features = false }
 derive_more = { version = "2", features = ["debug"] }
+itertools = "0.14.0"
 
 [dev-dependencies]
 smol = { version = "1.2" }

@@ -1,15 +1,11 @@
 use crate::{
-    Condition, ConnectionTrait, DbErr, EntityTrait, Identity, JoinType, ModelTrait, QueryFilter,
-    QuerySelect, Related, RelationType, Select, dynamic, error::*,
+    ColumnTrait, Condition, ConnectionTrait, DbErr, EntityTrait, Identity, JoinType, ModelTrait,
+    QueryFilter, QuerySelect, Related, RelationType, Select, dynamic, error::*,
 };
 use async_trait::async_trait;
-use sea_query::{
-    ColumnRef, DynIden, Expr, ExprTrait, IntoColumnRef, SimpleExpr, TableRef, ValueTuple,
-};
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
+use itertools::Itertools;
+use sea_query::{ColumnRef, DynIden, Expr, ExprTrait, IntoColumnRef, TableRef, ValueTuple};
+use std::{collections::HashMap, str::FromStr};
 
 /// Entity, or a Select<Entity>; to be used as parameters in [`LoaderTrait`]
 pub trait EntityOrSelect<E: EntityTrait>: Send {
@@ -257,7 +253,12 @@ where
             let mut keymap: HashMap<ValueTuple, Vec<ValueTuple>> = Default::default();
 
             let keys: Vec<ValueTuple> = {
-                let condition = prepare_condition(&via_rel.to_tbl, &via_rel.to_col, &pkeys);
+                let condition = prepare_condition::<M>(
+                    &via_rel.to_tbl,
+                    &via_rel.from_col,
+                    &via_rel.to_col,
+                    &pkeys,
+                )?;
                 let stmt = V::find().filter(condition);
                 let data = stmt.all(db).await?;
                 for model in data {
@@ -271,7 +272,12 @@ where
                 keymap.values().flatten().cloned().collect()
             };
 
-            let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
+            let condition = prepare_condition::<V::Model>(
+                &rel_def.to_tbl,
+                &rel_def.from_col,
+                &rel_def.to_col,
+                &keys,
+            )?;
 
             let stmt = QueryFilter::filter(stmt.select(), condition);
 
@@ -509,7 +515,8 @@ where
             return Ok(Vec::new());
         }
 
-        let condition = prepare_condition(&via_def.to_tbl, &via_def.to_col, &keys);
+        let condition =
+            prepare_condition::<Model>(&via_def.to_tbl, &via_def.from_col, &via_def.to_col, &keys)?;
 
         let stmt = QueryFilter::filter(
             stmt.join_rev(JoinType::InnerJoin, <Model::Entity as Related<R>>::to()),
@@ -565,7 +572,8 @@ where
             return Ok(Vec::new());
         }
 
-        let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
+        let condition =
+            prepare_condition::<Model>(&rel_def.to_tbl, &rel_def.from_col, &rel_def.to_col, &keys)?;
 
         let stmt = QueryFilter::filter(stmt, condition);
 
@@ -759,41 +767,153 @@ fn dyn_model_to_key(dyn_model: dynamic::Model) -> Result<ValueTuple, DbErr> {
     })
 }
 
-fn prepare_condition(table: &TableRef, col: &Identity, keys: &[ValueTuple]) -> Condition {
-    let keys = if !keys.is_empty() {
-        let set: HashSet<_> = keys.iter().cloned().collect();
-        set.into_iter().collect()
-    } else {
-        Vec::new()
-    };
+fn prepare_condition<Model>(
+    table: &TableRef,
+    from: &Identity,
+    to: &Identity,
+    keys: &[ValueTuple],
+) -> Result<Condition, DbErr>
+where
+    Model: ModelTrait,
+{
+    let mut keys = keys.iter().unique().peekable();
+    let column_pairs = resolve_column_pairs::<Model>(table, from, to)?;
 
-    match col {
-        Identity::Unary(column_a) => {
-            let column_a = table_column(table, column_a);
-            Condition::all().add(Expr::col(column_a).is_in(keys.into_iter().flatten()))
-        }
-        Identity::Binary(column_a, column_b) => Condition::all().add(
-            Expr::tuple([
-                SimpleExpr::Column(table_column(table, column_a)),
-                SimpleExpr::Column(table_column(table, column_b)),
-            ])
-            .in_tuples(keys),
-        ),
-        Identity::Ternary(column_a, column_b, column_c) => Condition::all().add(
-            Expr::tuple([
-                SimpleExpr::Column(table_column(table, column_a)),
-                SimpleExpr::Column(table_column(table, column_b)),
-                SimpleExpr::Column(table_column(table, column_c)),
-            ])
-            .in_tuples(keys),
-        ),
-        Identity::Many(cols) => {
-            let columns = cols
-                .iter()
-                .map(|col| SimpleExpr::Column(table_column(table, col)));
-            Condition::all().add(Expr::tuple(columns).in_tuples(keys))
-        }
+    if column_pairs.is_empty() {
+        return Err(DbErr::Type(format!(
+            "Loader: resolved zero columns for identities {from:?} -> {to:?}"
+        )));
     }
+
+    // Return `IN ()` for empty keys
+    if keys.peek().is_none() {
+        let expr = Expr::tuple(
+            column_pairs
+                .iter()
+                .map(|(column_ref, _)| Expr::col(column_ref.clone())),
+        )
+        .in_tuples(Vec::<ValueTuple>::new());
+        return Ok(expr.into());
+    }
+
+    let arity = column_pairs.len();
+
+    // Keep single column case as an IN clause.
+    if arity == 1 {
+        let (column_ref, model_column) = &column_pairs[0];
+        let mut casted_values = Vec::new();
+
+        for key in keys {
+            if key.arity() != 1 {
+                return Err(DbErr::Type(format!(
+                    "Loader: key arity mismatch (expected {arity}, got {:?})",
+                    key
+                )));
+            }
+
+            casted_values
+                .push(model_column.save_as(Expr::val(key.clone().into_iter().next().unwrap())));
+        }
+
+        return Ok(Expr::col(column_ref.clone()).is_in(casted_values).into());
+    }
+
+    let mut outer = Condition::any();
+    for key in keys {
+        let key_arity = key.arity();
+        if arity != key_arity {
+            return Err(DbErr::Type(format!(
+                "Loader: key arity mismatch (expected {arity}, got {})",
+                key_arity
+            )));
+        }
+
+        let mut inner = Condition::all();
+        for ((column_ref, model_column), value) in column_pairs.iter().zip(key.clone().into_iter())
+        {
+            inner =
+                inner.add(Expr::col(column_ref.clone()).eq(model_column.save_as(Expr::val(value))));
+        }
+
+        outer = outer.add(inner);
+    }
+
+    Ok(outer)
+}
+
+fn resolve_column_pairs<Model>(
+    table: &TableRef,
+    from: &Identity,
+    to: &Identity,
+) -> Result<
+    Vec<(
+        ColumnRef,
+        <<Model as ModelTrait>::Entity as EntityTrait>::Column,
+    )>,
+    DbErr,
+>
+where
+    Model: ModelTrait,
+    <<Model as ModelTrait>::Entity as EntityTrait>::Column: ColumnTrait + Clone,
+{
+    let from_columns = parse_identity_columns::<Model>(from)?;
+    let to_columns = column_refs_from_identity(table, to);
+
+    if from_columns.len() != to_columns.len() {
+        return Err(DbErr::Type(format!(
+            "Loader: identity column count mismatch between {from:?} and {to:?}"
+        )));
+    }
+
+    Ok(to_columns.into_iter().zip(from_columns).collect())
+}
+
+fn column_refs_from_identity(table: &TableRef, identity: &Identity) -> Vec<ColumnRef> {
+    match identity {
+        Identity::Unary(to_col) => vec![table_column(table, to_col)],
+        Identity::Binary(to_a, to_b) => vec![table_column(table, to_a), table_column(table, to_b)],
+        Identity::Ternary(to_a, to_b, to_c) => vec![
+            table_column(table, to_a),
+            table_column(table, to_b),
+            table_column(table, to_c),
+        ],
+        Identity::Many(to_cols) => to_cols.iter().map(|col| table_column(table, col)).collect(),
+    }
+}
+
+fn parse_identity_columns<Model>(
+    identity: &Identity,
+) -> Result<Vec<<<Model as ModelTrait>::Entity as EntityTrait>::Column>, DbErr>
+where
+    Model: ModelTrait,
+{
+    match identity {
+        Identity::Unary(from_col) => Ok(vec![try_conv_ident_to_column::<Model>(from_col)?]),
+        Identity::Binary(from_a, from_b) => Ok(vec![
+            try_conv_ident_to_column::<Model>(from_a)?,
+            try_conv_ident_to_column::<Model>(from_b)?,
+        ]),
+        Identity::Ternary(from_a, from_b, from_c) => Ok(vec![
+            try_conv_ident_to_column::<Model>(from_a)?,
+            try_conv_ident_to_column::<Model>(from_b)?,
+            try_conv_ident_to_column::<Model>(from_c)?,
+        ]),
+        Identity::Many(from_cols) => from_cols
+            .iter()
+            .map(|from_col| try_conv_ident_to_column::<Model>(from_col))
+            .collect(),
+    }
+}
+
+fn try_conv_ident_to_column<Model>(
+    ident: &DynIden,
+) -> Result<<<Model as ModelTrait>::Entity as EntityTrait>::Column, DbErr>
+where
+    Model: ModelTrait,
+{
+    let column_name = ident.inner();
+    <<Model as ModelTrait>::Entity as EntityTrait>::Column::from_str(&column_name)
+        .map_err(|_| DbErr::Type(format!("Failed at mapping '{column_name}' to column")))
 }
 
 fn table_column(tbl: &TableRef, col: &DynIden) -> ColumnRef {
