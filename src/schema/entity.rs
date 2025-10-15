@@ -47,40 +47,33 @@ impl Schema {
     /// Creates a column definition for example to update a table.
     ///
     /// ```
-    /// use crate::sea_orm::IdenStatic;
-    /// use sea_orm::{
-    ///     ActiveModelBehavior, ColumnDef, ColumnTrait, ColumnType, DbBackend, EntityName,
-    ///     EntityTrait, EnumIter, PrimaryKeyTrait, RelationDef, RelationTrait, Schema,
-    /// };
-    /// use sea_orm_macros::{DeriveEntityModel, DerivePrimaryKey};
-    /// use sea_query::{MysqlQueryBuilder, TableAlterStatement};
+    /// use sea_orm::sea_query::TableAlterStatement;
+    /// use sea_orm::{DbBackend, Schema, Statement};
     ///
-    /// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-    /// #[sea_orm(table_name = "posts")]
-    /// pub struct Model {
-    ///     #[sea_orm(primary_key)]
-    ///     pub id: u32,
-    ///     pub title: String,
-    /// }
+    /// mod post {
+    ///     use sea_orm::entity::prelude::*;
     ///
-    /// #[derive(Copy, Clone, Debug, EnumIter)]
-    /// pub enum Relation {}
-    ///
-    /// impl RelationTrait for Relation {
-    ///     fn def(&self) -> RelationDef {
-    ///         panic!("No RelationDef")
+    ///     #[sea_orm::model]
+    ///     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+    ///     #[sea_orm(table_name = "posts")]
+    ///     pub struct Model {
+    ///         #[sea_orm(primary_key)]
+    ///         pub id: u32,
+    ///         pub title: String,
     ///     }
+    ///
+    ///     impl ActiveModelBehavior for ActiveModel {}
     /// }
-    /// impl ActiveModelBehavior for ActiveModel {}
     ///
     /// let schema = Schema::new(DbBackend::MySql);
     ///
-    /// let mut alter_table = TableAlterStatement::new()
-    ///     .table(Entity)
-    ///     .add_column(&mut schema.get_column_def::<Entity>(Column::Title))
-    ///     .take();
+    /// let alter_table: Statement = DbBackend::MySql.build(
+    ///     TableAlterStatement::new()
+    ///         .table(post::Entity)
+    ///         .add_column(&mut schema.get_column_def::<post::Entity>(post::Column::Title)),
+    /// );
     /// assert_eq!(
-    ///     alter_table.to_string(MysqlQueryBuilder::default()),
+    ///     alter_table.to_string(),
     ///     "ALTER TABLE `posts` ADD COLUMN `title` varchar(255) NOT NULL"
     /// );
     /// ```

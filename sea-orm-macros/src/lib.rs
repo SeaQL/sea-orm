@@ -1105,7 +1105,17 @@ pub fn raw_sql(input: TokenStream) -> TokenStream {
 pub fn sea_orm_model(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::ItemStruct);
 
-    match derives::expand_sea_orm_model(input) {
+    match derives::expand_sea_orm_model(input, false) {
+        Ok(token_stream) => token_stream.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+#[proc_macro_attribute]
+pub fn sea_orm_compact_model(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as syn::ItemStruct);
+
+    match derives::expand_sea_orm_model(input, true) {
         Ok(token_stream) => token_stream.into(),
         Err(e) => e.to_compile_error().into(),
     }

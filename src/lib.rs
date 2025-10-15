@@ -680,7 +680,7 @@ pub use sea_orm_macros::{
     DeriveEntity, DeriveEntityModel, DeriveIden, DeriveIntoActiveModel, DeriveMigrationName,
     DeriveModel, DeriveModelEx, DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity,
     DeriveRelation, DeriveValueType, FromJsonQueryResult, FromQueryResult, raw_sql,
-    sea_orm_model as model,
+    sea_orm_compact_model as compact_model, sea_orm_model as model,
 };
 
 pub use sea_query;
