@@ -158,7 +158,8 @@ impl SchemaBuilder {
         Ok(())
     }
 
-    /// Apply this schema to a fresh database. Will fail if any table already exists.
+    /// Apply this schema to a database, will create all registered tables, columns, indexes, foreign keys.
+    /// Will fail if any table already exists. Use [`sync`] if you want an incremental version that can perform schema diff.
     pub async fn apply<C: ConnectionTrait>(self, db: &C) -> Result<(), DbErr> {
         for table_name in self.sorted_tables() {
             if let Some(entity) = self
