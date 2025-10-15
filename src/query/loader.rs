@@ -724,24 +724,13 @@ where
         ))
     }
 
-    let mut keys = keys.iter().unique().peekable();
+    let keys = keys.iter().unique();
     let column_pairs = resolve_column_pairs::<Model>(table, from, to)?;
 
     if column_pairs.is_empty() {
         return Err(DbErr::Type(format!(
             "Loader: resolved zero columns for identities {from:?} -> {to:?}"
         )));
-    }
-
-    // Return `IN ()` for empty keys
-    if keys.peek().is_none() {
-        let expr = Expr::tuple(
-            column_pairs
-                .iter()
-                .map(|(column_ref, _)| Expr::col(column_ref.clone())),
-        )
-        .in_tuples(Vec::<ValueTuple>::new());
-        return Ok(expr.into());
     }
 
     let arity = column_pairs.len();
