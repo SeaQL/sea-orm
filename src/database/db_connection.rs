@@ -1,6 +1,7 @@
 use crate::{
     AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel, QueryResult,
-    Statement, StatementBuilder, StreamTrait, TransactionError, TransactionTrait, error::*,
+    Schema, SchemaBuilder, Statement, StatementBuilder, StreamTrait, TransactionError,
+    TransactionTrait, error::*,
 };
 use std::{fmt::Debug, future::Future, pin::Pin};
 use tracing::instrument;
@@ -519,6 +520,11 @@ impl DatabaseConnection {
         }
     }
 
+    /// Creates a [`SchemaBuilder`] for this backend
+    pub fn get_schema_builder(&self) -> SchemaBuilder {
+        Schema::new(self.get_database_backend()).builder()
+    }
+
     /// Sets a callback to metric this connection
     pub fn set_metric_callback<F>(&mut self, _callback: F)
     where
@@ -671,9 +677,7 @@ impl DbBackend {
             Self::MySql | Self::Postgres | Self::Sqlite => boolean.into(),
         }
     }
-}
 
-impl DatabaseBackend {
     /// Get the display string for this enum
     pub fn as_str(&self) -> &'static str {
         match self {

@@ -3,9 +3,7 @@
 pub mod common;
 
 use crate::common::TestContext;
-pub use sea_orm::{
-    Database, DbConn, Schema, entity::*, error::*, query::*, sea_query, tests_cfg::*,
-};
+pub use sea_orm::{Database, DbConn, entity::*, error::*, query::*, sea_query, tests_cfg::*};
 
 mod one {
     use sea_orm::entity::prelude::*;
@@ -161,19 +159,15 @@ mod composite_b {
 async fn test_select_six() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_select_six").await;
     let db = &ctx.db;
-    let schema = Schema::new(db.get_database_backend());
 
-    db.execute(&schema.create_table_from_entity(one::Entity))
-        .await?;
-    db.execute(&schema.create_table_from_entity(three::Entity))
-        .await?; // topologically three ranks higher than two
-    db.execute(&schema.create_table_from_entity(two::Entity))
-        .await?;
-    db.execute(&schema.create_table_from_entity(four::Entity))
-        .await?;
-    db.execute(&schema.create_table_from_entity(five::Entity))
-        .await?;
-    db.execute(&schema.create_table_from_entity(six::Entity))
+    db.get_schema_builder()
+        .register(one::Entity)
+        .register(two::Entity)
+        .register(three::Entity)
+        .register(four::Entity)
+        .register(five::Entity)
+        .register(six::Entity)
+        .sync(db)
         .await?;
 
     one::ActiveModel { id: Set(1) }.insert(db).await?;
@@ -422,14 +416,11 @@ async fn test_select_six() -> Result<(), DbErr> {
 async fn test_composite_foreign_key() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_composite_foreign_key").await;
     let db = &ctx.db;
-    let schema = Schema::new(db.get_database_backend());
 
-    db.execute(&schema.create_table_from_entity(composite_a::Entity))
-        .await?;
-    for stmt in schema.create_index_from_entity(composite_a::Entity) {
-        db.execute(&stmt).await?;
-    }
-    db.execute(&schema.create_table_from_entity(composite_b::Entity))
+    db.get_schema_builder()
+        .register(composite_a::Entity)
+        .register(composite_b::Entity)
+        .sync(db)
         .await?;
 
     composite_a::ActiveModel {
