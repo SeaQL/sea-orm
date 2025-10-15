@@ -811,8 +811,14 @@ where
                 )));
             }
 
-            casted_values
-                .push(model_column.save_as(Expr::val(key.clone().into_iter().next().unwrap())));
+            casted_values.push(
+                model_column.save_as(Expr::val(
+                    key.clone()
+                        .into_iter()
+                        .next()
+                        .expect("The length has been checked"),
+                )),
+            );
         }
 
         return Ok(Expr::col(column_ref.clone()).is_in(casted_values).into());
@@ -841,15 +847,17 @@ where
     Ok(outer)
 }
 
+type ColumnPairs<M> = Vec<(
+    ColumnRef,
+    <<M as ModelTrait>::Entity as EntityTrait>::Column,
+)>;
+
 fn resolve_column_pairs<Model>(
     table: &TableRef,
     from: &Identity,
     to: &Identity,
 ) -> Result<
-    Vec<(
-        ColumnRef,
-        <<Model as ModelTrait>::Entity as EntityTrait>::Column,
-    )>,
+    ColumnPairs<Model>,
     DbErr,
 >
 where
