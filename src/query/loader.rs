@@ -816,7 +816,7 @@ where
 {
     identity
         .iter()
-        .map(|from_col| try_conv_ident_to_column::<Model>(&from_col))
+        .map(|from_col| try_conv_ident_to_column::<Model>(from_col))
         .collect()
 }
 
