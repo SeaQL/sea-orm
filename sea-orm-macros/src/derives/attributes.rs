@@ -59,6 +59,17 @@ pub mod compound_attr {
     }
 }
 
+pub mod column_attr {
+    use bae::FromAttributes;
+
+    /// Attributes for compound model fields
+    #[derive(Default, FromAttributes)]
+    pub struct SeaOrm {
+        pub unique: Option<()>,
+        pub unique_key: Option<syn::LitStr>,
+    }
+}
+
 #[cfg(feature = "seaography")]
 pub mod related_attr {
     use bae::FromAttributes;

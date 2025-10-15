@@ -237,6 +237,18 @@ async fn entity_loader_join_three() {
     let cake_13 = cake::Entity::find_by_id(13).one(db).await.unwrap().unwrap();
     let cake_15 = cake::Entity::find_by_id(15).one(db).await.unwrap().unwrap();
 
+    // new find by key feature
+    #[rustfmt::skip]
+    assert_eq!(cake::Entity::find_by_name("Cheesecake").one(db).await.unwrap().unwrap().id, 13);
+    #[rustfmt::skip]
+    assert_eq!(cake::Entity::find_by_name("Chocolate").one(db).await.unwrap().unwrap().id, 15);
+
+    // new load by key feature
+    #[rustfmt::skip]
+    assert_eq!(cake::Entity::load().filter_by_name("Cheesecake").one(db).await.unwrap().unwrap().id, 13);
+    #[rustfmt::skip]
+    assert_eq!(cake::Entity::load().filter_by_name("Chocolate").one(db).await.unwrap().unwrap().id, 15);
+
     let lineitems = lineitem::Entity::load().all(db).await.unwrap();
     assert_eq!(lineitems[0].cake_id, 13);
     assert_eq!(lineitems[1].cake_id, 15);

@@ -505,6 +505,10 @@ async fn test_composite_foreign_key() -> Result<(), DbErr> {
     let a = composite_a::Entity::find_by_id(100).one(db).await?.unwrap();
     assert_eq!(a.left_id, 1);
     assert_eq!(a.right_id, 2);
+    #[rustfmt::skip]
+    assert_eq!(composite_a::Entity::find_by_pair((1, 3)).one(db).await?.unwrap().id, 101);
+    #[rustfmt::skip]
+    assert_eq!(composite_a::Entity::load().filter_by_pair((1, 3)).one(db).await?.unwrap().id, 101);
 
     let Some((a, Some(b))) = composite_a::Entity::find_by_id(100)
         .find_also_related(composite_b::Entity)

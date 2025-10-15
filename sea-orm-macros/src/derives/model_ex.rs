@@ -1,11 +1,11 @@
-use super::attributes::compound_attr;
+use super::attributes::{column_attr, compound_attr};
 use super::entity_loader::{EntityLoaderField, EntityLoaderSchema, expand_entity_loader};
 use super::model::DeriveModel;
 use super::util::{format_field_ident_ref, is_compound_field};
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::quote;
-use std::collections::HashMap;
+use quote::{format_ident, quote};
+use std::collections::{BTreeMap, HashMap};
 use syn::{
     Attribute, Data, Fields, ItemStruct, LitStr, Meta, parse_quote, punctuated::Punctuated,
     token::Comma,
@@ -92,6 +92,7 @@ pub fn expand_derive_model_ex(
     let mut compound_fields: Vec<Ident> = Vec::new();
     let mut impl_related = Vec::new();
     let mut entity_loader_schema = EntityLoaderSchema::default();
+    let mut unique_keys = BTreeMap::new();
 
     attrs
         .iter()
@@ -141,6 +142,18 @@ pub fn expand_derive_model_ex(
                         }
                         compound_fields.push(format_field_ident_ref(field));
                     } else {
+                        if let Ok(attrs) = column_attr::SeaOrm::from_attributes(&field.attrs) {
+                            if attrs.unique.is_some() {
+                                unique_keys
+                                    .insert(ident.clone(), vec![(ident.clone(), field.ty.clone())]);
+                            }
+                            if let Some(unique_key) = attrs.unique_key {
+                                unique_keys
+                                    .entry(unique_key.parse()?)
+                                    .or_default()
+                                    .push((ident.clone(), field.ty.clone()));
+                            }
+                        }
                         model_fields.push(format_field_ident_ref(field));
                     }
                 }
@@ -229,6 +242,58 @@ pub fn expand_derive_model_ex(
         quote!()
     };
 
+    let (entity_find_by_key, loader_filter_by_key) = {
+        let mut entity_find_by_key = TokenStream::new();
+        let mut loader_filter_by_key = TokenStream::new();
+
+        for (name, columns) in unique_keys {
+            let find_method = format_ident!("find_by_{}", name);
+            let filter_method = format_ident!("filter_by_{}", name);
+            if columns.len() > 1 {
+                let key_type = columns.iter().map(|(_, ty)| ty).collect::<Vec<_>>();
+
+                let filters = columns
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (col, _))| {
+                        let i = syn::Index::from(i);
+                        let col = to_upper_camel_case(col);
+                        quote!(Column::#col.eq(v.#i))
+                    })
+                    .collect::<Vec<_>>();
+
+                entity_find_by_key.extend(quote! {
+                    pub fn #find_method(v: (#(#key_type),*)) -> Select<Entity> {
+                        Self::find()
+                            #(.filter(#filters))*
+                    }
+                });
+                loader_filter_by_key.extend(quote! {
+                    pub fn #filter_method(mut self, v: (#(#key_type),*)) -> Self {
+                        #(self.filter_mut(#filters);)*
+                        self
+                    }
+                });
+            } else {
+                let col = to_upper_camel_case(&columns[0].0);
+                let key_type = &columns[0].1;
+                entity_find_by_key.extend(quote! {
+                    pub fn #find_method(v: impl Into<#key_type>) -> Select<Entity> {
+                        Self::find().filter(Column::#col.eq(v.into()))
+                    }
+                });
+                loader_filter_by_key.extend(quote! {
+                    pub fn #filter_method(mut self, v: impl Into<#key_type>) -> Self {
+                        self.filter_mut(Column::#col.eq(v.into()));
+                        self
+                    }
+                });
+            }
+        }
+
+        (entity_find_by_key, loader_filter_by_key)
+    };
+
     let entity_loader = expand_entity_loader(entity_loader_schema);
 
     Ok(quote! {
@@ -241,6 +306,14 @@ pub fn expand_derive_model_ex(
         #related_def
 
         #entity_loader
+
+        impl Entity {
+            #entity_find_by_key
+        }
+
+        impl EntityLoader {
+            #loader_filter_by_key
+        }
     })
 }
 
@@ -490,6 +563,10 @@ fn format_tuple(prefix: &str, middle: &str, suffix: &str) -> String {
     }
 
     output
+}
+
+fn to_upper_camel_case(i: &Ident) -> Ident {
+    Ident::new(&i.to_string().to_upper_camel_case(), Span::call_site())
 }
 
 #[cfg(test)]
