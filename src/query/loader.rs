@@ -856,10 +856,7 @@ fn resolve_column_pairs<Model>(
     table: &TableRef,
     from: &Identity,
     to: &Identity,
-) -> Result<
-    ColumnPairs<Model>,
-    DbErr,
->
+) -> Result<ColumnPairs<Model>, DbErr>
 where
     Model: ModelTrait,
     <<Model as ModelTrait>::Entity as EntityTrait>::Column: ColumnTrait + Clone,
