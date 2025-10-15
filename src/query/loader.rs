@@ -707,6 +707,8 @@ fn dyn_model_to_key(dyn_model: dynamic::Model) -> Result<ValueTuple, DbErr> {
     })
 }
 
+// Perf: Perhaps we could lift the is_postgres check and then implement a simpler method for other database backends that doesn't require type casting.
+// But in any case, these computations are very lightweight.
 fn prepare_condition<Model>(
     table: &TableRef,
     from: &Identity,
