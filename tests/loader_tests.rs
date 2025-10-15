@@ -70,7 +70,6 @@ mod enum_pk_models {
     }
 }
 
-#[cfg(feature = "sqlx-postgres")]
 use enum_pk_models::{tea_inventory, tea_order};
 
 #[sea_orm_macros::test]
