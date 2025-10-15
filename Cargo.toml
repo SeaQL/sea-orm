@@ -35,6 +35,7 @@ rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.4", default-features = false, optional = true }
 sea-orm-macros = { version = "~2.0.0-rc.9", path = "sea-orm-macros", default-features = false, features = ["strum"] }
 sea-query = { version = "1.0.0-rc.12", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite", "sea-orm"] }
+sea-schema = { version = "0.17.0-rc.1", default-features = false, features = ["discovery", "writer", "probe"], optional = true }
 sea-query-sqlx = { version = "0.8.0-rc.1", default-features = false, optional = true }
 strum = { version = "0.27", default-features = false }
 serde = { version = "1.0", default-features = false }
@@ -90,9 +91,9 @@ json-array = ["postgres-array"] # this does not actually enable sqlx-postgres, b
 sea-orm-internal = []
 sqlx-dep = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
-sqlx-mysql = ["sqlx-dep", "sea-query-sqlx/sqlx-mysql", "sqlx/mysql"]
-sqlx-postgres = ["sqlx-dep", "sea-query-sqlx/sqlx-postgres", "sqlx/postgres", "postgres-array"]
-sqlx-sqlite = ["sqlx-dep", "sea-query-sqlx/sqlx-sqlite", "sqlx/sqlite"]
+sqlx-mysql = ["sqlx-dep", "sea-query-sqlx/sqlx-mysql", "sqlx/mysql", "sea-schema/sqlx-mysql"]
+sqlx-postgres = ["sqlx-dep", "sea-query-sqlx/sqlx-postgres", "sqlx/postgres", "postgres-array", "sea-schema/sqlx-postgres"]
+sqlx-sqlite = ["sqlx-dep", "sea-query-sqlx/sqlx-sqlite", "sqlx/sqlite", "sea-schema/sqlx-sqlite"]
 sqlite-use-returning-for-3_35 = []
 mariadb-use-returning = []
 runtime-async-std = ["sqlx?/runtime-async-std"]
@@ -103,6 +104,7 @@ runtime-tokio-native-tls = ["sqlx?/runtime-tokio-native-tls", "runtime-tokio"]
 runtime-tokio-rustls = ["sqlx?/runtime-tokio-rustls", "runtime-tokio"]
 tests-cfg = ["serde/derive"]
 seaography = ["sea-orm-macros/seaography"]
+schema-sync = ["sea-schema"]
 
 # This allows us to develop using a local version of sea-query
 [patch.crates-io]

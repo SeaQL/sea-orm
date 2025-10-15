@@ -65,26 +65,6 @@ impl<T> Default for TopologicalSort<T> {
 }
 
 impl<T: Hash + Eq + Clone> TopologicalSort<T> {
-    /// Creates new empty `TopologicalSort`.
-    ///
-    /// ```rust
-    /// # extern crate topological_sort;
-    /// # fn main() {
-    /// use topological_sort::TopologicalSort;
-    /// let mut ts = TopologicalSort::<&str>::new();
-    /// ts.add_dependency("hello_world.o", "hello_world");
-    /// ts.add_dependency("hello_world.c", "hello_world");
-    /// ts.add_dependency("stdio.h", "hello_world.o");
-    /// ts.add_dependency("glibc.so", "hello_world");
-    /// assert_eq!(vec!["glibc.so", "hello_world.c", "stdio.h"],
-    ///            { let mut v = ts.pop_all(); v.sort(); v });
-    /// assert_eq!(vec!["hello_world.o"],
-    ///            { let mut v = ts.pop_all(); v.sort(); v });
-    /// assert_eq!(vec!["hello_world"],
-    ///            { let mut v = ts.pop_all(); v.sort(); v });
-    /// assert!(ts.pop_all().is_empty());
-    /// # }
-    /// ```
     #[inline]
     pub fn new() -> TopologicalSort<T> {
         Default::default()

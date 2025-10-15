@@ -28,7 +28,9 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
             .await;
 
         let url = format!("{base_url}/{db_name}");
-        Database::connect(&url).await.unwrap()
+        let mut options: ConnectOptions = url.into();
+        options.sqlx_logging(false);
+        Database::connect(options).await.unwrap()
     } else if cfg!(feature = "sqlx-postgres") {
         let url = format!("{base_url}/postgres");
         let db = Database::connect(&url).await.unwrap();
@@ -47,7 +49,9 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
             .await;
 
         let url = format!("{base_url}/{db_name}");
-        Database::connect(&url).await.unwrap()
+        let mut options: ConnectOptions = url.into();
+        options.sqlx_logging(false);
+        Database::connect(options).await.unwrap()
     } else {
         let mut options: ConnectOptions = base_url.into();
         options.sqlx_logging(false);

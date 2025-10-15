@@ -155,6 +155,21 @@ mod composite_b {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+mod composite_b_without_index {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "composite_b")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub left_id: i32,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 #[sea_orm_macros::test]
 async fn test_select_six() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_select_six").await;
@@ -163,11 +178,11 @@ async fn test_select_six() -> Result<(), DbErr> {
     db.get_schema_builder()
         .register(one::Entity)
         .register(two::Entity)
-        .register(three::Entity)
+        .register(three::Entity) // topologically three ranks higher than two
         .register(four::Entity)
         .register(five::Entity)
         .register(six::Entity)
-        .sync(db)
+        .apply(db)
         .await?;
 
     one::ActiveModel { id: Set(1) }.insert(db).await?;
@@ -417,11 +432,39 @@ async fn test_composite_foreign_key() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_composite_foreign_key").await;
     let db = &ctx.db;
 
-    db.get_schema_builder()
-        .register(composite_a::Entity)
-        .register(composite_b::Entity)
-        .sync(db)
-        .await?;
+    #[cfg(not(feature = "schema-sync"))]
+    {
+        db.get_schema_builder()
+            .register(composite_b::Entity)
+            .register(composite_a::Entity) // should create a first
+            .apply(db)
+            .await?;
+    }
+
+    #[cfg(feature = "schema-sync")]
+    {
+        // create 1 table only
+        db.get_schema_builder()
+            .register(composite_a::Entity)
+            .apply(db)
+            .await?;
+
+        // this incrementally creates the 2nd table without index
+        if db.get_database_backend() != sea_orm::DbBackend::Sqlite {
+            db.get_schema_builder()
+                .register(composite_a::Entity)
+                .register(composite_b_without_index::Entity)
+                .sync(db)
+                .await?;
+        }
+
+        // this creates the full 2nd table
+        db.get_schema_builder()
+            .register(composite_a::Entity)
+            .register(composite_b::Entity)
+            .sync(db)
+            .await?;
+    }
 
     composite_a::ActiveModel {
         id: Set(100),
