@@ -746,30 +746,7 @@ where
 
     let arity = column_pairs.len();
 
-    // Keep single column case as an IN clause.
-    if arity == 1 {
-        let (column_ref, model_column) = &column_pairs[0];
-        let mut casted_values = Vec::new();
-
-        for key in keys {
-            if key.arity() != 1 {
-                return Err(arity_mismatch(1, key));
-            }
-
-            casted_values.push(
-                model_column.save_as(Expr::val(
-                    key.clone()
-                        .into_iter()
-                        .next()
-                        .expect("The length has been checked"),
-                )),
-            );
-        }
-
-        return Ok(Expr::col(column_ref.clone()).is_in(casted_values).into());
-    }
-
-    let cond = if cfg!(not(feature = "sqlite-3_15")) && matches!(backend, DbBackend::Sqlite) {
+    if cfg!(not(feature = "sqlite-3_15")) && matches!(backend, DbBackend::Sqlite) {
         // SQLite supports row value expressions since 3.15.0
         // https://www.sqlite.org/releaselog/3_15_0.html
         let mut outer = Condition::any();
@@ -780,27 +757,35 @@ where
             }
 
             let mut inner = Condition::all();
-            for ((column_ref, model_column), value) in
-                column_pairs.iter().zip(key.clone().into_iter())
-            {
-                inner = inner
-                    .add(Expr::col(column_ref.clone()).eq(model_column.save_as(Expr::val(value))));
+            for ((column_ref, _), value) in column_pairs.iter().zip(key.clone().into_iter()) {
+                inner = inner.add(Expr::col(column_ref.clone()).eq(Expr::val(value)));
             }
 
             outer = outer.add(inner);
         }
 
-        outer
+        Ok(outer)
     } else {
         // Build `(c1, c2, ...) IN ((v11, v12, ...), (v21, v22, ...), ...)`
         let values = keys
             .map(|key| {
                 let key_arity = key.arity();
                 if arity != key_arity {
-                    Err(arity_mismatch(arity, key))
-                } else {
-                    Ok(key.clone())
+                    return Err(arity_mismatch(arity, key));
                 }
+
+                // For Postgres, we need to use `AS` to cast the value to the correct type
+                let tuple_exprs: Vec<_> = if matches!(backend, DbBackend::Postgres) {
+                    key.clone()
+                        .into_iter()
+                        .zip(column_pairs.iter().map(|(_, model_column)| model_column))
+                        .map(|(v, model_column)| model_column.save_as(Expr::val(v)))
+                        .collect()
+                } else {
+                    key.clone().into_iter().map(Expr::val).collect()
+                };
+
+                Ok(Expr::tuple(tuple_exprs))
             })
             .collect::<Result<Vec<_>, DbErr>>()?;
 
@@ -809,12 +794,10 @@ where
                 .iter()
                 .map(|(column_ref, _)| Expr::col(column_ref.clone())),
         )
-        .in_tuples(values);
+        .is_in(values);
 
-        expr.into()
-    };
-
-    Ok(cond)
+        Ok(expr.into())
+    }
 }
 
 type ColumnPairs<M> = Vec<(
