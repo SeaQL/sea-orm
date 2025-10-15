@@ -771,7 +771,7 @@ where
 
     let cond = if cfg!(not(feature = "sqlite-3_15")) && matches!(backend, DbBackend::Sqlite) {
         // SQLite supports row value expressions since 3.15.0
-        //  https://www.sqlite.org/releaselog/3_15_0.html
+        // https://www.sqlite.org/releaselog/3_15_0.html
         let mut outer = Condition::any();
         for key in keys {
             let key_arity = key.arity();
