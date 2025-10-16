@@ -3,7 +3,6 @@ use crate::{
     ModelTrait, QueryFilter, QuerySelect, Related, RelationType, Select, dynamic, error::*,
 };
 use async_trait::async_trait;
-use itertools::Itertools;
 use sea_query::{ColumnRef, DynIden, Expr, ExprTrait, IntoColumnRef, TableRef, ValueTuple};
 use std::{collections::HashMap, str::FromStr};
 
@@ -659,6 +658,8 @@ fn extract_col_type<Model>(
 where
     Model: ModelTrait,
 {
+    use itertools::Itertools;
+
     if left.arity() != right.arity() {
         return Err(DbErr::Type(format!(
             "Identity mismatch: left: {} != right: {}",
@@ -742,6 +743,8 @@ fn prepare_condition_with_save_as<Model>(
 where
     Model: ModelTrait,
 {
+    use itertools::Itertools;
+
     let keys = keys.iter().unique();
     let (from_cols, to_cols) = resolve_column_pairs::<Model>(table, from, to)?;
 
@@ -794,6 +797,8 @@ fn prepare_condition_simple(
     keys: &[ValueTuple],
     backend: DbBackend,
 ) -> Result<Condition, DbErr> {
+    use itertools::Itertools;
+
     let arity = to.arity();
     let keys = keys.iter().unique();
 
@@ -802,9 +807,9 @@ fn prepare_condition_simple(
         .cloned()
         .map(|col| table_column(table, &col))
         .map(Expr::col)
-        .collect_vec();
+        .collect::<Vec<_>>();
 
-    if cfg!(not(feature = "sqlite-3_15")) && matches!(backend, DbBackend::Sqlite) {
+    if cfg!(feature = "sqlite-no-row-value-before-3_15") && matches!(backend, DbBackend::Sqlite) {
         // SQLite supports row value expressions since 3.15.0
         // https://www.sqlite.org/releaselog/3_15_0.html
         let mut outer = Condition::any();

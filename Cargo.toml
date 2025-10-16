@@ -73,7 +73,6 @@ default = [
     "with-uuid",
     "with-time",
     "sqlite-use-returning-for-3_35",
-    "sqlite-3_15",
 ]
 macros = ["sea-orm-macros/derive"]
 mock = []
@@ -96,8 +95,8 @@ sqlx-mysql = ["sqlx-dep", "sea-query-sqlx/sqlx-mysql", "sqlx/mysql"]
 sqlx-postgres = ["sqlx-dep", "sea-query-sqlx/sqlx-postgres", "sqlx/postgres", "postgres-array"]
 sqlx-sqlite = ["sqlx-dep", "sea-query-sqlx/sqlx-sqlite", "sqlx/sqlite"]
 sqlite-use-returning-for-3_35 = []
+sqlite-no-row-value-before-3_15 = []
 mariadb-use-returning = []
-sqlite-3_15 = []
 runtime-async-std = ["sqlx?/runtime-async-std"]
 runtime-async-std-native-tls = ["sqlx?/runtime-async-std-native-tls", "runtime-async-std"]
 runtime-async-std-rustls = ["sqlx?/runtime-async-std-rustls", "runtime-async-std"]
