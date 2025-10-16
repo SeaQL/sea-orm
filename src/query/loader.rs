@@ -756,8 +756,7 @@ where
 
     let arity = from_cols.len();
 
-    // Build `(c1, c2, ...) IN ((v11, v12, ...), (v21, v22, ...), ...)`
-    let values = keys
+    let value_tuples = keys
         .map(|key| {
             let key_arity = key.arity();
             if arity != key_arity {
@@ -765,27 +764,12 @@ where
             }
 
             // For Postgres, we need to use `AS` to cast the value to the correct type
-
-            let value_iter = key.clone().into_iter().map(Expr::val);
-
-            let tuple_exprs: Vec<_> = from_cols
-                .iter()
-                .zip(value_iter)
-                .map(|(model_column, value)| model_column.save_as(value))
-                .collect();
-
-            Ok(Expr::tuple(tuple_exprs))
+            Ok(apply_save_as::<Model>(&from_cols, key.clone()))
         })
         .collect::<Result<Vec<_>, DbErr>>()?;
 
-    let table_columns = to
-        .iter()
-        .cloned()
-        .map(|col| table_column(table, &col))
-        .map(Expr::col)
-        .collect_vec();
-
-    let expr = Expr::tuple(table_columns).is_in(values);
+    // Build `(c1, c2, ...) IN ((v11, v12, ...), (v21, v22, ...), ...)`
+    let expr = Expr::tuple(create_table_columns(table, to)).is_in(value_tuples);
 
     Ok(expr.into())
 }
@@ -802,12 +786,7 @@ fn prepare_condition_simple(
     let arity = to.arity();
     let keys = keys.iter().unique();
 
-    let table_columns = to
-        .iter()
-        .cloned()
-        .map(|col| table_column(table, &col))
-        .map(Expr::col)
-        .collect::<Vec<_>>();
+    let table_columns = create_table_columns(table, to);
 
     if cfg!(feature = "sqlite-no-row-value-before-3_15") && matches!(backend, DbBackend::Sqlite) {
         // SQLite supports row value expressions since 3.15.0
@@ -829,13 +808,14 @@ fn prepare_condition_simple(
                     cond.add(column.eq(value))
                 });
 
+            // Build `(c1 = v11 AND c2 = v12) OR (c1 = v21 AND c2 = v22) ...`
             outer = outer.add(inner);
         }
 
         Ok(outer)
     } else {
-        // Build `(c1, c2, ...) IN ((v11, v12, ...), (v21, v22, ...), ...)`
-        let values = keys
+        // A vector of tuples of values, e.g. [(v11, v12, ...), (v21, v22, ...), ...]
+        let value_tuples = keys
             .map(|key| {
                 let key_arity = key.arity();
                 if arity != key_arity {
@@ -848,7 +828,8 @@ fn prepare_condition_simple(
             })
             .collect::<Result<Vec<_>, DbErr>>()?;
 
-        let expr = Expr::tuple(table_columns).is_in(values);
+        // Build `(c1, c2, ...) IN ((v11, v12, ...), (v21, v22, ...), ...)`
+        let expr = Expr::tuple(table_columns).is_in(value_tuples);
 
         Ok(expr.into())
     }
@@ -896,19 +877,39 @@ where
         .collect()
 }
 
-fn try_conv_ident_to_column<Model>(
-    ident: &DynIden,
-) -> Result<<<Model as ModelTrait>::Entity as EntityTrait>::Column, DbErr>
+fn try_conv_ident_to_column<Model>(ident: &DynIden) -> Result<ModelColumn<Model>, DbErr>
 where
     Model: ModelTrait,
 {
     let column_name = ident.inner();
-    <<Model as ModelTrait>::Entity as EntityTrait>::Column::from_str(&column_name)
+    ModelColumn::<Model>::from_str(&column_name)
         .map_err(|_| DbErr::Type(format!("Failed at mapping '{column_name}' to column")))
 }
 
 fn table_column(tbl: &TableRef, col: &DynIden) -> ColumnRef {
     (tbl.sea_orm_table().to_owned(), col.clone()).into_column_ref()
+}
+
+/// Create a vector of `Expr::col` from the table and identity, e.g. [Expr::col((table, col1)), Expr::col((table, col2)), ...]
+fn create_table_columns(table: &TableRef, cols: &Identity) -> Vec<Expr> {
+    cols.iter()
+        .cloned()
+        .map(|col| table_column(table, &col))
+        .map(Expr::col)
+        .collect_vec()
+}
+
+/// Apply `save_as` to each value in the tuple, e.g. `(Cast(val1 as type1), Cast(val2 as type2), ...)`
+fn apply_save_as<M: ModelTrait>(cols: &[ModelColumn<M>], values: ValueTuple) -> Expr {
+    let values_expr_iter = values.into_iter().map(Expr::val);
+
+    let tuple_exprs: Vec<_> = cols
+        .iter()
+        .zip(values_expr_iter)
+        .map(|(model_column, value)| model_column.save_as(value))
+        .collect();
+
+    Expr::tuple(tuple_exprs)
 }
 
 #[cfg(test)]
