@@ -32,9 +32,6 @@ impl EntityWriter {
                 model_extra_attributes,
             ),
         ];
-        if entity.relations.is_empty() && entity.conjunct_relations.is_empty() {
-            code_blocks.push(Self::gen_compact_relation_enum(entity));
-        }
         if impl_active_model_behavior {
             code_blocks.push(Self::impl_active_model_behavior());
         }
@@ -162,15 +159,15 @@ impl EntityWriter {
                         } else {
                             quote!()
                         };
-                        let suffix = if rel.num_suffix > 0 {
-                            let suffix = rel.num_suffix.to_string();
-                            quote!(, suffix = #suffix)
+                        let relation_enum = if rel.num_suffix > 0 {
+                            let relation_enum = rel.get_enum_name().to_string();
+                            quote!(relation_enum = #relation_enum,)
                         } else {
                             quote!()
                         };
                         (
                             format_ident!("HasOne"),
-                            quote!(#[sea_orm(belongs_to, from = #from, to = #to #suffix #on_update #on_delete)]),
+                            quote!(#[sea_orm(belongs_to, #relation_enum from = #from, to = #to #on_update #on_delete)]),
                         )
                     }
                 };
@@ -211,12 +208,7 @@ impl EntityWriter {
                 } else {
                     quote!()
                 };
-                let suffix = if rel.num_suffix > 0 {
-                    let suffix = rel.num_suffix.to_string();
-                    quote!(, suffix = #suffix)
-                } else {
-                    quote!()
-                };
+                let relation_enum = rel.get_enum_name().to_string();
                 let field = format_ident!(
                     "{}{}",
                     entity.get_table_name_snake_case_ident(),
@@ -228,7 +220,7 @@ impl EntityWriter {
                 );
 
                 compound_objects.push(quote! {
-                    #[sea_orm(self_ref, from = #from, to = #to #suffix #on_update #on_delete)]
+                    #[sea_orm(self_ref, relation_enum = #relation_enum, from = #from, to = #to #on_update #on_delete)]
                     pub #field: HasOne<Entity>
                 });
             }

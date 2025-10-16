@@ -217,6 +217,12 @@ pub fn expand_derive_model_ex(
         }
 
         for (attrs, field_type) in impl_related.iter() {
+            if attrs.self_ref.is_some() && attrs.relation_enum.is_none() {
+                return Err(syn::Error::new_spanned(
+                    ident,
+                    "Please specify `relation_enum` for `self_ref`",
+                ));
+            }
             if let Some(var) = relation_enum_variant(attrs, field_type) {
                 relation_enum_variants.push(var);
             }
@@ -322,15 +328,7 @@ pub fn expand_derive_model_ex(
 }
 
 fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<TokenStream> {
-    let related_entity = extract_compound_entity(ty);
-    let related_enum = Ident::new(
-        &format!(
-            "{}{}",
-            infer_relation_name_from_entity(related_entity).to_upper_camel_case(),
-            attr.suffix.as_ref().map(|v| v.value()).unwrap_or_default()
-        ),
-        Span::call_site(),
-    );
+    let (related_entity, relation_enum) = get_related(attr, ty);
     if attr.belongs_to.is_some() {
         let belongs_to = Ident::new("belongs_to", Span::call_site());
 
@@ -354,26 +352,19 @@ fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<Token
         );
         let mut extra: Punctuated<_, Comma> = Punctuated::new();
         if let Some(on_update) = &attr.on_update {
-            let tag = Ident::new("on_update", Span::call_site());
+            let tag = Ident::new("on_update", on_update.span());
             extra.push(quote!(#tag = #on_update))
         }
         if let Some(on_delete) = &attr.on_delete {
-            let tag = Ident::new("on_delete", Span::call_site());
+            let tag = Ident::new("on_delete", on_delete.span());
             extra.push(quote!(#tag = #on_delete))
         }
 
         Some(quote! {
             #[sea_orm(#belongs_to = #related_entity, from = #from, to = #to, #extra)]
-            #related_enum
+            #relation_enum
         })
     } else if attr.self_ref.is_some() {
-        let self_ref = Ident::new(
-            &format!(
-                "SelfRef{}",
-                attr.suffix.as_ref().map(|v| v.value()).unwrap_or_default()
-            ),
-            Span::call_site(),
-        );
         let belongs_to = Ident::new("belongs_to", Span::call_site());
 
         let from = format_tuple(
@@ -396,17 +387,17 @@ fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<Token
         );
         let mut extra: Punctuated<_, Comma> = Punctuated::new();
         if let Some(on_update) = &attr.on_update {
-            let tag = Ident::new("on_update", Span::call_site());
+            let tag = Ident::new("on_update", on_update.span());
             extra.push(quote!(#tag = #on_update))
         }
         if let Some(on_delete) = &attr.on_delete {
-            let tag = Ident::new("on_delete", Span::call_site());
+            let tag = Ident::new("on_delete", on_delete.span());
             extra.push(quote!(#tag = #on_delete))
         }
 
         Some(quote! {
             #[sea_orm(#belongs_to = "Entity", from = #from, to = #to, #extra)]
-            #self_ref
+            #relation_enum
         })
     } else if attr.has_many.is_some() && attr.via.is_none() {
         // skip junction relation
@@ -415,14 +406,14 @@ fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<Token
 
         Some(quote! {
             #[sea_orm(#has_many = #related_entity)]
-            #related_enum
+            #relation_enum
         })
     } else if attr.has_one.is_some() {
         let has_one = Ident::new("has_one", Span::call_site());
 
         Some(quote! {
             #[sea_orm(#has_one = #related_entity)]
-            #related_enum
+            #relation_enum
         })
     } else {
         None
@@ -435,8 +426,7 @@ fn impl_related_trait(
     table_name: &Option<LitStr>,
 ) -> syn::Result<TokenStream> {
     if attr.has_one.is_some() || attr.has_many.is_some() || attr.belongs_to.is_some() {
-        let related_entity = extract_compound_entity(ty);
-        let related_enum = infer_relation_name_from_entity(related_entity).to_upper_camel_case();
+        let (related_entity, relation_enum) = get_related(attr, ty);
         let related_entity: TokenStream = related_entity.parse().unwrap();
 
         if let Some(via) = &attr.via {
@@ -458,8 +448,7 @@ fn impl_related_trait(
                 ));
             }
             let junction = Ident::new(junction, Span::call_site());
-            let relation_def: TokenStream =
-                format!("Relation::{related_enum}.def()").parse().unwrap();
+            let relation_def = quote!(Relation::#relation_enum.def());
             let via_relation_def: TokenStream =
                 format!("Relation::{via_related}.def()").parse().unwrap();
 
@@ -485,8 +474,7 @@ fn impl_related_trait(
             //     }
             // }
         } else {
-            let relation_def: TokenStream =
-                format!("Relation::{related_enum}.def()").parse().unwrap();
+            let relation_def = quote!(Relation::#relation_enum.def());
 
             Ok(quote! {
                 #[doc = " Generated by sea-orm-macros"]
@@ -507,6 +495,22 @@ fn impl_related_trait(
     } else {
         Ok(quote!())
     }
+}
+
+fn get_related<'a>(attr: &compound_attr::SeaOrm, ty: &'a str) -> (&'a str, Ident) {
+    let related_entity = extract_compound_entity(ty);
+    let relation_enum = if let Some(relation_enum) = &attr.relation_enum {
+        Ident::new(
+            &relation_enum.value().to_upper_camel_case(),
+            relation_enum.span(),
+        )
+    } else {
+        Ident::new(
+            &infer_relation_name_from_entity(related_entity).to_upper_camel_case(),
+            Span::call_site(),
+        )
+    };
+    (related_entity, relation_enum)
 }
 
 fn extract_compound_entity(ty: &str) -> &str {
