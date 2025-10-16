@@ -48,6 +48,7 @@ ouroboros = { version = "0.18", default-features = false }
 url = { version = "2.2", default-features = false }
 thiserror = { version = "2", default-features = false }
 derive_more = { version = "2", features = ["debug"] }
+itertools = "0.14.0"
 
 [dev-dependencies]
 smol = { version = "1.2" }
@@ -95,6 +96,7 @@ sqlx-mysql = ["sqlx-dep", "sea-query-sqlx/sqlx-mysql", "sqlx/mysql", "sea-schema
 sqlx-postgres = ["sqlx-dep", "sea-query-sqlx/sqlx-postgres", "sqlx/postgres", "postgres-array", "sea-schema/sqlx-postgres"]
 sqlx-sqlite = ["sqlx-dep", "sea-query-sqlx/sqlx-sqlite", "sqlx/sqlite", "sea-schema/sqlx-sqlite"]
 sqlite-use-returning-for-3_35 = []
+sqlite-no-row-value-before-3_15 = []
 mariadb-use-returning = []
 runtime-async-std = ["sqlx?/runtime-async-std"]
 runtime-async-std-native-tls = ["sqlx?/runtime-async-std-native-tls", "runtime-async-std"]

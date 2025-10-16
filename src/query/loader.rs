@@ -1,15 +1,12 @@
 use crate::{
-    Condition, ConnectionTrait, DbErr, EntityTrait, Identity, JoinType, ModelTrait, QueryFilter,
-    QuerySelect, Related, RelationType, Select, dynamic, error::*,
+    ColumnTrait, Condition, ConnectionTrait, DbBackend, DbErr, EntityTrait, Identity, JoinType,
+    ModelTrait, QueryFilter, QuerySelect, Related, RelationType, Select, dynamic, error::*,
 };
 use async_trait::async_trait;
-use sea_query::{
-    ColumnRef, DynIden, Expr, ExprTrait, IntoColumnRef, SimpleExpr, TableRef, ValueTuple,
-};
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
+use sea_query::{ColumnRef, DynIden, Expr, ExprTrait, IntoColumnRef, TableRef, ValueTuple};
+use std::{collections::HashMap, str::FromStr};
+
+// TODO: Replace DynIden::inner with a better API that without clone
 
 /// Entity, or a Select<Entity>; to be used as parameters in [`LoaderTrait`]
 pub trait EntityOrSelect<E: EntityTrait>: Send {
@@ -257,7 +254,13 @@ where
             let mut keymap: HashMap<ValueTuple, Vec<ValueTuple>> = Default::default();
 
             let keys: Vec<ValueTuple> = {
-                let condition = prepare_condition(&via_rel.to_tbl, &via_rel.to_col, &pkeys);
+                let condition = prepare_condition::<M>(
+                    &via_rel.to_tbl,
+                    &via_rel.from_col,
+                    &via_rel.to_col,
+                    &pkeys,
+                    db,
+                )?;
                 let stmt = V::find().filter(condition);
                 let data = stmt.all(db).await?;
                 for model in data {
@@ -271,7 +274,13 @@ where
                 keymap.values().flatten().cloned().collect()
             };
 
-            let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
+            let condition = prepare_condition::<V::Model>(
+                &rel_def.to_tbl,
+                &rel_def.from_col,
+                &rel_def.to_col,
+                &keys,
+                db,
+            )?;
 
             let stmt = QueryFilter::filter(stmt.select(), condition);
 
@@ -509,7 +518,13 @@ where
             return Ok(Vec::new());
         }
 
-        let condition = prepare_condition(&via_def.to_tbl, &via_def.to_col, &keys);
+        let condition = prepare_condition::<Model>(
+            &via_def.to_tbl,
+            &via_def.from_col,
+            &via_def.to_col,
+            &keys,
+            db,
+        )?;
 
         let stmt = QueryFilter::filter(
             stmt.join_rev(JoinType::InnerJoin, <Model::Entity as Related<R>>::to()),
@@ -565,7 +580,13 @@ where
             return Ok(Vec::new());
         }
 
-        let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
+        let condition = prepare_condition::<Model>(
+            &rel_def.to_tbl,
+            &rel_def.from_col,
+            &rel_def.to_col,
+            &keys,
+            db,
+        )?;
 
         let stmt = QueryFilter::filter(stmt, condition);
 
@@ -598,63 +619,35 @@ fn extract_key<Model>(target_col: &Identity, model: &Model) -> Result<ValueTuple
 where
     Model: ModelTrait,
 {
-    Ok(match target_col {
-        Identity::Unary(a) => {
-            let a = a.to_string();
-            let column_a =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(&a)
-                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}' to column A:1")))?;
-            ValueTuple::One(model.get(column_a))
+    let values = target_col
+        .iter()
+        .map(|col| {
+            let col_name = col.inner();
+            let column =
+                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
+                    &col_name,
+                )
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{col_name}' to column")))?;
+            Ok(model.get(column))
+        })
+        .collect::<Result<Vec<_>, DbErr>>()?;
+
+    Ok(match values.len() {
+        0 => return Err(DbErr::Type("Identity zero?".into())),
+        1 => ValueTuple::One(values.into_iter().next().expect("checked")),
+        2 => {
+            let mut it = values.into_iter();
+            ValueTuple::Two(it.next().expect("checked"), it.next().expect("checked"))
         }
-        Identity::Binary(a, b) => {
-            let a = a.to_string();
-            let b = b.to_string();
-            let column_a =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(&a)
-                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}' to column A:2")))?;
-            let column_b =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(&b)
-                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{b}' to column B:2")))?;
-            ValueTuple::Two(model.get(column_a), model.get(column_b))
-        }
-        Identity::Ternary(a, b, c) => {
-            let a = a.to_string();
-            let b = b.to_string();
-            let c = c.to_string();
-            let column_a =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &a.to_string(),
-                )
-                .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}' to column A:3")))?;
-            let column_b =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &b.to_string(),
-                )
-                .map_err(|_| DbErr::Type(format!("Failed at mapping '{b}' to column B:3")))?;
-            let column_c =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &c.to_string(),
-                )
-                .map_err(|_| DbErr::Type(format!("Failed at mapping '{c}' to column C:3")))?;
+        3 => {
+            let mut it = values.into_iter();
             ValueTuple::Three(
-                model.get(column_a),
-                model.get(column_b),
-                model.get(column_c),
+                it.next().expect("checked"),
+                it.next().expect("checked"),
+                it.next().expect("checked"),
             )
         }
-        Identity::Many(cols) => {
-            let mut values = Vec::new();
-            for col in cols {
-                let col_name = col.to_string();
-                let column =
-                    <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                        &col_name,
-                    )
-                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{col_name}' to colum")))?;
-                values.push(model.get(column))
-            }
-            ValueTuple::Many(values)
-        }
+        _ => ValueTuple::Many(values),
     })
 }
 
@@ -665,77 +658,33 @@ fn extract_col_type<Model>(
 where
     Model: ModelTrait,
 {
-    Ok(match (left, right) {
-        (Identity::Unary(a), Identity::Unary(aa)) => {
+    use itertools::Itertools;
+
+    if left.arity() != right.arity() {
+        return Err(DbErr::Type(format!(
+            "Identity mismatch: left: {} != right: {}",
+            left.arity(),
+            right.arity()
+        )));
+    }
+
+    let vec = left
+        .iter()
+        .zip_eq(right.iter())
+        .map(|(l, r)| {
             let col_a =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &a.inner(),
+                    &l.inner(),
                 )
-                .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}'")))?;
-            vec![dynamic::FieldType::new(
-                aa.clone(),
+                .map_err(|_| DbErr::Type(format!("Failed at mapping '{l}'")))?;
+            Ok(dynamic::FieldType::new(
+                r.clone(),
                 Model::get_value_type(col_a),
-            )]
-        }
-        (Identity::Binary(a, b), Identity::Binary(aa, bb)) => {
-            let col_a =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &a.inner(),
-                )
-                .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}'")))?;
-            let col_b =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &b.inner(),
-                )
-                .map_err(|_| DbErr::Type(format!("Failed at mapping '{b}'")))?;
-            vec![
-                dynamic::FieldType::new(aa.clone(), Model::get_value_type(col_a)),
-                dynamic::FieldType::new(bb.clone(), Model::get_value_type(col_b)),
-            ]
-        }
-        (Identity::Ternary(a, b, c), Identity::Ternary(aa, bb, cc)) => {
-            let col_a =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &a.inner(),
-                )
-                .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}'")))?;
-            let col_b =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &b.inner(),
-                )
-                .map_err(|_| DbErr::Type(format!("Failed at mapping '{b}'")))?;
-            let col_c =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &c.inner(),
-                )
-                .map_err(|_| DbErr::Type(format!("Failed at mapping '{c}'")))?;
-            vec![
-                dynamic::FieldType::new(aa.clone(), Model::get_value_type(col_a)),
-                dynamic::FieldType::new(bb.clone(), Model::get_value_type(col_b)),
-                dynamic::FieldType::new(cc.clone(), Model::get_value_type(col_c)),
-            ]
-        }
-        (Identity::Many(left), Identity::Many(right)) => {
-            let mut vec = Vec::new();
-            for (a, aa) in left.iter().zip(right) {
-                let col_a =
-                    <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                        &a.inner(),
-                    )
-                    .map_err(|_| DbErr::Type(format!("Failed at mapping '{a}'")))?;
-                vec.push(dynamic::FieldType::new(
-                    aa.clone(),
-                    Model::get_value_type(col_a),
-                ));
-            }
-            vec
-        }
-        _ => {
-            return Err(DbErr::Type(format!(
-                "Identity mismatch: {left:?} != {right:?}"
-            )));
-        }
-    })
+            ))
+        })
+        .collect::<Result<Vec<_>, DbErr>>()?;
+
+    Ok(vec)
 }
 
 #[allow(clippy::unwrap_used)]
@@ -759,45 +708,208 @@ fn dyn_model_to_key(dyn_model: dynamic::Model) -> Result<ValueTuple, DbErr> {
     })
 }
 
-fn prepare_condition(table: &TableRef, col: &Identity, keys: &[ValueTuple]) -> Condition {
-    let keys = if !keys.is_empty() {
-        let set: HashSet<_> = keys.iter().cloned().collect();
-        set.into_iter().collect()
-    } else {
-        Vec::new()
-    };
+fn arity_mismatch(expected: usize, actual: &ValueTuple) -> DbErr {
+    DbErr::Type(format!(
+        "Loader: arity mismatch: expected {expected}, got {} in {actual:?}",
+        actual.arity()
+    ))
+}
 
-    match col {
-        Identity::Unary(column_a) => {
-            let column_a = table_column(table, column_a);
-            Condition::all().add(Expr::col(column_a).is_in(keys.into_iter().flatten()))
-        }
-        Identity::Binary(column_a, column_b) => Condition::all().add(
-            Expr::tuple([
-                SimpleExpr::Column(table_column(table, column_a)),
-                SimpleExpr::Column(table_column(table, column_b)),
-            ])
-            .in_tuples(keys),
-        ),
-        Identity::Ternary(column_a, column_b, column_c) => Condition::all().add(
-            Expr::tuple([
-                SimpleExpr::Column(table_column(table, column_a)),
-                SimpleExpr::Column(table_column(table, column_b)),
-                SimpleExpr::Column(table_column(table, column_c)),
-            ])
-            .in_tuples(keys),
-        ),
-        Identity::Many(cols) => {
-            let columns = cols
-                .iter()
-                .map(|col| SimpleExpr::Column(table_column(table, col)));
-            Condition::all().add(Expr::tuple(columns).in_tuples(keys))
-        }
+#[inline]
+fn prepare_condition<Model>(
+    table: &TableRef,
+    from: &Identity,
+    to: &Identity,
+    keys: &[ValueTuple],
+    db: &impl ConnectionTrait,
+) -> Result<Condition, DbErr>
+where
+    Model: ModelTrait,
+{
+    let db_backend = db.get_database_backend();
+    if matches!(db_backend, DbBackend::Postgres) {
+        prepare_condition_with_save_as::<Model>(table, from, to, keys)
+    } else {
+        prepare_condition_simple(table, to, keys, db_backend)
     }
+}
+
+fn prepare_condition_with_save_as<Model>(
+    table: &TableRef,
+    from: &Identity,
+    to: &Identity,
+    keys: &[ValueTuple],
+) -> Result<Condition, DbErr>
+where
+    Model: ModelTrait,
+{
+    use itertools::Itertools;
+
+    let keys = keys.iter().unique();
+    let (from_cols, to_cols) = resolve_column_pairs::<Model>(table, from, to)?;
+
+    if from_cols.is_empty() || to_cols.is_empty() {
+        return Err(DbErr::Type(format!(
+            "Loader: resolved zero columns for identities {from:?} -> {to:?}"
+        )));
+    }
+
+    let arity = from_cols.len();
+
+    let value_tuples = keys
+        .map(|key| {
+            let key_arity = key.arity();
+            if arity != key_arity {
+                return Err(arity_mismatch(arity, key));
+            }
+
+            // For Postgres, we need to use `AS` to cast the value to the correct type
+            Ok(apply_save_as::<Model>(&from_cols, key.clone()))
+        })
+        .collect::<Result<Vec<_>, DbErr>>()?;
+
+    // Build `(c1, c2, ...) IN ((v11, v12, ...), (v21, v22, ...), ...)`
+    let expr = Expr::tuple(create_table_columns(table, to)).is_in(value_tuples);
+
+    Ok(expr.into())
+}
+
+// For loaders that do not require calling save_as
+fn prepare_condition_simple(
+    table: &TableRef,
+    to: &Identity,
+    keys: &[ValueTuple],
+    backend: DbBackend,
+) -> Result<Condition, DbErr> {
+    use itertools::Itertools;
+
+    let arity = to.arity();
+    let keys = keys.iter().unique();
+
+    let table_columns = create_table_columns(table, to);
+
+    if cfg!(feature = "sqlite-no-row-value-before-3_15") && matches!(backend, DbBackend::Sqlite) {
+        // SQLite supports row value expressions since 3.15.0
+        // https://www.sqlite.org/releaselog/3_15_0.html
+        let mut outer = Condition::any();
+
+        for key in keys {
+            let key_arity = key.arity();
+            if arity != key_arity {
+                return Err(arity_mismatch(arity, key));
+            }
+
+            let table_columns = table_columns.iter().cloned();
+            let values = key.clone().into_iter().map(Expr::val);
+
+            let inner = table_columns
+                .zip(values)
+                .fold(Condition::all(), |cond, (column, value)| {
+                    cond.add(column.eq(value))
+                });
+
+            // Build `(c1 = v11 AND c2 = v12) OR (c1 = v21 AND c2 = v22) ...`
+            outer = outer.add(inner);
+        }
+
+        Ok(outer)
+    } else {
+        // A vector of tuples of values, e.g. [(v11, v12, ...), (v21, v22, ...), ...]
+        let value_tuples = keys
+            .map(|key| {
+                let key_arity = key.arity();
+                if arity != key_arity {
+                    return Err(arity_mismatch(arity, key));
+                }
+
+                let tuple_exprs = key.clone().into_iter().map(Expr::val);
+
+                Ok(Expr::tuple(tuple_exprs))
+            })
+            .collect::<Result<Vec<_>, DbErr>>()?;
+
+        // Build `(c1, c2, ...) IN ((v11, v12, ...), (v21, v22, ...), ...)`
+        let expr = Expr::tuple(table_columns).is_in(value_tuples);
+
+        Ok(expr.into())
+    }
+}
+
+type ModelColumn<M> = <<M as ModelTrait>::Entity as EntityTrait>::Column;
+
+type ColumnPairs<M> = (Vec<ModelColumn<M>>, Vec<ColumnRef>);
+
+fn resolve_column_pairs<Model>(
+    table: &TableRef,
+    from: &Identity,
+    to: &Identity,
+) -> Result<ColumnPairs<Model>, DbErr>
+where
+    Model: ModelTrait,
+    ModelColumn<Model>: ColumnTrait,
+{
+    let from_columns = parse_identity_columns::<Model>(from)?;
+    let to_columns = column_refs_from_identity(table, to);
+
+    if from_columns.len() != to_columns.len() {
+        return Err(DbErr::Type(format!(
+            "Loader: identity column count mismatch between {from:?} and {to:?}"
+        )));
+    }
+
+    Ok((from_columns, to_columns))
+}
+
+fn column_refs_from_identity(table: &TableRef, identity: &Identity) -> Vec<ColumnRef> {
+    identity
+        .iter()
+        .map(|col| table_column(table, col))
+        .collect()
+}
+
+fn parse_identity_columns<Model>(identity: &Identity) -> Result<Vec<ModelColumn<Model>>, DbErr>
+where
+    Model: ModelTrait,
+{
+    identity
+        .iter()
+        .map(|from_col| try_conv_ident_to_column::<Model>(from_col))
+        .collect()
+}
+
+fn try_conv_ident_to_column<Model>(ident: &DynIden) -> Result<ModelColumn<Model>, DbErr>
+where
+    Model: ModelTrait,
+{
+    let column_name = ident.inner();
+    ModelColumn::<Model>::from_str(&column_name)
+        .map_err(|_| DbErr::Type(format!("Failed at mapping '{column_name}' to column")))
 }
 
 fn table_column(tbl: &TableRef, col: &DynIden) -> ColumnRef {
     (tbl.sea_orm_table().to_owned(), col.clone()).into_column_ref()
+}
+
+/// Create a vector of `Expr::col` from the table and identity, e.g. [Expr::col((table, col1)), Expr::col((table, col2)), ...]
+fn create_table_columns(table: &TableRef, cols: &Identity) -> Vec<Expr> {
+    cols.iter()
+        .cloned()
+        .map(|col| table_column(table, &col))
+        .map(Expr::col)
+        .collect()
+}
+
+/// Apply `save_as` to each value in the tuple, e.g. `(Cast(val1 as type1), Cast(val2 as type2), ...)`
+fn apply_save_as<M: ModelTrait>(cols: &[ModelColumn<M>], values: ValueTuple) -> Expr {
+    let values_expr_iter = values.into_iter().map(Expr::val);
+
+    let tuple_exprs: Vec<_> = cols
+        .iter()
+        .zip(values_expr_iter)
+        .map(|(model_column, value)| model_column.save_as(value))
+        .collect();
+
+    Expr::tuple(tuple_exprs)
 }
 
 #[cfg(test)]
