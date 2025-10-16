@@ -896,7 +896,7 @@ fn create_table_columns(table: &TableRef, cols: &Identity) -> Vec<Expr> {
         .cloned()
         .map(|col| table_column(table, &col))
         .map(Expr::col)
-        .collect_vec()
+        .collect()
 }
 
 /// Apply `save_as` to each value in the tuple, e.g. `(Cast(val1 as type1), Cast(val2 as type2), ...)`
