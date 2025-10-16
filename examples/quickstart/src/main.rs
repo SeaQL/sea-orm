@@ -111,6 +111,7 @@ async fn main() -> Result<(), DbErr> {
 
     assert_eq!(
         bob,
+        // this method gets generated on unique keys
         user::Entity::find_by_email("bob@sea-ql.org")
             .one(db)
             .await?
