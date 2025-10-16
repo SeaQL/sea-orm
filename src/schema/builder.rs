@@ -8,10 +8,11 @@ use sea_query::{
 /// A schema builder that can take a registry of Entities and synchronize it with database.
 pub struct SchemaBuilder {
     helper: Schema,
-    entities: Vec<EntitySchema>,
+    entities: Vec<EntitySchemaInfo>,
 }
 
-struct EntitySchema {
+/// Schema info for Entity. Can be used to re-create schema in database.
+pub struct EntitySchemaInfo {
     table: TableCreateStatement,
     enums: Vec<TypeCreateStatement>,
     indexes: Vec<IndexCreateStatement>,
@@ -32,6 +33,12 @@ impl std::fmt::Debug for SchemaBuilder {
     }
 }
 
+impl std::fmt::Debug for EntitySchemaInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.debug_print(f, &DbBackend::Sqlite)
+    }
+}
+
 impl SchemaBuilder {
     /// Creates a new schema builder
     pub fn new(schema: Schema) -> Self {
@@ -43,11 +50,8 @@ impl SchemaBuilder {
 
     /// Register an entity to this schema
     pub fn register<E: EntityTrait>(mut self, entity: E) -> Self {
-        self.entities.push(EntitySchema {
-            table: self.helper.create_table_from_entity(entity),
-            enums: self.helper.create_enum_from_entity(entity),
-            indexes: self.helper.create_index_from_entity(entity),
-        });
+        self.entities
+            .push(EntitySchemaInfo::new(entity, &self.helper));
         self
     }
 
@@ -215,7 +219,16 @@ struct DiscoveredSchema {
     enums: Vec<TypeCreateStatement>,
 }
 
-impl EntitySchema {
+impl EntitySchemaInfo {
+    /// Creates a EntitySchemaInfo object given a generic Entity.
+    pub fn new<E: EntityTrait>(entity: E, helper: &Schema) -> Self {
+        Self {
+            table: helper.create_table_from_entity(entity),
+            enums: helper.create_enum_from_entity(entity),
+            indexes: helper.create_index_from_entity(entity),
+        }
+    }
+
     async fn apply<C: ConnectionTrait>(&self, db: &C) -> Result<(), DbErr> {
         db.execute(&self.table).await?;
         for stmt in self.indexes.iter() {
@@ -311,7 +324,7 @@ impl EntitySchema {
         f: &mut std::fmt::Formatter<'_>,
         backend: &DbBackend,
     ) -> std::fmt::Result {
-        write!(f, "EntitySchema {{")?;
+        write!(f, "EntitySchemaInfo {{")?;
         write!(f, " table: {:?}", backend.build(&self.table).to_string())?;
         write!(f, " enums: [")?;
         for (i, stmt) in self.enums.iter().enumerate() {

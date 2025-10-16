@@ -1,0 +1,14 @@
+[workspace]
+# A separate workspace
+
+[package]
+name = "sea-orm-quickstart"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85.0"
+publish = false
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+sea-orm = { path = "../../", features = [ "sqlx-sqlite", "runtime-tokio", "debug-print" ] }
+env_logger = { version = "0.11" }

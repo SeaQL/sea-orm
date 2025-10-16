@@ -55,6 +55,9 @@
 //! + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
 //! + [Seaography Example (Bakery)](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example) / [Seaography Example (Sakila)](https://github.com/SeaQL/seaography/tree/main/examples/sqlite)
 //!
+//! If you want a simple, clean example that fits in a single file that demonstrates the best of SeaORM, you can try:
+//! + [Quickstart](https://github.com/SeaQL/sea-orm/tree/master/examples/quickstart)
+//!
 //! ## Features
 //!
 //! 1. Async
