@@ -46,7 +46,7 @@ Integration examples:
 + [Seaography Example (Bakery)](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example) / [Seaography Example (Sakila)](https://github.com/SeaQL/seaography/tree/main/examples/sqlite)
 
 If you want a simple, clean example that fits in a single file that demonstrates the best of SeaORM, you can try:
-+ [Quickstart](https://github.com/SeaQL/sea-orm/tree/master/examples/quickstart)
++ [Quickstart](https://github.com/SeaQL/sea-orm/blob/master/examples/quickstart/src/main.rs)
 
 ## Features
 
