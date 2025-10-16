@@ -2,6 +2,7 @@
 
 use sea_orm::entity::prelude::*;
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(table_name = "bakery")]
 pub struct Model {
@@ -10,26 +11,10 @@ pub struct Model {
     pub name: String,
     #[sea_orm(column_type = "Double")]
     pub profit_margin: f64,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_many = "super::baker::Entity")]
-    Baker,
-    #[sea_orm(has_many = "super::cake::Entity")]
-    Cake,
-}
-
-impl Related<super::baker::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Baker.def()
-    }
-}
-
-impl Related<super::cake::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Cake.def()
-    }
+    #[sea_orm(has_many)]
+    pub bakers: HasMany<super::baker::Entity>,
+    #[sea_orm(has_many)]
+    pub cakes: HasMany<super::cake::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

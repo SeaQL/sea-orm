@@ -2,6 +2,7 @@
 
 use sea_orm::entity::prelude::*;
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "cake_baker")]
 pub struct Model {
@@ -9,38 +10,22 @@ pub struct Model {
     pub cake_id: i32,
     #[sea_orm(primary_key, auto_increment = false)]
     pub baker_id: i32,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::baker::Entity",
-        from = "Column::BakerId",
-        to = "super::baker::Column::Id",
+        belongs_to,
+        from = "baker_id",
+        to = "id",
         on_update = "Cascade",
         on_delete = "Cascade"
     )]
-    Baker,
+    pub baker: HasOne<super::baker::Entity>,
     #[sea_orm(
-        belongs_to = "super::cake::Entity",
-        from = "Column::CakeId",
-        to = "super::cake::Column::Id",
+        belongs_to,
+        from = "cake_id",
+        to = "id",
         on_update = "Cascade",
         on_delete = "Cascade"
     )]
-    Cake,
-}
-
-impl Related<super::baker::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Baker.def()
-    }
-}
-
-impl Related<super::cake::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Cake.def()
-    }
+    pub cake: HasOne<super::cake::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
