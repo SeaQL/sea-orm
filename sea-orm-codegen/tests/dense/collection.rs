@@ -12,7 +12,4 @@ pub struct Model {
     pub integers_opt: Option<Vec<i32> > ,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
-
 impl ActiveModelBehavior for ActiveModel {}

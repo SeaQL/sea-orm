@@ -12,7 +12,4 @@ pub struct Model {
     pub doubles: Vec<f64> ,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
-
 impl ActiveModelBehavior for ActiveModel {}
