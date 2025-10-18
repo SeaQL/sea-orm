@@ -3,9 +3,9 @@
 use entity::{Column, Entity};
 use sea_orm::{
     DerivePartialModel, IntoActiveModel, JoinType, NotSet, QueryOrder, QuerySelect, Set,
-    prelude::*, sea_query::Alias,
+    prelude::*,
+    sea_query::{Alias, ExprTrait},
 };
-use sea_query::ExprTrait;
 
 use crate::common::TestContext;
 use common::bakery_chain::*;

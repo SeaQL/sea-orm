@@ -445,6 +445,15 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
             }
         }
 
+        // We impl `ExprTrait` for `T: Into<Expr>`
+        // so that users can directly use methods of `ExprTrait` on columns
+        #[automatically_derived]
+        impl From<Column> for sea_orm::sea_query::Expr {
+            fn from(col: Column) -> Self {
+                sea_orm::sea_query::Expr::col(col.as_column_ref())
+            }
+        }
+
         #entity_def
 
         #primary_key

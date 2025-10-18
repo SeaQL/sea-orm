@@ -35,7 +35,7 @@ rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.4", default-features = false, optional = true }
 sea-orm-macros = { version = "~2.0.0-rc.11", path = "sea-orm-macros", default-features = false, features = ["strum"] }
 sea-query = { version = "1.0.0-rc.12", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite", "sea-orm"] }
-sea-schema = { version = "0.17.0-rc.1", default-features = false, features = ["discovery", "writer", "probe"], optional = true }
+sea-schema = { version = "0.17.0-rc.7", default-features = false, features = ["discovery", "writer", "probe"], optional = true }
 sea-query-sqlx = { version = "0.8.0-rc.1", default-features = false, optional = true }
 strum = { version = "0.27", default-features = false }
 serde = { version = "1.0", default-features = false }
@@ -111,4 +111,6 @@ schema-sync = ["sea-schema"]
 # This allows us to develop using a local version of sea-query
 [patch.crates-io]
 # sea-query = { path = "../sea-query" }
-# sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }
+sea-query = { git = "https://github.com/Huliiiiii/sea-query", branch = "aggr-expr-trait" }
+# sea-schema = { path = "../sea-schema" }
+sea-schema = { git = "https://github.com/SeaQL/sea-schema", branch = "master" }

@@ -1,10 +1,7 @@
 use crate::{
     ColumnDef, ColumnType, DbBackend, EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable,
 };
-use sea_query::{
-    BinOper, DynIden, Expr, ExprTrait, IntoIden, IntoLikeExpr, SeaRc, SelectStatement, SimpleExpr,
-    Value,
-};
+use sea_query::{BinOper, DynIden, Expr, ExprTrait, IntoIden, SeaRc, SimpleExpr, Value};
 use std::{borrow::Cow, str::FromStr};
 
 pub(crate) mod methods {
@@ -94,78 +91,6 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     bind_oper!(lt, SmallerThan);
     bind_oper!(lte, SmallerThanOrEqual);
 
-    /// ```
-    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .filter(cake::Column::Id.between(2, 3))
-    ///         .build(DbBackend::MySql)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` BETWEEN 2 AND 3"
-    /// );
-    /// ```
-    fn between<V>(&self, a: V, b: V) -> SimpleExpr
-    where
-        V: Into<Value>,
-    {
-        Expr::col(self.as_column_ref()).between(a, b)
-    }
-
-    /// ```
-    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .filter(cake::Column::Id.not_between(2, 3))
-    ///         .build(DbBackend::MySql)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` NOT BETWEEN 2 AND 3"
-    /// );
-    /// ```
-    fn not_between<V>(&self, a: V, b: V) -> SimpleExpr
-    where
-        V: Into<Value>,
-    {
-        Expr::col(self.as_column_ref()).not_between(a, b)
-    }
-
-    /// ```
-    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .filter(cake::Column::Name.like("cheese"))
-    ///         .build(DbBackend::MySql)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE 'cheese'"
-    /// );
-    /// ```
-    fn like<T>(&self, s: T) -> SimpleExpr
-    where
-        T: IntoLikeExpr,
-    {
-        Expr::col(self.as_column_ref()).like(s)
-    }
-
-    /// ```
-    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .filter(cake::Column::Name.not_like("cheese"))
-    ///         .build(DbBackend::MySql)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` NOT LIKE 'cheese'"
-    /// );
-    /// ```
-    fn not_like<T>(&self, s: T) -> SimpleExpr
-    where
-        T: IntoLikeExpr,
-    {
-        Expr::col(self.as_column_ref()).not_like(s)
-    }
-
     /// This is a simplified shorthand for a more general `like` method.
     /// Use `like` if you need something more complex, like specifying an escape character.
     ///
@@ -238,20 +163,6 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         Expr::col(self.as_column_ref()).like(pattern)
     }
 
-    bind_func_no_params!(max);
-    bind_func_no_params!(min);
-    bind_func_no_params!(sum);
-    bind_func_no_params!(count);
-    bind_func_no_params!(is_null);
-    bind_func_no_params!(is_not_null);
-
-    /// Perform an operation if the column is null
-    fn if_null<V>(&self, v: V) -> SimpleExpr
-    where
-        V: Into<Value>,
-    {
-        Expr::col(self.as_column_ref()).if_null(v)
-    }
 
     bind_vec_func!(is_in);
     bind_vec_func!(is_not_in);
@@ -279,9 +190,6 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         let vec: Vec<_> = v.into_iter().collect();
         Expr::col(self.as_column_ref()).eq(PgFunc::any(vec))
     }
-
-    bind_subquery_func!(in_subquery);
-    bind_subquery_func!(not_in_subquery);
 
     /// Construct a [`SimpleExpr::Column`] wrapped in [`Expr`].
     fn into_expr(self) -> Expr {
@@ -450,10 +358,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ColumnTrait, Condition, DbBackend, EntityTrait, QueryFilter, QueryTrait, tests_cfg::*,
-    };
-    use sea_query::Query;
+    use crate::{tests_cfg::*, *};
+    use sea_query::{ExprTrait, Query, extension::postgres::PgExpr};
 
     #[test]
     fn test_in_subquery_1() {
@@ -476,6 +382,24 @@ mod tests {
                 "WHERE `cake`.`id` IN (SELECT MAX(`cake`.`id`) FROM `cake`)",
             ]
             .join(" ")
+        );
+    }
+
+    #[test]
+    fn test_column_exprtrait_ops() {
+        assert_eq!(
+            cake::Entity::find()
+                .filter(cake::Column::Id.add(2).eq(4))
+                .build(DbBackend::MySql)
+                .to_string(),
+            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` + 2 = 4"
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .filter(cake::Column::Id.ilike("foo"))
+                .build(DbBackend::Postgres)
+                .to_string(),
+            r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" ILIKE 'foo'"#
         );
     }
 
