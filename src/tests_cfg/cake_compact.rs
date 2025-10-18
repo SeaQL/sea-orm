@@ -1,5 +1,6 @@
 use crate as sea_orm;
 use crate::entity::prelude::*;
+use sea_orm::ExprTrait;
 
 #[cfg(feature = "with-json")]
 use serde::{Deserialize, Serialize};
