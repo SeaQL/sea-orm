@@ -51,6 +51,7 @@ pub mod compound_attr {
         pub belongs_to: Option<()>,
         pub self_ref: Option<()>,
         pub via: Option<syn::LitStr>,
+        pub via_rel: Option<syn::LitStr>,
         pub from: Option<syn::LitStr>,
         pub to: Option<syn::LitStr>,
         pub relation_enum: Option<syn::LitStr>,

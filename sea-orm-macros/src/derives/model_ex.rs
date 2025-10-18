@@ -403,16 +403,28 @@ fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<Token
         // skip junction relation
 
         let has_many = Ident::new("has_many", Span::call_site());
+        let mut extra: Punctuated<_, Comma> = Punctuated::new();
+        if let Some(via_rel) = &attr.via_rel {
+            let tag = Ident::new("via_rel", via_rel.span());
+            let via_rel = format!("Relation::{}", via_rel.value());
+            extra.push(quote!(#tag = #via_rel))
+        }
 
         Some(quote! {
-            #[sea_orm(#has_many = #related_entity)]
+            #[sea_orm(#has_many = #related_entity, #extra)]
             #relation_enum
         })
     } else if attr.has_one.is_some() {
         let has_one = Ident::new("has_one", Span::call_site());
+        let mut extra: Punctuated<_, Comma> = Punctuated::new();
+        if let Some(via_rel) = &attr.via_rel {
+            let tag = Ident::new("via_rel", via_rel.span());
+            let via_rel = format!("Relation::{}", via_rel.value());
+            extra.push(quote!(#tag = #via_rel))
+        }
 
         Some(quote! {
-            #[sea_orm(#has_one = #related_entity)]
+            #[sea_orm(#has_one = #related_entity, #extra)]
             #relation_enum
         })
     } else {

@@ -114,7 +114,7 @@ eliminating the N+1 problem even when performing nested queries.
 ```rust
 // join paths:
 // cake -> fruit
-//      -> filling -> ingredient
+// cake -> cake_filling -> filling -> ingredient
 
 let super_cake = cake::Entity::load()
     .filter_by_id(42) // shorthand for .filter(cake::Column::Id.eq(42))

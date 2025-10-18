@@ -52,7 +52,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
             .find_linked(self_join::SelfReferencingLink)
             .all(db)
             .await?,
-        []
+        Vec::<self_join::Model>::new()
     );
 
     assert_eq!(
@@ -68,7 +68,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
             .find_linked(self_join::SelfReferencingLink)
             .all(db)
             .await?,
-        []
+        Vec::<self_join::Model>::new()
     );
 
     assert_eq!(
