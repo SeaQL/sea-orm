@@ -1101,6 +1101,7 @@ pub fn raw_sql(input: TokenStream) -> TokenStream {
     }
 }
 
+#[cfg(feature = "derive")]
 #[proc_macro_attribute]
 pub fn sea_orm_model(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::ItemStruct);
@@ -1111,6 +1112,7 @@ pub fn sea_orm_model(_attr: TokenStream, input: TokenStream) -> TokenStream {
     }
 }
 
+#[cfg(feature = "derive")]
 #[proc_macro_attribute]
 pub fn sea_orm_compact_model(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::ItemStruct);
