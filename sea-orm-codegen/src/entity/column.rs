@@ -104,7 +104,10 @@ impl Column {
             ColumnType::Money(Some((p, s))) => Some(format!("Money(Some({p}, {s}))")),
             ColumnType::Text => Some("Text".to_owned()),
             ColumnType::JsonBinary => Some("JsonBinary".to_owned()),
-            ColumnType::Custom(iden) => Some(format!("custom(\"{iden}\")")),
+            ColumnType::Custom(iden) => {
+                let ty = format!("custom(\"{iden}\")");
+                return Some(quote! ( ignore, column_type = #ty, select_as = "text" ));
+            }
             ColumnType::Binary(s) => Some(format!("Binary({s})")),
             ColumnType::VarBinary(s) => match s {
                 StringLen::N(s) => Some(format!("VarBinary(StringLen::N({s}))")),
