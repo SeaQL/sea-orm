@@ -1,9 +1,9 @@
 pub use crate::{
     ActiveEnum, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait, ColumnType,
     ColumnTypeTrait, ConnectionTrait, CursorTrait, DatabaseConnection, DbConn, EntityName,
-    EntityTrait, EnumIter, ForeignKeyAction, FromJsonQueryResult, Iden, IdenStatic, Linked,
-    LoaderTrait, ModelTrait, PaginatorTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait,
-    QueryFilter, QueryResult, Related, RelationDef, RelationTrait, Select, Value,
+    EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked, LoaderTrait, ModelTrait,
+    PaginatorTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryResult,
+    Related, RelationDef, RelationTrait, Select, Value,
     error::*,
     sea_query::{DynIden, Expr, RcOrArc, SeaRc, StringLen},
 };
@@ -13,6 +13,7 @@ pub use crate::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveDisplay,
     DeriveEntity, DeriveEntityModel, DeriveIden, DeriveIntoActiveModel, DeriveModel, DeriveModelEx,
     DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, DeriveValueType,
+    FromJsonQueryResult,
 };
 
 pub use super::compound::{HasMany, HasOne};
