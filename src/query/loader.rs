@@ -786,11 +786,25 @@ fn prepare_condition_simple(
     let arity = to.arity();
     let keys = keys.iter().unique();
 
-    let table_columns = create_table_columns(table, to);
+    if arity == 1 {
+        let values = keys
+            .map(|key| match key {
+                ValueTuple::One(v) => Ok(Expr::val(v.to_owned())),
+                _ => Err(arity_mismatch(arity, key)),
+            })
+            .collect::<Result<Vec<_>, DbErr>>()?;
 
-    if cfg!(feature = "sqlite-no-row-value-before-3_15") && matches!(backend, DbBackend::Sqlite) {
+        let expr = Expr::col(table_column(table, to.iter().next().unwrap())).is_in(values);
+
+        Ok(expr.into())
+    } else if cfg!(feature = "sqlite-no-row-value-before-3_15")
+        && matches!(backend, DbBackend::Sqlite)
+    {
         // SQLite supports row value expressions since 3.15.0
         // https://www.sqlite.org/releaselog/3_15_0.html
+
+        let table_columns = create_table_columns(table, to);
+
         let mut outer = Condition::any();
 
         for key in keys {
@@ -814,6 +828,8 @@ fn prepare_condition_simple(
 
         Ok(outer)
     } else {
+        let table_columns = create_table_columns(table, to);
+
         // A vector of tuples of values, e.g. [(v11, v12, ...), (v21, v22, ...), ...]
         let value_tuples = keys
             .map(|key| {
@@ -893,8 +909,7 @@ fn table_column(tbl: &TableRef, col: &DynIden) -> ColumnRef {
 /// Create a vector of `Expr::col` from the table and identity, e.g. [Expr::col((table, col1)), Expr::col((table, col2)), ...]
 fn create_table_columns(table: &TableRef, cols: &Identity) -> Vec<Expr> {
     cols.iter()
-        .cloned()
-        .map(|col| table_column(table, &col))
+        .map(|col| table_column(table, col))
         .map(Expr::col)
         .collect()
 }
