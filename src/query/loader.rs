@@ -794,7 +794,11 @@ fn prepare_condition_simple(
             })
             .collect::<Result<Vec<_>, DbErr>>()?;
 
-        let expr = Expr::col(table_column(table, to.iter().next().unwrap())).is_in(values);
+        let expr = Expr::col(table_column(
+            table,
+            to.iter().next().expect("Checked above"),
+        ))
+        .is_in(values);
 
         Ok(expr.into())
     } else if cfg!(feature = "sqlite-no-row-value-before-3_15")
