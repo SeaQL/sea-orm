@@ -377,7 +377,7 @@ Look at the [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/ex
 
 [SeaORM Pro](https://github.com/SeaQL/sea-orm-pro/) is an admin panel solution allowing you to quickly and easily launch an admin panel for your application - frontend development skills not required, but certainly nice to have!
 
-SeaORM Pro will be updated to support the latest features in SeaORM 2.0.
+SeaORM Pro has been updated to support the latest features in SeaORM 2.0.
 
 Features:
 
@@ -385,7 +385,6 @@ Features:
 + Built on React + GraphQL
 + Built-in GraphQL resolver
 + Customize the UI with TOML config
-+ Custom GraphQL endpoints *(new in 2.0)*
 + Role Based Access Control *(new in 2.0)*
 
 Learn More
@@ -409,6 +408,7 @@ SeaORM 2.0 is shaping up to be our most significant release yet - with a few bre
 + [A Sneak Peek at SeaORM 2.0](https://www.sea-ql.org/blog/2025-09-16-sea-orm-2.0/)
 + [SeaORM 2.0: A closer look](https://www.sea-ql.org/blog/2025-09-24-sea-orm-2.0/)
 + [Role Based Access Control in SeaORM 2.0](https://www.sea-ql.org/blog/2025-09-30-sea-orm-rbac/)
++ [SeaORM 2.0: new entity format and entity loader](https://www.sea-ql.org/blog/2025-10-20-sea-orm-2.0/)
 
 If you make extensive use of SeaORM's underlying query builder, we recommend checking out our blog post on SeaQuery 1.0 release:
 
@@ -496,17 +496,14 @@ A friend of Ferris, Terres the hermit crab is the official mascot of SeaORM. His
 
 <img alt="Terres" src="https://www.sea-ql.org/SeaORM/img/Terres.png" width="400"/>
 
-### Rustacean Sticker Pack 🦀
-
-The Rustacean Sticker Pack is the perfect way to express your passion for Rust.
-Our stickers are made with a premium water-resistant vinyl with a unique matte finish.
-Stick them on your laptop, notebook, or any gadget to show off your love for Rust!
+## 🦀 Rustacean Sticker Pack
+The Rustacean Sticker Pack is the perfect way to express your passion for Rust. Our stickers are made with a premium water-resistant vinyl with a unique matte finish.
 
 Sticker Pack Contents:
-- Logo of SeaQL projects: SeaQL, SeaORM, SeaQuery, Seaography, FireDBG
-- Mascot of SeaQL: Terres the Hermit Crab
-- Mascot of Rust: Ferris the Crab
-- The Rustacean word
+
++ Logo of SeaQL projects: SeaQL, SeaORM, SeaQuery, Seaography
++ Mascots: Ferris the Crab x 3, Terres the Hermit Crab
++ The Rustacean wordmark
 
 [Support SeaQL and get a Sticker Pack!](https://www.sea-ql.org/sticker-pack/) All proceeds contributes directly to the ongoing development of SeaQL projects.
 
