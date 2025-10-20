@@ -7,7 +7,7 @@ pub struct ModelType {
     pub fields: Vec<FieldType>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldType {
     pub(super) field: Arc<str>,
     pub(super) type_: ArrayType,

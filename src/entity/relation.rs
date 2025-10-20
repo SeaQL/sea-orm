@@ -9,7 +9,7 @@ use sea_query::{
 use std::{fmt::Debug, sync::Arc};
 
 /// Defines the type of relationship
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum RelationType {
     /// An Entity has one relationship
     HasOne,
@@ -53,7 +53,7 @@ pub struct RelationDef {
     pub rel_type: RelationType,
     /// Reference from another Entity
     pub from_tbl: TableRef,
-    /// Reference to another ENtity
+    /// Reference to another Entity
     pub to_tbl: TableRef,
     /// Reference to from a Column
     pub from_col: Identity,
@@ -501,6 +501,30 @@ impl From<RelationDef> for TableForeignKey {
             .take()
     }
 }
+
+impl std::hash::Hash for RelationDef {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.rel_type.hash(state);
+        self.from_tbl.sea_orm_table().hash(state);
+        self.to_tbl.sea_orm_table().hash(state);
+        self.from_col.hash(state);
+        self.to_col.hash(state);
+        self.is_owner.hash(state);
+    }
+}
+
+impl PartialEq for RelationDef {
+    fn eq(&self, other: &Self) -> bool {
+        self.rel_type.eq(&other.rel_type)
+            && self.from_tbl.eq(&other.from_tbl)
+            && self.to_tbl.eq(&other.to_tbl)
+            && itertools::equal(self.from_col.iter(), other.from_col.iter())
+            && itertools::equal(self.to_col.iter(), other.to_col.iter())
+            && self.is_owner.eq(&other.is_owner)
+    }
+}
+
+impl Eq for RelationDef {}
 
 #[cfg(test)]
 mod tests {

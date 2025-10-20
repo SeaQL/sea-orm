@@ -3,7 +3,7 @@ use sea_query::{Alias, DynIden, Iden, IntoIden, SeaRc};
 use std::{borrow::Cow, fmt::Write};
 
 /// List of column identifier
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub enum Identity {
     /// Column identifier consists of 1 column
     Unary(DynIden),
