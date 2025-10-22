@@ -90,17 +90,16 @@ async fn main() -> Result<(), sea_orm::DbErr> {
 
     let db = &sea_orm::Database::connect("sqlite::memory:").await?;
 
-    // All the entities present in this crate are automatically registered into
-    // the schema registry, no matter which module they are defined in.
+    // All entities defined in this crate are automatically registered
+    // into the schema registry, regardless of which module they live in.
     //
-    // It can also includes entities defined in upstream crates,
-    // so it's best to narrow down the set of entities to those defined in
-    // this crate.
+    // The registry may also include entities from upstream crates,
+    // so here we restrict it to entities defined in this crate only.
     //
-    // It doesn't matter which order you define entities.
-    // SeaORM figures out the foreign key dependencies and
-    // creates the tables in the right order along with foreign keys.
-    db.get_schema_registry("sea-orm-quickstart::*")
+    // The order of entity definitions does not matter.
+    // SeaORM resolves foreign key dependencies automatically
+    // and creates the tables in the correct order with their keys.
+    db.get_schema_registry("sea_orm_quickstart::*")
         .apply(db)
         .await?;
 
@@ -126,7 +125,7 @@ async fn main() -> Result<(), sea_orm::DbErr> {
     );
 
     info!("Create profile for Bob:");
-    let profile = profile::ActiveModel {
+    profile::ActiveModel {
         user_id: Set(bob.id),
         picture: Set("sports pose".into()),
         ..Default::default()
@@ -135,10 +134,15 @@ async fn main() -> Result<(), sea_orm::DbErr> {
     .await?;
 
     info!("Query user with profile in a single query:");
-    let user_with_profile = user::Entity::load().with(profile::Entity).one(db).await?;
-    let user_with_profile = user_with_profile.unwrap();
-    assert_eq!(user_with_profile.name, "Bob");
-    assert_eq!(user_with_profile.profile.unwrap().picture, "sports pose");
+    let user_with_profile = user::Entity::find_by_id(bob.id)
+        .find_also_related(profile::Entity)
+        .one(db)
+        .await?;
+    let Some((user, Some(profile))) = user_with_profile else {
+        panic!("Profile not found");
+    };
+    assert_eq!(user.name, "Bob");
+    assert_eq!(profile.picture, "sports pose");
 
     info!("Update Bob's profile:");
     let mut profile = profile.into_active_model();
@@ -221,14 +225,8 @@ async fn main() -> Result<(), sea_orm::DbErr> {
     alice_comment.delete(db).await?;
 
     info!("Confirm the comment has been deleted:");
-    let post = post::Entity::load()
-        .filter_by_id(posts[0].id)
-        .with(comment::Entity)
-        .one(db)
-        .await?
-        .unwrap();
-
-    assert_eq!(post.comments.len(), 0);
+    let post_comments = posts[0].find_related(comment::Entity).all(db).await?;
+    assert_eq!(post_comments.len(), 0);
 
     Ok(())
 }

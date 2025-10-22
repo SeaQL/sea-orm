@@ -23,6 +23,7 @@ impl EntityRegistry {
         let string;
         if let Some((left, right)) = prefix.split_once("::") {
             if left.contains("-") {
+                // convert crate name to module path
                 let left = left.replace('-', "_");
                 string = format!("{left}::{right}");
                 prefix = &string;
