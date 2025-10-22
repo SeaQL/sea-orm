@@ -102,13 +102,13 @@ jobs:
         run: echo "message=$(git log --no-merges -1 --oneline)" >> $GITHUB_OUTPUT
 
   clippy:
-    name: Clippy
+    name: Rustfmt & Clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          components: rustfmt, clippy
       - uses: actions/cache@v4
         with:
           path: |
@@ -117,57 +117,19 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml', 'sea-orm-cli/Cargo.toml', 'sea-orm-migration/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
+      - run: cargo fmt --all -- --check
+      - run: cargo fmt --manifest-path sea-orm-cli/Cargo.toml --all -- --check
+      - run: cargo fmt --manifest-path sea-orm-migration/Cargo.toml --all -- --check
       - run: cargo clippy --all -- -D warnings
       - run: cargo clippy --all --features runtime-tokio-native-tls,sqlx-all -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-cli/Cargo.toml -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-migration/Cargo.toml -- -D warnings
 
-  rustfmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rustfmt
-      - run: cargo fmt --all -- --check
-      - run: cargo fmt --manifest-path sea-orm-cli/Cargo.toml --all -- --check
-      - run: cargo fmt --manifest-path sea-orm-migration/Cargo.toml --all -- --check
-
-  compile-sqlite:
-    name: Compile SQLite
+  compile:
+    name: Compile
     needs: init
     if: >-
-      ${{
-        needs.init.outputs.run-partial == 'false' ||
-        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-sqlite == 'true')
-      }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        runtime: [tokio]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-comp-sqlite-${{ hashFiles('**/Cargo.toml') }}
-      - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }} --no-run
-
-  compile-mysql:
-    name: Compile MySQL
-    needs: init
-    if: >-
-      ${{
-        needs.init.outputs.run-partial == 'false' ||
-        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-mysql == 'true')
-      }}
+      ${{ needs.init.outputs.run-partial == 'false' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -183,36 +145,12 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-comp-mysql-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-compile-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
+      - run: cargo build --no-default-features --features seaography
       - run: cargo test --test '*' --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-
-  compile-postgres:
-    name: Compile PostgreSQL
-    needs: init
-    if: >-
-      ${{
-        needs.init.outputs.run-partial == 'false' ||
-        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-postgres == 'true')
-      }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        runtime: [tokio]
-        tls: [native-tls, rustls]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-comp-pg-${{ hashFiles('**/Cargo.toml') }}
-      - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo test --test '*' --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }} --no-run
 
   test:
     name: Unit Test
