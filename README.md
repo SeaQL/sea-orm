@@ -66,13 +66,11 @@ If you want a simple, clean example that fits in a single file that demonstrates
 
     SeaORM is feature-rich, well-tested and used in production by companies and startups.
 
-## A quick taste of SeaORM
-
 Let's have a quick walk through of the unique features of SeaORM.
 
-### Entity
-You don't have to write this by hand! Entity files can be generated from an existing database with `sea-orm-cli`,
-following is generated with `--entity-format dense` (new in 2.0).
+## Expressive Entity format
+You don't have to write this by hand! Entity files can be generated from an existing database using `sea-orm-cli`,
+following is generated with `--entity-format dense` *(new in 2.0)*.
 ```rust
 mod cake {
     use sea_orm::entity::prelude::*;
@@ -107,7 +105,7 @@ mod fruit {
     }
 }
 ```
-### Entity Loader
+## Smart Entity Loader
 
 The Entity Loader intelligently uses join for 1-1 and data loader for 1-N relations,
 eliminating the N+1 problem even when performing nested queries.
@@ -147,6 +145,22 @@ super_cake
         }],
     };
 ```
+
+## Schema first or Entity first? Your choice
+
+SeaORM provides a powerful migration system that lets you create tables, modify schemas, and seed data with ease.
+
+With SeaORM 2.0, you also get a first‑class Entity‑first workflow: simply define new entities or add columns to existing ones,
+and SeaORM will automatically detect the changes and create the new tables, columns, indexes, and foreign keys for you.
+
+```rust
+// SeaORM resolves foreign key dependencies and creates the tables in topological order.
+// Requires the `entity-registry` and `schema-sync` feature flags.
+db.get_schema_registry("my_crate::entity::*").sync(db).await;
+```
+
+## Basics
+
 ### Select
 SeaORM models 1-N and M-N relationships at the Entity level,
 letting you traverse many-to-many links through a junction table in a single call.
