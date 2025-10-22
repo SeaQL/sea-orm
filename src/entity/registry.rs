@@ -19,8 +19,12 @@ impl EntityRegistry {
     /// Builds a schema from all the registered entities, filtering by prefix.
     pub fn build_schema(schema: Schema, prefix: &str) -> SchemaBuilder {
         let mut schema = SchemaBuilder::new(schema);
+        let mut string;
         let mut prefix = prefix.trim_end_matches("*");
-        let string;
+        if !prefix.contains("::") {
+            string = format!("{prefix}::");
+            prefix = &string;
+        }
         if let Some((left, right)) = prefix.split_once("::") {
             if left.contains("-") {
                 // convert crate name to module path
