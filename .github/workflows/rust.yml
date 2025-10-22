@@ -99,13 +99,13 @@ jobs:
         run: echo "message=$(git log --no-merges -1 --oneline)" >> $GITHUB_OUTPUT
 
   clippy:
-    name: Rustfmt & Clippy
+    name: Clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
+          components: clippy
       - uses: actions/cache@v4
         with:
           path: |
@@ -114,13 +114,22 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml', 'sea-orm-cli/Cargo.toml', 'sea-orm-migration/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo fmt --all -- --check
-      - run: cargo fmt --manifest-path sea-orm-cli/Cargo.toml --all -- --check
-      - run: cargo fmt --manifest-path sea-orm-migration/Cargo.toml --all -- --check
       - run: cargo clippy --all -- -D warnings
       - run: cargo clippy --all --features runtime-tokio-native-tls,sqlx-all -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-cli/Cargo.toml -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-migration/Cargo.toml -- -D warnings
+
+  rustfmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+      - run: cargo fmt --manifest-path sea-orm-cli/Cargo.toml --all -- --check
+      - run: cargo fmt --manifest-path sea-orm-migration/Cargo.toml --all -- --check
 
   compile:
     name: Compile
