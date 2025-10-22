@@ -10,12 +10,9 @@
 #
 # Following jobs will be run when no keywords were found in commit message)
 #
-#   - `compile-sqlite`
 #   - `sqlite`
-#   - `compile-mysql`
 #   - `mysql`
 #   - `mariadb`
-#   - `compile-postgres`
 #   - `postgres`
 #
 # Following jobs will be run if keywords `[issues]` were found in commit message
@@ -31,20 +28,20 @@
 # Following jobs will be run if keywords `[sqlite]` were found in commit message
 #
 #   - Jobs that will always run
-#   - `compile-sqlite`
+#   - `compile`
 #   - `sqlite`
 #
 # Following jobs will be run if keywords `[mysql]` were found in commit message
 #
 #   - Jobs that will always run
-#   - `compile-mysql`
+#   - `compile`
 #   - `mysql`
 #   - `mariadb`
 #
 # Following jobs will be run if keywords `[postgres]` were found in commit message
 #
 #   - Jobs that will always run
-#   - `compile-postgres`
+#   - `compile`
 #   - `postgres`
 
 name: tests
@@ -128,8 +125,6 @@ jobs:
   compile:
     name: Compile
     needs: init
-    if: >-
-      ${{ needs.init.outputs.run-partial == 'false' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -272,7 +267,7 @@ jobs:
     name: SQLite
     needs:
       - init
-      - compile-sqlite
+      - compile
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -306,7 +301,7 @@ jobs:
     name: MySQL
     needs:
       - init
-      - compile-mysql
+      - compile
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -357,7 +352,7 @@ jobs:
     name: MariaDB
     needs:
       - init
-      - compile-mysql
+      - compile
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -408,7 +403,7 @@ jobs:
     name: Postgres
     needs:
       - init
-      - compile-postgres
+      - compile
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
