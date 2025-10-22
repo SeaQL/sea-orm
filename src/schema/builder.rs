@@ -50,9 +50,25 @@ impl SchemaBuilder {
 
     /// Register an entity to this schema
     pub fn register<E: EntityTrait>(mut self, entity: E) -> Self {
-        self.entities
-            .push(EntitySchemaInfo::new(entity, &self.helper));
+        let entity = EntitySchemaInfo::new(entity, &self.helper);
+        if !self
+            .entities
+            .iter()
+            .any(|e| e.table.get_table_name() == entity.table.get_table_name())
+        {
+            self.entities.push(entity);
+        }
         self
+    }
+
+    #[cfg(feature = "entity-registry")]
+    pub(crate) fn helper(&self) -> &Schema {
+        &self.helper
+    }
+
+    #[cfg(feature = "entity-registry")]
+    pub(crate) fn register_entity(&mut self, entity: EntitySchemaInfo) {
+        self.entities.push(entity);
     }
 
     /// Synchronize the schema with database, will create missing tables, columns, indexes, foreign keys.

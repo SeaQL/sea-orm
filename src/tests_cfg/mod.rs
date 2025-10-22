@@ -2,6 +2,9 @@
 
 //! Configurations for test cases and examples. Not intended for actual use.
 
+#[cfg(feature = "entity-registry")]
+mod registry;
+
 pub mod cake;
 pub mod cake_compact;
 pub mod cake_expanded;

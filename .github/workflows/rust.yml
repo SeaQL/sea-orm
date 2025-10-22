@@ -172,8 +172,8 @@ jobs:
       - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo test --workspace --no-run
       - run: cargo test --workspace
-      - run: cargo test --lib --features rbac --no-run
       - run: cargo test --lib --features rbac
+      - run: cargo test --lib --features entity-registry -- registry
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml --no-run
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml
 
@@ -234,6 +234,9 @@ jobs:
           find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo update --manifest-path {}
           find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
           ${{'! '}}${{ '[ -d "' }}${{ matrix.path }}${{ '/service" ]' }} || find ${{ matrix.path }}/service -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
+      - if: matrix.path == 'quickstart'
+        working-directory: ./examples/${{ matrix.path }}
+        run: cargo run
 
   issues-matrix:
     name: Issues Matrix

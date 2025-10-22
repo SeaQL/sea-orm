@@ -56,12 +56,14 @@ impl DeriveEntity {
         let expanded_impl_entity_trait = self.impl_entity_trait();
         let expanded_impl_iden = self.impl_iden();
         let expanded_impl_iden_static = self.impl_iden_static();
+        let expanded_impl_entity_registry = self.impl_entity_registry();
 
         TokenStream::from_iter([
             expanded_impl_entity_name,
             expanded_impl_entity_trait,
             expanded_impl_iden,
             expanded_impl_iden_static,
+            expanded_impl_entity_registry,
         ])
     }
 
@@ -148,6 +150,21 @@ impl DeriveEntity {
                 }
             }
         )
+    }
+
+    fn impl_entity_registry(&self) -> TokenStream {
+        if cfg!(feature = "entity-registry") {
+            quote! {
+                sea_orm::register_entity! {
+                    sea_orm::EntityRegistry {
+                        module_path: module_path!(),
+                        schema_info: |schema| sea_orm::EntitySchemaInfo::new(Entity, schema),
+                    }
+                }
+            }
+        } else {
+            quote!()
+        }
     }
 }
 
