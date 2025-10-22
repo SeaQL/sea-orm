@@ -160,8 +160,8 @@
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! // join paths:
 //! // cake -> fruit
-//! // cake -> cake_filling -> filling -> ingredient
-//!
+//! // cake -> cake_filling -> filling
+//! //                         filling -> ingredient
 //! let super_cake = cake::Entity::load()
 //!     .filter_by_id(42) // shorthand for .filter(cake::Column::Id.eq(42))
 //!     .with(fruit::Entity) // 1-1 uses join
@@ -550,7 +550,7 @@
 //! + [Role Based Access Control in SeaORM 2.0](https://www.sea-ql.org/blog/2025-09-30-sea-orm-rbac/)
 //! + [SeaORM 2.0: new entity format and entity loader](https://www.sea-ql.org/blog/2025-10-20-sea-orm-2.0/)
 //!
-//! If you make extensive use of SeaORM's underlying query builder, we recommend checking out our blog post on SeaQuery 1.0 release:
+//! If you make extensive use of SeaQuery, we recommend checking out our blog post on SeaQuery 1.0 release:
 //!
 //! + [The road to SeaQuery 1.0](https://www.sea-ql.org/blog/2025-08-30-sea-query-1.0/)
 //!
