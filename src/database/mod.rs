@@ -49,18 +49,21 @@ use crate::error::*;
 #[derive(Debug, Default)]
 pub struct Database;
 
+#[cfg(feature = "sqlx-mysql")]
 type MapMySqlPoolOptsFn = Arc<
     dyn Fn(sqlx::pool::PoolOptions<sqlx::MySql>) -> sqlx::pool::PoolOptions<sqlx::MySql>
         + Send
         + Sync,
 >;
 
+#[cfg(feature = "sqlx-postgres")]
 type MapPgPoolOptsFn = Arc<
     dyn Fn(sqlx::pool::PoolOptions<sqlx::Postgres>) -> sqlx::pool::PoolOptions<sqlx::Postgres>
         + Send
         + Sync,
 >;
 
+#[cfg(feature = "sqlx-sqlite")]
 type MapSqlitePoolOptsFn = Option<
     Arc<
         dyn Fn(sqlx::pool::PoolOptions<sqlx::Sqlite>) -> sqlx::pool::PoolOptions<sqlx::Sqlite>
