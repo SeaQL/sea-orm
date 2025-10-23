@@ -49,6 +49,26 @@ use crate::error::*;
 #[derive(Debug, Default)]
 pub struct Database;
 
+type MapMySqlPoolOptsFn = Arc<
+    dyn Fn(sqlx::pool::PoolOptions<sqlx::MySql>) -> sqlx::pool::PoolOptions<sqlx::MySql>
+        + Send
+        + Sync,
+>;
+
+type MapPgPoolOptsFn = Arc<
+    dyn Fn(sqlx::pool::PoolOptions<sqlx::Postgres>) -> sqlx::pool::PoolOptions<sqlx::Postgres>
+        + Send
+        + Sync,
+>;
+
+type MapSqlitePoolOptsFn = Option<
+    Arc<
+        dyn Fn(sqlx::pool::PoolOptions<sqlx::Sqlite>) -> sqlx::pool::PoolOptions<sqlx::Sqlite>
+            + Send
+            + Sync,
+    >,
+>;
+
 /// Defines the configuration options of a database
 #[derive(derive_more::Debug, Clone)]
 pub struct ConnectOptions {
@@ -86,33 +106,13 @@ pub struct ConnectOptions {
     pub(crate) connect_lazy: bool,
     #[cfg(feature = "sqlx-mysql")]
     #[debug(skip)]
-    pub(crate) mysql_pool_opts_fn: Option<
-        Arc<
-            dyn Fn(sqlx::pool::PoolOptions<sqlx::MySql>) -> sqlx::pool::PoolOptions<sqlx::MySql>
-                + Send
-                + Sync,
-        >,
-    >,
+    pub(crate) mysql_pool_opts_fn: Option<MapMySqlPoolOptsFn>,
     #[cfg(feature = "sqlx-postgres")]
     #[debug(skip)]
-    pub(crate) pg_pool_opts_fn: Option<
-        Arc<
-            dyn Fn(
-                    sqlx::pool::PoolOptions<sqlx::Postgres>,
-                ) -> sqlx::pool::PoolOptions<sqlx::Postgres>
-                + Send
-                + Sync,
-        >,
-    >,
+    pub(crate) pg_pool_opts_fn: Option<MapPgPoolOptsFn>,
     #[cfg(feature = "sqlx-sqlite")]
     #[debug(skip)]
-    pub(crate) sqlite_pool_opts_fn: Option<
-        Arc<
-            dyn Fn(sqlx::pool::PoolOptions<sqlx::Sqlite>) -> sqlx::pool::PoolOptions<sqlx::Sqlite>
-                + Send
-                + Sync,
-        >,
-    >,
+    pub(crate) sqlite_pool_opts_fn: MapSqlitePoolOptsFn,
     #[cfg(feature = "sqlx-mysql")]
     #[debug(skip)]
     pub(crate) mysql_opts_fn:
