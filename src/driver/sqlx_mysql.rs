@@ -80,11 +80,16 @@ impl SqlxMySqlConnector {
         if let Some(f) = &options.mysql_opts_fn {
             sqlx_opts = f(sqlx_opts);
         }
-        let pool = if options.connect_lazy {
-            options.sqlx_pool_options().connect_lazy_with(sqlx_opts)
+        let connect_lazy = options.connect_lazy;
+        let mysql_pool_opts_fn = options.mysql_pool_opts_fn.clone();
+        let mut pool_options = options.sqlx_pool_options();
+        if let Some(f) = &mysql_pool_opts_fn {
+            pool_options = f(pool_options);
+        }
+        let pool = if connect_lazy {
+            pool_options.connect_lazy_with(sqlx_opts)
         } else {
-            options
-                .sqlx_pool_options()
+            pool_options
                 .connect_with(sqlx_opts)
                 .await
                 .map_err(sqlx_error_to_conn_err)?
