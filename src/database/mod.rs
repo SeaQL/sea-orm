@@ -43,6 +43,15 @@ use crate::error::*;
 #[derive(Debug, Default)]
 pub struct Database;
 
+type AfterConnectCallback = Option<
+    Arc<
+        dyn Fn(DatabaseConnection) -> Pin<Box<dyn Future<Output = Result<(), DbErr>>>>
+            + Send
+            + Sync
+            + 'static,
+    >,
+>;
+
 /// Defines the configuration options of a database
 #[derive(derive_more::Debug, Clone)]
 pub struct ConnectOptions {
@@ -80,14 +89,7 @@ pub struct ConnectOptions {
     pub(crate) connect_lazy: bool,
 
     #[debug(skip)]
-    pub(crate) after_connect: Option<
-        Arc<
-            dyn Fn(DatabaseConnection) -> Pin<Box<dyn Future<Output = Result<(), DbErr>>>>
-                + Send
-                + Sync
-                + 'static,
-        >,
-    >,
+    pub(crate) after_connect: AfterConnectCallback,
 
     #[cfg(feature = "sqlx-mysql")]
     #[debug(skip)]
