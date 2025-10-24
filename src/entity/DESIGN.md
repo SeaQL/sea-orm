@@ -1,27 +1,5 @@
 # Design
 
-We are heavily inspired by ActiveRecord, Eloquent and TypeORM.
-
-1. Intuitive and ergonomic
-
-API should state the intention clearly. Provide syntax sugar for common things.
-
-2. Fast(er) compilation
-
-Balance between compile-time checking and compilation speed.
-
-3. Avoid 'symbol soup'
-
-Avoid macros with DSL, use derive macros where appropriate. Be friendly with IDE tools.
-
-## Test Time
-
-After some bitterness we realized it is not possible to capture everything at compile time. But we don't 
-want to encounter problems at run time either. The solution is to perform checking at 'test time' to
-uncover problems. These checks will be removed at production so there will be no run time penalty.
-
-## API style
-
 ### Turbofish and inference
 
 Consider the following method:
