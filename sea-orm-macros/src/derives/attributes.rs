@@ -55,6 +55,7 @@ pub mod compound_attr {
         pub from: Option<syn::LitStr>,
         pub to: Option<syn::LitStr>,
         pub relation_enum: Option<syn::LitStr>,
+        pub relation_reverse: Option<syn::LitStr>,
         pub on_update: Option<syn::LitStr>,
         pub on_delete: Option<syn::LitStr>,
     }

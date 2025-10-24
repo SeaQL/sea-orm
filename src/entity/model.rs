@@ -1,11 +1,12 @@
 use crate::{
     ActiveModelBehavior, ActiveModelTrait, ColumnTrait, ConnectionTrait, DbErr, DeleteResult,
-    EntityTrait, IntoActiveModel, Linked, QueryFilter, QueryResult, Related, Select, SelectModel,
-    SelectorRaw, Statement, TryGetError,
+    EntityTrait, IntoActiveModel, Iterable, Linked, PrimaryKeyArity, PrimaryKeyToColumn,
+    PrimaryKeyTrait, QueryFilter, QueryResult, Related, Select, SelectModel, SelectorRaw,
+    Statement, TryGetError,
 };
 use async_trait::async_trait;
-use sea_query::ArrayType;
 pub use sea_query::Value;
+use sea_query::{ArrayType, ValueTuple};
 use std::fmt::Debug;
 
 /// The interface for Model, implemented by data structs
@@ -55,6 +56,41 @@ pub trait ModelTrait: Clone + Send + Debug {
         A: ActiveModelTrait<Entity = Self::Entity> + ActiveModelBehavior + Send + 'a,
     {
         self.into_active_model().delete(db).await
+    }
+
+    /// Get the primary key value of the Model
+    fn get_primary_key_value(&self) -> ValueTuple {
+        let mut cols = <Self::Entity as EntityTrait>::PrimaryKey::iter();
+        macro_rules! next {
+            () => {
+                self.get(cols.next().expect("Already checked arity").into_column())
+            };
+        }
+        match <<<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY {
+            1 => {
+                let s1 = next!();
+                ValueTuple::One(s1)
+            }
+            2 => {
+                let s1 = next!();
+                let s2 = next!();
+                ValueTuple::Two(s1, s2)
+            }
+            3 => {
+                let s1 = next!();
+                let s2 = next!();
+                let s3 = next!();
+                ValueTuple::Three(s1, s2, s3)
+            }
+            len => {
+                let mut vec = Vec::with_capacity(len);
+                for _ in 0..len {
+                    let s = next!();
+                    vec.push(s);
+                }
+                ValueTuple::Many(vec)
+            }
+        }
     }
 }
 

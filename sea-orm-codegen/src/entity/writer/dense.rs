@@ -14,7 +14,7 @@ impl EntityWriter {
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
         _column_extra_derives: &TokenStream,
-        seaography: bool,
+        _seaography: bool,
         impl_active_model_behavior: bool,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
@@ -34,9 +34,6 @@ impl EntityWriter {
         ];
         if impl_active_model_behavior {
             code_blocks.push(Self::impl_active_model_behavior());
-        }
-        if seaography {
-            code_blocks.push(Self::gen_dense_related_entity(entity));
         }
         code_blocks
     }
@@ -263,7 +260,7 @@ impl EntityWriter {
         }
     }
 
-    // we will not need this soon
+    #[allow(dead_code)]
     fn gen_dense_related_entity(entity: &Entity) -> TokenStream {
         let via_entities = entity.get_conjunct_relations_via_snake_case();
 
