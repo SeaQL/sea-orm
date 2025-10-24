@@ -1,10 +1,10 @@
 use crate::{
-    ActiveModelBehavior, ActiveModelTrait, ConnectionTrait, DbErr, DeleteResult, EntityTrait,
-    IntoActiveModel, Linked, QueryFilter, QueryResult, Related, Select, SelectModel, SelectorRaw,
-    Statement, TryGetError,
+    find_linked, find_linked_recursive, ActiveModelBehavior, ActiveModelTrait, ConnectionTrait,
+    DbErr, DeleteResult, EntityTrait, IntoActiveModel, Linked, QueryFilter, QueryResult,
+    QuerySelect, Related, Select, SelectModel, SelectorRaw, Statement, TryGetError,
 };
 use async_trait::async_trait;
-pub use sea_query::Value;
+pub use sea_query::{JoinType, Value};
 use std::fmt::Debug;
 
 /// The interface for Model, implemented by data structs
@@ -25,7 +25,11 @@ pub trait ModelTrait: Clone + Send + Debug {
         R: EntityTrait,
         Self::Entity: Related<R>,
     {
-        <Self::Entity as Related<R>>::find_related().belongs_to(self)
+        let mut select = Select::<R>::new();
+        if let Some(via) = <Self::Entity as Related<R>>::via() {
+            select = select.join_rev(JoinType::InnerJoin, via)
+        }
+        select.find_by_relation(<Self::Entity as Related<R>>::to(), self, None)
     }
 
     /// Find linked Models
@@ -33,8 +37,42 @@ pub trait ModelTrait: Clone + Send + Debug {
     where
         L: Linked<FromEntity = Self::Entity>,
     {
-        let tbl_alias = &format!("r{}", l.link().len() - 1);
-        l.find_linked().belongs_to_tbl_alias(self, tbl_alias)
+        let mut link = l.link().into_iter().peekable();
+        match link.next_if(|rel| rel.on_condition.is_none()) {
+            Some(last) => {
+                let tbl_alias = if link.len() == 0 {
+                    None
+                } else {
+                    Some(format!("r{}", link.len() - 1))
+                };
+                find_linked(link.rev(), JoinType::InnerJoin).find_by_relation(last, self, tbl_alias)
+            }
+            None => {
+                let tbl_alias = &format!("r{}", link.len() - 1);
+                find_linked(link.rev(), JoinType::InnerJoin).belongs_to_tbl_alias(self, tbl_alias)
+            }
+        }
+    }
+
+    /// Find linked Models, recursively
+    fn find_linked_recursive<L>(&self, l: L) -> Select<L::ToEntity>
+    where
+        L: Linked<FromEntity = Self::Entity, ToEntity = Self::Entity>,
+    {
+        // Have to do this because L is not Clone
+        let link = l.link();
+        let initial_query = self.find_linked(l);
+        find_linked_recursive(initial_query, link)
+    }
+
+    /// Find self and linked Models, recursively
+    fn find_with_linked_recursive<L>(&self, l: L) -> Select<L::ToEntity>
+    where
+        L: Linked<FromEntity = Self::Entity, ToEntity = Self::Entity>,
+    {
+        Self::Entity::find()
+            .belongs_to(self)
+            .find_with_linked_recursive(l)
     }
 
     /// Delete a model
