@@ -215,7 +215,7 @@ where
         ColumnType::Enum { name, variants } => match backend {
             DbBackend::MySql => {
                 let variants: Vec<String> = variants.iter().map(|v| v.to_string()).collect();
-                ColumnType::custom(format!("ENUM('{}')", variants.join("', '")).as_str())
+                ColumnType::custom(format!("ENUM('{}')", variants.join("', '")))
             }
             DbBackend::Postgres => ColumnType::Custom(name.clone()),
             DbBackend::Sqlite => orm_column_def.col_type,
