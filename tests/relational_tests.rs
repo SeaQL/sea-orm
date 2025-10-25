@@ -6,7 +6,7 @@ pub use common::{TestContext, bakery_chain::*, setup::*};
 use pretty_assertions::assert_eq;
 use sea_orm::sea_query::{Expr, Func, SimpleExpr};
 use sea_orm::{
-    DbBackend, DbErr, DerivePartialModel, FromQueryResult,
+    DbBackend, DbErr, DerivePartialModel, ExprTrait, FromQueryResult,
     entity::*,
     prelude::{ChronoUtc, DateTimeUtc, Decimal, Uuid},
     query::*,
