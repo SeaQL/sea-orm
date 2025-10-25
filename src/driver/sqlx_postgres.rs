@@ -100,8 +100,11 @@ impl SqlxPostgresConnector {
             }
             string
         });
+
         let lazy = options.connect_lazy;
+        let after_connect = options.after_connect.clone();
         let mut pool_options = options.sqlx_pool_options();
+
         if let Some(sql) = set_search_path_sql {
             pool_options = pool_options.after_connect(move |conn, _| {
                 let sql = sql.clone();
@@ -112,6 +115,7 @@ impl SqlxPostgresConnector {
                 })
             });
         }
+
         let pool = if lazy {
             pool_options.connect_lazy_with(sqlx_opts)
         } else {
@@ -120,13 +124,19 @@ impl SqlxPostgresConnector {
                 .await
                 .map_err(sqlx_error_to_conn_err)?
         };
-        Ok(
+
+        let conn: DatabaseConnection =
             DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
                 pool,
                 metric_callback: None,
             })
-            .into(),
-        )
+            .into();
+
+        if let Some(cb) = after_connect {
+            cb(conn.clone()).await?;
+        }
+
+        Ok(conn)
     }
 }
 
