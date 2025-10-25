@@ -71,8 +71,8 @@ impl SchemaBuilder {
         self.entities.push(entity);
     }
 
-    /// Synchronize the schema with database, will create missing tables, columns, indexes, foreign keys.
-    /// This operation is addition only, will not drop anything.
+    /// Synchronize the schema with database, will create missing tables, columns, unique keys, and foreign keys.
+    /// This operation is addition only, will not drop any table / columns.
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
     pub async fn sync(self, db: &DbConn) -> Result<(), DbErr> {
@@ -178,7 +178,7 @@ impl SchemaBuilder {
         Ok(())
     }
 
-    /// Apply this schema to a database, will create all registered tables, columns, indexes, foreign keys.
+    /// Apply this schema to a database, will create all registered tables, columns, unique keys, and foreign keys.
     /// Will fail if any table already exists. Use [`sync`] if you want an incremental version that can perform schema diff.
     pub async fn apply<C: ConnectionTrait>(self, db: &C) -> Result<(), DbErr> {
         for table_name in self.sorted_tables() {
@@ -336,6 +336,29 @@ impl EntitySchemaInfo {
             }
             if !has_index {
                 db.execute(stmt).await?;
+            }
+        }
+        if let Some(existing_table) = existing_table {
+            // find all unique keys from existing table
+            // if it no longer exist in new schema, drop it
+            for exsiting_index in existing_table.get_indexes() {
+                if exsiting_index.is_unique_key() {
+                    let mut has_index = false;
+                    for stmt in self.indexes.iter() {
+                        if exsiting_index.get_index_spec().get_column_names()
+                            == stmt.get_index_spec().get_column_names()
+                        {
+                            has_index = true;
+                            break;
+                        }
+                    }
+                    if !has_index {
+                        if let Some(drop_existing) = exsiting_index.get_index_spec().get_name() {
+                            db.execute(sea_query::Index::drop().name(drop_existing))
+                                .await?;
+                        }
+                    }
+                }
             }
         }
         for stmt in self.enums.iter() {

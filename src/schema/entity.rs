@@ -140,7 +140,7 @@ where
     for column in E::Column::iter() {
         let column_def = column.def();
 
-        if column_def.indexed {
+        if column_def.indexed || column_def.unique {
             let mut stmt = Index::create()
                 .name(format!("idx-{}-{}", entity.to_string(), column.to_string()))
                 .table(entity)
@@ -329,14 +329,22 @@ mod tests {
             );
 
             let stmts = schema.create_index_from_entity(indexes::Entity);
-            assert_eq!(stmts.len(), 3);
+            assert_eq!(stmts.len(), 4);
+
+            let idx: IndexCreateStatement = Index::create()
+                .name("idx-indexes-unique_attr")
+                .table(indexes::Entity)
+                .col(indexes::Column::UniqueAttr)
+                .unique()
+                .to_owned();
+            assert_eq!(builder.build(&stmts[0]), builder.build(&idx));
 
             let idx: IndexCreateStatement = Index::create()
                 .name("idx-indexes-index1_attr")
                 .table(indexes::Entity)
                 .col(indexes::Column::Index1Attr)
                 .to_owned();
-            assert_eq!(builder.build(&stmts[0]), builder.build(&idx));
+            assert_eq!(builder.build(&stmts[1]), builder.build(&idx));
 
             let idx: IndexCreateStatement = Index::create()
                 .name("idx-indexes-index2_attr")
@@ -344,7 +352,7 @@ mod tests {
                 .col(indexes::Column::Index2Attr)
                 .unique()
                 .take();
-            assert_eq!(builder.build(&stmts[1]), builder.build(&idx));
+            assert_eq!(builder.build(&stmts[2]), builder.build(&idx));
 
             let idx: IndexCreateStatement = Index::create()
                 .name("idx-indexes-my_unique")
@@ -353,7 +361,7 @@ mod tests {
                 .col(indexes::Column::UniqueKeyB)
                 .unique()
                 .take();
-            assert_eq!(builder.build(&stmts[2]), builder.build(&idx));
+            assert_eq!(builder.build(&stmts[3]), builder.build(&idx));
         }
     }
 
