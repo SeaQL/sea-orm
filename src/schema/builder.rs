@@ -277,12 +277,32 @@ impl EntitySchemaInfo {
                     }
                 }
                 if !column_exists {
-                    db.execute(
-                        TableAlterStatement::new()
-                            .table(self.table.get_table_name().expect("Checked above").clone())
-                            .add_column(column_def.to_owned()),
-                    )
-                    .await?;
+                    let mut renamed_from = "";
+                    if let Some(comment) = &column_def.get_column_spec().comment {
+                        if let Some((_, suffix)) = comment.rsplit_once("renamed_from \"") {
+                            if let Some((prefix, _)) = suffix.split_once('"') {
+                                renamed_from = prefix;
+                            }
+                        }
+                    }
+                    if renamed_from.is_empty() {
+                        db.execute(
+                            TableAlterStatement::new()
+                                .table(self.table.get_table_name().expect("Checked above").clone())
+                                .add_column(column_def.to_owned()),
+                        )
+                        .await?;
+                    } else {
+                        db.execute(
+                            TableAlterStatement::new()
+                                .table(self.table.get_table_name().expect("Checked above").clone())
+                                .rename_column(
+                                    renamed_from.to_owned(),
+                                    column_def.get_column_name(),
+                                ),
+                        )
+                        .await?;
+                    }
                 }
             }
             if db.get_database_backend() != DbBackend::Sqlite {

@@ -232,8 +232,17 @@ where
     if let Some(default) = orm_column_def.default {
         column_def.default(default);
     }
-    if let Some(comment) = orm_column_def.comment {
+    if let Some(comment) = &orm_column_def.comment {
         column_def.comment(comment);
+    }
+    match (&orm_column_def.renamed_from, &orm_column_def.comment) {
+        (Some(renamed_from), Some(comment)) => {
+            column_def.comment(format!("{comment}; renamed_from \"{renamed_from}\""));
+        }
+        (Some(renamed_from), None) => {
+            column_def.comment(format!("renamed_from \"{renamed_from}\""));
+        }
+        (None, _) => {}
     }
     for primary_key in E::PrimaryKey::iter() {
         if column.to_string() == primary_key.into_column().to_string() {

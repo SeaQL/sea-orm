@@ -120,6 +120,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut select_as = None;
                     let mut save_as = None;
                     let mut unique_key = None;
+                    let mut renamed_from = None;
                     let mut indexed = false;
                     let mut ignore = false;
                     let mut unique = false;
@@ -233,6 +234,15 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                             meta.error(format!("Invalid unique_key {lit:?}"))
                                         );
                                     }
+                                } else if meta.path.is_ident("renamed_from") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        renamed_from = Some(litstr.value());
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid renamed_from {lit:?}"))
+                                        );
+                                    }
                                 } else {
                                     // Reads the value expression to advance the parse stream.
                                     // Some parameters, such as `primary_key`, do not have any value,
@@ -331,6 +341,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     }
                     if unique_key.is_some() {
                         match_row = quote! { #match_row.unique_key(#unique_key) };
+                    }
+                    if renamed_from.is_some() {
+                        match_row = quote! { #match_row.renamed_from(#renamed_from) };
                     }
                     if let Some(default_value) = default_value {
                         match_row = quote! { #match_row.default_value(#default_value) };

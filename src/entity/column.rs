@@ -338,6 +338,7 @@ impl ColumnTypeTrait for ColumnType {
             default: None,
             comment: None,
             unique_key: None,
+            renamed_from: None,
             seaography: Default::default(),
         }
     }
