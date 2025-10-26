@@ -1,5 +1,5 @@
 use super::{Schema, TopologicalSort};
-use crate::{ConnectionTrait, DbBackend, DbConn, DbErr, EntityTrait};
+use crate::{ConnectionTrait, DbBackend, DbConn, DbErr, EntityTrait, Statement};
 use sea_query::{
     ForeignKeyCreateStatement, IndexCreateStatement, TableAlterStatement, TableCreateStatement,
     TableName, TableRef, extension::postgres::TypeCreateStatement,
@@ -76,7 +76,7 @@ impl SchemaBuilder {
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
     pub async fn sync(self, db: &DbConn) -> Result<(), DbErr> {
-        let _existing = match db.get_database_backend() {
+        let existing = match db.get_database_backend() {
             #[cfg(feature = "sqlx-mysql")]
             DbBackend::MySql => {
                 use sea_schema::{mysql::discovery::SchemaDiscovery, probe::SchemaProbe};
@@ -164,6 +164,8 @@ impl SchemaBuilder {
             }
         };
 
+        let mut created_enums: Vec<Statement> = Default::default();
+
         #[allow(unreachable_code)]
         for table_name in self.sorted_tables() {
             if let Some(entity) = self
@@ -171,7 +173,7 @@ impl SchemaBuilder {
                 .iter()
                 .find(|entity| table_name == get_table_name(entity.table.get_table_name()))
             {
-                entity.sync(db, &_existing).await?;
+                entity.sync(db, &existing, &mut created_enums).await?;
             }
         }
 
@@ -181,13 +183,15 @@ impl SchemaBuilder {
     /// Apply this schema to a database, will create all registered tables, columns, unique keys, and foreign keys.
     /// Will fail if any table already exists. Use [`sync`] if you want an incremental version that can perform schema diff.
     pub async fn apply<C: ConnectionTrait>(self, db: &C) -> Result<(), DbErr> {
+        let mut created_enums: Vec<Statement> = Default::default();
+
         for table_name in self.sorted_tables() {
             if let Some(entity) = self
                 .entities
                 .iter()
                 .find(|entity| table_name == get_table_name(entity.table.get_table_name()))
             {
-                entity.apply(db).await?;
+                entity.apply(db, &mut created_enums).await?;
             }
         }
 
@@ -245,12 +249,20 @@ impl EntitySchemaInfo {
         }
     }
 
-    async fn apply<C: ConnectionTrait>(&self, db: &C) -> Result<(), DbErr> {
+    async fn apply<C: ConnectionTrait>(
+        &self,
+        db: &C,
+        created_enums: &mut Vec<Statement>,
+    ) -> Result<(), DbErr> {
+        for stmt in self.enums.iter() {
+            let new_stmt = db.get_database_backend().build(stmt);
+            if !created_enums.iter().any(|s| s == &new_stmt) {
+                db.execute(stmt).await?;
+                created_enums.push(new_stmt);
+            }
+        }
         db.execute(&self.table).await?;
         for stmt in self.indexes.iter() {
-            db.execute(stmt).await?;
-        }
-        for stmt in self.enums.iter() {
             db.execute(stmt).await?;
         }
         Ok(())
@@ -258,7 +270,30 @@ impl EntitySchemaInfo {
 
     // better to always compile this function
     #[allow(dead_code)]
-    async fn sync(&self, db: &DbConn, existing: &DiscoveredSchema) -> Result<(), DbErr> {
+    async fn sync(
+        &self,
+        db: &DbConn,
+        existing: &DiscoveredSchema,
+        created_enums: &mut Vec<Statement>,
+    ) -> Result<(), DbErr> {
+        let db_backend = db.get_database_backend();
+
+        // create enum before creating table
+        for stmt in self.enums.iter() {
+            let mut has_enum = false;
+            let new_stmt = db_backend.build(stmt);
+            for exsiting_enum in &existing.enums {
+                if db_backend.build(exsiting_enum) == new_stmt {
+                    has_enum = true;
+                    // TODO add enum variants
+                    break;
+                }
+            }
+            if !has_enum && !created_enums.iter().any(|s| s == &new_stmt) {
+                db.execute(stmt).await?;
+                created_enums.push(new_stmt);
+            }
+        }
         let table_name = get_table_name(self.table.get_table_name());
         let mut existing_table = None;
         for tbl in &existing.tables {
@@ -359,20 +394,6 @@ impl EntitySchemaInfo {
                         }
                     }
                 }
-            }
-        }
-        for stmt in self.enums.iter() {
-            let mut has_enum = false;
-            for exsiting_enum in &existing.enums {
-                let db_backend = db.get_database_backend();
-                if db_backend.build(exsiting_enum) == db_backend.build(stmt) {
-                    has_enum = true;
-                    // TODO add enum variants
-                    break;
-                }
-            }
-            if !has_enum {
-                db.execute(stmt).await?;
             }
         }
         Ok(())

@@ -32,6 +32,36 @@ async fn main() -> Result<(), DbErr> {
     Ok(())
 }
 
+#[sea_orm_macros::test]
+async fn more() -> Result<(), DbErr> {
+    let ctx = TestContext::new("active_enum_test_schema_sync").await;
+    let db = &ctx.db;
+
+    let mut schema_builder = db
+        .get_schema_builder()
+        .register(active_enum::Entity)
+        .register(categories::Entity);
+
+    #[cfg(feature = "sqlx-postgres")]
+    {
+        schema_builder = schema_builder.register(active_enum_child::Entity);
+    }
+
+    #[cfg(not(feature = "schema-sync"))]
+    schema_builder.apply(db).await?;
+
+    #[cfg(feature = "schema-sync")]
+    schema_builder.sync(db).await?;
+
+    insert_active_enum(&ctx.db).await?;
+    #[cfg(feature = "sqlx-postgres")]
+    insert_active_enum_vec(&ctx.db).await?;
+
+    ctx.delete().await;
+
+    Ok(())
+}
+
 pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     use active_enum::*;
 
