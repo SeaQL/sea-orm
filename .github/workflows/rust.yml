@@ -151,7 +151,9 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-compile-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
+      - run: cargo build --no-default-features
       - run: cargo build --no-default-features --features seaography
+      - run: cargo build --features rbac,schema-sync
       - run: cargo test --test '*' --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --test '*' --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }} --no-run
