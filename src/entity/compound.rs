@@ -42,6 +42,7 @@ pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter + QueryOrder {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum LoadTarget {
     TableRef(TableRef),

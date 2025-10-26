@@ -128,8 +128,7 @@ pub fn expand_derive_model_ex(
                                 entity: extract_compound_entity(&field_type).to_owned(),
                                 relation_enum: compound_attrs
                                     .as_ref()
-                                    .map(|r| r.relation_enum.clone())
-                                    .flatten(),
+                                    .and_then(|r| r.relation_enum.clone()),
                             });
                         } else if field_type.starts_with("HasMany<") {
                             entity_loader_schema.fields.push(EntityLoaderField {
@@ -139,8 +138,7 @@ pub fn expand_derive_model_ex(
                                 entity: extract_compound_entity(&field_type).to_owned(),
                                 relation_enum: compound_attrs
                                     .as_ref()
-                                    .map(|r| r.relation_enum.clone())
-                                    .flatten(),
+                                    .and_then(|r| r.relation_enum.clone()),
                             });
                         }
                         if let Some(attrs) = compound_attrs {
