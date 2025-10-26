@@ -100,7 +100,7 @@ async fn main() -> Result<(), sea_orm::DbErr> {
     // SeaORM resolves foreign key dependencies automatically
     // and creates the tables in the correct order with their keys.
     db.get_schema_registry("sea_orm_quickstart::*")
-        .apply(db)
+        .sync(db)
         .await?;
 
     info!("Schema created.");

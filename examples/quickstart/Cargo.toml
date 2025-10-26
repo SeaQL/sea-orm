@@ -15,4 +15,4 @@ tokio = { version = "1", features = ["full"] }
 
 [dependencies.sea-orm]
 path = "../../"
-features = [ "sqlx-sqlite", "runtime-tokio", "debug-print", "entity-registry" ]
+features = [ "sqlx-sqlite", "runtime-tokio", "debug-print", "entity-registry", "schema-sync" ]
