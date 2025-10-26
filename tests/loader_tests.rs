@@ -72,29 +72,6 @@ mod enum_pk_models {
 
 use enum_pk_models::{tea_inventory, tea_order};
 
-mod staff {
-    use sea_orm::entity::prelude::*;
-
-    #[sea_orm::model]
-    #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-    #[sea_orm(table_name = "staff")]
-    pub struct Model {
-        #[sea_orm(primary_key)]
-        pub id: i32,
-        pub name: String,
-        pub reports_to_id: Option<i32>,
-        #[sea_orm(
-            self_ref,
-            relation_enum = "ReportsTo",
-            from = "reports_to_id",
-            to = "id"
-        )]
-        pub reports_to: HasOne<Entity>,
-    }
-
-    impl ActiveModelBehavior for ActiveModel {}
-}
-
 #[sea_orm_macros::test]
 async fn loader_load_one() -> Result<(), DbErr> {
     let ctx = TestContext::new("loader_test_load_one").await;
@@ -538,6 +515,8 @@ async fn loader_load_many_to_many_dyn() -> Result<(), DbErr> {
 
 #[sea_orm_macros::test]
 async fn loader_self_join() -> Result<(), DbErr> {
+    use common::film_store::staff;
+
     let ctx = TestContext::new("test_loader_self_join").await;
     let db = &ctx.db;
 

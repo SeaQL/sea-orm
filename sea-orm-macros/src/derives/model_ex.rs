@@ -118,20 +118,32 @@ pub fn expand_derive_model_ex(
                         .replace(' ', ""); // Remove spaces
 
                     if is_compound_field(&field_type) {
-                        if field_type.starts_with("HasOne<") && field_type != "HasOne<Entity>" {
+                        let compound_attrs =
+                            compound_attr::SeaOrm::from_attributes(&field.attrs).ok();
+                        if field_type.starts_with("HasOne<") {
                             entity_loader_schema.fields.push(EntityLoaderField {
                                 is_one: true,
+                                is_self: field_type == "HasOne<Entity>",
                                 field: ident.clone(),
                                 entity: extract_compound_entity(&field_type).to_owned(),
+                                relation_enum: compound_attrs
+                                    .as_ref()
+                                    .map(|r| r.relation_enum.clone())
+                                    .flatten(),
                             });
                         } else if field_type.starts_with("HasMany<") {
                             entity_loader_schema.fields.push(EntityLoaderField {
                                 is_one: false,
+                                is_self: field_type == "HasMany<Entity>",
                                 field: ident.clone(),
                                 entity: extract_compound_entity(&field_type).to_owned(),
+                                relation_enum: compound_attrs
+                                    .as_ref()
+                                    .map(|r| r.relation_enum.clone())
+                                    .flatten(),
                             });
                         }
-                        if let Ok(attrs) = compound_attr::SeaOrm::from_attributes(&field.attrs) {
+                        if let Some(attrs) = compound_attrs {
                             if compact {
                                 return Err(syn::Error::new_spanned(
                                     ident,

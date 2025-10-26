@@ -88,11 +88,31 @@ pub trait LoaderTrait {
         <Self::Model as ModelTrait>::Entity: Related<R>;
 }
 
+type LoaderModel<T> = <<<T as LoaderTraitEx>::Model as ModelTrait>::Entity as EntityTrait>::Model;
+
+type LoaderModelEx<T> =
+    <<<T as LoaderTraitEx>::Model as ModelTrait>::Entity as EntityTrait>::ModelEx;
+
+type LoaderEntityRelation<T> =
+    <<<T as LoaderTraitEx>::Model as ModelTrait>::Entity as EntityTrait>::Relation;
+
 #[doc(hidden)]
 #[async_trait]
 pub trait LoaderTraitEx {
-    /// Source model
     type Model: ModelTrait;
+
+    async fn load_self_ex<S, C>(
+        &self,
+        stmt: S,
+        relation_enum: LoaderEntityRelation<Self>,
+        db: &C,
+    ) -> Result<Vec<Option<LoaderModelEx<Self>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        LoaderModel<Self>: Send + Sync,
+        LoaderModelEx<Self>: From<LoaderModel<Self>>,
+        LoaderEntityRelation<Self>: Send,
+        S: EntityOrSelect<<<Self as LoaderTraitEx>::Model as ModelTrait>::Entity>;
 
     async fn load_one_ex<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Option<R::ModelEx>>, DbErr>
     where
@@ -113,11 +133,32 @@ pub trait LoaderTraitEx {
         <Self::Model as ModelTrait>::Entity: Related<R>;
 }
 
+type NestedModel<T> =
+    <<<T as NestedLoaderTrait>::Model as ModelTrait>::Entity as EntityTrait>::Model;
+
+type NestedModelEx<T> =
+    <<<T as NestedLoaderTrait>::Model as ModelTrait>::Entity as EntityTrait>::ModelEx;
+
+type NestedLoaderRelation<T> =
+    <<<T as NestedLoaderTrait>::Model as ModelTrait>::Entity as EntityTrait>::Relation;
+
 #[doc(hidden)]
 #[async_trait]
 pub trait NestedLoaderTrait {
-    /// Source model
     type Model: ModelTrait;
+
+    async fn load_self_ex<S, C>(
+        &self,
+        stmt: S,
+        relation_enum: NestedLoaderRelation<Self>,
+        db: &C,
+    ) -> Result<Vec<Vec<Option<NestedModelEx<Self>>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        NestedModel<Self>: Send + Sync,
+        NestedModelEx<Self>: From<NestedModel<Self>>,
+        NestedLoaderRelation<Self>: Send,
+        S: EntityOrSelect<<<Self as NestedLoaderTrait>::Model as ModelTrait>::Entity>;
 
     async fn load_one_ex<R, S, C>(
         &self,
@@ -271,6 +312,9 @@ where
         S: EntityOrSelect<<<Self as LoaderTrait>::Model as ModelTrait>::Entity>,
     {
         let rel_def = relation_enum.def();
+        if rel_def.from_tbl != rel_def.to_tbl {
+            return Err(query_err("Relation must be self relation"));
+        }
         if rel_def.is_owner {
             return Err(query_err("Relation must be belongs_to"));
         }
@@ -439,6 +483,29 @@ where
 {
     type Model = M;
 
+    async fn load_self_ex<S, C>(
+        &self,
+        stmt: S,
+        relation_enum: LoaderEntityRelation<Self>,
+        db: &C,
+    ) -> Result<Vec<Option<LoaderModelEx<Self>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        LoaderModel<Self>: Send + Sync,
+        LoaderModelEx<Self>: From<LoaderModel<Self>>,
+        LoaderEntityRelation<Self>: Send,
+        S: EntityOrSelect<<<Self as LoaderTraitEx>::Model as ModelTrait>::Entity>,
+    {
+        let rel_def = relation_enum.def();
+        if rel_def.from_tbl != rel_def.to_tbl {
+            return Err(query_err("Relation must be self relation"));
+        }
+        if rel_def.is_owner {
+            return Err(query_err("Relation must be belongs_to"));
+        }
+        loader_impl_impl(self.iter(), stmt.select(), rel_def, None, db).await
+    }
+
     async fn load_one_ex<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Option<R::ModelEx>>, DbErr>
     where
         C: ConnectionTrait,
@@ -474,6 +541,37 @@ where
     M: ModelTrait + Sync,
 {
     type Model = M;
+
+    async fn load_self_ex<S, C>(
+        &self,
+        stmt: S,
+        relation_enum: LoaderEntityRelation<Self>,
+        db: &C,
+    ) -> Result<Vec<Option<LoaderModelEx<Self>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        LoaderModel<Self>: Send + Sync,
+        LoaderModelEx<Self>: From<LoaderModel<Self>>,
+        LoaderEntityRelation<Self>: Send,
+        S: EntityOrSelect<<<Self as LoaderTraitEx>::Model as ModelTrait>::Entity>,
+    {
+        let rel_def = relation_enum.def();
+        if rel_def.from_tbl != rel_def.to_tbl {
+            return Err(query_err("Relation must be self relation"));
+        }
+        if rel_def.is_owner {
+            return Err(query_err("Relation must be belongs_to"));
+        }
+        let items: Vec<Option<_>> = loader_impl_impl(
+            self.iter().filter_map(|o| o.as_ref()),
+            stmt.select(),
+            rel_def,
+            None,
+            db,
+        )
+        .await?;
+        Ok(assemble_options(self, items))
+    }
 
     async fn load_one_ex<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Option<R::ModelEx>>, DbErr>
     where
@@ -514,6 +612,31 @@ where
     M: ModelTrait + Sync,
 {
     type Model = M;
+
+    async fn load_self_ex<S, C>(
+        &self,
+        stmt: S,
+        relation_enum: NestedLoaderRelation<Self>,
+        db: &C,
+    ) -> Result<Vec<Vec<Option<NestedModelEx<Self>>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        NestedModel<Self>: Send + Sync,
+        NestedModelEx<Self>: From<NestedModel<Self>>,
+        NestedLoaderRelation<Self>: Send,
+        S: EntityOrSelect<<<Self as NestedLoaderTrait>::Model as ModelTrait>::Entity>,
+    {
+        let rel_def = relation_enum.def();
+        if rel_def.from_tbl != rel_def.to_tbl {
+            return Err(query_err("Relation must be self relation"));
+        }
+        if rel_def.is_owner {
+            return Err(query_err("Relation must be belongs_to"));
+        }
+        let items: Vec<Option<_>> =
+            loader_impl_impl(self.iter().flatten(), stmt.select(), rel_def, None, db).await?;
+        Ok(assemble_vectors(self, items))
+    }
 
     async fn load_one_ex<R, S, C>(
         &self,

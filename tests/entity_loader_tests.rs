@@ -470,17 +470,65 @@ async fn entity_loader_join_three() {
 }
 
 #[sea_orm_macros::test]
-async fn entity_loader_exp() -> Result<(), DbErr> {
-    let ctx = TestContext::new("entity_loader_exp").await;
-    create_tables(&ctx.db).await.unwrap();
-    seed_data::init_1(&ctx, true).await;
+async fn entity_loader_self_join() -> Result<(), DbErr> {
+    use common::film_store::staff;
+
+    let ctx = TestContext::new("entity_loader_self_join").await;
     let db = &ctx.db;
 
-    let loader = lineitem::Entity::load()
-        .with(cake::Entity)
-        .with(order::Entity);
-    println!("{loader:?}");
-    loader.all(db).await?;
+    db.get_schema_builder()
+        .register(staff::Entity)
+        .apply(db)
+        .await?;
+
+    let alan = staff::ActiveModel {
+        name: Set("Alan".into()),
+        reports_to_id: Set(None),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    staff::ActiveModel {
+        name: Set("Ben".into()),
+        reports_to_id: Set(Some(alan.id)),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    staff::ActiveModel {
+        name: Set("Alice".into()),
+        reports_to_id: Set(Some(alan.id)),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    staff::ActiveModel {
+        name: Set("Elle".into()),
+        reports_to_id: Set(None),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    let staff = staff::Entity::load()
+        .with(staff::Relation::ReportsTo.def())
+        .all(db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].reports_to, None);
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(staff[2].reports_to.as_ref().unwrap().name, "Alan");
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(staff[3].reports_to, None);
 
     Ok(())
 }

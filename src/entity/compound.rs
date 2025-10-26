@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use super::{ColumnTrait, EntityTrait, PrimaryKeyToColumn, PrimaryKeyTrait};
+use super::{ColumnTrait, EntityTrait, PrimaryKeyToColumn, PrimaryKeyTrait, RelationDef};
 use crate::{IntoSimpleExpr, Iterable, QueryFilter, QueryOrder, Related};
 use sea_query::{IntoValueTuple, Order, TableRef};
 
@@ -42,8 +42,14 @@ pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter + QueryOrder {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum LoadTarget {
+    TableRef(TableRef),
+    RelationDef(RelationDef),
+}
+
 pub trait EntityLoaderWithParam<E: EntityTrait> {
-    fn into_with_param(self) -> (TableRef, Option<TableRef>);
+    fn into_with_param(self) -> (LoadTarget, Option<LoadTarget>);
 }
 
 pub type HasOne<E> = Option<Box<<E as EntityTrait>::ModelEx>>;
@@ -55,8 +61,17 @@ where
     R: EntityTrait,
     E: Related<R>,
 {
-    fn into_with_param(self) -> (TableRef, Option<TableRef>) {
-        (self.table_ref(), None)
+    fn into_with_param(self) -> (LoadTarget, Option<LoadTarget>) {
+        (LoadTarget::TableRef(self.table_ref()), None)
+    }
+}
+
+impl<E> EntityLoaderWithParam<E> for RelationDef
+where
+    E: EntityTrait,
+{
+    fn into_with_param(self) -> (LoadTarget, Option<LoadTarget>) {
+        (LoadTarget::RelationDef(self), None)
     }
 }
 
@@ -68,8 +83,11 @@ where
     S: EntityTrait,
     R: Related<S>,
 {
-    fn into_with_param(self) -> (TableRef, Option<TableRef>) {
-        (self.0.table_ref(), Some(self.1.table_ref()))
+    fn into_with_param(self) -> (LoadTarget, Option<LoadTarget>) {
+        (
+            LoadTarget::TableRef(self.0.table_ref()),
+            Some(LoadTarget::TableRef(self.1.table_ref())),
+        )
     }
 }
 
