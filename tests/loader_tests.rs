@@ -72,6 +72,29 @@ mod enum_pk_models {
 
 use enum_pk_models::{tea_inventory, tea_order};
 
+mod staff {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+    #[sea_orm(table_name = "staff")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub name: String,
+        pub reports_to_id: Option<i32>,
+        #[sea_orm(
+            self_ref,
+            relation_enum = "ReportsTo",
+            from = "reports_to_id",
+            to = "id"
+        )]
+        pub reports_to: HasOne<Entity>,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 #[sea_orm_macros::test]
 async fn loader_load_one() -> Result<(), DbErr> {
     let ctx = TestContext::new("loader_test_load_one").await;
@@ -287,22 +310,15 @@ async fn loader_load_many_enum_pk_postgres() -> Result<(), DbErr> {
         return Ok(());
     }
 
-    let schema = Schema::new(DbBackend::Postgres);
-
     let mut drop_type = Type::drop();
-    drop_type.if_exists().name(Alias::new("tea")).cascade();
+    drop_type.if_exists().name("tea").cascade();
     db.execute(&drop_type).await?;
 
-    let mut create_type = Type::create();
-    create_type
-        .as_enum(Alias::new("tea"))
-        .values(["EverydayTea", "BreakfastTea"]);
-    db.execute(&create_type).await?;
-
-    let inventory_table = schema.create_table_from_entity(TeaInventoryEntity);
-    create_table_without_asserts(db, &inventory_table).await?;
-    let order_table = schema.create_table_from_entity(TeaOrderEntity);
-    create_table_without_asserts(db, &order_table).await?;
+    db.get_schema_builder()
+        .register(TeaInventoryEntity)
+        .register(TeaOrderEntity)
+        .apply(db)
+        .await?;
 
     TeaInventoryActiveModel {
         tea: Set(Tea::EverydayTea),
@@ -516,6 +532,94 @@ async fn loader_load_many_to_many_dyn() -> Result<(), DbErr> {
             vec![]
         ]
     );
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+async fn loader_self_join() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_loader_self_join").await;
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(staff::Entity)
+        .apply(db)
+        .await?;
+
+    let alan = staff::ActiveModel {
+        name: Set("Alan".into()),
+        reports_to_id: Set(None),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    staff::ActiveModel {
+        name: Set("Ben".into()),
+        reports_to_id: Set(Some(alan.id)),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    staff::ActiveModel {
+        name: Set("Alice".into()),
+        reports_to_id: Set(Some(alan.id)),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    staff::ActiveModel {
+        name: Set("Elle".into()),
+        reports_to_id: Set(None),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    let staff = staff::Entity::find()
+        .order_by_asc(staff::Column::Id)
+        .all(db)
+        .await?;
+
+    let reports_to = staff
+        .load_self(staff::Entity, staff::Relation::ReportsTo, db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(reports_to[0], None);
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(reports_to.get(1).unwrap().as_ref().unwrap().name, "Alan");
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(reports_to.get(2).unwrap().as_ref().unwrap().name, "Alan");
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(reports_to[3], None);
+
+    let manages = staff
+        .load_self_rev(
+            staff::Entity::find().order_by_asc(staff::Column::Id),
+            staff::Relation::ReportsTo,
+            db,
+        )
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(manages[0].len(), 2);
+    assert_eq!(manages[0][0].name, "Ben");
+    assert_eq!(manages[0][1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(manages[1].len(), 0);
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(manages[2].len(), 0);
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(manages[3].len(), 0);
 
     Ok(())
 }
