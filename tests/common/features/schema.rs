@@ -7,7 +7,7 @@ use sea_orm::{
     error::*, sea_query,
 };
 use sea_query::{
-    Alias, ColumnDef, ColumnType, ForeignKeyCreateStatement, IntoIden, StringLen,
+    Alias, ColumnDef, ColumnType, ForeignKeyCreateStatement, IntoIden, IntoTableRef, StringLen,
     extension::postgres::Type,
 };
 
@@ -256,7 +256,11 @@ pub async fn create_active_enum_child_table(db: &DbConn) -> Result<ExecResult, D
                 .name("fk-active_enum_child-active_enum")
                 .from_tbl(ActiveEnumChild)
                 .from_col(active_enum_child::Column::ParentId)
-                .to_tbl(ActiveEnum)
+                .to_tbl(if cfg!(feature = "sqlx-postgres") {
+                    ("public", ActiveEnum).into_table_ref()
+                } else {
+                    ActiveEnum.into_table_ref()
+                })
                 .to_col(active_enum::Column::Id),
         )
         .to_owned();

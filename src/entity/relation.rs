@@ -458,8 +458,8 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
         let mut foreign_key_stmt = Self::new();
         set_foreign_key_stmt!(relation, foreign_key_stmt);
         foreign_key_stmt
-            .from_tbl(relation.from_tbl.sea_orm_table().clone())
-            .to_tbl(relation.to_tbl.sea_orm_table().clone())
+            .from_tbl(relation.from_tbl)
+            .to_tbl(relation.to_tbl)
             .take()
     }
 }

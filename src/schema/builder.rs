@@ -76,7 +76,7 @@ impl SchemaBuilder {
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
     pub async fn sync(self, db: &DbConn) -> Result<(), DbErr> {
-        let existing = match db.get_database_backend() {
+        let _existing = match db.get_database_backend() {
             #[cfg(feature = "sqlx-mysql")]
             DbBackend::MySql => {
                 use sea_schema::{mysql::discovery::SchemaDiscovery, probe::SchemaProbe};
@@ -164,6 +164,7 @@ impl SchemaBuilder {
             }
         };
 
+        #[allow(unreachable_code)]
         let mut created_enums: Vec<Statement> = Default::default();
 
         #[allow(unreachable_code)]
@@ -173,7 +174,7 @@ impl SchemaBuilder {
                 .iter()
                 .find(|entity| table_name == get_table_name(entity.table.get_table_name()))
             {
-                entity.sync(db, &existing, &mut created_enums).await?;
+                entity.sync(db, &_existing, &mut created_enums).await?;
             }
         }
 

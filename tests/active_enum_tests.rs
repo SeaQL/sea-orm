@@ -37,14 +37,13 @@ async fn more() -> Result<(), DbErr> {
     let ctx = TestContext::new("active_enum_test_schema_sync").await;
     let db = &ctx.db;
 
-    let mut schema_builder = db
-        .get_schema_builder()
-        .register(active_enum::Entity)
-        .register(categories::Entity);
+    let mut schema_builder = db.get_schema_builder().register(active_enum::Entity);
 
     #[cfg(feature = "sqlx-postgres")]
     {
-        schema_builder = schema_builder.register(active_enum_child::Entity);
+        schema_builder = schema_builder
+            .register(active_enum_child::Entity)
+            .register(categories::Entity);
     }
 
     #[cfg(not(feature = "schema-sync"))]
