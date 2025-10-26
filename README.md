@@ -150,8 +150,9 @@ super_cake
 
 SeaORM provides a powerful migration system that lets you create tables, modify schemas, and seed data with ease.
 
-With SeaORM 2.0, you also get a first‑class Entity‑first workflow: simply define new entities or add columns to existing ones,
-and SeaORM will automatically detect the changes and create the new tables, columns, indexes, and foreign keys for you.
+With SeaORM 2.0, you also get a first‑class [Entity First Workflow](https://www.sea-ql.org/blog/2025-10-30-sea-orm-2.0/):
+simply define new entities or add columns to existing ones,
+and SeaORM will automatically detect the changes and create the new tables, columns, unique keys, and foreign keys.
 
 ```rust
 // SeaORM resolves foreign key dependencies and creates the tables in topological order.
@@ -422,7 +423,8 @@ SeaORM 2.0 is shaping up to be our most significant release yet - with a few bre
 + [A Sneak Peek at SeaORM 2.0](https://www.sea-ql.org/blog/2025-09-16-sea-orm-2.0/)
 + [SeaORM 2.0: A closer look](https://www.sea-ql.org/blog/2025-09-24-sea-orm-2.0/)
 + [Role Based Access Control in SeaORM 2.0](https://www.sea-ql.org/blog/2025-09-30-sea-orm-rbac/)
-+ [SeaORM 2.0: new entity format and entity loader](https://www.sea-ql.org/blog/2025-10-20-sea-orm-2.0/)
++ [SeaORM 2.0: new entity format](https://www.sea-ql.org/blog/2025-10-20-sea-orm-2.0/)
++ [SeaORM 2.0: Entity First Workflow](https://www.sea-ql.org/blog/2025-10-30-sea-orm-2.0/)
 
 If you make extensive use of SeaQuery, we recommend checking out our blog post on SeaQuery 1.0 release:
 
