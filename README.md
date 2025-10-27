@@ -105,8 +105,8 @@ mod fruit {
     }
 }
 ```
-## Smart Entity Loader
 
+## Smart Entity Loader
 The Entity Loader intelligently uses join for 1-1 and data loader for 1-N relations,
 eliminating the N+1 problem even when performing nested queries.
 ```rust
@@ -158,6 +158,26 @@ and SeaORM will automatically detect the changes and create the new tables, colu
 // SeaORM resolves foreign key dependencies and creates the tables in topological order.
 // Requires the `entity-registry` and `schema-sync` feature flags.
 db.get_schema_registry("my_crate::entity::*").sync(db).await;
+```
+
+## Ergonomic Raw SQL
+
+Let SeaORM handle 90% of all the transactional queries.
+When your query is too complex to express, SeaORM still offer convenience in writing raw SQL.
+```rust
+let item = Item { name: "Chocolate" }; // nested parameter access
+let ids = [2, 3, 4]; // expanded by the `..` operator
+
+let cake: Option<cake::Model> = Cake::find()
+    .from_raw_sql(raw_sql!(
+        Sqlite,
+        r#"SELECT "id", "name" FROM "cake"
+           WHERE "name" LIKE {item.name}
+           AND "id" in ({..ids})
+        "#
+    ))
+    .one(db)
+    .await?;
 ```
 
 ## Basics
@@ -330,25 +350,11 @@ fruit::Entity::delete_many()
     .await?;
 
 ```
-### Ergonomic Raw SQL
-Let SeaORM handle 90% of all the transactional queries.
-When your query is too complex to express, SeaORM still offer convenience in writing raw SQL.
-
+### Raw SQL Query
 The `raw_sql!` macro is like the `format!` macro but without the risk of SQL injection.
 It supports nested parameter interpolation, array and tuple expansion, and even repeating group,
 offering great flexibility in crafting complex queries.
 
-```rust
-let item = Item { id: 2 }; // nested parameter access
-
-let cake: Option<cake::Model> = Cake::find()
-    .from_raw_sql(raw_sql!(
-        Sqlite,
-        r#"SELECT "id", "name" FROM "cake" WHERE id = {item.id}"#
-    ))
-    .one(db)
-    .await?;
-```
 ```rust
 #[derive(FromQueryResult)]
 struct CakeWithBakery {

@@ -151,8 +151,8 @@
 //! }
 //! # }
 //! ```
-//! ## Smart Entity Loader
 //!
+//! ## Smart Entity Loader
 //! The Entity Loader intelligently uses join for 1-1 and data loader for 1-N relations,
 //! eliminating the N+1 problem even when performing nested queries.
 //! ```
@@ -218,6 +218,32 @@
 //! // SeaORM resolves foreign key dependencies and creates the tables in topological order.
 //! // Requires the `entity-registry` and `schema-sync` feature flags.
 //! db.get_schema_registry("my_crate::entity::*").sync(db).await;
+//! ```
+//!
+//! ## Ergonomic Raw SQL
+//!
+//! Let SeaORM handle 90% of all the transactional queries.
+//! When your query is too complex to express, SeaORM still offer convenience in writing raw SQL.
+//! ```
+//! # use sea_orm::{DbErr, DbConn};
+//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
+//! # use sea_orm::{entity::*, query::*, tests_cfg::*, raw_sql};
+//! # struct Item<'a> { name: &'a str }
+//! let item = Item { name: "Chocolate" }; // nested parameter access
+//! let ids = [2, 3, 4]; // expanded by the `..` operator
+//!
+//! let cake: Option<cake::Model> = Cake::find()
+//!     .from_raw_sql(raw_sql!(
+//!         Sqlite,
+//!         r#"SELECT "id", "name" FROM "cake"
+//!            WHERE "name" LIKE {item.name}
+//!            AND "id" in ({..ids})
+//!         "#
+//!     ))
+//!     .one(db)
+//!     .await?;
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! ## Basics
@@ -445,31 +471,11 @@
 //! # Ok(())
 //! # }
 //! ```
-//! ### Ergonomic Raw SQL
-//! Let SeaORM handle 90% of all the transactional queries.
-//! When your query is too complex to express, SeaORM still offer convenience in writing raw SQL.
-//!
+//! ### Raw SQL Query
 //! The `raw_sql!` macro is like the `format!` macro but without the risk of SQL injection.
 //! It supports nested parameter interpolation, array and tuple expansion, and even repeating group,
 //! offering great flexibility in crafting complex queries.
 //!
-//! ```
-//! # use sea_orm::{DbErr, DbConn};
-//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
-//! # use sea_orm::{entity::*, query::*, tests_cfg::*, raw_sql};
-//! # struct Item { id: i32 }
-//! let item = Item { id: 2 }; // nested parameter access
-//!
-//! let cake: Option<cake::Model> = Cake::find()
-//!     .from_raw_sql(raw_sql!(
-//!         Sqlite,
-//!         r#"SELECT "id", "name" FROM "cake" WHERE id = {item.id}"#
-//!     ))
-//!     .one(db)
-//!     .await?;
-//! # Ok(())
-//! # }
-//! ```
 //! ```
 //! # use sea_orm::{DbErr, DbConn};
 //! # async fn functio(db: &DbConn) -> Result<(), DbErr> {
