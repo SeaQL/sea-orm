@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use super::{ColumnTrait, EntityTrait, PrimaryKeyToColumn, PrimaryKeyTrait, RelationDef};
+use super::{ColumnTrait, EntityTrait, PrimaryKeyToColumn, PrimaryKeyTrait};
 use crate::{IntoSimpleExpr, Iterable, QueryFilter, QueryOrder, Related};
 use sea_query::{IntoValueTuple, Order, TableRef};
 
@@ -42,11 +42,10 @@ pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter + QueryOrder {
     }
 }
 
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum LoadTarget {
     TableRef(TableRef),
-    RelationDef(RelationDef),
+    Relation(String),
 }
 
 pub trait EntityLoaderWithParam<E: EntityTrait> {
@@ -64,15 +63,6 @@ where
 {
     fn into_with_param(self) -> (LoadTarget, Option<LoadTarget>) {
         (LoadTarget::TableRef(self.table_ref()), None)
-    }
-}
-
-impl<E> EntityLoaderWithParam<E> for RelationDef
-where
-    E: EntityTrait,
-{
-    fn into_with_param(self) -> (LoadTarget, Option<LoadTarget>) {
-        (LoadTarget::RelationDef(self), None)
     }
 }
 

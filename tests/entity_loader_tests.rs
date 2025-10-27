@@ -514,7 +514,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     .await?;
 
     let staff = staff::Entity::load()
-        .with(staff::Relation::ReportsTo.def())
+        .with(staff::Relation::ReportsTo)
         .all(db)
         .await?;
 

@@ -25,6 +25,11 @@ pub type ForeignKeyAction = sea_query::ForeignKeyAction;
 pub trait RelationTrait: Iterable + Debug + 'static {
     /// Creates a [`RelationDef`]
     fn def(&self) -> RelationDef;
+
+    /// Name of the relation enum
+    fn name(&self) -> String {
+        format!("{self:?}")
+    }
 }
 
 /// Checks if Entities are related
