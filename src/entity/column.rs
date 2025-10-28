@@ -166,6 +166,48 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         Expr::col(self.as_column_ref()).not_like(s)
     }
 
+    /// Postgres Only.
+    /// ```
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Name.ilike("cheese"))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."name" ILIKE 'cheese'"#
+    /// );
+    /// ```
+    fn ilike<T>(&self, s: T) -> SimpleExpr
+    where
+        T: IntoLikeExpr,
+    {
+        use sea_query::extension::postgres::PgExpr;
+
+        Expr::col(self.as_column_ref()).ilike(s)
+    }
+
+    /// Postgres Only.
+    /// ```
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Name.not_ilike("cheese"))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."name" NOT ILIKE 'cheese'"#
+    /// );
+    /// ```
+    fn not_ilike<T>(&self, s: T) -> SimpleExpr
+    where
+        T: IntoLikeExpr,
+    {
+        use sea_query::extension::postgres::PgExpr;
+
+        Expr::col(self.as_column_ref()).not_ilike(s)
+    }
+
     /// This is a simplified shorthand for a more general `like` method.
     /// Use `like` if you need something more complex, like specifying an escape character.
     ///
