@@ -222,8 +222,9 @@
 //!
 //! ## Ergonomic Raw SQL
 //!
-//! Let SeaORM handle 90% of all the transactional queries.
-//! When your query is too complex to express, SeaORM still offer convenience in writing raw SQL.
+//! Let SeaORM handle 95% of your transactional queries.
+//! For the remaining cases that are too complex to express,
+//! SeaORM still offers convenient support for writing raw SQL.
 //! ```
 //! # use sea_orm::{DbErr, DbConn};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {

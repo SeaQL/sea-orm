@@ -162,8 +162,9 @@ db.get_schema_registry("my_crate::entity::*").sync(db).await;
 
 ## Ergonomic Raw SQL
 
-Let SeaORM handle 90% of all the transactional queries.
-When your query is too complex to express, SeaORM still offer convenience in writing raw SQL.
+Let SeaORM handle 95% of your transactional queries.
+For the remaining cases that are too complex to express,
+SeaORM still offers convenient support for writing raw SQL.
 ```rust
 let item = Item { name: "Chocolate" }; // nested parameter access
 let ids = [2, 3, 4]; // expanded by the `..` operator
