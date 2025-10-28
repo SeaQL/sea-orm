@@ -1678,9 +1678,9 @@ mod tests {
                     r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
                     r#""r2"."id" AS "B_id", "r2"."name" AS "B_name""#,
                     r#"FROM "cake""#,
-                    r#"LEFT JOIN "cake_filling" AS "r0" ON "cake"."id" = "r0"."cake_id""#,
-                    r#"LEFT JOIN "filling" AS "r1" ON "r0"."filling_id" = "r1"."id""#,
-                    r#"LEFT JOIN "vendor" AS "r2" ON "r1"."vendor_id" = "r2"."id""#,
+                    r#"LEFT JOIN "cake_filling" AS "r0" ON "r0"."cake_id" = "cake"."id""#,
+                    r#"LEFT JOIN "filling" AS "r1" ON "r1"."id" = "r0"."filling_id""#,
+                    r#"LEFT JOIN "vendor" AS "r2" ON "r2"."id" = "r1"."vendor_id""#,
                 ]
                 .join(" ")
                 .as_str(),
@@ -1840,9 +1840,9 @@ mod tests {
                 [
                     r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
                     r#""r2"."id" AS "B_id", "r2"."name" AS "B_name" FROM "cake""#,
-                    r#"LEFT JOIN "cake_filling" AS "r0" ON "cake"."id" = "r0"."cake_id""#,
-                    r#"LEFT JOIN "filling" AS "r1" ON "r0"."filling_id" = "r1"."id""#,
-                    r#"LEFT JOIN "vendor" AS "r2" ON "r1"."vendor_id" = "r2"."id""#,
+                    r#"LEFT JOIN "cake_filling" AS "r0" ON "r0"."cake_id" = "cake"."id""#,
+                    r#"LEFT JOIN "filling" AS "r1" ON "r1"."id" = "r0"."filling_id""#,
+                    r#"LEFT JOIN "vendor" AS "r2" ON "r2"."id" = "r1"."vendor_id""#,
                 ]
                 .join(" ")
                 .as_str(),

@@ -1,9 +1,9 @@
 use crate::{
-    join_tbl_on_condition, unpack_table_ref, ColumnTrait, EntityTrait, IdenStatic, Iterable,
-    Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectThree, SelectTwo, SelectTwoMany,
+    find_linked_recursive, ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QuerySelect,
+    Related, Select, SelectA, SelectB, SelectThree, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
-use sea_query::{Alias, Condition, Expr, IntoIden, SeaRc, SelectExpr};
+use sea_query::{Alias, Expr, IntoIden, SeaRc, SelectExpr};
 
 impl<E> Select<E>
 where
@@ -68,31 +68,8 @@ where
         L: Linked<FromEntity = E, ToEntity = T>,
         T: EntityTrait,
     {
-        let mut slf = self;
-        for (i, mut rel) in l.link().into_iter().enumerate() {
-            let to_tbl = Alias::new(format!("r{i}")).into_iden();
-            let from_tbl = if i > 0 {
-                Alias::new(format!("r{}", i - 1)).into_iden()
-            } else {
-                unpack_table_ref(&rel.from_tbl)
-            };
-            let table_ref = rel.to_tbl;
-
-            let mut condition = Condition::all().add(join_tbl_on_condition(
-                SeaRc::clone(&from_tbl),
-                SeaRc::clone(&to_tbl),
-                rel.from_col,
-                rel.to_col,
-            ));
-            if let Some(f) = rel.on_condition.take() {
-                condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
-            }
-
-            slf.query()
-                .join_as(JoinType::LeftJoin, table_ref, to_tbl, condition);
-        }
-        slf = slf.apply_alias(SelectA.as_str());
-        let mut select_two = SelectTwo::new_without_prepare(slf.query);
+        let select = l.find_linked_rev().apply_alias(SelectA.as_str());
+        let mut select_two = SelectTwo::new_without_prepare(select.query);
         for col in <T::Column as Iterable>::iter() {
             let alias = format!("{}{}", SelectB.as_str(), col.as_str());
             let expr = Expr::col((
@@ -114,31 +91,8 @@ where
         L: Linked<FromEntity = E, ToEntity = T>,
         T: EntityTrait,
     {
-        let mut slf = self;
-        for (i, mut rel) in l.link().into_iter().enumerate() {
-            let to_tbl = Alias::new(format!("r{i}")).into_iden();
-            let from_tbl = if i > 0 {
-                Alias::new(format!("r{}", i - 1)).into_iden()
-            } else {
-                unpack_table_ref(&rel.from_tbl)
-            };
-            let table_ref = rel.to_tbl;
-
-            let mut condition = Condition::all().add(join_tbl_on_condition(
-                SeaRc::clone(&from_tbl),
-                SeaRc::clone(&to_tbl),
-                rel.from_col,
-                rel.to_col,
-            ));
-            if let Some(f) = rel.on_condition.take() {
-                condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
-            }
-
-            slf.query()
-                .join_as(JoinType::LeftJoin, table_ref, to_tbl, condition);
-        }
-        slf = slf.apply_alias(SelectA.as_str());
-        let mut select_two_many = SelectTwoMany::new_without_prepare(slf.query);
+        let select = l.find_linked_rev().apply_alias(SelectA.as_str());
+        let mut select_two_many = SelectTwoMany::new_without_prepare(select.query);
         for col in <T::Column as Iterable>::iter() {
             let alias = format!("{}{}", SelectB.as_str(), col.as_str());
             let expr = Expr::col((
@@ -152,6 +106,14 @@ where
             });
         }
         select_two_many
+    }
+
+    /// Recursive self-join
+    pub fn find_with_linked_recursive<L>(self, l: L) -> Select<E>
+    where
+        L: Linked<FromEntity = E, ToEntity = E>,
+    {
+        find_linked_recursive(self, l.link())
     }
 }
 
@@ -271,8 +233,7 @@ mod tests {
                 .to_string(),
             [
                 "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
-                "INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id`",
-                "WHERE `cake`.`id` = 12",
+                "WHERE `fruit`.`cake_id` = 12",
             ]
             .join(" ")
         );
@@ -364,8 +325,7 @@ mod tests {
                 r#"SELECT `filling`.`id`, `filling`.`name`, `filling`.`vendor_id`"#,
                 r#"FROM `filling`"#,
                 r#"INNER JOIN `cake_filling` AS `r0` ON `r0`.`filling_id` = `filling`.`id`"#,
-                r#"INNER JOIN `cake` AS `r1` ON `r1`.`id` = `r0`.`cake_id`"#,
-                r#"WHERE `r1`.`id` = 12"#,
+                r#"WHERE `r0`.`cake_id` = 12"#,
             ]
             .join(" ")
         );
@@ -388,8 +348,7 @@ mod tests {
                 r#"FROM `vendor`"#,
                 r#"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`"#,
                 r#"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`"#,
-                r#"INNER JOIN `cake` AS `r2` ON `r2`.`id` = `r1`.`cake_id`"#,
-                r#"WHERE `r2`.`id` = 18"#,
+                r#"WHERE `r1`.`cake_id` = 18"#,
             ]
             .join(" ")
         );
@@ -406,8 +365,8 @@ mod tests {
                 r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
                 r#"`r1`.`id` AS `B_id`, `r1`.`name` AS `B_name`, `r1`.`vendor_id` AS `B_vendor_id`"#,
                 r#"FROM `cake`"#,
-                r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id`"#,
-                r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
+                r#"LEFT JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`"#,
+                r#"LEFT JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`"#,
             ]
             .join(" ")
         );
@@ -424,9 +383,9 @@ mod tests {
                 r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
                 r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
                 r#"FROM `cake`"#,
-                r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id`"#,
-                r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
-                r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
+                r#"LEFT JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`"#,
+                r#"LEFT JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`"#,
+                r#"LEFT JOIN `vendor` AS `r2` ON `r2`.`id` = `r1`.`vendor_id`"#,
             ]
             .join(" ")
         );
@@ -505,9 +464,9 @@ mod tests {
                 r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
                 r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
                 r#"FROM `cake`"#,
-                r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id` AND `cake`.`name` LIKE '%cheese%'"#,
-                r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
-                r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
+                r#"LEFT JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id` AND `r0`.`name` LIKE '%cheese%'"#,
+                r#"LEFT JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`"#,
+                r#"LEFT JOIN `vendor` AS `r2` ON `r2`.`id` = `r1`.`vendor_id`"#,
             ]
             .join(" ")
         );
@@ -524,9 +483,9 @@ mod tests {
                     r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
                     r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
                     r#"FROM `cake`"#,
-                    r#"LEFT JOIN `cake` AS `r0` ON `cake_filling`.`cake_id` = `r0`.`id` AND `cake_filling`.`name` LIKE '%cheese%'"#,
-                    r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
-                    r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
+                    r#"LEFT JOIN `cake` AS `r0` ON `r0`.`id` = `cake_filling`.`cake_id` AND `r0`.`name` LIKE '%cheese%'"#,
+                    r#"LEFT JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`"#,
+                    r#"LEFT JOIN `vendor` AS `r2` ON `r2`.`id` = `r1`.`vendor_id`"#,
                 ]
                 .join(" ")
         );
@@ -659,6 +618,78 @@ mod tests {
                 "SELECT `cake`.`id`, `cake`.`name`, `cake_filling_alias`.`cake_id` AS `cake_filling_cake_id` FROM `cake`",
                 "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` OR `fruit`.`name` LIKE '%tropical%'",
                 "LEFT JOIN `cake_filling` AS `cake_filling_alias` ON `cake_filling_alias`.`cake_id` = `cake`.`id` OR `cake_filling_alias`.`cake_id` > 10",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_23() {
+        let cake_model = cake::Model {
+            id: 18,
+            name: "".to_owned(),
+        };
+
+        assert_eq!(
+            cake_model
+                .find_linked(entity_linked::CakeToCakeViaFilling)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
+                "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
+                "WHERE `r2`.`cake_id` = 18",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_24() {
+        let cake_model = cake::Model {
+            id: 12,
+            name: "".to_owned(),
+        };
+
+        assert_eq!(
+            cake_model
+                .find_linked_recursive(entity_linked::CakeToCakeViaFilling)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "WITH `cte` AS (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
+                "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
+                "WHERE `r2`.`cake_id` = 12",
+                "UNION ALL (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
+                "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
+                "INNER JOIN `cte` AS `r3` ON `r3`.`id` = `r2`.`cake_id`))",
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cte` AS `cake`",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_25() {
+        assert_eq!(
+            cake::Entity::find()
+                .find_with_linked_recursive(entity_linked::CakeToCakeViaFilling)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "WITH `cte` AS (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "UNION ALL (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
+                "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
+                "INNER JOIN `cte` AS `r3` ON `r3`.`id` = `r2`.`cake_id`))",
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cte` AS `cake`",
             ]
             .join(" ")
         );
