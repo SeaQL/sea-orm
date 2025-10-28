@@ -28,7 +28,7 @@ uuid = { version = "1.6.0", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
 [dependencies.sea-orm]
-version = "~2.0.0-rc.15" # sea-orm version
+version = "~2.0.0-rc.16" # sea-orm version
 features = [
   "sqlx-sqlite",
   "sqlx-postgres",
