@@ -90,6 +90,8 @@ impl SqlxSqliteConnector {
             sqlx_opts = f(sqlx_opts);
         }
 
+        let after_conn = options.after_connect.clone();
+
         let pool = if options.connect_lazy {
             options.sqlx_pool_options().connect_lazy_with(sqlx_opts)
         } else {
@@ -111,7 +113,14 @@ impl SqlxSqliteConnector {
             ensure_returning_version(&version)?;
         }
 
-        Ok(DatabaseConnectionType::SqlxSqlitePoolConnection(pool).into())
+        let conn: DatabaseConnection =
+            DatabaseConnectionType::SqlxSqlitePoolConnection(pool).into();
+
+        if let Some(cb) = after_conn {
+            cb(conn.clone()).await?;
+        }
+
+        Ok(conn)
     }
 }
 

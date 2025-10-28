@@ -77,9 +77,13 @@ impl SqlxMySqlConnector {
                 );
             }
         }
+
         if let Some(f) = &options.mysql_opts_fn {
             sqlx_opts = f(sqlx_opts);
         }
+
+        let after_connect = options.after_connect.clone();
+
         let pool = if options.connect_lazy {
             options.sqlx_pool_options().connect_lazy_with(sqlx_opts)
         } else {
@@ -89,13 +93,19 @@ impl SqlxMySqlConnector {
                 .await
                 .map_err(sqlx_error_to_conn_err)?
         };
-        Ok(
+
+        let conn: DatabaseConnection =
             DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
                 pool,
                 metric_callback: None,
             })
-            .into(),
-        )
+            .into();
+
+        if let Some(cb) = after_connect {
+            cb(conn.clone()).await?;
+        }
+
+        Ok(conn)
     }
 }
 
