@@ -1,0 +1,75 @@
+use crate::EntityTrait;
+
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "with-json", derive(serde::Serialize, serde::Deserialize))]
+pub enum HasOne<E: EntityTrait> {
+    Unloaded,
+    NotFound,
+    Loaded(Box<<E as EntityTrait>::ModelEx>),
+}
+
+impl<E> PartialEq for HasOne<E>
+where
+    E: EntityTrait,
+    <E as EntityTrait>::ModelEx: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (HasOne::Unloaded, HasOne::Unloaded) => true,
+            (HasOne::NotFound, HasOne::NotFound) => true,
+            (HasOne::Loaded(a), HasOne::Loaded(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl<E> Eq for HasOne<E>
+where
+    E: EntityTrait,
+    <E as EntityTrait>::ModelEx: Eq,
+{
+}
+
+impl<E: EntityTrait> Default for HasOne<E> {
+    fn default() -> Self {
+        Self::Unloaded
+    }
+}
+
+impl<E: EntityTrait> HasOne<E> {
+    pub fn is_unloaded(&self) -> bool {
+        matches!(self, HasOne::Unloaded)
+    }
+
+    pub fn is_not_found(&self) -> bool {
+        matches!(self, HasOne::NotFound)
+    }
+
+    pub fn is_loaded(&self) -> bool {
+        matches!(self, HasOne::Loaded(_))
+    }
+
+    pub fn into_option(self) -> Option<<E as EntityTrait>::ModelEx> {
+        match self {
+            HasOne::Loaded(model) => Some(*model),
+            HasOne::Unloaded | HasOne::NotFound => None,
+        }
+    }
+
+    pub fn unwrap(self) -> <E as EntityTrait>::ModelEx {
+        match self {
+            HasOne::Loaded(model) => *model,
+            HasOne::Unloaded => panic!("called `HasOne::unwrap()` on an `Unloaded` value"),
+            HasOne::NotFound => panic!("called `HasOne::unwrap()` on a `NotFound` value"),
+        }
+    }
+}
+
+impl<E: EntityTrait> From<HasOne<E>> for Option<Box<<E as EntityTrait>::ModelEx>> {
+    fn from(value: HasOne<E>) -> Self {
+        match value {
+            HasOne::Loaded(model) => Some(model),
+            HasOne::Unloaded | HasOne::NotFound => None,
+        }
+    }
+}

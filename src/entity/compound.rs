@@ -2,6 +2,11 @@
 use super::{ColumnTrait, EntityTrait, PrimaryKeyToColumn, PrimaryKeyTrait};
 use crate::{IntoSimpleExpr, Iterable, QueryFilter, QueryOrder, Related};
 use sea_query::{IntoValueTuple, Order, TableRef};
+mod has_many;
+mod has_one;
+
+pub use has_many::HasMany;
+pub use has_one::HasOne;
 
 pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter + QueryOrder {
     /// Find a model by primary key
@@ -51,9 +56,6 @@ pub enum LoadTarget {
 pub trait EntityLoaderWithParam<E: EntityTrait> {
     fn into_with_param(self) -> (LoadTarget, Option<LoadTarget>);
 }
-
-pub type HasOne<E> = Option<Box<<E as EntityTrait>::ModelEx>>;
-pub type HasMany<E> = Vec<<E as EntityTrait>::ModelEx>;
 
 impl<E, R> EntityLoaderWithParam<E> for R
 where
