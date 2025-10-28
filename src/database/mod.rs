@@ -245,9 +245,12 @@ impl ConnectOptions {
         self.connect_timeout
     }
 
-    /// Set the idle duration before closing a connection
-    pub fn idle_timeout(&mut self, value: Duration) -> &mut Self {
-        self.idle_timeout = Some(Some(value));
+    /// Set the idle duration before closing a connection.
+    pub fn idle_timeout<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<Option<Duration>>,
+    {
+        self.idle_timeout = Some(value.into());
         self
     }
 
@@ -267,9 +270,12 @@ impl ConnectOptions {
         self.acquire_timeout
     }
 
-    /// Set the maximum lifetime of individual connections
-    pub fn max_lifetime(&mut self, lifetime: Duration) -> &mut Self {
-        self.max_lifetime = Some(Some(lifetime));
+    /// Set the maximum lifetime of individual connections.
+    pub fn max_lifetime<T>(&mut self, lifetime: T) -> &mut Self
+    where
+        T: Into<Option<Duration>>,
+    {
+        self.max_lifetime = Some(lifetime.into());
         self
     }
 
