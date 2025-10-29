@@ -1,10 +1,13 @@
 use crate::EntityTrait;
 
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "with-json", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
-    feature = "with-json",
-    serde(bound = "E::ModelEx: serde::Serialize + serde::de::DeserializeOwned")
+    feature = "serde",
+    serde(bound(
+        serialize = "E::ModelEx: serde::Serialize",
+        deserialize = "E::ModelEx: serde::Deserialize<'de>"
+    ))
 )]
 pub enum HasOne<E: EntityTrait> {
     Unloaded,
@@ -51,21 +54,9 @@ impl<E: EntityTrait> HasOne<E> {
     }
 }
 
-impl<E: EntityTrait> From<HasOne<E>> for Option<Box<<E as EntityTrait>::ModelEx>> {
-    fn from(value: HasOne<E>) -> Self {
-        match value {
-            HasOne::Loaded(model) => Some(model),
-            HasOne::Unloaded | HasOne::NotFound => None,
-        }
-    }
-}
-
-impl<E: EntityTrait> From<Option<Box<<E as EntityTrait>::ModelEx>>> for HasOne<E> {
-    fn from(value: Option<Box<<E as EntityTrait>::ModelEx>>) -> Self {
-        match value {
-            Some(model) => HasOne::Loaded(model),
-            None => HasOne::NotFound,
-        }
+impl<E: EntityTrait> Default for HasOne<E> {
+    fn default() -> Self {
+        Self::Unloaded
     }
 }
 
@@ -91,9 +82,22 @@ where
 {
 }
 
-impl<E: EntityTrait> Default for HasOne<E> {
-    fn default() -> Self {
-        Self::Unloaded
+// Option<Box<ModelEx<E>>> <-> HasOne<E> conversions and comparisons
+impl<E: EntityTrait> From<HasOne<E>> for Option<Box<<E as EntityTrait>::ModelEx>> {
+    fn from(value: HasOne<E>) -> Self {
+        match value {
+            HasOne::Loaded(model) => Some(model),
+            HasOne::Unloaded | HasOne::NotFound => None,
+        }
+    }
+}
+
+impl<E: EntityTrait> From<Option<Box<<E as EntityTrait>::ModelEx>>> for HasOne<E> {
+    fn from(value: Option<Box<<E as EntityTrait>::ModelEx>>) -> Self {
+        match value {
+            Some(model) => HasOne::Loaded(model),
+            None => HasOne::NotFound,
+        }
     }
 }
 

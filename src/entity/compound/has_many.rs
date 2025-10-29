@@ -4,10 +4,13 @@ use std::slice;
 use super::super::EntityTrait;
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "with-json", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
-    feature = "with-json",
-    serde(bound = "E::ModelEx: serde::Serialize + serde::de::DeserializeOwned")
+    feature = "serde",
+    serde(bound(
+        serialize = "E::ModelEx: serde::Serialize",
+        deserialize = "E::ModelEx: serde::Deserialize<'de>"
+    ))
 )]
 pub enum HasMany<E: EntityTrait> {
     Unloaded,
