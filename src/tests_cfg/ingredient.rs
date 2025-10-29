@@ -15,7 +15,7 @@ pub struct Model {
     pub filling_id: Option<i32>,
     pub ingredient_id: Option<i32>,
     #[sea_orm(belongs_to, from = "filling_id", to = "id")]
-    pub filling: Option<super::filling::Entity>,
+    pub filling: HasOne<super::filling::Entity>,
     #[sea_orm(
         self_ref,
         relation_enum = "Ingredient",

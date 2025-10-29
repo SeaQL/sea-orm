@@ -179,7 +179,7 @@
 //!     == cake::ModelEx {
 //!         id: 42,
 //!         name: "Black Forest".into(),
-//!         fruit: Some(
+//!         fruit: HasOne::Loaded(
 //!             fruit::ModelEx {
 //! #           id: 1,
 //!                 name: "Cherry".into(),
@@ -187,20 +187,20 @@
 //!             }
 //!             .into(),
 //!         ),
-//!         fillings: vec![filling::ModelEx {
+//!         fillings: HasMany::Loaded(vec![filling::ModelEx {
 //! #           id: 2,
 //!             name: "Chocolate".into(),
 //! #           vendor_id: None,
 //! #           ignored_attr: 0,
-//!             ingredients: vec![ingredient::ModelEx {
+//!             ingredients: HasMany::Loaded(vec![ingredient::ModelEx {
 //! #               id: 3,
 //!                 name: "Syrup".into(),
 //! #               filling_id: Some(2),
 //! #               filling: Default::default(),
 //! #               ingredient_id: None,
-//! #               ingredient: None,
-//!             }],
-//!         }],
+//! #               ingredient: HasOne::Unloaded,
+//!             }]),
+//!         }]),
 //!     };
 //! # Ok(())
 //! # }
