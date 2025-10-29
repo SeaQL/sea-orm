@@ -5,6 +5,10 @@ use super::super::EntityTrait;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "with-json", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "with-json",
+    serde(bound = "E::ModelEx: serde::Serialize + serde::de::DeserializeOwned")
+)]
 pub enum HasMany<E: EntityTrait> {
     Unloaded,
     Loaded(Vec<<E as EntityTrait>::ModelEx>),
@@ -88,6 +92,62 @@ impl<E: EntityTrait> IntoIterator for HasMany<E> {
             HasMany::Loaded(models) => models.into_iter(),
             HasMany::Unloaded => Vec::new().into_iter(),
         }
+    }
+}
+
+impl<E: EntityTrait> From<Vec<<E as EntityTrait>::ModelEx>> for HasMany<E> {
+    fn from(value: Vec<<E as EntityTrait>::ModelEx>) -> Self {
+        HasMany::Loaded(value)
+    }
+}
+
+impl<E, const N: usize> PartialEq<[<E as EntityTrait>::Model; N]> for HasMany<E>
+where
+    E: EntityTrait,
+    <E as EntityTrait>::ModelEx: PartialEq<<E as EntityTrait>::Model>,
+    <E as EntityTrait>::Model: PartialEq<<E as EntityTrait>::ModelEx>,
+{
+    fn eq(&self, other: &[<E as EntityTrait>::Model; N]) -> bool {
+        match self {
+            HasMany::Loaded(models) => models.as_slice() == other.as_slice(),
+            HasMany::Unloaded => false,
+        }
+    }
+}
+
+impl<E, const N: usize> PartialEq<HasMany<E>> for [<E as EntityTrait>::Model; N]
+where
+    E: EntityTrait,
+    <E as EntityTrait>::ModelEx: PartialEq<<E as EntityTrait>::Model>,
+    <E as EntityTrait>::Model: PartialEq<<E as EntityTrait>::ModelEx>,
+{
+    fn eq(&self, other: &HasMany<E>) -> bool {
+        other == self
+    }
+}
+
+impl<E> PartialEq<[<E as EntityTrait>::Model]> for HasMany<E>
+where
+    E: EntityTrait,
+    <E as EntityTrait>::ModelEx: PartialEq<<E as EntityTrait>::Model>,
+    <E as EntityTrait>::Model: PartialEq<<E as EntityTrait>::ModelEx>,
+{
+    fn eq(&self, other: &[<E as EntityTrait>::Model]) -> bool {
+        match self {
+            HasMany::Loaded(models) => models.as_slice() == other,
+            HasMany::Unloaded => false,
+        }
+    }
+}
+
+impl<E> PartialEq<HasMany<E>> for [<E as EntityTrait>::Model]
+where
+    E: EntityTrait,
+    <E as EntityTrait>::ModelEx: PartialEq<<E as EntityTrait>::Model>,
+    <E as EntityTrait>::Model: PartialEq<<E as EntityTrait>::ModelEx>,
+{
+    fn eq(&self, other: &HasMany<E>) -> bool {
+        other == self
     }
 }
 
