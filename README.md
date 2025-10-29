@@ -131,18 +131,18 @@ super_cake
     == cake::ModelEx {
         id: 42,
         name: "Black Forest".into(),
-        fruit: Some(
+        fruit: HasOne::Loaded(
             fruit::ModelEx {
                 name: "Cherry".into(),
             }
             .into(),
         ),
-        fillings: vec![filling::ModelEx {
+        fillings: HasMany::Loaded(vec![filling::ModelEx {
             name: "Chocolate".into(),
-            ingredients: vec![ingredient::ModelEx {
+            ingredients: HasMany::Loaded(vec![ingredient::ModelEx {
                 name: "Syrup".into(),
-            }],
-        }],
+            }]),
+        }]),
     };
 ```
 

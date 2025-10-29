@@ -114,7 +114,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             .unwrap(),
         {
             let mut cake_2 = cake_2.clone().into_ex();
-            cake_2.bakery = HasOne::Loaded(Box::new(bakery_1.clone().into_ex()));
+            cake_2.bakery = HasOne::loaded(bakery_1.clone());
             cake_2
         }
     );
@@ -311,12 +311,12 @@ async fn entity_loader_join_three() {
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
             bakery: HasOne::Unloaded,
-            customer: HasOne::Loaded(Box::new(customer::ModelEx {
+            customer: HasOne::loaded(customer::ModelEx {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
                 orders: HasMany::Unloaded,
-            })),
+            }),
             lineitems: HasMany::Unloaded,
         }
     );
@@ -339,20 +339,20 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: HasOne::Loaded(Box::new(bakery::ModelEx {
+            bakery: HasOne::loaded(bakery::ModelEx {
                 id: 42,
                 name: "cool little bakery".into(),
                 profit_margin: 4.1,
                 bakers: HasMany::Unloaded,
                 cakes: HasMany::Unloaded,
                 orders: HasMany::Unloaded,
-            })),
-            customer: HasOne::Loaded(Box::new(customer::ModelEx {
+            }),
+            customer: HasOne::loaded(customer::ModelEx {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
                 orders: HasMany::Unloaded,
-            })),
+            }),
             lineitems: HasMany::Unloaded,
         }
     );
@@ -376,12 +376,12 @@ async fn entity_loader_join_three() {
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
             bakery: HasOne::Unloaded,
-            customer: HasOne::Loaded(Box::new(customer::ModelEx {
+            customer: HasOne::loaded(customer::ModelEx {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
                 orders: HasMany::Unloaded,
-            })),
+            }),
             lineitems: HasMany::Loaded(vec![
                 lineitem::ModelEx {
                     id: 1,
@@ -424,12 +424,12 @@ async fn entity_loader_join_three() {
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
             bakery: HasOne::Unloaded,
-            customer: HasOne::Loaded(Box::new(customer::ModelEx {
+            customer: HasOne::loaded(customer::ModelEx {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
                 orders: HasMany::Unloaded,
-            })),
+            }),
             lineitems: HasMany::Loaded(vec![
                 lineitem::ModelEx {
                     id: 1,
@@ -438,7 +438,7 @@ async fn entity_loader_join_three() {
                     order_id: 101,
                     cake_id: 13,
                     order: HasOne::Unloaded,
-                    cake: HasOne::Loaded(Box::new(cake_13.into_ex())),
+                    cake: HasOne::loaded(cake_13),
                 },
                 lineitem::ModelEx {
                     id: 2,
@@ -447,7 +447,7 @@ async fn entity_loader_join_three() {
                     order_id: 101,
                     cake_id: 15,
                     order: HasOne::Unloaded,
-                    cake: HasOne::Loaded(Box::new(cake_15.into_ex())),
+                    cake: HasOne::loaded(cake_15),
                 }
             ]),
         }

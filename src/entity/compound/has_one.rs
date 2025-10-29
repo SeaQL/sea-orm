@@ -16,6 +16,10 @@ pub enum HasOne<E: EntityTrait> {
 }
 
 impl<E: EntityTrait> HasOne<E> {
+    pub fn loaded<M: Into<<E as EntityTrait>::ModelEx>>(model: M) -> Self {
+        Self::Loaded(Box::new(model.into()))
+    }
+
     pub fn is_unloaded(&self) -> bool {
         matches!(self, HasOne::Unloaded)
     }
@@ -26,6 +30,13 @@ impl<E: EntityTrait> HasOne<E> {
 
     pub fn is_loaded(&self) -> bool {
         matches!(self, HasOne::Loaded(_))
+    }
+
+    pub fn as_ref(&self) -> Option<&<E as EntityTrait>::ModelEx> {
+        match self {
+            HasOne::Loaded(model) => Some(model.as_ref()),
+            HasOne::Unloaded | HasOne::NotFound => None,
+        }
     }
 
     pub fn as_deref(&self) -> Option<&<E as EntityTrait>::ModelEx> {
