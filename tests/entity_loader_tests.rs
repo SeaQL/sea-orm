@@ -52,7 +52,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .await?;
     assert_eq!(cakes, [cake_1.clone(), cake_3.clone()]);
     assert!(cakes[0].bakers.is_empty());
-    assert!(cakes[0].bakery.is_none());
+    assert!(cakes[0].bakery.is_unloaded());
 
     assert_eq!(
         cake::Entity::load()
@@ -102,7 +102,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .await?
         .unwrap();
     assert_eq!(cake_with_bakery, cake_1);
-    assert_eq!(*cake_with_bakery.bakery.unwrap(), bakery_1);
+    assert_eq!(cake_with_bakery.bakery.unwrap(), bakery_1);
     assert!(cake_with_bakery.bakers.is_empty());
 
     assert_eq!(
@@ -150,7 +150,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .await?
         .unwrap();
     assert_eq!(cake_with_bakery_baker, cake_3);
-    assert_eq!(*cake_with_bakery_baker.bakery.unwrap(), bakery_2);
+    assert_eq!(cake_with_bakery_baker.bakery.unwrap(), bakery_2);
     assert_eq!(cake_with_bakery_baker.bakers, [baker_2.clone()]);
 
     // start again from baker

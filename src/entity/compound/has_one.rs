@@ -25,6 +25,13 @@ impl<E: EntityTrait> HasOne<E> {
         matches!(self, HasOne::Loaded(_))
     }
 
+    pub fn as_deref(&self) -> Option<&<E as EntityTrait>::ModelEx> {
+        match self {
+            HasOne::Loaded(model) => Some(model.as_ref()),
+            HasOne::Unloaded | HasOne::NotFound => None,
+        }
+    }
+
     pub fn into_option(self) -> Option<<E as EntityTrait>::ModelEx> {
         match self {
             HasOne::Loaded(model) => Some(*model),
