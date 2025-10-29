@@ -311,11 +311,10 @@ async fn entity_loader_join_three() {
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
             bakery: HasOne::Unloaded,
-            customer: HasOne::loaded(customer::ModelEx {
+            customer: HasOne::loaded(customer::Model {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
-                orders: HasMany::Unloaded,
             }),
             lineitems: HasMany::Unloaded,
         }
@@ -339,13 +338,10 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: HasOne::loaded(bakery::ModelEx {
+            bakery: HasOne::loaded(bakery::Model {
                 id: 42,
                 name: "cool little bakery".into(),
                 profit_margin: 4.1,
-                bakers: HasMany::Unloaded,
-                cakes: HasMany::Unloaded,
-                orders: HasMany::Unloaded,
             }),
             customer: HasOne::loaded(customer::ModelEx {
                 id: 11,
@@ -424,11 +420,10 @@ async fn entity_loader_join_three() {
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
             bakery: HasOne::Unloaded,
-            customer: HasOne::loaded(customer::ModelEx {
+            customer: HasOne::loaded(customer::Model {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
-                orders: HasMany::Unloaded,
             }),
             lineitems: HasMany::Loaded(vec![
                 lineitem::ModelEx {

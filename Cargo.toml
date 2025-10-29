@@ -68,7 +68,6 @@ dotenv = "0.15"
 debug-print = []
 default = [
     "macros",
-    "serde",
     "with-json",
     "with-chrono",
     "with-rust_decimal",
@@ -81,7 +80,6 @@ macros = ["sea-orm-macros/derive"]
 mock = []
 rbac = ["sea-query/audit", "macros"]
 proxy = ["serde_json", "serde/derive"]
-serde = ["serde/derive"]
 with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "rust_decimal?/serde", "bigdecimal?/serde", "uuid?/serde", "time?/serde", "pgvector?/serde", "sea-query-sqlx?/with-json", "sqlx?/json"]
 with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-sqlx?/with-chrono", "sqlx?/chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-sqlx?/with-rust_decimal", "sqlx?/rust_decimal"]

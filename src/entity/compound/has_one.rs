@@ -1,14 +1,6 @@
 use crate::EntityTrait;
 
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    feature = "serde",
-    serde(bound(
-        serialize = "E::ModelEx: serde::Serialize",
-        deserialize = "E::ModelEx: serde::Deserialize<'de>"
-    ))
-)]
 pub enum HasOne<E: EntityTrait> {
     Unloaded,
     NotFound,
@@ -32,9 +24,20 @@ impl<E: EntityTrait> HasOne<E> {
         matches!(self, HasOne::Loaded(_))
     }
 
+    pub fn is_none(&self) -> bool {
+        matches!(self, HasOne::Unloaded | HasOne::NotFound)
+    }
+
     pub fn as_ref(&self) -> Option<&<E as EntityTrait>::ModelEx> {
         match self {
             HasOne::Loaded(model) => Some(model.as_ref()),
+            HasOne::Unloaded | HasOne::NotFound => None,
+        }
+    }
+
+    pub fn as_mut(&mut self) -> Option<&mut <E as EntityTrait>::ModelEx> {
+        match self {
+            HasOne::Loaded(model) => Some(model),
             HasOne::Unloaded | HasOne::NotFound => None,
         }
     }
@@ -133,5 +136,41 @@ where
 {
     fn eq(&self, other: &HasOne<E>) -> bool {
         other == self
+    }
+}
+
+#[cfg(feature = "with-json")]
+impl<E> serde::Serialize for HasOne<E>
+where
+    E: EntityTrait,
+    E::ModelEx: serde::Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            HasOne::Unloaded => None,
+            HasOne::NotFound => None,
+            HasOne::Loaded(model) => Some(model),
+        }
+        .serialize(serializer)
+    }
+}
+
+#[cfg(feature = "with-json")]
+impl<'de, E> serde::Deserialize<'de> for HasOne<E>
+where
+    E: EntityTrait,
+    E::ModelEx: serde::Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        match <Option<<E as EntityTrait>::ModelEx>>::deserialize(deserializer)? {
+            Some(model) => Ok(HasOne::Loaded(Box::new(model))),
+            None => Ok(HasOne::Unloaded),
+        }
     }
 }

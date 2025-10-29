@@ -4,14 +4,6 @@ use std::slice;
 use super::super::EntityTrait;
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    feature = "serde",
-    serde(bound(
-        serialize = "E::ModelEx: serde::Serialize",
-        deserialize = "E::ModelEx: serde::Deserialize<'de>"
-    ))
-)]
 pub enum HasMany<E: EntityTrait> {
     Unloaded,
     Loaded(Vec<<E as EntityTrait>::ModelEx>),
@@ -229,5 +221,137 @@ impl<'a, E: EntityTrait> IntoIterator for &'a HasMany<E> {
                 HasMany::Unloaded => None,
             },
         }
+    }
+}
+
+#[cfg(feature = "with-json")]
+impl<E> serde::Serialize for HasMany<E>
+where
+    E: EntityTrait,
+    E::ModelEx: serde::Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            HasMany::Unloaded => None,
+            HasMany::Loaded(models) => Some(models.as_slice()),
+        }
+        .serialize(serializer)
+    }
+}
+
+#[cfg(feature = "with-json")]
+impl<'de, E> serde::Deserialize<'de> for HasMany<E>
+where
+    E: EntityTrait,
+    E::ModelEx: serde::Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        match <Option<Vec<<E as EntityTrait>::ModelEx>>>::deserialize(deserializer)? {
+            Some(models) => Ok(HasMany::Loaded(models)),
+            None => Ok(HasMany::Unloaded),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::compound::{HasMany, HasOne};
+    use crate::tests_cfg::{cake, filling, fruit};
+
+    #[test]
+    fn test_serde_compound() {
+        let cake = cake::ModelEx {
+            id: 1,
+            name: "A".into(),
+            fruit: Default::default(),
+            fillings: Default::default(),
+        };
+
+        assert_eq!(
+            serde_json::to_string(&cake).unwrap(),
+            r#"{"id":1,"name":"A","fruit":null,"fillings":null}"#
+        );
+        assert_eq!(
+            serde_json::from_str::<cake::ModelEx>(&serde_json::to_string(&cake).unwrap()).unwrap(),
+            cake
+        );
+
+        let cake = cake::ModelEx {
+            id: 1,
+            name: "A".into(),
+            fruit: Default::default(),
+            fillings: HasMany::Loaded(vec![]),
+        };
+
+        assert_eq!(
+            serde_json::to_string(&cake).unwrap(),
+            r#"{"id":1,"name":"A","fruit":null,"fillings":[]}"#
+        );
+        assert_eq!(
+            serde_json::from_str::<cake::ModelEx>(&serde_json::to_string(&cake).unwrap()).unwrap(),
+            cake
+        );
+
+        let mut cake = cake::ModelEx {
+            id: 1,
+            name: "A".into(),
+            fruit: HasOne::Loaded(
+                fruit::ModelEx {
+                    id: 2,
+                    name: "B".into(),
+                    cake_id: None,
+                }
+                .into(),
+            ),
+            fillings: HasMany::Unloaded,
+        };
+
+        assert_eq!(
+            serde_json::to_string(&cake).unwrap(),
+            r#"{"id":1,"name":"A","fruit":{"id":2,"name":"B","cake_id":null},"fillings":null}"#
+        );
+        // fruit has skip_deserializing on id
+        cake.fruit.as_mut().unwrap().id = 0;
+        assert_eq!(
+            serde_json::from_str::<cake::ModelEx>(&serde_json::to_string(&cake).unwrap()).unwrap(),
+            cake
+        );
+
+        let cake = cake::ModelEx {
+            id: 1,
+            name: "A".into(),
+            fruit: HasOne::Loaded(
+                fruit::ModelEx {
+                    id: 0,
+                    name: "B".into(),
+                    cake_id: None,
+                }
+                .into(),
+            ),
+            fillings: HasMany::Loaded(vec![
+                filling::Model {
+                    id: 2,
+                    name: "C".into(),
+                    vendor_id: None,
+                    ignored_attr: 3,
+                }
+                .into_ex(),
+            ]),
+        };
+
+        assert_eq!(
+            serde_json::to_string(&cake).unwrap(),
+            r#"{"id":1,"name":"A","fruit":{"id":0,"name":"B","cake_id":null},"fillings":[{"id":2,"name":"C","vendor_id":null,"ignored_attr":3,"ingredients":null}]}"#
+        );
+        assert_eq!(
+            serde_json::from_str::<cake::ModelEx>(&serde_json::to_string(&cake).unwrap()).unwrap(),
+            cake
+        );
     }
 }
