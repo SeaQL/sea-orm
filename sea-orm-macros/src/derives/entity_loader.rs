@@ -179,7 +179,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                         let #field = models.as_slice().load_self_ex(#entity, Relation::#relation_enum, db).await?;
 
                         for (model, #field) in models.iter_mut().zip(#field) {
-                            model.#field = #field.map(Into::into).map(Box::new);
+                            model.#field = #field.map(Into::into).map(Box::new).into();
                         }
                     }
                 });
