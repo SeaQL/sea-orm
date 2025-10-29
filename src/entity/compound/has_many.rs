@@ -62,6 +62,13 @@ impl<E: EntityTrait> HasMany<E> {
             HasMany::Unloaded => None,
         }
     }
+
+    pub fn len(&self) -> usize {
+        match self {
+            HasMany::Loaded(models) => models.len(),
+            HasMany::Unloaded => 0,
+        }
+    }
 }
 
 impl<E: EntityTrait> From<HasMany<E>> for Option<Vec<<E as EntityTrait>::ModelEx>> {
