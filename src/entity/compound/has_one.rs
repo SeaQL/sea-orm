@@ -1,4 +1,5 @@
 use crate::EntityTrait;
+use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Debug)]
 pub enum HasOne<E: EntityTrait> {
@@ -136,6 +137,20 @@ where
 {
     fn eq(&self, other: &HasOne<E>) -> bool {
         other == self
+    }
+}
+
+impl<E> Hash for HasOne<E>
+where
+    E: EntityTrait,
+    E::ModelEx: Hash,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            HasOne::Unloaded => 0.hash(state),
+            HasOne::NotFound => 1.hash(state),
+            HasOne::Loaded(model) => model.hash(state),
+        }
     }
 }
 

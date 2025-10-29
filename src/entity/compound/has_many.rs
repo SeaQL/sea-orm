@@ -1,4 +1,5 @@
 use core::ops::Index;
+use std::hash::{Hash, Hasher};
 use std::slice;
 
 use super::super::EntityTrait;
@@ -220,6 +221,19 @@ impl<'a, E: EntityTrait> IntoIterator for &'a HasMany<E> {
                 HasMany::Loaded(models) => Some(models.iter()),
                 HasMany::Unloaded => None,
             },
+        }
+    }
+}
+
+impl<E> Hash for HasMany<E>
+where
+    E: EntityTrait,
+    E::ModelEx: Hash,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            HasMany::Unloaded => 0.hash(state),
+            HasMany::Loaded(model) => model.hash(state),
         }
     }
 }
