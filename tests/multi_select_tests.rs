@@ -398,8 +398,9 @@ async fn test_select_six() -> Result<(), DbErr> {
         .await?
         .unwrap();
     assert_eq!(one_ex.id, 1);
-    assert_eq!(one_ex.two.as_ref().unwrap().id, 2);
-    assert_eq!(one_ex.two.unwrap().three.unwrap().id, 3);
+    let two = one_ex.two.unwrap();
+    assert_eq!(two.id, 2);
+    assert_eq!(two.three.unwrap().id, 3);
 
     let one_ex = one::Entity::load()
         .with(six::Entity)
@@ -408,9 +409,11 @@ async fn test_select_six() -> Result<(), DbErr> {
         .await?
         .unwrap();
     assert_eq!(one_ex.id, 1);
-    assert_eq!(one_ex.two.as_ref().unwrap().id, 2);
-    assert_eq!(one_ex.two.unwrap().three.unwrap().id, 3);
-    assert_eq!(one_ex.six.unwrap().id, 6);
+    let two = one_ex.two.unwrap();
+    assert_eq!(two.id, 2);
+    assert_eq!(two.three.unwrap().id, 3);
+    let six = one_ex.six.unwrap();
+    assert_eq!(six.id, 6);
 
     let one_ex = one::Entity::load()
         .with((six::Entity, five::Entity))
@@ -419,10 +422,12 @@ async fn test_select_six() -> Result<(), DbErr> {
         .await?
         .unwrap();
     assert_eq!(one_ex.id, 1);
-    assert_eq!(one_ex.two.as_ref().unwrap().id, 2);
-    assert_eq!(one_ex.two.unwrap().three.unwrap().id, 3);
-    assert_eq!(one_ex.six.as_ref().unwrap().id, 6);
-    assert_eq!(one_ex.six.unwrap().five.unwrap().id, 55);
+    let two = one_ex.two.unwrap();
+    assert_eq!(two.id, 2);
+    assert_eq!(two.three.unwrap().id, 3);
+    let six = one_ex.six.unwrap();
+    assert_eq!(six.id, 6);
+    assert_eq!(six.five.unwrap().id, 55);
 
     Ok(())
 }
@@ -531,7 +536,7 @@ async fn test_composite_foreign_key() -> Result<(), DbErr> {
         .unwrap();
 
     assert_eq!(a.id, 101);
-    assert!(a.b.is_none());
+    assert!(a.b.is_not_found());
 
     let a = composite_a::Entity::load()
         .filter_by_id(102)
