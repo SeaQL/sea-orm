@@ -102,7 +102,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                 });
 
                 assemble_one.extend(quote! {
-                    model.#field = #field.map(Into::into).map(Box::new);
+                    model.#field = #field.map(Into::into).map(Box::new).into();
                 });
             }
 
@@ -112,7 +112,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                     let #field = #entity_module::EntityLoader::load_nest(#field, &nest.#field, db).await?;
 
                     for (model, #field) in models.iter_mut().zip(#field) {
-                        model.#field = #field.map(Into::into).map(Box::new);
+                        model.#field = #field.map(Into::into).map(Box::new).into();
                     }
                 }
             });
@@ -122,7 +122,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
 
                     for (model, #field) in models.iter_mut().zip(#field) {
                         if let Some(model) = model.as_mut() {
-                            model.#field = #field.map(Into::into).map(Box::new);
+                            model.#field = #field.map(Into::into).map(Box::new).into();
                         }
                     }
                 }
@@ -133,7 +133,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
 
                     for (models, #field) in models.iter_mut().zip(#field) {
                         for (model, #field) in models.iter_mut().zip(#field) {
-                            model.#field = #field.map(Into::into).map(Box::new);
+                            model.#field = #field.map(Into::into).map(Box::new).into();
                         }
                     }
                 }
@@ -145,7 +145,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                     let #field = #entity_module::EntityLoader::load_nest_nest(#field, &nest.#field, db).await?;
 
                     for (model, #field) in models.iter_mut().zip(#field) {
-                        model.#field = #field;
+                        model.#field = #field.into();
                     }
                 }
             });
@@ -155,7 +155,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
 
                     for (model, #field) in models.iter_mut().zip(#field) {
                         if let Some(model) = model.as_mut() {
-                            model.#field = #field;
+                            model.#field = #field.into();
                         }
                     }
                 }
@@ -166,7 +166,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
 
                     for (models, #field) in models.iter_mut().zip(#field) {
                         for (model, #field) in models.iter_mut().zip(#field) {
-                            model.#field = #field;
+                            model.#field = #field.into();
                         }
                     }
                 }
