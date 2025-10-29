@@ -26,8 +26,9 @@ impl Identity {
         }
     }
 
-    pub(crate) fn iter(&self) -> Iter<'_> {
-        Iter {
+    /// Iterate components of Identity
+    pub fn iter(&self) -> BorrowedIdentityIter<'_> {
+        BorrowedIdentityIter {
             identity: self,
             index: 0,
         }
@@ -36,14 +37,12 @@ impl Identity {
 
 impl IntoIterator for Identity {
     type Item = DynIden;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
+    type IntoIter = OwnedIdentityIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        match self {
-            Identity::Unary(ident1) => vec![ident1].into_iter(),
-            Identity::Binary(ident1, ident2) => vec![ident1, ident2].into_iter(),
-            Identity::Ternary(ident1, ident2, ident3) => vec![ident1, ident2, ident3].into_iter(),
-            Identity::Many(vec) => vec.into_iter(),
+        OwnedIdentityIter {
+            identity: self,
+            index: 0,
         }
     }
 }
@@ -76,12 +75,21 @@ impl Iden for Identity {
     }
 }
 
-pub(crate) struct Iter<'a> {
+/// Iterator for [`Identity`]
+#[derive(Debug)]
+pub struct BorrowedIdentityIter<'a> {
     identity: &'a Identity,
     index: usize,
 }
 
-impl<'a> Iterator for Iter<'a> {
+/// Iterator for [`Identity`]
+#[derive(Debug)]
+pub struct OwnedIdentityIter {
+    identity: Identity,
+    index: usize,
+}
+
+impl<'a> Iterator for BorrowedIdentityIter<'a> {
     type Item = &'a DynIden;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -105,6 +113,36 @@ impl<'a> Iterator for Iter<'a> {
                 _ => None,
             },
             Identity::Many(vec) => vec.get(self.index),
+        };
+        self.index += 1;
+        result
+    }
+}
+
+impl Iterator for OwnedIdentityIter {
+    type Item = DynIden;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = match &self.identity {
+            Identity::Unary(iden1) => {
+                if self.index == 0 {
+                    Some(iden1.clone())
+                } else {
+                    None
+                }
+            }
+            Identity::Binary(iden1, iden2) => match self.index {
+                0 => Some(iden1.clone()),
+                1 => Some(iden2.clone()),
+                _ => None,
+            },
+            Identity::Ternary(iden1, iden2, iden3) => match self.index {
+                0 => Some(iden1.clone()),
+                1 => Some(iden2.clone()),
+                2 => Some(iden3.clone()),
+                _ => None,
+            },
+            Identity::Many(vec) => vec.get(self.index).cloned(),
         };
         self.index += 1;
         result
