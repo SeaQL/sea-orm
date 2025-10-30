@@ -9,6 +9,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub filling_id: i32,
     #[cfg(feature = "with-rust_decimal")]
+    #[sea_orm(extra = "CHECK (price > 0)")]
     pub price: Decimal,
     #[sea_orm(ignore)]
     pub ignored_attr: i32,

@@ -295,7 +295,8 @@ mod tests {
             .col(
                 ColumnDef::new(cake_filling_price::Column::Price)
                     .decimal()
-                    .not_null(),
+                    .not_null()
+                    .extra("CHECK (price > 0)"),
             )
             .primary_key(
                 Index::create()
