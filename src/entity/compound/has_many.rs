@@ -231,9 +231,10 @@ where
     E::ModelEx: Hash,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        std::mem::discriminant(self).hash(state);
         match self {
-            HasMany::Unloaded => 0.hash(state),
             HasMany::Loaded(model) => model.hash(state),
+            HasMany::Unloaded => {}
         }
     }
 }
