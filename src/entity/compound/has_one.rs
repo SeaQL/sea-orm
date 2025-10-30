@@ -1,8 +1,9 @@
 use crate::EntityTrait;
 use std::hash::{Hash, Hasher};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub enum HasOne<E: EntityTrait> {
+    #[default]
     Unloaded,
     NotFound,
     Loaded(Box<<E as EntityTrait>::ModelEx>),
@@ -59,12 +60,6 @@ impl<E: EntityTrait> HasOne<E> {
             HasOne::Unloaded => panic!("called `HasOne::unwrap()` on an `Unloaded` value"),
             HasOne::NotFound => panic!("called `HasOne::unwrap()` on a `NotFound` value"),
         }
-    }
-}
-
-impl<E: EntityTrait> Default for HasOne<E> {
-    fn default() -> Self {
-        Self::Unloaded
     }
 }
 

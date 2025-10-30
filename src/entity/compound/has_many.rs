@@ -4,8 +4,9 @@ use std::slice;
 
 use super::super::EntityTrait;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub enum HasMany<E: EntityTrait> {
+    #[default]
     Unloaded,
     Loaded(Vec<<E as EntityTrait>::ModelEx>),
 }
@@ -29,12 +30,6 @@ where
     E: EntityTrait,
     <E as EntityTrait>::ModelEx: Eq,
 {
-}
-
-impl<E: EntityTrait> Default for HasMany<E> {
-    fn default() -> Self {
-        Self::Unloaded
-    }
 }
 
 impl<E: EntityTrait> HasMany<E> {
