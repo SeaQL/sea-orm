@@ -74,9 +74,9 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             cake_4.clone(),
         ]
     );
-    assert_eq!(cakes[0].bakery.as_deref().unwrap(), &bakery_1);
-    assert_eq!(cakes[1].bakery.as_deref().unwrap(), &bakery_1);
-    assert_eq!(cakes[2].bakery.as_deref().unwrap(), &bakery_2);
+    assert_eq!(cakes[0].bakery.as_ref().unwrap(), &bakery_1);
+    assert_eq!(cakes[1].bakery.as_ref().unwrap(), &bakery_1);
+    assert_eq!(cakes[2].bakery.as_ref().unwrap(), &bakery_2);
     assert_eq!(cakes[3].bakery, None);
 
     // alternative API
@@ -133,9 +133,9 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             cake_4.clone()
         ]
     );
-    assert_eq!(cakes[0].bakery.as_deref().unwrap(), &bakery_1);
-    assert_eq!(cakes[1].bakery.as_deref().unwrap(), &bakery_1);
-    assert_eq!(cakes[2].bakery.as_deref().unwrap(), &bakery_2);
+    assert_eq!(cakes[0].bakery.as_ref().unwrap(), &bakery_1);
+    assert_eq!(cakes[1].bakery.as_ref().unwrap(), &bakery_1);
+    assert_eq!(cakes[2].bakery.as_ref().unwrap(), &bakery_2);
     assert_eq!(cakes[3].bakery, None);
     assert_eq!(cakes[0].bakers, [baker_1.clone()]);
     assert_eq!(cakes[1].bakers, [baker_1.clone(), baker_2.clone()]);
@@ -204,22 +204,19 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .with((bakery::Entity, baker::Entity))
         .all(db)
         .await?;
-    assert_eq!(cakes[0].bakery.as_deref().unwrap().name, bakery_1.name);
-    assert_eq!(cakes[1].bakery.as_deref().unwrap().name, bakery_1.name);
-    assert_eq!(cakes[2].bakery.as_deref().unwrap().name, bakery_2.name);
+    assert_eq!(cakes[0].bakery.as_ref().unwrap().name, bakery_1.name);
+    assert_eq!(cakes[1].bakery.as_ref().unwrap().name, bakery_1.name);
+    assert_eq!(cakes[2].bakery.as_ref().unwrap().name, bakery_2.name);
     assert_eq!(cakes[3].bakery, None);
     assert_eq!(
-        cakes[0].bakery.as_deref().unwrap().bakers,
+        cakes[0].bakery.as_ref().unwrap().bakers,
         [baker_1.clone(), baker_2.clone()]
     );
     assert_eq!(
-        cakes[1].bakery.as_deref().unwrap().bakers,
+        cakes[1].bakery.as_ref().unwrap().bakers,
         [baker_1.clone(), baker_2.clone()]
     );
-    assert_eq!(
-        cakes[2].bakery.as_deref().unwrap().bakers,
-        [baker_3.clone()]
-    );
+    assert_eq!(cakes[2].bakery.as_ref().unwrap().bakers, [baker_3.clone()]);
 
     Ok(())
 }
@@ -261,10 +258,10 @@ async fn entity_loader_join_three() {
         .all(db)
         .await
         .unwrap();
-    assert_eq!(lineitems[0].order.as_deref().unwrap().id, 101);
-    assert_eq!(lineitems[0].order.as_deref().unwrap().total, 10.into());
-    assert_eq!(lineitems[1].order.as_deref().unwrap().id, 101);
-    assert_eq!(lineitems[1].order.as_deref().unwrap().total, 10.into());
+    assert_eq!(lineitems[0].order.as_ref().unwrap().id, 101);
+    assert_eq!(lineitems[0].order.as_ref().unwrap().total, 10.into());
+    assert_eq!(lineitems[1].order.as_ref().unwrap().id, 101);
+    assert_eq!(lineitems[1].order.as_ref().unwrap().total, 10.into());
 
     // lineitem join cake
     let lineitems = lineitem::Entity::load()
@@ -272,10 +269,10 @@ async fn entity_loader_join_three() {
         .all(db)
         .await
         .unwrap();
-    assert_eq!(lineitems[0].cake.as_deref().unwrap().id, 13);
-    assert_eq!(lineitems[0].cake.as_deref().unwrap().name, "Cheesecake");
-    assert_eq!(lineitems[1].cake.as_deref().unwrap().id, 15);
-    assert_eq!(lineitems[1].cake.as_deref().unwrap().name, "Chocolate");
+    assert_eq!(lineitems[0].cake.as_ref().unwrap().id, 13);
+    assert_eq!(lineitems[0].cake.as_ref().unwrap().name, "Cheesecake");
+    assert_eq!(lineitems[1].cake.as_ref().unwrap().id, 15);
+    assert_eq!(lineitems[1].cake.as_ref().unwrap().name, "Chocolate");
 
     // lineitem join order + cake
     let lineitems = lineitem::Entity::load()
@@ -284,14 +281,14 @@ async fn entity_loader_join_three() {
         .all(db)
         .await
         .unwrap();
-    assert_eq!(lineitems[0].order.as_deref().unwrap().id, 101);
-    assert_eq!(lineitems[0].order.as_deref().unwrap().total, 10.into());
-    assert_eq!(lineitems[1].order.as_deref().unwrap().id, 101);
-    assert_eq!(lineitems[1].order.as_deref().unwrap().total, 10.into());
-    assert_eq!(lineitems[0].cake.as_deref().unwrap().id, 13);
-    assert_eq!(lineitems[0].cake.as_deref().unwrap().name, "Cheesecake");
-    assert_eq!(lineitems[1].cake.as_deref().unwrap().id, 15);
-    assert_eq!(lineitems[1].cake.as_deref().unwrap().name, "Chocolate");
+    assert_eq!(lineitems[0].order.as_ref().unwrap().id, 101);
+    assert_eq!(lineitems[0].order.as_ref().unwrap().total, 10.into());
+    assert_eq!(lineitems[1].order.as_ref().unwrap().id, 101);
+    assert_eq!(lineitems[1].order.as_ref().unwrap().total, 10.into());
+    assert_eq!(lineitems[0].cake.as_ref().unwrap().id, 13);
+    assert_eq!(lineitems[0].cake.as_ref().unwrap().name, "Cheesecake");
+    assert_eq!(lineitems[1].cake.as_ref().unwrap().id, 15);
+    assert_eq!(lineitems[1].cake.as_ref().unwrap().name, "Chocolate");
 
     // 1 layer select
     let order = order::Entity::load()

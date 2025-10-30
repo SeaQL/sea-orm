@@ -1,7 +1,7 @@
 use crate::EntityTrait;
 use std::hash::{Hash, Hasher};
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub enum HasOne<E: EntityTrait> {
     Unloaded,
     NotFound,
@@ -39,13 +39,6 @@ impl<E: EntityTrait> HasOne<E> {
     pub fn as_mut(&mut self) -> Option<&mut <E as EntityTrait>::ModelEx> {
         match self {
             HasOne::Loaded(model) => Some(model),
-            HasOne::Unloaded | HasOne::NotFound => None,
-        }
-    }
-
-    pub fn as_deref(&self) -> Option<&<E as EntityTrait>::ModelEx> {
-        match self {
-            HasOne::Loaded(model) => Some(model.as_ref()),
             HasOne::Unloaded | HasOne::NotFound => None,
         }
     }
@@ -146,10 +139,11 @@ where
     E::ModelEx: Hash,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        std::mem::discriminant(self).hash(state);
         match self {
-            HasOne::Unloaded => 0.hash(state),
-            HasOne::NotFound => 1.hash(state),
-            HasOne::Loaded(model) => model.hash(state),
+            Self::Loaded(model) => model.hash(state),
+            Self::Unloaded => {}
+            Self::NotFound => {}
         }
     }
 }
