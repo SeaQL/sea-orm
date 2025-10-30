@@ -5,7 +5,7 @@ use sea_query::{IntoValueTuple, Order, TableRef};
 mod has_many;
 mod has_one;
 
-pub use has_many::HasMany;
+pub use has_many::{HasMany, Iter as HasManyIter};
 pub use has_one::HasOne;
 
 pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter + QueryOrder {

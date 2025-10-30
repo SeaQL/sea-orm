@@ -155,13 +155,13 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct HasManyIter<'a, E: EntityTrait> {
-    pub(crate) inner: Option<slice::Iter<'a, <E as EntityTrait>::ModelEx>>,
+pub struct Iter<'a, E: EntityTrait> {
+    inner: Option<slice::Iter<'a, <E as EntityTrait>::ModelEx>>,
 }
 
 impl<E: EntityTrait> HasMany<E> {
-    pub fn iter(&self) -> HasManyIter<'_, E> {
-        HasManyIter {
+    pub fn iter(&self) -> Iter<'_, E> {
+        Iter {
             inner: match self {
                 HasMany::Loaded(models) => Some(models.iter()),
                 HasMany::Unloaded => None,
@@ -170,7 +170,7 @@ impl<E: EntityTrait> HasMany<E> {
     }
 }
 
-impl<'a, E: EntityTrait> Iterator for HasManyIter<'a, E> {
+impl<'a, E: EntityTrait> Iterator for Iter<'a, E> {
     type Item = &'a <E as EntityTrait>::ModelEx;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -199,13 +199,13 @@ impl<'a, E: EntityTrait> Iterator for HasManyIter<'a, E> {
     }
 }
 
-impl<'a, E: EntityTrait> ExactSizeIterator for HasManyIter<'a, E> {
+impl<'a, E: EntityTrait> ExactSizeIterator for Iter<'a, E> {
     fn len(&self) -> usize {
         self.inner.as_ref().map(|iter| iter.len()).unwrap_or(0)
     }
 }
 
-impl<'a, E: EntityTrait> DoubleEndedIterator for HasManyIter<'a, E> {
+impl<'a, E: EntityTrait> DoubleEndedIterator for Iter<'a, E> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.as_mut().and_then(|iter| iter.next_back())
     }
@@ -213,10 +213,10 @@ impl<'a, E: EntityTrait> DoubleEndedIterator for HasManyIter<'a, E> {
 
 impl<'a, E: EntityTrait> IntoIterator for &'a HasMany<E> {
     type Item = &'a <E as EntityTrait>::ModelEx;
-    type IntoIter = HasManyIter<'a, E>;
+    type IntoIter = Iter<'a, E>;
 
     fn into_iter(self) -> Self::IntoIter {
-        HasManyIter {
+        Iter {
             inner: match self {
                 HasMany::Loaded(models) => Some(models.iter()),
                 HasMany::Unloaded => None,
