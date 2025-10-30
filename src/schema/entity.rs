@@ -235,6 +235,9 @@ where
     if let Some(comment) = &orm_column_def.comment {
         column_def.comment(comment);
     }
+    if let Some(extra) = &orm_column_def.extra {
+        column_def.extra(extra);
+    }
     match (&orm_column_def.renamed_from, &orm_column_def.comment) {
         (Some(renamed_from), Some(comment)) => {
             column_def.comment(format!("{comment}; renamed_from \"{renamed_from}\""));

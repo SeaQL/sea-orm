@@ -127,6 +127,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut sql_type = None;
                     let mut enum_name = None;
                     let mut is_primary_key = false;
+                    let mut extra = None;
                     let mut seaography_ignore = false;
 
                     let mut column_name = if let Some(case_style) = rename_all {
@@ -243,6 +244,13 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                             meta.error(format!("Invalid renamed_from {lit:?}"))
                                         );
                                     }
+                                } else if meta.path.is_ident("extra") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        extra = Some(litstr.value());
+                                    } else {
+                                        return Err(meta.error(format!("Invalid extra {lit:?}")));
+                                    }
                                 } else {
                                     // Reads the value expression to advance the parse stream.
                                     // Some parameters, such as `primary_key`, do not have any value,
@@ -353,6 +361,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     }
                     if let Some(default_expr) = default_expr {
                         match_row = quote! { #match_row.default(#default_expr) };
+                    }
+                    if let Some(extra) = extra {
+                        match_row = quote! { #match_row.extra(#extra) };
                     }
                     // match_row = quote! { #match_row.comment() };
                     columns_trait.push(match_row);

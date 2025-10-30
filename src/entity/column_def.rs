@@ -15,6 +15,7 @@ pub struct ColumnDef {
     pub(crate) comment: Option<String>,
     pub(crate) unique_key: Option<String>,
     pub(crate) renamed_from: Option<String>,
+    pub(crate) extra: Option<String>,
     pub(crate) seaography: SeaographyColumnAttr,
 }
 
@@ -89,6 +90,12 @@ impl ColumnDef {
         T: Into<SimpleExpr>,
     {
         self.default = Some(default.into());
+        self
+    }
+
+    /// Set the extra SQL string for the column (e.g. "COLLATE NOCASE")
+    pub fn extra(mut self, value: &str) -> Self {
+        self.extra = Some(value.into());
         self
     }
 
