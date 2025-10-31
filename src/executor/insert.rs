@@ -93,7 +93,6 @@ where
     /// Number of rows affected is returned
     pub async fn exec_without_returning<C>(self, db: &C) -> Result<TryInsertResult<u64>, DbErr>
     where
-        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
     {
         if self.empty {
@@ -195,7 +194,6 @@ where
         db: &'a C,
     ) -> impl Future<Output = Result<u64, DbErr>> + 'a
     where
-        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
@@ -272,7 +270,6 @@ where
     /// Number of rows affected is returned
     pub async fn exec_without_returning<C>(self, db: &C) -> Result<u64, DbErr>
     where
-        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
     {
         if self.empty {
