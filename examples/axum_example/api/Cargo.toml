@@ -33,7 +33,7 @@ features = [
 ]
 
 [dev-dependencies]
-axum-example-service = { path = ".", features = ["sqlite"] }
+axum-example-api = { path = ".", features = ["sqlite"] }
 
 [features]
 sqlite = ["sea-orm/sqlx-sqlite"]

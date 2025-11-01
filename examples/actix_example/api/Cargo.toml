@@ -33,7 +33,7 @@ features = [
 
 [dev-dependencies]
 tokio = { version = "1.20.0", features = ["macros", "rt"] }
-actix-example-service = { path = ".", features = ["sqlite"] }
+actix-example-api = { path = ".", features = ["sqlite"] }
 
 [features]
 sqlite = ["sea-orm/sqlx-sqlite"]

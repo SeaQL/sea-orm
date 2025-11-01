@@ -7,7 +7,7 @@ rust-version = "1.85.0"
 publish = false
 
 [dependencies]
-async-graphql = { version = "7" }
+async-graphql = { version = "7.0.17" }
 tokio = { version = "1.29", features = ["full"] }
 axum = "0.8"
 dotenvy = "0.15.7"
