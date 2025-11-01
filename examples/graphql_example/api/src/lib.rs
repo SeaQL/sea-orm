@@ -1,7 +1,6 @@
 mod db;
 mod graphql;
-
-use entity::async_graphql;
+pub mod service;
 
 use async_graphql::http::{GraphQLPlaygroundConfig, playground_source};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};

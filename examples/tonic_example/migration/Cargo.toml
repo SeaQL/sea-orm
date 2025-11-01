@@ -10,6 +10,7 @@ name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
+entity = { path = "../entity" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [dependencies.sea-orm-migration]
@@ -17,6 +18,6 @@ path = "../../../sea-orm-migration" # remove this line in your own project
 version = "~2.0.0-rc.16" # sea-orm-migration version
 features = [
   # Enable following runtime and db backend features if you want to run migration via CLI
-  # "runtime-tokio-rustls",
-  # "sqlx-postgres",
+  "runtime-tokio-native-tls",
+  "sqlx-sqlite",
 ]

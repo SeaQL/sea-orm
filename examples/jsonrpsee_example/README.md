@@ -2,14 +2,15 @@
 
 1. Modify the `DATABASE_URL` var in `.env` to point to your chosen database
 
-1. Turn on the appropriate database feature for your chosen db in `service/Cargo.toml` (the `"sqlx-sqlite",` line)
+1. Turn on the appropriate database feature for your chosen db in `api/Cargo.toml` (the `"sqlx-sqlite",` line)
 
 1. Execute `cargo run` to start the server
 
 1. Send jsonrpc request to server
 
+#### Insert
+
 ```shell
-#insert
 curl --location --request POST 'http://127.0.0.1:8000' \
 --header 'Content-Type: application/json' \
 --data-raw '{"jsonrpc": "2.0", "method": "Post.Insert", "params": [
@@ -19,8 +20,11 @@ curl --location --request POST 'http://127.0.0.1:8000' \
         "text":"aaaaaaa"
     }
 ], "id": 2}'
+```
 
-#list
+#### List
+
+```shell
 curl --location --request POST 'http://127.0.0.1:8000' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -32,8 +36,11 @@ curl --location --request POST 'http://127.0.0.1:8000' \
     ],
     "id": 2
 }'
+```
 
-#delete
+#### Delete
+
+```shell
 curl --location --request POST 'http://127.0.0.1:8000' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -44,8 +51,11 @@ curl --location --request POST 'http://127.0.0.1:8000' \
     ],
     "id": 2
 }'
+```
 
-#update
+#### Update
+
+```shell
 curl --location --request POST 'http://127.0.0.1:8000' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -62,10 +72,10 @@ curl --location --request POST 'http://127.0.0.1:8000' \
 }'
 ```
 
-Run tests on the service logic crate:
+Run tests:
 
 ```bash
-cd service
+cd api
 cargo test
 ```
 

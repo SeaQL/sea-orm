@@ -1,12 +1,12 @@
+pub mod service;
+
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use entity::post;
 use migration::{Migrator, MigratorTrait};
-use tonic_example_service::{
-    Mutation, Query,
-    sea_orm::{Database, DatabaseConnection},
-};
+use sea_orm::{Database, DatabaseConnection};
+use service::{Mutation, Query};
 
 use std::env;
 

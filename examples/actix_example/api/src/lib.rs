@@ -1,7 +1,5 @@
-use actix_example_service::{
-    Mutation, Query,
-    sea_orm::{Database, DatabaseConnection},
-};
+mod service;
+
 use actix_files::Files as Fs;
 use actix_web::{
     App, Error, HttpRequest, HttpResponse, HttpServer, Result, error, get, middleware, post, web,
@@ -10,7 +8,9 @@ use actix_web::{
 use entity::post;
 use listenfd::ListenFd;
 use migration::{Migrator, MigratorTrait};
+use sea_orm::{Database, DatabaseConnection};
 use serde::{Deserialize, Serialize};
+use service::{Mutation, Query};
 use std::env;
 use tera::Tera;
 

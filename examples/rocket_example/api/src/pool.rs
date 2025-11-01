@@ -1,5 +1,3 @@
-use rocket_example_service::sea_orm;
-
 use async_trait::async_trait;
 use rocket_db_pools::Database;
 use sea_orm::ConnectOptions;

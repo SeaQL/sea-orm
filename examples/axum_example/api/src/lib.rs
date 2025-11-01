@@ -1,4 +1,5 @@
 mod flash;
+mod service;
 
 use axum::{
     Router,
@@ -7,14 +8,12 @@ use axum::{
     response::Html,
     routing::{get, get_service, post},
 };
-use axum_example_service::{
-    Mutation as MutationCore, Query as QueryCore,
-    sea_orm::{Database, DatabaseConnection},
-};
 use entity::post;
 use flash::{PostResponse, get_flash_cookie, post_response};
 use migration::{Migrator, MigratorTrait};
+use sea_orm::{Database, DatabaseConnection};
 use serde::{Deserialize, Serialize};
+use service::{Mutation, Query as QueryService};
 use std::env;
 use tera::Tera;
 use tower_cookies::{CookieManagerLayer, Cookies};
@@ -96,7 +95,7 @@ async fn list_posts(
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.posts_per_page.unwrap_or(5);
 
-    let (posts, num_pages) = QueryCore::find_posts_in_page(&state.conn, page, posts_per_page)
+    let (posts, num_pages) = QueryService::find_posts_in_page(&state.conn, page, posts_per_page)
         .await
         .expect("Cannot find posts in page");
 
@@ -135,7 +134,7 @@ async fn create_post(
 ) -> Result<PostResponse, (StatusCode, &'static str)> {
     let form = form.0;
 
-    MutationCore::create_post(&state.conn, form)
+    Mutation::create_post(&state.conn, form)
         .await
         .expect("could not insert post");
 
@@ -151,7 +150,7 @@ async fn edit_post(
     state: State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Html<String>, (StatusCode, &'static str)> {
-    let post: post::Model = QueryCore::find_post_by_id(&state.conn, id)
+    let post: post::Model = QueryService::find_post_by_id(&state.conn, id)
         .await
         .expect("could not find post")
         .unwrap_or_else(|| panic!("could not find post with id {id}"));
@@ -175,7 +174,7 @@ async fn update_post(
 ) -> Result<PostResponse, (StatusCode, String)> {
     let form = form.0;
 
-    MutationCore::update_post_by_id(&state.conn, id, form)
+    Mutation::update_post_by_id(&state.conn, id, form)
         .await
         .expect("could not edit post");
 
@@ -192,7 +191,7 @@ async fn delete_post(
     Path(id): Path<i32>,
     mut cookies: Cookies,
 ) -> Result<PostResponse, (StatusCode, &'static str)> {
-    MutationCore::delete_post(&state.conn, id)
+    Mutation::delete_post(&state.conn, id)
         .await
         .expect("could not delete post");
 
