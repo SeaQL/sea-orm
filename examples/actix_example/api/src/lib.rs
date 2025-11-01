@@ -1,4 +1,4 @@
-mod service;
+pub mod service;
 
 use actix_files::Files as Fs;
 use actix_web::{

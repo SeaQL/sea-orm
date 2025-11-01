@@ -1,5 +1,5 @@
 mod flash;
-mod service;
+pub mod service;
 
 use axum::{
     Router,
