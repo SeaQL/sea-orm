@@ -3,7 +3,7 @@ use sea_orm::{DeleteMany, entity::prelude::*};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize, SimpleObject)]
-#[sea_orm(table_name = "notes")]
+#[sea_orm(table_name = "note")]
 #[graphql(concrete(name = "Note", params()))]
 pub struct Model {
     #[sea_orm(primary_key)]

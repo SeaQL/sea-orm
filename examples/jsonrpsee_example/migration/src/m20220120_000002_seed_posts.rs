@@ -1,6 +1,6 @@
-use entity::note::*;
+use entity::post;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
-use sea_orm_migration::{prelude::*, schema::*};
+use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -11,12 +11,12 @@ impl MigrationTrait for Migration {
         let db = manager.get_connection();
 
         let seed_data = vec![
-            ("First Note", "This is the first note."),
-            ("Second Note", "This is another note."),
+            ("First Post", "This is the first post."),
+            ("Second Post", "This is another post."),
         ];
 
         for (title, text) in seed_data {
-            let model = ActiveModel {
+            let model = post::ActiveModel {
                 title: Set(title.to_string()),
                 text: Set(text.to_string()),
                 ..Default::default()
@@ -24,20 +24,20 @@ impl MigrationTrait for Migration {
             model.insert(db).await?;
         }
 
-        println!("Notes table seeded successfully.");
+        println!("Posts table seeded successfully.");
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
 
-        let titles_to_delete = vec!["First Note", "Second Note"];
-        Entity::delete_many()
-            .filter(Column::Title.is_in(titles_to_delete))
+        let titles_to_delete = vec!["First Post", "Second Post"];
+        post::Entity::delete_many()
+            .filter(post::Column::Title.is_in(titles_to_delete))
             .exec(db)
             .await?;
 
-        println!("Notes seeded data removed.");
+        println!("Posts seeded data removed.");
         Ok(())
     }
 }

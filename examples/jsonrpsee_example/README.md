@@ -60,7 +60,6 @@ curl --location --request POST 'http://127.0.0.1:8000' \
     ],
     "id": 2
 }'
-
 ```
 
 Run tests on the service logic crate:
@@ -68,4 +67,16 @@ Run tests on the service logic crate:
 ```bash
 cd service
 cargo test
+```
+
+Run migration:
+
+```bash
+cargo run -p migration -- up
+```
+
+Regenerate entity:
+
+```bash
+sea-orm-cli generate entity --output-dir ./entity/src --lib --entity-format dense --with-serde both
 ```

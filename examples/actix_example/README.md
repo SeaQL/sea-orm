@@ -17,8 +17,6 @@ cargo install systemfd cargo-watch
 systemfd --no-pid -s http::8000 -- cargo watch -x run
 ```
 
-Run tests on the service logic crate:
-
 ```bash
 cd service
 cargo test
@@ -30,8 +28,8 @@ Run migration:
 cargo run -p migration -- up
 ```
 
-Run seeder:
+Regenerate entity:
 
 ```bash
-cargo run -p seeder -- up
+sea-orm-cli generate entity --output-dir ./entity/src --lib --entity-format dense --with-serde both
 ```
