@@ -221,7 +221,34 @@ pub trait MigratorTrait: Send {
         C: IntoSchemaManagerConnection<'c>,
     {
         exec_with_connection::<'_, _, _>(db, move |manager| {
-            Box::pin(async move { exec_down::<Self>(manager, None).await })
+            Box::pin(async move {
+                // Rollback all applied migrations first
+                exec_down::<Self>(manager, None).await?;
+
+                // Then drop the migration table itself
+                let mut stmt = Table::drop();
+                stmt.table(Self::migration_table_name()).if_exists().cascade();
+                manager.drop_table(stmt).await?;
+
+                Ok(())
+            })
+        })
+        .await
+    }
+
+    /// Uninstall migration tracking table only (non-destructive)
+    /// This will drop the `seaql_migrations` table but won't rollback other schema changes.
+    async fn uninstall<'c, C>(db: C) -> Result<(), DbErr>
+    where
+        C: IntoSchemaManagerConnection<'c>,
+    {
+        exec_with_connection::<'_, _, _>(db, move |manager| {
+            Box::pin(async move {
+                let mut stmt = Table::drop();
+                stmt.table(Self::migration_table_name()).if_exists().cascade();
+                manager.drop_table(stmt).await?;
+                Ok(())
+            })
         })
         .await
     }
