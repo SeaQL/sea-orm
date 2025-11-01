@@ -227,7 +227,9 @@ pub trait MigratorTrait: Send {
 
                 // Then drop the migration table itself
                 let mut stmt = Table::drop();
-                stmt.table(Self::migration_table_name()).if_exists().cascade();
+                stmt.table(Self::migration_table_name())
+                    .if_exists()
+                    .cascade();
                 manager.drop_table(stmt).await?;
 
                 Ok(())
@@ -245,7 +247,9 @@ pub trait MigratorTrait: Send {
         exec_with_connection::<'_, _, _>(db, move |manager| {
             Box::pin(async move {
                 let mut stmt = Table::drop();
-                stmt.table(Self::migration_table_name()).if_exists().cascade();
+                stmt.table(Self::migration_table_name())
+                    .if_exists()
+                    .cascade();
                 manager.drop_table(stmt).await?;
                 Ok(())
             })
