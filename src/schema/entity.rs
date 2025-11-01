@@ -209,7 +209,7 @@ where
 
     for relation in E::Relation::iter() {
         let relation = relation.def();
-        if relation.is_owner {
+        if relation.is_owner || relation.skip_fk {
             continue;
         }
         stmt.foreign_key(&mut relation.into());
