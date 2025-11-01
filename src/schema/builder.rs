@@ -371,7 +371,9 @@ impl EntitySchemaInfo {
                 }
             }
             if !has_index {
-                db.execute(stmt).await?;
+                let mut stmt = stmt.clone();
+                stmt.if_not_exists();
+                db.execute(&stmt).await?;
             }
         }
         if let Some(existing_table) = existing_table {
