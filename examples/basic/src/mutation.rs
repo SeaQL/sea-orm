@@ -1,7 +1,7 @@
 use super::*;
 use sea_orm::{DbConn, entity::*, error::*};
 
-pub async fn all_about_operation(db: &DbConn) -> Result<(), DbErr> {
+pub async fn all_about_mutation(db: &DbConn) -> Result<(), DbErr> {
     insert_and_update(db).await?;
 
     println!("===== =====\n");
