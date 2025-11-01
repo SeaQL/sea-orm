@@ -12,6 +12,7 @@ pub struct Column {
     pub(crate) auto_increment: bool,
     pub(crate) not_null: bool,
     pub(crate) unique: bool,
+    pub(crate) unique_key: Option<String>,
 }
 
 impl Column {
@@ -297,6 +298,7 @@ impl From<&ColumnDef> for Column {
             auto_increment,
             not_null,
             unique,
+            unique_key: None,
         }
     }
 }
@@ -317,6 +319,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    unique_key: None,
                 }
             };
         }

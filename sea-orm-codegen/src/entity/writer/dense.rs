@@ -82,6 +82,8 @@ impl EntityWriter {
                 };
                 if col.unique {
                     attrs.push(quote! { unique });
+                } else if let Some(unique_key) = &col.unique_key {
+                    attrs.push(quote! { unique_key = #unique_key });
                 }
                 let mut ts = quote! {};
                 if !attrs.is_empty() {

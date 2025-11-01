@@ -35,6 +35,18 @@ impl Schema {
         create_table_from_entity(entity, self.backend)
     }
 
+    #[doc(hidden)]
+    pub fn create_table_with_index_from_entity<E>(&self, entity: E) -> TableCreateStatement
+    where
+        E: EntityTrait,
+    {
+        let mut table = create_table_from_entity(entity, self.backend);
+        for mut index in create_index_from_entity(entity, self.backend) {
+            table.index(&mut index);
+        }
+        table
+    }
+
     /// Creates the indexes from an Entity, returning an empty Vec if there are none
     /// to create. See [IndexCreateStatement] for more details
     pub fn create_index_from_entity<E>(&self, entity: E) -> Vec<IndexCreateStatement>

@@ -312,6 +312,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    unique_key: None,
                 },
                 Column {
                     name: "name".to_owned(),
@@ -319,6 +320,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    unique_key: None,
                 },
             ],
             relations: vec![
