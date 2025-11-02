@@ -758,6 +758,7 @@ pub async fn related() -> Result<(), DbErr> {
         Bakery::find()
             .find_with_linked(bakery::ToBaker)
             .order_by_asc(bakery::Column::Id)
+            .order_by_asc(Expr::col(("r0", baker::Column::Id)))
             .all(&ctx.db)
             .await?
     );
