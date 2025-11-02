@@ -183,6 +183,10 @@ impl DeriveRelation {
                     result = quote! { #result.fk_name(#fk_name) };
                 }
 
+                if attr.skip_fk.is_some() {
+                    result = quote! { #result.skip_fk() };
+                }
+
                 if attr.condition_type.is_some() {
                     let condition_type = attr
                         .condition_type
