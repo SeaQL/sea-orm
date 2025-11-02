@@ -23,6 +23,13 @@ pub enum Relation {
         to = "(super::cake_filling::Column::CakeId, super::cake_filling::Column::FillingId)"
     )]
     CakeFilling,
+    #[sea_orm(
+        belongs_to = "super::cake::Entity",
+        from = "Column::CakeId",
+        to = "super::cake::Column::Id",
+        skip_fk
+    )]
+    Cake,
 }
 
 impl Related<super::cake_filling::Entity> for Entity {
