@@ -633,6 +633,12 @@ Update::one(active_model)
 ```
 * A number of methods has been removed from `SelectTwoMany`: `into_partial_model`, `into_json`, `stream`. These methods are same as those in `SelectTwo`.
 Please use `Cake::find().find_also_related(Fruit).into_json()` instead.
+* The `delete_by_id` method has changed to returning `DeleteOne` instead of `DeleteMany`. It doesn't change normal `exec` usage, but would change return type of `exec_with_returning` to `Option<Model>`
+```rust
+fn delete_by_id<T>(values: T) -> DeleteMany<Self>         // old
+
+fn delete_by_id<T>(values: T) -> ValidatedDeleteOne<Self> // new
+```
 
 ### Upgrades
 
