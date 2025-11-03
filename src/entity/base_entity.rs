@@ -2,7 +2,7 @@ use crate::{
     ActiveModelBehavior, ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne,
     FromQueryResult, Insert, InsertMany, ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait,
     QueryFilter, Related, RelationBuilder, RelationTrait, RelationType, Select, Update, UpdateMany,
-    UpdateOne,
+    UpdateOne, ValidatedDeleteOne,
 };
 use sea_query::{Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 use std::fmt::Debug;
@@ -852,7 +852,7 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
-    fn delete<A>(model: A) -> DeleteOne<A>
+    fn delete<A>(model: A) -> DeleteOne<Self>
     where
         A: ActiveModelTrait<Entity = Self>,
     {
@@ -985,25 +985,21 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// Panics if arity of input values don't match arity of primary key
-    fn delete_by_id<T>(values: T) -> DeleteMany<Self>
+    fn delete_by_id<T>(values: T) -> ValidatedDeleteOne<Self>
     where
         T: Into<<Self::PrimaryKey as PrimaryKeyTrait>::ValueType>,
     {
-        let mut delete = Self::delete_many();
+        let mut am = Self::ActiveModel::default();
         let mut keys = Self::PrimaryKey::iter();
         for v in values.into().into_value_tuple() {
             if let Some(key) = keys.next() {
                 let col = key.into_column();
-                delete = delete.filter(col.eq(v));
+                am.set(col, v);
             } else {
                 unreachable!("primary key arity mismatch");
             }
         }
-        delete
+        Delete::one(am).validate().expect("Must be valid")
     }
 }
 

@@ -1,9 +1,9 @@
 pub use crate::{
     ActiveEnum, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait, ColumnType,
-    ColumnTypeTrait, ConnectionTrait, CursorTrait, DatabaseConnection, DbConn, DeleteMany,
-    EntityName, EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked, LoaderTrait,
-    ModelTrait, PaginatorTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter,
-    QueryResult, Related, RelationDef, RelationTrait, Select, Value,
+    ColumnTypeTrait, ConnectionTrait, CursorTrait, DatabaseConnection, DbConn, EntityName,
+    EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked, LoaderTrait, ModelTrait,
+    PaginatorTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryResult,
+    Related, RelationDef, RelationTrait, Select, Value,
     error::*,
     sea_query::{DynIden, Expr, RcOrArc, SeaRc, StringLen},
 };
