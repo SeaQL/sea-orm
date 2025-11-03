@@ -309,12 +309,19 @@ pub async fn group_by() {
     .await
     .expect("could not insert customer");
 
+    let customer_sam = customer::ActiveModel {
+        name: Set("Sam".to_owned()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await
+    .expect("could not insert customer");
+
     let kate_order_1 = order::ActiveModel {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(99.95)),
         placed_at: Set(ChronoUtc::now()),
-
         ..Default::default()
     }
     .insert(&ctx.db)
@@ -326,25 +333,32 @@ pub async fn group_by() {
         customer_id: Set(customer_kate.id),
         total: Set(rust_dec(200.00)),
         placed_at: Set(ChronoUtc::now()),
-
         ..Default::default()
     }
     .insert(&ctx.db)
     .await
     .expect("could not insert order");
 
-    #[cfg(any(feature = "sqlx-postgres"))]
-    type Type = i64;
-    #[cfg(not(any(feature = "sqlx-postgres")))]
-    type Type = i32;
+    let sam_order = order::ActiveModel {
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_sam.id),
+        total: Set(rust_dec(28.24)),
+        placed_at: Set(ChronoUtc::now()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await
+    .expect("could not insert order");
+
+    type Count = i64;
 
     #[derive(Debug, FromQueryResult)]
     struct SelectResult {
         name: String,
-        number_orders: Option<Type>,
-        total_spent: Option<Decimal>,
-        min_spent: Option<Decimal>,
-        max_spent: Option<Decimal>,
+        number_orders: Count,
+        total_spent: Decimal,
+        min_spent: Decimal,
+        max_spent: Decimal,
     }
 
     let select = customer::Entity::find()
@@ -355,6 +369,7 @@ pub async fn group_by() {
         .column_as(order::Column::Total.sum(), "total_spent")
         .column_as(order::Column::Total.min(), "min_spent")
         .column_as(order::Column::Total.max(), "max_spent")
+        .order_by_asc(customer::Column::Name)
         .group_by(customer::Column::Name);
 
     let result = select
@@ -364,20 +379,41 @@ pub async fn group_by() {
         .unwrap()
         .unwrap();
 
-    assert_eq!(result.name.as_str(), "Kate");
-    assert_eq!(result.number_orders, Some(2));
+    assert_eq!(result.name, "Kate");
+    assert_eq!(result.number_orders, 2);
+    assert_eq!(result.total_spent, kate_order_1.total + kate_order_2.total);
+    assert_eq!(result.min_spent, kate_order_1.total.min(kate_order_2.total));
+    assert_eq!(result.max_spent, kate_order_1.total.max(kate_order_2.total));
+
+    let (customer, total_spent): (String, Decimal) = customer::Entity::find()
+        .left_join(order::Entity)
+        .select_only()
+        .column(customer::Column::Name)
+        .column_as(order::Column::Total.sum(), "sum")
+        .group_by(customer::Column::Name)
+        .into_tuple()
+        .one(&ctx.db)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(customer, "Kate");
+    assert_eq!(total_spent, result.total_spent);
+
+    let sum_order_value: Decimal = order::Entity::find()
+        .select_only()
+        .column_as(order::Column::Total.sum(), "sum")
+        .into_tuple()
+        .one(&ctx.db)
+        .await
+        .unwrap()
+        .unwrap();
+
     assert_eq!(
-        result.total_spent,
-        Some(kate_order_1.total + kate_order_2.total)
+        sum_order_value,
+        kate_order_1.total + kate_order_2.total + sam_order.total
     );
-    assert_eq!(
-        result.min_spent,
-        Some(kate_order_1.total.min(kate_order_2.total))
-    );
-    assert_eq!(
-        result.max_spent,
-        Some(kate_order_1.total.max(kate_order_2.total))
-    );
+
     ctx.delete().await;
 }
 
