@@ -1,7 +1,7 @@
 use super::{ReturningSelector, SelectModel};
 use crate::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, Iterable,
-    ValidatedDeleteOne, error::*,
+    ColumnTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, Iterable, ValidatedDeleteOne,
+    error::*,
 };
 use sea_query::{DeleteStatement, Query};
 use std::future::Future;
@@ -19,9 +19,9 @@ pub struct DeleteResult {
     pub rows_affected: u64,
 }
 
-impl<A> ValidatedDeleteOne<A>
+impl<E> ValidatedDeleteOne<E>
 where
-    A: ActiveModelTrait,
+    E: EntityTrait,
 {
     /// Execute a DELETE operation on one ActiveModel
     pub async fn exec<C>(self, db: &C) -> Result<DeleteResult, DbErr>
@@ -32,20 +32,17 @@ where
     }
 
     /// Execute an delete operation and return the deleted model
-    pub async fn exec_with_returning<C>(
-        self,
-        db: &C,
-    ) -> Result<Option<<A::Entity as EntityTrait>::Model>, DbErr>
+    pub async fn exec_with_returning<C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
     where
         C: ConnectionTrait,
     {
-        exec_delete_with_returning_one::<A::Entity, _>(self.query, db).await
+        exec_delete_with_returning_one::<E, _>(self.query, db).await
     }
 }
 
-impl<A> DeleteOne<A>
+impl<E> DeleteOne<E>
 where
-    A: ActiveModelTrait,
+    E: EntityTrait,
 {
     /// Execute a DELETE operation on one ActiveModel
     pub async fn exec<C>(self, db: &C) -> Result<DeleteResult, DbErr>
@@ -56,10 +53,7 @@ where
     }
 
     /// Execute an delete operation and return the deleted model
-    pub async fn exec_with_returning<C>(
-        self,
-        db: &C,
-    ) -> Result<Option<<A::Entity as EntityTrait>::Model>, DbErr>
+    pub async fn exec_with_returning<C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
     where
         C: ConnectionTrait,
     {

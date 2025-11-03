@@ -550,5 +550,28 @@ async fn test_composite_foreign_key() -> Result<(), DbErr> {
     assert_eq!(a.right_id, 3);
     assert_eq!(a.b.unwrap().id, 202);
 
+    assert_eq!(
+        composite_b::Entity::delete_by_id(202)
+            .exec(db)
+            .await?
+            .rows_affected,
+        1
+    );
+
+    assert_eq!(
+        composite_a::Entity::delete_by_pair((2, 3))
+            .exec(db)
+            .await?
+            .rows_affected,
+        1
+    );
+
+    assert!(
+        composite_a::Entity::find_by_id(102)
+            .one(db)
+            .await?
+            .is_none()
+    );
+
     Ok(())
 }
