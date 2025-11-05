@@ -31,7 +31,22 @@ pub fn column_type_wrapper(
             "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64"
             | "Decimal" | "BigDecimal" => Some("NumericColumn"),
             "String" => Some("StringColumn"),
-            _ => None,
+            "Vec<u8>" => Some("BytesColumn"),
+            "Uuid" => Some("UuidColumn"),
+            "IpNetwork" => Some("IpNetworkColumn"),
+            "Json" | "serde_json::Value" => Some("JsonColumn"),
+            "Timestamp" => Some("DateTimeLikeColumn"),
+            _ => {
+                if field_type.contains("DateTime") {
+                    Some("DateTimeLikeColumn")
+                } else if field_type.contains("Date") {
+                    Some("DateLikeColumn")
+                } else if field_type.contains("Time") {
+                    Some("TimeLikeColumn")
+                } else {
+                    None
+                }
+            }
         }
         .map(|ty| Ident::new(ty, field_span)),
     }

@@ -27,10 +27,6 @@ pub struct StringColumn<E: EntityTrait>(pub E::Column);
 impl_into_simple_expr!(StringColumn);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct CharColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(CharColumn);
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct BytesColumn<E: EntityTrait>(pub E::Column);
 impl_into_simple_expr!(BytesColumn);
 
@@ -58,27 +54,14 @@ pub struct UuidColumn<E: EntityTrait>(pub E::Column);
 impl_into_simple_expr!(UuidColumn);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct VectorColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(VectorColumn);
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct IpNetworkColumn<E: EntityTrait>(pub E::Column);
 impl_into_simple_expr!(IpNetworkColumn);
 
 #[cfg(feature = "with-json")]
 mod with_json;
 
-#[cfg(feature = "with-chrono")]
-mod with_chrono;
-
-#[cfg(feature = "with-time")]
-mod with_time;
-
-#[cfg(feature = "with-rust_decimal")]
-mod with_rust_decimal;
-
-#[cfg(feature = "with-bigdecimal")]
-mod with_bigdecimal;
+#[cfg(any(feature = "with-chrono", feature = "with-time"))]
+mod with_datetime;
 
 #[cfg(feature = "with-uuid")]
 mod with_uuid;
@@ -104,7 +87,7 @@ mod macros {
                 self.0.$bind_op(v)
             }
         };
-        ($vis:vis $op:ident, $bind_op:ident, type $value_ty:ident) => {
+        ($vis:vis $op:ident, $bind_op:ident, type $value_ty:ty) => {
             $vis fn $op<V>(&self, v: V) -> Expr
             where
                 V: Into<Value> + Into<$value_ty>,
@@ -123,7 +106,7 @@ mod macros {
                 self.0.$bind_op(v1, v2)
             }
         };
-        ($vis:vis $op:ident, $bind_op:ident, type $value_ty:ident) => {
+        ($vis:vis $op:ident, $bind_op:ident, type $value_ty:ty) => {
             $vis fn $op<V>(&self, v1: V, v2: V) -> Expr
             where
                 V: Into<Value> + Into<$value_ty>,
@@ -144,7 +127,7 @@ mod macros {
                 self.0.$bind_op(v)
             }
         };
-        ($vis:vis $op:ident, $bind_op:ident, type $value_ty:ident) => {
+        ($vis:vis $op:ident, $bind_op:ident, type $value_ty:ty) => {
             #[allow(clippy::wrong_self_convention)]
             $vis fn $op<V, I>(&self, v: I) -> Expr
             where
@@ -198,6 +181,22 @@ mod macros {
 }
 
 use macros::*;
+
+impl<E: EntityTrait> BoolColumn<E> {
+    boilerplate!(pub);
+
+    bind_oper!(pub eq, eq, type bool);
+    bind_oper!(pub ne, ne, type bool);
+
+    bind_oper_0!(pub count, count);
+    bind_oper_0!(pub is_null, is_null);
+    bind_oper_0!(pub is_not_null, is_not_null);
+
+    bind_oper!(pub if_null, if_null, type bool);
+
+    bind_subquery_func!(pub in_subquery);
+    bind_subquery_func!(pub not_in_subquery);
+}
 
 impl<E: EntityTrait> NumericColumn<E> {
     boilerplate!(pub);
@@ -277,6 +276,22 @@ impl<E: EntityTrait> StringColumn<E> {
     {
         self.0.eq_any(v)
     }
+
+    bind_subquery_func!(pub in_subquery);
+    bind_subquery_func!(pub not_in_subquery);
+}
+
+impl<E: EntityTrait> BytesColumn<E> {
+    boilerplate!(pub);
+
+    bind_oper!(pub eq, eq, type Vec<u8>);
+    bind_oper!(pub ne, ne, type Vec<u8>);
+
+    bind_oper_0!(pub count, count);
+    bind_oper_0!(pub is_null, is_null);
+    bind_oper_0!(pub is_not_null, is_not_null);
+
+    bind_oper!(pub if_null, if_null, type Vec<u8>);
 
     bind_subquery_func!(pub in_subquery);
     bind_subquery_func!(pub not_in_subquery);
