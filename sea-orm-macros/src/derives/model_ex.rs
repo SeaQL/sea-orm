@@ -1,4 +1,4 @@
-use super::attributes::{column_attr, compound_attr};
+use super::attributes::compound_attr;
 use super::entity_loader::{EntityLoaderField, EntityLoaderSchema, expand_entity_loader};
 use super::model::DeriveModel;
 use super::util::{format_field_ident_ref, is_compound_field};
@@ -7,8 +7,8 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::{BTreeMap, HashMap};
 use syn::{
-    Attribute, Data, Fields, ItemStruct, LitStr, Meta, Type, parse_quote, punctuated::Punctuated,
-    token::Comma,
+    Attribute, Data, Expr, Fields, ItemStruct, Lit, LitStr, Meta, Type, parse_quote,
+    punctuated::Punctuated, token::Comma,
 };
 
 pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<TokenStream> {
@@ -152,16 +152,34 @@ pub fn expand_derive_model_ex(
                         }
                         compound_fields.push(format_field_ident_ref(field));
                     } else {
-                        if let Ok(attrs) = column_attr::SeaOrm::from_attributes(&field.attrs) {
-                            if attrs.unique.is_some() {
-                                unique_keys
-                                    .insert(ident.clone(), vec![(ident.clone(), field.ty.clone())]);
-                            }
-                            if let Some(unique_key) = attrs.unique_key {
-                                unique_keys
-                                    .entry(unique_key.parse()?)
-                                    .or_default()
-                                    .push((ident.clone(), field.ty.clone()));
+                        for attr in field.attrs.iter() {
+                            if attr.path().is_ident("sea_orm") {
+                                attr.parse_nested_meta(|meta| {
+                                    if meta.path.is_ident("unique") {
+                                        unique_keys.insert(
+                                            ident.clone(),
+                                            vec![(ident.clone(), field.ty.clone())],
+                                        );
+                                    } else if meta.path.is_ident("unique_key") {
+                                        let lit = meta.value()?.parse()?;
+                                        if let Lit::Str(litstr) = lit {
+                                            unique_keys
+                                                .entry(litstr.parse()?)
+                                                .or_default()
+                                                .push((ident.clone(), field.ty.clone()));
+                                        } else {
+                                            return Err(
+                                                meta.error(format!("Invalid unique_key {lit:?}"))
+                                            );
+                                        }
+                                    } else {
+                                        // Reads the value expression to advance the parse stream.
+                                        let _: Option<Expr> =
+                                            meta.value().and_then(|v| v.parse()).ok();
+                                    }
+
+                                    Ok(())
+                                })?;
                             }
                         }
                         model_fields.push(format_field_ident_ref(field));
