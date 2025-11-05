@@ -3,16 +3,6 @@
 use crate::{ColumnDef, ColumnTrait, DynIden, EntityTrait, IntoSimpleExpr, Value};
 use sea_query::{Expr, NumericValue, SelectStatement};
 
-macro_rules! impl_into_simple_expr {
-    ($ty:ident) => {
-        impl<E: EntityTrait> IntoSimpleExpr for $ty<E> {
-            fn into_simple_expr(self) -> Expr {
-                self.0.into_simple_expr()
-            }
-        }
-    };
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct BoolColumn<E: EntityTrait>(pub E::Column);
 impl_into_simple_expr!(BoolColumn);
@@ -57,6 +47,14 @@ impl_into_simple_expr!(UuidColumn);
 pub struct IpNetworkColumn<E: EntityTrait>(pub E::Column);
 impl_into_simple_expr!(IpNetworkColumn);
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct NumericArrayColumn<E: EntityTrait>(pub E::Column);
+impl_into_simple_expr!(NumericArrayColumn);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct GenericArrayColumn<E: EntityTrait>(pub E::Column);
+impl_into_simple_expr!(GenericArrayColumn);
+
 #[cfg(feature = "with-json")]
 mod with_json;
 
@@ -69,7 +67,20 @@ mod with_uuid;
 #[cfg(feature = "with-ipnetwork")]
 mod with_ipnetwork;
 
+#[cfg(feature = "postgres-array")]
+mod postgres_array;
+
 mod macros {
+    macro_rules! impl_into_simple_expr {
+        ($ty:ident) => {
+            impl<E: EntityTrait> IntoSimpleExpr for $ty<E> {
+                fn into_simple_expr(self) -> Expr {
+                    self.0.into_simple_expr()
+                }
+            }
+        };
+    }
+
     macro_rules! bind_oper_0 {
         ($vis:vis $op:ident, $bind_op:ident) => {
             $vis fn $op(&self) -> Expr {
@@ -178,6 +189,7 @@ mod macros {
     pub(super) use bind_subquery_func;
     pub(super) use bind_vec_func;
     pub(super) use boilerplate;
+    pub(super) use impl_into_simple_expr;
 }
 
 use macros::*;

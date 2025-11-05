@@ -28,8 +28,6 @@ pub fn column_type_wrapper(
     match column_type {
         Some(_) => None, // TODO may be we can deduce column type
         None => match field_type {
-            "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64"
-            | "Decimal" | "BigDecimal" => Some("NumericColumn"),
             "String" => Some("StringColumn"),
             "Vec<u8>" => Some("BytesColumn"),
             "Uuid" => Some("UuidColumn"),
@@ -37,7 +35,16 @@ pub fn column_type_wrapper(
             "Json" | "serde_json::Value" => Some("JsonColumn"),
             "Timestamp" => Some("DateTimeLikeColumn"),
             _ => {
-                if field_type.contains("DateTime") {
+                if is_numeric_column(field_type) {
+                    Some("NumericColumn")
+                } else if field_type.starts_with("Vec<") {
+                    let field_type = &field_type["Vec<".len()..field_type.len() - 1];
+                    if is_numeric_column(field_type) {
+                        Some("NumericArrayColumn")
+                    } else {
+                        Some("GenericArrayColumn")
+                    }
+                } else if field_type.contains("DateTime") {
                     Some("DateTimeLikeColumn")
                 } else if field_type.contains("Date") {
                     Some("DateLikeColumn")
@@ -50,6 +57,23 @@ pub fn column_type_wrapper(
         }
         .map(|ty| Ident::new(ty, field_span)),
     }
+}
+
+fn is_numeric_column(ty: &str) -> bool {
+    matches!(
+        ty,
+        "i8" | "i16"
+            | "i32"
+            | "i64"
+            | "u8"
+            | "u16"
+            | "u32"
+            | "u64"
+            | "f32"
+            | "f64"
+            | "Decimal"
+            | "BigDecimal"
+    )
 }
 
 pub fn array_type_expr(

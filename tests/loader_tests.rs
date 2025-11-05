@@ -375,6 +375,7 @@ async fn loader_load_many_enum_pk_postgres() -> Result<(), DbErr> {
                     }]
                 );
             }
+            Tea::AfternoonTea => {}
         }
     }
 

@@ -1062,7 +1062,8 @@ mod tests {
                 .collect::<Vec<_>>(),
             [Statement::from_string(
                 db_postgres,
-                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea')"#.to_owned()
+                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea', 'AfternoonTea')"#
+                    .to_owned()
             ),]
         );
 
@@ -1070,7 +1071,8 @@ mod tests {
             db_postgres.build(&schema.create_enum_from_active_enum::<Tea>().unwrap()),
             Statement::from_string(
                 db_postgres,
-                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea')"#.to_owned()
+                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea', 'AfternoonTea')"#
+                    .to_owned()
             )
         );
     }
