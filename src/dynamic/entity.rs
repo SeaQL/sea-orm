@@ -101,12 +101,12 @@ impl Column {
         )
     }
 
-    crate::entity::column::methods::bind_oper!(pub eq, Equal);
-    crate::entity::column::methods::bind_oper!(pub ne, NotEqual);
-    crate::entity::column::methods::bind_oper!(pub gt, GreaterThan);
-    crate::entity::column::methods::bind_oper!(pub gte, GreaterThanOrEqual);
-    crate::entity::column::methods::bind_oper!(pub lt, SmallerThan);
-    crate::entity::column::methods::bind_oper!(pub lte, SmallerThanOrEqual);
+    crate::entity::column::macros::bind_oper!(pub eq, Equal);
+    crate::entity::column::macros::bind_oper!(pub ne, NotEqual);
+    crate::entity::column::macros::bind_oper!(pub gt, GreaterThan);
+    crate::entity::column::macros::bind_oper!(pub gte, GreaterThanOrEqual);
+    crate::entity::column::macros::bind_oper!(pub lt, SmallerThan);
+    crate::entity::column::macros::bind_oper!(pub lte, SmallerThanOrEqual);
 
     pub fn between<V>(&self, a: V, b: V) -> SimpleExpr
     where
@@ -160,12 +160,12 @@ impl Column {
         Expr::col(self.as_column_ref()).like(pattern)
     }
 
-    crate::entity::column::methods::bind_func_no_params!(pub max);
-    crate::entity::column::methods::bind_func_no_params!(pub min);
-    crate::entity::column::methods::bind_func_no_params!(pub sum);
-    crate::entity::column::methods::bind_func_no_params!(pub count);
-    crate::entity::column::methods::bind_func_no_params!(pub is_null);
-    crate::entity::column::methods::bind_func_no_params!(pub is_not_null);
+    crate::entity::column::macros::bind_func_no_params!(pub max);
+    crate::entity::column::macros::bind_func_no_params!(pub min);
+    crate::entity::column::macros::bind_func_no_params!(pub sum);
+    crate::entity::column::macros::bind_func_no_params!(pub count);
+    crate::entity::column::macros::bind_func_no_params!(pub is_null);
+    crate::entity::column::macros::bind_func_no_params!(pub is_not_null);
 
     pub fn if_null<V>(&self, v: V) -> SimpleExpr
     where
@@ -174,11 +174,11 @@ impl Column {
         Expr::col(self.as_column_ref()).if_null(v)
     }
 
-    crate::entity::column::methods::bind_vec_func!(pub is_in);
-    crate::entity::column::methods::bind_vec_func!(pub is_not_in);
+    crate::entity::column::macros::bind_vec_func!(pub is_in);
+    crate::entity::column::macros::bind_vec_func!(pub is_not_in);
 
-    crate::entity::column::methods::bind_subquery_func!(pub in_subquery);
-    crate::entity::column::methods::bind_subquery_func!(pub not_in_subquery);
+    crate::entity::column::macros::bind_subquery_func!(pub in_subquery);
+    crate::entity::column::macros::bind_subquery_func!(pub not_in_subquery);
 
     pub fn into_expr(self) -> Expr {
         SimpleExpr::Column(self.as_column_ref().into_column_ref())
