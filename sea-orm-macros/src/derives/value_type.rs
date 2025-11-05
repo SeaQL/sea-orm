@@ -1,4 +1,4 @@
-use super::sql_type_match::{array_type_match, can_try_from_u64, column_type_match};
+use super::value_type_match::{array_type_expr, can_try_from_u64, column_type_expr};
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{DataEnum, Lit, Type, spanned::Spanned};
@@ -116,8 +116,8 @@ impl DeriveValueTypeStruct {
         };
         let field_span = field.span();
 
-        let column_type = column_type_match(col_type, field_type, field_span);
-        let array_type = array_type_match(arr_type, field_type, field_span);
+        let column_type = column_type_expr(col_type, field_type, field_span);
+        let array_type = array_type_expr(arr_type, field_type, field_span);
         let can_try_from_u64 = can_try_from_u64(field_type);
 
         Ok(Self {

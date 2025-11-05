@@ -1,7 +1,7 @@
 use super::attributes::compound_attr;
 use super::entity_loader::{EntityLoaderField, EntityLoaderSchema, expand_entity_loader};
-use super::model::DeriveModel;
 use super::util::{format_field_ident_ref, is_compound_field};
+use super::{expand_typed_column, model::DeriveModel};
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
@@ -295,11 +295,15 @@ pub fn expand_derive_model_ex(
         quote!()
     };
 
+    let (typed_column, typed_column_const) = expand_typed_column(&data)?;
+
     let (entity_find_by_key, loader_filter_by_key) = expand_find_by_unique_key(unique_keys);
 
     let entity_loader = expand_entity_loader(entity_loader_schema);
 
     Ok(quote! {
+        #typed_column
+
         #impl_from_model
 
         #impl_model_trait
@@ -313,6 +317,8 @@ pub fn expand_derive_model_ex(
         #entity_loader
 
         impl Entity {
+            #typed_column_const
+
             #entity_find_by_key
         }
 

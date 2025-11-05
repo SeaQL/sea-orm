@@ -554,7 +554,7 @@ mod tests {
         mod hello_expanded {
             use crate as sea_orm;
             use crate::entity::prelude::*;
-            use crate::sea_query::{Expr, Expr, ExprTrait};
+            use crate::sea_query::{Expr, ExprTrait};
 
             #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
             pub struct Entity;
@@ -687,7 +687,7 @@ mod tests {
         mod hello_expanded {
             use crate as sea_orm;
             use crate::entity::prelude::*;
-            use crate::sea_query::{Expr, Expr, ExprTrait};
+            use crate::sea_query::{Expr, ExprTrait};
 
             #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
             pub struct Entity;
@@ -820,7 +820,7 @@ mod tests {
         mod hello_expanded {
             use crate as sea_orm;
             use crate::entity::prelude::*;
-            use crate::sea_query::{Expr, Expr, ExprTrait};
+            use crate::sea_query::{Expr, ExprTrait};
 
             #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
             pub struct Entity;

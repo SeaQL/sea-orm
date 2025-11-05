@@ -5,7 +5,7 @@ pub mod common;
 pub use common::{
     TestContext,
     bakery_chain::{create_tables, seed_data},
-    bakery_dense::*,
+    bakery_dense::{prelude::*, *},
     setup::*,
 };
 use sea_orm::{DbConn, DbErr, RuntimeErr, Set, prelude::*, query::*};
@@ -35,7 +35,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     insert_cake_baker(db, baker_2.id, cake_2.id).await?;
     insert_cake_baker(db, baker_2.id, cake_3.id).await?;
 
-    let cakes = cake::Entity::load().all(db).await?;
+    let cakes = Cake::load().all(db).await?;
     assert_eq!(
         cakes,
         [
@@ -46,8 +46,8 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         ]
     );
 
-    let cakes = cake::Entity::load()
-        .filter(cake::Column::Name.like("Ch%"))
+    let cakes = Cake::load()
+        .filter(Cake::COLUMN.name.like("Ch%"))
         .all(db)
         .await?;
     assert_eq!(cakes, [cake_1.clone(), cake_3.clone()]);
@@ -55,16 +55,16 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert!(cakes[0].bakery.is_unloaded());
 
     assert_eq!(
-        cake::Entity::load()
-            .filter(cake::Column::Name.like("Ch%"))
-            .order_by_desc(cake::Column::Name)
+        Cake::load()
+            .filter(Cake::COLUMN.name.like("Ch%"))
+            .order_by_desc(Cake::COLUMN.name)
             .one(db)
             .await?
             .unwrap(),
         cake_3
     );
 
-    let cakes = cake::Entity::load().with(bakery::Entity).all(db).await?;
+    let cakes = Cake::load().with(Bakery).all(db).await?;
     assert_eq!(
         cakes,
         [
@@ -79,11 +79,11 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[2].bakery.as_ref().unwrap(), &bakery_2);
     assert_eq!(cakes[3].bakery, None);
 
-    // alternative API
+    // low-level API
     assert_eq!(
         cakes,
         cake::EntityLoader::load(
-            cake::Entity::load().all(db).await?,
+            Cake::load().all(db).await?,
             &cake::EntityLoaderWith {
                 bakery: true,
                 lineitems: false,
@@ -95,9 +95,9 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .await?
     );
 
-    let cake_with_bakery = cake::Entity::load()
-        .filter(cake::Column::Name.eq("Cheesecake"))
-        .with(bakery::Entity)
+    let cake_with_bakery = Cake::load()
+        .filter(Cake::COLUMN.name.eq("Cheesecake"))
+        .with(Bakery)
         .one(db)
         .await?
         .unwrap();
@@ -106,9 +106,9 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert!(cake_with_bakery.bakers.is_empty());
 
     assert_eq!(
-        cake::Entity::load()
+        Cake::load()
             .filter_by_id(cake_2.id)
-            .with(bakery::Entity)
+            .with(Bakery)
             .one(db)
             .await?
             .unwrap(),
@@ -119,11 +119,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         }
     );
 
-    let cakes = cake::Entity::load()
-        .with(bakery::Entity)
-        .with(baker::Entity)
-        .all(db)
-        .await?;
+    let cakes = Cake::load().with(Bakery).with(Baker).all(db).await?;
     assert_eq!(
         cakes,
         [
@@ -142,10 +138,10 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[2].bakers, [baker_2.clone()]);
     assert!(cakes[3].bakers.is_empty());
 
-    let cake_with_bakery_baker = cake::Entity::load()
-        .filter(cake::Column::Name.eq("Chiffon"))
-        .with(bakery::Entity)
-        .with(baker::Entity)
+    let cake_with_bakery_baker = Cake::load()
+        .filter(Cake::COLUMN.name.eq("Chiffon"))
+        .with(Bakery)
+        .with(Baker)
         .one(db)
         .await?
         .unwrap();
@@ -186,7 +182,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     //        -> cake
 
     let bakeries = bakery::Entity::load()
-        .with(baker::Entity)
+        .with(Baker)
         .with(cake::Entity)
         .order_by_asc(bakery::Column::Id)
         .all(db)
@@ -200,10 +196,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     // nested
     // cake -> bakery -> baker
 
-    let cakes = cake::Entity::load()
-        .with((bakery::Entity, baker::Entity))
-        .all(db)
-        .await?;
+    let cakes = Cake::load().with((Bakery, Baker)).all(db).await?;
     assert_eq!(cakes[0].bakery.as_ref().unwrap().name, bakery_1.name);
     assert_eq!(cakes[1].bakery.as_ref().unwrap().name, bakery_1.name);
     assert_eq!(cakes[2].bakery.as_ref().unwrap().name, bakery_2.name);
