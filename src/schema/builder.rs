@@ -1,5 +1,5 @@
 use super::{Schema, TopologicalSort};
-use crate::{ConnectionTrait, DbBackend, DbErr, EntityTrait, Statement};
+use crate::{ConnectionTrait, DbBackend, DbConn, DbErr, EntityTrait, Statement};
 use sea_query::{
     ForeignKeyCreateStatement, IndexCreateStatement, TableAlterStatement, TableCreateStatement,
     TableName, TableRef, extension::postgres::TypeCreateStatement,
@@ -75,7 +75,7 @@ impl SchemaBuilder {
     /// This operation is addition only, will not drop any table / columns.
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
-    pub async fn sync<C: ConnectionTrait>(self, db: &C) -> Result<(), DbErr> {
+    pub async fn sync(self, db: &DbConn) -> Result<(), DbErr> {
         let _existing = match db.get_database_backend() {
             #[cfg(feature = "sqlx-mysql")]
             DbBackend::MySql => {
@@ -271,9 +271,9 @@ impl EntitySchemaInfo {
 
     // better to always compile this function
     #[allow(dead_code)]
-    async fn sync<C: ConnectionTrait>(
+    async fn sync(
         &self,
-        db: &C,
+        db: &DbConn,
         existing: &DiscoveredSchema,
         created_enums: &mut Vec<Statement>,
     ) -> Result<(), DbErr> {
