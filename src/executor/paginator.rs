@@ -51,7 +51,6 @@ where
         let rows = self.db.query_all(&query).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
-            // TODO: Error handling
             buffer.push(S::from_raw_query_result(row)?);
         }
         Ok(buffer)

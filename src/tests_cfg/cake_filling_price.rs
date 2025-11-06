@@ -1,7 +1,7 @@
 use crate as sea_orm;
 use crate::entity::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(schema_name = "public", table_name = "cake_filling_price")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]

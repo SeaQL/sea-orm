@@ -87,7 +87,7 @@
 //! # mod filling {
 //! # use sea_orm::entity::prelude::*;
 //! # #[sea_orm::model]
-//! # #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+//! # #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 //! # #[sea_orm(table_name = "filling")]
 //! # pub struct Model {
 //! #     #[sea_orm(primary_key)]
@@ -101,7 +101,7 @@
 //! # mod cake_filling {
 //! # use sea_orm::entity::prelude::*;
 //! # #[sea_orm::model]
-//! # #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+//! # #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 //! # #[sea_orm(table_name = "cake_filling")]
 //! # pub struct Model {
 //! #     #[sea_orm(primary_key, auto_increment = false)]
@@ -119,7 +119,7 @@
 //!     use sea_orm::entity::prelude::*;
 //!
 //!     #[sea_orm::model]
-//!     #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+//!     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 //!     #[sea_orm(table_name = "cake")]
 //!     pub struct Model {
 //!         #[sea_orm(primary_key)]
@@ -136,7 +136,7 @@
 //!     use sea_orm::entity::prelude::*;
 //!
 //!     #[sea_orm::model]
-//!     #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+//!     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 //!     #[sea_orm(table_name = "fruit")]
 //!     pub struct Model {
 //!         #[sea_orm(primary_key)]

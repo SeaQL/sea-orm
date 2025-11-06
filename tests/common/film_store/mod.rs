@@ -2,7 +2,7 @@ pub mod staff {
     use sea_orm::entity::prelude::*;
 
     #[sea_orm::model]
-    #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm(table_name = "staff")]
     pub struct Model {
         #[sea_orm(primary_key)]
