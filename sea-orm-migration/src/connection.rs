@@ -1,6 +1,7 @@
 use sea_orm::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
-    ExecResult, IsolationLevel, QueryResult, Statement, TransactionError, TransactionTrait,
+    ExecResult, IsolationLevel, QueryResult, Schema, SchemaBuilder, Statement, TransactionError,
+    TransactionTrait,
 };
 use std::future::Future;
 use std::pin::Pin;
@@ -114,6 +115,21 @@ impl TransactionTrait for SchemaManagerConnection<'_> {
                     .await
             }
         }
+    }
+}
+
+impl SchemaManagerConnection<'_> {
+    /// Creates a [`SchemaBuilder`] for this backend
+    pub fn get_schema_builder(&self) -> SchemaBuilder {
+        Schema::new(self.get_database_backend()).builder()
+    }
+
+    #[cfg(feature = "entity-registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "entity-registry")))]
+    /// Builds a schema for all the entites in the given module
+    pub fn get_schema_registry(&self, prefix: &str) -> SchemaBuilder {
+        let schema = Schema::new(self.get_database_backend());
+        sea_orm::EntityRegistry::build_schema(schema, prefix)
     }
 }
 
