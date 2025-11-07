@@ -1,4 +1,4 @@
-use crate::{DateTimeCrate, util::escape_rust_keyword};
+use crate::{BigIntegerType, DateTimeCrate, util::escape_rust_keyword};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
@@ -15,9 +15,10 @@ pub struct Column {
     pub(crate) unique_key: Option<String>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub struct ColumnOption {
     pub(crate) date_time_crate: DateTimeCrate,
+    pub(crate) big_integer_type: BigIntegerType,
 }
 
 impl Column {
@@ -44,7 +45,11 @@ impl Column {
                 ColumnType::TinyInteger => "i8".to_owned(),
                 ColumnType::SmallInteger => "i16".to_owned(),
                 ColumnType::Integer => "i32".to_owned(),
-                ColumnType::BigInteger => "i64".to_owned(),
+                ColumnType::BigInteger => match opt.big_integer_type {
+                    BigIntegerType::I64 => "i64",
+                    BigIntegerType::I32 => "i32",
+                }
+                .to_owned(),
                 ColumnType::TinyUnsigned => "u8".to_owned(),
                 ColumnType::SmallUnsigned => "u16".to_owned(),
                 ColumnType::Unsigned => "u32".to_owned(),
@@ -313,12 +318,14 @@ mod tests {
     fn date_time_crate_chrono() -> ColumnOption {
         ColumnOption {
             date_time_crate: DateTimeCrate::Chrono,
+            big_integer_type: Default::default(),
         }
     }
 
     fn date_time_crate_time() -> ColumnOption {
         ColumnOption {
             date_time_crate: DateTimeCrate::Time,
+            big_integer_type: Default::default(),
         }
     }
 

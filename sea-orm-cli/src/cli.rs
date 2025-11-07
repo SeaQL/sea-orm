@@ -291,6 +291,14 @@ pub enum GenerateSubcommands {
 
         #[arg(
             long,
+            default_value_t,
+            value_enum,
+            help = "The primitive type to use for big integer."
+        )]
+        big_integer_type: BigIntegerType,
+
+        #[arg(
+            long,
             short = 'l',
             default_value = "false",
             help = "Generate index file as `lib.rs` instead of `mod.rs`."
@@ -373,6 +381,13 @@ pub enum DateTimeCrate {
     #[default]
     Chrono,
     Time,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Default)]
+pub enum BigIntegerType {
+    #[default]
+    I64,
+    I32,
 }
 
 /// Use this to build a local, version-controlled `sea-orm-cli` in dependent projects

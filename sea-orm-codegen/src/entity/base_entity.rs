@@ -300,7 +300,7 @@ mod tests {
     use quote::{format_ident, quote};
     use sea_query::{ColumnType, ForeignKeyAction, StringLen};
 
-    use crate::{Column, ColumnOption, DateTimeCrate, Entity, PrimaryKey, Relation, RelationType};
+    use crate::{Column, ColumnOption, Entity, PrimaryKey, Relation, RelationType};
 
     fn setup() -> Entity {
         Entity {
@@ -412,9 +412,7 @@ mod tests {
     #[test]
     fn test_get_column_rs_types() {
         let entity = setup();
-        let opt = ColumnOption {
-            date_time_crate: DateTimeCrate::Chrono,
-        };
+        let opt = ColumnOption::default();
 
         for (i, elem) in entity.get_column_rs_types(&opt).into_iter().enumerate() {
             assert_eq!(
@@ -517,9 +515,7 @@ mod tests {
     #[test]
     fn test_get_primary_key_rs_type() {
         let entity = setup();
-        let opt = ColumnOption {
-            date_time_crate: DateTimeCrate::Chrono,
-        };
+        let opt = Default::default();
 
         assert_eq!(
             entity.get_primary_key_rs_type(&opt).to_string(),

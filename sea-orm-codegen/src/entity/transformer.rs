@@ -424,9 +424,7 @@ mod tests {
                         EntityWriter::$method(
                             entity,
                             &crate::WithSerde::None,
-                            &crate::ColumnOption {
-                                date_time_crate: crate::DateTimeCrate::Chrono,
-                            },
+                            &Default::default(),
                             &None,
                             false,
                             false,

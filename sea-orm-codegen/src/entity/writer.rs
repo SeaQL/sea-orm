@@ -43,10 +43,18 @@ pub enum WithSerde {
     Both,
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
 pub enum DateTimeCrate {
+    #[default]
     Chrono,
     Time,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
+pub enum BigIntegerType {
+    #[default]
+    I64,
+    I32,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
@@ -65,6 +73,7 @@ pub struct EntityWriterContext {
     pub(crate) with_serde: WithSerde,
     pub(crate) with_copy_enums: bool,
     pub(crate) date_time_crate: DateTimeCrate,
+    pub(crate) big_integer_type: BigIntegerType,
     pub(crate) schema_name: Option<String>,
     pub(crate) lib: bool,
     pub(crate) serde_skip_hidden_column: bool,
@@ -201,6 +210,7 @@ impl EntityWriterContext {
         with_serde: WithSerde,
         with_copy_enums: bool,
         date_time_crate: DateTimeCrate,
+        big_integer_type: BigIntegerType,
         schema_name: Option<String>,
         lib: bool,
         serde_skip_deserializing_primary_key: bool,
@@ -219,6 +229,7 @@ impl EntityWriterContext {
             with_serde,
             with_copy_enums,
             date_time_crate,
+            big_integer_type,
             schema_name,
             lib,
             serde_skip_deserializing_primary_key,
@@ -236,6 +247,7 @@ impl EntityWriterContext {
     fn column_option(&self) -> ColumnOption {
         ColumnOption {
             date_time_crate: self.date_time_crate,
+            big_integer_type: self.big_integer_type,
         }
     }
 }
@@ -808,8 +820,8 @@ impl EntityWriter {
 #[cfg(test)]
 mod tests {
     use crate::{
-        Column, ColumnOption, ConjunctRelation, DateTimeCrate, Entity, EntityWriter, PrimaryKey,
-        Relation, RelationType, WithSerde,
+        Column, ColumnOption, ConjunctRelation, Entity, EntityWriter, PrimaryKey, Relation,
+        RelationType, WithSerde,
         entity::writer::{bonus_attributes, bonus_derive},
     };
     use pretty_assertions::assert_eq;
@@ -819,9 +831,7 @@ mod tests {
     use std::io::{self, BufRead, BufReader, Read};
 
     fn default_column_option() -> ColumnOption {
-        ColumnOption {
-            date_time_crate: DateTimeCrate::Chrono,
-        }
+        Default::default()
     }
 
     fn setup() -> Vec<Entity> {
