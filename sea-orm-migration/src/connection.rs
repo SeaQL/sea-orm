@@ -118,6 +118,30 @@ impl TransactionTrait for SchemaManagerConnection<'_> {
     }
 }
 
+#[cfg(feature = "sqlx-dep")]
+mod sea_schema_shim {
+    use sea_schema::sqlx_types::{SqlxError, SqlxRow};
+    use sea_orm::sea_query::SelectStatement;
+    use super::{SchemaManagerConnection, DatabaseConnection, DatabaseTransaction};
+
+    #[async_trait::async_trait]
+    impl sea_schema::Connection for SchemaManagerConnection<'_> {
+        async fn query_all(&self, select: SelectStatement) -> Result<Vec<SqlxRow>, SqlxError> {
+            match self {
+                Self::Connection(conn) => <DatabaseConnection as sea_schema::Connection>::query_all(conn, select).await,
+                Self::Transaction(txn) => <DatabaseTransaction as sea_schema::Connection>::query_all(txn, select).await,
+            }
+        }
+
+        async fn query_all_raw(&self, sql: String) -> Result<Vec<SqlxRow>, SqlxError> {
+            match self {
+                Self::Connection(conn) => <DatabaseConnection as sea_schema::Connection>::query_all_raw(conn, sql).await,
+                Self::Transaction(txn) => <DatabaseTransaction as sea_schema::Connection>::query_all_raw(txn, sql).await,
+            }
+        }
+    }
+}
+
 impl SchemaManagerConnection<'_> {
     /// Creates a [`SchemaBuilder`] for this backend
     pub fn get_schema_builder(&self) -> SchemaBuilder {
