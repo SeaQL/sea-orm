@@ -283,6 +283,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     bind_func_no_params!(max);
     bind_func_no_params!(min);
     bind_func_no_params!(sum);
+    bind_func_no_params!(avg);
     bind_func_no_params!(count);
     bind_func_no_params!(is_null);
     bind_func_no_params!(is_not_null);
