@@ -1,14 +1,13 @@
+use crate::{BigIntegerType, DateTimeCrate, GenerateSubcommands};
 use core::time;
 use sea_orm_codegen::{
-    DateTimeCrate as CodegenDateTimeCrate, 
-    BigIntegerType as CodegenBigIntegerType, EntityFormat, EntityTransformer, EntityWriterContext,
-    MergeReport, OutputFile, WithPrelude, WithSerde, merge_entity_files,
+    BigIntegerType as CodegenBigIntegerType, DateTimeCrate as CodegenDateTimeCrate, EntityFormat,
+    EntityTransformer, EntityWriterContext, MergeReport, OutputFile, WithPrelude, WithSerde,
+    merge_entity_files,
 };
 use std::{error::Error, fs, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{EnvFilter, prelude::*};
 use url::Url;
-use crate::{DateTimeCrate, BigIntegerType, GenerateSubcommands};
-
 
 pub async fn run_generate_command(
     command: GenerateSubcommands,

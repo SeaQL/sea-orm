@@ -76,7 +76,7 @@ mod cake {
     use sea_orm::entity::prelude::*;
 
     #[sea_orm::model]
-    #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm(table_name = "cake")]
     pub struct Model {
         #[sea_orm(primary_key)]
@@ -92,7 +92,7 @@ mod fruit {
     use sea_orm::entity::prelude::*;
 
     #[sea_orm::model]
-    #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm(table_name = "fruit")]
     pub struct Model {
         #[sea_orm(primary_key)]
@@ -430,7 +430,8 @@ SeaORM 2.0 is shaping up to be our most significant release yet - with a few bre
 + [A Sneak Peek at SeaORM 2.0](https://www.sea-ql.org/blog/2025-09-16-sea-orm-2.0/)
 + [SeaORM 2.0: A closer look](https://www.sea-ql.org/blog/2025-09-24-sea-orm-2.0/)
 + [Role Based Access Control in SeaORM 2.0](https://www.sea-ql.org/blog/2025-09-30-sea-orm-rbac/)
-+ [SeaORM 2.0: new entity format](https://www.sea-ql.org/blog/2025-10-20-sea-orm-2.0/)
++ [Seaography 2.0: A Powerful and Extensible GraphQL Framework](https://www.sea-ql.org/blog/2025-10-08-seaography/)
++ [SeaORM 2.0: New Entity Format](https://www.sea-ql.org/blog/2025-10-20-sea-orm-2.0/)
 + [SeaORM 2.0: Entity First Workflow](https://www.sea-ql.org/blog/2025-10-30-sea-orm-2.0/)
 
 If you make extensive use of SeaQuery, we recommend checking out our blog post on SeaQuery 1.0 release:
