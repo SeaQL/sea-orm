@@ -5,7 +5,7 @@ use quote::{format_ident, quote};
 use sea_query::{ColumnDef, ColumnType, StringLen};
 use std::fmt::Write as FmtWrite;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct Column {
     pub(crate) name: String,
     pub(crate) col_type: ColumnType,
@@ -13,6 +13,11 @@ pub struct Column {
     pub(crate) not_null: bool,
     pub(crate) unique: bool,
     pub(crate) unique_key: Option<String>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct ColumnOption {
+    pub(crate) date_time_crate: DateTimeCrate,
 }
 
 impl Column {
@@ -28,8 +33,8 @@ impl Column {
         self.name.to_snake_case() == self.name
     }
 
-    pub fn get_rs_type(&self, date_time_crate: &DateTimeCrate) -> TokenStream {
-        fn write_rs_type(col_type: &ColumnType, date_time_crate: &DateTimeCrate) -> String {
+    pub fn get_rs_type(&self, opt: &ColumnOption) -> TokenStream {
+        fn write_rs_type(col_type: &ColumnType, opt: &ColumnOption) -> String {
             #[allow(unreachable_patterns)]
             match col_type {
                 ColumnType::Char(_)
@@ -47,23 +52,23 @@ impl Column {
                 ColumnType::Float => "f32".to_owned(),
                 ColumnType::Double => "f64".to_owned(),
                 ColumnType::Json | ColumnType::JsonBinary => "Json".to_owned(),
-                ColumnType::Date => match date_time_crate {
+                ColumnType::Date => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "Date".to_owned(),
                     DateTimeCrate::Time => "TimeDate".to_owned(),
                 },
-                ColumnType::Time => match date_time_crate {
+                ColumnType::Time => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "Time".to_owned(),
                     DateTimeCrate::Time => "TimeTime".to_owned(),
                 },
-                ColumnType::DateTime => match date_time_crate {
+                ColumnType::DateTime => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "DateTime".to_owned(),
                     DateTimeCrate::Time => "TimeDateTime".to_owned(),
                 },
-                ColumnType::Timestamp => match date_time_crate {
+                ColumnType::Timestamp => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "DateTimeUtc".to_owned(),
                     DateTimeCrate::Time => "TimeDateTime".to_owned(),
                 },
-                ColumnType::TimestampWithTimeZone => match date_time_crate {
+                ColumnType::TimestampWithTimeZone => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "DateTimeWithTimeZone".to_owned(),
                     DateTimeCrate::Time => "TimeDateTimeWithTimeZone".to_owned(),
                 },
@@ -75,7 +80,7 @@ impl Column {
                 ColumnType::Boolean => "bool".to_owned(),
                 ColumnType::Enum { name, .. } => name.to_string().to_upper_camel_case(),
                 ColumnType::Array(column_type) => {
-                    format!("Vec<{}>", write_rs_type(column_type, date_time_crate))
+                    format!("Vec<{}>", write_rs_type(column_type, opt))
                 }
                 ColumnType::Vector(_) => "PgVector".to_owned(),
                 ColumnType::Bit(None | Some(1)) => "bool".to_owned(),
@@ -88,9 +93,7 @@ impl Column {
                 _ => unimplemented!(),
             }
         }
-        let ident: TokenStream = write_rs_type(&self.col_type, date_time_crate)
-            .parse()
-            .unwrap();
+        let ident: TokenStream = write_rs_type(&self.col_type, opt).parse().unwrap();
         match self.not_null {
             true => quote! { #ident },
             false => quote! { Option<#ident> },
@@ -216,12 +219,9 @@ impl Column {
         col_def
     }
 
-    pub fn get_info(&self, date_time_crate: &DateTimeCrate) -> String {
+    pub fn get_info(&self, opt: &ColumnOption) -> String {
         let mut info = String::new();
-        let type_info = self
-            .get_rs_type(date_time_crate)
-            .to_string()
-            .replace(' ', "");
+        let type_info = self.get_rs_type(opt).to_string().replace(' ', "");
         let col_info = self.col_info();
         write!(
             &mut info,
@@ -305,10 +305,22 @@ impl From<&ColumnDef> for Column {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Column, DateTimeCrate};
+    use crate::{Column, ColumnOption, DateTimeCrate};
     use proc_macro2::TokenStream;
     use quote::quote;
     use sea_query::{Alias, ColumnDef, ColumnType, SeaRc, StringLen};
+
+    fn date_time_crate_chrono() -> ColumnOption {
+        ColumnOption {
+            date_time_crate: DateTimeCrate::Chrono,
+        }
+    }
+
+    fn date_time_crate_time() -> ColumnOption {
+        ColumnOption {
+            date_time_crate: DateTimeCrate::Time,
+        }
+    }
 
     fn setup() -> Vec<Column> {
         macro_rules! make_col {
@@ -422,7 +434,6 @@ mod tests {
     #[test]
     fn test_get_rs_type_with_chrono() {
         let columns = setup();
-        let chrono_crate = DateTimeCrate::Chrono;
         let rs_types = vec![
             "String",
             "String",
@@ -453,13 +464,13 @@ mod tests {
 
             col.not_null = true;
             assert_eq!(
-                col.get_rs_type(&chrono_crate).to_string(),
+                col.get_rs_type(&date_time_crate_chrono()).to_string(),
                 quote!(#rs_type).to_string()
             );
 
             col.not_null = false;
             assert_eq!(
-                col.get_rs_type(&chrono_crate).to_string(),
+                col.get_rs_type(&date_time_crate_chrono()).to_string(),
                 quote!(Option<#rs_type>).to_string()
             );
         }
@@ -468,7 +479,6 @@ mod tests {
     #[test]
     fn test_get_rs_type_with_time() {
         let columns = setup();
-        let time_crate = DateTimeCrate::Time;
         let rs_types = vec![
             "String",
             "String",
@@ -499,13 +509,13 @@ mod tests {
 
             col.not_null = true;
             assert_eq!(
-                col.get_rs_type(&time_crate).to_string(),
+                col.get_rs_type(&date_time_crate_time()).to_string(),
                 quote!(#rs_type).to_string()
             );
 
             col.not_null = false;
             assert_eq!(
-                col.get_rs_type(&time_crate).to_string(),
+                col.get_rs_type(&date_time_crate_time()).to_string(),
                 quote!(Option<#rs_type>).to_string()
             );
         }
@@ -559,7 +569,7 @@ mod tests {
     fn test_get_info() {
         let column: Column = ColumnDef::new(Alias::new("id")).string().to_owned().into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `id`: Option<String>"
         );
 
@@ -569,7 +579,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `id`: String, not_null"
         );
 
@@ -580,7 +590,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `id`: String, not_null, unique"
         );
 
@@ -592,7 +602,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `id`: String, auto_increment, not_null, unique"
         );
 
@@ -602,7 +612,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `date_field`: Date, not_null"
         );
 
@@ -612,7 +622,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&date_time_crate_time()).as_str(),
             "Column `date_field`: TimeDate, not_null"
         );
 
@@ -622,7 +632,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `time_field`: Time, not_null"
         );
 
@@ -632,7 +642,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&date_time_crate_time()).as_str(),
             "Column `time_field`: TimeTime, not_null"
         );
 
@@ -642,7 +652,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `date_time_field`: DateTime, not_null"
         );
 
@@ -652,7 +662,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&date_time_crate_time()).as_str(),
             "Column `date_time_field`: TimeDateTime, not_null"
         );
 
@@ -662,7 +672,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `timestamp_field`: DateTimeUtc, not_null"
         );
 
@@ -672,7 +682,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&date_time_crate_time()).as_str(),
             "Column `timestamp_field`: TimeDateTime, not_null"
         );
 
@@ -682,7 +692,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `timestamp_with_timezone_field`: DateTimeWithTimeZone, not_null"
         );
 
@@ -692,7 +702,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&date_time_crate_time()).as_str(),
             "Column `timestamp_with_timezone_field`: TimeDateTimeWithTimeZone, not_null"
         );
     }

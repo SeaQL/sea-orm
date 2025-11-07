@@ -1,4 +1,4 @@
-use crate::{ActiveEnum, Entity, util::escape_rust_keyword};
+use crate::{ActiveEnum, ColumnOption, Entity, util::escape_rust_keyword};
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -43,7 +43,7 @@ pub enum WithSerde {
     Both,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DateTimeCrate {
     Chrono,
     Time,
@@ -232,6 +232,12 @@ impl EntityWriterContext {
             impl_active_model_behavior,
         }
     }
+
+    fn column_option(&self) -> ColumnOption {
+        ColumnOption {
+            date_time_crate: self.date_time_crate,
+        }
+    }
 }
 
 impl EntityWriter {
@@ -263,7 +269,7 @@ impl EntityWriter {
                 let column_info = entity
                     .columns
                     .iter()
-                    .map(|column| column.get_info(&context.date_time_crate))
+                    .map(|column| column.get_info(&context.column_option()))
                     .collect::<Vec<String>>();
                 // Serde must be enabled to use this
                 let serde_skip_deserializing_primary_key = context
@@ -286,7 +292,7 @@ impl EntityWriter {
                     Self::gen_frontend_code_blocks(
                         entity,
                         &context.with_serde,
-                        &context.date_time_crate,
+                        &context.column_option(),
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
                         serde_skip_hidden_column,
@@ -300,7 +306,7 @@ impl EntityWriter {
                     Self::gen_expanded_code_blocks(
                         entity,
                         &context.with_serde,
-                        &context.date_time_crate,
+                        &context.column_option(),
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
                         serde_skip_hidden_column,
@@ -314,7 +320,7 @@ impl EntityWriter {
                     Self::gen_dense_code_blocks(
                         entity,
                         &context.with_serde,
-                        &context.date_time_crate,
+                        &context.column_option(),
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
                         serde_skip_hidden_column,
@@ -328,7 +334,7 @@ impl EntityWriter {
                     Self::gen_compact_code_blocks(
                         entity,
                         &context.with_serde,
-                        &context.date_time_crate,
+                        &context.column_option(),
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
                         serde_skip_hidden_column,
@@ -588,9 +594,9 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_impl_primary_key(entity: &Entity, date_time_crate: &DateTimeCrate) -> TokenStream {
+    pub fn gen_impl_primary_key(entity: &Entity, column_option: &ColumnOption) -> TokenStream {
         let primary_key_auto_increment = entity.get_primary_key_auto_increment();
-        let value_type = entity.get_primary_key_rs_type(date_time_crate);
+        let value_type = entity.get_primary_key_rs_type(column_option);
         quote! {
             impl PrimaryKeyTrait for PrimaryKey {
                 type ValueType = #value_type;
@@ -802,8 +808,8 @@ impl EntityWriter {
 #[cfg(test)]
 mod tests {
     use crate::{
-        Column, ConjunctRelation, DateTimeCrate, Entity, EntityWriter, PrimaryKey, Relation,
-        RelationType, WithSerde,
+        Column, ColumnOption, ConjunctRelation, DateTimeCrate, Entity, EntityWriter, PrimaryKey,
+        Relation, RelationType, WithSerde,
         entity::writer::{bonus_attributes, bonus_derive},
     };
     use pretty_assertions::assert_eq;
@@ -811,6 +817,12 @@ mod tests {
     use quote::quote;
     use sea_query::{Alias, ColumnType, ForeignKeyAction, RcOrArc, SeaRc, StringLen};
     use std::io::{self, BufRead, BufReader, Read};
+
+    fn default_column_option() -> ColumnOption {
+        ColumnOption {
+            date_time_crate: DateTimeCrate::Chrono,
+        }
+    }
 
     fn setup() -> Vec<Entity> {
         vec![
@@ -1584,7 +1596,7 @@ mod tests {
                 EntityWriter::gen_expanded_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &None,
                     false,
                     false,
@@ -1607,7 +1619,7 @@ mod tests {
                 EntityWriter::gen_expanded_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &Some("schema_name".to_owned()),
                     false,
                     false,
@@ -1672,7 +1684,7 @@ mod tests {
                 EntityWriter::gen_compact_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &None,
                     false,
                     false,
@@ -1695,7 +1707,7 @@ mod tests {
                 EntityWriter::gen_compact_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &Some("schema_name".to_owned()),
                     false,
                     false,
@@ -1760,7 +1772,7 @@ mod tests {
                 EntityWriter::gen_frontend_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &None,
                     false,
                     false,
@@ -1783,7 +1795,7 @@ mod tests {
                 EntityWriter::gen_frontend_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &Some("schema_name".to_owned()),
                     false,
                     false,
@@ -1818,7 +1830,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -1836,7 +1848,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::Serialize,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -1854,7 +1866,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::Deserialize,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 true,
                 false,
@@ -1870,7 +1882,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::Both,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 true,
                 false,
@@ -1888,7 +1900,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -1906,7 +1918,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::Serialize,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -1924,7 +1936,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::Deserialize,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 true,
                 false,
@@ -1940,7 +1952,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::Both,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 true,
                 false,
@@ -1958,7 +1970,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -1976,7 +1988,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &cake_entity,
                 &WithSerde::Serialize,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -1994,7 +2006,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &cake_entity,
                 &WithSerde::Deserialize,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 true,
                 false,
@@ -2010,7 +2022,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &cake_entity,
                 &WithSerde::Both,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 true,
                 false,
@@ -2096,7 +2108,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2114,7 +2126,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2132,7 +2144,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2215,7 +2227,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2231,7 +2243,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2249,7 +2261,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2269,7 +2281,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2287,7 +2299,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2305,7 +2317,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2325,7 +2337,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2343,7 +2355,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2361,7 +2373,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2424,7 +2436,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2442,7 +2454,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2465,7 +2477,7 @@ mod tests {
             dyn Fn(
                 &Entity,
                 &WithSerde,
-                &DateTimeCrate,
+                &ColumnOption,
                 &Option<String>,
                 bool,
                 bool,
@@ -2498,7 +2510,7 @@ mod tests {
         let generated = generator(
             cake_entity,
             &entity_serde_variant.1,
-            &DateTimeCrate::Chrono,
+            &default_column_option(),
             &entity_serde_variant.2,
             serde_skip_deserializing_primary_key,
             serde_skip_hidden_column,
@@ -2532,7 +2544,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2550,7 +2562,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2568,7 +2580,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2588,7 +2600,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2606,7 +2618,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2624,7 +2636,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2644,7 +2656,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2662,7 +2674,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2680,7 +2692,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
@@ -2778,7 +2790,7 @@ mod tests {
                 EntityWriter::gen_compact_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &None,
                     false,
                     false,
@@ -2801,7 +2813,7 @@ mod tests {
                 EntityWriter::gen_expanded_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &Some("schema_name".to_owned()),
                     false,
                     false,
@@ -2983,7 +2995,7 @@ mod tests {
                 EntityWriter::gen_dense_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &None,
                     false,
                     false,

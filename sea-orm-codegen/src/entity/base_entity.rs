@@ -5,7 +5,7 @@ use quote::quote;
 use sea_query::ColumnType;
 
 use crate::{
-    Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation, util::escape_rust_keyword,
+    Column, ColumnOption, ConjunctRelation, PrimaryKey, Relation, util::escape_rust_keyword,
 };
 
 #[derive(Clone, Debug)]
@@ -48,11 +48,11 @@ impl Entity {
             .collect()
     }
 
-    pub fn get_column_rs_types(&self, date_time_crate: &DateTimeCrate) -> Vec<TokenStream> {
+    pub fn get_column_rs_types(&self, opt: &ColumnOption) -> Vec<TokenStream> {
         self.columns
             .clone()
             .into_iter()
-            .map(|col| col.get_rs_type(date_time_crate))
+            .map(|col| col.get_rs_type(opt))
             .collect()
     }
 
@@ -213,7 +213,7 @@ impl Entity {
         format_ident!("{}", auto_increment)
     }
 
-    pub fn get_primary_key_rs_type(&self, date_time_crate: &DateTimeCrate) -> TokenStream {
+    pub fn get_primary_key_rs_type(&self, opt: &ColumnOption) -> TokenStream {
         let types = self
             .primary_keys
             .iter()
@@ -222,7 +222,7 @@ impl Entity {
                     .iter()
                     .find(|col| col.name.eq(&primary_key.name))
                     .unwrap()
-                    .get_rs_type(date_time_crate)
+                    .get_rs_type(opt)
                     .to_string()
             })
             .collect::<Vec<_>>();
@@ -300,7 +300,7 @@ mod tests {
     use quote::{format_ident, quote};
     use sea_query::{ColumnType, ForeignKeyAction, StringLen};
 
-    use crate::{Column, DateTimeCrate, Entity, PrimaryKey, Relation, RelationType};
+    use crate::{Column, ColumnOption, DateTimeCrate, Entity, PrimaryKey, Relation, RelationType};
 
     fn setup() -> Entity {
         Entity {
@@ -412,17 +412,14 @@ mod tests {
     #[test]
     fn test_get_column_rs_types() {
         let entity = setup();
+        let opt = ColumnOption {
+            date_time_crate: DateTimeCrate::Chrono,
+        };
 
-        for (i, elem) in entity
-            .get_column_rs_types(&DateTimeCrate::Chrono)
-            .into_iter()
-            .enumerate()
-        {
+        for (i, elem) in entity.get_column_rs_types(&opt).into_iter().enumerate() {
             assert_eq!(
                 elem.to_string(),
-                entity.columns[i]
-                    .get_rs_type(&DateTimeCrate::Chrono)
-                    .to_string()
+                entity.columns[i].get_rs_type(&opt).to_string()
             );
         }
     }
@@ -520,14 +517,13 @@ mod tests {
     #[test]
     fn test_get_primary_key_rs_type() {
         let entity = setup();
+        let opt = ColumnOption {
+            date_time_crate: DateTimeCrate::Chrono,
+        };
 
         assert_eq!(
-            entity
-                .get_primary_key_rs_type(&DateTimeCrate::Chrono)
-                .to_string(),
-            entity.columns[0]
-                .get_rs_type(&DateTimeCrate::Chrono)
-                .to_string()
+            entity.get_primary_key_rs_type(&opt).to_string(),
+            entity.columns[0].get_rs_type(&opt).to_string()
         );
     }
 
