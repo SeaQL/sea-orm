@@ -1,5 +1,5 @@
 use entity::note;
-use sea_orm_migration::{prelude::*, schema::*};
+use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -11,7 +11,7 @@ impl MigrationTrait for Migration {
 
         db.get_schema_builder()
             .register(note::Entity)
-            .apply(db)
+            .sync(db)
             .await
     }
 }
