@@ -1,5 +1,5 @@
 use super::{Schema, TopologicalSort};
-use crate::{ConnectionTrait, DbBackend, DbConn, DbErr, EntityTrait, Statement};
+use crate::{ConnectionTrait, DbBackend, DbErr, EntityTrait, Statement};
 use sea_query::{
     ForeignKeyCreateStatement, IndexCreateStatement, TableAlterStatement, TableCreateStatement,
     TableName, TableRef, extension::postgres::TypeCreateStatement,
@@ -75,94 +75,85 @@ impl SchemaBuilder {
     /// This operation is addition only, will not drop any table / columns.
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
-    pub async fn sync(self, db: &DbConn) -> Result<(), DbErr> {
-        let _existing = match db.get_database_backend() {
-            #[cfg(feature = "sqlx-mysql")]
-            DbBackend::MySql => {
-                use sea_schema::{mysql::discovery::SchemaDiscovery, probe::SchemaProbe};
+    pub async fn sync<C>(self, db: &C) -> Result<(), DbErr>
+    where
+        C: ConnectionTrait + sea_schema::Connection,
+    {
+        let _existing =
+            match db.get_database_backend() {
+                #[cfg(feature = "sqlx-mysql")]
+                DbBackend::MySql => {
+                    use sea_schema::{mysql::discovery::SchemaDiscovery, probe::SchemaProbe};
 
-                let current_schema: String = db
-                    .query_one(
-                        sea_query::SelectStatement::new()
-                            .expr(sea_schema::mysql::MySql::get_current_schema()),
-                    )
-                    .await?
-                    .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
-                    .try_get_by_index(0)?;
-                let schema_discovery =
-                    SchemaDiscovery::new(db.get_mysql_connection_pool().clone(), &current_schema);
+                    let current_schema: String = db
+                        .query_one(
+                            sea_query::SelectStatement::new()
+                                .expr(sea_schema::mysql::MySql::get_current_schema()),
+                        )
+                        .await?
+                        .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
+                        .try_get_by_index(0)?;
+                    let schema_discovery = SchemaDiscovery::new_no_exec(&current_schema);
 
-                let schema = schema_discovery
-                    .discover()
-                    .await
-                    .map_err(|err| DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}"))))?;
+                    let schema = schema_discovery.discover_with(db).await.map_err(|err| {
+                        DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}")))
+                    })?;
 
-                DiscoveredSchema {
-                    tables: schema.tables.iter().map(|table| table.write()).collect(),
-                    enums: vec![],
+                    DiscoveredSchema {
+                        tables: schema.tables.iter().map(|table| table.write()).collect(),
+                        enums: vec![],
+                    }
                 }
-            }
-            #[cfg(feature = "sqlx-postgres")]
-            DbBackend::Postgres => {
-                use sea_schema::{postgres::discovery::SchemaDiscovery, probe::SchemaProbe};
+                #[cfg(feature = "sqlx-postgres")]
+                DbBackend::Postgres => {
+                    use sea_schema::{postgres::discovery::SchemaDiscovery, probe::SchemaProbe};
 
-                let current_schema: String = db
-                    .query_one(
-                        sea_query::SelectStatement::new()
-                            .expr(sea_schema::postgres::Postgres::get_current_schema()),
-                    )
-                    .await?
-                    .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
-                    .try_get_by_index(0)?;
-                let schema_discovery = SchemaDiscovery::new(
-                    db.get_postgres_connection_pool().clone(),
-                    &current_schema,
-                );
+                    let current_schema: String = db
+                        .query_one(
+                            sea_query::SelectStatement::new()
+                                .expr(sea_schema::postgres::Postgres::get_current_schema()),
+                        )
+                        .await?
+                        .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
+                        .try_get_by_index(0)?;
+                    let schema_discovery = SchemaDiscovery::new_no_exec(&current_schema);
 
-                let schema = schema_discovery
-                    .discover()
-                    .await
-                    .map_err(|err| DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}"))))?;
-                let enums = schema_discovery
-                    .discover_enums()
-                    .await
-                    .map_err(|err| DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}"))))?;
+                    let schema = schema_discovery.discover_with(db).await.map_err(|err| {
+                        DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}")))
+                    })?;
 
-                DiscoveredSchema {
-                    tables: schema.tables.iter().map(|table| table.write()).collect(),
-                    enums: enums.iter().map(|def| def.write()).collect(),
+                    DiscoveredSchema {
+                        tables: schema.tables.iter().map(|table| table.write()).collect(),
+                        enums: schema.enums.iter().map(|def| def.write()).collect(),
+                    }
                 }
-            }
-            #[cfg(feature = "sqlx-sqlite")]
-            DbBackend::Sqlite => {
-                use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
-                let schema_discovery =
-                    SchemaDiscovery::new(db.get_sqlite_connection_pool().clone());
-                let schema = schema_discovery
-                    .discover()
-                    .await
-                    .map_err(|err| {
-                        DbErr::Query(match err {
-                            SqliteDiscoveryError::SqlxError(err) => {
-                                crate::RuntimeErr::SqlxError(err.into())
-                            }
-                            _ => crate::RuntimeErr::Internal(format!("{err:?}")),
-                        })
-                    })?
-                    .merge_indexes_into_table();
-                DiscoveredSchema {
-                    tables: schema.tables.iter().map(|table| table.write()).collect(),
-                    enums: vec![],
+                #[cfg(feature = "sqlx-sqlite")]
+                DbBackend::Sqlite => {
+                    use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
+                    let schema = SchemaDiscovery::discover_with(db)
+                        .await
+                        .map_err(|err| {
+                            DbErr::Query(match err {
+                                SqliteDiscoveryError::SqlxError(err) => {
+                                    crate::RuntimeErr::SqlxError(err.into())
+                                }
+                                _ => crate::RuntimeErr::Internal(format!("{err:?}")),
+                            })
+                        })?
+                        .merge_indexes_into_table();
+                    DiscoveredSchema {
+                        tables: schema.tables.iter().map(|table| table.write()).collect(),
+                        enums: vec![],
+                    }
                 }
-            }
-            #[allow(unreachable_patterns)]
-            other => {
-                return Err(DbErr::BackendNotSupported {
-                    db: other.as_str(),
-                    ctx: "SchemaBuilder::sync",
-                });
-            }
-        };
+                #[allow(unreachable_patterns)]
+                other => {
+                    return Err(DbErr::BackendNotSupported {
+                        db: other.as_str(),
+                        ctx: "SchemaBuilder::sync",
+                    });
+                }
+            };
 
         #[allow(unreachable_code)]
         let mut created_enums: Vec<Statement> = Default::default();
@@ -271,9 +262,9 @@ impl EntitySchemaInfo {
 
     // better to always compile this function
     #[allow(dead_code)]
-    async fn sync(
+    async fn sync<C: ConnectionTrait>(
         &self,
-        db: &DbConn,
+        db: &C,
         existing: &DiscoveredSchema,
         created_enums: &mut Vec<Statement>,
     ) -> Result<(), DbErr> {

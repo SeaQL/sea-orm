@@ -18,7 +18,7 @@ pub enum Relation {
         from = "Column::CakeId",
         to = "super::cake::Column::Id",
         on_update = "Cascade",
-        on_delete = "Cascade",
+        on_delete = "Cascade"
     )]
     Cake,
     #[sea_orm(
@@ -26,7 +26,7 @@ pub enum Relation {
         from = "Column::FillingId",
         to = "super::filling::Column::Id",
         on_update = "Cascade",
-        on_delete = "Cascade",
+        on_delete = "Cascade"
     )]
     Filling,
 }
