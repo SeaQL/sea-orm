@@ -57,6 +57,24 @@ pub(crate) mod macros {
         };
     }
 
+    macro_rules! bind_array_oper {
+        ($vis:vis $op:ident, $oper:ident) => {
+            #[cfg(feature = "postgres-array")]
+            /// Array operator. Postgres only.
+            $vis fn $op<V, I>(&self, v: I) -> Expr
+            where
+                V: Into<Value> + sea_query::ValueType + sea_query::with_array::NotU8,
+                I: IntoIterator<Item = V>,
+            {
+                use sea_query::extension::postgres::PgBinOper;
+
+                let vec: Vec<_> = v.into_iter().collect();
+                Expr::col(self.as_column_ref()).binary(PgBinOper::$oper, self.save_as(Expr::val(vec)))
+            }
+        };
+    }
+
+    pub(crate) use bind_array_oper;
     pub(crate) use bind_func_no_params;
     pub(crate) use bind_oper;
     pub(crate) use bind_subquery_func;
@@ -325,6 +343,10 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
 
     bind_subquery_func!(in_subquery);
     bind_subquery_func!(not_in_subquery);
+
+    bind_array_oper!(array_contains, Contains);
+    bind_array_oper!(array_contained, Contained);
+    bind_array_oper!(array_overlap, Overlap);
 
     /// Construct a [`Expr::Column`] wrapped in [`Expr`].
     fn into_expr(self) -> Expr {
