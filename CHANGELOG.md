@@ -462,6 +462,42 @@ let cake2: Cake2 = cake::Entity::find()
     .unwrap();
 ```
 * `RelationDef` now implements `Clone`. `on_condition` is changed to `Arc` but this is a minor breaking change.
+* Added `extra` on column attribute:
+```rust
+#[cfg(feature = "with-rust_decimal")]
+#[sea_orm(extra = "CHECK (price > 0)")]
+pub price: Decimal,
+
+// results in:
+ColumnDef::new("price")
+    .decimal()
+    .not_null()
+    .extra("CHECK (price > 0)"),
+```
+* Added `ColumnTrait::avg`, in addition to `sum`, `min`, `max` etc
+```rust
+let average: Decimal = order::Entity::find()
+    .select_only()
+    .column_as(order::Column::Total.avg(), "avg")
+    .into_tuple()
+    .one(&ctx.db)
+    .await?
+    .unwrap();
+```
+* `SchemaBuilder::sync` can now be used in migrations
+```rust
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        let db = manager.get_connection();
+
+        db.get_schema_builder()
+            .register(note::Entity)
+            .sync(db)
+            .await
+    }
+}
+```
 
 ### Breaking Changes
 
