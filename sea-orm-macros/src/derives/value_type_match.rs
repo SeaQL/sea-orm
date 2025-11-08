@@ -26,15 +26,37 @@ pub fn column_type_wrapper(
     field_span: Span,
 ) -> Option<Ident> {
     match column_type {
-        Some(_) => None, // TODO may be we can deduce column type
-        None => match field_type {
+        Some(_) => {
+            let field_type = if let Some((prefix, _)) = field_type.split_once('(') {
+                prefix
+            } else {
+                field_type
+            };
+            match field_type {
+                "String" | "Text" => Some("StringColumn"),
+                "Blob" | "Binary" | "VarBinary" => Some("BytesColumn"),
+                "TinyInteger" | "SmallInteger" | "Integer" | "BigInteger" | "TinyUnsigned"
+                | "SmallUnsigned" | "Unsigned" | "BigUnsigned" | "Float" | "Double" | "Decimal"
+                | "Money" => Some("NumericColumn"),
+                "DateTime" | "Timestamp" | "TimestampWithTimeZone" => Some("DateTimeLikeColumn"),
+                "Time" => Some("TimeLikeColumn"),
+                "Date" => Some("DateLikeColumn"),
+                "Boolean" => Some("BoolColumn"),
+                "Json" | "JsonBinary" => Some("JsonColumn"),
+                "Uuid" => Some("UuidColumn"),
+                _ => None,
+            }
+            .map(|ty| Ident::new(ty, field_span))
+        }
+        None => match trim_option(field_type) {
+            "bool" => Some("BoolColumn"),
             "String" => Some("StringColumn"),
             "Vec<u8>" => Some("BytesColumn"),
             "Uuid" => Some("UuidColumn"),
             "IpNetwork" => Some("IpNetworkColumn"),
             "Json" | "serde_json::Value" => Some("JsonColumn"),
             "Timestamp" => Some("DateTimeLikeColumn"),
-            _ => {
+            field_type => {
                 if is_numeric_column(field_type) {
                     Some("NumericColumn")
                 } else if field_type.starts_with("Vec<") {
@@ -99,4 +121,12 @@ pub fn can_try_from_u64(field_type: &str) -> bool {
         field_type,
         "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64"
     )
+}
+
+fn trim_option(s: &str) -> &str {
+    if s.starts_with("Option<") {
+        &s["Option<".len()..s.len() - 1]
+    } else {
+        s
+    }
 }

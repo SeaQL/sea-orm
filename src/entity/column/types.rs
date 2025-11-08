@@ -1,59 +1,59 @@
 #![allow(missing_docs)]
 
-use crate::{ColumnDef, ColumnTrait, DynIden, EntityTrait, IntoSimpleExpr, Value};
+use crate::{ColumnDef, ColumnTrait, DynIden, EntityTrait, ExprTrait, Iden, IntoSimpleExpr, Value};
 use sea_query::{Expr, NumericValue, SelectStatement};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct BoolColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(BoolColumn);
+impl_expr_traits!(BoolColumn);
 
 /// A column of numeric type, including integer, float and decimal
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct NumericColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(NumericColumn);
+impl_expr_traits!(NumericColumn);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct StringColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(StringColumn);
+impl_expr_traits!(StringColumn);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct BytesColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(BytesColumn);
+impl_expr_traits!(BytesColumn);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct JsonColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(JsonColumn);
+impl_expr_traits!(JsonColumn);
 
 /// Supports both chrono and time Date
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct DateLikeColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(DateLikeColumn);
+impl_expr_traits!(DateLikeColumn);
 
 /// Supports both chrono and time Time
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TimeLikeColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(TimeLikeColumn);
+impl_expr_traits!(TimeLikeColumn);
 
 /// Supports both chrono and time DateTime
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct DateTimeLikeColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(DateTimeLikeColumn);
+impl_expr_traits!(DateTimeLikeColumn);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct UuidColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(UuidColumn);
+impl_expr_traits!(UuidColumn);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct IpNetworkColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(IpNetworkColumn);
+impl_expr_traits!(IpNetworkColumn);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct NumericArrayColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(NumericArrayColumn);
+impl_expr_traits!(NumericArrayColumn);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct GenericArrayColumn<E: EntityTrait>(pub E::Column);
-impl_into_simple_expr!(GenericArrayColumn);
+impl_expr_traits!(GenericArrayColumn);
 
 #[cfg(feature = "with-json")]
 mod with_json;
@@ -71,8 +71,17 @@ mod with_ipnetwork;
 mod postgres_array;
 
 mod macros {
-    macro_rules! impl_into_simple_expr {
+    macro_rules! impl_expr_traits {
         ($ty:ident) => {
+            impl<E: EntityTrait> Iden for $ty<E> {
+                fn quoted(&self) -> std::borrow::Cow<'static, str> {
+                    self.0.quoted()
+                }
+                fn unquoted(&self) -> &str {
+                    self.0.unquoted()
+                }
+            }
+
             impl<E: EntityTrait> IntoSimpleExpr for $ty<E> {
                 fn into_simple_expr(self) -> Expr {
                     self.0.into_simple_expr()
@@ -104,6 +113,17 @@ mod macros {
                 V: Into<Value> + Into<$value_ty>,
             {
                 self.0.$bind_op(v)
+            }
+        };
+    }
+
+    macro_rules! bind_expr_oper {
+        ($vis:vis $op:ident, $bind_op:ident) => {
+            $vis fn $op<T>(&self, expr: T) -> Expr
+            where
+                T: Into<Expr>,
+            {
+                Expr::col(self.as_column_ref()).$bind_op(expr)
             }
         };
     }
@@ -183,13 +203,14 @@ mod macros {
         };
     }
 
+    pub(super) use bind_expr_oper;
     pub(super) use bind_oper;
     pub(super) use bind_oper_0;
     pub(super) use bind_oper_2;
     pub(super) use bind_subquery_func;
     pub(super) use bind_vec_func;
     pub(super) use boilerplate;
-    pub(super) use impl_into_simple_expr;
+    pub(super) use impl_expr_traits;
 }
 
 use macros::*;
@@ -219,6 +240,11 @@ impl<E: EntityTrait> NumericColumn<E> {
     bind_oper!(pub gte, gte, trait NumericValue);
     bind_oper!(pub lt, lt, trait NumericValue);
     bind_oper!(pub lte, lte, trait NumericValue);
+
+    bind_expr_oper!(pub add, add);
+    bind_expr_oper!(pub sub, sub);
+    bind_expr_oper!(pub div, div);
+    bind_expr_oper!(pub mul, mul);
 
     bind_oper_2!(pub between, between, trait NumericValue);
     bind_oper_2!(pub not_between, not_between, trait NumericValue);

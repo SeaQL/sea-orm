@@ -118,7 +118,7 @@ eliminating the N+1 problem even when performing nested queries.
 // user -> post
 //         post -> post_tag -> tag
 let smart_user = user::Entity::load()
-    .filter_by_id(42) // shorthand for .filter(user::Column::Id.eq(42))
+    .filter_by_id(42) // shorthand for .filter(user::COLUMN.id.eq(42))
     .with(profile::Entity) // 1-1 uses join
     .with((post::Entity, tag::Entity)) // 1-N uses data loader
     .one(db)
@@ -196,7 +196,7 @@ let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
 
 // find and filter
 let chocolate: Vec<cake::Model> = Cake::find()
-    .filter(cake::Column::Name.contains("chocolate"))
+    .filter(Cake::COLUMN.name.contains("chocolate"))
     .all(db)
     .await?;
 
@@ -296,7 +296,6 @@ ActiveModel avoids race conditions by updating only the fields you've changed,
 never overwriting untouched columns.
 You can also craft complex bulk update queries with a fluent query building API.
 ```rust
-use fruit::Column::CakeId;
 use sea_orm::sea_query::{Expr, Value};
 
 let pear: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
@@ -310,8 +309,8 @@ let pear: fruit::Model = pear.update(db).await?;
 // update many: UPDATE "fruit" SET "cake_id" = "cake_id" + 2
 //               WHERE "fruit"."name" LIKE '%Apple%'
 Fruit::update_many()
-    .col_expr(CakeId, Expr::col(CakeId).add(Expr::val(2)))
-    .filter(fruit::Column::Name.contains("Apple"))
+    .col_expr(fruit::COLUMN.cake_id, fruit::COLUMN.cake_id.add(2))
+    .filter(fruit::COLUMN.name.contains("Apple"))
     .exec(db)
     .await?;
 ```
@@ -350,7 +349,7 @@ fruit::Entity::delete(orange).exec(db).await?;
 
 // delete many: DELETE FROM "fruit" WHERE "fruit"."name" LIKE '%Orange%'
 fruit::Entity::delete_many()
-    .filter(fruit::Column::Name.contains("Orange"))
+    .filter(fruit::COLUMN.name.contains("Orange"))
     .exec(db)
     .await?;
 
