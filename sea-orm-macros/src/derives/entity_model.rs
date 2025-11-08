@@ -108,10 +108,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
             for field in fields.named {
                 if let Some(ident) = &field.ident {
                     let original_field_name = trim_starting_raw_identifier(ident);
-                    let mut field_name = Ident::new(
-                        &original_field_name.to_upper_camel_case(),
-                        Span::call_site(),
-                    );
+                    let mut field_name =
+                        Ident::new(&original_field_name.to_upper_camel_case(), ident.span());
 
                     let mut nullable = false;
                     let mut default_value = None;
@@ -275,7 +273,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         field_name = enum_name;
                     }
 
-                    field_name = Ident::new(&escape_rust_keyword(field_name), Span::call_site());
+                    field_name = Ident::new(&escape_rust_keyword(field_name), ident.span());
 
                     let variant_attrs = match &column_name {
                         Some(column_name) => quote! {
@@ -321,15 +319,14 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
                     let field_type = if field_type.starts_with("Option<") {
                         nullable = true;
-                        &field_type[7..(field_type.len() - 1)] // Extract `T` out of `Option<T>`
+                        &field_type["Option<".len()..(field_type.len() - 1)] // Extract `T` out of `Option<T>`
                     } else {
                         field_type.as_str()
                     };
                     let field_span = field.span();
 
-                    let sea_query_col_type = crate::derives::sql_type_match::column_type_match(
-                        sql_type, field_type, field_span,
-                    );
+                    let sea_query_col_type =
+                        super::value_type_match::column_type_expr(sql_type, field_type, field_span);
 
                     let col_def =
                         quote! { sea_orm::prelude::ColumnTypeTrait::def(#sea_query_col_type) };

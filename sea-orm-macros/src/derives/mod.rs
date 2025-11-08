@@ -18,10 +18,11 @@ mod partial_model;
 mod primary_key;
 mod related_entity;
 mod relation;
-mod sql_type_match;
 mod try_getable_from_json;
+mod typed_column;
 mod util;
 mod value_type;
+mod value_type_match;
 
 pub use active_enum::*;
 pub use active_enum_display::*;
@@ -41,4 +42,5 @@ pub use primary_key::*;
 pub use related_entity::*;
 pub use relation::*;
 pub use try_getable_from_json::*;
+pub use typed_column::*;
 pub use value_type::*;

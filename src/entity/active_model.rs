@@ -796,6 +796,10 @@ impl_into_active_value!(crate::prelude::DateTimeLocal);
 #[cfg_attr(docsrs, doc(cfg(feature = "with-rust_decimal")))]
 impl_into_active_value!(crate::prelude::Decimal);
 
+#[cfg(feature = "with-bigdecimal")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-bigdecimal")))]
+impl_into_active_value!(crate::prelude::BigDecimal);
+
 #[cfg(feature = "with-uuid")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-uuid")))]
 impl_into_active_value!(crate::prelude::Uuid);

@@ -25,6 +25,8 @@ pub enum Tea {
     EverydayTea,
     #[sea_orm(string_value = "BreakfastTea")]
     BreakfastTea,
+    #[sea_orm(string_value = "AfternoonTea")]
+    AfternoonTea,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]

@@ -1,5 +1,4 @@
 use heck::ToUpperCamelCase;
-use quote::format_ident;
 use syn::{Field, Ident, Meta, MetaNameValue, punctuated::Punctuated, token::Comma};
 
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
@@ -45,11 +44,11 @@ pub(crate) fn is_compound_field(field_type: &str) -> bool {
 }
 
 pub(crate) fn format_field_ident(field: Field) -> Ident {
-    format_field_ident_ref(&field)
+    field.ident.unwrap()
 }
 
 pub(crate) fn format_field_ident_ref(field: &Field) -> Ident {
-    format_ident!("{}", field.ident.as_ref().unwrap().to_string())
+    field.ident.clone().unwrap()
 }
 
 pub(crate) fn trim_starting_raw_identifier<T>(string: T) -> String

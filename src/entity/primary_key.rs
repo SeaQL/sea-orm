@@ -3,7 +3,6 @@ use crate::{TryFromU64, TryGetableMany};
 use sea_query::{FromValueTuple, IntoValueTuple};
 use std::fmt::Debug;
 
-//LINT: composite primary key cannot auto increment
 /// A Trait for to be used to define a Primary Key.
 ///
 /// A primary key can be derived manually
