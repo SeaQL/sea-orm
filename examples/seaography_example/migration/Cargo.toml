@@ -16,11 +16,11 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [dependencies.sea-orm]
 path = "../../../" # remove this line in your own project
-version = "~2.0.0-rc.16" # sea-orm version
+version = "~2.0.0-rc.18" # sea-orm version
 
 [dependencies.sea-orm-migration]
 path = "../../../sea-orm-migration" # remove this line in your own project
-version = "~2.0.0-rc.16" # sea-orm-migration version
+version = "~2.0.0-rc.18" # sea-orm-migration version
 features = [
   "runtime-tokio-native-tls",
   "sqlx-sqlite",
