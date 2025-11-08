@@ -324,6 +324,8 @@ pub fn expand_derive_model_ex(
     Ok(quote! {
         #typed_column
 
+        #typed_column_const
+
         #impl_from_model
 
         #impl_model_trait
@@ -337,7 +339,7 @@ pub fn expand_derive_model_ex(
         #entity_loader
 
         impl Entity {
-            #typed_column_const
+            pub const COLUMN: TypedColumn = COLUMN;
 
             #entity_find_by_key
         }

@@ -8,7 +8,7 @@ pub use common::{
     bakery_dense::{prelude::*, *},
     setup::*,
 };
-use sea_orm::{DbConn, DbErr, RuntimeErr, Set, prelude::*, query::*};
+use sea_orm::{DbConn, DbErr, EntityLoaderTrait, RuntimeErr, Set, prelude::*, query::*};
 
 #[sea_orm_macros::test]
 async fn cake_entity_loader() -> Result<(), DbErr> {
@@ -499,6 +499,29 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
 
     assert_eq!(staff[3].name, "Elle");
     assert_eq!(staff[3].reports_to, None);
+
+    let mut pager = staff::Entity::load()
+        .with(staff::Relation::ReportsTo)
+        .order_by_asc(staff::COLUMN.id)
+        .paginate(db, 2);
+
+    let staff = pager.fetch_and_next().await?.unwrap();
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].reports_to, None);
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+
+    let staff = pager.fetch_and_next().await?.unwrap();
+
+    assert_eq!(staff[0].name, "Alice");
+    assert_eq!(staff[0].reports_to.as_ref().unwrap().name, "Alan");
+
+    assert_eq!(staff[1].name, "Elle");
+    assert_eq!(staff[1].reports_to, None);
+
+    assert!(pager.fetch_and_next().await?.is_none());
 
     Ok(())
 }
