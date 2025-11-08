@@ -84,68 +84,86 @@
 //! ```
 //! # #[cfg(feature = "macros")]
 //! # mod entities {
-//! # mod filling {
+//! # mod profile {
 //! # use sea_orm::entity::prelude::*;
 //! # #[sea_orm::model]
 //! # #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-//! # #[sea_orm(table_name = "filling")]
+//! # #[sea_orm(table_name = "profile")]
 //! # pub struct Model {
 //! #     #[sea_orm(primary_key)]
 //! #     pub id: i32,
-//! #     pub name: String,
-//! #     #[sea_orm(has_many, via = "cake_filling")]
-//! #     pub cakes: Vec<super::cake::Entity>,
+//! #     pub picture: String,
+//! #     #[sea_orm(unique)]
+//! #     pub user_id: i32,
+//! #     #[sea_orm(belongs_to, from = "user_id", to = "id")]
+//! #     pub user: HasOne<super::user::Entity>,
 //! # }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! # }
-//! # mod cake_filling {
+//! # mod tag {
 //! # use sea_orm::entity::prelude::*;
 //! # #[sea_orm::model]
 //! # #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-//! # #[sea_orm(table_name = "cake_filling")]
+//! # #[sea_orm(table_name = "post")]
+//! # pub struct Model {
+//! #     #[sea_orm(primary_key)]
+//! #     pub id: i32,
+//! #     #[sea_orm(has_many, via = "post_tag")]
+//! #     pub tags: HasMany<super::tag::Entity>,
+//! # }
+//! # impl ActiveModelBehavior for ActiveModel {}
+//! # }
+//! # mod post_tag {
+//! # use sea_orm::entity::prelude::*;
+//! # #[sea_orm::model]
+//! # #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+//! # #[sea_orm(table_name = "post_tag")]
 //! # pub struct Model {
 //! #     #[sea_orm(primary_key, auto_increment = false)]
-//! #     pub cake_id: i32,
+//! #     pub post_id: i32,
 //! #     #[sea_orm(primary_key, auto_increment = false)]
-//! #     pub filling_id: i32,
-//! #     #[sea_orm(belongs_to, from = "CakeId", to = "Id")]
-//! #     pub cake: Option<super::cake::Entity> ,
-//! #     #[sea_orm(belongs_to, from = "FillingId", to = "Id")]
-//! #     pub filling: Option<super::filling::Entity> ,
+//! #     pub tag_id: i32,
+//! #     #[sea_orm(belongs_to, from = "post_id", to = "id")]
+//! #     pub post: Option<super::post::Entity>,
+//! #     #[sea_orm(belongs_to, from = "tag_id", to = "id")]
+//! #     pub tag: Option<super::tag::Entity>,
 //! # }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! # }
-//! mod cake {
+//! mod user {
 //!     use sea_orm::entity::prelude::*;
 //!
 //!     #[sea_orm::model]
 //!     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-//!     #[sea_orm(table_name = "cake")]
-//!     pub struct Model {
-//!         #[sea_orm(primary_key)]
-//!         pub id: i32,
-//!         pub name: String,
-//!         #[sea_orm(has_one)]
-//!         pub fruit: HasOne<super::fruit::Entity>,
-//!         #[sea_orm(has_many, via = "cake_filling")] // M-N relation with junction
-//!         pub fillings: HasMany<super::filling::Entity>,
-//!     }
-//! # impl ActiveModelBehavior for ActiveModel {}
-//! }
-//! mod fruit {
-//!     use sea_orm::entity::prelude::*;
-//!
-//!     #[sea_orm::model]
-//!     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-//!     #[sea_orm(table_name = "fruit")]
+//!     #[sea_orm(table_name = "user")]
 //!     pub struct Model {
 //!         #[sea_orm(primary_key)]
 //!         pub id: i32,
 //!         pub name: String,
 //!         #[sea_orm(unique)]
-//!         pub cake_id: Option<i32>,
-//!         #[sea_orm(belongs_to, from = "cake_id", to = "id")]
-//!         pub cake: HasOne<super::cake::Entity>,
+//!         pub email: String,
+//!         #[sea_orm(has_one)]
+//!         pub profile: HasOne<super::profile::Entity>,
+//!         #[sea_orm(has_many)]
+//!         pub posts: HasMany<super::post::Entity>,
+//!     }
+//! # impl ActiveModelBehavior for ActiveModel {}
+//! }
+//! mod post {
+//!     use sea_orm::entity::prelude::*;
+//!
+//!     #[sea_orm::model]
+//!     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+//!     #[sea_orm(table_name = "post")]
+//!     pub struct Model {
+//!         #[sea_orm(primary_key)]
+//!         pub id: i32,
+//!         pub user_id: i32,
+//!         pub body: String,
+//!         #[sea_orm(belongs_to, from = "user_id", to = "id")]
+//!         pub author: HasOne<super::user::Entity>,
+//!         #[sea_orm(has_many, via = "post_tag")] // M-N relation with junction
+//!         pub tags: HasMany<super::tag::Entity>,
 //!     }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! }
@@ -159,46 +177,46 @@
 //! # use sea_orm::{DbConn, error::*, prelude::*, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! // join paths:
-//! // cake -> fruit
-//! // cake -> cake_filling -> filling
-//! //                         filling -> ingredient
-//! let super_cake = cake::Entity::load()
-//!     .filter_by_id(42) // shorthand for .filter(cake::Column::Id.eq(42))
-//!     .with(fruit::Entity) // 1-1 uses join
-//!     .with((filling::Entity, ingredient::Entity)) // 1-N uses data loader
+//! // user -> profile
+//! // user -> post
+//! //         post -> post_tag -> tag
+//! let smart_user = user::Entity::load()
+//!     .filter_by_id(42) // shorthand for .filter(user::Column::Id.eq(42))
+//!     .with(profile::Entity) // 1-1 uses join
+//!     .with((post::Entity, tag::Entity)) // 1-N uses data loader
 //!     .one(db)
 //!     .await?
 //!     .unwrap();
 //!
 //! // 3 queries are executed under the hood:
-//! // 1. SELECT FROM cake JOIN fruit WHERE id = $
-//! // 2. SELECT FROM filling JOIN cake_filling WHERE cake_id IN (..)
-//! // 3. SELECT FROM ingredient WHERE filling_id IN (..)
+//! // 1. SELECT FROM user JOIN profile WHERE id = $
+//! // 2. SELECT FROM post WHERE user_id IN (..)
+//! // 3. SELECT FROM tag JOIN post_tag WHERE post_id IN (..)
 //!
-//! super_cake
-//!     == cake::ModelEx {
+//! smart_user
+//!     == user::ModelEx {
 //!         id: 42,
-//!         name: "Black Forest".into(),
-//!         fruit: HasOne::Loaded(
-//!             fruit::ModelEx {
+//!         name: "Bob".into(),
+//!         email: "bob@sea-ql.org".into(),
+//!         profile: HasOne::Loaded(
+//!             profile::ModelEx {
 //! #           id: 1,
-//!                 name: "Cherry".into(),
-//! #           cake_id: Some(1),
+//!                 picture: "image.jpg".into(),
+//! #           user_id: 1,
+//! #           user: HasOne::Unloaded,
 //!             }
 //!             .into(),
 //!         ),
-//!         fillings: HasMany::Loaded(vec![filling::ModelEx {
+//!         posts: HasMany::Loaded(vec![post::ModelEx {
 //! #           id: 2,
-//!             name: "Chocolate".into(),
-//! #           vendor_id: None,
-//! #           ignored_attr: 0,
-//!             ingredients: HasMany::Loaded(vec![ingredient::ModelEx {
+//! #           user_id: 1,
+//!             title: "Nice weather".into(),
+//! #           author: HasOne::Unloaded,
+//! #           comments: HasMany::Unloaded,
+//!             tags: HasMany::Loaded(vec![tag::ModelEx {
 //! #               id: 3,
-//!                 name: "Syrup".into(),
-//! #               filling_id: Some(2),
-//! #               filling: Default::default(),
-//! #               ingredient_id: None,
-//! #               ingredient: HasOne::Unloaded,
+//!                 tag: "diary".into(),
+//! #               posts: HasMany::Unloaded,
 //!             }]),
 //!         }]),
 //!     };

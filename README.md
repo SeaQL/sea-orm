@@ -72,36 +72,39 @@ Let's have a quick walk through of the unique features of SeaORM.
 You don't have to write this by hand! Entity files can be generated from an existing database using `sea-orm-cli`,
 following is generated with `--entity-format dense` *(new in 2.0)*.
 ```rust
-mod cake {
+mod user {
     use sea_orm::entity::prelude::*;
 
     #[sea_orm::model]
     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-    #[sea_orm(table_name = "cake")]
-    pub struct Model {
-        #[sea_orm(primary_key)]
-        pub id: i32,
-        pub name: String,
-        #[sea_orm(has_one)]
-        pub fruit: HasOne<super::fruit::Entity>,
-        #[sea_orm(has_many, via = "cake_filling")] // M-N relation with junction
-        pub fillings: HasMany<super::filling::Entity>,
-    }
-}
-mod fruit {
-    use sea_orm::entity::prelude::*;
-
-    #[sea_orm::model]
-    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-    #[sea_orm(table_name = "fruit")]
+    #[sea_orm(table_name = "user")]
     pub struct Model {
         #[sea_orm(primary_key)]
         pub id: i32,
         pub name: String,
         #[sea_orm(unique)]
-        pub cake_id: Option<i32>,
-        #[sea_orm(belongs_to, from = "cake_id", to = "id")]
-        pub cake: HasOne<super::cake::Entity>,
+        pub email: String,
+        #[sea_orm(has_one)]
+        pub profile: HasOne<super::profile::Entity>,
+        #[sea_orm(has_many)]
+        pub posts: HasMany<super::post::Entity>,
+    }
+}
+mod post {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "post")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub user_id: i32,
+        pub body: String,
+        #[sea_orm(belongs_to, from = "user_id", to = "id")]
+        pub author: HasOne<super::user::Entity>,
+        #[sea_orm(has_many, via = "post_tag")] // M-N relation with junction
+        pub tags: HasMany<super::tag::Entity>,
     }
 }
 ```
@@ -111,36 +114,37 @@ The Entity Loader intelligently uses join for 1-1 and data loader for 1-N relati
 eliminating the N+1 problem even when performing nested queries.
 ```rust
 // join paths:
-// cake -> fruit
-// cake -> cake_filling -> filling
-//                         filling -> ingredient
-let super_cake = cake::Entity::load()
-    .filter_by_id(42) // shorthand for .filter(cake::Column::Id.eq(42))
-    .with(fruit::Entity) // 1-1 uses join
-    .with((filling::Entity, ingredient::Entity)) // 1-N uses data loader
+// user -> profile
+// user -> post
+//         post -> post_tag -> tag
+let smart_user = user::Entity::load()
+    .filter_by_id(42) // shorthand for .filter(user::Column::Id.eq(42))
+    .with(profile::Entity) // 1-1 uses join
+    .with((post::Entity, tag::Entity)) // 1-N uses data loader
     .one(db)
     .await?
     .unwrap();
 
 // 3 queries are executed under the hood:
-// 1. SELECT FROM cake JOIN fruit WHERE id = $
-// 2. SELECT FROM filling JOIN cake_filling WHERE cake_id IN (..)
-// 3. SELECT FROM ingredient WHERE filling_id IN (..)
+// 1. SELECT FROM user JOIN profile WHERE id = $
+// 2. SELECT FROM post WHERE user_id IN (..)
+// 3. SELECT FROM tag JOIN post_tag WHERE post_id IN (..)
 
-super_cake
-    == cake::ModelEx {
+smart_user
+    == user::ModelEx {
         id: 42,
-        name: "Black Forest".into(),
-        fruit: HasOne::Loaded(
-            fruit::ModelEx {
-                name: "Cherry".into(),
+        name: "Bob".into(),
+        email: "bob@sea-ql.org".into(),
+        profile: HasOne::Loaded(
+            profile::ModelEx {
+                picture: "image.jpg".into(),
             }
             .into(),
         ),
-        fillings: HasMany::Loaded(vec![filling::ModelEx {
-            name: "Chocolate".into(),
-            ingredients: HasMany::Loaded(vec![ingredient::ModelEx {
-                name: "Syrup".into(),
+        posts: HasMany::Loaded(vec![post::ModelEx {
+            title: "Nice weather".into(),
+            tags: HasMany::Loaded(vec![tag::ModelEx {
+                tag: "diary".into(),
             }]),
         }]),
     };
