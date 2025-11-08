@@ -44,6 +44,7 @@ pub fn column_type_wrapper(
                 "Boolean" => Some("BoolColumn"),
                 "Json" | "JsonBinary" => Some("JsonColumn"),
                 "Uuid" => Some("UuidColumn"),
+                "Array" => Some("GenericArrayColumn"),
                 _ => None,
             }
             .map(|ty| Ident::new(ty, field_span))
