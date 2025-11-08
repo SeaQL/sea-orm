@@ -57,7 +57,7 @@ pub fn column_type_wrapper(
             "IpNetwork" => Some("IpNetworkColumn"),
             "Json" | "serde_json::Value" => Some("JsonColumn"),
             field_type => {
-                if is_numeric_column(field_type) {
+                if is_numeric_column(field_type) || field_type.contains("UnixTimestamp") {
                     Some("NumericColumn")
                 } else if field_type.starts_with("Vec<") {
                     let field_type = &field_type["Vec<".len()..field_type.len() - 1];
