@@ -53,10 +53,10 @@ async fn entity_timestamp_test() -> Result<(), DbErr> {
 
     let log = access_log::ActiveModel {
         id: NotSet,
-        ts: Set(ChronoUnixTimestamp(now)),
+        ts: Set(now.into()),
         ms: Set(ChronoUnixTimestampMillis(now)),
         tts: Set(TimeUnixTimestamp(time_now)),
-        tms: Set(TimeUnixTimestampMillis(time_now)),
+        tms: Set(time_now.into()),
     }
     .insert(db)
     .await?;

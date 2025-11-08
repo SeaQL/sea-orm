@@ -1,13 +1,17 @@
 macro_rules! impl_timestamp {
     ($ty:ident, $inner:ident, $from:ident, $to:ident) => {
-        #[automatically_derived]
+        impl std::convert::From<$inner> for $ty {
+            fn from(value: $inner) -> Self {
+                Self(value)
+            }
+        }
+
         impl std::convert::From<$ty> for sea_orm::Value {
             fn from(source: $ty) -> Self {
                 $to(source).into()
             }
         }
 
-        #[automatically_derived]
         impl sea_orm::TryGetable for $ty {
             fn try_get_by<I: sea_orm::ColIdx>(
                 res: &sea_orm::QueryResult,
@@ -20,7 +24,6 @@ macro_rules! impl_timestamp {
             }
         }
 
-        #[automatically_derived]
         impl sea_orm::sea_query::ValueType for $ty {
             fn try_from(
                 v: sea_orm::Value,
@@ -42,7 +45,6 @@ macro_rules! impl_timestamp {
             }
         }
 
-        #[automatically_derived]
         impl sea_orm::sea_query::Nullable for $ty {
             fn null() -> sea_orm::Value {
                 <i64 as sea_orm::sea_query::Nullable>::null()
