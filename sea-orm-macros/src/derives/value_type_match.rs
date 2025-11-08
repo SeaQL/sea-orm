@@ -56,7 +56,6 @@ pub fn column_type_wrapper(
             "Uuid" => Some("UuidColumn"),
             "IpNetwork" => Some("IpNetworkColumn"),
             "Json" | "serde_json::Value" => Some("JsonColumn"),
-            "Timestamp" => Some("DateTimeLikeColumn"),
             field_type => {
                 if is_numeric_column(field_type) {
                     Some("NumericColumn")
@@ -67,7 +66,7 @@ pub fn column_type_wrapper(
                     } else {
                         Some("GenericArrayColumn")
                     }
-                } else if field_type.contains("DateTime") {
+                } else if field_type.contains("DateTime") || field_type.contains("Timestamp") {
                     Some("DateTimeLikeColumn")
                 } else if field_type.contains("Date") {
                     Some("DateLikeColumn")

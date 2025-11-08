@@ -69,6 +69,9 @@ pub type ChronoUtc = chrono::Utc;
 #[cfg(feature = "with-chrono")]
 pub type ChronoDateTimeLocal = chrono::DateTime<chrono::Local>;
 
+#[cfg(feature = "with-chrono")]
+pub use crate::value::{ChronoUnixTimestamp, ChronoUnixTimestampMillis};
+
 #[cfg(feature = "with-time")]
 pub use time::Date as TimeDate;
 
@@ -80,6 +83,9 @@ pub use time::PrimitiveDateTime as TimeDateTime;
 
 #[cfg(feature = "with-time")]
 pub use time::OffsetDateTime as TimeDateTimeWithTimeZone;
+
+#[cfg(feature = "with-time")]
+pub use crate::value::{TimeUnixTimestamp, TimeUnixTimestampMillis};
 
 #[cfg(feature = "with-rust_decimal")]
 pub use rust_decimal::Decimal;

@@ -3,16 +3,92 @@
 pub mod common;
 pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{DatabaseConnection, IntoActiveModel, entity::prelude::*};
+use sea_orm::{DatabaseConnection, IntoActiveModel, NotSet, Set, entity::prelude::*};
 
 #[sea_orm_macros::test]
-async fn main() -> Result<(), DbErr> {
+async fn bakery_chain_schema_timestamp_tests() -> Result<(), DbErr> {
     let ctx = TestContext::new("bakery_chain_schema_timestamp_tests").await;
     create_tables(&ctx.db).await?;
     create_applog(&ctx.db).await?;
     create_satellites_log(&ctx.db).await?;
 
     ctx.delete().await;
+
+    Ok(())
+}
+
+mod access_log {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "access_log")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub ts: ChronoUnixTimestamp,
+        pub ms: ChronoUnixTimestampMillis,
+        pub tts: TimeUnixTimestamp,
+        pub tms: TimeUnixTimestampMillis,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+#[sea_orm_macros::test]
+async fn entity_timestamp_test() -> Result<(), DbErr> {
+    let ctx = TestContext::new("entity_timestamp_test").await;
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(access_log::Entity)
+        .apply(db)
+        .await?;
+
+    let now = sea_orm::prelude::ChronoUtc::now();
+    let time_now = sea_orm::prelude::TimeDateTimeWithTimeZone::from_unix_timestamp_nanos(
+        now.timestamp_nanos_opt().unwrap() as i128,
+    )
+    .unwrap();
+
+    let log = access_log::ActiveModel {
+        id: NotSet,
+        ts: Set(ChronoUnixTimestamp(now)),
+        ms: Set(ChronoUnixTimestampMillis(now)),
+        tts: Set(TimeUnixTimestamp(time_now)),
+        tms: Set(TimeUnixTimestampMillis(time_now)),
+    }
+    .insert(db)
+    .await?;
+
+    assert_eq!(log.ts.timestamp(), now.timestamp());
+    assert_eq!(log.ms.timestamp_millis(), now.timestamp_millis());
+
+    assert_eq!(log.tts.unix_timestamp(), now.timestamp());
+    assert_eq!(
+        log.tms.unix_timestamp_nanos() / 1_000_000,
+        now.timestamp_millis() as i128
+    );
+
+    #[derive(DerivePartialModel)]
+    #[sea_orm(entity = "access_log::Entity")]
+    struct AccessLog {
+        ts: i64,
+        ms: i64,
+        tts: i64,
+        tms: i64,
+    }
+
+    let log: AccessLog = access_log::Entity::find()
+        .into_partial_model()
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(log.ts, now.timestamp());
+    assert_eq!(log.ms, now.timestamp_millis());
+    assert_eq!(log.tts, now.timestamp());
+    assert_eq!(log.tms, now.timestamp_millis());
 
     Ok(())
 }

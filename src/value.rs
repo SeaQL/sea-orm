@@ -1,6 +1,19 @@
 use crate::sea_query::{Nullable, ValueType};
 use crate::{ActiveValue, Value};
 
+mod timestamp;
+use timestamp::*;
+
+#[cfg(feature = "with-chrono")]
+mod with_chrono;
+#[cfg(feature = "with-chrono")]
+pub use with_chrono::*;
+
+#[cfg(feature = "with-time")]
+mod with_time;
+#[cfg(feature = "with-time")]
+pub use with_time::*;
+
 /// Default value for T
 pub trait DefaultActiveValue {
     /// `Default::default()` if implemented, dummy value otherwise
