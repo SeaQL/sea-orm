@@ -147,6 +147,26 @@ pub fn expand_derive_model_ex(
                                     ident,
                                     "You cannot use #[has_one / has_many / belongs_to] on #[sea_orm::compact_model], please use #[sea_orm::model] instead.",
                                 ));
+                            } else if attrs.belongs_to.is_some()
+                                && !field_type.starts_with("HasOne<")
+                            {
+                                return Err(syn::Error::new_spanned(
+                                    ident,
+                                    "belongs_to must be paired with HasOne",
+                                ));
+                            } else if attrs.has_one.is_some() && !field_type.starts_with("HasOne<")
+                            {
+                                return Err(syn::Error::new_spanned(
+                                    ident,
+                                    "has_one must be paired with HasOne",
+                                ));
+                            } else if attrs.has_many.is_some()
+                                && !field_type.starts_with("HasMany<")
+                            {
+                                return Err(syn::Error::new_spanned(
+                                    ident,
+                                    "has_many must be paired with HasMany",
+                                ));
                             }
                             impl_related.push((attrs, field_type));
                         }
