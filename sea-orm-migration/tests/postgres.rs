@@ -3,7 +3,7 @@ mod common;
 #[cfg(all(test, feature = "sqlx-postgres"))]
 mod inner {
     use crate::common::migrator::default::*;
-    use sea_orm::{error::DbErr, ConnectOptions, ConnectionTrait, Database, DbBackend, Statement};
+    use sea_orm::{ConnectOptions, ConnectionTrait, Database, DbBackend, Statement, error::DbErr};
     use sea_orm_migration::prelude::*;
 
     #[async_std::test]
