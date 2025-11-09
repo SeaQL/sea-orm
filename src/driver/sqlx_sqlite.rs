@@ -418,56 +418,90 @@ pub(crate) fn from_sqlx_sqlite_row_to_proxy_row(row: &sqlx::sqlite::SqliteRow) -
                 (
                     c.name().to_string(),
                     match c.type_info().name() {
-                        "BOOLEAN" => Value::Bool(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get boolean"),
-                        )),
+                        "BOOLEAN" => {
+                            Value::Bool(row.try_get(c.ordinal()).expect("Failed to get boolean"))
+                        }
 
-                        "INTEGER" => Value::Int(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get integer"),
-                        )),
+                        "INTEGER" => {
+                            Value::Int(row.try_get(c.ordinal()).expect("Failed to get integer"))
+                        }
 
-                        "BIGINT" | "INT8" => Value::BigInt(Some(
+                        "BIGINT" | "INT8" => Value::BigInt(
                             row.try_get(c.ordinal()).expect("Failed to get big integer"),
-                        )),
+                        ),
 
-                        "REAL" => Value::Double(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get double"),
-                        )),
+                        "REAL" => {
+                            Value::Double(row.try_get(c.ordinal()).expect("Failed to get double"))
+                        }
 
-                        "TEXT" => Value::String(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get string"),
-                        ))),
+                        "TEXT" => Value::String(
+                            row.try_get::<Option<String>, _>(c.ordinal())
+                                .expect("Failed to get string")
+                                .map(Box::new),
+                        ),
 
-                        "BLOB" => Value::Bytes(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get bytes"),
-                        ))),
-
-                        #[cfg(feature = "with-chrono")]
-                        "DATETIME" => Value::ChronoDateTimeUtc(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timestamp"),
-                        ))),
-                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "DATETIME" => Value::TimeDateTimeWithTimeZone(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timestamp"),
-                        ))),
+                        "BLOB" => Value::Bytes(
+                            row.try_get::<Option<Vec<u8>>, _>(c.ordinal())
+                                .expect("Failed to get bytes")
+                                .map(Box::new),
+                        ),
 
                         #[cfg(feature = "with-chrono")]
-                        "DATE" => Value::ChronoDate(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get date"),
-                        ))),
+                        "DATETIME" => {
+                            use chrono::{DateTime, Utc};
+
+                            Value::ChronoDateTimeUtc(
+                                row.try_get::<Option<DateTime<Utc>>, _>(c.ordinal())
+                                    .expect("Failed to get timestamp")
+                                    .map(Box::new),
+                            )
+                        }
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "DATE" => Value::TimeDate(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get date"),
-                        ))),
+                        "DATETIME" => {
+                            use time::OffsetDateTime;
+                            Value::TimeDateTimeWithTimeZone(
+                                row.try_get::<Option<OffsetDateTime>, _>(c.ordinal())
+                                    .expect("Failed to get timestamp")
+                                    .map(Box::new),
+                            )
+                        }
+                        #[cfg(feature = "with-chrono")]
+                        "DATE" => {
+                            use chrono::NaiveDate;
+                            Value::ChronoDate(
+                                row.try_get::<Option<NaiveDate>, _>(c.ordinal())
+                                    .expect("Failed to get date")
+                                    .map(Box::new),
+                            )
+                        }
+                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
+                        "DATE" => {
+                            use time::Date;
+                            Value::TimeDate(
+                                row.try_get::<Option<Date>, _>(c.ordinal())
+                                    .expect("Failed to get date")
+                                    .map(Box::new),
+                            )
+                        }
 
                         #[cfg(feature = "with-chrono")]
-                        "TIME" => Value::ChronoTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get time"),
-                        ))),
+                        "TIME" => {
+                            use chrono::NaiveTime;
+                            Value::ChronoTime(
+                                row.try_get::<Option<NaiveTime>, _>(c.ordinal())
+                                    .expect("Failed to get time")
+                                    .map(Box::new),
+                            )
+                        }
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIME" => Value::TimeTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get time"),
-                        ))),
+                        "TIME" => {
+                            use time::Time;
+                            Value::TimeTime(
+                                row.try_get::<Option<Time>, _>(c.ordinal())
+                                    .expect("Failed to get time")
+                                    .map(Box::new),
+                            )
+                        }
 
                         _ => unreachable!("Unknown column type: {}", c.type_info().name()),
                     },
