@@ -14,5 +14,5 @@ pub struct Model {
     pub title: Option<String>,
     pub content: Option<String>,
     #[sea_orm(has_many)]
-    pub files: HasOne<super::files::Entity>,
+    pub files: HasMany<super::files::Entity>,
 }
