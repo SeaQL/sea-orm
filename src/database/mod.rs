@@ -65,11 +65,11 @@ pub struct ConnectOptions {
     pub(crate) connect_timeout: Option<Duration>,
     /// Maximum idle time for a particular connection to prevent
     /// network resource exhaustion
-    pub(crate) idle_timeout: Option<Duration>,
+    pub(crate) idle_timeout: Option<Option<Duration>>,
     /// Set the maximum amount of time to spend waiting for acquiring a connection
     pub(crate) acquire_timeout: Option<Duration>,
     /// Set the maximum lifetime of individual connections
-    pub(crate) max_lifetime: Option<Duration>,
+    pub(crate) max_lifetime: Option<Option<Duration>>,
     /// Enable SQLx statement logging
     pub(crate) sqlx_logging: bool,
     /// SQLx statement logging level (ignored if `sqlx_logging` is false)
@@ -253,14 +253,17 @@ impl ConnectOptions {
         self.connect_timeout
     }
 
-    /// Set the idle duration before closing a connection
-    pub fn idle_timeout(&mut self, value: Duration) -> &mut Self {
-        self.idle_timeout = Some(value);
+    /// Set the idle duration before closing a connection.
+    pub fn idle_timeout<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<Option<Duration>>,
+    {
+        self.idle_timeout = Some(value.into());
         self
     }
 
     /// Get the idle duration before closing a connection, if set
-    pub fn get_idle_timeout(&self) -> Option<Duration> {
+    pub fn get_idle_timeout(&self) -> Option<Option<Duration>> {
         self.idle_timeout
     }
 
@@ -275,14 +278,17 @@ impl ConnectOptions {
         self.acquire_timeout
     }
 
-    /// Set the maximum lifetime of individual connections
-    pub fn max_lifetime(&mut self, lifetime: Duration) -> &mut Self {
-        self.max_lifetime = Some(lifetime);
+    /// Set the maximum lifetime of individual connections.
+    pub fn max_lifetime<T>(&mut self, lifetime: T) -> &mut Self
+    where
+        T: Into<Option<Duration>>,
+    {
+        self.max_lifetime = Some(lifetime.into());
         self
     }
 
     /// Get the maximum lifetime of individual connections, if set
-    pub fn get_max_lifetime(&self) -> Option<Duration> {
+    pub fn get_max_lifetime(&self) -> Option<Option<Duration>> {
         self.max_lifetime
     }
 
