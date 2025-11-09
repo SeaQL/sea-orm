@@ -6,7 +6,7 @@ use std::time::SystemTime;
 use tracing::info;
 
 use sea_orm::sea_query::{
-    self, Alias, Expr, ExprTrait, ForeignKey, IntoIden, JoinType, Order, Query, SelectStatement,
+    self, Alias, Expr, ExprTrait, ForeignKey, IntoIden, Order, Query, SelectStatement,
     SimpleExpr, Table, extension::postgres::Type,
 };
 use sea_orm::{
@@ -555,9 +555,18 @@ where
 #[derive(DeriveIden)]
 enum PgType {
     Table,
+    Oid,
     Typname,
     Typnamespace,
     Typelem,
+}
+
+#[derive(DeriveIden)]
+enum PgDepend {
+    Table,
+    Objid,
+    Deptype,
+    Refclassid,
 }
 
 #[derive(DeriveIden)]
@@ -571,21 +580,28 @@ fn query_pg_types<C>(db: &C) -> SelectStatement
 where
     C: ConnectionTrait,
 {
-    let mut stmt = Query::select();
-    stmt.column(PgType::Typname)
+    Query::select()
+        .column(PgType::Typname)
         .from(PgType::Table)
-        .join(
-            JoinType::LeftJoin,
+        .left_join(
             PgNamespace::Table,
             Expr::col((PgNamespace::Table, PgNamespace::Oid))
                 .equals((PgType::Table, PgType::Typnamespace)),
         )
-        .cond_where(
-            Condition::all()
-                .add(get_current_schema(db).equals((PgNamespace::Table, PgNamespace::Nspname)))
-                .add(Expr::col((PgType::Table, PgType::Typelem)).eq(0)),
-        );
-    stmt
+        .left_join(
+            PgDepend::Table,
+            Expr::col((PgDepend::Table, PgDepend::Objid))
+                .equals((PgType::Table, PgType::Oid))
+                .and(
+                    Expr::col((PgDepend::Table, PgDepend::Refclassid))
+                        .eq(Expr::cust("'pg_extension'::regclass::oid")),
+                )
+                .and(Expr::col((PgDepend::Table, PgDepend::Deptype)).eq(Expr::cust("'e'"))),
+        )
+        .and_where(get_current_schema(db).equals((PgNamespace::Table, PgNamespace::Nspname)))
+        .and_where(Expr::col((PgType::Table, PgType::Typelem)).eq(0))
+        .and_where(Expr::col((PgDepend::Table, PgDepend::Objid)).is_null())
+        .take()
 }
 
 trait QueryTable {
