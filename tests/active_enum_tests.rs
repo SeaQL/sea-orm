@@ -15,7 +15,7 @@ use sea_orm::{
 };
 
 #[sea_orm_macros::test]
-async fn main() -> Result<(), DbErr> {
+async fn active_enum_tests() -> Result<(), DbErr> {
     let ctx = TestContext::new("active_enum_tests").await;
     create_tables(&ctx.db).await?;
     insert_active_enum(&ctx.db).await?;
@@ -33,8 +33,8 @@ async fn main() -> Result<(), DbErr> {
 }
 
 #[sea_orm_macros::test]
-async fn more() -> Result<(), DbErr> {
-    let ctx = TestContext::new("active_enum_test_schema_sync").await;
+async fn active_enum_schema_sync_test() -> Result<(), DbErr> {
+    let ctx = TestContext::new("active_enum_schema_sync_test").await;
     let db = &ctx.db;
 
     let mut schema_builder = db.get_schema_builder().register(active_enum::Entity);
