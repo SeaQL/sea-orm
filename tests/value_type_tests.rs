@@ -16,8 +16,11 @@ pub use common::{
     setup::*,
 };
 use pretty_assertions::assert_eq;
-use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
-use sea_query::{ArrayType, ColumnType, Value, ValueType, ValueTypeErr};
+use sea_orm::{
+    DatabaseConnection, DbBackend, QuerySelect,
+    entity::{prelude::*, *},
+};
+use sea_query::{ArrayType, ColumnType, PostgresQueryBuilder, Value, ValueType, ValueTypeErr};
 
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
@@ -84,6 +87,16 @@ pub async fn insert_value_postgres(db: &DatabaseConnection) -> Result<(), DbErr>
     };
     let result = model.clone().into_active_model().insert(db).await?;
     assert_eq!(result, model);
+
+    let query = sea_query::Query::select()
+        .from(value_type_pg::Entity)
+        .column((value_type_pg::Entity, value_type_pg::Column::Number))
+        .and_where(value_type_pg::Column::Id.eq(1))
+        .take();
+
+    let row = db.query_one(&query).await?.unwrap();
+    let value: u32 = row.try_get("", "number").unwrap();
+    assert_eq!(value, 48u32);
 
     Ok(())
 }
