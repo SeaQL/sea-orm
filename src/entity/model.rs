@@ -1,10 +1,10 @@
 use crate::{
-    ActiveModelBehavior, ActiveModelTrait, ConnectionTrait, DbErr, DeleteResult, EntityTrait,
-    IntoActiveModel, Linked, QueryFilter, QueryResult, Related, Select, SelectModel, SelectorRaw,
-    Statement, TryGetError,
+    find_linked_recursive, ActiveModelBehavior, ActiveModelTrait, ConnectionTrait, DbErr,
+    DeleteResult, EntityTrait, IntoActiveModel, Linked, QueryFilter, QueryResult, Related, Select,
+    SelectModel, SelectorRaw, Statement, TryGetError,
 };
 use async_trait::async_trait;
-pub use sea_query::Value;
+pub use sea_query::{JoinType, Value};
 use std::fmt::Debug;
 
 /// The interface for Model, implemented by data structs
@@ -35,6 +35,18 @@ pub trait ModelTrait: Clone + Send + Debug {
     {
         let tbl_alias = &format!("r{}", l.link().len() - 1);
         l.find_linked().belongs_to_tbl_alias(self, tbl_alias)
+    }
+
+    #[doc(hidden)]
+    /// Find linked Models with a recursive CTE for self-referencing relation chains
+    fn find_linked_recursive<L>(&self, l: L) -> Select<L::ToEntity>
+    where
+        L: Linked<FromEntity = Self::Entity, ToEntity = Self::Entity>,
+    {
+        // Have to do this because L is not Clone
+        let link = l.link();
+        let initial_query = self.find_linked(l);
+        find_linked_recursive(initial_query, link)
     }
 
     /// Delete a model
