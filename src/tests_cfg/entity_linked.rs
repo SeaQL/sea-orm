@@ -59,29 +59,6 @@ impl Linked for CheeseCakeToFillingVendor {
 }
 
 #[derive(Debug)]
-pub struct JoinWithoutReverse;
-
-impl Linked for JoinWithoutReverse {
-    type FromEntity = super::cake::Entity;
-
-    type ToEntity = super::vendor::Entity;
-
-    fn link(&self) -> Vec<RelationDef> {
-        vec![
-            super::cake_filling::Relation::Cake
-                .def()
-                .on_condition(|left, _right| {
-                    Expr::col((left, super::cake::Column::Name))
-                        .like("%cheese%")
-                        .into_condition()
-                }),
-            super::cake_filling::Relation::Filling.def(),
-            super::filling::Relation::Vendor.def(),
-        ]
-    }
-}
-
-#[derive(Debug)]
 pub struct CakeToCakeViaFilling;
 
 impl Linked for CakeToCakeViaFilling {
