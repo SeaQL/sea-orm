@@ -684,7 +684,8 @@ mod tests {
                 [
                     r#"SELECT "active_enum_child"."id", "active_enum_child"."parent_id", "active_enum_child"."category", "active_enum_child"."color", "active_enum_child"."tea""#,
                     r#"FROM "active_enum_child""#,
-                    r#"WHERE "active_enum_child"."parent_id" = 1"#,
+                    r#"INNER JOIN "active_enum" ON "active_enum"."id" = "active_enum_child"."parent_id""#,
+                    r#"WHERE "active_enum"."id" = 1"#,
                 ]
                 .join(" ")
             );
@@ -693,7 +694,8 @@ mod tests {
                 [
                     "SELECT `active_enum_child`.`id`, `active_enum_child`.`parent_id`, `active_enum_child`.`category`, `active_enum_child`.`color`, `active_enum_child`.`tea`",
                     "FROM `active_enum_child`",
-                    "WHERE `active_enum_child`.`parent_id` = 1",
+                    "INNER JOIN `active_enum` ON `active_enum`.`id` = `active_enum_child`.`parent_id`",
+                    "WHERE `active_enum`.`id` = 1",
                 ]
                 .join(" ")
             );
@@ -704,7 +706,8 @@ mod tests {
             [
                 r#"SELECT "active_enum_child"."id", "active_enum_child"."parent_id", "active_enum_child"."category", "active_enum_child"."color", CAST("active_enum_child"."tea" AS "text")"#,
                 r#"FROM "public"."active_enum_child""#,
-                r#"WHERE "active_enum_child"."parent_id" = 1"#,
+                r#"INNER JOIN "public"."active_enum" ON "active_enum"."id" = "active_enum_child"."parent_id""#,
+                r#"WHERE "active_enum"."id" = 1"#,
             ]
             .join(" ")
         );
@@ -768,7 +771,8 @@ mod tests {
                 [
                     r#"SELECT "active_enum_child"."id", "active_enum_child"."parent_id", "active_enum_child"."category", "active_enum_child"."color", "active_enum_child"."tea""#,
                     r#"FROM "active_enum_child""#,
-                    r#"WHERE "active_enum_child"."parent_id" = 1"#,
+                    r#"INNER JOIN "active_enum" AS "r0" ON "r0"."id" = "active_enum_child"."parent_id""#,
+                    r#"WHERE "r0"."id" = 1"#,
                 ]
                 .join(" ")
             );
@@ -777,7 +781,8 @@ mod tests {
                 [
                     "SELECT `active_enum_child`.`id`, `active_enum_child`.`parent_id`, `active_enum_child`.`category`, `active_enum_child`.`color`, `active_enum_child`.`tea`",
                     "FROM `active_enum_child`",
-                    "WHERE `active_enum_child`.`parent_id` = 1",
+                    "INNER JOIN `active_enum` AS `r0` ON `r0`.`id` = `active_enum_child`.`parent_id`",
+                    "WHERE `r0`.`id` = 1",
                 ]
                 .join(" ")
             );
@@ -788,7 +793,8 @@ mod tests {
             [
                 r#"SELECT "active_enum_child"."id", "active_enum_child"."parent_id", "active_enum_child"."category", "active_enum_child"."color", CAST("active_enum_child"."tea" AS "text")"#,
                 r#"FROM "public"."active_enum_child""#,
-                r#"WHERE "active_enum_child"."parent_id" = 1"#,
+                r#"INNER JOIN "public"."active_enum" AS "r0" ON "r0"."id" = "active_enum_child"."parent_id""#,
+                r#"WHERE "r0"."id" = 1"#,
             ]
             .join(" ")
         );
@@ -804,7 +810,7 @@ mod tests {
                     r#"SELECT "active_enum"."id" AS "A_id", "active_enum"."category" AS "A_category", "active_enum"."color" AS "A_color", "active_enum"."tea" AS "A_tea","#,
                     r#""r0"."id" AS "B_id", "r0"."parent_id" AS "B_parent_id", "r0"."category" AS "B_category", "r0"."color" AS "B_color", "r0"."tea" AS "B_tea""#,
                     r#"FROM "active_enum""#,
-                    r#"LEFT JOIN "active_enum_child" AS "r0" ON "r0"."parent_id" = "active_enum"."id""#,
+                    r#"LEFT JOIN "active_enum_child" AS "r0" ON "active_enum"."id" = "r0"."parent_id""#,
                 ]
                 .join(" ")
             );
@@ -816,7 +822,7 @@ mod tests {
                     "SELECT `active_enum`.`id` AS `A_id`, `active_enum`.`category` AS `A_category`, `active_enum`.`color` AS `A_color`, `active_enum`.`tea` AS `A_tea`,",
                     "`r0`.`id` AS `B_id`, `r0`.`parent_id` AS `B_parent_id`, `r0`.`category` AS `B_category`, `r0`.`color` AS `B_color`, `r0`.`tea` AS `B_tea`",
                     "FROM `active_enum`",
-                    "LEFT JOIN `active_enum_child` AS `r0` ON `r0`.`parent_id` = `active_enum`.`id`",
+                    "LEFT JOIN `active_enum_child` AS `r0` ON `active_enum`.`id` = `r0`.`parent_id`",
                 ]
                 .join(" ")
             );
@@ -830,7 +836,7 @@ mod tests {
                 r#"SELECT "active_enum"."id" AS "A_id", "active_enum"."category" AS "A_category", "active_enum"."color" AS "A_color", CAST("active_enum"."tea" AS "text") AS "A_tea","#,
                 r#""r0"."id" AS "B_id", "r0"."parent_id" AS "B_parent_id", "r0"."category" AS "B_category", "r0"."color" AS "B_color", CAST("r0"."tea" AS "text") AS "B_tea""#,
                 r#"FROM "public"."active_enum""#,
-                r#"LEFT JOIN "public"."active_enum_child" AS "r0" ON "r0"."parent_id" = "active_enum"."id""#,
+                r#"LEFT JOIN "public"."active_enum_child" AS "r0" ON "active_enum"."id" = "r0"."parent_id""#,
             ]
             .join(" ")
         );
@@ -853,7 +859,8 @@ mod tests {
                 [
                     r#"SELECT "active_enum"."id", "active_enum"."category", "active_enum"."color", "active_enum"."tea""#,
                     r#"FROM "active_enum""#,
-                    r#"WHERE "active_enum"."id" = 2"#,
+                    r#"INNER JOIN "active_enum_child" ON "active_enum_child"."parent_id" = "active_enum"."id""#,
+                    r#"WHERE "active_enum_child"."id" = 1"#,
                 ]
                 .join(" ")
             );
@@ -862,7 +869,8 @@ mod tests {
                 [
                     "SELECT `active_enum`.`id`, `active_enum`.`category`, `active_enum`.`color`, `active_enum`.`tea`",
                     "FROM `active_enum`",
-                    "WHERE `active_enum`.`id` = 2",
+                    "INNER JOIN `active_enum_child` ON `active_enum_child`.`parent_id` = `active_enum`.`id`",
+                    "WHERE `active_enum_child`.`id` = 1",
                 ]
                 .join(" ")
             );
@@ -873,7 +881,8 @@ mod tests {
             [
                 r#"SELECT "active_enum"."id", "active_enum"."category", "active_enum"."color", CAST("active_enum"."tea" AS "text")"#,
                 r#"FROM "public"."active_enum""#,
-                r#"WHERE "active_enum"."id" = 2"#,
+                r#"INNER JOIN "public"."active_enum_child" ON "active_enum_child"."parent_id" = "active_enum"."id""#,
+                r#"WHERE "active_enum_child"."id" = 1"#,
             ]
             .join(" ")
         );
@@ -938,7 +947,8 @@ mod tests {
                 [
                     r#"SELECT "active_enum"."id", "active_enum"."category", "active_enum"."color", "active_enum"."tea""#,
                     r#"FROM "active_enum""#,
-                    r#"WHERE "active_enum"."id" = 2"#,
+                    r#"INNER JOIN "active_enum_child" AS "r0" ON "r0"."parent_id" = "active_enum"."id""#,
+                    r#"WHERE "r0"."id" = 1"#,
                 ]
                 .join(" ")
             );
@@ -947,7 +957,8 @@ mod tests {
                 [
                     "SELECT `active_enum`.`id`, `active_enum`.`category`, `active_enum`.`color`, `active_enum`.`tea`",
                     "FROM `active_enum`",
-                    "WHERE `active_enum`.`id` = 2",
+                    "INNER JOIN `active_enum_child` AS `r0` ON `r0`.`parent_id` = `active_enum`.`id`",
+                    "WHERE `r0`.`id` = 1",
                 ]
                 .join(" ")
             );
@@ -958,7 +969,8 @@ mod tests {
             [
                 r#"SELECT "active_enum"."id", "active_enum"."category", "active_enum"."color", CAST("active_enum"."tea" AS "text")"#,
                 r#"FROM "public"."active_enum""#,
-                r#"WHERE "active_enum"."id" = 2"#,
+                r#"INNER JOIN "public"."active_enum_child" AS "r0" ON "r0"."parent_id" = "active_enum"."id""#,
+                r#"WHERE "r0"."id" = 1"#,
             ]
             .join(" ")
         );
@@ -974,7 +986,7 @@ mod tests {
                     r#"SELECT "active_enum_child"."id" AS "A_id", "active_enum_child"."parent_id" AS "A_parent_id", "active_enum_child"."category" AS "A_category", "active_enum_child"."color" AS "A_color", "active_enum_child"."tea" AS "A_tea","#,
                     r#""r0"."id" AS "B_id", "r0"."category" AS "B_category", "r0"."color" AS "B_color", "r0"."tea" AS "B_tea""#,
                     r#"FROM "active_enum_child""#,
-                    r#"LEFT JOIN "active_enum" AS "r0" ON "r0"."id" = "active_enum_child"."parent_id""#,
+                    r#"LEFT JOIN "active_enum" AS "r0" ON "active_enum_child"."parent_id" = "r0"."id""#,
                 ]
                 .join(" ")
             );
@@ -986,7 +998,7 @@ mod tests {
                     "SELECT `active_enum_child`.`id` AS `A_id`, `active_enum_child`.`parent_id` AS `A_parent_id`, `active_enum_child`.`category` AS `A_category`, `active_enum_child`.`color` AS `A_color`, `active_enum_child`.`tea` AS `A_tea`,",
                     "`r0`.`id` AS `B_id`, `r0`.`category` AS `B_category`, `r0`.`color` AS `B_color`, `r0`.`tea` AS `B_tea`",
                     "FROM `active_enum_child`",
-                    "LEFT JOIN `active_enum` AS `r0` ON `r0`.`id` = `active_enum_child`.`parent_id`",
+                    "LEFT JOIN `active_enum` AS `r0` ON `active_enum_child`.`parent_id` = `r0`.`id`",
                 ]
                 .join(" ")
             );
@@ -1000,7 +1012,7 @@ mod tests {
                 r#"SELECT "active_enum_child"."id" AS "A_id", "active_enum_child"."parent_id" AS "A_parent_id", "active_enum_child"."category" AS "A_category", "active_enum_child"."color" AS "A_color", CAST("active_enum_child"."tea" AS "text") AS "A_tea","#,
                 r#""r0"."id" AS "B_id", "r0"."category" AS "B_category", "r0"."color" AS "B_color", CAST("r0"."tea" AS "text") AS "B_tea""#,
                 r#"FROM "public"."active_enum_child""#,
-                r#"LEFT JOIN "public"."active_enum" AS "r0" ON "r0"."id" = "active_enum_child"."parent_id""#,
+                r#"LEFT JOIN "public"."active_enum" AS "r0" ON "active_enum_child"."parent_id" = "r0"."id""#,
             ]
             .join(" ")
         );

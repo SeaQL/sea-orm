@@ -80,21 +80,3 @@ impl Linked for JoinWithoutReverse {
         ]
     }
 }
-
-#[derive(Debug)]
-pub struct CakeToCakeViaFilling;
-
-impl Linked for CakeToCakeViaFilling {
-    type FromEntity = super::cake::Entity;
-
-    type ToEntity = super::cake::Entity;
-
-    fn link(&self) -> Vec<RelationDef> {
-        vec![
-            super::cake_filling::Relation::Cake.def().rev(),
-            super::cake_filling::Relation::Filling.def(),
-            super::cake_filling::Relation::Filling.def().rev(),
-            super::cake_filling::Relation::Cake.def(),
-        ]
-    }
-}

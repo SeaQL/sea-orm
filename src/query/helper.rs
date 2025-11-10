@@ -857,24 +857,6 @@ pub trait QueryFilter: Sized {
         }
         self
     }
-
-    /// Perform a check to determine table belongs to a Model through a relation
-    fn find_by_relation<M>(mut self, rel: RelationDef, model: &M, tbl_alias: Option<String>) -> Self
-    where
-        M: ModelTrait,
-    {
-        let tbl_alias = tbl_alias.unwrap_or_else(|| unpack_table_ref(&rel.to_tbl).to_string());
-        for (from_col, to_col) in rel.from_col.into_iter().zip(rel.to_col.into_iter()) {
-            let column = from_col
-                .to_string()
-                .parse()
-                .ok()
-                .expect("RelationDef should refer to valid column name");
-            let expr = Expr::col((Alias::new(&tbl_alias), to_col)).eq(model.get(column));
-            self = self.filter(expr);
-        }
-        self
-    }
 }
 
 pub(crate) fn join_tbl_on_condition(
