@@ -2,7 +2,7 @@ use crate::{
     ActiveModelBehavior, ActiveModelTrait, ColumnTrait, ConnectionTrait, DbErr, DeleteResult,
     EntityTrait, IntoActiveModel, Iterable, Linked, PrimaryKeyArity, PrimaryKeyToColumn,
     PrimaryKeyTrait, QueryFilter, QueryResult, Related, Select, SelectModel, SelectorRaw,
-    Statement, TryGetError,
+    Statement, TryGetError, find_linked_recursive,
 };
 use async_trait::async_trait;
 pub use sea_query::Value;
@@ -46,6 +46,18 @@ pub trait ModelTrait: Clone + Send + Debug {
     {
         let tbl_alias = &format!("r{}", l.link().len() - 1);
         l.find_linked().belongs_to_tbl_alias(self, tbl_alias)
+    }
+
+    #[doc(hidden)]
+    /// Find linked Models with a recursive CTE for self-referencing relation chains
+    fn find_linked_recursive<L>(&self, l: L) -> Select<L::ToEntity>
+    where
+        L: Linked<FromEntity = Self::Entity, ToEntity = Self::Entity>,
+    {
+        // Have to do this because L is not Clone
+        let link = l.link();
+        let initial_query = self.find_linked(l);
+        find_linked_recursive(initial_query, link)
     }
 
     /// Delete a model
