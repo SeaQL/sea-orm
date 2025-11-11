@@ -4,7 +4,7 @@ use crate::{
     SelectModel, SelectorRaw, Statement, TryGetError,
 };
 use async_trait::async_trait;
-pub use sea_query::{JoinType, Value};
+pub use sea_query::Value;
 use std::fmt::Debug;
 
 /// The interface for Model, implemented by data structs
