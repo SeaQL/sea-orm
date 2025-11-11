@@ -17,6 +17,7 @@ where
 {
     pub(crate) query: UpdateStatement,
     pub(crate) model: A,
+    pub(crate) persistent: Option<bool>,
 }
 
 /// Defines an UPDATE operation on multiple ActiveModels
@@ -27,6 +28,7 @@ where
 {
     pub(crate) query: UpdateStatement,
     pub(crate) entity: PhantomData<E>,
+    pub(crate) persistent: Option<bool>,
 }
 
 impl Update {
@@ -55,6 +57,7 @@ impl Update {
                 .table(A::Entity::default().table_ref())
                 .to_owned(),
             model,
+            persistent: None,
         }
         .prepare_filters()
         .prepare_values()
@@ -81,6 +84,7 @@ impl Update {
         UpdateMany {
             query: UpdateStatement::new().table(entity.table_ref()).to_owned(),
             entity: PhantomData,
+            persistent: None,
         }
     }
 }
@@ -115,6 +119,24 @@ where
                 ActiveValue::Unchanged(_) | ActiveValue::NotSet => {}
             }
         }
+        self
+    }
+
+    /// Set whether to use prepared statement caching
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// #
+    /// let res = Update::one(cake::ActiveModel {
+    ///     id: ActiveValue::set(1),
+    ///     name: ActiveValue::set("Apple Pie".to_owned()),
+    /// })
+    /// .persistent(false);
+    /// ```
+    pub fn persistent(mut self, value: bool) -> Self {
+        self.persistent = Some(value);
         self
     }
 }
@@ -158,6 +180,16 @@ where
     fn into_query(self) -> UpdateStatement {
         self.query
     }
+
+    fn build(&self, db_backend: crate::DbBackend) -> crate::Statement {
+        let query_builder = db_backend.get_query_builder();
+        let mut statement = crate::Statement::from_string_values_tuple(
+            db_backend,
+            self.as_query().build_any(query_builder.as_ref()),
+        );
+        statement.persistent = self.persistent;
+        statement
+    }
 }
 
 impl<E> QueryTrait for UpdateMany<E>
@@ -176,6 +208,16 @@ where
 
     fn into_query(self) -> UpdateStatement {
         self.query
+    }
+
+    fn build(&self, db_backend: crate::DbBackend) -> crate::Statement {
+        let query_builder = db_backend.get_query_builder();
+        let mut statement = crate::Statement::from_string_values_tuple(
+            db_backend,
+            self.as_query().build_any(query_builder.as_ref()),
+        );
+        statement.persistent = self.persistent;
+        statement
     }
 }
 
@@ -206,6 +248,22 @@ where
         T: IntoIden,
     {
         self.query.value(col, expr);
+        self
+    }
+
+    /// Set whether to use prepared statement caching
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use sea_orm::{entity::*, query::*, sea_query::Expr, tests_cfg::fruit, DbBackend};
+    /// #
+    /// let res = Update::many(fruit::Entity)
+    ///     .col_expr(fruit::Column::CakeId, Expr::value(1))
+    ///     .persistent(false);
+    /// ```
+    pub fn persistent(mut self, value: bool) -> Self {
+        self.persistent = Some(value);
         self
     }
 }

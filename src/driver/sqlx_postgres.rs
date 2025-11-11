@@ -307,7 +307,11 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Postgres, S
         .values
         .as_ref()
         .map_or(Values(Vec::new()), |values| values.clone());
-    sqlx::query_with(&stmt.sql, SqlxValues(values))
+    let mut query = sqlx::query_with(&stmt.sql, SqlxValues(values));
+    if let Some(persistent) = stmt.persistent {
+        query = query.persistent(persistent);
+    }
+    query
 }
 
 pub(crate) async fn set_transaction_config(
@@ -320,6 +324,7 @@ pub(crate) async fn set_transaction_config(
             sql: format!("SET TRANSACTION ISOLATION LEVEL {isolation_level}"),
             values: None,
             db_backend: DbBackend::Postgres,
+            persistent: None,
         };
         let query = sqlx_query(&stmt);
         conn.execute(query).await.map_err(sqlx_error_to_exec_err)?;
@@ -329,6 +334,7 @@ pub(crate) async fn set_transaction_config(
             sql: format!("SET TRANSACTION {access_mode}"),
             values: None,
             db_backend: DbBackend::Postgres,
+            persistent: None,
         };
         let query = sqlx_query(&stmt);
         conn.execute(query).await.map_err(sqlx_error_to_exec_err)?;
