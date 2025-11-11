@@ -681,7 +681,18 @@ fn delete_by_id<T>(values: T) -> ValidatedDeleteOne<Self> // new
 * Upgraded Rust Edition to 2024 https://github.com/SeaQL/sea-orm/pull/2596
 * Upgraded `strum` to `0.27`
 
-## 1.1.17 - pending
+## 1.1.19 - 2025-11-11
+
+### Enhancements
+
+* Add `find_linked_recursive` method to ModelTrait https://github.com/SeaQL/sea-orm/pull/2480
+* Skip drop extension type in fresh https://github.com/SeaQL/sea-orm/pull/2716
+
+### Bug Fixes
+
+* Handle null values in `from_sqlx_*_row_to_proxy_row` functions https://github.com/SeaQL/sea-orm/pull/2744
+
+## 1.1.17 - 2025-10-09
 
 ### New Features
 
@@ -693,6 +704,7 @@ opt.map_sqlx_postgres_opts(|pg_opt: PgConnectOptions| {
 });
 ```
 * Added `mariadb-use-returning` to use returning syntax for MariaDB https://github.com/SeaQL/sea-orm/pull/2710
+* Released `sea-orm-rocket` 0.6 https://github.com/SeaQL/sea-orm/pull/2732
 
 ## 1.1.16 - 2025-09-11
 
