@@ -1,3 +1,6 @@
+mod queries;
+use queries::*;
+
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::future::Future;
@@ -6,13 +9,11 @@ use std::time::SystemTime;
 use tracing::info;
 
 use sea_orm::sea_query::{
-    self, Alias, Expr, ExprTrait, ForeignKey, IntoIden, Order, Query, SelectStatement, SimpleExpr,
-    Table, extension::postgres::Type,
+    Alias, Expr, ExprTrait, ForeignKey, IntoIden, Order, Query, Table, extension::postgres::Type,
 };
 use sea_orm::{
-    ActiveModelTrait, ActiveValue, Condition, ConnectionTrait, DbBackend, DbErr, DeriveIden,
-    DynIden, EntityTrait, FromQueryResult, Iterable, QueryFilter, Schema, Statement,
-    TransactionTrait,
+    ActiveValue, ConnectionTrait, DbBackend, DbErr, DynIden, EntityTrait, FromQueryResult,
+    Iterable, QueryFilter, Schema, Statement, TransactionTrait,
 };
 #[allow(unused_imports)]
 use sea_schema::probe::SchemaProbe;
@@ -83,15 +84,7 @@ pub trait MigratorTrait: Send {
         C: ConnectionTrait,
     {
         Self::install(db).await?;
-        let stmt = Query::select()
-            .table_name(Self::migration_table_name())
-            .columns(seaql_migrations::Column::iter().map(IntoIden::into_iden))
-            .order_by(seaql_migrations::Column::Version, Order::Asc)
-            .to_owned();
-        let builder = db.get_database_backend();
-        seaql_migrations::Model::find_by_statement(builder.build(&stmt))
-            .all(db)
-            .await
+        get_migration_models(db, Self::migration_table_name()).await
     }
 
     /// Get list of migrations with status
@@ -100,37 +93,10 @@ pub trait MigratorTrait: Send {
         C: ConnectionTrait,
     {
         Self::install(db).await?;
-        let mut migration_files = Self::get_migration_files();
-        let migration_models = Self::get_migration_models(db).await?;
-
-        let migration_in_db: HashSet<String> = migration_models
-            .into_iter()
-            .map(|model| model.version)
-            .collect();
-        let migration_in_fs: HashSet<String> = migration_files
-            .iter()
-            .map(|file| file.migration.name().to_string())
-            .collect();
-
-        let pending_migrations = &migration_in_fs - &migration_in_db;
-        for migration_file in migration_files.iter_mut() {
-            if !pending_migrations.contains(migration_file.migration.name()) {
-                migration_file.status = MigrationStatus::Applied;
-            }
-        }
-
-        let missing_migrations_in_fs = &migration_in_db - &migration_in_fs;
-        let errors: Vec<String> = missing_migrations_in_fs
-            .iter()
-            .map(|missing_migration| {
-                format!("Migration file of version '{missing_migration}' is missing, this migration has been applied but its file is missing")
-            }).collect();
-
-        if !errors.is_empty() {
-            Err(DbErr::Custom(errors.join("\n")))
-        } else {
-            Ok(migration_files)
-        }
+        get_migration_with_status(
+            Self::get_migration_files(),
+            Self::get_migration_models(db).await?,
+        )
     }
 
     /// Get list of pending migrations
@@ -164,14 +130,7 @@ pub trait MigratorTrait: Send {
     where
         C: ConnectionTrait,
     {
-        let builder = db.get_database_backend();
-        let table_name = Self::migration_table_name();
-        let schema = Schema::new(builder);
-        let mut stmt = schema
-            .create_table_from_entity(seaql_migrations::Entity)
-            .table_name(table_name);
-        stmt.if_not_exists();
-        db.execute(&stmt).await.map(|_| ())
+        install(db, Self::migration_table_name()).await
     }
 
     /// Check the status of all migrations
@@ -226,11 +185,7 @@ pub trait MigratorTrait: Send {
                 exec_down::<Self>(manager, None).await?;
 
                 // Then drop the migration table itself
-                let mut stmt = Table::drop();
-                stmt.table(Self::migration_table_name())
-                    .if_exists()
-                    .cascade();
-                manager.drop_table(stmt).await?;
+                uninstall(manager, Self::migration_table_name()).await?;
 
                 Ok(())
             })
@@ -245,14 +200,7 @@ pub trait MigratorTrait: Send {
         C: IntoSchemaManagerConnection<'c>,
     {
         exec_with_connection::<'_, _, _>(db, move |manager| {
-            Box::pin(async move {
-                let mut stmt = Table::drop();
-                stmt.table(Self::migration_table_name())
-                    .if_exists()
-                    .cascade();
-                manager.drop_table(stmt).await?;
-                Ok(())
-            })
+            Box::pin(uninstall(manager, Self::migration_table_name()))
         })
         .await
     }
@@ -277,6 +225,60 @@ pub trait MigratorTrait: Send {
             Box::pin(async move { exec_down::<Self>(manager, steps).await })
         })
         .await
+    }
+}
+
+async fn get_migration_models<C>(
+    db: &C,
+    migration_table_name: DynIden,
+) -> Result<Vec<seaql_migrations::Model>, DbErr>
+where
+    C: ConnectionTrait,
+{
+    let stmt = Query::select()
+        .table_name(migration_table_name)
+        .columns(seaql_migrations::Column::iter().map(IntoIden::into_iden))
+        .order_by(seaql_migrations::Column::Version, Order::Asc)
+        .to_owned();
+    let builder = db.get_database_backend();
+    seaql_migrations::Model::find_by_statement(builder.build(&stmt))
+        .all(db)
+        .await
+}
+
+fn get_migration_with_status(
+    migration_files: Vec<Migration>,
+    migration_models: Vec<seaql_migrations::Model>,
+) -> Result<Vec<Migration>, DbErr> {
+    let mut migration_files = migration_files;
+
+    let migration_in_db: HashSet<String> = migration_models
+        .into_iter()
+        .map(|model| model.version)
+        .collect();
+    let migration_in_fs: HashSet<String> = migration_files
+        .iter()
+        .map(|file| file.migration.name().to_string())
+        .collect();
+
+    let pending_migrations = &migration_in_fs - &migration_in_db;
+    for migration_file in migration_files.iter_mut() {
+        if !pending_migrations.contains(migration_file.migration.name()) {
+            migration_file.status = MigrationStatus::Applied;
+        }
+    }
+
+    let missing_migrations_in_fs = &migration_in_db - &migration_in_fs;
+    let errors: Vec<String> = missing_migrations_in_fs
+            .iter()
+            .map(|missing_migration| {
+                format!("Migration file of version '{missing_migration}' is missing, this migration has been applied but its file is missing")
+            }).collect();
+
+    if !errors.is_empty() {
+        Err(DbErr::Custom(errors.join("\n")))
+    } else {
+        Ok(migration_files)
     }
 }
 
@@ -305,6 +307,30 @@ where
             ctx: "exec_with_connection",
         }),
     }
+}
+
+async fn install<C>(db: &C, migration_table_name: DynIden) -> Result<(), DbErr>
+where
+    C: ConnectionTrait,
+{
+    let builder = db.get_database_backend();
+    let schema = Schema::new(builder);
+    let mut stmt = schema
+        .create_table_from_entity(seaql_migrations::Entity)
+        .table_name(migration_table_name);
+    stmt.if_not_exists();
+    db.execute(&stmt).await?;
+    Ok(())
+}
+
+async fn uninstall(
+    manager: &SchemaManager<'_>,
+    migration_table_name: DynIden,
+) -> Result<(), DbErr> {
+    let mut stmt = Table::drop();
+    stmt.table(migration_table_name).if_exists().cascade();
+    manager.drop_table(stmt).await?;
+    Ok(())
 }
 
 async fn exec_fresh<M>(manager: &SchemaManager<'_>) -> Result<(), DbErr>
@@ -471,183 +497,4 @@ where
     }
 
     Ok(())
-}
-
-fn query_tables<C>(db: &C) -> Result<SelectStatement, DbErr>
-where
-    C: ConnectionTrait,
-{
-    match db.get_database_backend() {
-        #[cfg(feature = "sqlx-mysql")]
-        DbBackend::MySql => Ok(sea_schema::mysql::MySql.query_tables()),
-        #[cfg(feature = "sqlx-postgres")]
-        DbBackend::Postgres => Ok(sea_schema::postgres::Postgres.query_tables()),
-        #[cfg(feature = "sqlx-sqlite")]
-        DbBackend::Sqlite => Ok(sea_schema::sqlite::Sqlite.query_tables()),
-        #[allow(unreachable_patterns)]
-        other => Err(DbErr::BackendNotSupported {
-            db: other.as_str(),
-            ctx: "query_tables",
-        }),
-    }
-}
-
-// this function is only called after checking db backend, the panic is unreachable
-fn get_current_schema<C>(db: &C) -> SimpleExpr
-where
-    C: ConnectionTrait,
-{
-    match db.get_database_backend() {
-        #[cfg(feature = "sqlx-mysql")]
-        DbBackend::MySql => sea_schema::mysql::MySql::get_current_schema(),
-        #[cfg(feature = "sqlx-postgres")]
-        DbBackend::Postgres => sea_schema::postgres::Postgres::get_current_schema(),
-        #[cfg(feature = "sqlx-sqlite")]
-        DbBackend::Sqlite => sea_schema::sqlite::Sqlite::get_current_schema(),
-        #[allow(unreachable_patterns)]
-        other => panic!("{other:?} feature is off"),
-    }
-}
-
-#[derive(DeriveIden)]
-enum InformationSchema {
-    #[sea_orm(iden = "information_schema")]
-    Schema,
-    #[sea_orm(iden = "TABLE_NAME")]
-    TableName,
-    #[sea_orm(iden = "CONSTRAINT_NAME")]
-    ConstraintName,
-    TableConstraints,
-    TableSchema,
-    ConstraintType,
-}
-
-fn query_mysql_foreign_keys<C>(db: &C) -> SelectStatement
-where
-    C: ConnectionTrait,
-{
-    let mut stmt = Query::select();
-    stmt.columns([
-        InformationSchema::TableName,
-        InformationSchema::ConstraintName,
-    ])
-    .from((
-        InformationSchema::Schema,
-        InformationSchema::TableConstraints,
-    ))
-    .cond_where(
-        Condition::all()
-            .add(get_current_schema(db).equals((
-                InformationSchema::TableConstraints,
-                InformationSchema::TableSchema,
-            )))
-            .add(
-                Expr::col((
-                    InformationSchema::TableConstraints,
-                    InformationSchema::ConstraintType,
-                ))
-                .eq("FOREIGN KEY"),
-            ),
-    );
-    stmt
-}
-
-#[derive(DeriveIden)]
-enum PgType {
-    Table,
-    Oid,
-    Typname,
-    Typnamespace,
-    Typelem,
-}
-
-#[derive(DeriveIden)]
-enum PgDepend {
-    Table,
-    Objid,
-    Deptype,
-    Refclassid,
-}
-
-#[derive(DeriveIden)]
-enum PgNamespace {
-    Table,
-    Oid,
-    Nspname,
-}
-
-fn query_pg_types<C>(db: &C) -> SelectStatement
-where
-    C: ConnectionTrait,
-{
-    Query::select()
-        .column(PgType::Typname)
-        .from(PgType::Table)
-        .left_join(
-            PgNamespace::Table,
-            Expr::col((PgNamespace::Table, PgNamespace::Oid))
-                .equals((PgType::Table, PgType::Typnamespace)),
-        )
-        .left_join(
-            PgDepend::Table,
-            Expr::col((PgDepend::Table, PgDepend::Objid))
-                .equals((PgType::Table, PgType::Oid))
-                .and(
-                    Expr::col((PgDepend::Table, PgDepend::Refclassid))
-                        .eq(Expr::cust("'pg_extension'::regclass::oid")),
-                )
-                .and(Expr::col((PgDepend::Table, PgDepend::Deptype)).eq(Expr::cust("'e'"))),
-        )
-        .and_where(get_current_schema(db).equals((PgNamespace::Table, PgNamespace::Nspname)))
-        .and_where(Expr::col((PgType::Table, PgType::Typelem)).eq(0))
-        .and_where(Expr::col((PgDepend::Table, PgDepend::Objid)).is_null())
-        .take()
-}
-
-trait QueryTable {
-    type Statement;
-
-    fn table_name(self, table_name: DynIden) -> Self::Statement;
-}
-
-impl QueryTable for SelectStatement {
-    type Statement = SelectStatement;
-
-    fn table_name(mut self, table_name: DynIden) -> SelectStatement {
-        self.from(table_name);
-        self
-    }
-}
-
-impl QueryTable for sea_query::TableCreateStatement {
-    type Statement = sea_query::TableCreateStatement;
-
-    fn table_name(mut self, table_name: DynIden) -> sea_query::TableCreateStatement {
-        self.table(table_name);
-        self
-    }
-}
-
-impl<A> QueryTable for sea_orm::Insert<A>
-where
-    A: ActiveModelTrait,
-{
-    type Statement = sea_orm::Insert<A>;
-
-    fn table_name(mut self, table_name: DynIden) -> sea_orm::Insert<A> {
-        sea_orm::QueryTrait::query(&mut self).into_table(table_name);
-        self
-    }
-}
-
-impl<E> QueryTable for sea_orm::DeleteMany<E>
-where
-    E: EntityTrait,
-{
-    type Statement = sea_orm::DeleteMany<E>;
-
-    fn table_name(mut self, table_name: DynIden) -> sea_orm::DeleteMany<E> {
-        sea_orm::QueryTrait::query(&mut self).from_table(table_name);
-        self
-    }
 }
