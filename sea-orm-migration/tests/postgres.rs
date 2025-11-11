@@ -41,7 +41,7 @@ mod inner {
 
         // Check that the custom type was dropped and the extension's type was not
         let citext_exists: Option<i32> = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 DbBackend::Postgres,
                 r#"SELECT 1 as "value" FROM pg_type WHERE typname = 'citext'"#.to_owned(),
             ))
@@ -51,7 +51,7 @@ mod inner {
         assert_eq!(citext_exists, Some(1), "the citext type should still exist");
 
         let user_fruit_exists: Option<i32> = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 DbBackend::Postgres,
                 r#"SELECT 1 as "value" FROM pg_type WHERE typname = 'UserFruit'"#.to_owned(),
             ))
