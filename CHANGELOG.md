@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.1.19 - 2025-11-11
+
+### Enhancements
+
+* Add `find_linked_recursive` method to ModelTrait https://github.com/SeaQL/sea-orm/pull/2480
+* Skip drop extension type in fresh https://github.com/SeaQL/sea-orm/pull/2716
+
+### Bug Fixes
+
+* Handle null values in `from_sqlx_*_row_to_proxy_row` functions https://github.com/SeaQL/sea-orm/pull/2744
+
 ## 1.1.17 - 2025-10-09
 
 ### New Features
