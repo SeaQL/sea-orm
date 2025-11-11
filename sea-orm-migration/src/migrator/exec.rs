@@ -69,7 +69,7 @@ pub fn get_migration_with_status(
 macro_rules! exec_with_connection {
     ($db:ident, $fn:expr) => {{
         async {
-            let db = $db.into_schema_manager_connection();
+            let db = $db.into_database_executor();
 
             match db.get_database_backend() {
                 DbBackend::Postgres => {

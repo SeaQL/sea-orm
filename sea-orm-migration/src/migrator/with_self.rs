@@ -167,6 +167,109 @@ pub trait MigratorTraitSelf: Sized + Send + Sync {
     }
 }
 
+#[async_trait::async_trait]
+impl<M> MigratorTraitSelf for M
+where
+    M: super::MigratorTrait + Sized + Send + Sync,
+{
+    fn migrations(&self) -> Vec<Box<dyn MigrationTrait>> {
+        M::migrations()
+    }
+
+    fn migration_table_name(&self) -> DynIden {
+        M::migration_table_name()
+    }
+
+    fn get_migration_files(&self) -> Vec<Migration> {
+        M::get_migration_files()
+    }
+
+    async fn get_migration_models<C>(&self, db: &C) -> Result<Vec<seaql_migrations::Model>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        M::get_migration_models(db).await
+    }
+
+    async fn get_migration_with_status<C>(&self, db: &C) -> Result<Vec<Migration>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        M::get_migration_with_status(db).await
+    }
+
+    async fn get_pending_migrations<C>(&self, db: &C) -> Result<Vec<Migration>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        M::get_pending_migrations(db).await
+    }
+
+    async fn get_applied_migrations<C>(&self, db: &C) -> Result<Vec<Migration>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        M::get_applied_migrations(db).await
+    }
+
+    async fn install<C>(&self, db: &C) -> Result<(), DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        M::install(db).await
+    }
+
+    /// Check the status of all migrations
+    async fn status<C>(&self, db: &C) -> Result<(), DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        M::status(db).await
+    }
+
+    async fn fresh<'c, C>(&self, db: C) -> Result<(), DbErr>
+    where
+        C: IntoSchemaManagerConnection<'c>,
+    {
+        M::fresh(db).await
+    }
+
+    async fn refresh<'c, C>(&self, db: C) -> Result<(), DbErr>
+    where
+        C: IntoSchemaManagerConnection<'c>,
+    {
+        M::refresh(db).await
+    }
+
+    async fn reset<'c, C>(&self, db: C) -> Result<(), DbErr>
+    where
+        C: IntoSchemaManagerConnection<'c>,
+    {
+        M::reset(db).await
+    }
+
+    async fn uninstall<'c, C>(&self, db: C) -> Result<(), DbErr>
+    where
+        C: IntoSchemaManagerConnection<'c>,
+    {
+        M::uninstall(db).await
+    }
+
+    async fn up<'c, C>(&self, db: C, steps: Option<u32>) -> Result<(), DbErr>
+    where
+        C: IntoSchemaManagerConnection<'c>,
+    {
+        M::up(db, steps).await
+    }
+
+    async fn down<'c, C>(&self, db: C, steps: Option<u32>) -> Result<(), DbErr>
+    where
+        C: IntoSchemaManagerConnection<'c>,
+    {
+        M::down(db, steps).await
+    }
+}
+
 async fn exec_fresh<M>(migrator: &M, manager: &SchemaManager<'_>) -> Result<(), DbErr>
 where
     M: MigratorTraitSelf,
