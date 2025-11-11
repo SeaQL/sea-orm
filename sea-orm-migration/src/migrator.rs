@@ -340,6 +340,13 @@ where
     let db = manager.get_connection();
 
     M::install(db).await?;
+
+    drop_everything(db).await?;
+
+    exec_up::<M>(manager, None).await
+}
+
+async fn drop_everything<C: ConnectionTrait>(db: &C) -> Result<(), DbErr> {
     let db_backend = db.get_database_backend();
 
     // Temporarily disable the foreign key check
@@ -414,11 +421,10 @@ where
         info!("Foreign key check restored");
     }
 
-    // Reapply all migrations
-    exec_up::<M>(manager, None).await
+    Ok(())
 }
 
-async fn exec_up<M>(manager: &SchemaManager<'_>, mut steps: Option<u32>) -> Result<(), DbErr>
+async fn exec_up<M>(manager: &SchemaManager<'_>, steps: Option<u32>) -> Result<(), DbErr>
 where
     M: MigratorTrait + ?Sized,
 {
@@ -426,17 +432,33 @@ where
 
     M::install(db).await?;
 
+    exec_up_with(
+        manager,
+        steps,
+        M::get_pending_migrations(db).await?,
+        M::migration_table_name(),
+    )
+    .await
+}
+
+async fn exec_up_with(
+    manager: &SchemaManager<'_>,
+    mut steps: Option<u32>,
+    pending_migrations: Vec<Migration>,
+    migration_table_name: DynIden,
+) -> Result<(), DbErr> {
+    let db = manager.get_connection();
+
     if let Some(steps) = steps {
         info!("Applying {} pending migrations", steps);
     } else {
         info!("Applying all pending migrations");
     }
-
-    let migrations = M::get_pending_migrations(db).await?.into_iter();
-    if migrations.len() == 0 {
+    if pending_migrations.is_empty() {
         info!("No pending migrations");
     }
-    for Migration { migration, .. } in migrations {
+
+    for Migration { migration, .. } in pending_migrations {
         if let Some(steps) = steps.as_mut() {
             if steps == &0 {
                 break;
@@ -453,7 +475,7 @@ where
             version: ActiveValue::Set(migration.name().to_owned()),
             applied_at: ActiveValue::Set(now.as_secs() as i64),
         })
-        .table_name(M::migration_table_name())
+        .table_name(migration_table_name.clone())
         .exec(db)
         .await?;
     }
@@ -461,7 +483,7 @@ where
     Ok(())
 }
 
-async fn exec_down<M>(manager: &SchemaManager<'_>, mut steps: Option<u32>) -> Result<(), DbErr>
+async fn exec_down<M>(manager: &SchemaManager<'_>, steps: Option<u32>) -> Result<(), DbErr>
 where
     M: MigratorTrait + ?Sized,
 {
@@ -469,17 +491,33 @@ where
 
     M::install(db).await?;
 
+    exec_down_with(
+        manager,
+        steps,
+        M::get_applied_migrations(db).await?,
+        M::migration_table_name(),
+    )
+    .await
+}
+
+async fn exec_down_with(
+    manager: &SchemaManager<'_>,
+    mut steps: Option<u32>,
+    applied_migrations: Vec<Migration>,
+    migration_table_name: DynIden,
+) -> Result<(), DbErr> {
+    let db = manager.get_connection();
+
     if let Some(steps) = steps {
         info!("Rolling back {} applied migrations", steps);
     } else {
         info!("Rolling back all applied migrations");
     }
-
-    let migrations = M::get_applied_migrations(db).await?.into_iter().rev();
-    if migrations.len() == 0 {
+    if applied_migrations.is_empty() {
         info!("No applied migrations");
     }
-    for Migration { migration, .. } in migrations {
+
+    for Migration { migration, .. } in applied_migrations.into_iter().rev() {
         if let Some(steps) = steps.as_mut() {
             if steps == &0 {
                 break;
@@ -491,7 +529,7 @@ where
         info!("Migration '{}' has been rollbacked", migration.name());
         seaql_migrations::Entity::delete_many()
             .filter(Expr::col(seaql_migrations::Column::Version).eq(migration.name()))
-            .table_name(M::migration_table_name())
+            .table_name(migration_table_name.clone())
             .exec(db)
             .await?;
     }
