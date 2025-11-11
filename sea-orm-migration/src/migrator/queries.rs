@@ -9,6 +9,9 @@ pub fn query_tables<C>(db: &C) -> Result<SelectStatement, DbErr>
 where
     C: ConnectionTrait,
 {
+    #[allow(unused_imports)]
+    use sea_orm::DbBackend;
+
     match db.get_database_backend() {
         #[cfg(feature = "sqlx-mysql")]
         DbBackend::MySql => Ok(sea_schema::mysql::MySql.query_tables()),
@@ -29,6 +32,9 @@ pub fn get_current_schema<C>(db: &C) -> SimpleExpr
 where
     C: ConnectionTrait,
 {
+    #[allow(unused_imports)]
+    use sea_orm::DbBackend;
+
     match db.get_database_backend() {
         #[cfg(feature = "sqlx-mysql")]
         DbBackend::MySql => sea_schema::mysql::MySql::get_current_schema(),
