@@ -1,25 +1,20 @@
 <div align="center">
 
-  <img src="https://www.sea-ql.org/blog/img/SeaORM 2.0 Banner.png"/>
+  <img alt="SeaORM" src="https://www.sea-ql.org/blog/img/SeaORM 2.0 Banner.png"/>
 
-  <h1>SeaORM</h1>
-
-  <h3>🐚 An async & dynamic ORM for Rust</h3>
+  <h1></h1>
+  <h3>SeaORM is a powerful ORM for building web services in Rust</h3>
 
   [![crate](https://img.shields.io/crates/v/sea-orm.svg)](https://crates.io/crates/sea-orm)
-  [![docs](https://docs.rs/sea-orm/badge.svg)](https://docs.rs/sea-orm)
   [![build status](https://github.com/SeaQL/sea-orm/actions/workflows/rust.yml/badge.svg)](https://github.com/SeaQL/sea-orm/actions/workflows/rust.yml)
+  [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
+  <br>Support us with a ⭐ !
 
 </div>
 
-# SeaORM
-
-#### SeaORM is a powerful ORM for building web services in Rust
+# 🐚 SeaORM
 
 [中文文档](https://github.com/SeaQL/sea-orm/blob/master/README-zh.md)
-
-[![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
-Support us with a ⭐ !
 
 ### Feature Rich
 
@@ -412,7 +407,9 @@ Learn More
 
 ## Releases
 
-SeaORM 2.0 has reached its release candidate phase. We'd love for you to try it out and help shape the final release by [sharing your feedback](https://github.com/SeaQL/sea-orm/discussions/2548).
+SeaORM 2.0 has reached its release candidate phase. We'd love for you to try it out and help shape the final release by [sharing your feedback](https://github.com/SeaQL/sea-orm/discussions/).
+
++ [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 
 SeaORM 2.0 is shaping up to be our most significant release yet - with a few breaking changes, plenty of enhancements, and a clear focus on developer experience.
 
@@ -427,10 +424,6 @@ SeaORM 2.0 is shaping up to be our most significant release yet - with a few bre
 If you make extensive use of SeaQuery, we recommend checking out our blog post on SeaQuery 1.0 release:
 
 + [The road to SeaQuery 1.0](https://www.sea-ql.org/blog/2025-08-30-sea-query-1.0/)
-
-It doesn't mean that SeaORM is 'done', we've designed an architecture to allow us to deliver new features without major breaking changes.
-
-+ [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 
 ## License
 
