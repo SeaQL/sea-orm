@@ -98,6 +98,7 @@
 /// ```
 mod active_enum;
 mod active_model;
+mod active_value;
 mod base_entity;
 pub(crate) mod column;
 mod column_def;
@@ -115,6 +116,7 @@ mod relation;
 
 pub use active_enum::*;
 pub use active_model::*;
+pub use active_value::*;
 pub use base_entity::*;
 pub use column::*;
 pub use column_def::*;
