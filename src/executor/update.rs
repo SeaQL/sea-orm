@@ -9,6 +9,7 @@ use sea_query::{FromValueTuple, Query, UpdateStatement};
 pub struct Updater {
     query: UpdateStatement,
     check_record_exists: bool,
+    persistent: Option<bool>,
 }
 
 /// The result of an update operation on an ActiveModel
@@ -28,7 +29,7 @@ where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
     {
-        Updater::new(self.query)
+        Updater::new(self.query, self.persistent)
             .exec_update_and_return_updated(self.model, db)
             .await
     }
@@ -43,7 +44,7 @@ where
     where
         C: ConnectionTrait,
     {
-        Updater::new(self.query).exec(db).await
+        Updater::new(self.query, self.persistent).exec(db).await
     }
 
     /// Execute an update operation and return the updated model (use `RETURNING` syntax if supported)
@@ -55,7 +56,7 @@ where
     where
         C: ConnectionTrait,
     {
-        Updater::new(self.query)
+        Updater::new(self.query, self.persistent)
             .exec_update_with_returning::<E, _>(db)
             .await
     }
@@ -63,10 +64,11 @@ where
 
 impl Updater {
     /// Instantiate an update using an [UpdateStatement]
-    pub fn new(query: UpdateStatement) -> Self {
+    pub fn new(query: UpdateStatement, persistent: Option<bool>) -> Self {
         Self {
             query,
             check_record_exists: false,
+            persistent,
         }
     }
 
@@ -85,7 +87,8 @@ impl Updater {
             return Ok(UpdateResult::default());
         }
         let builder = db.get_database_backend();
-        let statement = builder.build(&self.query);
+        let mut statement = builder.build(&self.query);
+        statement.persistent = self.persistent;
         let result = db.execute(statement).await?;
         if self.check_record_exists && result.rows_affected() == 0 {
             return Err(DbErr::RecordNotUpdated);
@@ -119,8 +122,10 @@ impl Updater {
                     Column::<A>::iter().map(|c| c.select_as(c.into_returning_expr(db_backend))),
                 );
                 self.query.returning(returning);
+                let mut statement = db_backend.build(&self.query);
+                statement.persistent = self.persistent;
                 let found: Option<Model<A>> = SelectorRaw::<SelectModel<Model<A>>>::from_statement(
-                    db_backend.build(&self.query),
+                    statement,
                 )
                 .one(db)
                 .await?;
@@ -154,8 +159,10 @@ impl Updater {
                     E::Column::iter().map(|c| c.select_as(c.into_returning_expr(db_backend))),
                 );
                 self.query.returning(returning);
+                let mut statement = db_backend.build(&self.query);
+                statement.persistent = self.persistent;
                 let models: Vec<E::Model> = SelectorRaw::<SelectModel<E::Model>>::from_statement(
-                    db_backend.build(&self.query),
+                    statement,
                 )
                 .all(db)
                 .await?;

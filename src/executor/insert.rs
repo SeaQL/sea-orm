@@ -17,6 +17,7 @@ where
     primary_key: Option<ValueTuple>,
     query: InsertStatement,
     model: PhantomData<A>,
+    persistent: Option<bool>,
 }
 
 /// The result of an INSERT operation on an ActiveModel
@@ -180,7 +181,7 @@ where
                 }));
             query.returning(returning);
         }
-        Inserter::<A>::new(self.primary_key, query).exec(db)
+        Inserter::<A>::new(self.primary_key, query, self.persistent).exec(db)
     }
 
     /// Execute an insert operation without returning (don't use `RETURNING` syntax)
@@ -194,7 +195,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        Inserter::<A>::new(self.primary_key, self.query).exec_without_returning(db)
+        Inserter::<A>::new(self.primary_key, self.query, self.persistent).exec_without_returning(db)
     }
 
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
@@ -210,7 +211,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        Inserter::<A>::new(self.primary_key, self.query).exec_with_returning(db)
+        Inserter::<A>::new(self.primary_key, self.query, self.persistent).exec_with_returning(db)
     }
 
     /// Execute an insert operation and return primary keys of inserted models
@@ -227,7 +228,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        Inserter::<A>::new(self.primary_key, self.query).exec_with_returning_keys(db)
+        Inserter::<A>::new(self.primary_key, self.query, self.persistent).exec_with_returning_keys(db)
     }
 
     /// Execute an insert operation and return all inserted models
@@ -244,7 +245,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        Inserter::<A>::new(self.primary_key, self.query).exec_with_returning_many(db)
+        Inserter::<A>::new(self.primary_key, self.query, self.persistent).exec_with_returning_many(db)
     }
 }
 
@@ -253,11 +254,12 @@ where
     A: ActiveModelTrait,
 {
     /// Instantiate a new insert operation
-    pub fn new(primary_key: Option<ValueTuple>, query: InsertStatement) -> Self {
+    pub fn new(primary_key: Option<ValueTuple>, query: InsertStatement, persistent: Option<bool>) -> Self {
         Self {
             primary_key,
             query,
             model: PhantomData,
+            persistent,
         }
     }
 
@@ -267,7 +269,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert(self.primary_key, self.query, db)
+        exec_insert(self.primary_key, self.query, self.persistent, db)
     }
 
     /// Execute an insert operation
@@ -279,7 +281,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert_without_returning(self.query, db)
+        exec_insert_without_returning(self.query, self.persistent, db)
     }
 
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
@@ -292,7 +294,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert_with_returning::<A, _>(self.primary_key, self.query, db)
+        exec_insert_with_returning::<A, _>(self.primary_key, self.query, self.persistent, db)
     }
 
     /// Execute an insert operation and return primary keys of inserted models
@@ -309,7 +311,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert_with_returning_keys::<A, _>(self.query, db)
+        exec_insert_with_returning_keys::<A, _>(self.query, self.persistent, db)
     }
 
     /// Execute an insert operation and return all inserted models
@@ -326,13 +328,14 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert_with_returning_many::<A, _>(self.query, db)
+        exec_insert_with_returning_many::<A, _>(self.query, self.persistent, db)
     }
 }
 
 async fn exec_insert<A, C>(
     primary_key: Option<ValueTuple>,
     statement: InsertStatement,
+    persistent: Option<bool>,
     db: &C,
 ) -> Result<InsertResult<A>, DbErr>
 where
@@ -342,7 +345,8 @@ where
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
 
     let db_backend = db.get_database_backend();
-    let statement = db_backend.build(&statement);
+    let mut statement = db_backend.build(&statement);
+    statement.persistent = persistent;
 
     let last_insert_id = match (primary_key, db.support_returning()) {
         (Some(value_tuple), _) => {
@@ -387,13 +391,15 @@ where
 
 async fn exec_insert_without_returning<C>(
     insert_statement: InsertStatement,
+    persistent: Option<bool>,
     db: &C,
 ) -> Result<u64, DbErr>
 where
     C: ConnectionTrait,
 {
     let db_backend = db.get_database_backend();
-    let insert_statement = db_backend.build(&insert_statement);
+    let mut insert_statement = db_backend.build(&insert_statement);
+    insert_statement.persistent = persistent;
     let exec_result = db.execute(insert_statement).await?;
     Ok(exec_result.rows_affected())
 }
@@ -401,6 +407,7 @@ where
 async fn exec_insert_with_returning<A, C>(
     primary_key: Option<ValueTuple>,
     mut insert_statement: InsertStatement,
+    persistent: Option<bool>,
     db: &C,
 ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
 where
@@ -416,7 +423,8 @@ where
                     .map(|c| c.select_as(c.into_returning_expr(db_backend))),
             );
             insert_statement.returning(returning);
-            let insert_statement = db_backend.build(&insert_statement);
+            let mut insert_statement = db_backend.build(&insert_statement);
+            insert_statement.persistent = persistent;
             SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
                 insert_statement,
             )
@@ -424,7 +432,7 @@ where
             .await?
         }
         false => {
-            let insert_res = exec_insert::<A, _>(primary_key, insert_statement, db).await?;
+            let insert_res = exec_insert::<A, _>(primary_key, insert_statement, persistent, db).await?;
             <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id)
                 .one(db)
                 .await?
@@ -440,6 +448,7 @@ where
 
 async fn exec_insert_with_returning_keys<A, C>(
     mut insert_statement: InsertStatement,
+    persistent: Option<bool>,
     db: &C,
 ) -> Result<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr>
 where
@@ -456,7 +465,8 @@ where
                         .select_as(c.into_column().into_returning_expr(db_backend))
                 }));
             insert_statement.returning(returning);
-            let statement = db_backend.build(&insert_statement);
+            let mut statement = db_backend.build(&insert_statement);
+            statement.persistent = persistent;
             let rows = db.query_all(statement).await?;
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
@@ -476,6 +486,7 @@ where
 
 async fn exec_insert_with_returning_many<A, C>(
     mut insert_statement: InsertStatement,
+    persistent: Option<bool>,
     db: &C,
 ) -> Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>
 where
@@ -491,7 +502,8 @@ where
                     .map(|c| c.select_as(c.into_returning_expr(db_backend))),
             );
             insert_statement.returning(returning);
-            let insert_statement = db_backend.build(&insert_statement);
+            let mut insert_statement = db_backend.build(&insert_statement);
+            insert_statement.persistent = persistent;
             SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
                 insert_statement,
             )
