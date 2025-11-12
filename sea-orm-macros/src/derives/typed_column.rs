@@ -1,5 +1,5 @@
 use super::util::{
-    escape_rust_keyword, format_field_ident_ref, is_compound_field, trim_starting_raw_identifier,
+    escape_rust_keyword, format_field_ident, is_compound_field, trim_starting_raw_identifier,
 };
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, TokenStream};
@@ -77,7 +77,7 @@ pub fn expand_typed_column(data: &Data) -> syn::Result<(TokenStream, TokenStream
                         .to_string() // e.g.: "Option < String >"
                         .replace(' ', ""); // Remove spaces
 
-                    column_fields.push(format_field_ident_ref(field));
+                    column_fields.push(format_field_ident(field));
                     let wrapper = super::value_type_match::column_type_wrapper(
                         &column_type,
                         &field_type,

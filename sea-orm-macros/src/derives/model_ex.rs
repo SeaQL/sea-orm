@@ -1,6 +1,6 @@
 use super::attributes::compound_attr;
 use super::entity_loader::{EntityLoaderField, EntityLoaderSchema, expand_entity_loader};
-use super::util::{format_field_ident_ref, is_compound_field};
+use super::util::{format_field_ident, is_compound_field};
 use super::{expand_typed_column, model::DeriveModel};
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
@@ -170,7 +170,7 @@ pub fn expand_derive_model_ex(
                             }
                             impl_related.push((attrs, field_type));
                         }
-                        compound_fields.push(format_field_ident_ref(field));
+                        compound_fields.push(format_field_ident(field));
                     } else {
                         for attr in field.attrs.iter() {
                             if attr.path().is_ident("sea_orm") {
@@ -202,7 +202,7 @@ pub fn expand_derive_model_ex(
                                 })?;
                             }
                         }
-                        model_fields.push(format_field_ident_ref(field));
+                        model_fields.push(format_field_ident(field));
                     }
                 }
             }

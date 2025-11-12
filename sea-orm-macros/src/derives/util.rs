@@ -43,11 +43,7 @@ pub(crate) fn is_compound_field(field_type: &str) -> bool {
     || field_type.starts_with("HasOne<") || field_type.starts_with("HasMany<")
 }
 
-pub(crate) fn format_field_ident(field: Field) -> Ident {
-    field.ident.unwrap()
-}
-
-pub(crate) fn format_field_ident_ref(field: &Field) -> Ident {
+pub(crate) fn format_field_ident(field: &Field) -> Ident {
     field.ident.clone().unwrap()
 }
 
