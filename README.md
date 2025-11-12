@@ -467,7 +467,8 @@ Here is a short list of awesome open source software built with SeaORM. Feel fre
 
 ## Sponsorship
 
-[SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers. If you enjoy using our libraries, please star and share our repositories. If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
+[SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers.
+If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
 
 ### Gold Sponsors
 
@@ -478,7 +479,7 @@ Here is a short list of awesome open source software built with SeaORM. Feel fre
 </tr></table>
 
 [QDX](https://qdx.co/) pioneers quantum dynamics-powered drug discovery, leveraging AI and supercomputing to accelerate molecular modeling.
-We're immensely grateful to QDX for sponsoring the development of SeaORM, the SQL toolkit that powers their data engineering workflows.
+We're immensely grateful to QDX for sponsoring the development of SeaORM, the SQL toolkit that powers their data intensive applications.
 
 ### Silver Sponsors
 
