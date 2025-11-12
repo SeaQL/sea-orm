@@ -646,7 +646,18 @@ pub trait ActiveModelTrait: Clone + Debug {
 #[allow(unused_variables)]
 #[async_trait]
 pub trait ActiveModelBehavior: ActiveModelTrait {
-    /// Create a new ActiveModel with default values. Also used by `Default::default()`.
+    /// Create a new ActiveModel with default values. This is also called by `Default::default()`.
+    ///
+    /// You can override it like the following:
+    ///
+    /// ```ignore
+    /// fn new() -> Self {
+    ///     Self {
+    ///         status: Set(Status::New),
+    ///         ..ActiveModelTrait::default()
+    ///     }
+    /// }
+    /// ```
     fn new() -> Self {
         <Self as ActiveModelTrait>::default()
     }
