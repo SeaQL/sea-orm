@@ -377,6 +377,7 @@ assert_eq!(
 ### Enhancements
 
 * [sea-orm-cli] Added `--column-extra-derives` https://github.com/SeaQL/sea-orm/pull/2212
+* [sea-orm-cli] Added `--big-integer-type=i32` to use i32 for bigint (for SQLite)
 * Added `Model::try_set`
 * Added new error variant `BackendNotSupported`. Previously, it panics with e.g. "Database backend doesn't support RETURNING" https://github.com/SeaQL/sea-orm/pull/2630
 ```rust
@@ -498,6 +499,8 @@ impl MigrationTrait for Migration {
     }
 }
 ```
+* Allowed None for `max_lifetime` and `idle_timeout` Parameters https://github.com/SeaQL/sea-orm/pull/2748
+* Try to parse `u32` in Postgres as `i32` https://github.com/SeaQL/sea-orm/pull/2753
 
 ### Breaking Changes
 
