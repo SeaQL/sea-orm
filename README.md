@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="https://www.sea-ql.org/SeaORM/img/SeaORM banner.png"/>
+  <img src="https://www.sea-ql.org/blog/img/SeaORM 2.0 Banner.png"/>
 
   <h1>SeaORM</h1>
 
@@ -14,23 +14,27 @@
 
 # SeaORM
 
+#### SeaORM is a powerful ORM for building web services in Rust
+
 [中文文档](https://github.com/SeaQL/sea-orm/blob/master/README-zh.md)
 
-#### SeaORM is a relational ORM to help you build web services in Rust with the familiarity of dynamic languages.
-
 [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
-If you like what we do, consider starring, sharing and contributing!
+Support us with a ⭐ !
 
-Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2025](https://www.sea-ql.org/community-survey/)!
+### Feature Rich
 
-[![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
-Join our Discord server to chat with other members of the SeaQL community!
+SeaORM is a batteries-included ORM with filters, pagination, and nested queries to accelerate building REST, GraphQL, and gRPC APIs.
+
+### Production Ready
+
+With 250k+ weekly downloads, SeaORM is production-ready, trusted by startups and enterprises worldwide.
 
 ## Getting Started
 
+[![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
+Join our Discord server to chat with others!
+
 + [Documentation](https://www.sea-ql.org/SeaORM)
-+ [Tutorial](https://www.sea-ql.org/sea-orm-tutorial)
-+ [Cookbook](https://www.sea-ql.org/sea-orm-cookbook)
 
 Integration examples:
 
@@ -47,24 +51,6 @@ Integration examples:
 
 If you want a simple, clean example that fits in a single file that demonstrates the best of SeaORM, you can try:
 + [Quickstart](https://github.com/SeaQL/sea-orm/blob/master/examples/quickstart/src/main.rs)
-
-## Features
-
-1. Async
-
-    Relying on [SQLx](https://github.com/launchbadge/sqlx), SeaORM is a new library with async support from day 1.
-
-2. Dynamic
-
-    Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex dynamic queries.
-
-3. Service Oriented
-
-    Quickly build services that join, filter, sort and paginate data in REST, GraphQL and gRPC APIs.
-
-4. Production Ready
-
-    SeaORM is feature-rich, well-tested and used in production by companies and startups.
 
 Let's have a quick walk through of the unique features of SeaORM.
 
@@ -154,7 +140,7 @@ smart_user
 
 SeaORM provides a powerful migration system that lets you create tables, modify schemas, and seed data with ease.
 
-With SeaORM 2.0, you also get a first‑class [Entity First Workflow](https://www.sea-ql.org/blog/2025-10-30-sea-orm-2.0/):
+With SeaORM 2.0, you also get a first-class [Entity First Workflow](https://www.sea-ql.org/blog/2025-10-30-sea-orm-2.0/):
 simply define new entities or add columns to existing ones,
 and SeaORM will automatically detect the changes and create the new tables, columns, unique keys, and foreign keys.
 
@@ -170,14 +156,14 @@ Let SeaORM handle 95% of your transactional queries.
 For the remaining cases that are too complex to express,
 SeaORM still offers convenient support for writing raw SQL.
 ```rust
-let item = Item { name: "Chocolate" }; // nested parameter access
+let user = Item { name: "Bob" }; // nested parameter access
 let ids = [2, 3, 4]; // expanded by the `..` operator
 
-let cake: Option<cake::Model> = Cake::find()
+let user: Option<user::Model> = user::Entity::find()
     .from_raw_sql(raw_sql!(
         Sqlite,
-        r#"SELECT "id", "name" FROM "cake"
-           WHERE "name" LIKE {item.name}
+        r#"SELECT "id", "name" FROM "user"
+           WHERE "name" LIKE {user.name}
            AND "id" in ({..ids})
         "#
     ))
@@ -471,10 +457,7 @@ A big shout out to our contributors!
 
 ## Who's using SeaORM?
 
-SeaORM is trusted by companies and startups for both internal tools and public‑facing applications, thanks to its ergonomics and the familiarity it brings from dynamic languages.
-Built on async Rust, it combines high performance and a strong type system without sacrificing developer productivity.
-
-Here is a short list of awesome open source software built with SeaORM. [Full list here](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to submit yours!
+Here is a short list of awesome open source software built with SeaORM. Feel free to [submit yours](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm)!
 
 | Project | GitHub | Tagline |
 |---------|--------|---------|
