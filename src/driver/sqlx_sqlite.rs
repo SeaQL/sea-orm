@@ -28,6 +28,7 @@ pub struct SqlxSqliteConnector;
 #[derive(Clone)]
 pub struct SqlxSqlitePoolConnection {
     pub(crate) pool: SqlitePool,
+    pub(crate) default_persistent: Option<bool>,
     metric_callback: Option<crate::metric::Callback>,
 }
 
@@ -42,6 +43,7 @@ impl From<SqlitePool> for SqlxSqlitePoolConnection {
         SqlxSqlitePoolConnection {
             pool,
             metric_callback: None,
+            default_persistent: None,
         }
     }
 }
@@ -90,6 +92,7 @@ impl SqlxSqliteConnector {
             sqlx_opts = f(sqlx_opts);
         }
 
+        let default_persistent = options.default_persistent;
         let pool = if options.connect_lazy {
             options.sqlx_pool_options().connect_lazy_with(sqlx_opts)
         } else {
@@ -103,6 +106,7 @@ impl SqlxSqliteConnector {
         let pool = SqlxSqlitePoolConnection {
             pool,
             metric_callback: None,
+            default_persistent,
         };
 
         #[cfg(feature = "sqlite-use-returning-for-3_35")]
@@ -121,6 +125,7 @@ impl SqlxSqliteConnector {
         DatabaseConnection::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection {
             pool,
             metric_callback: None,
+            default_persistent: None,
         })
     }
 }
@@ -128,8 +133,13 @@ impl SqlxSqliteConnector {
 impl SqlxSqlitePoolConnection {
     /// Execute a [Statement] on a SQLite backend
     #[instrument(level = "trace")]
-    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
+    pub async fn execute(&self, mut stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
+
+        // Apply default persistent if not explicitly set
+        if stmt.persistent.is_none() {
+            stmt.persistent = self.default_persistent;
+        }
 
         let query = sqlx_query(&stmt);
         let mut conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
@@ -155,8 +165,13 @@ impl SqlxSqlitePoolConnection {
 
     /// Get one result from a SQL query. Returns [Option::None] if no match was found
     #[instrument(level = "trace")]
-    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
+    pub async fn query_one(&self, mut stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
+
+        // Apply default persistent if not explicitly set
+        if stmt.persistent.is_none() {
+            stmt.persistent = self.default_persistent;
+        }
 
         let query = sqlx_query(&stmt);
         let mut conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
@@ -173,8 +188,13 @@ impl SqlxSqlitePoolConnection {
 
     /// Get the results of a query returning them as a Vec<[QueryResult]>
     #[instrument(level = "trace")]
-    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+    pub async fn query_all(&self, mut stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
+
+        // Apply default persistent if not explicitly set
+        if stmt.persistent.is_none() {
+            stmt.persistent = self.default_persistent;
+        }
 
         let query = sqlx_query(&stmt);
         let mut conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
@@ -188,8 +208,13 @@ impl SqlxSqlitePoolConnection {
 
     /// Stream the results of executing a SQL query
     #[instrument(level = "trace")]
-    pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
+    pub async fn stream(&self, mut stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
+
+        // Apply default persistent if not explicitly set
+        if stmt.persistent.is_none() {
+            stmt.persistent = self.default_persistent;
+        }
 
         let conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
         Ok(QueryStream::from((
@@ -212,6 +237,7 @@ impl SqlxSqlitePoolConnection {
             self.metric_callback.clone(),
             isolation_level,
             access_mode,
+            self.default_persistent,
         )
         .await
     }
@@ -238,6 +264,7 @@ impl SqlxSqlitePoolConnection {
             self.metric_callback.clone(),
             isolation_level,
             access_mode,
+            self.default_persistent,
         )
         .await
         .map_err(|e| TransactionError::Connection(e))?;
@@ -249,6 +276,24 @@ impl SqlxSqlitePoolConnection {
         F: Fn(&crate::metric::Info<'_>) + Send + Sync + 'static,
     {
         self.metric_callback = Some(Arc::new(callback));
+    }
+
+    /// Set the default persistent prepared statement caching behavior
+    ///
+    /// When set to Some(false), prepared statement caching will be disabled by default
+    /// unless explicitly enabled on individual queries.
+    /// When set to Some(true), prepared statement caching will be enabled by default.
+    /// When set to None, uses sqlx default behavior (enabled).
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let mut conn = SqlxSqliteConnector::from_sqlx_sqlite_pool(pool);
+    /// conn.with_default_persistent(false); // Disable statement caching by default
+    /// ```
+    pub fn with_default_persistent(&mut self, value: bool) -> &mut Self {
+        self.default_persistent = Some(value);
+        self
     }
 
     /// Checks if a connection to the database is still valid.
@@ -387,6 +432,7 @@ impl crate::DatabaseTransaction {
         metric_callback: Option<crate::metric::Callback>,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
+        default_persistent: Option<bool>,
     ) -> Result<crate::DatabaseTransaction, DbErr> {
         Self::begin(
             Arc::new(Mutex::new(crate::InnerConnection::Sqlite(inner))),
@@ -394,6 +440,7 @@ impl crate::DatabaseTransaction {
             metric_callback,
             isolation_level,
             access_mode,
+            default_persistent,
         )
         .await
     }
