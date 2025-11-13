@@ -26,6 +26,14 @@
 //!
 //! [中文文档](https://github.com/SeaQL/sea-orm/blob/master/README-zh.md)
 //!
+//! ### Advanced Relations
+//!
+//! Model complex relationships 1-1, 1‑N, M‑N, and even self‑referential in a high-level, conceptual way.
+//!
+//! ### Familiar Concepts
+//!
+//! Inspired by popular ORMs in the Python, Ruby, and Node.js ecosystem, SeaORM offers a developer experience that feels instantly recognizable.
+//!
 //! ### Feature Rich
 //!
 //! SeaORM is a batteries-included ORM with filters, pagination, and nested queries to accelerate building REST, GraphQL, and gRPC APIs.
