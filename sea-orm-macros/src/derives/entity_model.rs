@@ -9,7 +9,7 @@ use syn::{
 };
 
 /// Method to derive an Model
-pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
+pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Result<TokenStream> {
     // if #[sea_orm(table_name = "foo", schema_name = "bar")] specified, create Entity struct
     let mut table_name = None;
     let mut comment = quote! {None};
@@ -52,7 +52,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         .as_ref()
         .map(|table_name| {
             let entity_extra_attr = if model_ex {
-                quote!(#[sea_orm(model_ex = ModelEx)])
+                quote!(#[sea_orm(model_ex = ModelEx, active_model_ex = ActiveModelEx)])
             } else {
                 quote!()
             };
@@ -104,8 +104,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         }
     }
     if let Data::Struct(item_struct) = data {
-        if let Fields::Named(fields) = item_struct.fields {
-            for field in fields.named {
+        if let Fields::Named(fields) = &item_struct.fields {
+            for field in &fields.named {
                 if let Some(ident) = &field.ident {
                     let original_field_name = trim_starting_raw_identifier(ident);
                     let mut field_name =

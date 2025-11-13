@@ -7,7 +7,7 @@ use quote::{format_ident, quote};
 use syn::{Data, DataStruct, Expr, Fields, LitStr, Type};
 
 pub(crate) struct DeriveActiveModel {
-    ident: Ident,
+    model: Ident,
     fields: Vec<Ident>,
     names: Vec<Ident>,
     types: Vec<Type>,
@@ -64,28 +64,12 @@ impl DeriveActiveModel {
         }
 
         Ok(DeriveActiveModel {
-            ident: ident.clone(),
+            model: ident.clone(),
             fields,
             names,
             types,
         })
     }
-}
-
-pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<TokenStream> {
-    let derive_active_model = DeriveActiveModel::new(&ident, &data)?;
-
-    let define_active_model = derive_active_model.define_active_model();
-    let impl_active_model = derive_active_model.impl_active_model();
-    let derive_into_model = derive_into_model(&ident, &data)?;
-
-    Ok(quote!(
-        #define_active_model
-
-        #impl_active_model
-
-        #derive_into_model
-    ))
 }
 
 impl DeriveActiveModel {
@@ -105,9 +89,14 @@ impl DeriveActiveModel {
     }
 
     fn impl_active_model(&self) -> TokenStream {
-        let ident = &self.ident;
+        let mut ts = self.impl_active_model_convert();
+        ts.extend(self.impl_active_model_trait());
+        ts
+    }
+
+    fn impl_active_model_convert(&self) -> TokenStream {
+        let model = &self.model;
         let fields = &self.fields;
-        let names = &self.names;
 
         quote!(
             #[automatically_derived]
@@ -118,8 +107,8 @@ impl DeriveActiveModel {
             }
 
             #[automatically_derived]
-            impl std::convert::From<#ident> for ActiveModel {
-                fn from(m: #ident) -> Self {
+            impl std::convert::From<#model> for ActiveModel {
+                fn from(m: #model) -> Self {
                     Self {
                         #(#fields: sea_orm::ActiveValue::Unchanged(m.#fields)),*
                     }
@@ -127,75 +116,91 @@ impl DeriveActiveModel {
             }
 
             #[automatically_derived]
-            impl sea_orm::IntoActiveModel<ActiveModel> for #ident {
+            impl sea_orm::IntoActiveModel<ActiveModel> for #model {
                 fn into_active_model(self) -> ActiveModel {
                     self.into()
                 }
             }
+        )
+    }
 
+    fn impl_active_model_trait(&self) -> TokenStream {
+        let fields = &self.fields;
+        let methods = self.impl_active_model_trait_methods();
+
+        quote! {
             #[automatically_derived]
             impl sea_orm::ActiveModelTrait for ActiveModel {
                 type Entity = Entity;
 
-                fn take(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
-                    match c {
-                        #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => {
-                            let mut value = sea_orm::ActiveValue::NotSet;
-                            std::mem::swap(&mut value, &mut self.#fields);
-                            value.into_wrapped_value()
-                        },)*
-                        _ => sea_orm::ActiveValue::NotSet,
-                    }
-                }
-
-                fn get(&self, c: <Self::Entity as sea_orm::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
-                    match c {
-                        #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => self.#fields.clone().into_wrapped_value(),)*
-                        _ => sea_orm::ActiveValue::NotSet,
-                    }
-                }
-
-                fn try_set(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column, v: sea_orm::Value) -> Result<(), sea_orm::DbErr> {
-                    match c {
-                        #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => self.#fields = sea_orm::ActiveValue::Set(sea_orm::sea_query::ValueType::try_from(v).map_err(|e| sea_orm::DbErr::Type(e.to_string()))?),)*
-                        _ => return Err(sea_orm::DbErr::Type(format!("ActiveModel does not have this field: {:?}", sea_orm::ColumnTrait::as_column_ref(&c)))),
-                    }
-                    Ok(())
-                }
-
-                fn not_set(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column) {
-                    match c {
-                        #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => self.#fields = sea_orm::ActiveValue::NotSet,)*
-                        _ => {},
-                    }
-                }
-
-                fn is_not_set(&self, c: <Self::Entity as sea_orm::EntityTrait>::Column) -> bool {
-                    match c {
-                        #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => self.#fields.is_not_set(),)*
-                        _ => panic!("This ActiveModel does not have this field"),
-                    }
-                }
+                #methods
 
                 fn default() -> Self {
                     Self {
                         #(#fields: sea_orm::ActiveValue::NotSet),*
                     }
                 }
+            }
+        }
+    }
 
-                fn default_values() -> Self {
-                    use sea_orm::value::{DefaultActiveValue, DefaultActiveValueNone, DefaultActiveValueNotSet};
-                    let mut default = <Self as sea_orm::ActiveModelTrait>::default();
-                    #(default.#fields = (&default.#fields).default_value();)*
-                    default
-                }
+    pub fn impl_active_model_trait_methods(&self) -> TokenStream {
+        let fields = &self.fields;
+        let names = &self.names;
 
-                fn reset(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column) {
-                    match c {
-                        #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => self.#fields.reset(),)*
-                        _ => panic!("This ActiveModel does not have this field"),
-                    }
+        quote!(
+            fn take(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
+                match c {
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => {
+                        let mut value = sea_orm::ActiveValue::NotSet;
+                        std::mem::swap(&mut value, &mut self.#fields);
+                        value.into_wrapped_value()
+                    },)*
+                    _ => sea_orm::ActiveValue::NotSet,
                 }
+            }
+
+            fn get(&self, c: <Self::Entity as sea_orm::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
+                match c {
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => self.#fields.clone().into_wrapped_value(),)*
+                    _ => sea_orm::ActiveValue::NotSet,
+                }
+            }
+
+            fn try_set(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column, v: sea_orm::Value) -> Result<(), sea_orm::DbErr> {
+                match c {
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => self.#fields = sea_orm::ActiveValue::Set(sea_orm::sea_query::ValueType::try_from(v).map_err(|e| sea_orm::DbErr::Type(e.to_string()))?),)*
+                    _ => return Err(sea_orm::DbErr::Type(format!("ActiveModel does not have this field: {:?}", sea_orm::ColumnTrait::as_column_ref(&c)))),
+                }
+                Ok(())
+            }
+
+            fn not_set(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column) {
+                match c {
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => self.#fields = sea_orm::ActiveValue::NotSet,)*
+                    _ => {},
+                }
+            }
+
+            fn is_not_set(&self, c: <Self::Entity as sea_orm::EntityTrait>::Column) -> bool {
+                match c {
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => self.#fields.is_not_set(),)*
+                    _ => panic!("This ActiveModel does not have this field"),
+                }
+            }
+
+            fn reset(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column) {
+                match c {
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => self.#fields.reset(),)*
+                    _ => panic!("This ActiveModel does not have this field"),
+                }
+            }
+
+            fn default_values() -> Self {
+                use sea_orm::value::{DefaultActiveValue, DefaultActiveValueNone, DefaultActiveValueNotSet};
+                let mut default = <Self as sea_orm::ActiveModelTrait>::default();
+                #(default.#fields = (&default.#fields).default_value();)*
+                default
             }
         )
     }
@@ -263,5 +268,21 @@ fn derive_into_model(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
                 self.try_into()
             }
         }
+    ))
+}
+
+pub fn expand_derive_active_model(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
+    let derive_active_model = DeriveActiveModel::new(ident, data)?;
+
+    let define_active_model = derive_active_model.define_active_model();
+    let impl_active_model = derive_active_model.impl_active_model();
+    let derive_into_model = derive_into_model(ident, data)?;
+
+    Ok(quote!(
+        #define_active_model
+
+        #impl_active_model
+
+        #derive_into_model
     ))
 }

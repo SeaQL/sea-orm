@@ -43,6 +43,20 @@ pub(crate) fn is_compound_field(field_type: &str) -> bool {
     || field_type.starts_with("HasOne<") || field_type.starts_with("HasMany<")
 }
 
+pub(crate) fn extract_compound_entity(ty: &str) -> &str {
+    if ty.starts_with("HasMany<") {
+        &ty["HasMany<".len()..(ty.len() - 1)]
+    } else if ty.starts_with("HasOne<") {
+        &ty["HasOne<".len()..(ty.len() - 1)]
+    } else if ty.starts_with("Option<") {
+        &ty["Option<".len()..(ty.len() - 1)]
+    } else if ty.starts_with("Vec<") {
+        &ty["Vec<".len()..(ty.len() - 1)]
+    } else {
+        panic!("Relation applied to non compound type: {ty}")
+    }
+}
+
 pub(crate) fn format_field_ident(field: &Field) -> Ident {
     field.ident.clone().unwrap()
 }

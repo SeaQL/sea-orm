@@ -1,6 +1,6 @@
 use super::attributes::compound_attr;
 use super::entity_loader::{EntityLoaderField, EntityLoaderSchema, expand_entity_loader};
-use super::util::{format_field_ident, is_compound_field};
+use super::util::{extract_compound_entity, format_field_ident, is_compound_field};
 use super::{expand_typed_column, model::DeriveModel};
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
@@ -30,6 +30,7 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
                     } else if meta.path.is_ident("DeriveEntityModel") {
                         // replace macro
                         new_list.push(parse_quote!(DeriveModelEx));
+                        new_list.push(parse_quote!(DeriveActiveModelEx));
                     } else {
                         new_list.push(meta.path);
                     }
@@ -209,9 +210,7 @@ pub fn expand_derive_model_ex(
         }
     }
 
-    let impl_model_trait = DeriveModel::new(&ident, &data, &attrs)
-        .map_err(|err| err.unwrap())?
-        .impl_model_trait();
+    let impl_model_trait = DeriveModel::new(&ident, &data, &attrs)?.impl_model_trait();
 
     let impl_from_model = quote! {
         impl Model {
@@ -584,20 +583,6 @@ fn get_related<'a>(attr: &compound_attr::SeaOrm, ty: &'a str) -> (&'a str, Ident
         )
     };
     (related_entity, relation_enum)
-}
-
-fn extract_compound_entity(ty: &str) -> &str {
-    if ty.starts_with("HasMany<") {
-        &ty["HasMany<".len()..(ty.len() - 1)]
-    } else if ty.starts_with("HasOne<") {
-        &ty["HasOne<".len()..(ty.len() - 1)]
-    } else if ty.starts_with("Option<") {
-        &ty["Option<".len()..(ty.len() - 1)]
-    } else if ty.starts_with("Vec<") {
-        &ty["Vec<".len()..(ty.len() - 1)]
-    } else {
-        panic!("`relation` attribute applied to non compound type: {ty}")
-    }
 }
 
 fn infer_relation_name_from_entity(s: &str) -> &str {

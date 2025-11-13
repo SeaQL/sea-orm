@@ -61,6 +61,9 @@ pub trait EntityTrait: EntityName {
     type ActiveModel: ActiveModelBehavior<Entity = Self>;
 
     #[allow(missing_docs)]
+    type ActiveModelEx: ActiveModelTrait<Entity = Self>;
+
+    #[allow(missing_docs)]
     type Column: ColumnTrait;
 
     #[allow(missing_docs)]

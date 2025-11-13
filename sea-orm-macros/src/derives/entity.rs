@@ -11,6 +11,7 @@ struct DeriveEntity {
     model_ident: syn::Ident,
     model_ex_ident: syn::Ident,
     active_model_ident: syn::Ident,
+    active_model_ex_ident: syn::Ident,
     primary_key_ident: syn::Ident,
     relation_ident: syn::Ident,
     schema_name: Option<syn::LitStr>,
@@ -28,6 +29,9 @@ impl DeriveEntity {
         let active_model_ident = sea_attr
             .active_model
             .unwrap_or_else(|| format_ident!("ActiveModel"));
+        let active_model_ex_ident = sea_attr
+            .active_model_ex
+            .unwrap_or_else(|| format_ident!("ActiveModel"));
         let primary_key_ident = sea_attr
             .primary_key
             .unwrap_or_else(|| format_ident!("PrimaryKey"));
@@ -44,6 +48,7 @@ impl DeriveEntity {
             model_ident,
             model_ex_ident,
             active_model_ident,
+            active_model_ex_ident,
             primary_key_ident,
             relation_ident,
             schema_name,
@@ -99,6 +104,7 @@ impl DeriveEntity {
             model_ident,
             model_ex_ident,
             active_model_ident,
+            active_model_ex_ident,
             column_ident,
             primary_key_ident,
             relation_ident,
@@ -113,6 +119,8 @@ impl DeriveEntity {
                 type ModelEx = #model_ex_ident;
 
                 type ActiveModel = #active_model_ident;
+
+                type ActiveModelEx = #active_model_ex_ident;
 
                 type Column = #column_ident;
 

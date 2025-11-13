@@ -10,6 +10,7 @@ pub enum HasOne<E: EntityTrait> {
 }
 
 impl<E: EntityTrait> HasOne<E> {
+    /// Construct a `HasOne::Loaded` value
     pub fn loaded<M: Into<<E as EntityTrait>::ModelEx>>(model: M) -> Self {
         Self::Loaded(Box::new(model.into()))
     }
@@ -26,6 +27,7 @@ impl<E: EntityTrait> HasOne<E> {
         matches!(self, HasOne::Loaded(_))
     }
 
+    /// True if variant is `Unloaded` or `NotFound`
     pub fn is_none(&self) -> bool {
         matches!(self, HasOne::Unloaded | HasOne::NotFound)
     }
