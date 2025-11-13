@@ -8,13 +8,13 @@ use tracing_subscriber::{EnvFilter, prelude::*};
 use sea_orm::{ConnectOptions, Database, DbConn, DbErr};
 use sea_orm_cli::{MigrateSubcommands, run_migrate_generate, run_migrate_init};
 
-use super::MigratorTrait;
+use super::MigratorTraitSelf;
 
 const MIGRATION_DIR: &str = "./";
 
 pub async fn run_cli<M>(migrator: M)
 where
-    M: MigratorTrait,
+    M: MigratorTraitSelf,
 {
     run_cli_with_connection(migrator, Database::connect).await;
 }
@@ -26,7 +26,7 @@ where
 /// extensions.
 pub async fn run_cli_with_connection<M, F, Fut>(migrator: M, make_connection: F)
 where
-    M: MigratorTrait,
+    M: MigratorTraitSelf,
     F: FnOnce(ConnectOptions) -> Fut,
     Fut: Future<Output = Result<DbConn, DbErr>>,
 {
@@ -52,13 +52,13 @@ where
 }
 
 pub async fn run_migrate<M>(
-    _: M,
+    migrator: M,
     db: &DbConn,
     command: Option<MigrateSubcommands>,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>>
 where
-    M: MigratorTrait,
+    M: MigratorTraitSelf,
 {
     let filter = match verbose {
         true => "debug",
@@ -85,19 +85,19 @@ where
     };
 
     match command {
-        Some(MigrateSubcommands::Fresh) => M::fresh(db).await?,
-        Some(MigrateSubcommands::Refresh) => M::refresh(db).await?,
-        Some(MigrateSubcommands::Reset) => M::reset(db).await?,
-        Some(MigrateSubcommands::Status) => M::status(db).await?,
-        Some(MigrateSubcommands::Up { num }) => M::up(db, num).await?,
-        Some(MigrateSubcommands::Down { num }) => M::down(db, Some(num)).await?,
+        Some(MigrateSubcommands::Fresh) => migrator.fresh(db).await?,
+        Some(MigrateSubcommands::Refresh) => migrator.refresh(db).await?,
+        Some(MigrateSubcommands::Reset) => migrator.reset(db).await?,
+        Some(MigrateSubcommands::Status) => migrator.status(db).await?,
+        Some(MigrateSubcommands::Up { num }) => migrator.up(db, num).await?,
+        Some(MigrateSubcommands::Down { num }) => migrator.down(db, Some(num)).await?,
         Some(MigrateSubcommands::Init) => run_migrate_init(MIGRATION_DIR)?,
         Some(MigrateSubcommands::Generate {
             migration_name,
             universal_time: _,
             local_time,
         }) => run_migrate_generate(MIGRATION_DIR, &migration_name, !local_time)?,
-        _ => M::up(db, None).await?,
+        _ => migrator.up(db, None).await?,
     };
 
     Ok(())
