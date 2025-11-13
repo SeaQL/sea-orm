@@ -21,6 +21,7 @@ where
     pub(crate) page: u64,
     pub(crate) page_size: u64,
     pub(crate) db: &'db C,
+    pub(crate) persistent: Option<bool>,
     pub(crate) selector: PhantomData<S>,
 }
 
@@ -49,7 +50,8 @@ where
             .offset(self.page_size * page)
             .to_owned();
         let builder = self.db.get_database_backend();
-        let stmt = builder.build(&query);
+        let mut stmt = builder.build(&query);
+        stmt.persistent = self.persistent;
         let rows = self.db.query_all(stmt).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
@@ -79,8 +81,9 @@ where
                 "sub_query",
             )
             .to_owned();
-        let stmt = builder.build(&stmt);
-        let result = match self.db.query_one(stmt).await? {
+        let mut built_stmt = builder.build(&stmt);
+        built_stmt.persistent = self.persistent;
+        let result = match self.db.query_one(built_stmt).await? {
             Some(res) => res,
             None => return Ok(0),
         };
@@ -122,6 +125,12 @@ where
     /// Get current page number
     pub fn cur_page(&self) -> u64 {
         self.page
+    }
+
+    /// Set whether to use prepared statement caching (persistent prepared statements)
+    pub fn persistent(&mut self, persistent: bool) -> &mut Self {
+        self.persistent = Some(persistent);
+        self
     }
 
     /// Fetch one page and increment the page counter
@@ -241,6 +250,7 @@ where
             page: 0,
             page_size,
             db,
+            persistent: self.persistent,
             selector: PhantomData,
         }
     }
@@ -267,6 +277,7 @@ where
             page: 0,
             page_size,
             db,
+            persistent: self.stmt.persistent,
             selector: PhantomData,
         }
     }

@@ -93,7 +93,9 @@ where
                 .join_as(JoinType::LeftJoin, table_ref, to_tbl, condition);
         }
         slf = slf.apply_alias(SelectA.as_str());
+        let persistent = slf.persistent;
         let mut select_two = SelectTwo::new_without_prepare(slf.query);
+        select_two.persistent = persistent;
         for col in <T::Column as Iterable>::iter() {
             let alias = format!("{}{}", SelectB.as_str(), col.as_str());
             let expr = Expr::col((
@@ -139,7 +141,9 @@ where
                 .join_as(JoinType::LeftJoin, table_ref, to_tbl, condition);
         }
         slf = slf.apply_alias(SelectA.as_str());
+        let persistent = slf.persistent;
         let mut select_two_many = SelectTwoMany::new_without_prepare(slf.query);
+        select_two_many.persistent = persistent;
         for col in <T::Column as Iterable>::iter() {
             let alias = format!("{}{}", SelectB.as_str(), col.as_str());
             let expr = Expr::col((

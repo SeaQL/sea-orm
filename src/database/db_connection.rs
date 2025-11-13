@@ -458,6 +458,42 @@ impl DatabaseConnection {
         }
     }
 
+    /// Set the default persistent prepared statement caching behavior
+    ///
+    /// When set to Some(false), prepared statement caching will be disabled by default
+    /// unless explicitly enabled on individual queries.
+    /// When set to Some(true), prepared statement caching will be enabled by default.
+    /// When set to None, uses sqlx default behavior (enabled).
+    ///
+    /// This is particularly useful when using `from_sqlx_*_pool` methods to create
+    /// a connection from an existing sqlx pool.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let pool = MySqlPoolOptions::new().connect("mysql://...").await?;
+    /// let mut db = Database::connect_with_pool(pool);
+    /// db.with_default_persistent(false); // Disable statement caching by default
+    /// ```
+    pub fn with_default_persistent(&mut self, value: bool) -> &mut Self {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => {
+                conn.with_default_persistent(value);
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
+                conn.with_default_persistent(value);
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => {
+                conn.with_default_persistent(value);
+            }
+            _ => {}
+        }
+        self
+    }
+
     /// Checks if a connection to the database is still valid.
     pub async fn ping(&self) -> Result<(), DbErr> {
         match self {

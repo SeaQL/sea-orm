@@ -20,6 +20,7 @@ where
 {
     pub(crate) query: SelectStatement,
     selector: S,
+    pub(crate) persistent: Option<bool>,
 }
 
 /// Performs a raw `SELECT` operation on a model
@@ -180,6 +181,7 @@ where
         Selector {
             query: self.query,
             selector: SelectModel { model: PhantomData },
+            persistent: self.persistent,
         }
     }
 
@@ -228,6 +230,7 @@ where
         Selector {
             query: self.query,
             selector: SelectModel { model: PhantomData },
+            persistent: self.persistent,
         }
     }
 
@@ -493,6 +496,7 @@ where
         Selector {
             query: self.query,
             selector: SelectTwoModel { model: PhantomData },
+            persistent: self.persistent,
         }
     }
 
@@ -514,6 +518,7 @@ where
         Selector {
             query: self.query,
             selector: SelectTwoModel { model: PhantomData },
+            persistent: self.persistent,
         }
     }
 
@@ -572,6 +577,7 @@ where
         Selector {
             query: self.query,
             selector: SelectTwoModel { model: PhantomData },
+            persistent: self.persistent,
         }
     }
 
@@ -593,6 +599,7 @@ where
         Selector {
             query: self.query,
             selector: SelectTwoModel { model: PhantomData },
+            persistent: self.persistent,
         }
     }
 
@@ -662,6 +669,7 @@ where
         Selector {
             query: self.query,
             selector: SelectThreeModel { model: PhantomData },
+            persistent: self.persistent,
         }
     }
 
@@ -684,6 +692,7 @@ where
         Selector {
             query: self.query,
             selector: SelectThreeModel { model: PhantomData },
+            persistent: self.persistent,
         }
     }
 
@@ -755,6 +764,7 @@ where
                 columns: PhantomData,
                 model: PhantomData,
             },
+            persistent: None,
         }
     }
 
@@ -766,7 +776,27 @@ where
         Selector {
             query,
             selector: SelectGetableTuple { model: PhantomData },
+            persistent: None,
         }
+    }
+
+    /// Set whether to use prepared statement caching (persistent prepared statements)
+    ///
+    /// When set to `Some(false)`, prepared statement caching will be disabled for this query.
+    /// When set to `Some(true)`, prepared statement caching will be enabled for this query.
+    /// When set to `None`, uses the connection's default behavior.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// let query = cake::Entity::find().into_tuple::<(i32, String)>(query)
+    ///     .persistent(false);
+    /// ```
+    pub fn persistent(mut self, value: bool) -> Self {
+        self.persistent = Some(value);
+        self
     }
 
     fn into_selector_raw<C>(self, db: &C) -> SelectorRaw<S>
@@ -774,7 +804,8 @@ where
         C: ConnectionTrait,
     {
         let builder = db.get_database_backend();
-        let stmt = builder.build(&self.query);
+        let mut stmt = builder.build(&self.query);
+        stmt.persistent = self.persistent;
         SelectorRaw {
             stmt,
             selector: self.selector,
@@ -783,7 +814,9 @@ where
 
     /// Get the SQL statement
     pub fn into_statement(self, builder: DbBackend) -> Statement {
-        builder.build(&self.query)
+        let mut stmt = builder.build(&self.query);
+        stmt.persistent = self.persistent;
+        stmt
     }
 
     /// Get an item from the Select query
