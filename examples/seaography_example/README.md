@@ -89,6 +89,10 @@ cargo run
 `cd` into `migration` folder and follow instructions there, but basically:
 
 ```sh
+export DATABASE_URL="sqlite://../bakery.db?mode=rwc"
+```
+
+```sh
 cd migration
 cargo run
 ```

@@ -7,8 +7,8 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let insert = Query::insert()
-            .into_table(Cake::Table)
-            .columns([Cake::Name])
+            .into_table("cake")
+            .columns(["name"])
             .values_panic(["Tiramisu".into()])
             .to_owned();
 
@@ -19,18 +19,12 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let delete = Query::delete()
-            .from_table(Cake::Table)
-            .and_where(Expr::col(Cake::Name).eq("Tiramisu"))
+            .from_table("cake")
+            .and_where(Expr::col("name").eq("Tiramisu"))
             .to_owned();
 
         manager.execute(delete).await?;
 
         Ok(())
     }
-}
-
-#[derive(DeriveIden)]
-pub enum Cake {
-    Table,
-    Name,
 }

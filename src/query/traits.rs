@@ -28,7 +28,7 @@ pub trait QueryTrait {
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
-    ///         .apply_if(Some(3), |mut query, v| {
+    ///         .apply_if(Some(3), |query, v| {
     ///             query.filter(cake::Column::Id.eq(v))
     ///         })
     ///         .apply_if(Some(100), QuerySelect::limit)

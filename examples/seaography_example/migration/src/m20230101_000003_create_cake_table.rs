@@ -9,20 +9,20 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Cake::Table)
-                    .col(pk_auto(Cake::Id))
-                    .col(string(Cake::Name))
-                    .col(decimal_len(Cake::Price, 16, 4))
-                    .col(integer(Cake::BakeryId))
+                    .table("cake")
+                    .col(pk_auto("id"))
+                    .col(string("name"))
+                    .col(decimal_len("price", 16, 4))
+                    .col(integer("bakery_id"))
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-cake-bakery_id")
-                            .from(Cake::Table, Cake::BakeryId)
-                            .to(Bakery::Table, Bakery::Id)
+                            .from("cake", "bakery_id")
+                            .to("bakery", "id")
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )
-                    .col(boolean(Cake::GlutenFree))
+                    .col(boolean("gluten_free"))
                     .to_owned(),
             )
             .await
@@ -30,23 +30,7 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Cake::Table).to_owned())
+            .drop_table(Table::drop().table("cake").to_owned())
             .await
     }
-}
-
-#[derive(DeriveIden)]
-enum Cake {
-    Table,
-    Id,
-    Name,
-    Price,
-    GlutenFree,
-    BakeryId,
-}
-
-#[derive(DeriveIden)]
-enum Bakery {
-    Table,
-    Id,
 }

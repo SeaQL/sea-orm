@@ -12,11 +12,11 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Post::Table)
+                    .table("post")
                     .if_not_exists()
-                    .col(pk_auto(Post::Id))
-                    .col(string(Post::Title))
-                    .col(string(Post::Text))
+                    .col(pk_auto("id"))
+                    .col(string("title"))
+                    .col(string("text"))
                     .to_owned(),
             )
             .await
@@ -27,15 +27,7 @@ impl MigrationTrait for Migration {
         todo!();
 
         manager
-            .drop_table(Table::drop().table(Post::Table).to_owned())
+            .drop_table(Table::drop().table("post").to_owned())
             .await
     }
-}
-
-#[derive(DeriveIden)]
-enum Post {
-    Table,
-    Id,
-    Title,
-    Text,
 }
