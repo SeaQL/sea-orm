@@ -237,3 +237,29 @@ where
         Ok(self)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{ColumnTrait, ModelTrait, prelude::Expr, tests_cfg::post};
+
+    #[test]
+    fn test_model() {
+        fn filter_by_column(col: post::Column) -> Expr {
+            col.eq("attribute")
+        }
+
+        fn get_value_from(model: &post::Model, col: post::Column) {
+            let value: i32 = model.get(col).unwrap();
+            assert_eq!(value, 12);
+        }
+
+        let model = post::Model {
+            id: 12,
+            user_id: 14,
+            title: "hello".into(),
+        };
+
+        get_value_from(&model, post::COLUMN.id.0);
+        filter_by_column(post::COLUMN.title.0);
+    }
+}
