@@ -504,24 +504,27 @@ async fn test_composite_foreign_key() -> Result<(), DbErr> {
             .sync(db)
             .await?;
 
-        let has_index: bool = db
-            .query_one(
-                Query::select()
-                    .expr(Expr::cust("COUNT(*) > 0"))
-                    .from("pg_indexes")
-                    .cond_where(
-                        Condition::all()
-                            .add(Expr::cust("schemaname = CURRENT_SCHEMA()"))
-                            .add(Expr::col("tablename").eq("composite_c"))
-                            .add(Expr::col("indexname").eq("idx-composite_c-season_episode")),
-                    ),
-            )
-            .await?
-            .unwrap()
-            .try_get_by_index(0)
-            .unwrap();
+        #[cfg(feature = "sqlx-postgres")]
+        {
+            let has_index: bool = db
+                .query_one(
+                    Query::select()
+                        .expr(Expr::cust("COUNT(*) > 0"))
+                        .from("pg_indexes")
+                        .cond_where(
+                            Condition::all()
+                                .add(Expr::cust("schemaname = CURRENT_SCHEMA()"))
+                                .add(Expr::col("tablename").eq("composite_c"))
+                                .add(Expr::col("indexname").eq("idx-composite_c-season_episode")),
+                        ),
+                )
+                .await?
+                .unwrap()
+                .try_get_by_index(0)
+                .unwrap();
 
-        assert!(has_index, "Should have index on `composite_c`");
+            assert!(has_index, "Should have index on `composite_c`");
+        }
     }
 
     composite_a::ActiveModel {
