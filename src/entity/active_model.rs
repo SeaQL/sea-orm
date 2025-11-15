@@ -63,7 +63,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         self
     }
 
-    /// Get the primary key of the ActiveModel, if it's fully specified.
+    /// Get the primary key of the ActiveModel, only if it's fully specified.
     fn get_primary_key_value(&self) -> Option<ValueTuple> {
         let mut cols = <Self::Entity as EntityTrait>::PrimaryKey::iter();
         macro_rules! next {

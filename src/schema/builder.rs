@@ -362,6 +362,7 @@ impl EntitySchemaInfo {
                 }
             }
             if !has_index {
+                // shall we do alter table add constraint for unique index?
                 let mut stmt = stmt.clone();
                 stmt.if_not_exists();
                 db.execute(&stmt).await?;
@@ -432,7 +433,8 @@ fn compare_foreign_key(a: &ForeignKeyCreateStatement, b: &ForeignKeyCreateStatem
     let a = a.get_foreign_key();
     let b = b.get_foreign_key();
 
-    a.get_ref_table() == b.get_ref_table()
-        && a.get_columns() == b.get_columns()
-        && a.get_ref_columns() == b.get_ref_columns()
+    a.get_name() == b.get_name()
+        || (a.get_ref_table() == b.get_ref_table()
+            && a.get_columns() == b.get_columns()
+            && a.get_ref_columns() == b.get_ref_columns())
 }
