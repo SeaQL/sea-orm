@@ -2,6 +2,19 @@ use heck::ToUpperCamelCase;
 use syn::{Field, Ident, Meta, MetaNameValue, punctuated::Punctuated, token::Comma};
 
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
+    let field_type = &field.ty;
+    let field_type = quote::quote! { #field_type }
+        .to_string() // e.g.: "Option < String >"
+        .replace(' ', ""); // Remove spaces
+
+    if is_compound_field(&field_type) {
+        return false;
+    }
+
+    field_not_ignored_compound(field)
+}
+
+pub(crate) fn field_not_ignored_compound(field: &Field) -> bool {
     for attr in field.attrs.iter() {
         if let Some(ident) = attr.path().get_ident() {
             if ident != "sea_orm" {
@@ -22,15 +35,6 @@ pub(crate) fn field_not_ignored(field: &Field) -> bool {
                 }
             }
         }
-    }
-
-    let field_type = &field.ty;
-    let field_type = quote::quote! { #field_type }
-        .to_string() // e.g.: "Option < String >"
-        .replace(' ', ""); // Remove spaces
-
-    if is_compound_field(&field_type) {
-        return false;
     }
 
     true

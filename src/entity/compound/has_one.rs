@@ -1,4 +1,4 @@
-use crate::EntityTrait;
+use crate::{EntityTrait, HasOneModel};
 use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Default, Clone)]
@@ -61,6 +61,24 @@ impl<E: EntityTrait> HasOne<E> {
             HasOne::Loaded(model) => *model,
             HasOne::Unloaded => panic!("called `HasOne::unwrap()` on an `Unloaded` value"),
             HasOne::NotFound => panic!("called `HasOne::unwrap()` on a `NotFound` value"),
+        }
+    }
+}
+
+impl<E> HasOne<E>
+where
+    E: EntityTrait,
+    <E as EntityTrait>::ActiveModelEx: From<<E as EntityTrait>::ModelEx>,
+{
+    pub fn into_active_model(self) -> HasOneModel<E> {
+        match self {
+            HasOne::Loaded(_) => {
+                let model = self.unwrap();
+                let active_model: <E as EntityTrait>::ActiveModelEx = model.into();
+                HasOneModel::Set(active_model.into())
+            }
+            HasOne::Unloaded => HasOneModel::NotSet,
+            HasOne::NotFound => HasOneModel::SetNone,
         }
     }
 }
