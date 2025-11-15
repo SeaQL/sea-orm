@@ -427,6 +427,13 @@ impl ActiveEnum {
                 }
             }
 
+            #[automatically_derived]
+            impl sea_orm::IntoActiveValue<#ident> for #ident {
+                fn into_active_value(self) -> sea_orm::ActiveValue<#ident> {
+                    sea_orm::ActiveValue::set(self)
+                }
+            }
+
             #impl_not_u8
         )
     }

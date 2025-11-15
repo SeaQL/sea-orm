@@ -678,6 +678,7 @@ fn delete_by_id<T>(values: T) -> DeleteMany<Self>         // old
 
 fn delete_by_id<T>(values: T) -> ValidatedDeleteOne<Self> // new
 ```
+* `DeriveActiveEnum` now also automatically impl `IntoActiveValue`, if you have a custom impl before, there would be a collision
 
 ### Upgrades
 

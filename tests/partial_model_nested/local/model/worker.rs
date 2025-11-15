@@ -1,4 +1,4 @@
-use sea_orm::{ActiveValue, IntoActiveValue, entity::prelude::*};
+use sea_orm::{ActiveValue, entity::prelude::*};
 
 #[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]

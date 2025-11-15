@@ -26,15 +26,3 @@ pub struct CustomActiveModel {
     pub category: Option<Category>,
     pub color: Option<Option<Color>>,
 }
-
-impl IntoActiveValue<Category> for Category {
-    fn into_active_value(self) -> ActiveValue<Category> {
-        ActiveValue::set(self)
-    }
-}
-
-impl IntoActiveValue<Color> for Color {
-    fn into_active_value(self) -> ActiveValue<Color> {
-        ActiveValue::set(self)
-    }
-}
