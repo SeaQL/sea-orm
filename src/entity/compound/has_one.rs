@@ -78,7 +78,7 @@ where
                 HasOneModel::Set(active_model.into())
             }
             HasOne::Unloaded => HasOneModel::NotSet,
-            HasOne::NotFound => HasOneModel::SetNone,
+            HasOne::NotFound => HasOneModel::NotSet,
         }
     }
 }

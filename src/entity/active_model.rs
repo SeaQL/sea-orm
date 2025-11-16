@@ -347,6 +347,17 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait,
     {
+        let res = if !self.is_update() {
+            self.insert(db).await
+        } else {
+            self.update(db).await
+        }?;
+        Ok(res.into_active_model())
+    }
+
+    /// Returns true if the primary key is fully-specified
+    #[doc(hidden)]
+    fn is_update(&self) -> bool {
         let mut is_update = true;
         for key in <Self::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
@@ -355,12 +366,7 @@ pub trait ActiveModelTrait: Clone + Debug {
                 break;
             }
         }
-        let res = if !is_update {
-            self.insert(db).await
-        } else {
-            self.update(db).await
-        }?;
-        Ok(res.into_active_model())
+        is_update
     }
 
     /// Delete an active model by its primary key
@@ -519,7 +525,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Return `true` if any attribute of `ActiveModel` is `Set`
     fn is_changed(&self) -> bool {
         <Self::Entity as EntityTrait>::Column::iter()
-            .any(|col| self.get(col).is_set() && !self.get(col).is_unchanged())
+            .any(|col| matches!(self.get(col), ActiveValue::Set(_)))
     }
 
     #[doc(hidden)]
@@ -553,6 +559,17 @@ pub trait ActiveModelTrait: Clone + Debug {
         set_key_on_active_model(&rel_def.from_col, values, self)?;
 
         Ok(())
+    }
+
+    #[doc(hidden)]
+    fn find_related_of<AM>(&self, _: &[AM]) -> crate::query::Select<AM::Entity>
+    where
+        AM: ActiveModelTrait,
+        Self::Entity: Related<AM::Entity>,
+    {
+        use crate::query::QueryFilter;
+
+        Self::Entity::find_related().belongs_to_active_model(self)
     }
 }
 

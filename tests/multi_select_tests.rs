@@ -7,9 +7,7 @@ use sea_orm::{
     Database, DbConn, DbErr,
     entity::*,
     query::*,
-    sea_query,
     sea_query::{Expr, Query},
-    tests_cfg::*,
 };
 
 mod one {

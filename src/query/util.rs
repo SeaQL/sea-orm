@@ -6,7 +6,7 @@ use std::str::FromStr;
 pub struct ValueTupleBuilder(Option<ValueTuple>);
 
 impl ValueTupleBuilder {
-    fn push(&mut self, value: Value) {
+    pub fn push(&mut self, value: Value) {
         match self.0.take() {
             None => {
                 self.0 = Some(ValueTuple::One(value));
@@ -27,7 +27,7 @@ impl ValueTupleBuilder {
         }
     }
 
-    fn into_inner(self) -> Option<ValueTuple> {
+    pub fn into_inner(self) -> Option<ValueTuple> {
         self.0
     }
 }
