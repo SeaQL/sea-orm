@@ -24,6 +24,20 @@ pub enum HasManyModel<E: EntityTrait> {
     Append(Vec<<E as EntityTrait>::ActiveModelEx>),
 }
 
+/// Action to perform on ActiveModel
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ActiveModelAction {
+    /// Insert
+    Insert,
+    /// Update
+    Update,
+    /// Insert the model if primary key is `NotSet`, update otherwise.
+    /// Only works if the entity has auto increment primary key.
+    Save,
+    /// Delete
+    Delete,
+}
+
 impl<E> PartialEq for HasOneModel<E>
 where
     E: EntityTrait,

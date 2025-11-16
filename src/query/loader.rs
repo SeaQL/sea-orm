@@ -1,7 +1,8 @@
+use super::get_key_from_model;
 use crate::{
     ColumnTrait, Condition, ConnectionTrait, DbBackend, DbErr, EntityTrait, Identity, JoinType,
     ModelTrait, QueryFilter, QuerySelect, Related, RelationDef, RelationTrait, RelationType,
-    Select, dynamic, error::*,
+    Select, dynamic, query_err,
 };
 use async_trait::async_trait;
 use sea_query::{ColumnRef, DynIden, Expr, ExprTrait, IntoColumnRef, TableRef, ValueTuple};
@@ -404,7 +405,7 @@ where
 
             let pkeys = self
                 .iter()
-                .map(|model| extract_key(&via_rel.from_col, model))
+                .map(|model| get_key_from_model(&via_rel.from_col, model))
                 .collect::<Result<Vec<_>, _>>()?;
 
             // Map of M::PK -> Vec<R::PK>
@@ -421,10 +422,10 @@ where
                 let stmt = V::find().filter(condition);
                 let data = stmt.all(db).await?;
                 for model in data {
-                    let pk = extract_key(&via_rel.to_col, &model)?;
+                    let pk = get_key_from_model(&via_rel.to_col, &model)?;
                     let entry = keymap.entry(pk).or_default();
 
-                    let fk = extract_key(&rel_def.from_col, &model)?;
+                    let fk = get_key_from_model(&rel_def.from_col, &model)?;
                     entry.push(fk);
                 }
 
@@ -447,7 +448,7 @@ where
             let data = models.into_iter().try_fold(
                 HashMap::<ValueTuple, <R as EntityTrait>::Model>::new(),
                 |mut acc, model| {
-                    extract_key(&rel_def.to_col, &model).map(|key| {
+                    get_key_from_model(&rel_def.to_col, &model).map(|key| {
                         acc.insert(key, model);
 
                         acc
@@ -773,7 +774,7 @@ where
 {
     let (keys, hashmap) = if let Some(via_def) = via_def {
         let keys = items
-            .map(|model| extract_key(&via_def.from_col, model))
+            .map(|model| get_key_from_model(&via_def.from_col, model))
             .collect::<Result<Vec<_>, _>>()?;
 
         if keys.is_empty() {
@@ -830,7 +831,7 @@ where
         (keys, hashmap)
     } else {
         let keys = items
-            .map(|model| extract_key(&rel_def.from_col, model))
+            .map(|model| get_key_from_model(&rel_def.from_col, model))
             .collect::<Result<Vec<_>, _>>()?;
 
         if keys.is_empty() {
@@ -852,7 +853,7 @@ where
         let mut hashmap: HashMap<ValueTuple, T> = Default::default();
 
         for item in data {
-            let key = extract_key(&rel_def.to_col, &item)?;
+            let key = get_key_from_model(&rel_def.to_col, &item)?;
             let holder = hashmap.entry(key).or_default();
             holder.add(item.into());
         }
@@ -870,42 +871,6 @@ where
 
 fn cmp_table_ref(left: &TableRef, right: &TableRef) -> bool {
     left == right
-}
-
-fn extract_key<Model>(target_col: &Identity, model: &Model) -> Result<ValueTuple, DbErr>
-where
-    Model: ModelTrait,
-{
-    let values = target_col
-        .iter()
-        .map(|col| {
-            let col_name = col.inner();
-            let column =
-                <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
-                    &col_name,
-                )
-                .map_err(|_| DbErr::Type(format!("Failed at mapping '{col_name}' to column")))?;
-            Ok(model.get(column))
-        })
-        .collect::<Result<Vec<_>, DbErr>>()?;
-
-    Ok(match values.len() {
-        0 => return Err(DbErr::Type("Identity zero?".into())),
-        1 => ValueTuple::One(values.into_iter().next().expect("checked")),
-        2 => {
-            let mut it = values.into_iter();
-            ValueTuple::Two(it.next().expect("checked"), it.next().expect("checked"))
-        }
-        3 => {
-            let mut it = values.into_iter();
-            ValueTuple::Three(
-                it.next().expect("checked"),
-                it.next().expect("checked"),
-                it.next().expect("checked"),
-            )
-        }
-        _ => ValueTuple::Many(values),
-    })
 }
 
 fn extract_col_type<Model>(

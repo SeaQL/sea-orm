@@ -1,7 +1,9 @@
 use super::{ActiveValue, ActiveValue::*};
 use crate::{
-    ColumnTrait, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyArity,
-    PrimaryKeyToColumn, PrimaryKeyTrait, Value, error::*,
+    ColumnTrait, ConnectionTrait, DeleteResult, EntityTrait, IdenStatic, Iterable, PrimaryKeyArity,
+    PrimaryKeyToColumn, PrimaryKeyTrait, Related, RelationType, Value,
+    error::*,
+    query::{get_key_from_active_model, set_key_on_active_model},
 };
 use async_trait::async_trait;
 use sea_query::ValueTuple;
@@ -518,6 +520,39 @@ pub trait ActiveModelTrait: Clone + Debug {
     fn is_changed(&self) -> bool {
         <Self::Entity as EntityTrait>::Column::iter()
             .any(|col| self.get(col).is_set() && !self.get(col).is_unchanged())
+    }
+
+    #[doc(hidden)]
+    /// Used by ActiveModelEx. Set the key to parent's key value for a belongs to relation.
+    fn set_parent_key<R, AM>(&mut self, model: &AM) -> Result<(), DbErr>
+    where
+        R: EntityTrait,
+        AM: ActiveModelTrait<Entity = R>,
+        Self::Entity: Related<R>,
+    {
+        let rel_def = Self::Entity::to();
+
+        if rel_def.rel_type != RelationType::HasOne {
+            return Err(DbErr::Type(format!(
+                "Relation from {} to {} is not HasOne",
+                <Self::Entity as Default>::default().as_str(),
+                <R as Default>::default().as_str()
+            )));
+        }
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation from {} to {} is not belongs_to",
+                <Self::Entity as Default>::default().as_str(),
+                <R as Default>::default().as_str()
+            )));
+        }
+
+        let values = get_key_from_active_model(&rel_def.to_col, model)?;
+
+        set_key_on_active_model(&rel_def.from_col, values, self)?;
+
+        Ok(())
     }
 }
 
@@ -1242,6 +1277,45 @@ mod tests {
                 name: Set("".into()),
                 tea: NotSet,
             },
+        );
+    }
+
+    #[test]
+    fn test_active_model_set_parent_key() {
+        let mut fruit = fruit::Model {
+            id: 2,
+            name: "F".into(),
+            cake_id: None,
+        }
+        .into_active_model();
+
+        let cake = cake::Model {
+            id: 4,
+            name: "C".into(),
+        }
+        .into_active_model();
+
+        fruit.set_parent_key(&cake).unwrap();
+
+        assert_eq!(
+            fruit,
+            fruit::ActiveModel {
+                id: Unchanged(2),
+                name: Unchanged("F".into()),
+                cake_id: Set(Some(4)),
+            }
+        );
+
+        let mut cake_filling = cake_filling::ActiveModel::new();
+
+        cake_filling.set_parent_key(&cake).unwrap();
+
+        assert_eq!(
+            cake_filling,
+            cake_filling::ActiveModel {
+                cake_id: Set(4),
+                filling_id: NotSet,
+            }
         );
     }
 }
