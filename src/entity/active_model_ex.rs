@@ -1,4 +1,4 @@
-use crate::EntityTrait;
+use crate::{ActiveModelTrait, EntityTrait, ModelTrait};
 
 /// Container for belongs_to or has_one relation
 #[derive(Debug, Default, Clone)]
@@ -16,9 +16,9 @@ pub enum HasManyModel<E: EntityTrait> {
     /// Unspecified value, do nothing
     #[default]
     NotSet,
-    /// Replace all items with this value set
+    /// Replace all items with this value set; delete leftovers
     Replace(Vec<<E as EntityTrait>::ActiveModelEx>),
-    /// Append items to this has many relation
+    /// Append new items to this has many relation; do not delete
     Append(Vec<<E as EntityTrait>::ActiveModelEx>),
 }
 
@@ -56,6 +56,14 @@ where
         match self {
             Self::Set(model) => Some(model),
             _ => None,
+        }
+    }
+
+    /// Return true if the containing model is set and changed
+    pub fn is_changed(&self) -> bool {
+        match self {
+            Self::Set(model) => model.is_changed(),
+            _ => false,
         }
     }
 }
@@ -135,6 +143,30 @@ where
     /// If self is `Append`
     pub fn is_append(&self) -> bool {
         matches!(self, Self::Append(_))
+    }
+
+    /// Return true if self is `Replace` or any containing model is changed
+    pub fn is_changed(&self) -> bool {
+        match self {
+            Self::Replace(_) => true,
+            Self::Append(models) => models.iter().any(|model| model.is_changed()),
+            Self::NotSet => false,
+        }
+    }
+
+    /// Find within the models by primary key, return true if found
+    pub fn find(&self, model: &E::Model) -> bool {
+        let pk = model.get_primary_key_value();
+
+        for item in self.as_slice() {
+            if let Some(pk_item) = item.get_primary_key_value() {
+                if pk_item == pk {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 }
 

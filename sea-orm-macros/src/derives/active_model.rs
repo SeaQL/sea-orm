@@ -167,6 +167,13 @@ impl DeriveActiveModel {
                 }
             }
 
+            fn set_if_not_equals(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column, v: sea_orm::Value) {
+                match c {
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => self.#fields.set_if_not_equals(v.unwrap()),)*
+                    _ => (),
+                }
+            }
+
             fn try_set(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column, v: sea_orm::Value) -> Result<(), sea_orm::DbErr> {
                 match c {
                     #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => self.#fields = sea_orm::ActiveValue::Set(sea_orm::sea_query::ValueType::try_from(v).map_err(|e| sea_orm::DbErr::Type(e.to_string()))?),)*
@@ -178,7 +185,7 @@ impl DeriveActiveModel {
             fn not_set(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column) {
                 match c {
                     #(<Self::Entity as sea_orm::EntityTrait>::Column::#names => self.#fields = sea_orm::ActiveValue::NotSet,)*
-                    _ => {},
+                    _ => (),
                 }
             }
 

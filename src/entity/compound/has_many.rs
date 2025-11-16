@@ -68,7 +68,7 @@ where
     pub fn into_active_model(self) -> HasManyModel<E> {
         match self {
             HasMany::Loaded(models) => {
-                HasManyModel::Replace(models.into_iter().map(Into::into).collect())
+                HasManyModel::Append(models.into_iter().map(Into::into).collect())
             }
             HasMany::Unloaded => HasManyModel::NotSet,
         }

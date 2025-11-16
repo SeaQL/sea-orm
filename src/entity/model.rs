@@ -320,7 +320,7 @@ mod tests {
                 }
                 .into(),
             ),
-            fillings: HasManyModel::Replace(vec![filling::ActiveModelEx {
+            fillings: HasManyModel::Append(vec![filling::ActiveModelEx {
                 id: Unchanged(14),
                 name: Unchanged("FF".into()),
                 vendor_id: Unchanged(None),

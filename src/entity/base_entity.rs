@@ -190,6 +190,18 @@ pub trait EntityTrait: EntityName {
         Select::new()
     }
 
+    /// Same as `find_related`, but using the other Entity's relation definition.
+    /// Not stable.
+    #[doc(hidden)]
+    fn find_related_rev<R>() -> Select<R>
+    where
+        R: EntityTrait,
+        R: Related<Self>,
+    {
+        use crate::{JoinType, QuerySelect};
+        Select::<R>::new().join_join(JoinType::InnerJoin, R::to(), R::via())
+    }
+
     /// Find a model by primary key
     ///
     /// # Example

@@ -37,6 +37,9 @@ pub trait ActiveModelTrait: Clone + Debug {
             .unwrap_or_else(|e| panic!("Failed to set value for {:?}: {e:?}", c.as_column_ref()))
     }
 
+    /// Set the Value of a ActiveModel field if value is different, panic if failed
+    fn set_if_not_equals(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
+
     /// Set the Value of a ActiveModel field, return error if failed
     fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
 
@@ -559,6 +562,34 @@ pub trait ActiveModelTrait: Clone + Debug {
         set_key_on_active_model(&rel_def.from_col, values, self)?;
 
         Ok(())
+    }
+
+    #[doc(hidden)]
+    fn get_parent_key<R, AM>(&self, _: &AM) -> Result<ValueTuple, DbErr>
+    where
+        R: EntityTrait,
+        AM: ActiveModelTrait<Entity = R>,
+        Self::Entity: Related<R>,
+    {
+        let rel_def = Self::Entity::to();
+
+        if rel_def.rel_type != RelationType::HasOne {
+            return Err(DbErr::Type(format!(
+                "Relation from {} to {} is not HasOne",
+                <Self::Entity as Default>::default().as_str(),
+                <R as Default>::default().as_str()
+            )));
+        }
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation from {} to {} is not belongs_to",
+                <Self::Entity as Default>::default().as_str(),
+                <R as Default>::default().as_str()
+            )));
+        }
+
+        get_key_from_active_model(&rel_def.from_col, self)
     }
 
     #[doc(hidden)]

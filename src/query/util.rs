@@ -102,7 +102,7 @@ where
         let col_name = column.inner();
         let column = <<ActiveModel::Entity as EntityTrait>::Column as FromStr>::from_str(&col_name)
             .map_err(|_| DbErr::Type(format!("Failed at mapping '{col_name}' to column")))?;
-        model.try_set(column, value)?;
+        model.set_if_not_equals(column, value);
     }
 
     Ok(())

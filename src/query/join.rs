@@ -333,6 +333,20 @@ mod tests {
             ]
             .join(" ")
         );
+
+        let find_fruit: Select<fruit::Entity> = cake::Entity::find_related_rev();
+        assert_eq!(
+            find_fruit
+                .filter(cake::Column::Id.eq(11))
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
+                "INNER JOIN `cake` ON `fruit`.`cake_id` = `cake`.`id`",
+                "WHERE `cake`.`id` = 11",
+            ]
+            .join(" ")
+        );
     }
 
     #[test]
@@ -383,6 +397,17 @@ mod tests {
                 "SELECT `filling`.`id`, `filling`.`name`, `filling`.`vendor_id` FROM `filling`",
                 "INNER JOIN `cake_filling` ON `cake_filling`.`filling_id` = `filling`.`id`",
                 "INNER JOIN `cake` ON `cake`.`id` = `cake_filling`.`cake_id`",
+            ]
+            .join(" ")
+        );
+
+        let find_filling: Select<filling::Entity> = cake::Entity::find_related_rev();
+        assert_eq!(
+            find_filling.build(DbBackend::MySql).to_string(),
+            [
+                "SELECT `filling`.`id`, `filling`.`name`, `filling`.`vendor_id` FROM `filling`",
+                "INNER JOIN `cake_filling` ON `filling`.`id` = `cake_filling`.`filling_id`",
+                "INNER JOIN `cake` ON `cake_filling`.`cake_id` = `cake`.`id`",
             ]
             .join(" ")
         );

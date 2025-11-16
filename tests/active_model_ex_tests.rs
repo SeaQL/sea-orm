@@ -14,9 +14,12 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
         .register(user::Entity)
         .register(profile::Entity)
         .register(post::Entity)
+        .register(post_tag::Entity)
+        .register(tag::Entity)
         .apply(db)
         .await?;
 
+    tracing::info!("save a new user");
     let user = user::ActiveModel {
         id: NotSet,
         name: Set("Alice".into()),
@@ -122,7 +125,7 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
             picture: Set("Alan.jpg".into()),
             ..Default::default()
         }),
-        posts: HasManyModel::Replace(vec![
+        posts: HasManyModel::Append(vec![
             post::ActiveModelEx {
                 title: Set("post 3".into()),
                 ..Default::default()
@@ -148,7 +151,7 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
                 user_id: Unchanged(4),
                 user: HasOneModel::NotSet,
             }),
-            posts: HasManyModel::Replace(vec![
+            posts: HasManyModel::Append(vec![
                 post::ActiveModelEx {
                     id: Unchanged(3),
                     user_id: Unchanged(4),
@@ -223,6 +226,132 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
             posts: HasMany::Loaded(vec![]),
         }
     );
+
+    tracing::info!("insert one tag for later use");
+    let day = tag::ActiveModel {
+        tag: Set("day".into()),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    tracing::info!("insert new post and set 2 tags");
+    let mut post = post::ActiveModelEx {
+        id: NotSet,
+        user_id: NotSet,
+        title: Set("post 7".into()),
+        author: HasOneModel::set(user.into_active_model()),
+        comments: HasManyModel::NotSet,
+        tags: HasManyModel::Replace(vec![
+            day.into_active_model().into(),
+            tag::ActiveModel {
+                id: NotSet,
+                tag: Set("pet".into()),
+            }
+            .into(),
+        ]),
+    }
+    .save(db)
+    .await?;
+
+    assert_eq!(
+        post,
+        post::ActiveModelEx {
+            id: Unchanged(7),
+            user_id: Unchanged(4),
+            title: Unchanged("post 7".into()),
+            author: HasOneModel::set(user::ActiveModelEx {
+                id: Unchanged(4),
+                name: Unchanged("Alan".into()),
+                email: Unchanged("@4".into()),
+                profile: HasOneModel::set(profile::ActiveModelEx {
+                    id: Unchanged(2),
+                    picture: Unchanged("Alan2.jpg".into()),
+                    user_id: Unchanged(4),
+                    user: HasOneModel::NotSet,
+                }),
+                posts: HasManyModel::Append(vec![]),
+            }),
+            comments: HasManyModel::NotSet,
+            tags: HasManyModel::Replace(vec![
+                tag::ActiveModel {
+                    id: Unchanged(1),
+                    tag: Unchanged("day".into()),
+                }
+                .into(),
+                tag::ActiveModel {
+                    id: Unchanged(2),
+                    tag: Unchanged("pet".into()),
+                }
+                .into(),
+            ]),
+        }
+    );
+
+    tracing::info!("get back the post and tags");
+    let post_7 = post::Entity::load()
+        .filter_by_id(7)
+        .with(tag::Entity)
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(post_7.id, 7);
+    assert_eq!(post_7.tags.len(), 2);
+    assert_eq!(post_7.tags[0].tag, "day");
+    assert_eq!(post_7.tags[1].tag, "pet");
+
+    tracing::info!("replace post tags: remove tag 1 add tag 3");
+    post.tags = HasManyModel::Replace(vec![
+        tag::ActiveModel {
+            id: NotSet, // new tag
+            tag: Set("food".into()),
+        }
+        .into(),
+        tag::ActiveModel {
+            id: Unchanged(2), // retain
+            tag: Unchanged("pet".into()),
+        }
+        .into(),
+    ]);
+    let mut post = post.save(db).await?;
+
+    tracing::info!("get back the post and tags");
+    let post_7 = post::Entity::load()
+        .filter_by_id(7)
+        .with(tag::Entity)
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(post_7.id, 7);
+    assert_eq!(post_7.tags.len(), 2);
+    assert_eq!(post_7.tags[0].tag, "pet");
+    assert_eq!(post_7.tags[1].tag, "food");
+
+    tracing::info!("add new tag to post");
+    post.tags = HasManyModel::Append(vec![
+        tag::ActiveModel {
+            id: NotSet, // new tag
+            tag: Set("sunny".into()),
+        }
+        .into(),
+    ]);
+    post.save(db).await?;
+
+    tracing::info!("get back the post and tags");
+    let post_7 = post::Entity::load()
+        .filter_by_id(7)
+        .with(tag::Entity)
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(post_7.id, 7);
+    assert_eq!(post_7.tags.len(), 3);
+    assert_eq!(post_7.tags[0].tag, "pet");
+    assert_eq!(post_7.tags[1].tag, "food");
+    assert_eq!(post_7.tags[2].tag, "sunny");
 
     Ok(())
 }
