@@ -51,6 +51,14 @@ where
         }
     }
 
+    /// Get a reference, if set
+    pub fn as_ref(&self) -> Option<&<E as EntityTrait>::ActiveModelEx> {
+        match self {
+            Self::Set(model) => Some(model),
+            _ => None,
+        }
+    }
+
     /// Get a mutable reference, if set
     pub fn as_mut(&mut self) -> Option<&mut <E as EntityTrait>::ActiveModelEx> {
         match self {

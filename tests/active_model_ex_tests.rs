@@ -301,6 +301,24 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
     assert_eq!(post_7.tags[0].tag, "day");
     assert_eq!(post_7.tags[1].tag, "pet");
 
+    tracing::info!("update user profile through post");
+    post.author
+        .as_mut()
+        .unwrap()
+        .profile
+        .as_mut()
+        .unwrap()
+        .picture = Set("Alan3.jpg".into());
+    let mut post = post.save(db).await?;
+    assert_eq!(
+        profile::Entity::find_by_id(2)
+            .one(db)
+            .await?
+            .unwrap()
+            .picture,
+        "Alan3.jpg"
+    );
+
     tracing::info!("replace post tags: remove tag 1 add tag 3");
     post.tags = HasManyModel::Replace(vec![
         tag::ActiveModel {
