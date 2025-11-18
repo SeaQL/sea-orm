@@ -15,14 +15,17 @@ impl<E: EntityTrait> HasOne<E> {
         Self::Loaded(Box::new(model.into()))
     }
 
+    /// Return true if variant is `Unloaded`
     pub fn is_unloaded(&self) -> bool {
         matches!(self, HasOne::Unloaded)
     }
 
+    /// Return true if variant is `NotFound`
     pub fn is_not_found(&self) -> bool {
         matches!(self, HasOne::NotFound)
     }
 
+    /// Return true if variant is `Loaded`
     pub fn is_loaded(&self) -> bool {
         matches!(self, HasOne::Loaded(_))
     }
@@ -32,6 +35,7 @@ impl<E: EntityTrait> HasOne<E> {
         matches!(self, HasOne::Unloaded | HasOne::NotFound)
     }
 
+    /// Get a reference, if loaded
     pub fn as_ref(&self) -> Option<&E::ModelEx> {
         match self {
             HasOne::Loaded(model) => Some(model.as_ref()),
@@ -39,6 +43,7 @@ impl<E: EntityTrait> HasOne<E> {
         }
     }
 
+    /// Get a mutable reference, if loaded
     pub fn as_mut(&mut self) -> Option<&mut E::ModelEx> {
         match self {
             HasOne::Loaded(model) => Some(model),
@@ -46,6 +51,7 @@ impl<E: EntityTrait> HasOne<E> {
         }
     }
 
+    /// Convert into an `Option<ModelEx>`
     pub fn into_option(self) -> Option<E::ModelEx> {
         match self {
             HasOne::Loaded(model) => Some(*model),

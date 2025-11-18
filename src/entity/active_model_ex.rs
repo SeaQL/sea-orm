@@ -19,7 +19,7 @@ pub enum HasManyModel<E: EntityTrait> {
     NotSet,
     /// Replace all items with this value set; delete leftovers
     Replace(Vec<E::ActiveModelEx>),
-    /// Append new items to this has many relation; do not delete
+    /// Add new items to this has many relation; do not delete
     Append(Vec<E::ActiveModelEx>),
 }
 
@@ -91,7 +91,7 @@ where
         }
     }
 
-    /// Convert into an Option<ActiveModelEx>
+    /// Convert into an `Option<ActiveModelEx>`
     pub fn into_option(self) -> Option<E::ActiveModelEx> {
         match self {
             Self::Set(model) => Some(*model),

@@ -34,10 +34,12 @@ where
 }
 
 impl<E: EntityTrait> HasMany<E> {
+    /// Return true if variant is `Unloaded`
     pub fn is_unloaded(&self) -> bool {
         matches!(self, HasMany::Unloaded)
     }
 
+    /// Return true if variant is `Unloaded` or underlying vector is empty
     pub fn is_empty(&self) -> bool {
         match self {
             HasMany::Unloaded => true,
@@ -45,6 +47,7 @@ impl<E: EntityTrait> HasMany<E> {
         }
     }
 
+    /// Like `Vec::get`
     pub fn get(&self, index: usize) -> Option<&E::ModelEx> {
         match self {
             HasMany::Loaded(models) => models.get(index),
@@ -52,6 +55,7 @@ impl<E: EntityTrait> HasMany<E> {
         }
     }
 
+    /// Length of underlying vector
     pub fn len(&self) -> usize {
         match self {
             HasMany::Loaded(models) => models.len(),
