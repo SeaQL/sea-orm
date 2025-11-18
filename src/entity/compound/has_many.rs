@@ -9,13 +9,13 @@ use super::super::EntityTrait;
 pub enum HasMany<E: EntityTrait> {
     #[default]
     Unloaded,
-    Loaded(Vec<<E as EntityTrait>::ModelEx>),
+    Loaded(Vec<E::ModelEx>),
 }
 
 impl<E> PartialEq for HasMany<E>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ModelEx: PartialEq,
+    E::ModelEx: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -29,7 +29,7 @@ where
 impl<E> Eq for HasMany<E>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ModelEx: Eq,
+    E::ModelEx: Eq,
 {
 }
 
@@ -45,7 +45,7 @@ impl<E: EntityTrait> HasMany<E> {
         }
     }
 
-    pub fn get(&self, index: usize) -> Option<&<E as EntityTrait>::ModelEx> {
+    pub fn get(&self, index: usize) -> Option<&E::ModelEx> {
         match self {
             HasMany::Loaded(models) => models.get(index),
             HasMany::Unloaded => None,
@@ -63,7 +63,7 @@ impl<E: EntityTrait> HasMany<E> {
 impl<E> HasMany<E>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ActiveModelEx: From<<E as EntityTrait>::ModelEx>,
+    E::ActiveModelEx: From<E::ModelEx>,
 {
     pub fn into_active_model(self) -> HasManyModel<E> {
         match self {
@@ -75,7 +75,7 @@ where
     }
 }
 
-impl<E: EntityTrait> From<HasMany<E>> for Option<Vec<<E as EntityTrait>::ModelEx>> {
+impl<E: EntityTrait> From<HasMany<E>> for Option<Vec<E::ModelEx>> {
     fn from(value: HasMany<E>) -> Self {
         match value {
             HasMany::Loaded(models) => Some(models),
@@ -85,7 +85,7 @@ impl<E: EntityTrait> From<HasMany<E>> for Option<Vec<<E as EntityTrait>::ModelEx
 }
 
 impl<E: EntityTrait> Index<usize> for HasMany<E> {
-    type Output = <E as EntityTrait>::ModelEx;
+    type Output = E::ModelEx;
 
     fn index(&self, index: usize) -> &Self::Output {
         match self {
@@ -98,8 +98,8 @@ impl<E: EntityTrait> Index<usize> for HasMany<E> {
 }
 
 impl<E: EntityTrait> IntoIterator for HasMany<E> {
-    type Item = <E as EntityTrait>::ModelEx;
-    type IntoIter = std::vec::IntoIter<<E as EntityTrait>::ModelEx>;
+    type Item = E::ModelEx;
+    type IntoIter = std::vec::IntoIter<E::ModelEx>;
 
     fn into_iter(self) -> Self::IntoIter {
         match self {
@@ -109,8 +109,8 @@ impl<E: EntityTrait> IntoIterator for HasMany<E> {
     }
 }
 
-impl<E: EntityTrait> From<Vec<<E as EntityTrait>::ModelEx>> for HasMany<E> {
-    fn from(value: Vec<<E as EntityTrait>::ModelEx>) -> Self {
+impl<E: EntityTrait> From<Vec<E::ModelEx>> for HasMany<E> {
+    fn from(value: Vec<E::ModelEx>) -> Self {
         HasMany::Loaded(value)
     }
 }
@@ -118,8 +118,8 @@ impl<E: EntityTrait> From<Vec<<E as EntityTrait>::ModelEx>> for HasMany<E> {
 impl<E, const N: usize> PartialEq<[<E as EntityTrait>::Model; N]> for HasMany<E>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ModelEx: PartialEq<<E as EntityTrait>::Model>,
-    <E as EntityTrait>::Model: PartialEq<<E as EntityTrait>::ModelEx>,
+    E::ModelEx: PartialEq<<E as EntityTrait>::Model>,
+    <E as EntityTrait>::Model: PartialEq<E::ModelEx>,
 {
     fn eq(&self, other: &[<E as EntityTrait>::Model; N]) -> bool {
         match self {
@@ -132,8 +132,8 @@ where
 impl<E, const N: usize> PartialEq<HasMany<E>> for [<E as EntityTrait>::Model; N]
 where
     E: EntityTrait,
-    <E as EntityTrait>::ModelEx: PartialEq<<E as EntityTrait>::Model>,
-    <E as EntityTrait>::Model: PartialEq<<E as EntityTrait>::ModelEx>,
+    E::ModelEx: PartialEq<<E as EntityTrait>::Model>,
+    <E as EntityTrait>::Model: PartialEq<E::ModelEx>,
 {
     fn eq(&self, other: &HasMany<E>) -> bool {
         other == self
@@ -143,8 +143,8 @@ where
 impl<E> PartialEq<[<E as EntityTrait>::Model]> for HasMany<E>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ModelEx: PartialEq<<E as EntityTrait>::Model>,
-    <E as EntityTrait>::Model: PartialEq<<E as EntityTrait>::ModelEx>,
+    E::ModelEx: PartialEq<<E as EntityTrait>::Model>,
+    <E as EntityTrait>::Model: PartialEq<E::ModelEx>,
 {
     fn eq(&self, other: &[<E as EntityTrait>::Model]) -> bool {
         match self {
@@ -157,8 +157,8 @@ where
 impl<E> PartialEq<HasMany<E>> for [<E as EntityTrait>::Model]
 where
     E: EntityTrait,
-    <E as EntityTrait>::ModelEx: PartialEq<<E as EntityTrait>::Model>,
-    <E as EntityTrait>::Model: PartialEq<<E as EntityTrait>::ModelEx>,
+    E::ModelEx: PartialEq<<E as EntityTrait>::Model>,
+    <E as EntityTrait>::Model: PartialEq<E::ModelEx>,
 {
     fn eq(&self, other: &HasMany<E>) -> bool {
         other == self
@@ -167,7 +167,7 @@ where
 
 #[derive(Debug, Clone)]
 pub struct Iter<'a, E: EntityTrait> {
-    inner: Option<slice::Iter<'a, <E as EntityTrait>::ModelEx>>,
+    inner: Option<slice::Iter<'a, E::ModelEx>>,
 }
 
 impl<E: EntityTrait> HasMany<E> {
@@ -182,7 +182,7 @@ impl<E: EntityTrait> HasMany<E> {
 }
 
 impl<'a, E: EntityTrait> Iterator for Iter<'a, E> {
-    type Item = &'a <E as EntityTrait>::ModelEx;
+    type Item = &'a E::ModelEx;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.as_mut().and_then(|iter| iter.next())
@@ -223,7 +223,7 @@ impl<'a, E: EntityTrait> DoubleEndedIterator for Iter<'a, E> {
 }
 
 impl<'a, E: EntityTrait> IntoIterator for &'a HasMany<E> {
-    type Item = &'a <E as EntityTrait>::ModelEx;
+    type Item = &'a E::ModelEx;
     type IntoIter = Iter<'a, E>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -278,7 +278,7 @@ where
     where
         D: serde::Deserializer<'de>,
     {
-        match <Option<Vec<<E as EntityTrait>::ModelEx>>>::deserialize(deserializer)? {
+        match <Option<Vec<E::ModelEx>>>::deserialize(deserializer)? {
             Some(models) => Ok(HasMany::Loaded(models)),
             None => Ok(HasMany::Unloaded),
         }

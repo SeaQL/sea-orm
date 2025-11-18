@@ -1,4 +1,5 @@
 use crate::{ActiveModelTrait, EntityTrait, ModelTrait};
+use core::ops::{Index, IndexMut};
 
 /// Container for belongs_to or has_one relation
 #[derive(Debug, Default, Clone)]
@@ -7,7 +8,7 @@ pub enum HasOneModel<E: EntityTrait> {
     #[default]
     NotSet,
     /// Specify the value for the has one relation
-    Set(Box<<E as EntityTrait>::ActiveModelEx>),
+    Set(Box<E::ActiveModelEx>),
 }
 
 /// Container for 1-N or M-N related Models
@@ -17,9 +18,9 @@ pub enum HasManyModel<E: EntityTrait> {
     #[default]
     NotSet,
     /// Replace all items with this value set; delete leftovers
-    Replace(Vec<<E as EntityTrait>::ActiveModelEx>),
+    Replace(Vec<E::ActiveModelEx>),
     /// Append new items to this has many relation; do not delete
-    Append(Vec<<E as EntityTrait>::ActiveModelEx>),
+    Append(Vec<E::ActiveModelEx>),
 }
 
 /// Action to perform on ActiveModel
@@ -39,12 +40,12 @@ where
     E: EntityTrait,
 {
     /// Construct a `HasOneModel::Set`
-    pub fn set(model: <E as EntityTrait>::ActiveModelEx) -> Self {
+    pub fn set(model: E::ActiveModelEx) -> Self {
         Self::Set(model.into())
     }
 
     /// Take ownership of this model, leaving `NotSet` in place
-    pub fn take(&mut self) -> Option<<E as EntityTrait>::ActiveModelEx> {
+    pub fn take(&mut self) -> Option<E::ActiveModelEx> {
         match std::mem::take(self) {
             Self::Set(model) => Some(*model),
             _ => None,
@@ -52,7 +53,7 @@ where
     }
 
     /// Get a reference, if set
-    pub fn as_ref(&self) -> Option<&<E as EntityTrait>::ActiveModelEx> {
+    pub fn as_ref(&self) -> Option<&E::ActiveModelEx> {
         match self {
             Self::Set(model) => Some(model),
             _ => None,
@@ -60,7 +61,7 @@ where
     }
 
     /// Get a mutable reference, if set
-    pub fn as_mut(&mut self) -> Option<&mut <E as EntityTrait>::ActiveModelEx> {
+    pub fn as_mut(&mut self) -> Option<&mut E::ActiveModelEx> {
         match self {
             Self::Set(model) => Some(model),
             _ => None,
@@ -74,12 +75,17 @@ where
             _ => false,
         }
     }
+
+    #[doc(hidden)]
+    pub fn empty_slice(&self) -> &[E::ActiveModelEx] {
+        &[]
+    }
 }
 
 impl<E> PartialEq for HasOneModel<E>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ActiveModelEx: PartialEq,
+    E::ActiveModelEx: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -93,7 +99,7 @@ where
 impl<E> Eq for HasOneModel<E>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ActiveModelEx: Eq,
+    E::ActiveModelEx: Eq,
 {
 }
 
@@ -107,7 +113,7 @@ where
     }
 
     /// Borrow models as slice
-    pub fn as_slice(&self) -> &[<E as EntityTrait>::ActiveModelEx] {
+    pub fn as_slice(&self) -> &[E::ActiveModelEx] {
         match self {
             Self::Replace(models) | Self::Append(models) => models,
             Self::NotSet => &[],
@@ -115,7 +121,7 @@ where
     }
 
     /// Consume self as vector
-    pub fn into_vec(self) -> Vec<<E as EntityTrait>::ActiveModelEx> {
+    pub fn into_vec(self) -> Vec<E::ActiveModelEx> {
         match self {
             Self::Replace(models) | Self::Append(models) => models,
             Self::NotSet => vec![],
@@ -132,14 +138,12 @@ where
     }
 
     /// Push an item to self
-    ///
-    /// # Panics
-    ///
-    /// Panic if self is `NotSet`.
-    pub fn push(&mut self, model: <E as EntityTrait>::ActiveModelEx) {
+    pub fn push(&mut self, model: E::ActiveModelEx) {
         match self {
             Self::Replace(models) | Self::Append(models) => models.push(model),
-            Self::NotSet => panic!("Cannot push: self is NotSet"),
+            Self::NotSet => {
+                *self = Self::Append(vec![model]);
+            }
         }
     }
 
@@ -181,7 +185,7 @@ where
 impl<E> PartialEq for HasManyModel<E>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ActiveModelEx: PartialEq,
+    E::ActiveModelEx: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -196,6 +200,58 @@ where
 impl<E> Eq for HasManyModel<E>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ActiveModelEx: Eq,
+    E::ActiveModelEx: Eq,
 {
+}
+
+impl<E: EntityTrait> From<HasManyModel<E>> for Option<Vec<E::ActiveModelEx>> {
+    fn from(value: HasManyModel<E>) -> Self {
+        match value {
+            HasManyModel::NotSet => None,
+            HasManyModel::Replace(models) | HasManyModel::Append(models) => Some(models),
+        }
+    }
+}
+
+impl<E: EntityTrait> Index<usize> for HasManyModel<E> {
+    type Output = E::ActiveModelEx;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match self {
+            HasManyModel::NotSet => {
+                panic!("index out of bounds: the HasManyModel is NotSet (index: {index})")
+            }
+            HasManyModel::Replace(models) | HasManyModel::Append(models) => models.index(index),
+        }
+    }
+}
+
+impl<E: EntityTrait> IndexMut<usize> for HasManyModel<E> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        match self {
+            HasManyModel::NotSet => {
+                panic!("index out of bounds: the HasManyModel is NotSet (index: {index})")
+            }
+            HasManyModel::Replace(models) | HasManyModel::Append(models) => models.index_mut(index),
+        }
+    }
+}
+
+impl<E: EntityTrait> IntoIterator for HasManyModel<E> {
+    type Item = E::ActiveModelEx;
+    type IntoIter = std::vec::IntoIter<E::ActiveModelEx>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            HasManyModel::Replace(models) | HasManyModel::Append(models) => models.into_iter(),
+            HasManyModel::NotSet => Vec::new().into_iter(),
+        }
+    }
+}
+
+/// Converts from a set of models into `Append`, which performs non-destructive action
+impl<E: EntityTrait> From<Vec<E::ActiveModelEx>> for HasManyModel<E> {
+    fn from(value: Vec<E::ActiveModelEx>) -> Self {
+        HasManyModel::Append(value)
+    }
 }

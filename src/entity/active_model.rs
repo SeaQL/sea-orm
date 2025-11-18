@@ -591,15 +591,24 @@ pub trait ActiveModelTrait: Clone + Debug {
         get_key_from_active_model(&rel_def.from_col, self)
     }
 
+    /// Find related Models belonging to self
+    fn find_related<R>(&self, _: R) -> crate::query::Select<R>
+    where
+        R: EntityTrait,
+        Self::Entity: Related<R>,
+    {
+        use crate::query::QueryFilter;
+
+        Self::Entity::find_related().belongs_to_active_model(self)
+    }
+
     #[doc(hidden)]
     fn find_related_of<AM>(&self, _: &[AM]) -> crate::query::Select<AM::Entity>
     where
         AM: ActiveModelTrait,
         Self::Entity: Related<AM::Entity>,
     {
-        use crate::query::QueryFilter;
-
-        Self::Entity::find_related().belongs_to_active_model(self)
+        self.find_related(AM::Entity::default())
     }
 
     /// Establish links between self and a related Entity through a junction table

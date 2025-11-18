@@ -16,6 +16,7 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
         .register(post::Entity)
         .register(post_tag::Entity)
         .register(tag::Entity)
+        .register(comment::Entity)
         .apply(db)
         .await?;
 
@@ -168,7 +169,7 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
         }
     );
 
-    let posts = user.find_related_of(user.posts.as_slice()).all(db).await?;
+    let posts = user.find_related(post::Entity).all(db).await?;
     assert_eq!(posts.len(), 2);
     assert_eq!(posts[0].id, 3);
     assert_eq!(posts[1].id, 4);
@@ -181,7 +182,7 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
 
     let mut user = user.save(db).await?;
 
-    let posts = user.find_related_of(user.posts.as_slice()).all(db).await?;
+    let posts = user.find_related(post::Entity).all(db).await?;
     assert_eq!(posts.len(), 1);
     assert_eq!(posts[0].id, 5);
 
@@ -193,10 +194,22 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
 
     let mut user = user.save(db).await?;
 
-    let posts = user.find_related_of(user.posts.as_slice()).all(db).await?;
+    let posts = user.find_related(post::Entity).all(db).await?;
     assert_eq!(posts.len(), 2);
     assert_eq!(posts[0].id, 5);
     assert_eq!(posts[1].id, 6);
+
+    tracing::info!("update post 6 through user");
+    user.posts[0].title = Set("post 6!".into());
+
+    let mut user = user.save(db).await?;
+
+    let posts = user.find_related(post::Entity).all(db).await?;
+    assert_eq!(posts.len(), 2);
+    assert_eq!(posts[0].id, 5);
+    assert_eq!(posts[0].title, "post 5");
+    assert_eq!(posts[1].id, 6);
+    assert_eq!(posts[1].title, "post 6!");
 
     tracing::info!("update user profile and delete all posts");
     user.profile.as_mut().unwrap().picture = Set("Alan2.jpg".into());
@@ -347,7 +360,8 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
     assert_eq!(post_7.tags[0].tag, "pet");
     assert_eq!(post_7.tags[1].tag, "food");
 
-    tracing::info!("add new tag to post");
+    tracing::info!("update post title and add new tag");
+    post.title = Set("post 7!".into());
     post.tags = HasManyModel::Append(vec![
         tag::ActiveModel {
             id: NotSet, // new tag
@@ -366,10 +380,23 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
         .unwrap();
 
     assert_eq!(post_7.id, 7);
+    assert_eq!(post_7.title, "post 7!");
     assert_eq!(post_7.tags.len(), 3);
     assert_eq!(post_7.tags[0].tag, "pet");
     assert_eq!(post_7.tags[1].tag, "food");
     assert_eq!(post_7.tags[2].tag, "sunny");
+
+    tracing::info!("deep delete user 1");
+    let user_1 = user::Entity::find_by_email("@1").one(db).await?.unwrap();
+    assert!(user_1.clone().delete(db).await.is_err()); // can't delete as there are posts belonging to user
+    user_1.into_active_model().into_ex().delete(db).await?;
+    assert!(user::Entity::find_by_email("@1").one(db).await?.is_none());
+
+    tracing::info!("deep delete user 4");
+    let user_4 = user::Entity::find_by_id(4).one(db).await?.unwrap();
+    assert!(user_4.clone().delete(db).await.is_err()); // can't delete
+    user_4.into_active_model().into_ex().delete(db).await?;
+    assert!(user::Entity::find_by_id(4).one(db).await?.is_none());
 
     Ok(())
 }
