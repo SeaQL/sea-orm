@@ -30,7 +30,7 @@ pub trait ModelTrait: Clone + Send + Debug {
     /// Set the Value of a Model field, return error if failed
     fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
 
-    /// Find related Models
+    /// Find related Models belonging to self
     fn find_related<R>(&self, _: R) -> Select<R>
     where
         R: EntityTrait,
@@ -39,7 +39,7 @@ pub trait ModelTrait: Clone + Send + Debug {
         <Self::Entity as Related<R>>::find_related().belongs_to(self)
     }
 
-    /// Find linked Models
+    /// Find linked Models belonging to self
     fn find_linked<L>(&self, l: L) -> Select<L::ToEntity>
     where
         L: Linked<FromEntity = Self::Entity>,

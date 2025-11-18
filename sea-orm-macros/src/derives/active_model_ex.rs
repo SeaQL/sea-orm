@@ -265,7 +265,7 @@ fn expand_active_model_action(
                 let redundant = model.find_related_of(#field.as_slice()).all(db).await?;
                 for redundant in redundant {
                     if !#field.find(&redundant) {
-                        redundant.into_active_model().delete(db).await?;
+                        redundant.delete(db).await?;
                     }
                 }
             }
@@ -294,12 +294,6 @@ fn expand_active_model_action(
         });
 
         has_many_via_action.extend(quote! {
-            let mut leftover = Vec::new();
-            if #field.is_replace() {
-                leftover = Entity::find_related_rev::<#entity_module::Entity>()
-                    .belongs_to_active_model(&model).all(db).await?
-                    .into_iter().map(|m| m.into_active_model()).collect();
-            }
             model.#field = #field.empty_holder();
             for item in #field.into_vec() {
                 if item.is_update() {
@@ -314,36 +308,12 @@ fn expand_active_model_action(
                     model.#field.push(Box::pin(item.action(action, db)).await?);
                 }
             }
-            let mut via_models = Vec::new();
-            let mut all_keys = std::collections::HashSet::new();
-            let mut leftover_keys = Vec::new();
-            for item in model.#field.as_slice() {
-                if leftover_keys.len() != leftover.len() {
-                    for leftover in leftover.iter() {
-                        leftover_keys.push(leftover.get_parent_key(item)?);
-                    }
-                }
-                let mut via: #entity_module::ActiveModel = Default::default();
-                via.set_parent_key(&model)?;
-                via.set_parent_key(item)?;
-                let via_key = via.get_parent_key(item)?;
-                if !leftover_keys.iter().any(|t| t == &via_key) {
-                    // not already exist
-                    via_models.push(via);
-                }
-                all_keys.insert(via_key);
-            }
-            if model.#field.is_replace() {
-                for (leftover, key) in leftover.into_iter().zip(leftover_keys) {
-                    if !all_keys.contains(&key) {
-                        leftover.delete(db).await?;
-                    }
-                }
-            }
-            #entity_module::Entity::insert_many(via_models)
-                .on_conflict_do_nothing()
-                .exec(db)
-                .await?;
+            model.establish_links(
+                #entity_module::Entity,
+                model.#field.as_slice(),
+                model.#field.is_replace(),
+                db
+            ).await?;
         });
     }
 

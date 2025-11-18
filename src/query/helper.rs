@@ -846,6 +846,7 @@ pub trait QueryFilter: Sized {
         self
     }
 
+    /// Like `belongs_to`, but for an ActiveModel. Panic if primary key is not set.
     #[doc(hidden)]
     fn belongs_to_active_model<AM>(mut self, model: &AM) -> Self
     where

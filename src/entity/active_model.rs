@@ -565,10 +565,9 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     #[doc(hidden)]
-    fn get_parent_key<R, AM>(&self, _: &AM) -> Result<ValueTuple, DbErr>
+    fn get_parent_key<R>(&self) -> Result<ValueTuple, DbErr>
     where
         R: EntityTrait,
-        AM: ActiveModelTrait<Entity = R>,
         Self::Entity: Related<R>,
     {
         let rel_def = Self::Entity::to();
@@ -601,6 +600,72 @@ pub trait ActiveModelTrait: Clone + Debug {
         use crate::query::QueryFilter;
 
         Self::Entity::find_related().belongs_to_active_model(self)
+    }
+
+    /// Establish links between self and a related Entity through a junction table
+    #[doc(hidden)]
+    async fn establish_links<J, R, RM, C>(
+        &self,
+        _: J,
+        related_models: &[RM],
+        delete_leftover: bool,
+        db: &C,
+    ) -> Result<(), DbErr>
+    where
+        R: EntityTrait,
+        RM: ActiveModelTrait<Entity = R> + Sync,
+        J: EntityTrait + Related<R> + Related<Self::Entity>,
+        J::Model: IntoActiveModel<J::ActiveModel>,
+        J::ActiveModel: ActiveModelBehavior + Send,
+        C: ConnectionTrait,
+    {
+        use crate::query::QueryFilter;
+
+        let mut leftover = Vec::new();
+        if delete_leftover {
+            for item in Self::Entity::find_related_rev::<J>()
+                .belongs_to_active_model(self)
+                .all(db)
+                .await?
+            {
+                let item = item.into_active_model();
+                let key = item.get_parent_key::<R>()?;
+                leftover.push((item, key));
+            }
+        }
+        let leftover = leftover; // un-mut
+
+        let mut via_models = Vec::new();
+        let mut all_keys = std::collections::HashSet::new();
+
+        for related_model in related_models {
+            let mut via: J::ActiveModel = ActiveModelBehavior::new();
+            via.set_parent_key(self)?;
+            via.set_parent_key(related_model)?;
+            let via_key = via.get_parent_key::<R>()?;
+            if !leftover.iter().any(|t| t.1 == via_key) {
+                // if not already exist, save for insert
+                via_models.push(via);
+            }
+            if delete_leftover {
+                all_keys.insert(via_key);
+            }
+        }
+
+        // delete leftovers
+        for (leftover, key) in leftover {
+            if !all_keys.contains(&key) {
+                leftover.delete(db).await?;
+            }
+        }
+
+        // insert new junctions
+        J::insert_many(via_models)
+            .on_conflict_do_nothing()
+            .exec(db)
+            .await?;
+
+        Ok(())
     }
 }
 
