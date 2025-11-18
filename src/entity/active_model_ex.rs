@@ -40,8 +40,8 @@ where
     E: EntityTrait,
 {
     /// Construct a `HasOneModel::Set`
-    pub fn set(model: E::ActiveModelEx) -> Self {
-        Self::Set(model.into())
+    pub fn set<AM: Into<E::ActiveModelEx>>(model: AM) -> Self {
+        Self::Set(Box::new(model.into()))
     }
 
     /// Take ownership of this model, leaving `NotSet` in place
@@ -68,11 +68,34 @@ where
         }
     }
 
+    /// Return true if there is a model
+    pub fn is_set(&self) -> bool {
+        matches!(self, Self::Set(_))
+    }
+
+    /// Return true if self is NotSet
+    pub fn is_not_set(&self) -> bool {
+        matches!(self, Self::NotSet)
+    }
+
+    /// Return true if self is NotSet
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::NotSet)
+    }
+
     /// Return true if the containing model is set and changed
     pub fn is_changed(&self) -> bool {
         match self {
             Self::Set(model) => model.is_changed(),
             _ => false,
+        }
+    }
+
+    /// Convert into an Option<ActiveModelEx>
+    pub fn into_option(self) -> Option<E::ActiveModelEx> {
+        match self {
+            Self::Set(model) => Some(*model),
+            Self::NotSet => None,
         }
     }
 

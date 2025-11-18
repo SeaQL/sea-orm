@@ -3,7 +3,7 @@ use crate::{
     ColumnTrait, ConnectionTrait, DeleteResult, EntityTrait, IdenStatic, Iterable, PrimaryKeyArity,
     PrimaryKeyToColumn, PrimaryKeyTrait, Related, RelationType, Value,
     error::*,
-    query::{get_key_from_active_model, set_key_on_active_model},
+    query::{clear_key_on_active_model, get_key_from_active_model, set_key_on_active_model},
 };
 use async_trait::async_trait;
 use sea_query::ValueTuple;
@@ -212,7 +212,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn insert<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
+        Self: ActiveModelBehavior,
         C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, db, true).await?;
@@ -334,7 +334,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn update<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
+        Self: ActiveModelBehavior,
         C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, db, false).await?;
@@ -347,7 +347,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn save<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
+        Self: ActiveModelBehavior,
         C: ConnectionTrait,
     {
         let res = if !self.is_update() {
@@ -417,7 +417,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// ```
     async fn delete<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
-        Self: ActiveModelBehavior + 'a,
+        Self: ActiveModelBehavior,
         C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_delete(self, db).await?;
@@ -541,14 +541,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     {
         let rel_def = Self::Entity::to();
 
-        if rel_def.rel_type != RelationType::HasOne {
-            return Err(DbErr::Type(format!(
-                "Relation from {} to {} is not HasOne",
-                <Self::Entity as Default>::default().as_str(),
-                <R as Default>::default().as_str()
-            )));
-        }
-
         if rel_def.is_owner {
             return Err(DbErr::Type(format!(
                 "Relation from {} to {} is not belongs_to",
@@ -559,9 +551,29 @@ pub trait ActiveModelTrait: Clone + Debug {
 
         let values = get_key_from_active_model(&rel_def.to_col, model)?;
 
-        set_key_on_active_model(&rel_def.from_col, values, self)?;
+        set_key_on_active_model(&rel_def.from_col, self, values)?;
 
         Ok(())
+    }
+
+    #[doc(hidden)]
+    /// Clear parent association if the relation is optional and return true
+    fn clear_parent_key<R>(&mut self) -> Result<bool, DbErr>
+    where
+        R: EntityTrait,
+        Self::Entity: Related<R>,
+    {
+        let rel_def = Self::Entity::to();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation from {} to {} is not belongs_to",
+                <Self::Entity as Default>::default().as_str(),
+                <R as Default>::default().as_str()
+            )));
+        }
+
+        clear_key_on_active_model(&rel_def.from_col, self)
     }
 
     #[doc(hidden)]
@@ -611,7 +623,8 @@ pub trait ActiveModelTrait: Clone + Debug {
         self.find_related(AM::Entity::default())
     }
 
-    /// Establish links between self and a related Entity through a junction table
+    /// Establish links between self and a related Entity for a many-to-many relation.
+    /// New associations will be added, and leftovers can be optionally deleted.
     #[doc(hidden)]
     async fn establish_links<J, R, RM, C>(
         &self,
@@ -1425,6 +1438,17 @@ mod tests {
                 id: Unchanged(2),
                 name: Unchanged("F".into()),
                 cake_id: Set(Some(4)),
+            }
+        );
+
+        assert!(fruit.clear_parent_key::<cake::Entity>().unwrap());
+
+        assert_eq!(
+            fruit,
+            fruit::ActiveModel {
+                id: Unchanged(2),
+                name: Unchanged("F".into()),
+                cake_id: Set(None),
             }
         );
 

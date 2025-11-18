@@ -6,12 +6,12 @@ pub enum HasOne<E: EntityTrait> {
     #[default]
     Unloaded,
     NotFound,
-    Loaded(Box<<E as EntityTrait>::ModelEx>),
+    Loaded(Box<E::ModelEx>),
 }
 
 impl<E: EntityTrait> HasOne<E> {
     /// Construct a `HasOne::Loaded` value
-    pub fn loaded<M: Into<<E as EntityTrait>::ModelEx>>(model: M) -> Self {
+    pub fn loaded<M: Into<E::ModelEx>>(model: M) -> Self {
         Self::Loaded(Box::new(model.into()))
     }
 
@@ -32,21 +32,21 @@ impl<E: EntityTrait> HasOne<E> {
         matches!(self, HasOne::Unloaded | HasOne::NotFound)
     }
 
-    pub fn as_ref(&self) -> Option<&<E as EntityTrait>::ModelEx> {
+    pub fn as_ref(&self) -> Option<&E::ModelEx> {
         match self {
             HasOne::Loaded(model) => Some(model.as_ref()),
             HasOne::Unloaded | HasOne::NotFound => None,
         }
     }
 
-    pub fn as_mut(&mut self) -> Option<&mut <E as EntityTrait>::ModelEx> {
+    pub fn as_mut(&mut self) -> Option<&mut E::ModelEx> {
         match self {
             HasOne::Loaded(model) => Some(model),
             HasOne::Unloaded | HasOne::NotFound => None,
         }
     }
 
-    pub fn into_option(self) -> Option<<E as EntityTrait>::ModelEx> {
+    pub fn into_option(self) -> Option<E::ModelEx> {
         match self {
             HasOne::Loaded(model) => Some(*model),
             HasOne::Unloaded | HasOne::NotFound => None,
@@ -56,7 +56,7 @@ impl<E: EntityTrait> HasOne<E> {
     /// # Panics
     ///
     /// Panics if called on `Unloaded` or `NotFound` values.
-    pub fn unwrap(self) -> <E as EntityTrait>::ModelEx {
+    pub fn unwrap(self) -> E::ModelEx {
         match self {
             HasOne::Loaded(model) => *model,
             HasOne::Unloaded => panic!("called `HasOne::unwrap()` on an `Unloaded` value"),
@@ -68,13 +68,13 @@ impl<E: EntityTrait> HasOne<E> {
 impl<E> HasOne<E>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ActiveModelEx: From<<E as EntityTrait>::ModelEx>,
+    E::ActiveModelEx: From<E::ModelEx>,
 {
     pub fn into_active_model(self) -> HasOneModel<E> {
         match self {
             HasOne::Loaded(_) => {
                 let model = self.unwrap();
-                let active_model: <E as EntityTrait>::ActiveModelEx = model.into();
+                let active_model: E::ActiveModelEx = model.into();
                 HasOneModel::Set(active_model.into())
             }
             HasOne::Unloaded => HasOneModel::NotSet,
@@ -86,7 +86,7 @@ where
 impl<E> PartialEq for HasOne<E>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ModelEx: PartialEq,
+    E::ModelEx: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -101,12 +101,12 @@ where
 impl<E> Eq for HasOne<E>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ModelEx: Eq,
+    E::ModelEx: Eq,
 {
 }
 
 // Option<Box<ModelEx<E>>> <-> HasOne<E> conversions and comparisons
-impl<E: EntityTrait> From<HasOne<E>> for Option<Box<<E as EntityTrait>::ModelEx>> {
+impl<E: EntityTrait> From<HasOne<E>> for Option<Box<E::ModelEx>> {
     fn from(value: HasOne<E>) -> Self {
         match value {
             HasOne::Loaded(model) => Some(model),
@@ -115,8 +115,8 @@ impl<E: EntityTrait> From<HasOne<E>> for Option<Box<<E as EntityTrait>::ModelEx>
     }
 }
 
-impl<E: EntityTrait> From<Option<Box<<E as EntityTrait>::ModelEx>>> for HasOne<E> {
-    fn from(value: Option<Box<<E as EntityTrait>::ModelEx>>) -> Self {
+impl<E: EntityTrait> From<Option<Box<E::ModelEx>>> for HasOne<E> {
+    fn from(value: Option<Box<E::ModelEx>>) -> Self {
         match value {
             Some(model) => HasOne::Loaded(model),
             None => HasOne::NotFound,
@@ -124,12 +124,12 @@ impl<E: EntityTrait> From<Option<Box<<E as EntityTrait>::ModelEx>>> for HasOne<E
     }
 }
 
-impl<E> PartialEq<Option<Box<<E as EntityTrait>::ModelEx>>> for HasOne<E>
+impl<E> PartialEq<Option<Box<E::ModelEx>>> for HasOne<E>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ModelEx: PartialEq,
+    E::ModelEx: PartialEq,
 {
-    fn eq(&self, other: &Option<Box<<E as EntityTrait>::ModelEx>>) -> bool {
+    fn eq(&self, other: &Option<Box<E::ModelEx>>) -> bool {
         match (self, other) {
             (HasOne::Loaded(a), Some(b)) => a.as_ref() == b.as_ref(),
             (HasOne::Unloaded | HasOne::NotFound, None) => true,
@@ -138,10 +138,10 @@ where
     }
 }
 
-impl<E> PartialEq<HasOne<E>> for Option<Box<<E as EntityTrait>::ModelEx>>
+impl<E> PartialEq<HasOne<E>> for Option<Box<E::ModelEx>>
 where
     E: EntityTrait,
-    <E as EntityTrait>::ModelEx: PartialEq,
+    E::ModelEx: PartialEq,
 {
     fn eq(&self, other: &HasOne<E>) -> bool {
         other == self
@@ -192,7 +192,7 @@ where
     where
         D: serde::Deserializer<'de>,
     {
-        match <Option<<E as EntityTrait>::ModelEx>>::deserialize(deserializer)? {
+        match <Option<E::ModelEx>>::deserialize(deserializer)? {
             Some(model) => Ok(HasOne::Loaded(Box::new(model))),
             None => Ok(HasOne::Unloaded),
         }

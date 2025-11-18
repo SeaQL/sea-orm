@@ -1,4 +1,6 @@
-use crate::{ActiveModelTrait, DbErr, EntityTrait, IdenStatic, Identity, ModelTrait, Value};
+use crate::{
+    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, IdenStatic, Identity, ModelTrait, Value,
+};
 use sea_query::ValueTuple;
 use std::str::FromStr;
 
@@ -84,8 +86,8 @@ where
 
 pub fn set_key_on_active_model<ActiveModel>(
     columns: &Identity,
-    values: ValueTuple,
     model: &mut ActiveModel,
+    values: ValueTuple,
 ) -> Result<(), DbErr>
 where
     ActiveModel: ActiveModelTrait,
@@ -106,4 +108,37 @@ where
     }
 
     Ok(())
+}
+
+/// Set null on the key columns. Return true if succeeded, false if column is not nullable.
+pub fn clear_key_on_active_model<ActiveModel>(
+    columns: &Identity,
+    model: &mut ActiveModel,
+) -> Result<bool, DbErr>
+where
+    ActiveModel: ActiveModelTrait,
+{
+    for col in columns.iter() {
+        let col_name = col.inner();
+        let column = <<ActiveModel::Entity as EntityTrait>::Column as FromStr>::from_str(&col_name)
+            .map_err(|_| DbErr::Type(format!("Failed at mapping '{col_name}' to column")))?;
+        if !column.def().is_null() {
+            return Ok(false);
+        }
+        model.set(
+            column,
+            match model.get(column).into_value() {
+                Some(value) => value.as_null(),
+                None => {
+                    return Err(DbErr::AttrNotSet(format!(
+                        "{}.{}",
+                        <ActiveModel::Entity as Default>::default().as_str(),
+                        col_name
+                    )));
+                }
+            },
+        );
+    }
+
+    Ok(true)
 }
