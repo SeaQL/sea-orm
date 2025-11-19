@@ -1,7 +1,7 @@
 use super::{ActiveValue, ActiveValue::*};
 use crate::{
     ColumnTrait, ConnectionTrait, DeleteResult, EntityTrait, IdenStatic, Iterable, PrimaryKeyArity,
-    PrimaryKeyToColumn, PrimaryKeyTrait, Related, RelationType, Value,
+    PrimaryKeyToColumn, PrimaryKeyTrait, Related, Value,
     error::*,
     query::{clear_key_on_active_model, get_key_from_active_model, set_key_on_active_model},
 };
@@ -532,7 +532,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     #[doc(hidden)]
-    /// Used by ActiveModelEx. Set the key to parent's key value for a belongs to relation.
+    /// Set the key to parent's key value for a belongs to relation.
     fn set_parent_key<R, AM>(&mut self, model: &AM) -> Result<(), DbErr>
     where
         R: EntityTrait,
@@ -577,20 +577,13 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     #[doc(hidden)]
+    /// Get the key value of belongs to relation
     fn get_parent_key<R>(&self) -> Result<ValueTuple, DbErr>
     where
         R: EntityTrait,
         Self::Entity: Related<R>,
     {
         let rel_def = Self::Entity::to();
-
-        if rel_def.rel_type != RelationType::HasOne {
-            return Err(DbErr::Type(format!(
-                "Relation from {} to {} is not HasOne",
-                <Self::Entity as Default>::default().as_str(),
-                <R as Default>::default().as_str()
-            )));
-        }
 
         if rel_def.is_owner {
             return Err(DbErr::Type(format!(
@@ -675,10 +668,21 @@ pub trait ActiveModelTrait: Clone + Debug {
         }
 
         // delete leftovers
+        let mut to_delete = Vec::new();
         for (leftover, key) in leftover {
             if !all_keys.contains(&key) {
-                leftover.delete(db).await?;
+                to_delete.push(
+                    leftover
+                        .get_primary_key_value()
+                        .expect("item is a full model"),
+                );
             }
+        }
+        if !to_delete.is_empty() {
+            J::delete_many()
+                .filter_by_value_tuples(&to_delete)
+                .exec(db)
+                .await?;
         }
 
         // insert new junctions

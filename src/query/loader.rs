@@ -2,7 +2,7 @@ use super::get_key_from_model;
 use crate::{
     ColumnTrait, Condition, ConnectionTrait, DbBackend, DbErr, EntityTrait, Identity, JoinType,
     ModelTrait, QueryFilter, QuerySelect, Related, RelationDef, RelationTrait, RelationType,
-    Select, dynamic, query_err,
+    Select, dynamic, query::column_tuple_in_condition, query_err,
 };
 use async_trait::async_trait;
 use sea_query::{ColumnRef, DynIden, Expr, ExprTrait, IntoColumnRef, TableRef, ValueTuple};
@@ -417,7 +417,7 @@ where
                     &via_rel.from_col,
                     &via_rel.to_col,
                     &pkeys,
-                    db,
+                    db.get_database_backend(),
                 )?;
                 let stmt = V::find().filter(condition);
                 let data = stmt.all(db).await?;
@@ -437,7 +437,7 @@ where
                 &rel_def.from_col,
                 &rel_def.to_col,
                 &keys,
-                db,
+                db.get_database_backend(),
             )?;
 
             let stmt = QueryFilter::filter(stmt.select(), condition);
@@ -786,7 +786,7 @@ where
             &via_def.from_col,
             &via_def.to_col,
             &keys,
-            db,
+            db.get_database_backend(),
         )?;
 
         let stmt = QueryFilter::filter(stmt.join_rev(JoinType::InnerJoin, rel_def), condition);
@@ -843,7 +843,7 @@ where
             &rel_def.from_col,
             &rel_def.to_col,
             &keys,
-            db,
+            db.get_database_backend(),
         )?;
 
         let stmt = QueryFilter::filter(stmt, condition);
@@ -937,22 +937,20 @@ fn arity_mismatch(expected: usize, actual: &ValueTuple) -> DbErr {
     ))
 }
 
-#[inline]
 fn prepare_condition<Model>(
     table: &TableRef,
     from: &Identity,
     to: &Identity,
     keys: &[ValueTuple],
-    db: &impl ConnectionTrait,
+    db_backend: DbBackend,
 ) -> Result<Condition, DbErr>
 where
     Model: ModelTrait,
 {
-    let db_backend = db.get_database_backend();
     if matches!(db_backend, DbBackend::Postgres) {
         prepare_condition_with_save_as::<Model>(table, from, to, keys)
     } else {
-        prepare_condition_simple(table, to, keys, db_backend)
+        column_tuple_in_condition(table, to, keys, db_backend)
     }
 }
 
@@ -994,87 +992,6 @@ where
     let expr = Expr::tuple(create_table_columns(table, to)).is_in(value_tuples);
 
     Ok(expr.into())
-}
-
-// For loaders that do not require calling save_as
-fn prepare_condition_simple(
-    table: &TableRef,
-    to: &Identity,
-    keys: &[ValueTuple],
-    backend: DbBackend,
-) -> Result<Condition, DbErr> {
-    use itertools::Itertools;
-
-    let arity = to.arity();
-    let keys = keys.iter().unique();
-
-    if arity == 1 {
-        let values = keys
-            .map(|key| match key {
-                ValueTuple::One(v) => Ok(Expr::val(v.to_owned())),
-                _ => Err(arity_mismatch(arity, key)),
-            })
-            .collect::<Result<Vec<_>, DbErr>>()?;
-
-        let expr = Expr::col(table_column(
-            table,
-            to.iter().next().expect("Checked above"),
-        ))
-        .is_in(values);
-
-        Ok(expr.into())
-    } else if cfg!(feature = "sqlite-no-row-value-before-3_15")
-        && matches!(backend, DbBackend::Sqlite)
-    {
-        // SQLite supports row value expressions since 3.15.0
-        // https://www.sqlite.org/releaselog/3_15_0.html
-
-        let table_columns = create_table_columns(table, to);
-
-        let mut outer = Condition::any();
-
-        for key in keys {
-            let key_arity = key.arity();
-            if arity != key_arity {
-                return Err(arity_mismatch(arity, key));
-            }
-
-            let table_columns = table_columns.iter().cloned();
-            let values = key.clone().into_iter().map(Expr::val);
-
-            let inner = table_columns
-                .zip(values)
-                .fold(Condition::all(), |cond, (column, value)| {
-                    cond.add(column.eq(value))
-                });
-
-            // Build `(c1 = v11 AND c2 = v12) OR (c1 = v21 AND c2 = v22) ...`
-            outer = outer.add(inner);
-        }
-
-        Ok(outer)
-    } else {
-        let table_columns = create_table_columns(table, to);
-
-        // A vector of tuples of values, e.g. [(v11, v12, ...), (v21, v22, ...), ...]
-        let value_tuples = keys
-            .map(|key| {
-                let key_arity = key.arity();
-                if arity != key_arity {
-                    return Err(arity_mismatch(arity, key));
-                }
-
-                let tuple_exprs = key.clone().into_iter().map(Expr::val);
-
-                Ok(Expr::tuple(tuple_exprs))
-            })
-            .collect::<Result<Vec<_>, DbErr>>()?;
-
-        // Build `(c1, c2, ...) IN ((v11, v12, ...), (v21, v22, ...), ...)`
-        let expr = Expr::tuple(table_columns).is_in(value_tuples);
-
-        Ok(expr.into())
-    }
 }
 
 type ModelColumn<M> = <<M as ModelTrait>::Entity as EntityTrait>::Column;

@@ -1,7 +1,8 @@
 use crate::{
-    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, IdenStatic, Identity, ModelTrait, Value,
+    ActiveModelTrait, ColumnTrait, Condition, DbBackend, DbErr, EntityTrait, ExprTrait, IdenStatic,
+    Identity, ModelTrait, Value,
 };
-use sea_query::ValueTuple;
+use sea_query::{ColumnRef, DynIden, Expr, IntoColumnRef, TableRef, ValueTuple};
 use std::str::FromStr;
 
 #[derive(Default)]
@@ -141,4 +142,104 @@ where
     }
 
     Ok(true)
+}
+
+/// construct a WHERE col IN (..) condition
+pub fn column_tuple_in_condition(
+    table: &TableRef,
+    to: &Identity,
+    keys: &[ValueTuple],
+    backend: DbBackend,
+) -> Result<Condition, DbErr> {
+    use itertools::Itertools;
+
+    let arity = to.arity();
+    let keys = keys.iter().unique();
+
+    if arity == 1 {
+        let values = keys
+            .map(|key| match key {
+                ValueTuple::One(v) => Ok(Expr::val(v.to_owned())),
+                _ => Err(arity_mismatch(arity, key)),
+            })
+            .collect::<Result<Vec<_>, DbErr>>()?;
+
+        let expr = Expr::col(table_column(
+            table,
+            to.iter().next().expect("Checked above"),
+        ))
+        .is_in(values);
+
+        Ok(expr.into())
+    } else if cfg!(feature = "sqlite-no-row-value-before-3_15")
+        && matches!(backend, DbBackend::Sqlite)
+    {
+        // SQLite supports row value expressions since 3.15.0
+        // https://www.sqlite.org/releaselog/3_15_0.html
+
+        let table_columns = create_table_columns(table, to);
+
+        let mut outer = Condition::any();
+
+        for key in keys {
+            let key_arity = key.arity();
+            if arity != key_arity {
+                return Err(arity_mismatch(arity, key));
+            }
+
+            let table_columns = table_columns.iter().cloned();
+            let values = key.clone().into_iter().map(Expr::val);
+
+            let inner = table_columns
+                .zip(values)
+                .fold(Condition::all(), |cond, (column, value)| {
+                    cond.add(column.eq(value))
+                });
+
+            // Build `(c1 = v11 AND c2 = v12) OR (c1 = v21 AND c2 = v22) ...`
+            outer = outer.add(inner);
+        }
+
+        Ok(outer)
+    } else {
+        let table_columns = create_table_columns(table, to);
+
+        // A vector of tuples of values, e.g. [(v11, v12, ...), (v21, v22, ...), ...]
+        let value_tuples = keys
+            .map(|key| {
+                let key_arity = key.arity();
+                if arity != key_arity {
+                    return Err(arity_mismatch(arity, key));
+                }
+
+                let tuple_exprs = key.clone().into_iter().map(Expr::val);
+
+                Ok(Expr::tuple(tuple_exprs))
+            })
+            .collect::<Result<Vec<_>, DbErr>>()?;
+
+        // Build `(c1, c2, ...) IN ((v11, v12, ...), (v21, v22, ...), ...)`
+        let expr = Expr::tuple(table_columns).is_in(value_tuples);
+
+        Ok(expr.into())
+    }
+}
+
+fn arity_mismatch(expected: usize, actual: &ValueTuple) -> DbErr {
+    DbErr::Type(format!(
+        "Loader: arity mismatch: expected {expected}, got {} in {actual:?}",
+        actual.arity()
+    ))
+}
+
+fn table_column(tbl: &TableRef, col: &DynIden) -> ColumnRef {
+    (tbl.sea_orm_table().to_owned(), col.clone()).into_column_ref()
+}
+
+/// Create a vector of `Expr::col` from the table and identity, e.g. [Expr::col((table, col1)), Expr::col((table, col2)), ...]
+fn create_table_columns(table: &TableRef, cols: &Identity) -> Vec<Expr> {
+    cols.iter()
+        .map(|col| table_column(table, col))
+        .map(Expr::col)
+        .collect()
 }

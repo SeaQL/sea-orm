@@ -1,6 +1,8 @@
 use crate::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, DbErr, EntityTrait, IntoActiveModel, Iterable,
-    PrimaryKeyToColumn, QueryFilter, QueryTrait,
+    ActiveModelTrait, ActiveValue, ColumnTrait, DbBackend, DbErr, EntityTrait, IntoActiveModel,
+    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryTrait,
+    query::column_tuple_in_condition,
+    sea_query::{IntoValueTuple, ValueTuple},
 };
 use core::marker::PhantomData;
 use sea_query::DeleteStatement;
@@ -176,6 +178,52 @@ where
 
     fn query(&mut self) -> &mut DeleteStatement {
         &mut self.query
+    }
+}
+
+impl<E> DeleteMany<E>
+where
+    E: EntityTrait,
+{
+    /// Filter by vector of IDs by primary key
+    ///
+    /// # Panics
+    ///
+    /// Should not panic.
+    pub fn filter_by_ids<I>(mut self, values: I) -> Self
+    where
+        I: IntoIterator<Item = <E::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+    {
+        self.query.cond_where(
+            column_tuple_in_condition(
+                &E::default().table_ref(),
+                &E::primary_key_identity(),
+                &values
+                    .into_iter()
+                    .map(|v| v.into_value_tuple())
+                    .collect::<Vec<_>>(),
+                DbBackend::Sqlite,
+            )
+            .expect("trait bound ensured arity"),
+        );
+        self
+    }
+
+    #[doc(hidden)]
+    /// # Panics
+    ///
+    /// Panic if `ValueTuple` arity does not match primary key
+    pub fn filter_by_value_tuples(mut self, values: &[ValueTuple]) -> Self {
+        self.query.cond_where(
+            column_tuple_in_condition(
+                &E::default().table_ref(),
+                &E::primary_key_identity(),
+                values,
+                DbBackend::Sqlite,
+            )
+            .expect(""),
+        );
+        self
     }
 }
 

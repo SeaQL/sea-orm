@@ -340,12 +340,19 @@ fn expand_active_model_action(
         });
 
         has_many_via_delete.extend(quote! {
+            let mut to_delete = Vec::new();
             for item in Entity::find_related_rev::<#related_entity>()
                 .belongs_to_active_model(&self)
                 .all(db)
                 .await?
             {
-                item.delete(db).await?;
+                to_delete.push(item.get_primary_key_value());
+            }
+            if !to_delete.is_empty() {
+                #related_entity::delete_many()
+                    .filter_by_value_tuples(&to_delete)
+                    .exec(db)
+                    .await?;
             }
         });
     }
