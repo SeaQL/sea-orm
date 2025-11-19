@@ -63,6 +63,20 @@ pub mod compound_attr {
     }
 }
 
+pub mod value_type_attr {
+    use bae::FromAttributes;
+
+    /// Attributes for compound model fields
+    #[derive(Default, FromAttributes)]
+    pub struct SeaOrm {
+        pub column_type: Option<syn::LitStr>,
+        pub array_type: Option<syn::LitStr>,
+        pub value_type: Option<syn::LitStr>,
+        pub from_str: Option<syn::LitStr>,
+        pub to_str: Option<syn::LitStr>,
+    }
+}
+
 #[cfg(feature = "seaography")]
 pub mod related_attr {
     use bae::FromAttributes;

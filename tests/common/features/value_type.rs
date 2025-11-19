@@ -131,3 +131,24 @@ impl Tag2 {
         })
     }
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(value_type = "String")]
+pub struct Tag3 {
+    pub i: i64,
+}
+
+impl std::fmt::Display for Tag3 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.i)
+    }
+}
+
+impl std::str::FromStr for Tag3 {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let i: i64 = s.parse()?;
+        Ok(Self { i })
+    }
+}

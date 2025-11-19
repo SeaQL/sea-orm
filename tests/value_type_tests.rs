@@ -9,7 +9,8 @@ pub use common::{
     TestContext,
     features::{
         value_type::{
-            MyInteger, StringVec, Tag1, Tag2, value_type_general, value_type_pg, value_type_pk,
+            MyInteger, StringVec, Tag1, Tag2, Tag3, value_type_general, value_type_pg,
+            value_type_pk,
         },
         *,
     },
@@ -110,6 +111,15 @@ pub fn type_test() {
 
     assert!(matches!(Tag1::column_type(), ColumnType::String(_)));
     assert_eq!(Tag1::array_type(), ArrayType::String);
+
+    assert!(matches!(Tag3::column_type(), ColumnType::String(_)));
+    assert_eq!(Tag3::array_type(), ArrayType::String);
+
+    let tag_3 = Tag3 { i: 22 };
+    let tag_3_val: Value = tag_3.into();
+    assert_eq!(tag_3_val, "22".into());
+    let tag_3_: Tag3 = ValueType::try_from(tag_3_val).unwrap();
+    assert_eq!(tag_3_, tag_3);
 
     assert_eq!(
         StringVec::column_type(),
