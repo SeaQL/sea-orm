@@ -119,6 +119,20 @@ where
     }
 }
 
+impl<E> PartialEq<Option<E::ActiveModelEx>> for HasOneModel<E>
+where
+    E: EntityTrait,
+    E::ActiveModelEx: PartialEq,
+{
+    fn eq(&self, other: &Option<E::ActiveModelEx>) -> bool {
+        match (self, other) {
+            (HasOneModel::NotSet, None) => true,
+            (HasOneModel::Set(a), Some(b)) => a.as_ref() == b,
+            _ => false,
+        }
+    }
+}
+
 impl<E> Eq for HasOneModel<E>
 where
     E: EntityTrait,
