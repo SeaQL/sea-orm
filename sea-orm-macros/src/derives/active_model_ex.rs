@@ -55,21 +55,23 @@ pub fn expand_derive_active_model_ex(
                         if !compact {
                             let compound_attrs =
                                 compound_attr::SeaOrm::from_attributes(&field.attrs)?;
-                            if compound_attrs.belongs_to.is_some() {
-                                belongs_to_fields.push(ident.clone());
-                            } else if compound_attrs.has_one.is_some() {
-                                has_one_fields.push(ident.clone());
-                            } else if compound_attrs.has_many.is_some()
-                                && compound_attrs.via.is_none()
-                            {
-                                has_many_fields.push(ident.clone());
-                            } else if compound_attrs.has_many.is_some()
-                                && compound_attrs.via.is_some()
-                            {
-                                has_many_via_fields.push((
-                                    ident.clone(),
-                                    compound_attrs.via.as_ref().unwrap().value(),
-                                ));
+                            if compound_attrs.relation_enum.is_none() {
+                                if compound_attrs.belongs_to.is_some() {
+                                    belongs_to_fields.push(ident.clone());
+                                } else if compound_attrs.has_one.is_some() {
+                                    has_one_fields.push(ident.clone());
+                                } else if compound_attrs.has_many.is_some()
+                                    && compound_attrs.via.is_none()
+                                {
+                                    has_many_fields.push(ident.clone());
+                                } else if compound_attrs.has_many.is_some()
+                                    && compound_attrs.via.is_some()
+                                {
+                                    has_many_via_fields.push((
+                                        ident.clone(),
+                                        compound_attrs.via.as_ref().unwrap().value(),
+                                    ));
+                                }
                             }
                         }
 
