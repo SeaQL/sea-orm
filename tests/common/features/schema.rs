@@ -808,7 +808,7 @@ pub async fn create_value_type_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(value_type::value_type_general::Column::Tag2)
-                .string()
+                .text()
                 .not_null(),
         )
         .to_owned();

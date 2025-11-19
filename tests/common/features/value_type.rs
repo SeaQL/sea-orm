@@ -108,7 +108,8 @@ impl std::str::FromStr for Tag1 {
 #[sea_orm(
     value_type = "String",
     from_str = "Tag2::from_str",
-    to_str = "Tag2::to_str"
+    to_str = "Tag2::to_str",
+    column_type = "Text"
 )]
 pub enum Tag2 {
     Color,

@@ -22,6 +22,7 @@ struct DeriveValueTypeString {
     name: syn::Ident,
     from_str: Option<TokenStream>,
     to_str: Option<TokenStream>,
+    column_type: Option<TokenStream>,
 }
 
 impl DeriveValueType {
@@ -185,11 +186,13 @@ impl DeriveValueTypeString {
         let mut from_str = None;
         let mut to_str = None;
         let mut value_type = None;
+        let mut column_type = None;
 
         if let Ok(value_type_attr) = value_type_attr::SeaOrm::from_attributes(&input.attrs) {
             from_str = value_type_attr.from_str.map(|s| s.parse()).transpose()?;
             to_str = value_type_attr.to_str.map(|s| s.parse()).transpose()?;
             value_type = value_type_attr.value_type.map(|s| s.value());
+            column_type = value_type_attr.column_type.map(|s| s.parse()).transpose()?;
         }
 
         match value_type.as_deref() {
@@ -206,6 +209,7 @@ impl DeriveValueTypeString {
             name,
             from_str,
             to_str,
+            column_type,
         })
     }
 
@@ -218,6 +222,10 @@ impl DeriveValueTypeString {
         let to_str = match &self.to_str {
             Some(to_str) => to_str,
             None => &quote!(std::string::ToString::to_string),
+        };
+        let column_type = match &self.column_type {
+            Some(column_type) => column_type,
+            None => &quote!(String(sea_orm::sea_query::StringLen::None)),
         };
 
         quote!(
@@ -259,7 +267,7 @@ impl DeriveValueTypeString {
                 }
 
                 fn column_type() -> sea_orm::sea_query::ColumnType {
-                    sea_orm::sea_query::ColumnType::String(sea_orm::sea_query::StringLen::None)
+                    sea_orm::sea_query::ColumnType::#column_type
                 }
             }
 
