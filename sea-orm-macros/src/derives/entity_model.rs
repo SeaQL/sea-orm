@@ -125,6 +125,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut sql_type = None;
                     let mut enum_name = None;
                     let mut is_primary_key = false;
+                    let mut is_auto_increment = false;
                     let mut extra = None;
                     let mut seaography_ignore = false;
 
@@ -157,6 +158,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 } else if meta.path.is_ident("auto_increment") {
                                     let lit = meta.value()?.parse()?;
                                     if let Lit::Bool(litbool) = lit {
+                                        is_auto_increment = litbool.value();
                                         auto_increment = litbool.value();
                                     } else {
                                         return Err(
@@ -304,6 +306,13 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             #variant_attrs
                             #field_name
                         });
+                    }
+
+                    if !is_primary_key && is_auto_increment {
+                        return Err(syn::Error::new_spanned(
+                            ident,
+                            "auto_increment can only be used on primary_key",
+                        ));
                     }
 
                     if let Some(select_as) = select_as {

@@ -1,6 +1,6 @@
 use crate::{
-    ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, Iterable, PrimaryKeyArity,
-    PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
+    ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, IdenStatic, Iterable,
+    PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
     ColumnDef, DynIden, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement,
@@ -260,7 +260,7 @@ where
         (None, _) => {}
     }
     for primary_key in E::PrimaryKey::iter() {
-        if column.to_string() == primary_key.into_column().to_string() {
+        if column.as_str() == primary_key.into_column().as_str() {
             if E::PrimaryKey::auto_increment() {
                 column_def.auto_increment();
             }
