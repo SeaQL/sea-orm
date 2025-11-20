@@ -44,6 +44,11 @@ where
         Self::Set(Box::new(model.into()))
     }
 
+    /// Replace the inner Model
+    pub fn replace<AM: Into<E::ActiveModelEx>>(&mut self, model: AM) {
+        *self = Self::Set(Box::new(model.into()));
+    }
+
     /// Take ownership of this model, leaving `NotSet` in place
     pub fn take(&mut self) -> Option<E::ActiveModelEx> {
         match std::mem::take(self) {
@@ -175,13 +180,40 @@ where
     }
 
     /// Push an item to self
-    pub fn push(&mut self, model: E::ActiveModelEx) {
+    pub fn push<AM: Into<E::ActiveModelEx>>(&mut self, model: AM) -> &mut Self {
+        let model = model.into();
         match self {
             Self::Replace(models) | Self::Append(models) => models.push(model),
             Self::NotSet => {
                 *self = Self::Append(vec![model]);
             }
         }
+
+        self
+    }
+
+    /// Push an item to self, but convert Replace to Append
+    pub fn append<AM: Into<E::ActiveModelEx>>(&mut self, model: AM) -> &mut Self {
+        self.convert_to_append().push(model)
+    }
+
+    /// Convert self to Append, if set
+    pub fn convert_to_append(&mut self) -> &mut Self {
+        match self.take() {
+            Self::Replace(models) | Self::Append(models) => {
+                *self = Self::Append(models);
+            }
+            Self::NotSet => {
+                *self = Self::NotSet;
+            }
+        }
+
+        self
+    }
+
+    /// Push an item to self
+    pub fn clear(&mut self) {
+        *self = Self::NotSet;
     }
 
     /// If self is `Replace`

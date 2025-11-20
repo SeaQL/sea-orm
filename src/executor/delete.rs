@@ -114,6 +114,18 @@ impl Deleter {
     }
 }
 
+impl DeleteResult {
+    #[doc(hidden)]
+    pub fn empty() -> Self {
+        Self { rows_affected: 0 }
+    }
+
+    #[doc(hidden)]
+    pub fn merge(&mut self, other: DeleteResult) {
+        self.rows_affected += other.rows_affected;
+    }
+}
+
 async fn exec_delete_only<C>(query: DeleteStatement, db: &C) -> Result<DeleteResult, DbErr>
 where
     C: ConnectionTrait,

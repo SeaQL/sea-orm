@@ -33,6 +33,21 @@ impl Identity {
             index: 0,
         }
     }
+
+    /// Check if this identity contains a component column
+    pub fn contains(&self, col: &DynIden) -> bool {
+        self.iter().any(|c| c == col)
+    }
+
+    /// Check if this identity is a superset of another identity
+    pub fn fully_contains(&self, other: &Identity) -> bool {
+        for col in other.iter() {
+            if !self.contains(col) {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 impl IntoIterator for Identity {
@@ -281,4 +296,30 @@ mod impl_identity_of {
     impl_identity_of!(C, C, C, C, C, C, C, C, C, C);
     impl_identity_of!(C, C, C, C, C, C, C, C, C, C, C);
     impl_identity_of!(C, C, C, C, C, C, C, C, C, C, C, C);
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_identity_contains() {
+        let abc = Identity::Ternary("a".into(), "b".into(), "c".into());
+        let a = Identity::Unary("a".into());
+        let ab = Identity::Binary("a".into(), "b".into());
+        let bc = Identity::Binary("b".into(), "c".into());
+        let d = Identity::Unary("d".into());
+        let bcd = Identity::Ternary("b".into(), "c".into(), "d".into());
+
+        assert!(abc.contains(&"a".into()));
+        assert!(abc.contains(&"b".into()));
+        assert!(abc.contains(&"c".into()));
+        assert!(!abc.contains(&"d".into()));
+
+        assert!(abc.fully_contains(&a));
+        assert!(abc.fully_contains(&ab));
+        assert!(abc.fully_contains(&bc));
+        assert!(!abc.fully_contains(&d));
+        assert!(!abc.fully_contains(&bcd));
+    }
 }

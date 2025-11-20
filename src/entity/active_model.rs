@@ -636,8 +636,25 @@ pub trait ActiveModelTrait: Clone + Debug {
     {
         use crate::query::QueryFilter;
 
+        let mut require_leftover = true;
+
+        if related_models.is_empty() {
+            // if there are no related models, then there is no risk of insert conflict
+            require_leftover = false;
+        }
+
+        let primary_key = J::primary_key_identity();
+        if require_leftover
+            && primary_key.fully_contains(&<J as Related<R>>::to().from_col)
+            && primary_key.fully_contains(&<J as Related<Self::Entity>>::to().from_col)
+        {
+            // if the primary key is a composite key of the two relations
+            // we can use on conflict no action safely
+            require_leftover = false;
+        }
+
         let mut leftover = Vec::new();
-        if delete_leftover {
+        if delete_leftover || require_leftover {
             for item in Self::Entity::find_related_rev::<J>()
                 .belongs_to_active_model(self)
                 .all(db)
@@ -667,29 +684,32 @@ pub trait ActiveModelTrait: Clone + Debug {
             }
         }
 
-        // delete leftovers
-        let mut to_delete = Vec::new();
-        for (leftover, key) in leftover {
-            if !all_keys.contains(&key) {
-                to_delete.push(
-                    leftover
-                        .get_primary_key_value()
-                        .expect("item is a full model"),
-                );
+        if delete_leftover {
+            let mut to_delete = Vec::new();
+            for (leftover, key) in leftover {
+                if !all_keys.contains(&key) {
+                    to_delete.push(
+                        leftover
+                            .get_primary_key_value()
+                            .expect("item is a full model"),
+                    );
+                }
+            }
+            if !to_delete.is_empty() {
+                J::delete_many()
+                    .filter_by_value_tuples(&to_delete)
+                    .exec(db)
+                    .await?;
             }
         }
-        if !to_delete.is_empty() {
-            J::delete_many()
-                .filter_by_value_tuples(&to_delete)
+
+        if !via_models.is_empty() {
+            // insert new junctions
+            J::insert_many(via_models)
+                .on_conflict_do_nothing()
                 .exec(db)
                 .await?;
         }
-
-        // insert new junctions
-        J::insert_many(via_models)
-            .on_conflict_do_nothing()
-            .exec(db)
-            .await?;
 
         Ok(())
     }

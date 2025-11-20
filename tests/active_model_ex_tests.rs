@@ -7,8 +7,8 @@ use sea_orm::{Database, DbConn, DbErr, entity::*, prelude::*, query::*, tests_cf
 use tracing::info;
 
 #[sea_orm_macros::test]
-async fn test_active_model_ex() -> Result<(), DbErr> {
-    let ctx = TestContext::new("test_active_model_ex").await;
+async fn test_active_model_ex_blog() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_active_model_ex_blog").await;
     let db = &ctx.db;
 
     db.get_schema_builder()
@@ -266,7 +266,7 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
     .await?;
 
     info!("insert new post and set 2 tags");
-    let mut post = post::ActiveModelEx {
+    let post = post::ActiveModelEx {
         id: NotSet,
         user_id: NotSet,
         title: Set("post 7".into()),
@@ -320,6 +320,13 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
         }
     );
 
+    info!("replace should be idempotent");
+    let mut post = post.save(db).await?;
+
+    info!("append should be idempotent");
+    post.tags.convert_to_append();
+    let mut post = post.save(db).await?;
+
     info!("get back the post and tags");
     let post_7 = post::Entity::load()
         .filter_by_id(7)
@@ -335,13 +342,10 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
 
     info!("add attachment to post");
     let mut post_7 = post_7.into_active_model();
-    post_7.attachments.push(
-        attachment::ActiveModel {
-            file: Set("for post 7".into()),
-            ..Default::default()
-        }
-        .into(),
-    );
+    post_7.attachments.push(attachment::ActiveModel {
+        file: Set("for post 7".into()),
+        ..Default::default()
+    });
     post_7.insert(db).await?;
 
     info!("get back the post and attachment");
@@ -429,14 +433,142 @@ async fn test_active_model_ex() -> Result<(), DbErr> {
     info!("deep delete user 1");
     let user_1 = user::Entity::find_by_email("@1").one(db).await?.unwrap();
     assert!(user_1.clone().delete(db).await.is_err()); // can't delete as there are posts belonging to user
-    user_1.into_active_model().into_ex().delete(db).await?;
+    assert_eq!(user_1.cascade_delete(db).await?.rows_affected, 2); // user + post
     assert!(user::Entity::find_by_email("@1").one(db).await?.is_none());
 
     info!("deep delete user 4");
     let user_4 = user::Entity::find_by_id(4).one(db).await?.unwrap();
     assert!(user_4.clone().delete(db).await.is_err()); // can't delete
-    user_4.into_active_model().into_ex().delete(db).await?;
+    assert_eq!(
+        user_4.cascade_delete(db).await?.rows_affected,
+        1 + 1 + 3 + 1
+    ); // user + profile + post_tag + post
     assert!(user::Entity::find_by_id(4).one(db).await?.is_none());
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+async fn test_active_model_ex_film_actor() -> Result<(), DbErr> {
+    use common::film_store::*;
+
+    let ctx = TestContext::new("test_active_model_ex_film_actor").await;
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(film::Entity)
+        .register(actor::Entity)
+        .register(film_actor::Entity)
+        .apply(db)
+        .await?;
+
+    info!("save film Mission, no actors");
+    let mut film = film::ActiveModel {
+        title: Set("Mission".into()),
+        ..Default::default()
+    }
+    .save(db)
+    .await?
+    .into_ex();
+
+    info!("create two actors and add to film Mission");
+    film.actors.push(actor::ActiveModel {
+        name: Set("Tom".into()),
+        ..Default::default()
+    });
+    film.actors.push(actor::ActiveModel {
+        name: Set("Ben".into()),
+        ..Default::default()
+    });
+    film.save(db).await?;
+
+    info!("check that film has two actors");
+    let film = film::Entity::load()
+        .with(actor::Entity)
+        .one(db)
+        .await?
+        .unwrap();
+    assert_eq!(film.title, "Mission");
+    assert_eq!(film.actors.len(), 2);
+    assert_eq!(film.actors[0].name, "Tom");
+    assert_eq!(film.actors[1].name, "Ben");
+
+    info!("save new actor Sam, no films");
+    let tom = film.actors.into_iter().next().unwrap();
+    let sam = actor::ActiveModel {
+        // new actor
+        name: Set("Sam".into()),
+        ..Default::default()
+    }
+    .save(db)
+    .await?;
+
+    info!("save new films Galaxy with Tom and Sam as actors");
+    film::ActiveModelEx {
+        title: Set("Galaxy".into()),
+        actors: HasManyModel::Replace(vec![tom.into_active_model(), sam.into_ex()]),
+        ..Default::default()
+    }
+    .save(db)
+    .await?;
+
+    info!("film Galaxy has two actors");
+    let film = film::Entity::load()
+        .filter_by_id(2)
+        .with(actor::Entity)
+        .one(db)
+        .await?
+        .unwrap();
+    assert_eq!(film.title, "Galaxy");
+    assert_eq!(film.actors.len(), 2);
+    assert_eq!(film.actors[0].name, "Tom");
+    assert_eq!(film.actors[1].name, "Sam");
+
+    info!("actor Tom has two films");
+    let tom = actor::Entity::load()
+        .filter_by_name("Tom")
+        .with(film::Entity)
+        .one(db)
+        .await?
+        .unwrap();
+    assert_eq!(tom.name, "Tom");
+    assert_eq!(tom.films.len(), 2);
+    assert_eq!(tom.films[0].title, "Mission");
+    assert_eq!(tom.films[1].title, "Galaxy");
+
+    info!("deep delete film Galaxy");
+    assert_eq!(film.delete(db).await?.rows_affected, 3); // film + 2 film_actor
+
+    info!("tom has 1 film left");
+    let tom = actor::Entity::load()
+        .filter_by_name("Tom")
+        .with(film::Entity)
+        .one(db)
+        .await?
+        .unwrap();
+    assert_eq!(tom.name, "Tom");
+    assert_eq!(tom.films.len(), 1);
+    assert_eq!(tom.films[0].title, "Mission");
+
+    info!("sam still exists, but no films");
+    let sam = actor::Entity::load()
+        .filter_by_name("Sam")
+        .with(film::Entity)
+        .one(db)
+        .await?
+        .unwrap();
+    assert_eq!(sam.name, "Sam");
+    assert_eq!(sam.films.len(), 0);
+
+    info!("should be idempotent");
+    let mut film = film::Entity::find_by_id(1)
+        .one(db)
+        .await?
+        .unwrap()
+        .into_active_model()
+        .into_ex();
+    film.actors.push(tom.into_active_model());
+    film.save(db).await?;
 
     Ok(())
 }
