@@ -193,7 +193,7 @@ where
     E: EntityTrait,
 {
     fn select(self) -> Select<E> {
-        E::find()
+        E::find().order_by_id_asc()
     }
 }
 

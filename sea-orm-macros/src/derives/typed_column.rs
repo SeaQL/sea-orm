@@ -72,11 +72,6 @@ pub fn expand_typed_column(data: &Data) -> syn::Result<(TokenStream, TokenStream
 
                     field_name = Ident::new(&escape_rust_keyword(field_name), ident.span());
 
-                    let field_type = &field.ty;
-                    let field_type = quote! { #field_type }
-                        .to_string() // e.g.: "Option < String >"
-                        .replace(' ', ""); // Remove spaces
-
                     column_fields.push(format_field_ident(field));
                     let wrapper = super::value_type_match::column_type_wrapper(
                         &column_type,
