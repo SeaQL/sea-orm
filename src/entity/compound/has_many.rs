@@ -34,6 +34,11 @@ where
 }
 
 impl<E: EntityTrait> HasMany<E> {
+    /// Return true if variant is `Loaded`
+    pub fn is_loaded(&self) -> bool {
+        matches!(self, HasMany::Loaded(_))
+    }
+
     /// Return true if variant is `Unloaded`
     pub fn is_unloaded(&self) -> bool {
         matches!(self, HasMany::Unloaded)
@@ -302,6 +307,23 @@ mod test {
             fruit: Default::default(),
             fillings: Default::default(),
         };
+
+        assert_eq!(
+            filling::Model {
+                id: 2,
+                name: "C".into(),
+                vendor_id: None,
+                ignored_attr: 3,
+            }
+            .into_ex(),
+            filling::ModelEx {
+                id: 2,
+                name: "C".into(),
+                vendor_id: None,
+                ignored_attr: 3,
+                ingredients: HasMany::Unloaded,
+            }
+        );
 
         assert_eq!(
             serde_json::to_string(&cake).unwrap(),

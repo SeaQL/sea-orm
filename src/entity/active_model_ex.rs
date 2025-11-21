@@ -1,4 +1,5 @@
-use crate::{ActiveModelTrait, EntityTrait, ModelTrait};
+use super::compound::{HasMany, HasOne};
+use crate::{ActiveModelTrait, DbErr, EntityTrait, ModelTrait, TryIntoModel};
 use core::ops::{Index, IndexMut};
 
 /// Container for belongs_to or has_one relation
@@ -104,9 +105,21 @@ where
         }
     }
 
+    /// For type inference purpose
     #[doc(hidden)]
     pub fn empty_slice(&self) -> &[E::ActiveModelEx] {
         &[]
+    }
+
+    /// Convert this back to a `ModelEx` container
+    pub fn try_into_model(self) -> Result<HasOne<E>, DbErr>
+    where
+        E::ActiveModelEx: TryIntoModel<E::ModelEx>,
+    {
+        Ok(match self {
+            Self::Set(model) => HasOne::Loaded(Box::new((*model).try_into_model()?)),
+            Self::NotSet => HasOne::Unloaded,
+        })
     }
 }
 
@@ -162,6 +175,17 @@ where
         }
     }
 
+    /// Get a mutable vec. If self is `NotSet`, convert to append.
+    pub fn as_mut(&mut self) -> &mut Vec<E::ActiveModelEx> {
+        match self {
+            Self::Replace(models) | Self::Append(models) => models,
+            Self::NotSet => {
+                *self = Self::Append(vec![]);
+                self.as_mut()
+            }
+        }
+    }
+
     /// Consume self as vector
     pub fn into_vec(self) -> Vec<E::ActiveModelEx> {
         match self {
@@ -197,6 +221,15 @@ where
         self.convert_to_append().push(model)
     }
 
+    /// Replace all items in this set
+    pub fn replace_all<I>(&mut self, models: I) -> &mut Self
+    where
+        I: IntoIterator<Item = E::ActiveModelEx>,
+    {
+        *self = Self::Replace(models.into_iter().map(Into::into).collect());
+        self
+    }
+
     /// Convert self to Append, if set
     pub fn convert_to_append(&mut self) -> &mut Self {
         match self.take() {
@@ -211,8 +244,8 @@ where
         self
     }
 
-    /// Push an item to self
-    pub fn clear(&mut self) {
+    /// Reset self to NotSet
+    pub fn not_set(&mut self) {
         *self = Self::NotSet;
     }
 
@@ -248,6 +281,22 @@ where
         }
 
         false
+    }
+
+    /// Convert this back to a `ModelEx` container
+    pub fn try_into_model(self) -> Result<HasMany<E>, DbErr>
+    where
+        E::ActiveModelEx: TryIntoModel<E::ModelEx>,
+    {
+        Ok(match self {
+            Self::Replace(models) | Self::Append(models) => HasMany::Loaded(
+                models
+                    .into_iter()
+                    .map(|t| t.try_into_model())
+                    .collect::<Result<Vec<_>, DbErr>>()?,
+            ),
+            Self::NotSet => HasMany::Unloaded,
+        })
     }
 }
 

@@ -1,6 +1,7 @@
 use heck::ToUpperCamelCase;
 use syn::{Field, Ident, Meta, MetaNameValue, punctuated::Punctuated, token::Comma};
 
+/// Remove ignored fields and compound fields
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
     let field_type = &field.ty;
     let field_type = quote::quote! { #field_type }
@@ -14,6 +15,7 @@ pub(crate) fn field_not_ignored(field: &Field) -> bool {
     field_not_ignored_compound(field)
 }
 
+/// Remove ignored fields, compound fields okay
 pub(crate) fn field_not_ignored_compound(field: &Field) -> bool {
     for attr in field.attrs.iter() {
         if let Some(ident) = attr.path().get_ident() {

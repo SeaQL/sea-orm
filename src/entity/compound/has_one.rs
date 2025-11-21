@@ -59,6 +59,11 @@ impl<E: EntityTrait> HasOne<E> {
         }
     }
 
+    /// Take ownership of the contained Model, leaving `Unloaded` in place.
+    pub fn take(&mut self) -> Option<E::ModelEx> {
+        std::mem::take(self).into_option()
+    }
+
     /// # Panics
     ///
     /// Panics if called on `Unloaded` or `NotFound` values.

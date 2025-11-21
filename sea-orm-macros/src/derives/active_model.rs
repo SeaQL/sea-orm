@@ -247,7 +247,7 @@ fn derive_into_model(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
                 }
             } else {
                 quote! {
-                    a.#field.into_value().unwrap().unwrap()
+                    a.#field.unwrap()
                 }
             }
         })
@@ -258,7 +258,7 @@ fn derive_into_model(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
         impl std::convert::TryFrom<ActiveModel> for #ident {
             type Error = sea_orm::DbErr;
             fn try_from(a: ActiveModel) -> Result<Self, sea_orm::DbErr> {
-                #(if matches!(a.#active_model_field, sea_orm::ActiveValue::NotSet) {
+                #(if a.#active_model_field.is_not_set() {
                     return Err(sea_orm::DbErr::AttrNotSet(stringify!(#active_model_field).to_owned()));
                 })*
                 Ok(

@@ -12,6 +12,7 @@ pub fn expand_derive_active_model_ex(
 ) -> syn::Result<TokenStream> {
     let mut compact = false;
     let mut model_fields = Vec::new();
+    let mut ignored_model_fields = Vec::new();
     let mut field_types: Vec<Type> = Vec::new();
     let mut scalar_fields = Vec::new();
     let mut compound_fields = Vec::new();
@@ -37,55 +38,55 @@ pub fn expand_derive_active_model_ex(
 
     if let Data::Struct(item_struct) = &data {
         if let Fields::Named(fields) = &item_struct.fields {
-            for field in fields
-                .named
-                .iter()
-                .filter(|f| field_not_ignored_compound(f))
-            {
+            for field in fields.named.iter() {
                 if let Some(ident) = &field.ident {
-                    let field_type = &field.ty;
-                    let field_type = quote! { #field_type }
-                        .to_string() // e.g.: "Option < String >"
-                        .replace(' ', ""); // Remove spaces
+                    if field_not_ignored_compound(field) {
+                        let field_type = &field.ty;
+                        let field_type = quote! { #field_type }
+                            .to_string() // e.g.: "Option < String >"
+                            .replace(' ', ""); // Remove spaces
 
-                    let ty = if is_compound_field(&field_type) {
-                        compound_fields.push(ident);
-                        let entity_path = extract_compound_entity(&field_type);
+                        let ty = if is_compound_field(&field_type) {
+                            compound_fields.push(ident);
+                            let entity_path = extract_compound_entity(&field_type);
 
-                        if !compact {
-                            let compound_attrs =
-                                compound_attr::SeaOrm::from_attributes(&field.attrs)?;
-                            if compound_attrs.relation_enum.is_none() {
-                                if compound_attrs.belongs_to.is_some() {
-                                    belongs_to_fields.push(ident.clone());
-                                } else if compound_attrs.has_one.is_some() {
-                                    has_one_fields.push(ident.clone());
-                                } else if compound_attrs.has_many.is_some()
-                                    && compound_attrs.via.is_none()
-                                {
-                                    has_many_fields.push(ident.clone());
-                                } else if compound_attrs.has_many.is_some()
-                                    && compound_attrs.via.is_some()
-                                {
-                                    has_many_via_fields.push((
-                                        ident.clone(),
-                                        compound_attrs.via.as_ref().unwrap().value(),
-                                    ));
+                            if !compact {
+                                let compound_attrs =
+                                    compound_attr::SeaOrm::from_attributes(&field.attrs)?;
+                                if compound_attrs.relation_enum.is_none() {
+                                    if compound_attrs.belongs_to.is_some() {
+                                        belongs_to_fields.push(ident.clone());
+                                    } else if compound_attrs.has_one.is_some() {
+                                        has_one_fields.push(ident.clone());
+                                    } else if compound_attrs.has_many.is_some()
+                                        && compound_attrs.via.is_none()
+                                    {
+                                        has_many_fields.push(ident.clone());
+                                    } else if compound_attrs.has_many.is_some()
+                                        && compound_attrs.via.is_some()
+                                    {
+                                        has_many_via_fields.push((
+                                            ident.clone(),
+                                            compound_attrs.via.as_ref().unwrap().value(),
+                                        ));
+                                    }
                                 }
                             }
-                        }
 
-                        if field_type.starts_with("HasOne<") {
-                            syn::parse_str(&format!("HasOneModel < {entity_path} >"))?
+                            if field_type.starts_with("HasOne<") {
+                                syn::parse_str(&format!("HasOneModel < {entity_path} >"))?
+                            } else {
+                                syn::parse_str(&format!("HasManyModel < {entity_path} >"))?
+                            }
                         } else {
-                            syn::parse_str(&format!("HasManyModel < {entity_path} >"))?
-                        }
+                            scalar_fields.push(ident);
+                            syn::parse_str(&format!("sea_orm::ActiveValue < {field_type} >"))?
+                        };
+                        model_fields.push(ident);
+                        field_types.push(ty);
                     } else {
-                        scalar_fields.push(ident);
-                        syn::parse_str(&format!("sea_orm::ActiveValue < {field_type} >"))?
-                    };
-                    model_fields.push(ident);
-                    field_types.push(ty);
+                        ignored_model_fields.push(ident);
+                    }
                 }
             }
         }
@@ -193,9 +194,33 @@ pub fn expand_derive_active_model_ex(
         }
 
         #[automatically_derived]
+        impl std::convert::TryFrom<ActiveModelEx> for ModelEx {
+            type Error = sea_orm::DbErr;
+            fn try_from(a: ActiveModelEx) -> Result<Self, sea_orm::DbErr> {
+                #(if a.#scalar_fields.is_not_set() {
+                    return Err(sea_orm::DbErr::AttrNotSet(stringify!(#scalar_fields).to_owned()));
+                })*
+                Ok(
+                    Self {
+                        #(#scalar_fields: a.#scalar_fields.unwrap(),)*
+                        #(#compound_fields: a.#compound_fields.try_into_model()?,)*
+                        #(#ignored_model_fields: Default::default(),)*
+                    }
+                )
+            }
+        }
+
+        #[automatically_derived]
         impl sea_orm::IntoActiveModel<ActiveModelEx> for ModelEx {
             fn into_active_model(self) -> ActiveModelEx {
                 self.into()
+            }
+        }
+
+        #[automatically_derived]
+        impl sea_orm::TryIntoModel<ModelEx> for ActiveModelEx {
+            fn try_into_model(self) -> Result<ModelEx, sea_orm::DbErr> {
+                self.try_into()
             }
         }
 
@@ -397,19 +422,21 @@ fn expand_active_model_action(
 
     quote! {
         #[doc = " Generated by sea-orm-macros"]
-        pub async fn insert<'a, C>(self, db: &'a C) -> Result<Self, sea_orm::DbErr>
+        pub async fn insert<'a, C>(self, db: &'a C) -> Result<ModelEx, sea_orm::DbErr>
         where
             C: sea_orm::TransactionTrait,
         {
-            self.action(sea_orm::ActiveModelAction::Insert, db).await
+            let active_model = self.action(sea_orm::ActiveModelAction::Insert, db).await?;
+            active_model.try_into()
         }
 
         #[doc = " Generated by sea-orm-macros"]
-        pub async fn update<'a, C>(self, db: &'a C) -> Result<Self, sea_orm::DbErr>
+        pub async fn update<'a, C>(self, db: &'a C) -> Result<ModelEx, sea_orm::DbErr>
         where
             C: sea_orm::TransactionTrait,
         {
-            self.action(sea_orm::ActiveModelAction::Update, db).await
+            let active_model = self.action(sea_orm::ActiveModelAction::Update, db).await?;
+            active_model.try_into()
         }
 
         #[doc = " Generated by sea-orm-macros"]
