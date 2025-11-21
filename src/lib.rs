@@ -28,7 +28,7 @@
 //!
 //! ### Advanced Relations
 //!
-//! Model complex relationships 1-1, 1‑N, M‑N, and even self‑referential in a high-level, conceptual way.
+//! Model complex relationships 1-1, 1-N, M-N, and even self-referential in a high-level, conceptual way.
 //!
 //! ### Familiar Concepts
 //!
@@ -194,7 +194,7 @@
 //! #           user_id: 1,
 //! #           user: HasOne::Unloaded,
 //!             }
-//! #           .into(),
+//!             .into(),
 //!         ),
 //!         posts: HasMany::Loaded(vec![post::ModelEx {
 //! #           id: 2,
@@ -215,8 +215,9 @@
 //! ```
 //!
 //! ## ActiveModel: nested persistence made simple
-//! Persist an entire object graph user, profile (1-1), posts (1-N), and tags (M-N) in one operation,
-//! using a fluent builder API.
+//! Persist an entire object graph: user, profile (1-1), posts (1-N), and tags (M-N)
+//! in a single operation using a fluent builder API. SeaORM automatically determines
+//! the dependencies and inserts or deletes objects in the correct order.
 //!
 //! ```
 //! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};

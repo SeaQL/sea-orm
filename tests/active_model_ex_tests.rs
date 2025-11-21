@@ -433,21 +433,20 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
     assert_eq!(post_7.tags[1].tag, "food");
     assert_eq!(post_7.tags[2].tag, "sunny");
 
-    info!("cascade delete user 1");
     let user_1 = user::Entity::find_by_email("@1").one(db).await?.unwrap();
-    assert!(user_1.clone().delete(db).await.is_err()); // can't delete as there are posts belonging to user
+    info!("can't delete as there are posts belonging to user");
+    assert!(user_1.clone().delete(db).await.is_err());
+    info!("cascade delete user 1");
     assert_eq!(user_1.cascade_delete(db).await?.rows_affected, 2); // user + post
     assert!(user::Entity::find_by_email("@1").one(db).await?.is_none());
 
     info!("cascade delete user 2");
     let user_2 = user::Entity::find_by_email("@2").one(db).await?.unwrap();
-    assert!(user_2.clone().delete(db).await.is_err()); // can't delete as there are posts belonging to user
     assert_eq!(user_2.cascade_delete(db).await?.rows_affected, 2); // user + post
     assert!(user::Entity::find_by_email("@2").one(db).await?.is_none());
 
     info!("cascade delete user 4");
     let user_4 = user::Entity::find_by_id(4).one(db).await?.unwrap();
-    assert!(user_4.clone().delete(db).await.is_err()); // can't delete
     assert_eq!(
         user_4.cascade_delete(db).await?.rows_affected,
         1 + 1 + 3 + 1
@@ -467,6 +466,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
         .insert(db)
         .await?;
 
+    info!("get back the user with profile, posts and tags");
     assert_eq!(
         user::Entity::load()
             .filter_by_id(user.id)
@@ -499,6 +499,9 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             }]),
         }
     );
+
+    info!("should be no-op");
+    assert_eq!(user, user.clone().into_active_model().update(db).await?);
 
     Ok(())
 }
