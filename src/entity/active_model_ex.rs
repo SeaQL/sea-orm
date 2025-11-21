@@ -67,6 +67,7 @@ where
     }
 
     /// Get a mutable reference, if set
+    #[allow(clippy::should_implement_trait)]
     pub fn as_mut(&mut self) -> Option<&mut E::ActiveModelEx> {
         match self {
             Self::Set(model) => Some(model),
@@ -176,12 +177,12 @@ where
     }
 
     /// Get a mutable vec. If self is `NotSet`, convert to append.
-    pub fn as_mut(&mut self) -> &mut Vec<E::ActiveModelEx> {
+    pub fn as_mut_vec(&mut self) -> &mut Vec<E::ActiveModelEx> {
         match self {
             Self::Replace(models) | Self::Append(models) => models,
             Self::NotSet => {
                 *self = Self::Append(vec![]);
-                self.as_mut()
+                self.as_mut_vec()
             }
         }
     }
@@ -226,7 +227,7 @@ where
     where
         I: IntoIterator<Item = E::ActiveModelEx>,
     {
-        *self = Self::Replace(models.into_iter().map(Into::into).collect());
+        *self = Self::Replace(models.into_iter().collect());
         self
     }
 

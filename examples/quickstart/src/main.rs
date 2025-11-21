@@ -365,9 +365,11 @@ async fn main() -> Result<(), sea_orm::DbErr> {
 
     info!("Update post title and remove a tag");
     let mut tags = post.tags.take();
-    tags.as_mut().remove(0); // it actually rained
+    tags.as_mut_vec().remove(0); // it actually rained
     post.title = Set("Almost a perfect day out".into());
     post.tags.replace_all(tags);
+    // converting the field from append to replace
+    // would delete associations not in this list
     let post = post.save(db).await?;
 
     {
