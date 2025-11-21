@@ -1,75 +1,375 @@
-order::ActiveModelEx {
-    id: NotSet, // auto-increment
-    total: Set(22.into()),
-    bakery_id: NotSet, // to be auto-set
-    customer_id: NotSet, // to be auto-set
-    placed_at: Utc::now(),
-    bakery: Set(bakery), // will auto-set bakery_id above
-    customer: Some(customer::ActiveModelEx {
-        id: NotSet, // id is not set, we will create a new customer
-        name: Set("Jack".into()),
-        notes: Set(None),
-    }),
-    lineitems: ActiveModelOperation::Append(vec![
-        lineitem::ActiveModelEx {
-            id: NotSet, // auto-increment
-            price: Set(2.into()),
-            order_id: NotSet, // will be set after order is inserted
-            cake_id: NotSet // to be auto-set
-            cake: Set(cake::ActiveModelEx {
-                id: Unchanged(12), // this cake already exists, so will not be created
-                name: Unchanged("Chocolate Cake".into())
-            }),
-        }
-    ])
+use super::compound::{HasMany, HasOne};
+use crate::{ActiveModelTrait, DbErr, EntityTrait, ModelTrait, TryIntoModel};
+use core::ops::{Index, IndexMut};
+
+/// Container for belongs_to or has_one relation
+#[derive(Debug, Default, Clone)]
+pub enum HasOneModel<E: EntityTrait> {
+    /// Unspecified value, do nothing
+    #[default]
+    NotSet,
+    /// Specify the value for the has one relation
+    Set(Box<E::ActiveModelEx>),
 }
 
-0. erase types into dynamic active model?
-1. flatten tree into insert / update / delete-not-in and edges
-2. extract unset foreign keys, look for items in edges, if item not exists, bail
-3. topological sort and reorder transaction list
-4. extract top level primary key, (if returning) use entity loader to get back result
+/// Container for 1-N or M-N related Models
+#[derive(Debug, Default, Clone)]
+pub enum HasManyModel<E: EntityTrait> {
+    /// Unspecified value, do nothing
+    #[default]
+    NotSet,
+    /// Replace all items with this value set; delete leftovers
+    Replace(Vec<E::ActiveModelEx>),
+    /// Add new items to this has many relation; do not delete
+    Append(Vec<E::ActiveModelEx>),
+}
 
-// belongs to
-if self.bakery_id.is_set() {
-    // good
-} else if self.bakery.is_set() {
-    if self.bakery.id.is_set() {
-        self.bakery_id = self.bakery.id;
-    } else {
-        self.bakery_id = self.bakery.save()?;
+/// Action to perform on ActiveModel
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ActiveModelAction {
+    /// Insert
+    Insert,
+    /// Update
+    Update,
+    /// Insert the model if primary key is `NotSet`, update otherwise.
+    /// Only works if the entity has auto increment primary key.
+    Save,
+}
+
+impl<E> HasOneModel<E>
+where
+    E: EntityTrait,
+{
+    /// Construct a `HasOneModel::Set`
+    pub fn set<AM: Into<E::ActiveModelEx>>(model: AM) -> Self {
+        Self::Set(Box::new(model.into()))
     }
-} else if self.bakery_id.is_optional() {
-    // okay
-} else {
-    bail
-}
 
-self.save();
+    /// Replace the inner Model
+    pub fn replace<AM: Into<E::ActiveModelEx>>(&mut self, model: AM) {
+        *self = Self::Set(Box::new(model.into()));
+    }
 
-// has many
-if self.lineitems.is_replace() {
-    self.lineitems.delete_by_parent_id(self.id, self.lineitems.extract_ids());
-}
-for lineitem in self.lineitems {
-    lineitem.set_parent_key::<Self>(self.id);
-    lineitem.save();
-}
-
-fn lineitem.save() {
-    if self.cake_id.is_set() {
-        // good
-    } else if self.cake.is_set() {
-        if self.cake.id.is_set() {
-            self.cake_id = self.cake.id;
-        } else {
-            self.cake_id = self.cake.save()?;
+    /// Take ownership of this model, leaving `NotSet` in place
+    pub fn take(&mut self) -> Option<E::ActiveModelEx> {
+        match std::mem::take(self) {
+            Self::Set(model) => Some(*model),
+            _ => None,
         }
-    } else if self.cake_id.is_optional() {
-        // okay
-    } else if is_update {
-        // probably okay
-    } else {
-        bail
+    }
+
+    /// Get a reference, if set
+    pub fn as_ref(&self) -> Option<&E::ActiveModelEx> {
+        match self {
+            Self::Set(model) => Some(model),
+            _ => None,
+        }
+    }
+
+    /// Get a mutable reference, if set
+    pub fn as_mut(&mut self) -> Option<&mut E::ActiveModelEx> {
+        match self {
+            Self::Set(model) => Some(model),
+            _ => None,
+        }
+    }
+
+    /// Return true if there is a model
+    pub fn is_set(&self) -> bool {
+        matches!(self, Self::Set(_))
+    }
+
+    /// Return true if self is NotSet
+    pub fn is_not_set(&self) -> bool {
+        matches!(self, Self::NotSet)
+    }
+
+    /// Return true if self is NotSet
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::NotSet)
+    }
+
+    /// Return true if the containing model is set and changed
+    pub fn is_changed(&self) -> bool {
+        match self {
+            Self::Set(model) => model.is_changed(),
+            _ => false,
+        }
+    }
+
+    /// Convert into an `Option<ActiveModelEx>`
+    pub fn into_option(self) -> Option<E::ActiveModelEx> {
+        match self {
+            Self::Set(model) => Some(*model),
+            Self::NotSet => None,
+        }
+    }
+
+    /// For type inference purpose
+    #[doc(hidden)]
+    pub fn empty_slice(&self) -> &[E::ActiveModelEx] {
+        &[]
+    }
+
+    /// Convert this back to a `ModelEx` container
+    pub fn try_into_model(self) -> Result<HasOne<E>, DbErr>
+    where
+        E::ActiveModelEx: TryIntoModel<E::ModelEx>,
+    {
+        Ok(match self {
+            Self::Set(model) => HasOne::Loaded(Box::new((*model).try_into_model()?)),
+            Self::NotSet => HasOne::Unloaded,
+        })
+    }
+}
+
+impl<E> PartialEq for HasOneModel<E>
+where
+    E: EntityTrait,
+    E::ActiveModelEx: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (HasOneModel::NotSet, HasOneModel::NotSet) => true,
+            (HasOneModel::Set(a), HasOneModel::Set(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl<E> PartialEq<Option<E::ActiveModelEx>> for HasOneModel<E>
+where
+    E: EntityTrait,
+    E::ActiveModelEx: PartialEq,
+{
+    fn eq(&self, other: &Option<E::ActiveModelEx>) -> bool {
+        match (self, other) {
+            (HasOneModel::NotSet, None) => true,
+            (HasOneModel::Set(a), Some(b)) => a.as_ref() == b,
+            _ => false,
+        }
+    }
+}
+
+impl<E> Eq for HasOneModel<E>
+where
+    E: EntityTrait,
+    E::ActiveModelEx: Eq,
+{
+}
+
+impl<E> HasManyModel<E>
+where
+    E: EntityTrait,
+{
+    /// Take ownership of the models, leaving `NotSet` in place
+    pub fn take(&mut self) -> Self {
+        std::mem::take(self)
+    }
+
+    /// Borrow models as slice
+    pub fn as_slice(&self) -> &[E::ActiveModelEx] {
+        match self {
+            Self::Replace(models) | Self::Append(models) => models,
+            Self::NotSet => &[],
+        }
+    }
+
+    /// Get a mutable vec. If self is `NotSet`, convert to append.
+    pub fn as_mut(&mut self) -> &mut Vec<E::ActiveModelEx> {
+        match self {
+            Self::Replace(models) | Self::Append(models) => models,
+            Self::NotSet => {
+                *self = Self::Append(vec![]);
+                self.as_mut()
+            }
+        }
+    }
+
+    /// Consume self as vector
+    pub fn into_vec(self) -> Vec<E::ActiveModelEx> {
+        match self {
+            Self::Replace(models) | Self::Append(models) => models,
+            Self::NotSet => vec![],
+        }
+    }
+
+    /// Returns an empty container of self
+    pub fn empty_holder(&self) -> Self {
+        match self {
+            Self::Replace(_) => Self::Replace(vec![]),
+            Self::Append(_) => Self::Append(vec![]),
+            Self::NotSet => Self::NotSet,
+        }
+    }
+
+    /// Push an item to self
+    pub fn push<AM: Into<E::ActiveModelEx>>(&mut self, model: AM) -> &mut Self {
+        let model = model.into();
+        match self {
+            Self::Replace(models) | Self::Append(models) => models.push(model),
+            Self::NotSet => {
+                *self = Self::Append(vec![model]);
+            }
+        }
+
+        self
+    }
+
+    /// Push an item to self, but convert Replace to Append
+    pub fn append<AM: Into<E::ActiveModelEx>>(&mut self, model: AM) -> &mut Self {
+        self.convert_to_append().push(model)
+    }
+
+    /// Replace all items in this set
+    pub fn replace_all<I>(&mut self, models: I) -> &mut Self
+    where
+        I: IntoIterator<Item = E::ActiveModelEx>,
+    {
+        *self = Self::Replace(models.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Convert self to Append, if set
+    pub fn convert_to_append(&mut self) -> &mut Self {
+        match self.take() {
+            Self::Replace(models) | Self::Append(models) => {
+                *self = Self::Append(models);
+            }
+            Self::NotSet => {
+                *self = Self::NotSet;
+            }
+        }
+
+        self
+    }
+
+    /// Reset self to NotSet
+    pub fn not_set(&mut self) {
+        *self = Self::NotSet;
+    }
+
+    /// If self is `Replace`
+    pub fn is_replace(&self) -> bool {
+        matches!(self, Self::Replace(_))
+    }
+
+    /// If self is `Append`
+    pub fn is_append(&self) -> bool {
+        matches!(self, Self::Append(_))
+    }
+
+    /// Return true if self is `Replace` or any containing model is changed
+    pub fn is_changed(&self) -> bool {
+        match self {
+            Self::Replace(_) => true,
+            Self::Append(models) => models.iter().any(|model| model.is_changed()),
+            Self::NotSet => false,
+        }
+    }
+
+    /// Find within the models by primary key, return true if found
+    pub fn find(&self, model: &E::Model) -> bool {
+        let pk = model.get_primary_key_value();
+
+        for item in self.as_slice() {
+            if let Some(pk_item) = item.get_primary_key_value() {
+                if pk_item == pk {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    /// Convert this back to a `ModelEx` container
+    pub fn try_into_model(self) -> Result<HasMany<E>, DbErr>
+    where
+        E::ActiveModelEx: TryIntoModel<E::ModelEx>,
+    {
+        Ok(match self {
+            Self::Replace(models) | Self::Append(models) => HasMany::Loaded(
+                models
+                    .into_iter()
+                    .map(|t| t.try_into_model())
+                    .collect::<Result<Vec<_>, DbErr>>()?,
+            ),
+            Self::NotSet => HasMany::Unloaded,
+        })
+    }
+}
+
+impl<E> PartialEq for HasManyModel<E>
+where
+    E: EntityTrait,
+    E::ActiveModelEx: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (HasManyModel::NotSet, HasManyModel::NotSet) => true,
+            (HasManyModel::Replace(a), HasManyModel::Replace(b)) => a == b,
+            (HasManyModel::Append(a), HasManyModel::Append(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl<E> Eq for HasManyModel<E>
+where
+    E: EntityTrait,
+    E::ActiveModelEx: Eq,
+{
+}
+
+impl<E: EntityTrait> From<HasManyModel<E>> for Option<Vec<E::ActiveModelEx>> {
+    fn from(value: HasManyModel<E>) -> Self {
+        match value {
+            HasManyModel::NotSet => None,
+            HasManyModel::Replace(models) | HasManyModel::Append(models) => Some(models),
+        }
+    }
+}
+
+impl<E: EntityTrait> Index<usize> for HasManyModel<E> {
+    type Output = E::ActiveModelEx;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match self {
+            HasManyModel::NotSet => {
+                panic!("index out of bounds: the HasManyModel is NotSet (index: {index})")
+            }
+            HasManyModel::Replace(models) | HasManyModel::Append(models) => models.index(index),
+        }
+    }
+}
+
+impl<E: EntityTrait> IndexMut<usize> for HasManyModel<E> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        match self {
+            HasManyModel::NotSet => {
+                panic!("index out of bounds: the HasManyModel is NotSet (index: {index})")
+            }
+            HasManyModel::Replace(models) | HasManyModel::Append(models) => models.index_mut(index),
+        }
+    }
+}
+
+impl<E: EntityTrait> IntoIterator for HasManyModel<E> {
+    type Item = E::ActiveModelEx;
+    type IntoIter = std::vec::IntoIter<E::ActiveModelEx>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            HasManyModel::Replace(models) | HasManyModel::Append(models) => models.into_iter(),
+            HasManyModel::NotSet => Vec::new().into_iter(),
+        }
+    }
+}
+
+/// Converts from a set of models into `Append`, which performs non-destructive action
+impl<E: EntityTrait> From<Vec<E::ActiveModelEx>> for HasManyModel<E> {
+    fn from(value: Vec<E::ActiveModelEx>) -> Self {
+        HasManyModel::Append(value)
     }
 }

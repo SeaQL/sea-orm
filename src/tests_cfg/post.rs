@@ -13,6 +13,8 @@ pub struct Model {
     pub author: HasOne<super::user::Entity>,
     #[sea_orm(has_many)]
     pub comments: HasMany<super::comment::Entity>,
+    #[sea_orm(has_many)]
+    pub attachments: HasMany<super::attachment::Entity>,
     #[sea_orm(has_many, via = "post_tag")]
     pub tags: HasMany<super::tag::Entity>,
 }

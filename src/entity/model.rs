@@ -30,7 +30,7 @@ pub trait ModelTrait: Clone + Send + Debug {
     /// Set the Value of a Model field, return error if failed
     fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
 
-    /// Find related Models
+    /// Find related Models belonging to self
     fn find_related<R>(&self, _: R) -> Select<R>
     where
         R: EntityTrait,
@@ -39,7 +39,7 @@ pub trait ModelTrait: Clone + Send + Debug {
         <Self::Entity as Related<R>>::find_related().belongs_to(self)
     }
 
-    /// Find linked Models
+    /// Find linked Models belonging to self
     fn find_linked<L>(&self, l: L) -> Select<L::ToEntity>
     where
         L: Linked<FromEntity = Self::Entity>,
@@ -240,7 +240,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{ColumnTrait, ModelTrait, prelude::Expr, tests_cfg::post};
+    use crate::{
+        IntoActiveModel, Unchanged,
+        prelude::*,
+        tests_cfg::{cake, filling, fruit, post},
+    };
 
     #[test]
     fn test_model() {
@@ -261,5 +265,69 @@ mod tests {
 
         get_value_from(&model, post::COLUMN.id.0);
         filter_by_column(post::COLUMN.title.0);
+
+        let filling = filling::Model {
+            id: 12,
+            name: "".into(),
+            vendor_id: None,
+            ignored_attr: 24,
+        };
+
+        let filling_am = filling::ActiveModel {
+            id: Unchanged(12),
+            name: Unchanged("".into()),
+            vendor_id: Unchanged(None),
+        };
+
+        assert_eq!(filling.into_active_model(), filling_am);
+
+        let filling_ex = filling::ActiveModelEx {
+            id: Unchanged(12),
+            name: Unchanged("".into()),
+            vendor_id: Unchanged(None),
+            ingredients: HasManyModel::NotSet,
+        };
+
+        assert_eq!(filling_am.into_ex(), filling_ex);
+
+        let cake_ex = cake::ModelEx {
+            id: 12,
+            name: "C".into(),
+            fruit: HasOne::loaded(fruit::Model {
+                id: 13,
+                name: "F".into(),
+                cake_id: Some(12),
+            }),
+            fillings: HasMany::Loaded(vec![
+                filling::Model {
+                    id: 14,
+                    name: "FF".into(),
+                    vendor_id: None,
+                    ignored_attr: 1,
+                }
+                .into(),
+            ]),
+        };
+
+        let cake_am = cake::ActiveModelEx {
+            id: Unchanged(12),
+            name: Unchanged("C".into()),
+            fruit: HasOneModel::Set(
+                fruit::ActiveModelEx {
+                    id: Unchanged(13),
+                    name: Unchanged("F".into()),
+                    cake_id: Unchanged(Some(12)),
+                }
+                .into(),
+            ),
+            fillings: HasManyModel::Append(vec![filling::ActiveModelEx {
+                id: Unchanged(14),
+                name: Unchanged("FF".into()),
+                vendor_id: Unchanged(None),
+                ingredients: HasManyModel::NotSet,
+            }]),
+        };
+
+        assert_eq!(cake_ex.into_active_model(), cake_am);
     }
 }

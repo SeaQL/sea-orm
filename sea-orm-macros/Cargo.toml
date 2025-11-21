@@ -25,6 +25,7 @@ heck = { version = "0.5", default-features = false }
 proc-macro2 = { version = "1", default-features = false }
 proc-macro-crate = { version = "3.2.0", optional = true }
 unicode-ident = { version = "1" }
+pluralizer = { version = "0.5" }
 
 [dev-dependencies]
 sea-orm = { path = "../", default-features = false, features = ["macros", "tests-cfg"] }

@@ -5,6 +5,7 @@
 #[cfg(feature = "entity-registry")]
 mod registry;
 
+pub mod attachment;
 pub mod cake;
 pub mod cake_compact;
 pub mod cake_expanded;

@@ -10,6 +10,7 @@ pub mod derive_attr {
         pub model: Option<syn::Ident>,
         pub model_ex: Option<syn::Ident>,
         pub active_model: Option<syn::Ident>,
+        pub active_model_ex: Option<syn::Ident>,
         pub primary_key: Option<syn::Ident>,
         pub relation: Option<syn::Ident>,
         pub schema_name: Option<syn::LitStr>,

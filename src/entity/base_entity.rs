@@ -1,8 +1,8 @@
 use crate::{
     ActiveModelBehavior, ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne,
-    FromQueryResult, Insert, InsertMany, ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait,
-    QueryFilter, Related, RelationBuilder, RelationTrait, RelationType, Select, Update, UpdateMany,
-    UpdateOne, ValidatedDeleteOne,
+    FromQueryResult, Identity, Insert, InsertMany, ModelTrait, PrimaryKeyArity, PrimaryKeyToColumn,
+    PrimaryKeyTrait, QueryFilter, Related, RelationBuilder, RelationTrait, RelationType, Select,
+    Update, UpdateMany, UpdateOne, ValidatedDeleteOne,
 };
 use sea_query::{Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 use std::fmt::Debug;
@@ -59,6 +59,9 @@ pub trait EntityTrait: EntityName {
 
     #[allow(missing_docs)]
     type ActiveModel: ActiveModelBehavior<Entity = Self>;
+
+    #[allow(missing_docs)]
+    type ActiveModelEx: ActiveModelTrait<Entity = Self>;
 
     #[allow(missing_docs)]
     type Column: ColumnTrait;
@@ -187,6 +190,18 @@ pub trait EntityTrait: EntityName {
         Select::new()
     }
 
+    /// Same as `find_related`, but using the other Entity's relation definition.
+    /// Not stable.
+    #[doc(hidden)]
+    fn find_related_rev<R>() -> Select<R>
+    where
+        R: EntityTrait,
+        R: Related<Self>,
+    {
+        use crate::{JoinType, QuerySelect};
+        Select::<R>::new().join_join(JoinType::InnerJoin, R::to(), R::via())
+    }
+
     /// Find a model by primary key
     ///
     /// # Example
@@ -289,6 +304,45 @@ pub trait EntityTrait: EntityName {
             }
         }
         select
+    }
+
+    /// Get primary key as Identity
+    fn primary_key_identity() -> Identity {
+        let mut cols = Self::PrimaryKey::iter();
+        macro_rules! next {
+            () => {
+                cols.next()
+                    .expect("Already checked arity")
+                    .into_column()
+                    .as_column_ref()
+                    .1
+            };
+        }
+        match <<Self::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY {
+            1 => {
+                let s1 = next!();
+                Identity::Unary(s1)
+            }
+            2 => {
+                let s1 = next!();
+                let s2 = next!();
+                Identity::Binary(s1, s2)
+            }
+            3 => {
+                let s1 = next!();
+                let s2 = next!();
+                let s3 = next!();
+                Identity::Ternary(s1, s2, s3)
+            }
+            len => {
+                let mut vec = Vec::with_capacity(len);
+                for _ in 0..len {
+                    let s = next!();
+                    vec.push(s);
+                }
+                Identity::Many(vec)
+            }
+        }
     }
 
     /// Insert a model into database

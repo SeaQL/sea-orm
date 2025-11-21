@@ -260,8 +260,7 @@ where
         matches!(self, Self::NotSet)
     }
 
-    /// Get the mutable value an [ActiveValue]
-    /// also setting itself to [ActiveValue::NotSet]
+    /// Take ownership of the inner value, also setting self to `NotSet`
     pub fn take(&mut self) -> Option<V> {
         match std::mem::take(self) {
             ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value),
@@ -281,7 +280,7 @@ where
         }
     }
 
-    /// Check if a [Value] exists or not
+    /// Take ownership of the inner value, consuming self
     pub fn into_value(self) -> Option<Value> {
         match self {
             ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value.into()),
