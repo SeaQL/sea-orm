@@ -368,8 +368,7 @@ async fn main() -> Result<(), sea_orm::DbErr> {
     tags.as_mut_vec().remove(0); // it actually rained
     post.title = Set("Almost a perfect day out".into());
     post.tags.replace_all(tags);
-    // converting the field from append to replace
-    // would delete associations not in this list
+    // converting the field from append to replace would delete associations not in this list
     let post = post.save(db).await?;
 
     {
@@ -391,7 +390,7 @@ async fn main() -> Result<(), sea_orm::DbErr> {
     info!("check that the tag sunny still exists");
     assert!(tag::Entity::find_by_tag("sunny").one(db).await?.is_some());
 
-    info!("delete post, remove tag associations");
+    info!("cascade delete post, remove tag associations");
     post.delete(db).await?;
 
     Ok(())

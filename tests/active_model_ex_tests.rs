@@ -433,13 +433,19 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
     assert_eq!(post_7.tags[1].tag, "food");
     assert_eq!(post_7.tags[2].tag, "sunny");
 
-    info!("deep delete user 1");
+    info!("cascade delete user 1");
     let user_1 = user::Entity::find_by_email("@1").one(db).await?.unwrap();
     assert!(user_1.clone().delete(db).await.is_err()); // can't delete as there are posts belonging to user
     assert_eq!(user_1.cascade_delete(db).await?.rows_affected, 2); // user + post
     assert!(user::Entity::find_by_email("@1").one(db).await?.is_none());
 
-    info!("deep delete user 4");
+    info!("cascade delete user 2");
+    let user_2 = user::Entity::find_by_email("@2").one(db).await?.unwrap();
+    assert!(user_2.clone().delete(db).await.is_err()); // can't delete as there are posts belonging to user
+    assert_eq!(user_2.cascade_delete(db).await?.rows_affected, 2); // user + post
+    assert!(user::Entity::find_by_email("@2").one(db).await?.is_none());
+
+    info!("cascade delete user 4");
     let user_4 = user::Entity::find_by_id(4).one(db).await?.unwrap();
     assert!(user_4.clone().delete(db).await.is_err()); // can't delete
     assert_eq!(
@@ -447,6 +453,52 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
         1 + 1 + 3 + 1
     ); // user + profile + post_tag + post
     assert!(user::Entity::find_by_id(4).one(db).await?.is_none());
+
+    info!("insert a new user with a new profile and new post with tag");
+    let user = user::ActiveModel::builder()
+        .set_name("Bob")
+        .set_email("bob@sea-ql.org")
+        .set_profile(profile::ActiveModel::builder().set_picture("image.jpg"))
+        .add_post(
+            post::ActiveModel::builder()
+                .set_title("Nice weather")
+                .add_tag(tag::ActiveModel::builder().set_tag("sunny")),
+        )
+        .insert(db)
+        .await?;
+
+    assert_eq!(
+        user::Entity::load()
+            .filter_by_id(user.id)
+            .with(profile::Entity)
+            .with((post::Entity, tag::Entity))
+            .one(db)
+            .await?
+            .unwrap(),
+        user::ModelEx {
+            id: 5,
+            name: "Bob".into(),
+            email: "bob@sea-ql.org".into(),
+            profile: HasOne::loaded(profile::Model {
+                id: 3,
+                picture: "image.jpg".into(),
+                user_id: 5,
+            }),
+            posts: HasMany::Loaded(vec![post::ModelEx {
+                id: 8,
+                user_id: 5,
+                title: "Nice weather".into(),
+                author: HasOne::Unloaded,
+                attachments: HasMany::Unloaded,
+                comments: HasMany::Unloaded,
+                tags: HasMany::Loaded(vec![tag::ModelEx {
+                    id: 5,
+                    tag: "sunny".into(),
+                    posts: HasMany::Unloaded,
+                }]),
+            }]),
+        }
+    );
 
     Ok(())
 }
@@ -539,7 +591,7 @@ async fn test_active_model_ex_film_actor() -> Result<(), DbErr> {
     assert_eq!(tom.films[0].title, "Mission");
     assert_eq!(tom.films[1].title, "Galaxy");
 
-    info!("deep delete film Galaxy");
+    info!("cascade delete film Galaxy");
     assert_eq!(film.delete(db).await?.rows_affected, 3); // film + 2 film_actor
 
     info!("tom has 1 film left");

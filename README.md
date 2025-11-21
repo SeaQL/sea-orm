@@ -133,10 +133,29 @@ smart_user
         posts: HasMany::Loaded(vec![post::ModelEx {
             title: "Nice weather".into(),
             tags: HasMany::Loaded(vec![tag::ModelEx {
-                tag: "diary".into(),
+                tag: "sunny".into(),
             }]),
         }]),
     };
+```
+
+## ActiveModel: nested persistence made simple
+Persist an entire object graph user, profile (1-1), posts (1-N), and tags (M-N) in one operation,
+using a fluent builder API.
+
+```rust
+// this creates the nested object like above:
+let user = user::ActiveModel::builder()
+    .set_name("Bob")
+    .set_email("bob@sea-ql.org")
+    .set_profile(profile::ActiveModel::builder().set_picture("image.jpg"))
+    .add_post(
+        post::ActiveModel::builder()
+            .set_title("Nice weather")
+            .add_tag(tag::ActiveModel::builder().set_tag("sunny")),
+    )
+    .save(db)
+    .await?;
 ```
 
 ## Schema first or Entity first? Your choice

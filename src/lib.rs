@@ -163,7 +163,7 @@
 //! The Entity Loader intelligently uses join for 1-1 and data loader for 1-N relations,
 //! eliminating the N+1 problem even when performing nested queries.
 //! ```
-//! # use sea_orm::{DbConn, error::*, prelude::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, prelude::*, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! // join paths:
 //! // user -> profile
@@ -205,11 +205,34 @@
 //! #           attachments: HasMany::Unloaded,
 //!             tags: HasMany::Loaded(vec![tag::ModelEx {
 //! #               id: 3,
-//!                 tag: "diary".into(),
+//!                 tag: "sunny".into(),
 //! #               posts: HasMany::Unloaded,
 //!             }]),
 //!         }]),
 //!     };
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## ActiveModel: nested persistence made simple
+//! Persist an entire object graph user, profile (1-1), posts (1-N), and tags (M-N) in one operation,
+//! using a fluent builder API.
+//!
+//! ```
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
+//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
+//! // this creates the nested object like above:
+//! let user = user::ActiveModel::builder()
+//!     .set_name("Bob")
+//!     .set_email("bob@sea-ql.org")
+//!     .set_profile(profile::ActiveModel::builder().set_picture("image.jpg"))
+//!     .add_post(
+//!         post::ActiveModel::builder()
+//!             .set_title("Nice weather")
+//!             .add_tag(tag::ActiveModel::builder().set_tag("sunny")),
+//!     )
+//!     .save(db)
+//!     .await?;
 //! # Ok(())
 //! # }
 //! ```
@@ -261,7 +284,7 @@
 //! SeaORM models 1-N and M-N relationships at the Entity level,
 //! letting you traverse many-to-many links through a junction table in a single call.
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! // find all models
 //! let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
@@ -296,7 +319,7 @@
 //! Partial models prevent overfetching by letting you querying only the fields
 //! you need; it also makes writing deeply nested relational queries simple.
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! use sea_orm::DerivePartialModel;
 //!
@@ -323,7 +346,7 @@
 //! persist them through a simple API.
 //! It's easy to insert large batches of rows from different data sources.
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! let apple = fruit::ActiveModel {
 //!     name: Set("Apple".to_owned()),
@@ -361,7 +384,7 @@
 //! ### Insert (advanced)
 //! You can take advantage of database specific features to perform upsert and idempotent insert.
 //! ```
-//! # use sea_orm::{DbConn, TryInsertResult, error::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, TryInsertResult, DbErr, entity::*, query::*, tests_cfg::*};
 //! # async fn function_1(db: &DbConn) -> Result<(), DbErr> {
 //! # let apple = fruit::ActiveModel {
 //! #     name: Set("Apple".to_owned()),
@@ -409,7 +432,7 @@
 //! never overwriting untouched columns.
 //! You can also craft complex bulk update queries with a fluent query building API.
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
 //! use sea_orm::sea_query::{Expr, Value};
 //!
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
@@ -434,7 +457,7 @@
 //! ### Save
 //! You can perform "insert or update" operation with ActiveModel, making it easy to compose transactional operations.
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! let banana = fruit::ActiveModel {
 //!     id: NotSet,
@@ -456,7 +479,7 @@
 //! ### Delete
 //! The same ActiveModel API consistent with insert and update.
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! // delete one: Active Record style
 //! let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
