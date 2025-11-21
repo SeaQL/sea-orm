@@ -148,7 +148,7 @@
 //!         #[sea_orm(primary_key)]
 //!         pub id: i32,
 //!         pub user_id: i32,
-//!         pub body: String,
+//!         pub title: String,
 //!         #[sea_orm(belongs_to, from = "user_id", to = "id")]
 //!         pub author: HasOne<super::user::Entity>,
 //!         #[sea_orm(has_many, via = "post_tag")] // M-N relation with junction
@@ -194,7 +194,7 @@
 //! #           user_id: 1,
 //! #           user: HasOne::Unloaded,
 //!             }
-//!             .into(),
+//! #           .into(),
 //!         ),
 //!         posts: HasMany::Loaded(vec![post::ModelEx {
 //! #           id: 2,
