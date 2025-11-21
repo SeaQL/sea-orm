@@ -145,7 +145,7 @@ in a single operation using a fluent builder API. SeaORM automatically determine
 the dependencies and inserts or deletes objects in the correct order.
 
 ```rust
-// this creates the nested object like above:
+// this creates the nested object as shown above:
 let user = user::ActiveModel::builder()
     .set_name("Bob")
     .set_email("bob@sea-ql.org")
@@ -445,6 +445,7 @@ SeaORM 2.0 is shaping up to be our most significant release yet - with a few bre
 + [SeaORM 2.0: New Entity Format](https://www.sea-ql.org/blog/2025-10-20-sea-orm-2.0/)
 + [SeaORM 2.0: Entity First Workflow](https://www.sea-ql.org/blog/2025-10-30-sea-orm-2.0/)
 + [SeaORM 2.0: Strongly-Typed Column](https://www.sea-ql.org/blog/2025-11-11-sea-orm-2.0/)
++ [What's new in SeaORM Pro 2.0](https://www.sea-ql.org/blog/2025-11-21-whats-new-in-seaormpro-2.0/)
 
 If you make extensive use of SeaQuery, we recommend checking out our blog post on SeaQuery 1.0 release:
 
