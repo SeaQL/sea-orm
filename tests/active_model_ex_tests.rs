@@ -23,25 +23,20 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
         .await?;
 
     info!("save a new user");
-    let user = user::ActiveModel {
-        id: NotSet,
-        name: Set("Alice".into()),
-        email: Set("@1".into()),
-    }
-    .save(db)
-    .await?;
+    let user = user::ActiveModel::builder()
+        .set_name("Alice")
+        .set_email("@1")
+        .save(db)
+        .await?;
 
     assert_eq!(user.id, Unchanged(1));
 
-    let mut post = post::ActiveModel {
-        title: Set("post 1".into()),
-        ..Default::default()
-    }
-    .into_ex();
-
     info!("save a post with an existing user");
-    post.author = HasOneModel::set(user.into_ex());
-    let post = post.save(db).await?;
+    let post = post::ActiveModel::builder()
+        .set_title("post 1")
+        .set_author(user)
+        .save(db)
+        .await?;
 
     assert_eq!(
         post,
@@ -63,17 +58,23 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
     );
 
     info!("save a post with a new user");
-    let post = post::ActiveModelEx {
-        title: Set("post 2".into()),
-        author: HasOneModel::set(user::ActiveModelEx {
-            name: Set("Bob".into()),
-            email: Set("@2".into()),
+    let post = post::ActiveModel::builder()
+        .set_title("post 2")
+        .set_author(user::ActiveModel::builder().set_name("Bob").set_email("@2"))
+        .save(db)
+        .await?;
+
+    if false {
+        post::ActiveModelEx {
+            title: Set("post 2".into()),
+            author: HasOneModel::set(user::ActiveModelEx {
+                name: Set("Bob".into()),
+                email: Set("@2".into()),
+                ..Default::default()
+            }),
             ..Default::default()
-        }),
-        ..Default::default()
+        };
     }
-    .save(db)
-    .await?;
 
     assert_eq!(
         post,
@@ -92,17 +93,24 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
     );
 
     info!("save a new user with a new profile");
-    let user = user::ActiveModelEx {
-        name: Set("Sam".into()),
-        email: Set("@3".into()),
-        profile: HasOneModel::set(profile::ActiveModelEx {
-            picture: Set("Sam.jpg".into()),
+    let user = user::ActiveModel::builder()
+        .set_name("Sam")
+        .set_email("@3")
+        .set_profile(profile::ActiveModel::builder().set_picture("Sam.jpg"))
+        .save(db)
+        .await?;
+
+    if false {
+        user::ActiveModelEx {
+            name: Set("Sam".into()),
+            email: Set("@3".into()),
+            profile: HasOneModel::set(profile::ActiveModelEx {
+                picture: Set("Sam.jpg".into()),
+                ..Default::default()
+            }),
             ..Default::default()
-        }),
-        ..Default::default()
+        };
     }
-    .save(db)
-    .await?;
 
     assert_eq!(
         user,
@@ -121,27 +129,14 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
     );
 
     info!("save a new user with a new profile and 2 posts");
-    let mut user = user::ActiveModelEx {
-        id: NotSet,
-        name: Set("Alan".into()),
-        email: Set("@4".into()),
-        profile: HasOneModel::set(profile::ActiveModelEx {
-            picture: Set("Alan.jpg".into()),
-            ..Default::default()
-        }),
-        posts: HasManyModel::Append(vec![
-            post::ActiveModelEx {
-                title: Set("post 3".into()),
-                ..Default::default()
-            },
-            post::ActiveModelEx {
-                title: Set("post 4".into()),
-                ..Default::default()
-            },
-        ]),
-    }
-    .save(db)
-    .await?;
+    let mut user = user::ActiveModel::builder()
+        .set_name("Alan")
+        .set_email("@4")
+        .set_profile(profile::ActiveModel::builder().set_picture("Alan.jpg"))
+        .add_post(post::ActiveModel::builder().set_title("post 3"))
+        .add_post(post::ActiveModel::builder().set_title("post 4"))
+        .save(db)
+        .await?;
 
     assert_eq!(
         user,
@@ -266,24 +261,32 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
     .await?;
 
     info!("insert new post and set 2 tags");
-    let post = post::ActiveModelEx {
+    let post_ = post::ActiveModelEx {
         id: NotSet,
         user_id: NotSet,
         title: Set("post 7".into()),
-        author: HasOneModel::set(user.into_active_model()),
+        author: HasOneModel::set(user.clone().into_active_model()),
         comments: HasManyModel::NotSet,
         attachments: HasManyModel::NotSet,
-        tags: HasManyModel::Replace(vec![
-            day.into_active_model().into(),
+        tags: HasManyModel::Append(vec![
+            day.clone().into_active_model().into(),
             tag::ActiveModel {
                 id: NotSet,
                 tag: Set("pet".into()),
             }
             .into(),
         ]),
-    }
-    .save(db)
-    .await?;
+    };
+
+    let post = post::ActiveModel::builder()
+        .set_title("post 7")
+        .set_author(user.into_active_model())
+        .add_tag(day.into_active_model())
+        .add_tag(tag::ActiveModel::builder().set_tag("pet"));
+
+    assert_eq!(post, post_);
+
+    let post = post.save(db).await?;
 
     assert_eq!(
         post,
@@ -305,7 +308,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             }),
             comments: HasManyModel::NotSet,
             attachments: HasManyModel::NotSet,
-            tags: HasManyModel::Replace(vec![
+            tags: HasManyModel::Append(vec![
                 tag::ActiveModel {
                     id: Unchanged(1),
                     tag: Unchanged("day".into()),
