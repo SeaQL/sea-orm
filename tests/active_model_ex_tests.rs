@@ -219,8 +219,8 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
 
     info!("update user profile and delete all posts");
     user.profile.as_mut().unwrap().picture = Set("Alan2.jpg".into());
-    user.posts = HasManyModel::Replace(vec![]);
-
+    // user.posts = HasManyModel::Replace(vec![]);
+    user.posts.replace_all([]);
     user.save(db).await?;
 
     info!("check that user has 0 posts");
