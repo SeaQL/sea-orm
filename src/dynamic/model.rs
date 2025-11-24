@@ -133,9 +133,6 @@ fn try_get(res: &QueryResult, pre: &str, col: &str, ty: &ArrayType) -> Result<Va
             Value::BigDecimal(res.try_get::<Option<_>>(pre, col)?.map(Box::new))
         }
 
-        #[cfg(feature = "postgres-vector")]
-        ArrayType::Vector => Value::Vector(res.try_get(pre, col)?),
-
         #[cfg(feature = "with-ipnetwork")]
         ArrayType::IpNetwork => Value::IpNetwork(res.try_get(pre, col)?),
     })
