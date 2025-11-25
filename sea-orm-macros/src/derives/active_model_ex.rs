@@ -3,6 +3,7 @@ use super::attributes::compound_attr;
 use super::util::{extract_compound_entity, field_not_ignored_compound, is_compound_field};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
+use std::collections::HashMap;
 use syn::{Attribute, Data, Expr, Fields, Type};
 
 pub fn expand_derive_active_model_ex(
@@ -36,6 +37,28 @@ pub fn expand_derive_active_model_ex(
             })
         })?;
 
+    let mut seen_entity = HashMap::new();
+
+    if let Data::Struct(item_struct) = &data {
+        if let Fields::Named(fields) = &item_struct.fields {
+            for field in fields.named.iter() {
+                if let Some(_) = &field.ident {
+                    if field_not_ignored_compound(field) {
+                        let field_type = &field.ty;
+                        let field_type = quote! { #field_type }
+                            .to_string() // e.g.: "Option < String >"
+                            .replace(' ', ""); // Remove spaces
+
+                        if is_compound_field(&field_type) {
+                            let entity_path = extract_compound_entity(&field_type);
+                            *seen_entity.entry(entity_path.to_owned()).or_insert(0) += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if let Data::Struct(item_struct) = &data {
         if let Fields::Named(fields) = &item_struct.fields {
             for field in fields.named.iter() {
@@ -50,7 +73,7 @@ pub fn expand_derive_active_model_ex(
                             compound_fields.push(ident);
                             let entity_path = extract_compound_entity(&field_type);
 
-                            if !compact {
+                            if !compact && *seen_entity.get(entity_path).unwrap() == 1 {
                                 let compound_attrs =
                                     compound_attr::SeaOrm::from_attributes(&field.attrs)?;
                                 if compound_attrs.relation_enum.is_none() {

@@ -28,6 +28,7 @@ pub mod post_tag;
 pub mod profile;
 pub mod tag;
 pub mod user;
+pub mod user_follower;
 
 pub use cake::Entity as Cake;
 pub use cake_filling::Entity as CakeFilling;

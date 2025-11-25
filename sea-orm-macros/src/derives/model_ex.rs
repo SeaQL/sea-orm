@@ -259,9 +259,10 @@ pub fn expand_derive_model_ex(
 
     let impl_related_trait = {
         let mut ts = TokenStream::new();
-        let mut seen = HashMap::new();
+        let mut seen_entity = HashMap::new();
         for (_, field_type) in impl_related.iter() {
-            *seen.entry(field_type).or_insert(0) += 1;
+            let entity_path = extract_compound_entity(field_type);
+            *seen_entity.entry(entity_path).or_insert(0) += 1;
         }
 
         for (attrs, field_type) in impl_related.iter() {
@@ -279,7 +280,8 @@ pub fn expand_derive_model_ex(
             if let Some(second) = second {
                 related_entity_enum_variants.push(second);
             }
-            if *seen.get(field_type).unwrap() == 1 {
+            let entity_path = extract_compound_entity(field_type);
+            if *seen_entity.get(entity_path).unwrap() == 1 {
                 // prevent impl trait for same entity twice
                 ts.extend(expand_impl_related_trait(attrs, field_type)?);
             }

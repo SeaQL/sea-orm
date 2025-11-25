@@ -72,7 +72,8 @@ pub trait LoaderTrait {
         S: EntityOrSelect<R>,
         <Self::Model as ModelTrait>::Entity: Related<R>;
 
-    /// Used to eager load many_to_many relations
+    /// Used to eager load many_to_many relations. In SeaORM 2.0 `load_many` already support M-N
+    /// relations so this method is not needed, only kept as legacy.
     async fn load_many_to_many<R, S, V, C>(
         &self,
         stmt: S,
