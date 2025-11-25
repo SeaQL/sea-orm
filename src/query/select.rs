@@ -4,7 +4,7 @@ use crate::{
 };
 use core::fmt::Debug;
 use core::marker::PhantomData;
-use sea_query::{IntoColumnRef, SelectStatement, SimpleExpr};
+use sea_query::{FunctionCall, IntoColumnRef, SelectStatement, SimpleExpr};
 
 /// Defines a structure to perform select operations
 #[derive(Clone, Debug)]
