@@ -210,6 +210,12 @@ impl IntoSimpleExpr for SimpleExpr {
     }
 }
 
+impl IntoSimpleExpr for FunctionCall {
+    fn into_simple_expr(self) -> SimpleExpr {
+        SimpleExpr::FunctionCall(self)
+    }
+}
+
 impl<E> Select<E>
 where
     E: EntityTrait,
