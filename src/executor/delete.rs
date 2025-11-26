@@ -154,7 +154,10 @@ where
     let db_backend = db.get_database_backend();
     match db.support_returning() {
         true => {
-            query.returning_all();
+            let returning = Query::returning().exprs(
+                E::Column::iter().map(|c| c.select_enum_as(c.into_returning_expr(db_backend))),
+            );
+            query.returning(returning);
             ReturningSelector::<SelectModel<<E>::Model>, _>::from_query(query)
                 .one(db)
                 .await
