@@ -516,7 +516,7 @@ async fn loader_load_many_to_many_dyn() -> Result<(), DbErr> {
 
 #[sea_orm_macros::test]
 async fn loader_self_join() -> Result<(), DbErr> {
-    use common::film_store::staff;
+    use common::film_store::{staff, staff_compact};
     use sea_orm::tests_cfg::{user, user_follower};
 
     let ctx = TestContext::new("test_loader_self_join").await;
@@ -584,7 +584,7 @@ async fn loader_self_join() -> Result<(), DbErr> {
 
     let manages = staff
         .load_self_rev(
-            staff::Entity::find().order_by_asc(staff::Column::Id),
+            staff::Entity::find().order_by_asc(staff::COLUMN.id),
             staff::Relation::ReportsTo,
             db,
         )
@@ -603,6 +603,27 @@ async fn loader_self_join() -> Result<(), DbErr> {
 
     assert_eq!(staff[3].name, "Elle");
     assert_eq!(manages[3].len(), 0);
+
+    // test self_ref on compact_model
+
+    let staff = staff_compact::Entity::find()
+        .order_by_asc(staff_compact::COLUMN.id)
+        .limit(1)
+        .all(db)
+        .await?;
+    let manages = staff
+        .load_self_rev(
+            staff_compact::Entity::find().order_by_asc(staff_compact::COLUMN.id),
+            staff_compact::Relation::ReportsTo,
+            db,
+        )
+        .await?;
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(manages[0].len(), 2);
+    assert_eq!(manages[0][0].name, "Ben");
+    assert_eq!(manages[0][1].name, "Alice");
+
+    // self_ref + via
 
     let alice = user::ActiveModel {
         name: Set("Alice".into()),

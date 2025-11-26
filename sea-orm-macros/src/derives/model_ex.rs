@@ -143,7 +143,11 @@ pub fn expand_derive_model_ex(
                             });
                         }
                         if let Some(attrs) = compound_attrs {
-                            if compact {
+                            if compact
+                                && (attrs.has_one.is_some()
+                                    || attrs.has_many.is_some()
+                                    || attrs.belongs_to.is_some())
+                            {
                                 return Err(syn::Error::new_spanned(
                                     ident,
                                     "You cannot use #[has_one / has_many / belongs_to] on #[sea_orm::compact_model], please use #[sea_orm::model] instead.",
@@ -402,27 +406,15 @@ fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<Token
             #[sea_orm(#belongs_to = #related_entity, from = #from, to = #to, #extra)]
             #relation_enum
         })
-    } else if attr.self_ref.is_some() && attr.via.is_none() {
+    } else if attr.self_ref.is_some()
+        && attr.via.is_none()
+        && attr.from.is_some()
+        && attr.to.is_some()
+    {
         let belongs_to = Ident::new("belongs_to", Span::call_site());
 
-        let from = format_tuple(
-            "",
-            "Column",
-            &attr
-                .from
-                .as_ref()
-                .expect("Must specify `from` and `to` on self_ref relation")
-                .value(),
-        );
-        let to = format_tuple(
-            "",
-            "Column",
-            &attr
-                .to
-                .as_ref()
-                .expect("Must specify `from` and `to` on self_ref relation")
-                .value(),
-        );
+        let from = format_tuple("", "Column", &attr.from.as_ref().unwrap().value());
+        let to = format_tuple("", "Column", &attr.to.as_ref().unwrap().value());
         let mut extra: Punctuated<_, Comma> = Punctuated::new();
         if let Some(on_update) = &attr.on_update {
             let tag = Ident::new("on_update", on_update.span());

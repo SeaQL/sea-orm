@@ -441,7 +441,7 @@ async fn entity_loader_join_three() {
 
 #[sea_orm_macros::test]
 async fn entity_loader_self_join() -> Result<(), DbErr> {
-    use common::film_store::staff;
+    use common::film_store::{staff, staff_compact};
 
     let ctx = TestContext::new("entity_loader_self_join").await;
     let db = &ctx.db;
@@ -499,6 +499,26 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
 
     assert_eq!(staff[3].name, "Elle");
     assert_eq!(staff[3].reports_to, None);
+
+    // test self_ref on compact_model
+
+    let staff = staff_compact::Entity::load()
+        .filter_by_id(2)
+        .with(staff_compact::Relation::ReportsTo)
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(staff.name, "Ben");
+    assert_eq!(
+        staff.reports_to.unwrap(),
+        staff_compact::Entity::find_by_id(alan.id)
+            .one(db)
+            .await?
+            .unwrap()
+    );
+
+    // test pagination on loader
 
     let mut pager = staff::Entity::load()
         .with(staff::Relation::ReportsTo)

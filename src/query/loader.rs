@@ -53,7 +53,7 @@ pub trait LoaderTrait {
         LoaderRelation<Self>: Send,
         S: EntityOrSelect<LoaderEntity<Self>>;
 
-    /// Used to eager load self_ref + has_many relations
+    /// Used to eager load self_ref + via relations
     async fn load_self_via<V, C>(
         &self,
         via: V,
@@ -789,6 +789,8 @@ where
     .await
 }
 
+// All variants monomorphizes to this implementation, which is a constant number of variants
+// per Entity, permutating on different shapes, e.g. Vec<Model>, Option<ModelEx>
 async fn loader_impl_impl<'a, Model, Iter, R, C, T, Output>(
     items: Iter,
     stmt: Select<R>,
