@@ -517,12 +517,15 @@ async fn loader_load_many_to_many_dyn() -> Result<(), DbErr> {
 #[sea_orm_macros::test]
 async fn loader_self_join() -> Result<(), DbErr> {
     use common::film_store::staff;
+    use sea_orm::tests_cfg::{user, user_follower};
 
     let ctx = TestContext::new("test_loader_self_join").await;
     let db = &ctx.db;
 
     db.get_schema_builder()
         .register(staff::Entity)
+        .register(user::Entity)
+        .register(user_follower::Entity)
         .apply(db)
         .await?;
 
@@ -600,6 +603,60 @@ async fn loader_self_join() -> Result<(), DbErr> {
 
     assert_eq!(staff[3].name, "Elle");
     assert_eq!(manages[3].len(), 0);
+
+    let alice = user::ActiveModel {
+        name: Set("Alice".into()),
+        email: Set("@1".into()),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    let bob = user::ActiveModel {
+        name: Set("Bob".into()),
+        email: Set("@2".into()),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    let sam = user::ActiveModel {
+        name: Set("Sam".into()),
+        email: Set("@3".into()),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(alice.id),
+        follower_id: Set(bob.id),
+    }
+    .insert(db)
+    .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(alice.id),
+        follower_id: Set(sam.id),
+    }
+    .insert(db)
+    .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(bob.id),
+        follower_id: Set(sam.id),
+    }
+    .insert(db)
+    .await?;
+
+    let users = user::Entity::find().all(db).await?;
+    let followers = users.load_self_via(user_follower::Entity, db).await?;
+    assert_eq!(users[0], alice);
+    assert_eq!(users[1], bob);
+    assert_eq!(users[2], sam);
+    assert_eq!(followers[0], [bob, sam.clone()]);
+    assert_eq!(followers[1], [sam]);
+    assert!(followers[2].is_empty());
 
     Ok(())
 }

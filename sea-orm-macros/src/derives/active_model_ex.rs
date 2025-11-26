@@ -42,17 +42,15 @@ pub fn expand_derive_active_model_ex(
     if let Data::Struct(item_struct) = &data {
         if let Fields::Named(fields) = &item_struct.fields {
             for field in fields.named.iter() {
-                if let Some(_) = &field.ident {
-                    if field_not_ignored_compound(field) {
-                        let field_type = &field.ty;
-                        let field_type = quote! { #field_type }
-                            .to_string() // e.g.: "Option < String >"
-                            .replace(' ', ""); // Remove spaces
+                if field.ident.is_some() && field_not_ignored_compound(field) {
+                    let field_type = &field.ty;
+                    let field_type = quote! { #field_type }
+                        .to_string() // e.g.: "Option < String >"
+                        .replace(' ', ""); // Remove spaces
 
-                        if is_compound_field(&field_type) {
-                            let entity_path = extract_compound_entity(&field_type);
-                            *seen_entity.entry(entity_path.to_owned()).or_insert(0) += 1;
-                        }
+                    if is_compound_field(&field_type) {
+                        let entity_path = extract_compound_entity(&field_type);
+                        *seen_entity.entry(entity_path.to_owned()).or_insert(0) += 1;
                     }
                 }
             }
