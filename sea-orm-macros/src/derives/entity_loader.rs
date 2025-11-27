@@ -41,10 +41,6 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
     }
 
     for entity_field in schema.fields.iter() {
-        if *seen.get(&entity_field.entity).unwrap() != 1 {
-            // prevent impl trait for same entity twice
-            continue;
-        }
         let field = &entity_field.field;
         let is_one = entity_field.is_one;
         let is_self = entity_field.is_self;
@@ -54,6 +50,12 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             .trim_end_matches("::Entity")
             .parse()
             .unwrap();
+
+        if !is_self && *seen.get(&entity_field.entity).unwrap() != 1 {
+            // prevent impl trait for same entity twice
+            // self_ref is allowed
+            continue;
+        }
 
         if !is_self {
             field_bools.push(quote! {
@@ -192,6 +194,19 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
 
                         for (model, #field) in models.iter_mut().zip(#field) {
                             model.#field = #field.map(Into::into).map(Box::new).into();
+                        }
+                    }
+                });
+            }
+        } else if !is_one && is_self {
+            if let Some(relation_enum) = &entity_field.relation_enum {
+                let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
+                load_many.extend(quote! {
+                    if with.#field {
+                        let #field = models.as_slice().load_self_many_ex(#entity, Relation::#relation_enum, db).await?;
+
+                        for (model, #field) in models.iter_mut().zip(#field) {
+                            model.#field = #field.into();
                         }
                     }
                 });

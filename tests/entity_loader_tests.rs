@@ -441,7 +441,7 @@ async fn entity_loader_join_three() {
 
 #[sea_orm_macros::test]
 async fn entity_loader_self_join() -> Result<(), DbErr> {
-    use common::film_store::{staff, staff_compact};
+    use common::film_store::{staff, staff_compact, staff_mono};
 
     let ctx = TestContext::new("entity_loader_self_join").await;
     let db = &ctx.db;
@@ -483,6 +483,8 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     .insert(db)
     .await?;
 
+    // load belongs_to
+
     let staff = staff::Entity::load()
         .with(staff::Relation::ReportsTo)
         .all(db)
@@ -500,11 +502,56 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     assert_eq!(staff[3].name, "Elle");
     assert_eq!(staff[3].reports_to, None);
 
-    // test self_ref on compact_model
+    // load belongs_to reverse
 
-    let staff = staff_compact::Entity::load()
+    let staff = staff::Entity::load()
+        .with(staff::Relation::Manages)
+        .all(db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].manages[0].name, "Ben");
+    assert_eq!(staff[0].manages[1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert!(staff[1].manages.is_empty());
+
+    assert_eq!(staff[2].name, "Alice");
+    assert!(staff[2].manages.is_empty());
+
+    assert_eq!(staff[3].name, "Elle");
+    assert!(staff[3].manages.is_empty());
+
+    // load both sides
+
+    let staff = staff::Entity::load()
+        .with(staff::Relation::ReportsTo)
+        .with(staff::Relation::Manages)
+        .all(db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].reports_to, None);
+    assert_eq!(staff[0].manages[0].name, "Ben");
+    assert_eq!(staff[0].manages[1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[1].manages.is_empty());
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[2].manages.is_empty());
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].manages.is_empty());
+
+    // test self_ref on model without reverse relation (not dual)
+
+    let staff = staff_mono::Entity::load()
         .filter_by_id(2)
-        .with(staff_compact::Relation::ReportsTo)
+        .with(staff_mono::Relation::ReportsTo)
         .one(db)
         .await?
         .unwrap();
@@ -512,11 +559,36 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     assert_eq!(staff.name, "Ben");
     assert_eq!(
         staff.reports_to.unwrap(),
-        staff_compact::Entity::find_by_id(alan.id)
+        staff_mono::Entity::find_by_id(alan.id)
             .one(db)
             .await?
             .unwrap()
     );
+
+    // test self_ref on compact_model
+
+    let staff = staff_compact::Entity::load()
+        .with(staff_compact::Relation::ReportsTo)
+        .with(staff_compact::Relation::Manages)
+        .all(db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].reports_to, None);
+    assert_eq!(staff[0].manages[0].name, "Ben");
+    assert_eq!(staff[0].manages[1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[1].manages.is_empty());
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[2].manages.is_empty());
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].manages.is_empty());
 
     // test pagination on loader
 

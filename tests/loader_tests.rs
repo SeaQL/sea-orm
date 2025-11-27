@@ -583,12 +583,23 @@ async fn loader_self_join() -> Result<(), DbErr> {
     assert_eq!(reports_to[3], None);
 
     let manages = staff
-        .load_self_rev(
+        .load_self_many(
             staff::Entity::find().order_by_asc(staff::COLUMN.id),
             staff::Relation::ReportsTo,
             db,
         )
         .await?;
+
+    assert_eq!(
+        manages,
+        staff
+            .load_self_many(
+                staff::Entity::find().order_by_asc(staff::COLUMN.id),
+                staff::Relation::Manages,
+                db,
+            )
+            .await?
+    );
 
     assert_eq!(staff[0].name, "Alan");
     assert_eq!(manages[0].len(), 2);
@@ -608,20 +619,53 @@ async fn loader_self_join() -> Result<(), DbErr> {
 
     let staff = staff_compact::Entity::find()
         .order_by_asc(staff_compact::COLUMN.id)
-        .limit(1)
         .all(db)
         .await?;
+
+    let reports_to = staff
+        .load_self(
+            staff_compact::Entity,
+            staff_compact::Relation::ReportsTo,
+            db,
+        )
+        .await?;
+
     let manages = staff
-        .load_self_rev(
+        .load_self_many(
             staff_compact::Entity::find().order_by_asc(staff_compact::COLUMN.id),
             staff_compact::Relation::ReportsTo,
             db,
         )
         .await?;
+
+    assert_eq!(
+        manages,
+        staff
+            .load_self_many(
+                staff_compact::Entity::find().order_by_asc(staff_compact::COLUMN.id),
+                staff_compact::Relation::Manages,
+                db,
+            )
+            .await?
+    );
+
     assert_eq!(staff[0].name, "Alan");
+    assert_eq!(reports_to[0], None);
     assert_eq!(manages[0].len(), 2);
     assert_eq!(manages[0][0].name, "Ben");
     assert_eq!(manages[0][1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(reports_to.get(1).unwrap().as_ref().unwrap().name, "Alan");
+    assert_eq!(manages[1].len(), 0);
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(reports_to.get(2).unwrap().as_ref().unwrap().name, "Alan");
+    assert_eq!(manages[2].len(), 0);
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(reports_to[3], None);
+    assert_eq!(manages[3].len(), 0);
 
     // self_ref + via
 
