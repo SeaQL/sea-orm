@@ -618,6 +618,136 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     Ok(())
 }
 
+#[sea_orm_macros::test]
+async fn entity_loader_self_join_via() -> Result<(), DbErr> {
+    use sea_orm::tests_cfg::{profile, user, user_follower};
+
+    let ctx = TestContext::new("test_entity_loader_self_join_via").await;
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(profile::Entity)
+        .register(user::Entity)
+        .register(user_follower::Entity)
+        .apply(db)
+        .await?;
+
+    let alice = user::ActiveModel::builder()
+        .set_name("Alice")
+        .set_email("@1")
+        .set_profile(profile::ActiveModel::builder().set_picture("Alice.jpg"))
+        .insert(db)
+        .await?;
+
+    let bob = user::ActiveModel::builder()
+        .set_name("Bob")
+        .set_email("@2")
+        .set_profile(profile::ActiveModel::builder().set_picture("Bob.jpg"))
+        .insert(db)
+        .await?;
+
+    let sam = user::ActiveModel::builder()
+        .set_name("Sam")
+        .set_email("@3")
+        .set_profile(profile::ActiveModel::builder().set_picture("Sam.jpg"))
+        .insert(db)
+        .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(alice.id),
+        follower_id: Set(bob.id),
+    }
+    .insert(db)
+    .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(alice.id),
+        follower_id: Set(sam.id),
+    }
+    .insert(db)
+    .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(bob.id),
+        follower_id: Set(sam.id),
+    }
+    .insert(db)
+    .await?;
+
+    let users = user::Entity::load()
+        .with(user_follower::Entity)
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].name, alice.name);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0].name, bob.name);
+    assert_eq!(users[0].followers[1].name, sam.name);
+
+    assert_eq!(users[1].name, bob.name);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0].name, sam.name);
+
+    assert_eq!(users[2].name, sam.name);
+    assert!(users[2].followers.is_empty());
+
+    // test user + profile
+
+    let users = user::Entity::load()
+        .with(profile::Entity)
+        .with(user_follower::Entity)
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].profile, alice.profile);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0].name, bob.name);
+    assert_eq!(users[0].followers[1].name, sam.name);
+
+    assert_eq!(users[1].profile, bob.profile);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0].name, sam.name);
+
+    assert_eq!(users[2].profile, sam.profile);
+    assert!(users[2].followers.is_empty());
+
+    // test user + profile with nested user + profile
+
+    let users = user::Entity::load()
+        .with(profile::Entity)
+        .with((user_follower::Entity, profile::Entity))
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].profile, alice.profile);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0], bob);
+    assert_eq!(users[0].followers[1], sam);
+
+    assert_eq!(users[1].profile, bob.profile);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0], sam);
+
+    assert_eq!(users[2].profile, sam.profile);
+    assert!(users[2].followers.is_empty());
+
+    // test nested loading, but left right swapped
+
+    let alice_profile = profile::Entity::load()
+        .filter_by_id(alice.profile.as_ref().unwrap().id)
+        .with((user::Entity, user_follower::Entity))
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(alice_profile.picture, alice.profile.as_ref().unwrap().picture);
+    assert_eq!(alice_profile.user.as_ref().unwrap().followers.len(), 2);
+    assert_eq!(alice_profile.user.as_ref().unwrap().followers[0].name, bob.name);
+    assert_eq!(alice_profile.user.as_ref().unwrap().followers[1].name, sam.name);
+
+    Ok(())
+}
+
 pub async fn insert_bakery(db: &DbConn, name: &str) -> Result<bakery::Model, DbErr> {
     bakery::ActiveModel {
         name: Set(name.to_owned()),

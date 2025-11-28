@@ -50,6 +50,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                 email: Unchanged("@1".into()),
                 profile: HasOneModel::NotSet,
                 posts: HasManyModel::NotSet,
+                followers: HasManyModel::NotSet,
             }),
             comments: HasManyModel::NotSet,
             attachments: HasManyModel::NotSet,
@@ -164,6 +165,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                     ..Default::default()
                 },
             ]),
+            followers: HasManyModel::NotSet,
         }
     );
 
@@ -244,6 +246,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                 user_id: 4,
             }),
             posts: HasMany::Loaded(vec![]),
+            followers: HasMany::Unloaded,
         }
     );
 
@@ -305,6 +308,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                     user: HasOneModel::NotSet,
                 }),
                 posts: HasManyModel::Append(vec![]),
+                followers: HasManyModel::NotSet,
             }),
             comments: HasManyModel::NotSet,
             attachments: HasManyModel::NotSet,
@@ -497,6 +501,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                     posts: HasMany::Unloaded,
                 }]),
             }]),
+            followers: HasMany::Unloaded,
         }
     );
 

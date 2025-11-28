@@ -118,7 +118,7 @@ type LoaderExEntity<T> = <<T as LoaderTraitEx>::Model as ModelTrait>::Entity;
 type LoaderExModel<T> = <<<T as LoaderTraitEx>::Model as ModelTrait>::Entity as EntityTrait>::Model;
 type LoaderExModelEx<T> =
     <<<T as LoaderTraitEx>::Model as ModelTrait>::Entity as EntityTrait>::ModelEx;
-type LoaderExEntityRelation<T> =
+type LoaderExRelation<T> =
     <<<T as LoaderTraitEx>::Model as ModelTrait>::Entity as EntityTrait>::Relation;
 
 #[doc(hidden)]
@@ -129,28 +129,40 @@ pub trait LoaderTraitEx {
     async fn load_self_ex<S, C>(
         &self,
         stmt: S,
-        relation_enum: LoaderExEntityRelation<Self>,
+        relation_enum: LoaderExRelation<Self>,
         db: &C,
     ) -> Result<Vec<Option<LoaderExModelEx<Self>>>, DbErr>
     where
         C: ConnectionTrait,
         LoaderExModel<Self>: Send + Sync,
         LoaderExModelEx<Self>: From<LoaderExModel<Self>>,
-        LoaderExEntityRelation<Self>: Send,
+        LoaderExRelation<Self>: Send,
         S: EntityOrSelect<LoaderExEntity<Self>>;
 
     async fn load_self_many_ex<S, C>(
         &self,
         stmt: S,
-        relation_enum: LoaderExEntityRelation<Self>,
+        relation_enum: LoaderExRelation<Self>,
         db: &C,
     ) -> Result<Vec<Vec<LoaderExModelEx<Self>>>, DbErr>
     where
         C: ConnectionTrait,
         LoaderExModel<Self>: Send + Sync,
         LoaderExModelEx<Self>: From<LoaderExModel<Self>>,
-        LoaderExEntityRelation<Self>: Send,
+        LoaderExRelation<Self>: Send,
         S: EntityOrSelect<LoaderExEntity<Self>>;
+
+    async fn load_self_via_ex<V, C>(
+        &self,
+        via: V,
+        db: &C,
+    ) -> Result<Vec<Vec<LoaderExModelEx<Self>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        V: EntityTrait,
+        LoaderExModel<Self>: Send + Sync,
+        LoaderExModelEx<Self>: From<LoaderExModel<Self>>,
+        LoaderExEntity<Self>: RelatedSelfVia<V>;
 
     async fn load_one_ex<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Option<R::ModelEx>>, DbErr>
     where
@@ -171,12 +183,11 @@ pub trait LoaderTraitEx {
         <Self::Model as ModelTrait>::Entity: Related<R>;
 }
 
+type NestedEntity<T> = <<T as NestedLoaderTrait>::Model as ModelTrait>::Entity;
 type NestedModel<T> =
     <<<T as NestedLoaderTrait>::Model as ModelTrait>::Entity as EntityTrait>::Model;
-
 type NestedModelEx<T> =
     <<<T as NestedLoaderTrait>::Model as ModelTrait>::Entity as EntityTrait>::ModelEx;
-
 type NestedLoaderRelation<T> =
     <<<T as NestedLoaderTrait>::Model as ModelTrait>::Entity as EntityTrait>::Relation;
 
@@ -210,6 +221,18 @@ pub trait NestedLoaderTrait {
         NestedModelEx<Self>: From<NestedModel<Self>>,
         NestedLoaderRelation<Self>: Send,
         S: EntityOrSelect<<<Self as NestedLoaderTrait>::Model as ModelTrait>::Entity>;
+
+    async fn load_self_via_ex<V, C>(
+        &self,
+        via: V,
+        db: &C,
+    ) -> Result<Vec<Vec<Vec<NestedModelEx<Self>>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        V: EntityTrait,
+        NestedModel<Self>: Send + Sync,
+        NestedModelEx<Self>: From<NestedModel<Self>>,
+        NestedEntity<Self>: RelatedSelfVia<V>;
 
     async fn load_one_ex<R, S, C>(
         &self,
@@ -594,14 +617,14 @@ where
     async fn load_self_ex<S, C>(
         &self,
         stmt: S,
-        relation_enum: LoaderExEntityRelation<Self>,
+        relation_enum: LoaderExRelation<Self>,
         db: &C,
     ) -> Result<Vec<Option<LoaderExModelEx<Self>>>, DbErr>
     where
         C: ConnectionTrait,
         LoaderExModel<Self>: Send + Sync,
         LoaderExModelEx<Self>: From<LoaderExModel<Self>>,
-        LoaderExEntityRelation<Self>: Send,
+        LoaderExRelation<Self>: Send,
         S: EntityOrSelect<LoaderExEntity<Self>>,
     {
         let rel_def = relation_enum.def();
@@ -612,19 +635,43 @@ where
     async fn load_self_many_ex<S, C>(
         &self,
         stmt: S,
-        relation_enum: LoaderExEntityRelation<Self>,
+        relation_enum: LoaderExRelation<Self>,
         db: &C,
     ) -> Result<Vec<Vec<LoaderExModelEx<Self>>>, DbErr>
     where
         C: ConnectionTrait,
         LoaderExModel<Self>: Send + Sync,
         LoaderExModelEx<Self>: From<LoaderExModel<Self>>,
-        LoaderExEntityRelation<Self>: Send,
+        LoaderExRelation<Self>: Send,
         S: EntityOrSelect<LoaderExEntity<Self>>,
     {
         let rel_def = relation_enum.def();
         check_self_ref_many(&rel_def)?;
         loader_impl_impl(self.iter(), stmt.select(), rel_def, None, db).await
+    }
+
+    async fn load_self_via_ex<V, C>(
+        &self,
+        _: V,
+        db: &C,
+    ) -> Result<Vec<Vec<LoaderExModelEx<Self>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        V: EntityTrait,
+        LoaderExModel<Self>: Send + Sync,
+        LoaderExModelEx<Self>: From<LoaderExModel<Self>>,
+        LoaderExEntity<Self>: RelatedSelfVia<V>,
+    {
+        let rel_def = <LoaderExEntity<Self> as RelatedSelfVia<V>>::to();
+        let rel_via = <LoaderExEntity<Self> as RelatedSelfVia<V>>::via();
+        loader_impl_impl(
+            self.iter(),
+            EntityOrSelect::select(LoaderExEntity::<Self>::default()),
+            rel_def,
+            Some(rel_via),
+            db,
+        )
+        .await
     }
 
     async fn load_one_ex<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Option<R::ModelEx>>, DbErr>
@@ -666,14 +713,14 @@ where
     async fn load_self_ex<S, C>(
         &self,
         stmt: S,
-        relation_enum: LoaderExEntityRelation<Self>,
+        relation_enum: LoaderExRelation<Self>,
         db: &C,
     ) -> Result<Vec<Option<LoaderExModelEx<Self>>>, DbErr>
     where
         C: ConnectionTrait,
         LoaderExModel<Self>: Send + Sync,
         LoaderExModelEx<Self>: From<LoaderExModel<Self>>,
-        LoaderExEntityRelation<Self>: Send,
+        LoaderExRelation<Self>: Send,
         S: EntityOrSelect<LoaderExEntity<Self>>,
     {
         let rel_def = relation_enum.def();
@@ -692,14 +739,14 @@ where
     async fn load_self_many_ex<S, C>(
         &self,
         stmt: S,
-        relation_enum: LoaderExEntityRelation<Self>,
+        relation_enum: LoaderExRelation<Self>,
         db: &C,
     ) -> Result<Vec<Vec<LoaderExModelEx<Self>>>, DbErr>
     where
         C: ConnectionTrait,
         LoaderExModel<Self>: Send + Sync,
         LoaderExModelEx<Self>: From<LoaderExModel<Self>>,
-        LoaderExEntityRelation<Self>: Send,
+        LoaderExRelation<Self>: Send,
         S: EntityOrSelect<LoaderExEntity<Self>>,
     {
         let rel_def = relation_enum.def();
@@ -709,6 +756,31 @@ where
             stmt.select(),
             rel_def,
             None,
+            db,
+        )
+        .await?;
+        Ok(assemble_options(self, items))
+    }
+
+    async fn load_self_via_ex<V, C>(
+        &self,
+        _: V,
+        db: &C,
+    ) -> Result<Vec<Vec<LoaderExModelEx<Self>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        V: EntityTrait,
+        LoaderExModel<Self>: Send + Sync,
+        LoaderExModelEx<Self>: From<LoaderExModel<Self>>,
+        LoaderExEntity<Self>: RelatedSelfVia<V>,
+    {
+        let rel_def = <LoaderExEntity<Self> as RelatedSelfVia<V>>::to();
+        let rel_via = <LoaderExEntity<Self> as RelatedSelfVia<V>>::via();
+        let items: Vec<Vec<_>> = loader_impl_impl(
+            self.iter().filter_map(|o| o.as_ref()),
+            EntityOrSelect::select(LoaderExEntity::<Self>::default()),
+            rel_def,
+            Some(rel_via),
             db,
         )
         .await?;
@@ -792,6 +864,31 @@ where
         check_self_ref_many(&rel_def)?;
         let items: Vec<Vec<_>> =
             loader_impl_impl(self.iter().flatten(), stmt.select(), rel_def, None, db).await?;
+        Ok(assemble_vectors(self, items))
+    }
+
+    async fn load_self_via_ex<V, C>(
+        &self,
+        _: V,
+        db: &C,
+    ) -> Result<Vec<Vec<Vec<NestedModelEx<Self>>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        V: EntityTrait,
+        NestedModel<Self>: Send + Sync,
+        NestedModelEx<Self>: From<NestedModel<Self>>,
+        NestedEntity<Self>: RelatedSelfVia<V>,
+    {
+        let rel_def = <NestedEntity<Self> as RelatedSelfVia<V>>::to();
+        let rel_via = <NestedEntity<Self> as RelatedSelfVia<V>>::via();
+        let items: Vec<Vec<_>> = loader_impl_impl(
+            self.iter().flatten(),
+            EntityOrSelect::select(NestedEntity::<Self>::default()),
+            rel_def,
+            Some(rel_via),
+            db,
+        )
+        .await?;
         Ok(assemble_vectors(self, items))
     }
 

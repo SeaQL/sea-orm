@@ -130,6 +130,7 @@ pub fn expand_derive_model_ex(
                                 relation_enum: compound_attrs
                                     .as_ref()
                                     .and_then(|r| r.relation_enum.clone()),
+                                via: None,
                             });
                         } else if field_type.starts_with("HasMany<") {
                             entity_loader_schema.fields.push(EntityLoaderField {
@@ -140,6 +141,7 @@ pub fn expand_derive_model_ex(
                                 relation_enum: compound_attrs
                                     .as_ref()
                                     .and_then(|r| r.relation_enum.clone()),
+                                via: compound_attrs.as_ref().and_then(|r| r.via.clone()),
                             });
                         }
                         if let Some(attrs) = compound_attrs {
