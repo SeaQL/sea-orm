@@ -674,6 +674,8 @@ async fn entity_loader_self_join_via() -> Result<(), DbErr> {
     .insert(db)
     .await?;
 
+    // test user + follower
+
     let users = user::Entity::load()
         .with(user_follower::Entity)
         .all(db)
@@ -690,6 +692,32 @@ async fn entity_loader_self_join_via() -> Result<(), DbErr> {
 
     assert_eq!(users[2].name, sam.name);
     assert!(users[2].followers.is_empty());
+
+    // test user + follower + following (both sides)
+
+    let users = user::Entity::load()
+        .with(user_follower::Entity)
+        .with(user_follower::Entity::REVERSE)
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].name, alice.name);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0].name, bob.name);
+    assert_eq!(users[0].followers[1].name, sam.name);
+    assert!(users[0].following.is_empty());
+
+    assert_eq!(users[1].name, bob.name);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0].name, sam.name);
+    assert_eq!(users[1].following.len(), 1);
+    assert_eq!(users[1].following[0].name, alice.name);
+
+    assert_eq!(users[2].name, sam.name);
+    assert!(users[2].followers.is_empty());
+    assert_eq!(users[2].following.len(), 2);
+    assert_eq!(users[2].following[0].name, alice.name);
+    assert_eq!(users[2].following[1].name, bob.name);
 
     // test user + profile
 
@@ -731,6 +759,33 @@ async fn entity_loader_self_join_via() -> Result<(), DbErr> {
     assert_eq!(users[2].profile, sam.profile);
     assert!(users[2].followers.is_empty());
 
+    // test all: user profile + follower profile + following profile
+
+    let users = user::Entity::load()
+        .with(profile::Entity)
+        .with((user_follower::Entity, profile::Entity))
+        .with((user_follower::Entity::REVERSE, profile::Entity))
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].profile, alice.profile);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0], bob);
+    assert_eq!(users[0].followers[1], sam);
+    assert!(users[0].following.is_empty());
+
+    assert_eq!(users[1].profile, bob.profile);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0], sam);
+    assert_eq!(users[1].following.len(), 1);
+    assert_eq!(users[1].following[0], alice);
+
+    assert_eq!(users[2].profile, sam.profile);
+    assert!(users[2].followers.is_empty());
+    assert_eq!(users[2].following.len(), 2);
+    assert_eq!(users[2].following[0], alice);
+    assert_eq!(users[2].following[1], bob);
+
     // test nested loading, but left right swapped
 
     let alice_profile = profile::Entity::load()
@@ -740,10 +795,37 @@ async fn entity_loader_self_join_via() -> Result<(), DbErr> {
         .await?
         .unwrap();
 
-    assert_eq!(alice_profile.picture, alice.profile.as_ref().unwrap().picture);
+    assert_eq!(
+        alice_profile.picture,
+        alice.profile.as_ref().unwrap().picture
+    );
     assert_eq!(alice_profile.user.as_ref().unwrap().followers.len(), 2);
-    assert_eq!(alice_profile.user.as_ref().unwrap().followers[0].name, bob.name);
-    assert_eq!(alice_profile.user.as_ref().unwrap().followers[1].name, sam.name);
+    assert_eq!(
+        alice_profile.user.as_ref().unwrap().followers[0].name,
+        bob.name
+    );
+    assert_eq!(
+        alice_profile.user.as_ref().unwrap().followers[1].name,
+        sam.name
+    );
+
+    let sam_profile = profile::Entity::load()
+        .filter_by_id(sam.profile.as_ref().unwrap().id)
+        .with((user::Entity, user_follower::Entity::REVERSE))
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(sam_profile.picture, sam.profile.as_ref().unwrap().picture);
+    assert_eq!(sam_profile.user.as_ref().unwrap().following.len(), 2);
+    assert_eq!(
+        sam_profile.user.as_ref().unwrap().following[0].name,
+        alice.name
+    );
+    assert_eq!(
+        sam_profile.user.as_ref().unwrap().following[1].name,
+        bob.name
+    );
 
     Ok(())
 }

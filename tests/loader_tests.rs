@@ -574,10 +574,10 @@ async fn loader_self_join() -> Result<(), DbErr> {
     assert_eq!(reports_to[0], None);
 
     assert_eq!(staff[1].name, "Ben");
-    assert_eq!(reports_to.get(1).unwrap().as_ref().unwrap().name, "Alan");
+    assert_eq!(reports_to[1].as_ref().unwrap().name, "Alan");
 
     assert_eq!(staff[2].name, "Alice");
-    assert_eq!(reports_to.get(2).unwrap().as_ref().unwrap().name, "Alan");
+    assert_eq!(reports_to[2].as_ref().unwrap().name, "Alan");
 
     assert_eq!(staff[3].name, "Elle");
     assert_eq!(reports_to[3], None);

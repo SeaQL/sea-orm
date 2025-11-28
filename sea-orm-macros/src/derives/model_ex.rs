@@ -121,26 +121,31 @@ pub fn expand_derive_model_ex(
                     if is_compound_field(&field_type) {
                         let compound_attrs =
                             compound_attr::SeaOrm::from_attributes(&field.attrs).ok();
+                        let is_reverse = compound_attrs
+                            .as_ref()
+                            .map(|r| r.reverse.is_some())
+                            .unwrap_or_default();
+                        let relation_enum = compound_attrs
+                            .as_ref()
+                            .and_then(|r| r.relation_enum.clone());
                         if field_type.starts_with("HasOne<") {
                             entity_loader_schema.fields.push(EntityLoaderField {
                                 is_one: true,
                                 is_self: field_type == "HasOne<Entity>",
+                                is_reverse,
                                 field: ident.clone(),
                                 entity: extract_compound_entity(&field_type).to_owned(),
-                                relation_enum: compound_attrs
-                                    .as_ref()
-                                    .and_then(|r| r.relation_enum.clone()),
+                                relation_enum,
                                 via: None,
                             });
                         } else if field_type.starts_with("HasMany<") {
                             entity_loader_schema.fields.push(EntityLoaderField {
                                 is_one: false,
                                 is_self: field_type == "HasMany<Entity>",
+                                is_reverse,
                                 field: ident.clone(),
                                 entity: extract_compound_entity(&field_type).to_owned(),
-                                relation_enum: compound_attrs
-                                    .as_ref()
-                                    .and_then(|r| r.relation_enum.clone()),
+                                relation_enum,
                                 via: compound_attrs.as_ref().and_then(|r| r.via.clone()),
                             });
                         }
@@ -610,6 +615,10 @@ fn expand_impl_related_self_via(
         ));
     }
 
+    if attr.reverse.is_some() {
+        return Ok(quote!());
+    }
+
     if let (Some(from), Some(to)) = (&attr.from, &attr.to) {
         let junction = Ident::new(&via.value(), via.span());
         let from = Ident::new(&from.value(), from.span());
@@ -638,10 +647,7 @@ fn expand_impl_related_self_via(
         //     }
         // }
     } else {
-        Err(syn::Error::new_spanned(
-            via,
-            "Please specify the relation enums with `from` and `to`.",
-        ))
+        Ok(quote!())
     }
 }
 

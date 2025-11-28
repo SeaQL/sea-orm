@@ -100,6 +100,7 @@ where
 #[derive(Debug, Clone, PartialEq)]
 pub enum LoadTarget {
     TableRef(TableRef),
+    TableRefRev(TableRef),
     Relation(String),
 }
 

@@ -155,6 +155,7 @@ pub trait LoaderTraitEx {
     async fn load_self_via_ex<V, C>(
         &self,
         via: V,
+        is_reverse: bool,
         db: &C,
     ) -> Result<Vec<Vec<LoaderExModelEx<Self>>>, DbErr>
     where
@@ -225,6 +226,7 @@ pub trait NestedLoaderTrait {
     async fn load_self_via_ex<V, C>(
         &self,
         via: V,
+        is_reverse: bool,
         db: &C,
     ) -> Result<Vec<Vec<Vec<NestedModelEx<Self>>>>, DbErr>
     where
@@ -653,6 +655,7 @@ where
     async fn load_self_via_ex<V, C>(
         &self,
         _: V,
+        is_reverse: bool,
         db: &C,
     ) -> Result<Vec<Vec<LoaderExModelEx<Self>>>, DbErr>
     where
@@ -662,8 +665,17 @@ where
         LoaderExModelEx<Self>: From<LoaderExModel<Self>>,
         LoaderExEntity<Self>: RelatedSelfVia<V>,
     {
-        let rel_def = <LoaderExEntity<Self> as RelatedSelfVia<V>>::to();
-        let rel_via = <LoaderExEntity<Self> as RelatedSelfVia<V>>::via();
+        let (rel_def, rel_via) = if !is_reverse {
+            (
+                <LoaderExEntity<Self> as RelatedSelfVia<V>>::to(),
+                <LoaderExEntity<Self> as RelatedSelfVia<V>>::via(),
+            )
+        } else {
+            (
+                <LoaderEntity<Self> as RelatedSelfVia<V>>::via().rev(),
+                <LoaderEntity<Self> as RelatedSelfVia<V>>::to().rev(),
+            )
+        };
         loader_impl_impl(
             self.iter(),
             EntityOrSelect::select(LoaderExEntity::<Self>::default()),
@@ -765,6 +777,7 @@ where
     async fn load_self_via_ex<V, C>(
         &self,
         _: V,
+        is_reverse: bool,
         db: &C,
     ) -> Result<Vec<Vec<LoaderExModelEx<Self>>>, DbErr>
     where
@@ -774,8 +787,17 @@ where
         LoaderExModelEx<Self>: From<LoaderExModel<Self>>,
         LoaderExEntity<Self>: RelatedSelfVia<V>,
     {
-        let rel_def = <LoaderExEntity<Self> as RelatedSelfVia<V>>::to();
-        let rel_via = <LoaderExEntity<Self> as RelatedSelfVia<V>>::via();
+        let (rel_def, rel_via) = if !is_reverse {
+            (
+                <LoaderExEntity<Self> as RelatedSelfVia<V>>::to(),
+                <LoaderExEntity<Self> as RelatedSelfVia<V>>::via(),
+            )
+        } else {
+            (
+                <LoaderExEntity<Self> as RelatedSelfVia<V>>::via().rev(),
+                <LoaderExEntity<Self> as RelatedSelfVia<V>>::to().rev(),
+            )
+        };
         let items: Vec<Vec<_>> = loader_impl_impl(
             self.iter().filter_map(|o| o.as_ref()),
             EntityOrSelect::select(LoaderExEntity::<Self>::default()),
@@ -870,6 +892,7 @@ where
     async fn load_self_via_ex<V, C>(
         &self,
         _: V,
+        is_reverse: bool,
         db: &C,
     ) -> Result<Vec<Vec<Vec<NestedModelEx<Self>>>>, DbErr>
     where
@@ -879,8 +902,17 @@ where
         NestedModelEx<Self>: From<NestedModel<Self>>,
         NestedEntity<Self>: RelatedSelfVia<V>,
     {
-        let rel_def = <NestedEntity<Self> as RelatedSelfVia<V>>::to();
-        let rel_via = <NestedEntity<Self> as RelatedSelfVia<V>>::via();
+        let (rel_def, rel_via) = if !is_reverse {
+            (
+                <NestedEntity<Self> as RelatedSelfVia<V>>::to(),
+                <NestedEntity<Self> as RelatedSelfVia<V>>::via(),
+            )
+        } else {
+            (
+                <NestedEntity<Self> as RelatedSelfVia<V>>::via().rev(),
+                <NestedEntity<Self> as RelatedSelfVia<V>>::to().rev(),
+            )
+        };
         let items: Vec<Vec<_>> = loader_impl_impl(
             self.iter().flatten(),
             EntityOrSelect::select(NestedEntity::<Self>::default()),

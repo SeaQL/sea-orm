@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use syn::{Ident, punctuated::Punctuated, token::Comma};
 
 #[derive(Default)]
@@ -11,6 +11,7 @@ pub struct EntityLoaderSchema {
 pub struct EntityLoaderField {
     pub is_one: bool,
     pub is_self: bool,
+    pub is_reverse: bool,
     pub field: Ident,
     /// super::bakery::Entity
     pub entity: String,
@@ -41,12 +42,12 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
     for entity_field in schema.fields.iter() {
         *total_count.entry(&entity_field.entity).or_insert(0) += 1;
     }
-    let mut seen = HashSet::new();
 
     for entity_field in schema.fields.iter() {
         let field = &entity_field.field;
         let is_one = entity_field.is_one;
         let is_self = entity_field.is_self;
+        let is_reverse = entity_field.is_reverse;
         let entity: TokenStream = entity_field.entity.parse().unwrap();
         let entity_module: TokenStream = entity_field
             .entity
@@ -104,53 +105,63 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
 
             if let Some(via_lit) = &entity_field.via {
                 let via = Ident::new(&via_lit.value(), via_lit.span());
+                let target_type = if !is_reverse {
+                    Ident::new("TableRef", via_lit.span())
+                } else {
+                    Ident::new("TableRefRev", via_lit.span())
+                };
+
+                let target_entity = if !is_reverse {
+                    quote!(super::#via::Entity)
+                } else {
+                    quote!(super::#via::EntityReverse)
+                };
+
                 with_impl.extend(quote! {
-                    if target == sea_orm::compound::LoadTarget::TableRef(super::#via::Entity.table_ref()) {
+                    if target == sea_orm::compound::LoadTarget::#target_type(super::#via::Entity.table_ref()) {
                         self.#field = true;
                     }
                 });
                 with_nest_impl.extend(quote! {
-                    if left == sea_orm::compound::LoadTarget::TableRef(super::#via::Entity.table_ref()) {
+                    if left == sea_orm::compound::LoadTarget::#target_type(super::#via::Entity.table_ref()) {
                         self.with.#field = true;
                         self.nest.#field.set(right);
                         return self;
                     }
                 });
 
-                if seen.insert(via_lit.value()) {
-                    into_with_param_impl.extend(quote! {
-                        impl sea_orm::compound::EntityLoaderWithParam<Entity> for super::#via::Entity {
-                            fn into_with_param(self) -> (sea_orm::compound::LoadTarget, Option<sea_orm::compound::LoadTarget>) {
-                                (sea_orm::compound::LoadTarget::TableRef(self.table_ref()), None)
-                            }
+                into_with_param_impl.extend(quote! {
+                    impl sea_orm::compound::EntityLoaderWithParam<Entity> for #target_entity {
+                        fn into_with_param(self) -> (sea_orm::compound::LoadTarget, Option<sea_orm::compound::LoadTarget>) {
+                            (sea_orm::compound::LoadTarget::#target_type(super::#via::Entity.table_ref()), None)
                         }
+                    }
 
-                        impl<S> sea_orm::compound::EntityLoaderWithParam<Entity> for (super::#via::Entity, S)
-                        where
-                            S: EntityTrait,
-                            Entity: Related<S>,
-                        {
-                            fn into_with_param(self) -> (sea_orm::compound::LoadTarget, Option<sea_orm::compound::LoadTarget>) {
-                                (
-                                    sea_orm::compound::LoadTarget::TableRef(self.0.table_ref()),
-                                    Some(sea_orm::compound::LoadTarget::TableRef(self.1.table_ref())),
-                                )
-                            }
+                    impl<S> sea_orm::compound::EntityLoaderWithParam<Entity> for (#target_entity, S)
+                    where
+                        S: EntityTrait,
+                        Entity: Related<S>,
+                    {
+                        fn into_with_param(self) -> (sea_orm::compound::LoadTarget, Option<sea_orm::compound::LoadTarget>) {
+                            (
+                                sea_orm::compound::LoadTarget::#target_type(super::#via::Entity.table_ref()),
+                                Some(sea_orm::compound::LoadTarget::TableRef(self.1.table_ref())),
+                            )
                         }
+                    }
 
-                        impl<S> sea_orm::compound::EntityLoaderWithParam<S> for (Entity, super::#via::Entity)
-                        where
-                            S: EntityTrait + Related<Entity>,
-                        {
-                            fn into_with_param(self) -> (sea_orm::compound::LoadTarget, Option<sea_orm::compound::LoadTarget>) {
-                                (
-                                    sea_orm::compound::LoadTarget::TableRef(self.0.table_ref()),
-                                    Some(sea_orm::compound::LoadTarget::TableRef(self.1.table_ref())),
-                                )
-                            }
+                    impl<S> sea_orm::compound::EntityLoaderWithParam<S> for (Entity, #target_entity)
+                    where
+                        S: EntityTrait + Related<Entity>,
+                    {
+                        fn into_with_param(self) -> (sea_orm::compound::LoadTarget, Option<sea_orm::compound::LoadTarget>) {
+                            (
+                                sea_orm::compound::LoadTarget::TableRef(self.0.table_ref()),
+                                Some(sea_orm::compound::LoadTarget::#target_type(super::#via::Entity.table_ref())),
+                            )
                         }
-                    });
-                }
+                    }
+                });
             }
         }
 
@@ -272,7 +283,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                 let via = Ident::new(&via.value(), via.span());
                 load_many.extend(quote! {
                     if with.#field {
-                        let #field = models.as_slice().load_self_via_ex(super::#via::Entity, db).await?;
+                        let #field = models.as_slice().load_self_via_ex(super::#via::Entity, #is_reverse, db).await?;
                         let #field = EntityLoader::load_nest_nest(#field, &nest.#field, db).await?;
 
                         for (model, #field) in models.iter_mut().zip(#field) {
@@ -282,7 +293,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                 });
                 load_many_nest.extend(quote! {
                     if with.#field {
-                        let #field = models.as_slice().load_self_via_ex(super::#via::Entity, db).await?;
+                        let #field = models.as_slice().load_self_via_ex(super::#via::Entity, #is_reverse, db).await?;
 
                         for (model, #field) in models.iter_mut().zip(#field) {
                             if let Some(model) = model.as_mut() {
@@ -293,7 +304,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                 });
                 load_many_nest_nest.extend(quote! {
                     if with.#field {
-                        let #field = models.as_slice().load_self_via_ex(super::#via::Entity, db).await?;
+                        let #field = models.as_slice().load_self_via_ex(super::#via::Entity, #is_reverse, db).await?;
 
                         for (models, #field) in models.iter_mut().zip(#field) {
                             for (model, #field) in models.iter_mut().zip(#field) {
@@ -318,6 +329,10 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
 
     #[doc = " Generated by sea-orm-macros"]
     #[derive(Debug, Default, Clone, PartialEq, Eq)]
+    pub struct EntityReverse;
+
+    #[doc = " Generated by sea-orm-macros"]
+    #[derive(Debug, Default, Clone, PartialEq, Eq)]
     pub struct EntityLoaderWith {
         #field_bools
     }
@@ -326,6 +341,11 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
     #[derive(Debug, Default, Clone, PartialEq, Eq)]
     pub struct EntityLoaderNest {
         #field_nests
+    }
+
+    impl Entity {
+        #[doc = " Generated by sea-orm-macros"]
+        pub const REVERSE: EntityReverse = EntityReverse;
     }
 
     impl EntityLoaderWith {

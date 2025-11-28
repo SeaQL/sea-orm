@@ -51,6 +51,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                 profile: HasOneModel::NotSet,
                 posts: HasManyModel::NotSet,
                 followers: HasManyModel::NotSet,
+                following: HasManyModel::NotSet,
             }),
             comments: HasManyModel::NotSet,
             attachments: HasManyModel::NotSet,
@@ -166,6 +167,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                 },
             ]),
             followers: HasManyModel::NotSet,
+            following: HasManyModel::NotSet,
         }
     );
 
@@ -247,6 +249,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             }),
             posts: HasMany::Loaded(vec![]),
             followers: HasMany::Unloaded,
+            following: HasMany::Unloaded,
         }
     );
 
@@ -309,6 +312,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                 }),
                 posts: HasManyModel::Append(vec![]),
                 followers: HasManyModel::NotSet,
+                following: HasManyModel::NotSet,
             }),
             comments: HasManyModel::NotSet,
             attachments: HasManyModel::NotSet,
@@ -502,6 +506,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                 }]),
             }]),
             followers: HasMany::Unloaded,
+            following: HasMany::Unloaded,
         }
     );
 
