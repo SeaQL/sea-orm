@@ -66,6 +66,18 @@ pub trait LoaderTrait {
         LoaderModel<Self>: Send + Sync,
         LoaderEntity<Self>: RelatedSelfVia<V>;
 
+    /// Used to eager load self_ref + via relations, but in reverse
+    async fn load_self_via_rev<V, C>(
+        &self,
+        via: V,
+        db: &C,
+    ) -> Result<Vec<Vec<LoaderModel<Self>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        V: EntityTrait,
+        LoaderModel<Self>: Send + Sync,
+        LoaderEntity<Self>: RelatedSelfVia<V>;
+
     /// Used to eager load has_one relations
     async fn load_one<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Option<R::Model>>, DbErr>
     where
@@ -295,6 +307,20 @@ where
         LoaderTrait::load_self_via(&self.as_slice(), via, db).await
     }
 
+    async fn load_self_via_rev<V, C>(
+        &self,
+        via: V,
+        db: &C,
+    ) -> Result<Vec<Vec<LoaderModel<Self>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        V: EntityTrait,
+        LoaderModel<Self>: Send + Sync,
+        LoaderEntity<Self>: RelatedSelfVia<V>,
+    {
+        LoaderTrait::load_self_via_rev(&self.as_slice(), via, db).await
+    }
+
     async fn load_one<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Option<R::Model>>, DbErr>
     where
         C: ConnectionTrait,
@@ -394,7 +420,30 @@ where
         let rel_via = <LoaderEntity<Self> as RelatedSelfVia<V>>::via();
         loader_impl_impl(
             self.iter(),
-            LoaderEntity::<Self>::find(),
+            EntityOrSelect::select(LoaderEntity::<Self>::default()),
+            rel_def,
+            Some(rel_via),
+            db,
+        )
+        .await
+    }
+
+    async fn load_self_via_rev<V, C>(
+        &self,
+        _: V,
+        db: &C,
+    ) -> Result<Vec<Vec<LoaderModel<Self>>>, DbErr>
+    where
+        C: ConnectionTrait,
+        V: EntityTrait,
+        LoaderModel<Self>: Send + Sync,
+        LoaderEntity<Self>: RelatedSelfVia<V>,
+    {
+        let rel_def = <LoaderEntity<Self> as RelatedSelfVia<V>>::via().rev();
+        let rel_via = <LoaderEntity<Self> as RelatedSelfVia<V>>::to().rev();
+        loader_impl_impl(
+            self.iter(),
+            EntityOrSelect::select(LoaderEntity::<Self>::default()),
             rel_def,
             Some(rel_via),
             db,

@@ -716,12 +716,19 @@ async fn loader_self_join() -> Result<(), DbErr> {
 
     let users = user::Entity::find().all(db).await?;
     let followers = users.load_self_via(user_follower::Entity, db).await?;
+    let following = users.load_self_via_rev(user_follower::Entity, db).await?;
+
     assert_eq!(users[0], alice);
+    assert_eq!(followers[0], [bob.clone(), sam.clone()]);
+    assert!(following[0].is_empty());
+
     assert_eq!(users[1], bob);
+    assert_eq!(followers[1], [sam.clone()]);
+    assert_eq!(following[1], [alice.clone()]);
+
     assert_eq!(users[2], sam);
-    assert_eq!(followers[0], [bob, sam.clone()]);
-    assert_eq!(followers[1], [sam]);
     assert!(followers[2].is_empty());
+    assert_eq!(following[2], [alice, bob]);
 
     Ok(())
 }
