@@ -881,7 +881,7 @@ pub trait ActiveModelTrait: Clone + Debug {
                         column_tuple_in_condition(
                             &left.from_tbl,
                             &left.from_col,
-                            &[id.clone()],
+                            std::slice::from_ref(&id),
                             DbBackend::Sqlite,
                         )
                         .expect(""),
@@ -890,7 +890,7 @@ pub trait ActiveModelTrait: Clone + Debug {
                         column_tuple_in_condition(
                             &right.from_tbl,
                             &right.from_col,
-                            &[id],
+                            std::slice::from_ref(&id),
                             DbBackend::Sqlite,
                         )
                         .expect(""),

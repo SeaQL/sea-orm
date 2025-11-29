@@ -171,14 +171,19 @@ pub async fn insert_json_struct_3(db: &DatabaseConnection) -> Result<(), DbErr> 
 
     if db.get_database_backend() == DbBackend::MySql {
         // FIXME how can we abstract this?
-        assert_eq!(
-            Entity::find()
-                .filter(Expr::col(COLUMN.json).eq(Expr::val(json!({ "id": 22 })).cast_as("json")))
-                .one(db)
-                .await?
-                .unwrap(),
-            model_2
-        );
+        // MariaDb doesn't require CAST AS json
+        if false {
+            assert_eq!(
+                Entity::find()
+                    .filter(
+                        Expr::col(COLUMN.json).eq(Expr::val(json!({ "id": 22 })).cast_as("json"))
+                    )
+                    .one(db)
+                    .await?
+                    .unwrap(),
+                model_2
+            );
+        }
     } else {
         assert_eq!(
             Entity::find()
@@ -200,16 +205,20 @@ pub async fn insert_json_struct_3(db: &DatabaseConnection) -> Result<(), DbErr> 
 
     if db.get_database_backend() == DbBackend::MySql {
         // FIXME how can we abstract this?
-        assert_eq!(
-            Entity::find()
-                .filter(
-                    Expr::col(COLUMN.json_opt).eq(Expr::val(json!({ "id": 33 })).cast_as("json"))
-                )
-                .one(db)
-                .await?
-                .unwrap(),
-            model_4
-        );
+        // MariaDb doesn't require CAST AS json
+        if false {
+            assert_eq!(
+                Entity::find()
+                    .filter(
+                        Expr::col(COLUMN.json_opt)
+                            .eq(Expr::val(json!({ "id": 33 })).cast_as("json"))
+                    )
+                    .one(db)
+                    .await?
+                    .unwrap(),
+                model_4
+            );
+        }
     } else {
         assert_eq!(
             Entity::find()
