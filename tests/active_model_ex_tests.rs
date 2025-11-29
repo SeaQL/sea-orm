@@ -13,6 +13,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
 
     db.get_schema_builder()
         .register(user::Entity)
+        .register(user_follower::Entity)
         .register(profile::Entity)
         .register(post::Entity)
         .register(post_tag::Entity)
@@ -522,6 +523,64 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
 
     info!("should be no-op");
     assert_eq!(user, user.clone().into_active_model().update(db).await?);
+
+    // test self_ref via
+
+    info!("save a new user Alice");
+    let alice = user::ActiveModel::builder()
+        .set_name("Alice")
+        .set_email("@alice")
+        .save(db)
+        .await?;
+
+    let bob = user::Entity::find()
+        .filter(user::COLUMN.name.eq("Bob"))
+        .one(db)
+        .await?
+        .unwrap()
+        .into_active_model()
+        .into_ex();
+
+    let sam = user::Entity::find()
+        .filter(user::COLUMN.name.eq("Sam"))
+        .one(db)
+        .await?
+        .unwrap()
+        .into_active_model();
+
+    info!("Add follower to Alice");
+    let alice = alice.add_follower(bob.clone()).save(db).await?;
+
+    info!("Sam starts following Alice");
+    sam.clone().into_ex().add_following(alice).save(db).await?;
+
+    info!("Add follower to Bob");
+    bob.add_follower(sam).save(db).await?;
+
+    let users = user::Entity::load()
+        .with(user_follower::Entity)
+        .with(user_follower::Entity::REVERSE)
+        .order_by_asc(user::COLUMN.name)
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].name, "Alice");
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0].name, "Sam");
+    assert_eq!(users[0].followers[1].name, "Bob");
+    assert!(users[0].following.is_empty());
+
+    assert_eq!(users[1].name, "Bob");
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0].name, "Sam");
+    assert_eq!(users[1].following.len(), 1);
+    assert_eq!(users[1].following[0].name, "Alice");
+
+    assert_eq!(users[2].name, "Sam");
+    assert!(users[2].followers.is_empty());
+    assert_eq!(users[2].following.len(), 2);
+    assert_eq!(users[2].following[0].name, "Bob");
+    assert_eq!(users[2].following[1].name, "Alice");
 
     Ok(())
 }

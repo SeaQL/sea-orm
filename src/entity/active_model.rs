@@ -1,8 +1,8 @@
 use super::{ActiveValue, ActiveValue::*};
 use crate::{
-    ColumnTrait, ConnectionTrait, DbBackend, DeleteResult, EntityName, EntityTrait, IdenStatic,
-    Iterable, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related,
-    RelationTrait, Value,
+    ColumnTrait, Condition, ConnectionTrait, DbBackend, DeleteResult, EntityName, EntityTrait,
+    IdenStatic, Iterable, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter,
+    Related, RelatedSelfVia, RelationDef, RelationTrait, Value,
     error::*,
     query::{
         clear_key_on_active_model, column_tuple_in_condition, get_key_from_active_model,
@@ -584,6 +584,29 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     #[doc(hidden)]
+    fn set_parent_key_for_def<R, AM>(
+        &mut self,
+        model: &AM,
+        rel_def: &RelationDef,
+    ) -> Result<(), DbErr>
+    where
+        R: EntityTrait,
+        AM: ActiveModelTrait<Entity = R>,
+    {
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation {rel_def:?} is not belongs_to"
+            )));
+        }
+
+        let values = get_key_from_active_model(&rel_def.to_col, model)?;
+
+        set_key_on_active_model(&rel_def.from_col, self, values)?;
+
+        Ok(())
+    }
+
+    #[doc(hidden)]
     fn set_parent_key_for_self_rev<AM>(
         &mut self,
         model: &AM,
@@ -700,14 +723,38 @@ pub trait ActiveModelTrait: Clone + Debug {
         ))
     }
 
+    #[doc(hidden)]
+    fn find_belongs_to_model<AM>(
+        rel_def: &RelationDef,
+        belongs_to: &AM,
+    ) -> Result<crate::query::Select<Self::Entity>, DbErr>
+    where
+        AM: ActiveModelTrait,
+    {
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation {rel_def:?} is not belongs_to"
+            )));
+        }
+
+        let id = get_key_from_active_model(&rel_def.to_col, belongs_to)?;
+        Ok(<Self::Entity as EntityTrait>::find().filter(
+            column_tuple_in_condition(
+                &rel_def.from_tbl,
+                &rel_def.from_col,
+                &[id],
+                DbBackend::Sqlite,
+            )
+            .expect(""),
+        ))
+    }
+
     /// Find related Models belonging to self
     fn find_related<R>(&self, _: R) -> crate::query::Select<R>
     where
         R: EntityTrait,
         Self::Entity: Related<R>,
     {
-        use crate::query::QueryFilter;
-
         Self::Entity::find_related().belongs_to_active_model(self)
     }
 
@@ -738,84 +785,119 @@ pub trait ActiveModelTrait: Clone + Debug {
         J::ActiveModel: ActiveModelBehavior + Send,
         C: ConnectionTrait,
     {
-        use crate::query::QueryFilter;
+        let left = <J as Related<Self::Entity>>::to();
+        let right = <J as Related<R>>::to();
 
-        let mut require_leftover = true;
+        establish_links::<_, J, _, C>(self, related_models, left, right, delete_leftover, db).await
+    }
 
-        if related_models.is_empty() {
-            // if there are no related models, then there is no risk of insert conflict
-            require_leftover = false;
+    #[doc(hidden)]
+    async fn establish_links_self<J, RM, C>(
+        &self,
+        _: J,
+        related_models: &[RM],
+        delete_leftover: bool,
+        db: &C,
+    ) -> Result<(), DbErr>
+    where
+        RM: ActiveModelTrait<Entity = Self::Entity> + Sync,
+        J: EntityTrait,
+        J::Model: IntoActiveModel<J::ActiveModel>,
+        J::ActiveModel: ActiveModelBehavior + Send,
+        C: ConnectionTrait,
+        Self::Entity: RelatedSelfVia<J>,
+    {
+        let left = <Self::Entity as RelatedSelfVia<J>>::via().rev();
+        let right = <Self::Entity as RelatedSelfVia<J>>::to();
+
+        establish_links::<_, J, _, C>(self, related_models, left, right, delete_leftover, db).await
+    }
+
+    #[doc(hidden)]
+    async fn establish_links_self_rev<J, RM, C>(
+        &self,
+        _: J,
+        related_models: &[RM],
+        delete_leftover: bool,
+        db: &C,
+    ) -> Result<(), DbErr>
+    where
+        RM: ActiveModelTrait<Entity = Self::Entity> + Sync,
+        J: EntityTrait,
+        J::Model: IntoActiveModel<J::ActiveModel>,
+        J::ActiveModel: ActiveModelBehavior + Send,
+        C: ConnectionTrait,
+        Self::Entity: RelatedSelfVia<J>,
+    {
+        let left = <Self::Entity as RelatedSelfVia<J>>::to();
+        let right = <Self::Entity as RelatedSelfVia<J>>::via().rev();
+
+        establish_links::<_, J, _, C>(self, related_models, left, right, delete_leftover, db).await
+    }
+
+    #[doc(hidden)]
+    async fn delete_links<J, C>(&self, _: J, db: &C) -> Result<DeleteResult, DbErr>
+    where
+        J: EntityTrait + Related<Self::Entity>,
+        C: ConnectionTrait,
+    {
+        let rel_def = <J as Related<Self::Entity>>::to();
+        let id = get_key_from_active_model(&rel_def.to_col, self)?;
+
+        J::delete_many()
+            .filter(
+                column_tuple_in_condition(
+                    &rel_def.from_tbl,
+                    &rel_def.from_col,
+                    &[id],
+                    DbBackend::Sqlite,
+                )
+                .expect(""),
+            )
+            .exec(db)
+            .await
+    }
+
+    #[doc(hidden)]
+    async fn delete_links_self<J, C>(&self, _: J, db: &C) -> Result<DeleteResult, DbErr>
+    where
+        J: EntityTrait,
+        C: ConnectionTrait,
+        Self::Entity: RelatedSelfVia<J>,
+    {
+        let left = <Self::Entity as RelatedSelfVia<J>>::via().rev();
+        let right = <Self::Entity as RelatedSelfVia<J>>::to();
+
+        let id = get_key_from_active_model(&left.to_col, self)?;
+
+        if left.to_col != right.to_col {
+            return Err(DbErr::Type("Expect Self Referencing Relation".into()));
         }
 
-        let primary_key = J::primary_key_identity();
-        if require_leftover
-            && primary_key.fully_contains(&<J as Related<R>>::to().from_col)
-            && primary_key.fully_contains(&<J as Related<Self::Entity>>::to().from_col)
-        {
-            // if the primary key is a composite key of the two relations
-            // we can use on conflict no action safely
-            require_leftover = false;
-        }
-
-        let mut leftover = Vec::new();
-        if delete_leftover || require_leftover {
-            for item in Self::Entity::find_related_rev::<J>()
-                .belongs_to_active_model(self)
-                .all(db)
-                .await?
-            {
-                let item = item.into_active_model();
-                let key = item.get_parent_key::<R>()?;
-                leftover.push((item, key));
-            }
-        }
-        let leftover = leftover; // un-mut
-
-        let mut via_models = Vec::new();
-        let mut all_keys = std::collections::HashSet::new();
-
-        for related_model in related_models {
-            let mut via: J::ActiveModel = ActiveModelBehavior::new();
-            via.set_parent_key(self)?;
-            via.set_parent_key(related_model)?;
-            let via_key = via.get_parent_key::<R>()?;
-            if !leftover.iter().any(|t| t.1 == via_key) {
-                // if not already exist, save for insert
-                via_models.push(via);
-            }
-            if delete_leftover {
-                all_keys.insert(via_key);
-            }
-        }
-
-        if delete_leftover {
-            let mut to_delete = Vec::new();
-            for (leftover, key) in leftover {
-                if !all_keys.contains(&key) {
-                    to_delete.push(
-                        leftover
-                            .get_primary_key_value()
-                            .expect("item is a full model"),
-                    );
-                }
-            }
-            if !to_delete.is_empty() {
-                J::delete_many()
-                    .filter_by_value_tuples(&to_delete)
-                    .exec(db)
-                    .await?;
-            }
-        }
-
-        if !via_models.is_empty() {
-            // insert new junctions
-            J::insert_many(via_models)
-                .on_conflict_do_nothing()
-                .exec(db)
-                .await?;
-        }
-
-        Ok(())
+        J::delete_many()
+            .filter(
+                Condition::any()
+                    .add(
+                        column_tuple_in_condition(
+                            &left.from_tbl,
+                            &left.from_col,
+                            &[id.clone()],
+                            DbBackend::Sqlite,
+                        )
+                        .expect(""),
+                    )
+                    .add(
+                        column_tuple_in_condition(
+                            &right.from_tbl,
+                            &right.from_col,
+                            &[id],
+                            DbBackend::Sqlite,
+                        )
+                        .expect(""),
+                    ),
+            )
+            .exec(db)
+            .await
     }
 }
 
@@ -918,6 +1000,99 @@ where
     fn into_active_model(self) -> A {
         self
     }
+}
+
+async fn establish_links<EM, J, RM, C>(
+    model: &EM,
+    related_models: &[RM],
+    left: RelationDef,
+    right: RelationDef,
+    delete_leftover: bool,
+    db: &C,
+) -> Result<(), DbErr>
+where
+    EM: ActiveModelTrait,
+    RM: ActiveModelTrait,
+    J: EntityTrait,
+    J::Model: IntoActiveModel<J::ActiveModel>,
+    J::ActiveModel: ActiveModelBehavior,
+    C: ConnectionTrait,
+{
+    let mut require_leftover = true;
+
+    if related_models.is_empty() {
+        // if there are no related models, then there is no risk of insert conflict
+        require_leftover = false;
+    }
+
+    let primary_key = J::primary_key_identity();
+    if require_leftover
+        && primary_key.fully_contains(&left.from_col)
+        && primary_key.fully_contains(&right.from_col)
+    {
+        // if the primary key is a composite key of the two relations
+        // we can use on conflict no action safely
+        require_leftover = false;
+    }
+
+    let mut leftover = Vec::new();
+    if delete_leftover || require_leftover {
+        for item in <J::ActiveModel as ActiveModelTrait>::find_belongs_to_model(&left, model)?
+            .all(db)
+            .await?
+        {
+            let item = item.into_active_model();
+            let key = get_key_from_active_model(&right.from_col, &item)?;
+            leftover.push((item, key));
+        }
+    }
+    let leftover = leftover; // un-mut
+
+    let mut via_models = Vec::new();
+    let mut all_keys = std::collections::HashSet::new();
+
+    for related_model in related_models {
+        let mut via: J::ActiveModel = ActiveModelBehavior::new();
+        via.set_parent_key_for_def(model, &left)?;
+        via.set_parent_key_for_def(related_model, &right)?;
+        let via_key = get_key_from_active_model(&right.from_col, &via)?;
+        if !leftover.iter().any(|t| t.1 == via_key) {
+            // if not already exist, save for insert
+            via_models.push(via);
+        }
+        if delete_leftover {
+            all_keys.insert(via_key);
+        }
+    }
+
+    if delete_leftover {
+        let mut to_delete = Vec::new();
+        for (leftover, key) in leftover {
+            if !all_keys.contains(&key) {
+                to_delete.push(
+                    leftover
+                        .get_primary_key_value()
+                        .expect("item is a full model"),
+                );
+            }
+        }
+        if !to_delete.is_empty() {
+            J::delete_many()
+                .filter_by_value_tuples(&to_delete)
+                .exec(db)
+                .await?;
+        }
+    }
+
+    if !via_models.is_empty() {
+        // insert new junctions
+        J::insert_many(via_models)
+            .on_conflict_do_nothing()
+            .exec(db)
+            .await?;
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

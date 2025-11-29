@@ -23,6 +23,7 @@ pub fn expand_derive_active_model_ex(
     let mut has_many_fields = Vec::new();
     let mut has_many_self_fields = Vec::new();
     let mut has_many_via_fields = Vec::new();
+    let mut has_many_via_self_fields = Vec::new();
 
     attrs
         .iter()
@@ -111,6 +112,25 @@ pub fn expand_derive_active_model_ex(
                                         ));
                                     }
                                 }
+                                if compound_attrs.self_ref.is_some()
+                                    && compound_attrs.via.is_some()
+                                    && compound_attrs.reverse.is_none()
+                                {
+                                    has_many_via_self_fields.push((
+                                        ident.clone(),
+                                        compound_attrs.via.as_ref().unwrap().value(),
+                                        false,
+                                    ));
+                                } else if compound_attrs.self_ref.is_some()
+                                    && compound_attrs.via.is_some()
+                                    && compound_attrs.reverse.is_some()
+                                {
+                                    has_many_via_self_fields.push((
+                                        ident.clone(),
+                                        compound_attrs.via.as_ref().unwrap().value(),
+                                        true,
+                                    ));
+                                }
                             }
 
                             if field_type.starts_with("HasOne<") {
@@ -142,6 +162,7 @@ pub fn expand_derive_active_model_ex(
         &has_many_fields,
         &has_many_self_fields,
         &has_many_via_fields,
+        &has_many_via_self_fields,
     );
 
     let active_model_setters = expand_active_model_setters(data)?;
@@ -303,6 +324,7 @@ fn expand_active_model_action(
     has_many: &[Ident],
     has_many_self: &[(Ident, LitStr)],
     has_many_via: &[(Ident, String)],
+    has_many_via_self: &[(Ident, String, bool)],
 ) -> TokenStream {
     let mut belongs_to_action = TokenStream::new();
     let mut belongs_to_after_action = TokenStream::new();
@@ -522,22 +544,50 @@ fn expand_active_model_action(
         });
 
         has_many_via_delete.extend(quote! {
-            let mut to_delete = Vec::new();
-            for item in Entity::find_related_rev::<#related_entity>()
-                .belongs_to_active_model(&self)
-                .all(db)
-                .await?
-            {
-                to_delete.push(item.get_primary_key_value());
+            deleted.merge(self.delete_links(#related_entity, db).await?);
+        });
+    }
+
+    for (field, via_entity, reverse) in has_many_via_self {
+        let related_entity: TokenStream = format!("super::{via_entity}::Entity").parse().unwrap();
+        let establish_links = Ident::new(
+            if *reverse {
+                "establish_links_self_rev"
+            } else {
+                "establish_links_self"
+            },
+            field.span(),
+        );
+
+        has_many_via_before_action.extend(quote! {
+            let #field = self.#field.take();
+        });
+
+        has_many_via_action.extend(quote! {
+            model.#field = #field.empty_holder();
+            for item in #field.into_vec() {
+                if item.is_update() {
+                    // has primary key
+                    if item.is_changed() {
+                        model.#field.push(Box::pin(item.action(action, db)).await?);
+                    } else {
+                        model.#field.push(item);
+                    }
+                } else {
+                    // new model
+                    model.#field.push(Box::pin(item.action(action, db)).await?);
+                }
             }
-            if !to_delete.is_empty() {
-                deleted.merge(
-                    #related_entity::delete_many()
-                        .filter_by_value_tuples(&to_delete)
-                        .exec(db)
-                        .await?
-                );
-            }
+            model.#establish_links(
+                #related_entity,
+                model.#field.as_slice(),
+                model.#field.is_replace(),
+                db
+            ).await?;
+        });
+
+        has_many_via_delete.extend(quote! {
+            deleted.merge(self.delete_links_self(#related_entity, db).await?);
         });
     }
 
