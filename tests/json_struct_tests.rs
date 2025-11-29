@@ -198,14 +198,28 @@ pub async fn insert_json_struct_3(db: &DatabaseConnection) -> Result<(), DbErr> 
 
     let model_4 = model.into_active_model().insert(db).await?;
 
-    assert_eq!(
-        Entity::find()
-            .filter(COLUMN.json_opt.eq(json!({ "id": 33 })))
-            .one(db)
-            .await?
-            .unwrap(),
-        model_4
-    );
+    if db.get_database_backend() == DbBackend::MySql {
+        // FIXME how can we abstract this?
+        assert_eq!(
+            Entity::find()
+                .filter(
+                    Expr::col(COLUMN.json_opt).eq(Expr::val(json!({ "id": 22 })).cast_as("json"))
+                )
+                .one(db)
+                .await?
+                .unwrap(),
+            model_4
+        );
+    } else {
+        assert_eq!(
+            Entity::find()
+                .filter(COLUMN.json_opt.eq(json!({ "id": 33 })))
+                .one(db)
+                .await?
+                .unwrap(),
+            model_4
+        );
+    }
 
     assert_eq!(
         Entity::find()
