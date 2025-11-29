@@ -4,17 +4,17 @@ use crate::prelude::Json;
 impl<E: EntityTrait> JsonColumn<E> {
     boilerplate!(pub);
 
-    bind_oper!(pub eq, eq, type Json);
-    bind_oper!(pub ne, ne, type Json);
+    bind_oper!(pub eq, eq, trait Into<Json>);
+    bind_oper!(pub ne, ne, trait Into<Json>);
 
     bind_oper_0!(pub count, count);
     bind_oper_0!(pub is_null, is_null);
     bind_oper_0!(pub is_not_null, is_not_null);
 
-    bind_oper!(pub if_null, if_null, type Json);
+    bind_oper!(pub if_null, if_null, trait Into<Json>);
 
-    bind_vec_func!(pub is_in, is_in, type Json);
-    bind_vec_func!(pub is_not_in, is_not_in, type Json);
+    bind_vec_func!(pub is_in, is_in, trait Into<Json>);
+    bind_vec_func!(pub is_not_in, is_not_in, trait Into<Json>);
 
     /// `= ANY(..)` operator. Postgres only.
     #[cfg(feature = "postgres-array")]

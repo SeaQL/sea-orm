@@ -21,3 +21,12 @@ pub struct Model {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+// impl RelatedSelfVia<super::user_follower::Entity> for Entity {
+//     fn to() -> RelationDef {
+//         super::user_follower::Relation::Follower.def()
+//     }
+//     fn via() -> RelationDef {
+//         super::user_follower::Relation::User.def().rev()
+//     }
+// }

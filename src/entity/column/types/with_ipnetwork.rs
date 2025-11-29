@@ -4,15 +4,15 @@ use crate::prelude::IpNetwork;
 impl<E: EntityTrait> IpNetworkColumn<E> {
     boilerplate!(pub);
 
-    bind_oper!(pub eq, eq, type IpNetwork);
-    bind_oper!(pub ne, ne, type IpNetwork);
-    bind_oper!(pub gt, gt, type IpNetwork);
-    bind_oper!(pub gte, gte, type IpNetwork);
-    bind_oper!(pub lt, lt, type IpNetwork);
-    bind_oper!(pub lte, lte, type IpNetwork);
+    bind_oper!(pub eq, eq, trait Into<IpNetwork>);
+    bind_oper!(pub ne, ne, trait Into<IpNetwork>);
+    bind_oper!(pub gt, gt, trait Into<IpNetwork>);
+    bind_oper!(pub gte, gte, trait Into<IpNetwork>);
+    bind_oper!(pub lt, lt, trait Into<IpNetwork>);
+    bind_oper!(pub lte, lte, trait Into<IpNetwork>);
 
-    bind_oper_2!(pub between, between, type IpNetwork);
-    bind_oper_2!(pub not_between, not_between, type IpNetwork);
+    bind_oper_2!(pub between, between, trait Into<IpNetwork>);
+    bind_oper_2!(pub not_between, not_between, trait Into<IpNetwork>);
 
     bind_oper_0!(pub max, max);
     bind_oper_0!(pub min, min);
@@ -21,10 +21,10 @@ impl<E: EntityTrait> IpNetworkColumn<E> {
     bind_oper_0!(pub is_null, is_null);
     bind_oper_0!(pub is_not_null, is_not_null);
 
-    bind_oper!(pub if_null, if_null, type IpNetwork);
+    bind_oper!(pub if_null, if_null, trait Into<IpNetwork>);
 
-    bind_vec_func!(pub is_in, is_in, type IpNetwork);
-    bind_vec_func!(pub is_not_in, is_not_in, type IpNetwork);
+    bind_vec_func!(pub is_in, is_in, trait Into<IpNetwork>);
+    bind_vec_func!(pub is_not_in, is_not_in, trait Into<IpNetwork>);
 
     /// `= ANY(..)` operator. Postgres only.
     #[cfg(feature = "postgres-array")]

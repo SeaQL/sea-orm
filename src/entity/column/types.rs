@@ -1,7 +1,13 @@
 #![allow(missing_docs)]
 
 use crate::{ColumnDef, ColumnTrait, DynIden, EntityTrait, ExprTrait, Iden, IntoSimpleExpr, Value};
-use sea_query::{Expr, NumericValue, SelectStatement};
+use sea_query::{Expr, NumericValue, NumericValueNullable, SelectStatement};
+use std::borrow::Cow;
+
+pub trait IntoOption<T> {
+    #[allow(dead_code)]
+    fn into_option(self) -> Option<T>;
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct BoolColumn<E: EntityTrait>(pub E::Column);
@@ -10,11 +16,18 @@ impl_expr_traits!(BoolColumn);
 /// A column of numeric type, including integer, float and decimal
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct NumericColumn<E: EntityTrait>(pub E::Column);
+/// A column of numeric type, including integer, float and decimal that is also nullable
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct NumericColumnNullable<E: EntityTrait>(pub E::Column);
 impl_expr_traits!(NumericColumn);
+impl_expr_traits!(NumericColumnNullable);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct StringColumn<E: EntityTrait>(pub E::Column);
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct StringColumnNullable<E: EntityTrait>(pub E::Column);
 impl_expr_traits!(StringColumn);
+impl_expr_traits!(StringColumnNullable);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct BytesColumn<E: EntityTrait>(pub E::Column);
@@ -23,6 +36,7 @@ impl_expr_traits!(BytesColumn);
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct JsonColumn<E: EntityTrait>(pub E::Column);
 impl_expr_traits!(JsonColumn);
+// we dont need JsonColumnNullable because None can be converted to Json
 
 /// Supports both chrono and time Date
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -99,18 +113,10 @@ mod macros {
     }
 
     macro_rules! bind_oper {
-        ($vis:vis $op:ident, $bind_op:ident, trait $value_ty:ident) => {
+        ($vis:vis $op:ident, $bind_op:ident, trait $value_ty:path) => {
             $vis fn $op<V>(&self, v: V) -> Expr
             where
                 V: Into<Value> + $value_ty,
-            {
-                self.0.$bind_op(v)
-            }
-        };
-        ($vis:vis $op:ident, $bind_op:ident, type $value_ty:ty) => {
-            $vis fn $op<V>(&self, v: V) -> Expr
-            where
-                V: Into<Value> + Into<$value_ty>,
             {
                 self.0.$bind_op(v)
             }
@@ -129,18 +135,10 @@ mod macros {
     }
 
     macro_rules! bind_oper_2 {
-        ($vis:vis $op:ident, $bind_op:ident, trait $value_ty:ident) => {
+        ($vis:vis $op:ident, $bind_op:ident, trait $value_ty:path) => {
             $vis fn $op<V>(&self, v1: V, v2: V) -> Expr
             where
                 V: Into<Value> + $value_ty,
-            {
-                self.0.$bind_op(v1, v2)
-            }
-        };
-        ($vis:vis $op:ident, $bind_op:ident, type $value_ty:ty) => {
-            $vis fn $op<V>(&self, v1: V, v2: V) -> Expr
-            where
-                V: Into<Value> + Into<$value_ty>,
             {
                 self.0.$bind_op(v1, v2)
             }
@@ -148,21 +146,11 @@ mod macros {
     }
 
     macro_rules! bind_vec_func {
-        ($vis:vis $op:ident, $bind_op:ident, trait $value_ty:ident) => {
+        ($vis:vis $op:ident, $bind_op:ident, trait $value_ty:path) => {
             #[allow(clippy::wrong_self_convention)]
             $vis fn $op<V, I>(&self, v: I) -> Expr
             where
                 V: Into<Value> + $value_ty,
-                I: IntoIterator<Item = V>,
-            {
-                self.0.$bind_op(v)
-            }
-        };
-        ($vis:vis $op:ident, $bind_op:ident, type $value_ty:ty) => {
-            #[allow(clippy::wrong_self_convention)]
-            $vis fn $op<V, I>(&self, v: I) -> Expr
-            where
-                V: Into<Value> + Into<$value_ty>,
                 I: IntoIterator<Item = V>,
             {
                 self.0.$bind_op(v)
@@ -218,118 +206,160 @@ use macros::*;
 impl<E: EntityTrait> BoolColumn<E> {
     boilerplate!(pub);
 
-    bind_oper!(pub eq, eq, type bool);
-    bind_oper!(pub ne, ne, type bool);
+    bind_oper!(pub eq, eq, trait Into<bool>);
+    bind_oper!(pub ne, ne, trait Into<bool>);
 
     bind_oper_0!(pub count, count);
     bind_oper_0!(pub is_null, is_null);
     bind_oper_0!(pub is_not_null, is_not_null);
 
-    bind_oper!(pub if_null, if_null, type bool);
+    bind_oper!(pub if_null, if_null, trait Into<bool>);
 
     bind_subquery_func!(pub in_subquery);
     bind_subquery_func!(pub not_in_subquery);
 }
 
-impl<E: EntityTrait> NumericColumn<E> {
-    boilerplate!(pub);
+macro_rules! impl_numeric_column {
+    ($ty:ident, $trait:ident) => {
+    impl<E: EntityTrait> $ty<E> {
+        boilerplate!(pub);
 
-    bind_oper!(pub eq, eq, trait NumericValue);
-    bind_oper!(pub ne, ne, trait NumericValue);
-    bind_oper!(pub gt, gt, trait NumericValue);
-    bind_oper!(pub gte, gte, trait NumericValue);
-    bind_oper!(pub lt, lt, trait NumericValue);
-    bind_oper!(pub lte, lte, trait NumericValue);
+        bind_oper!(pub eq, eq, trait $trait);
+        bind_oper!(pub ne, ne, trait $trait);
+        bind_oper!(pub gt, gt, trait NumericValue);
+        bind_oper!(pub gte, gte, trait NumericValue);
+        bind_oper!(pub lt, lt, trait NumericValue);
+        bind_oper!(pub lte, lte, trait NumericValue);
 
-    bind_expr_oper!(pub add, add);
-    bind_expr_oper!(pub sub, sub);
-    bind_expr_oper!(pub div, div);
-    bind_expr_oper!(pub mul, mul);
+        bind_expr_oper!(pub add, add);
+        bind_expr_oper!(pub sub, sub);
+        bind_expr_oper!(pub div, div);
+        bind_expr_oper!(pub mul, mul);
 
-    bind_oper_2!(pub between, between, trait NumericValue);
-    bind_oper_2!(pub not_between, not_between, trait NumericValue);
+        bind_oper_2!(pub between, between, trait NumericValue);
+        bind_oper_2!(pub not_between, not_between, trait NumericValue);
 
-    bind_oper_0!(pub max, max);
-    bind_oper_0!(pub min, min);
-    bind_oper_0!(pub sum, sum);
-    bind_oper_0!(pub count, count);
-    bind_oper_0!(pub is_null, is_null);
-    bind_oper_0!(pub is_not_null, is_not_null);
+        bind_oper_0!(pub max, max);
+        bind_oper_0!(pub min, min);
+        bind_oper_0!(pub sum, sum);
+        bind_oper_0!(pub count, count);
+        bind_oper_0!(pub is_null, is_null);
+        bind_oper_0!(pub is_not_null, is_not_null);
 
-    bind_oper!(pub if_null, if_null, trait NumericValue);
+        bind_oper!(pub if_null, if_null, trait $trait);
 
-    bind_vec_func!(pub is_in, is_in, trait NumericValue);
-    bind_vec_func!(pub is_not_in, is_not_in, trait NumericValue);
+        bind_vec_func!(pub is_in, is_in, trait $trait);
+        bind_vec_func!(pub is_not_in, is_not_in, trait $trait);
 
-    /// `= ANY(..)` operator. Postgres only.
-    #[cfg(feature = "postgres-array")]
-    pub fn eq_any<V, I>(&self, v: I) -> Expr
-    where
-        V: Into<Value> + NumericValue + sea_query::ValueType + sea_query::with_array::NotU8,
-        I: IntoIterator<Item = V>,
-    {
-        self.0.eq_any(v)
+        /// `= ANY(..)` operator. Postgres only.
+        #[cfg(feature = "postgres-array")]
+        pub fn eq_any<V, I>(&self, v: I) -> Expr
+        where
+            V: Into<Value> + $trait + sea_query::ValueType + sea_query::with_array::NotU8,
+            I: IntoIterator<Item = V>,
+        {
+            self.0.eq_any(v)
+        }
+
+        bind_subquery_func!(pub in_subquery);
+        bind_subquery_func!(pub not_in_subquery);
     }
+};}
+impl_numeric_column!(NumericColumn, NumericValue);
+impl_numeric_column!(NumericColumnNullable, NumericValueNullable);
 
-    bind_subquery_func!(pub in_subquery);
-    bind_subquery_func!(pub not_in_subquery);
-}
+macro_rules! impl_string_column {
+    ($ty:ident, $trait:path) => {
+    impl<E: EntityTrait> $ty<E> {
+        boilerplate!(pub);
 
-impl<E: EntityTrait> StringColumn<E> {
-    boilerplate!(pub);
+        bind_oper!(pub eq, eq, trait $trait);
+        bind_oper!(pub ne, ne, trait $trait);
+        bind_oper!(pub gt, gt, trait Into<String>);
+        bind_oper!(pub gte, gte, trait Into<String>);
+        bind_oper!(pub lt, lt, trait Into<String>);
+        bind_oper!(pub lte, lte, trait Into<String>);
 
-    bind_oper!(pub eq, eq, type String);
-    bind_oper!(pub ne, ne, type String);
-    bind_oper!(pub gt, gt, type String);
-    bind_oper!(pub gte, gte, type String);
-    bind_oper!(pub lt, lt, type String);
-    bind_oper!(pub lte, lte, type String);
+        bind_oper_2!(pub between, between, trait Into<String>);
+        bind_oper_2!(pub not_between, not_between, trait Into<String>);
 
-    bind_oper_2!(pub between, between, type String);
-    bind_oper_2!(pub not_between, not_between, type String);
+        bind_oper!(pub like, like, trait Into<String>);
+        bind_oper!(pub not_like, not_like, trait Into<String>);
+        bind_oper!(pub ilike, ilike, trait Into<String>);
+        bind_oper!(pub not_ilike, not_ilike, trait Into<String>);
+        bind_oper!(pub starts_with, starts_with, trait Into<String>);
+        bind_oper!(pub ends_with, ends_with, trait Into<String>);
+        bind_oper!(pub contains, contains, trait Into<String>);
 
-    bind_oper!(pub like, like, type String);
-    bind_oper!(pub not_like, not_like, type String);
-    bind_oper!(pub ilike, ilike, type String);
-    bind_oper!(pub not_ilike, not_ilike, type String);
-    bind_oper!(pub starts_with, starts_with, type String);
-    bind_oper!(pub ends_with, ends_with, type String);
-    bind_oper!(pub contains, contains, type String);
+        bind_oper_0!(pub count, count);
+        bind_oper_0!(pub is_null, is_null);
+        bind_oper_0!(pub is_not_null, is_not_null);
 
-    bind_oper_0!(pub count, count);
-    bind_oper_0!(pub is_null, is_null);
-    bind_oper_0!(pub is_not_null, is_not_null);
+        bind_oper!(pub if_null, if_null, trait $trait);
 
-    bind_oper!(pub if_null, if_null, type String);
+        bind_vec_func!(pub is_in, is_in, trait $trait);
+        bind_vec_func!(pub is_not_in, is_not_in, trait $trait);
 
-    bind_vec_func!(pub is_in, is_in, type String);
-    bind_vec_func!(pub is_not_in, is_not_in, type String);
+        /// `= ANY(..)` operator. Postgres only.
+        #[cfg(feature = "postgres-array")]
+        pub fn eq_any<V, I>(&self, v: I) -> Expr
+        where
+            V: Into<Value> + Into<String> + sea_query::ValueType + sea_query::with_array::NotU8,
+            I: IntoIterator<Item = V>,
+        {
+            self.0.eq_any(v)
+        }
 
-    /// `= ANY(..)` operator. Postgres only.
-    #[cfg(feature = "postgres-array")]
-    pub fn eq_any<V, I>(&self, v: I) -> Expr
-    where
-        V: Into<Value> + Into<String> + sea_query::ValueType + sea_query::with_array::NotU8,
-        I: IntoIterator<Item = V>,
-    {
-        self.0.eq_any(v)
+        bind_subquery_func!(pub in_subquery);
+        bind_subquery_func!(pub not_in_subquery);
     }
+};}
 
-    bind_subquery_func!(pub in_subquery);
-    bind_subquery_func!(pub not_in_subquery);
+impl IntoOption<String> for Cow<'_, str> {
+    fn into_option(self) -> Option<String> {
+        Some(self.into())
+    }
 }
+impl IntoOption<String> for &'_ str {
+    fn into_option(self) -> Option<String> {
+        Some(self.into())
+    }
+}
+impl IntoOption<String> for String {
+    fn into_option(self) -> Option<String> {
+        Some(self)
+    }
+}
+impl IntoOption<String> for Option<&'_ str> {
+    fn into_option(self) -> Option<String> {
+        self.map(Into::into)
+    }
+}
+impl IntoOption<String> for Option<Cow<'_, str>> {
+    fn into_option(self) -> Option<String> {
+        self.map(Into::into)
+    }
+}
+impl IntoOption<String> for Option<String> {
+    fn into_option(self) -> Option<String> {
+        self
+    }
+}
+
+impl_string_column!(StringColumn, Into<String>);
+impl_string_column!(StringColumnNullable, IntoOption<String>);
 
 impl<E: EntityTrait> BytesColumn<E> {
     boilerplate!(pub);
 
-    bind_oper!(pub eq, eq, type Vec<u8>);
-    bind_oper!(pub ne, ne, type Vec<u8>);
+    bind_oper!(pub eq, eq, trait Into<Vec<u8>>);
+    bind_oper!(pub ne, ne, trait Into<Vec<u8>>);
 
     bind_oper_0!(pub count, count);
     bind_oper_0!(pub is_null, is_null);
     bind_oper_0!(pub is_not_null, is_not_null);
 
-    bind_oper!(pub if_null, if_null, type Vec<u8>);
+    bind_oper!(pub if_null, if_null, trait Into<Vec<u8>>);
 
     bind_subquery_func!(pub in_subquery);
     bind_subquery_func!(pub not_in_subquery);

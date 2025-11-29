@@ -4,15 +4,15 @@ use crate::prelude::Uuid;
 impl<E: EntityTrait> UuidColumn<E> {
     boilerplate!(pub);
 
-    bind_oper!(pub eq, eq, type Uuid);
-    bind_oper!(pub ne, ne, type Uuid);
-    bind_oper!(pub gt, gt, type Uuid);
-    bind_oper!(pub gte, gte, type Uuid);
-    bind_oper!(pub lt, lt, type Uuid);
-    bind_oper!(pub lte, lte, type Uuid);
+    bind_oper!(pub eq, eq, trait Into<Uuid>);
+    bind_oper!(pub ne, ne, trait Into<Uuid>);
+    bind_oper!(pub gt, gt, trait Into<Uuid>);
+    bind_oper!(pub gte, gte, trait Into<Uuid>);
+    bind_oper!(pub lt, lt, trait Into<Uuid>);
+    bind_oper!(pub lte, lte, trait Into<Uuid>);
 
-    bind_oper_2!(pub between, between, type Uuid);
-    bind_oper_2!(pub not_between, not_between, type Uuid);
+    bind_oper_2!(pub between, between, trait Into<Uuid>);
+    bind_oper_2!(pub not_between, not_between, trait Into<Uuid>);
 
     bind_oper_0!(pub max, max);
     bind_oper_0!(pub min, min);
@@ -21,10 +21,10 @@ impl<E: EntityTrait> UuidColumn<E> {
     bind_oper_0!(pub is_null, is_null);
     bind_oper_0!(pub is_not_null, is_not_null);
 
-    bind_oper!(pub if_null, if_null, type Uuid);
+    bind_oper!(pub if_null, if_null, trait Into<Uuid>);
 
-    bind_vec_func!(pub is_in, is_in, type Uuid);
-    bind_vec_func!(pub is_not_in, is_not_in, type Uuid);
+    bind_vec_func!(pub is_in, is_in, trait Into<Uuid>);
+    bind_vec_func!(pub is_not_in, is_not_in, trait Into<Uuid>);
 
     /// `= ANY(..)` operator. Postgres only.
     #[cfg(feature = "postgres-array")]

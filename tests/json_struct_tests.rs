@@ -7,12 +7,34 @@ use pretty_assertions::assert_eq;
 use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 use serde_json::json;
 
+mod json_compact {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::compact_model]
+    #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+    #[sea_orm(table_name = "json_compact")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        #[sea_orm(column_type = "JsonBinary")]
+        pub json: Json,
+        #[sea_orm(column_type = "JsonBinary", nullable)]
+        pub json_opt: Option<Json>,
+    }
+
+    #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+    pub enum Relation {}
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 #[sea_orm_macros::test]
-async fn main() -> Result<(), DbErr> {
+async fn json_struct_tests() -> Result<(), DbErr> {
     let ctx = TestContext::new("json_struct_tests").await;
     create_tables(&ctx.db).await?;
     insert_json_struct_1(&ctx.db).await?;
     insert_json_struct_2(&ctx.db).await?;
+    insert_json_struct_3(&ctx.db).await?;
 
     ctx.delete().await;
 
@@ -126,6 +148,60 @@ pub async fn insert_json_struct_2(db: &DatabaseConnection) -> Result<(), DbErr> 
             .one(db)
             .await?,
         Some(model)
+    );
+
+    Ok(())
+}
+
+pub async fn insert_json_struct_3(db: &DatabaseConnection) -> Result<(), DbErr> {
+    db.get_schema_builder()
+        .register(json_compact::Entity)
+        .apply(db)
+        .await?;
+
+    use json_compact::*;
+
+    let model = Model {
+        id: 3,
+        json: json!({ "id": 22 }),
+        json_opt: None,
+    };
+
+    let model_2 = model.into_active_model().insert(db).await?;
+
+    assert_eq!(
+        Entity::find()
+            .filter(COLUMN.json.eq(json!({ "id": 22 })))
+            .one(db)
+            .await?
+            .unwrap(),
+        model_2
+    );
+
+    let model = Model {
+        id: 4,
+        json: json!({ "id": 11 }),
+        json_opt: Some(json!({ "id": 33 })),
+    };
+
+    let model_4 = model.into_active_model().insert(db).await?;
+
+    assert_eq!(
+        Entity::find()
+            .filter(COLUMN.json_opt.eq(json!({ "id": 33 })))
+            .one(db)
+            .await?
+            .unwrap(),
+        model_4
+    );
+
+    assert_eq!(
+        Entity::find()
+            .filter(COLUMN.json_opt.eq(Option::<Json>::None))
+            .one(db)
+            .await?
+            .unwrap(),
+        model_2
     );
 
     Ok(())

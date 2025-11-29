@@ -112,14 +112,14 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///
     /// assert_eq!(
     ///     fruit::Entity::find()
-    ///         .filter(fruit::Column::CakeId.eq(2))
+    ///         .filter(fruit::COLUMN.cake_id.eq(2))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`cake_id` = 2"
     /// );
     /// assert_eq!(
     ///     fruit::Entity::find()
-    ///         .filter(fruit::Column::CakeId.eq(Option::<i32>::None))
+    ///         .filter(fruit::COLUMN.cake_id.eq(Option::<i32>::None))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`cake_id` IS NULL"
@@ -144,14 +144,14 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///
     /// assert_eq!(
     ///     fruit::Entity::find()
-    ///         .filter(fruit::Column::CakeId.ne(2))
+    ///         .filter(fruit::COLUMN.cake_id.ne(2))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`cake_id` <> 2"
     /// );
     /// assert_eq!(
     ///     fruit::Entity::find()
-    ///         .filter(fruit::Column::CakeId.ne(Option::<i32>::None))
+    ///         .filter(fruit::COLUMN.cake_id.ne(Option::<i32>::None))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`cake_id` IS NOT NULL"
