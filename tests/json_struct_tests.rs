@@ -4,7 +4,7 @@ pub mod common;
 
 pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
+use sea_orm::{DatabaseConnection, DbBackend, ExprTrait, entity::prelude::*, entity::*};
 use serde_json::json;
 
 mod json_compact {
@@ -169,14 +169,26 @@ pub async fn insert_json_struct_3(db: &DatabaseConnection) -> Result<(), DbErr> 
 
     let model_2 = model.into_active_model().insert(db).await?;
 
-    assert_eq!(
-        Entity::find()
-            .filter(COLUMN.json.eq(json!({ "id": 22 })))
-            .one(db)
-            .await?
-            .unwrap(),
-        model_2
-    );
+    if db.get_database_backend() == DbBackend::MySql {
+        // FIXME how can we abstract this?
+        assert_eq!(
+            Entity::find()
+                .filter(Expr::col(COLUMN.json).eq(Expr::val(json!({ "id": 22 })).cast_as("json")))
+                .one(db)
+                .await?
+                .unwrap(),
+            model_2
+        );
+    } else {
+        assert_eq!(
+            Entity::find()
+                .filter(COLUMN.json.eq(json!({ "id": 22 })))
+                .one(db)
+                .await?
+                .unwrap(),
+            model_2
+        );
+    }
 
     let model = Model {
         id: 4,
