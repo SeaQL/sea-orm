@@ -7,6 +7,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 ### Startups
 
 - [Caido](https://caido.io/) | A lightweight web security auditing toolkit
+- [FirstLook.gg](https://firstlook.gg/) | A platform to onboard, understand, and reward players | DB: Postgres
 - [Lapdev](https://lap.dev/) [![GitHub stars](https://img.shields.io/github/stars/lapce/lapdev.svg?style=social)](https://github.com/lapce/lapdev) | Self-hosted remote development enviroment | DB: Postgres
 - [OpenObserve](https://openobserve.ai/) [![GitHub stars](https://img.shields.io/github/stars/openobserve/openobserve.svg?style=social)](https://github.com/openobserve/openobserve) | Open-source observability platform | DB: MySQL, Postgres, SQLite
 - [My Data My Consent](https://mydatamyconsent.com/) | Online data sharing for people and businesses simplified
