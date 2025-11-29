@@ -106,8 +106,70 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         (self.entity_name(), SeaRc::new(*self))
     }
 
-    bind_oper!(eq, Equal);
-    bind_oper!(ne, NotEqual);
+    /// Perform equality against a Value. `None` will be converted to `IS NULL`.
+    /// ```
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// assert_eq!(
+    ///     fruit::Entity::find()
+    ///         .filter(fruit::Column::CakeId.eq(2))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`cake_id` = 2"
+    /// );
+    /// assert_eq!(
+    ///     fruit::Entity::find()
+    ///         .filter(fruit::Column::CakeId.eq(Option::<i32>::None))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`cake_id` IS NULL"
+    /// );
+    /// ```
+    fn eq<V>(&self, v: V) -> Expr
+    where
+        V: Into<Value>,
+    {
+        let v = v.into();
+        if v == v.as_null() {
+            Expr::col(self.as_column_ref()).is_null()
+        } else {
+            let expr = self.save_as(Expr::val(v));
+            Expr::col(self.as_column_ref()).eq(expr)
+        }
+    }
+
+    /// Perform inequality against a Value. `None` will be converted to `IS NOT NULL`.
+    /// ```
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// assert_eq!(
+    ///     fruit::Entity::find()
+    ///         .filter(fruit::Column::CakeId.ne(2))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`cake_id` <> 2"
+    /// );
+    /// assert_eq!(
+    ///     fruit::Entity::find()
+    ///         .filter(fruit::Column::CakeId.ne(Option::<i32>::None))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`cake_id` IS NOT NULL"
+    /// );
+    /// ```
+    fn ne<V>(&self, v: V) -> Expr
+    where
+        V: Into<Value>,
+    {
+        let v = v.into();
+        if v == v.as_null() {
+            Expr::col(self.as_column_ref()).is_not_null()
+        } else {
+            let expr = self.save_as(Expr::val(v));
+            Expr::col(self.as_column_ref()).ne(expr)
+        }
+    }
+
     bind_oper!(gt, GreaterThan);
     bind_oper!(gte, GreaterThanOrEqual);
     bind_oper!(lt, SmallerThan);
