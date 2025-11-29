@@ -196,9 +196,16 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
     assert_eq!(attachments[0].id, 1);
     assert_eq!(attachments[0].file, "for post 5");
 
-    info!("add new post to user: insert 6");
+    info!("insert attachment for later use");
+    let attachment_6 = attachment::ActiveModel::builder()
+        .set_file("for post 6")
+        .save(db)
+        .await?;
+
+    info!("add new post to user: insert 6 and attach existing attachment");
     user.posts = HasManyModel::Append(vec![post::ActiveModelEx {
         title: Set("post 6".into()),
+        attachments: HasManyModel::Append(vec![attachment_6]),
         ..Default::default()
     }]);
 
@@ -208,6 +215,9 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
     assert_eq!(posts.len(), 2);
     assert_eq!(posts[0].id, 5);
     assert_eq!(posts[1].id, 6);
+    let attachments = posts[1].find_related(attachment::Entity).all(db).await?;
+    assert_eq!(attachments.len(), 1);
+    assert_eq!(attachments[0].file, "for post 6");
 
     info!("update post 6 through user");
     user.posts[0].title = Set("post 6!".into());
@@ -517,16 +527,17 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
 }
 
 #[sea_orm_macros::test]
-async fn test_active_model_ex_film_actor() -> Result<(), DbErr> {
+async fn test_active_model_ex_film_store() -> Result<(), DbErr> {
     use common::film_store::*;
 
-    let ctx = TestContext::new("test_active_model_ex_film_actor").await;
+    let ctx = TestContext::new("test_active_model_ex_film_store").await;
     let db = &ctx.db;
 
     db.get_schema_builder()
         .register(film::Entity)
         .register(actor::Entity)
         .register(film_actor::Entity)
+        .register(staff::Entity)
         .apply(db)
         .await?;
 
@@ -637,6 +648,78 @@ async fn test_active_model_ex_film_actor() -> Result<(), DbErr> {
         .into_ex();
     film.actors.push(tom.into_active_model());
     film.save(db).await?;
+
+    // test self_ref
+
+    info!("insert new staff: alan");
+
+    let alan = staff::ActiveModel::builder()
+        .set_name("Alan")
+        .insert(db)
+        .await?;
+
+    info!("insert new staff: Ben reports to Alan");
+    staff::ActiveModel::builder()
+        .set_name("Ben")
+        .set_reports_to(alan.clone())
+        .insert(db)
+        .await?;
+
+    info!("insert new staff: Alice");
+    let alice = staff::ActiveModel::builder()
+        .set_name("Alice")
+        .insert(db)
+        .await?;
+
+    info!("assign Alice to report to Alan");
+    let alan = alan
+        .into_active_model()
+        .add_manage(alice.clone())
+        .save(db)
+        .await?;
+
+    info!("insert new staff: Elle");
+    staff::ActiveModel::builder()
+        .set_name("Elle")
+        .insert(db)
+        .await?;
+
+    info!("load all staff");
+    let staff = staff::Entity::load()
+        .with(staff::Relation::ReportsTo)
+        .with(staff::Relation::Manages)
+        .all(db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].reports_to, None);
+    assert_eq!(staff[0].manages[0].name, "Ben");
+    assert_eq!(staff[0].manages[1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[1].manages.is_empty());
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[2].manages.is_empty());
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].manages.is_empty());
+
+    info!("delete alan, reports_to should be cleared");
+    alan.delete(db).await?;
+
+    info!("verify Alice still exists");
+    assert!(
+        staff::Entity::find_by_id(alice.id)
+            .one(db)
+            .await?
+            .unwrap()
+            .reports_to_id
+            .is_none()
+    );
 
     Ok(())
 }

@@ -1,9 +1,13 @@
 use super::{ActiveValue, ActiveValue::*};
 use crate::{
-    ColumnTrait, ConnectionTrait, DeleteResult, EntityTrait, IdenStatic, Iterable, PrimaryKeyArity,
-    PrimaryKeyToColumn, PrimaryKeyTrait, Related, Value,
+    ColumnTrait, ConnectionTrait, DbBackend, DeleteResult, EntityName, EntityTrait, IdenStatic,
+    Iterable, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related,
+    RelationTrait, Value,
     error::*,
-    query::{clear_key_on_active_model, get_key_from_active_model, set_key_on_active_model},
+    query::{
+        clear_key_on_active_model, column_tuple_in_condition, get_key_from_active_model,
+        set_key_on_active_model,
+    },
 };
 use async_trait::async_trait;
 use sea_query::ValueTuple;
@@ -557,6 +561,51 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     #[doc(hidden)]
+    fn set_parent_key_for<R, AM>(
+        &mut self,
+        model: &AM,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<(), DbErr>
+    where
+        R: EntityTrait,
+        AM: ActiveModelTrait<Entity = R>,
+    {
+        let rel_def = rel.def();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!("Relation {rel:?} is not belongs_to")));
+        }
+
+        let values = get_key_from_active_model(&rel_def.to_col, model)?;
+
+        set_key_on_active_model(&rel_def.from_col, self, values)?;
+
+        Ok(())
+    }
+
+    #[doc(hidden)]
+    fn set_parent_key_for_self_rev<AM>(
+        &mut self,
+        model: &AM,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<(), DbErr>
+    where
+        AM: ActiveModelTrait<Entity = Self::Entity>,
+    {
+        let rel_def = rel.def();
+
+        if !rel_def.is_owner {
+            return Err(DbErr::Type(format!("Relation {rel:?} is not owner")));
+        }
+
+        let values = get_key_from_active_model(&rel_def.from_col, model)?;
+
+        set_key_on_active_model(&rel_def.to_col, self, values)?;
+
+        Ok(())
+    }
+
+    #[doc(hidden)]
     /// Clear parent association if the relation is optional and return true
     fn clear_parent_key<R>(&mut self) -> Result<bool, DbErr>
     where
@@ -577,6 +626,20 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     #[doc(hidden)]
+    fn clear_parent_key_for_self_rev(
+        &mut self,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<bool, DbErr> {
+        let rel_def = rel.def();
+
+        if !rel_def.is_owner {
+            return Err(DbErr::Type(format!("Relation {rel:?} is not owner")));
+        }
+
+        clear_key_on_active_model(&rel_def.to_col, self)
+    }
+
+    #[doc(hidden)]
     /// Get the key value of belongs to relation
     fn get_parent_key<R>(&self) -> Result<ValueTuple, DbErr>
     where
@@ -594,6 +657,47 @@ pub trait ActiveModelTrait: Clone + Debug {
         }
 
         get_key_from_active_model(&rel_def.from_col, self)
+    }
+
+    #[doc(hidden)]
+    /// Get the key value of belongs to relation
+    fn get_parent_key_for(
+        &self,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<ValueTuple, DbErr> {
+        let rel_def = rel.def();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!("Relation {rel:?} is not belongs_to")));
+        }
+
+        get_key_from_active_model(&rel_def.from_col, self)
+    }
+
+    #[doc(hidden)]
+    fn find_belongs_to_self(
+        &self,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<crate::query::Select<Self::Entity>, DbErr> {
+        let rel_def = rel.def();
+
+        if !rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation {rel:?} is not has_one / has_many"
+            )));
+        }
+
+        let id = get_key_from_active_model(&rel_def.from_col, self)?;
+
+        Ok(Self::Entity::find().filter(
+            column_tuple_in_condition(
+                &<Self::Entity as Default>::default().table_ref(),
+                &rel_def.to_col,
+                &[id],
+                DbBackend::Sqlite,
+            )
+            .expect(""),
+        ))
     }
 
     /// Find related Models belonging to self

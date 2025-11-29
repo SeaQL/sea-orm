@@ -4,7 +4,7 @@ use super::util::{extract_compound_entity, field_not_ignored_compound, is_compou
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::HashMap;
-use syn::{Attribute, Data, Expr, Fields, Type};
+use syn::{Attribute, Data, Expr, Fields, LitStr, Type};
 
 pub fn expand_derive_active_model_ex(
     ident: &Ident,
@@ -18,8 +18,10 @@ pub fn expand_derive_active_model_ex(
     let mut scalar_fields = Vec::new();
     let mut compound_fields = Vec::new();
     let mut belongs_to_fields = Vec::new();
+    let mut belongs_to_self_fields = Vec::new();
     let mut has_one_fields = Vec::new();
     let mut has_many_fields = Vec::new();
+    let mut has_many_self_fields = Vec::new();
     let mut has_many_via_fields = Vec::new();
 
     attrs
@@ -37,7 +39,7 @@ pub fn expand_derive_active_model_ex(
             })
         })?;
 
-    let mut seen_entity = HashMap::new();
+    let mut entity_count = HashMap::new();
 
     if let Data::Struct(item_struct) = &data {
         if let Fields::Named(fields) = &item_struct.fields {
@@ -50,7 +52,7 @@ pub fn expand_derive_active_model_ex(
 
                     if is_compound_field(&field_type) {
                         let entity_path = extract_compound_entity(&field_type);
-                        *seen_entity.entry(entity_path.to_owned()).or_insert(0) += 1;
+                        *entity_count.entry(entity_path.to_owned()).or_insert(0) += 1;
                     }
                 }
             }
@@ -71,10 +73,27 @@ pub fn expand_derive_active_model_ex(
                             compound_fields.push(ident);
                             let entity_path = extract_compound_entity(&field_type);
 
-                            if !compact && *seen_entity.get(entity_path).unwrap() == 1 {
+                            if !compact {
                                 let compound_attrs =
                                     compound_attr::SeaOrm::from_attributes(&field.attrs)?;
-                                if compound_attrs.relation_enum.is_none() {
+                                if let Some(relation_enum) = compound_attrs.relation_enum {
+                                    if compound_attrs.self_ref.is_some()
+                                        && compound_attrs.via.is_none()
+                                        && compound_attrs.from.is_some()
+                                        && compound_attrs.to.is_some()
+                                    {
+                                        belongs_to_self_fields
+                                            .push((ident.clone(), relation_enum.clone()));
+                                    } else if compound_attrs.self_ref.is_some()
+                                        && compound_attrs.relation_reverse.is_some()
+                                        && compound_attrs.via.is_none()
+                                        && compound_attrs.from.is_none()
+                                        && compound_attrs.to.is_none()
+                                    {
+                                        has_many_self_fields
+                                            .push((ident.clone(), relation_enum.clone()));
+                                    }
+                                } else if *entity_count.get(entity_path).unwrap() == 1 {
                                     if compound_attrs.belongs_to.is_some() {
                                         belongs_to_fields.push(ident.clone());
                                     } else if compound_attrs.has_one.is_some() {
@@ -118,8 +137,10 @@ pub fn expand_derive_active_model_ex(
 
     let active_model_action = expand_active_model_action(
         &belongs_to_fields,
+        &belongs_to_self_fields,
         &has_one_fields,
         &has_many_fields,
+        &has_many_self_fields,
         &has_many_via_fields,
     );
 
@@ -277,8 +298,10 @@ pub fn expand_derive_active_model_ex(
 
 fn expand_active_model_action(
     belongs_to: &[Ident],
+    belongs_to_self: &[(Ident, LitStr)],
     has_one: &[Ident],
     has_many: &[Ident],
+    has_many_self: &[(Ident, LitStr)],
     has_many_via: &[(Ident, String)],
 ) -> TokenStream {
     let mut belongs_to_action = TokenStream::new();
@@ -323,6 +346,39 @@ fn expand_active_model_action(
         });
     }
 
+    for (field, relation_enum) in belongs_to_self {
+        let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
+        let relation_enum = quote!(Relation::#relation_enum);
+
+        belongs_to_action.extend(quote! {
+            let #field = if let Some(model) = self.#field.take() {
+                if model.is_update() {
+                    // has primary key
+                    self.set_parent_key_for(&model, #relation_enum)?;
+                    if model.is_changed() {
+                        let model = Box::pin(model.action(action, db)).await?;
+                        Some(model)
+                    } else {
+                        Some(model)
+                    }
+                } else {
+                    // new model
+                    let model = Box::pin(model.action(action, db)).await?;
+                    self.set_parent_key_for(&model, #relation_enum)?;
+                    Some(model)
+                }
+            } else {
+                None
+            };
+        });
+
+        belongs_to_after_action.extend(quote! {
+            if let Some(#field) = #field {
+                model.#field = HasOneModel::set(#field);
+            }
+        });
+    }
+
     let delete_associated_model = quote! {
         let mut item = item.into_active_model();
         if item.clear_parent_key::<Entity>()? {
@@ -339,8 +395,8 @@ fn expand_active_model_action(
 
         has_one_action.extend(quote! {
             if let Some(mut #field) = #field {
+                #field.set_parent_key(&model)?;
                 if #field.is_changed() {
-                    #field.set_parent_key(&model)?;
                     model.#field = HasOneModel::set(Box::pin(#field.action(action, db)).await?);
                 } else {
                     model.#field = HasOneModel::set(#field);
@@ -370,8 +426,8 @@ fn expand_active_model_action(
             }
             model.#field = #field.empty_holder();
             for mut #field in #field.into_vec() {
+                #field.set_parent_key(&model)?;
                 if #field.is_changed() {
-                    #field.set_parent_key(&model)?;
                     model.#field.push(Box::pin(#field.action(action, db)).await?);
                 } else {
                     model.#field.push(#field);
@@ -381,6 +437,50 @@ fn expand_active_model_action(
 
         has_many_delete.extend(quote! {
             for item in self.find_related_of(self.#field.as_slice()).all(db).await? {
+                #delete_associated_model
+            }
+        });
+    }
+
+    for (field, relation_enum) in has_many_self {
+        let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
+        let relation_enum = quote!(Relation::#relation_enum);
+
+        let delete_associated_model = quote! {
+            let mut item = item.into_active_model();
+            if item.clear_parent_key_for_self_rev(#relation_enum)? {
+                item.update(db).await?;
+            } else {
+                // attempt to cascade delete may lead to infinite recursion
+                return Err(sea_orm::DbErr::RecordNotUpdated);
+            }
+        };
+
+        has_many_before_action.extend(quote! {
+            let #field = self.#field.take();
+        });
+
+        has_many_action.extend(quote! {
+            if #field.is_replace() {
+                for item in model.find_belongs_to_self(#relation_enum)?.all(db).await? {
+                    if !#field.find(&item) {
+                        #delete_associated_model
+                    }
+                }
+            }
+            model.#field = #field.empty_holder();
+            for mut #field in #field.into_vec() {
+                #field.set_parent_key_for_self_rev(&model, #relation_enum)?;
+                if #field.is_changed() {
+                    model.#field.push(Box::pin(#field.action(action, db)).await?);
+                } else {
+                    model.#field.push(#field);
+                }
+            }
+        });
+
+        has_many_delete.extend(quote! {
+            for item in self.find_belongs_to_self(#relation_enum)?.all(db).await? {
                 #delete_associated_model
             }
         });

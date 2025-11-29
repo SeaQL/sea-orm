@@ -203,7 +203,7 @@ pub async fn insert_json_struct_3(db: &DatabaseConnection) -> Result<(), DbErr> 
         assert_eq!(
             Entity::find()
                 .filter(
-                    Expr::col(COLUMN.json_opt).eq(Expr::val(json!({ "id": 22 })).cast_as("json"))
+                    Expr::col(COLUMN.json_opt).eq(Expr::val(json!({ "id": 33 })).cast_as("json"))
                 )
                 .one(db)
                 .await?
