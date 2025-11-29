@@ -14,6 +14,10 @@ pub struct Model {
     pub profile: HasOne<super::profile::Entity>,
     #[sea_orm(has_many)]
     pub posts: HasMany<super::post::Entity>,
+    #[sea_orm(self_ref, via = "user_follower", from = "User", to = "Follower")]
+    pub followers: HasMany<Entity>,
+    #[sea_orm(self_ref, via = "user_follower", reverse)]
+    pub following: HasMany<Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

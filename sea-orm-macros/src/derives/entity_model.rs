@@ -315,6 +315,13 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
                         ));
                     }
 
+                    if primary_key_types.len() > 1 && is_auto_increment {
+                        return Err(syn::Error::new_spanned(
+                            ident,
+                            "auto_increment cannot be used on composite primary_key",
+                        ));
+                    }
+
                     if let Some(select_as) = select_as {
                         columns_select_as.push(quote! {
                             Self::#field_name => sea_orm::sea_query::ExprTrait::cast_as(expr, #select_as)

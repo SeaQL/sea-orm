@@ -209,6 +209,8 @@
 //! #               posts: HasMany::Unloaded,
 //!             }]),
 //!         }]),
+//! #       followers: HasMany::Unloaded,
+//! #       following: HasMany::Unloaded,
 //!     };
 //! # Ok(())
 //! # }

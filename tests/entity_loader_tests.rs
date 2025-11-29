@@ -441,7 +441,7 @@ async fn entity_loader_join_three() {
 
 #[sea_orm_macros::test]
 async fn entity_loader_self_join() -> Result<(), DbErr> {
-    use common::film_store::staff;
+    use common::film_store::{staff, staff_compact, staff_mono};
 
     let ctx = TestContext::new("entity_loader_self_join").await;
     let db = &ctx.db;
@@ -483,6 +483,8 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     .insert(db)
     .await?;
 
+    // load belongs_to
+
     let staff = staff::Entity::load()
         .with(staff::Relation::ReportsTo)
         .all(db)
@@ -499,6 +501,96 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
 
     assert_eq!(staff[3].name, "Elle");
     assert_eq!(staff[3].reports_to, None);
+
+    // load belongs_to reverse
+
+    let staff = staff::Entity::load()
+        .with(staff::Relation::Manages)
+        .all(db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].manages[0].name, "Ben");
+    assert_eq!(staff[0].manages[1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert!(staff[1].manages.is_empty());
+
+    assert_eq!(staff[2].name, "Alice");
+    assert!(staff[2].manages.is_empty());
+
+    assert_eq!(staff[3].name, "Elle");
+    assert!(staff[3].manages.is_empty());
+
+    // load both sides
+
+    let staff = staff::Entity::load()
+        .with(staff::Relation::ReportsTo)
+        .with(staff::Relation::Manages)
+        .all(db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].reports_to, None);
+    assert_eq!(staff[0].manages[0].name, "Ben");
+    assert_eq!(staff[0].manages[1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[1].manages.is_empty());
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[2].manages.is_empty());
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].manages.is_empty());
+
+    // test self_ref on model without reverse relation (not dual)
+
+    let staff = staff_mono::Entity::load()
+        .filter_by_id(2)
+        .with(staff_mono::Relation::ReportsTo)
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(staff.name, "Ben");
+    assert_eq!(
+        staff.reports_to.unwrap(),
+        staff_mono::Entity::find_by_id(alan.id)
+            .one(db)
+            .await?
+            .unwrap()
+    );
+
+    // test self_ref on compact_model
+
+    let staff = staff_compact::Entity::load()
+        .with(staff_compact::Relation::ReportsTo)
+        .with(staff_compact::Relation::Manages)
+        .all(db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].reports_to, None);
+    assert_eq!(staff[0].manages[0].name, "Ben");
+    assert_eq!(staff[0].manages[1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[1].manages.is_empty());
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[2].manages.is_empty());
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].manages.is_empty());
+
+    // test pagination on loader
 
     let mut pager = staff::Entity::load()
         .with(staff::Relation::ReportsTo)
@@ -522,6 +614,218 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     assert_eq!(staff[1].reports_to, None);
 
     assert!(pager.fetch_and_next().await?.is_none());
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+async fn entity_loader_self_join_via() -> Result<(), DbErr> {
+    use sea_orm::tests_cfg::{profile, user, user_follower};
+
+    let ctx = TestContext::new("test_entity_loader_self_join_via").await;
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(profile::Entity)
+        .register(user::Entity)
+        .register(user_follower::Entity)
+        .apply(db)
+        .await?;
+
+    let alice = user::ActiveModel::builder()
+        .set_name("Alice")
+        .set_email("@1")
+        .set_profile(profile::ActiveModel::builder().set_picture("Alice.jpg"))
+        .insert(db)
+        .await?;
+
+    let bob = user::ActiveModel::builder()
+        .set_name("Bob")
+        .set_email("@2")
+        .set_profile(profile::ActiveModel::builder().set_picture("Bob.jpg"))
+        .insert(db)
+        .await?;
+
+    let sam = user::ActiveModel::builder()
+        .set_name("Sam")
+        .set_email("@3")
+        .set_profile(profile::ActiveModel::builder().set_picture("Sam.jpg"))
+        .insert(db)
+        .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(alice.id),
+        follower_id: Set(bob.id),
+    }
+    .insert(db)
+    .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(alice.id),
+        follower_id: Set(sam.id),
+    }
+    .insert(db)
+    .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(bob.id),
+        follower_id: Set(sam.id),
+    }
+    .insert(db)
+    .await?;
+
+    // test user + follower
+
+    let users = user::Entity::load()
+        .with(user_follower::Entity)
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].name, alice.name);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0].name, bob.name);
+    assert_eq!(users[0].followers[1].name, sam.name);
+
+    assert_eq!(users[1].name, bob.name);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0].name, sam.name);
+
+    assert_eq!(users[2].name, sam.name);
+    assert!(users[2].followers.is_empty());
+
+    // test user + follower + following (both sides)
+
+    let users = user::Entity::load()
+        .with(user_follower::Entity)
+        .with(user_follower::Entity::REVERSE)
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].name, alice.name);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0].name, bob.name);
+    assert_eq!(users[0].followers[1].name, sam.name);
+    assert!(users[0].following.is_empty());
+
+    assert_eq!(users[1].name, bob.name);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0].name, sam.name);
+    assert_eq!(users[1].following.len(), 1);
+    assert_eq!(users[1].following[0].name, alice.name);
+
+    assert_eq!(users[2].name, sam.name);
+    assert!(users[2].followers.is_empty());
+    assert_eq!(users[2].following.len(), 2);
+    assert_eq!(users[2].following[0].name, alice.name);
+    assert_eq!(users[2].following[1].name, bob.name);
+
+    // test user + profile
+
+    let users = user::Entity::load()
+        .with(profile::Entity)
+        .with(user_follower::Entity)
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].profile, alice.profile);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0].name, bob.name);
+    assert_eq!(users[0].followers[1].name, sam.name);
+
+    assert_eq!(users[1].profile, bob.profile);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0].name, sam.name);
+
+    assert_eq!(users[2].profile, sam.profile);
+    assert!(users[2].followers.is_empty());
+
+    // test user + profile with nested user + profile
+
+    let users = user::Entity::load()
+        .with(profile::Entity)
+        .with((user_follower::Entity, profile::Entity))
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].profile, alice.profile);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0], bob);
+    assert_eq!(users[0].followers[1], sam);
+
+    assert_eq!(users[1].profile, bob.profile);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0], sam);
+
+    assert_eq!(users[2].profile, sam.profile);
+    assert!(users[2].followers.is_empty());
+
+    // test all: user profile + follower profile + following profile
+
+    let users = user::Entity::load()
+        .with(profile::Entity)
+        .with((user_follower::Entity, profile::Entity))
+        .with((user_follower::Entity::REVERSE, profile::Entity))
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].profile, alice.profile);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0], bob);
+    assert_eq!(users[0].followers[1], sam);
+    assert!(users[0].following.is_empty());
+
+    assert_eq!(users[1].profile, bob.profile);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0], sam);
+    assert_eq!(users[1].following.len(), 1);
+    assert_eq!(users[1].following[0], alice);
+
+    assert_eq!(users[2].profile, sam.profile);
+    assert!(users[2].followers.is_empty());
+    assert_eq!(users[2].following.len(), 2);
+    assert_eq!(users[2].following[0], alice);
+    assert_eq!(users[2].following[1], bob);
+
+    // test nested loading, but left right swapped
+
+    let alice_profile = profile::Entity::load()
+        .filter_by_id(alice.profile.as_ref().unwrap().id)
+        .with((user::Entity, user_follower::Entity))
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(
+        alice_profile.picture,
+        alice.profile.as_ref().unwrap().picture
+    );
+    assert_eq!(alice_profile.user.as_ref().unwrap().followers.len(), 2);
+    assert_eq!(
+        alice_profile.user.as_ref().unwrap().followers[0].name,
+        bob.name
+    );
+    assert_eq!(
+        alice_profile.user.as_ref().unwrap().followers[1].name,
+        sam.name
+    );
+
+    let sam_profile = profile::Entity::load()
+        .filter_by_id(sam.profile.as_ref().unwrap().id)
+        .with((user::Entity, user_follower::Entity::REVERSE))
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(sam_profile.picture, sam.profile.as_ref().unwrap().picture);
+    assert_eq!(sam_profile.user.as_ref().unwrap().following.len(), 2);
+    assert_eq!(
+        sam_profile.user.as_ref().unwrap().following[0].name,
+        alice.name
+    );
+    assert_eq!(
+        sam_profile.user.as_ref().unwrap().following[1].name,
+        bob.name
+    );
 
     Ok(())
 }

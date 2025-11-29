@@ -32,15 +32,15 @@ pub trait RelationTrait: Iterable + Debug + 'static {
     }
 }
 
-/// Checks if Entities are related
+/// A trait to relate two Entities for them to be joined in queries
 pub trait Related<R>
 where
     R: EntityTrait,
 {
-    /// Check if an entity is related to another entity
+    /// The RelationDef to the related Entity
     fn to() -> RelationDef;
 
-    /// Check if an entity is related through another entity
+    /// The RelationDef to the junction table, if any
     fn via() -> Option<RelationDef> {
         None
     }
@@ -48,6 +48,23 @@ where
     /// Find related Entities
     fn find_related() -> Select<R> {
         Select::<R>::new().join_join_rev(JoinType::InnerJoin, Self::to(), Self::via())
+    }
+}
+
+/// A trait to relate an Entity to itself through a junction table
+pub trait RelatedSelfVia<R>
+where
+    R: EntityTrait,
+{
+    /// The RelationDef to the related Entity
+    fn to() -> RelationDef;
+
+    /// The RelationDef to the junction table
+    fn via() -> RelationDef;
+
+    /// Find related Entities
+    fn find_related() -> Select<R> {
+        Select::<R>::new().join_join_rev(JoinType::InnerJoin, Self::to(), Some(Self::via()))
     }
 }
 
