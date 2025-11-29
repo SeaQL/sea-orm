@@ -27,6 +27,8 @@ struct DeriveValueTypeString {
 
 impl DeriveValueType {
     fn new(input: syn::DeriveInput) -> syn::Result<Self> {
+        // Produce an error if the macro attributes are malformed
+        let value_type_attr = value_type_attr::SeaOrm::from_attributes(&input.attrs)?;
         match &input.data {
             syn::Data::Struct(syn::DataStruct {
                 fields: syn::Fields::Unnamed(_),
