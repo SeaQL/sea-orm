@@ -2,7 +2,7 @@ use super::attributes::value_type_attr;
 use super::value_type_match::{array_type_expr, can_try_from_u64, column_type_expr};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DataEnum, Type, spanned::Spanned};
+use syn::{Type, spanned::Spanned};
 
 #[allow(clippy::large_enum_variant)]
 enum DeriveValueType {
@@ -29,21 +29,27 @@ impl DeriveValueType {
     fn new(input: syn::DeriveInput) -> syn::Result<Self> {
         // Produce an error if the macro attributes are malformed
         let value_type_attr = value_type_attr::SeaOrm::from_attributes(&input.attrs)?;
-        match &input.data {
-            syn::Data::Struct(syn::DataStruct {
-                fields: syn::Fields::Unnamed(_),
-                ..
-            }) => DeriveValueTypeStruct::new(input).map(Self::TupleStruct),
-            syn::Data::Struct(syn::DataStruct {
-                fields: syn::Fields::Named(_),
-                ..
-            })
-            | syn::Data::Enum(DataEnum { .. }) => {
-                DeriveValueTypeString::new(input).map(Self::StringLike)
-            }
-            _ => Err(syn::Error::new_spanned(
-                input,
-                "You can only derive `DeriveValueType` on struct or enum",
+
+        match value_type_attr
+            .value_type
+            .as_ref()
+            .map(|s| s.value())
+            .as_deref()
+        {
+            None => match input.data {
+                syn::Data::Struct(syn::DataStruct {
+                    fields: syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed: _, .. }),
+                    ..
+                }) => DeriveValueTypeStruct::new(input).map(Self::TupleStruct),
+                _ => Err(syn::Error::new_spanned(
+                    input,
+                    "You can only derive `DeriveValueType` on a struct with a single unnamed field, unless `value_type` is set.",
+                )),
+            },
+            Some("String") => DeriveValueTypeString::new(input).map(Self::StringLike),
+            Some(_) => Err(syn::Error::new_spanned(
+                input.ident,
+                r#"Please specify value_type = "String""#,
             )),
         }
     }
