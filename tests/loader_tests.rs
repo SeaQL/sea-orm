@@ -516,8 +516,8 @@ async fn loader_load_many_to_many_dyn() -> Result<(), DbErr> {
 
 #[sea_orm_macros::test]
 async fn loader_self_join() -> Result<(), DbErr> {
+    use common::blogger::{user, user_follower};
     use common::film_store::{staff, staff_compact};
-    use sea_orm::tests_cfg::{user, user_follower};
 
     let ctx = TestContext::new("test_loader_self_join").await;
     let db = &ctx.db;

@@ -1,20 +1,18 @@
-use crate as sea_orm;
 use sea_orm::entity::prelude::*;
 
 #[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-#[sea_orm(table_name = "post")]
+#[sea_orm(table_name = "comment")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    pub comment: String,
     pub user_id: i32,
-    pub title: String,
+    pub post_id: i32,
     #[sea_orm(belongs_to, from = "user_id", to = "id")]
-    pub author: HasOne<super::user::Entity>,
-    #[sea_orm(has_many)]
-    pub comments: HasMany<super::comment::Entity>,
-    #[sea_orm(has_many, via = "post_tag")]
-    pub tags: HasMany<super::tag::Entity>,
+    pub user: HasOne<super::user::Entity>,
+    #[sea_orm(belongs_to, from = "post_id", to = "id")]
+    pub post: HasOne<super::post::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

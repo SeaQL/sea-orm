@@ -3,11 +3,13 @@
 mod common;
 
 use crate::common::TestContext;
-use sea_orm::{Database, DbConn, DbErr, entity::*, prelude::*, query::*, tests_cfg::*};
+use sea_orm::{Database, DbConn, DbErr, entity::*, prelude::*, query::*};
 use tracing::info;
 
 #[sea_orm_macros::test]
 async fn test_active_model_ex_blog() -> Result<(), DbErr> {
+    use common::blogger::*;
+
     let ctx = TestContext::new("test_active_model_ex_blog").await;
     let db = &ctx.db;
 

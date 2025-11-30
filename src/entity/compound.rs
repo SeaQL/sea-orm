@@ -2,7 +2,7 @@
 use super::{ColumnTrait, EntityTrait, PrimaryKeyToColumn, PrimaryKeyTrait};
 use crate::{
     ConnectionTrait, DbErr, IntoSimpleExpr, ItemsAndPagesNumber, Iterable, ModelTrait,
-    PinBoxStream, QueryFilter, QueryOrder, Related,
+    PinBoxStream, QueryFilter, QueryOrder,
 };
 use async_stream::stream;
 use sea_query::{IntoValueTuple, Order, TableRef};
@@ -97,42 +97,14 @@ where
     pub(crate) phantom: PhantomData<E>,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct EntityLoaderWithSelf<R: EntityTrait, S: EntityTrait>(pub R, pub S);
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum LoadTarget {
     TableRef(TableRef),
     TableRefRev(TableRef),
     Relation(String),
-}
-
-pub trait EntityLoaderWithParam<E: EntityTrait> {
-    fn into_with_param(self) -> (LoadTarget, Option<LoadTarget>);
-}
-
-impl<E, R> EntityLoaderWithParam<E> for R
-where
-    E: EntityTrait,
-    R: EntityTrait,
-    E: Related<R>,
-{
-    fn into_with_param(self) -> (LoadTarget, Option<LoadTarget>) {
-        (LoadTarget::TableRef(self.table_ref()), None)
-    }
-}
-
-impl<E, R, S> EntityLoaderWithParam<E> for (R, S)
-where
-    E: EntityTrait,
-    R: EntityTrait,
-    E: Related<R>,
-    S: EntityTrait,
-    R: Related<S>,
-{
-    fn into_with_param(self) -> (LoadTarget, Option<LoadTarget>) {
-        (
-            LoadTarget::TableRef(self.0.table_ref()),
-            Some(LoadTarget::TableRef(self.1.table_ref())),
-        )
-    }
 }
 
 impl<'db, C, E, L> EntityLoaderPaginator<'db, C, E, L>

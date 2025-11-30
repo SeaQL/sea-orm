@@ -202,15 +202,12 @@
 //!             title: "Nice weather".into(),
 //! #           author: HasOne::Unloaded,
 //! #           comments: HasMany::Unloaded,
-//! #           attachments: HasMany::Unloaded,
 //!             tags: HasMany::Loaded(vec![tag::ModelEx {
 //! #               id: 3,
 //!                 tag: "sunny".into(),
 //! #               posts: HasMany::Unloaded,
 //!             }]),
 //!         }]),
-//! #       followers: HasMany::Unloaded,
-//! #       following: HasMany::Unloaded,
 //!     };
 //! # Ok(())
 //! # }

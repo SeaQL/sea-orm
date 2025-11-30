@@ -1,4 +1,3 @@
-use crate as sea_orm;
 use sea_orm::entity::prelude::*;
 
 #[sea_orm::model]
