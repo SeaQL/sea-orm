@@ -541,7 +541,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     assert!(staff[1].manages.is_empty());
 
     assert_eq!(staff[2].name, "Alice");
-    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert_eq!(staff[2].reports_to.as_ref().unwrap().name, "Alan");
     assert!(staff[2].manages.is_empty());
 
     assert_eq!(staff[3].name, "Elle");
@@ -584,7 +584,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     assert!(staff[1].manages.is_empty());
 
     assert_eq!(staff[2].name, "Alice");
-    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert_eq!(staff[2].reports_to.as_ref().unwrap().name, "Alan");
     assert!(staff[2].manages.is_empty());
 
     assert_eq!(staff[3].name, "Elle");
