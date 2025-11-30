@@ -27,6 +27,8 @@ async fn active_enum_tests() -> Result<(), DbErr> {
     find_related_active_enum(&ctx.db).await?;
     find_linked_active_enum(&ctx.db).await?;
 
+    delete_active_enum(&ctx.db).await?;
+
     ctx.delete().await;
 
     Ok(())
@@ -686,6 +688,24 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
                 tea: Some(Tea::BreakfastTea),
             }]
         )]
+    );
+
+    Ok(())
+}
+
+async fn delete_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
+    use active_enum_child::*;
+
+    let model = Entity::find().one(db).await?.unwrap();
+
+    assert_eq!(model.id, 1);
+
+    assert_eq!(
+        model,
+        Entity::delete(model.clone().into_active_model())
+            .exec_with_returning(db)
+            .await?
+            .unwrap()
     );
 
     Ok(())
