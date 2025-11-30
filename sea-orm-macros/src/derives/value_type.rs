@@ -18,6 +18,7 @@ struct DeriveValueTypeStruct {
     can_try_from_u64: bool,
 }
 
+#[derive(Default)]
 struct DeriveValueTypeStructAttrs {
     column_type: Option<TokenStream>,
     array_type: Option<TokenStream>,
@@ -65,28 +66,48 @@ impl TryFrom<value_type_attr::SeaOrm> for DeriveValueTypeStringAttrs {
 impl DeriveValueType {
     fn new(input: syn::DeriveInput) -> syn::Result<Self> {
         // Produce an error if the macro attributes are malformed
-        let value_type_attr = value_type_attr::SeaOrm::from_attributes(&input.attrs)?;
+        let value_type_attr = value_type_attr::SeaOrm::try_from_attributes(&input.attrs)?;
 
-        match value_type_attr
-            .value_type
-            .as_ref()
-            .map(|s| s.value())
-            .as_deref()
-        {
-            None => match input.data {
+        // If some attributes were set, inspect the optional `value_type`
+        let value_type = if let Some(ref value_type_attr) = value_type_attr {
+            value_type_attr.value_type.as_ref().map(|s| s.value())
+        } else {
+            None
+        };
+
+        // If either `value_type` is unset, or no attributes were passed, assume
+        // `DeriveValueTypeStruct`. If no attrs were set, use default values.
+        if value_type.is_none() || value_type_attr.is_none() {
+            let value_type_attr = if let Some(value_type_attr) = value_type_attr {
+                value_type_attr.try_into()?
+            } else {
+                DeriveValueTypeStructAttrs::default()
+            };
+
+            match input.data {
                 syn::Data::Struct(syn::DataStruct {
                     fields: syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }),
                     ..
-                }) => DeriveValueTypeStruct::new(input.ident, value_type_attr.try_into()?, unnamed)
-                    .map(Self::TupleStruct),
-                _ => Err(syn::Error::new_spanned(
-                    input,
-                    "You can only derive `DeriveValueType` on a struct with a single unnamed field, unless `value_type` is set.",
-                )),
-            },
-            Some("String") => DeriveValueTypeString::new(input.ident, value_type_attr.try_into()?)
+                }) => {
+                    return DeriveValueTypeStruct::new(input.ident, value_type_attr, unnamed)
+                        .map(Self::TupleStruct);
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        input,
+                        "You can only derive `DeriveValueType` on a struct with a single unnamed field, unless `value_type` is set.",
+                    ));
+                }
+            }
+        }
+
+        let value_type_attr = value_type_attr.unwrap();
+        let value_type = value_type.unwrap();
+
+        match value_type.as_str() {
+            "String" => DeriveValueTypeString::new(input.ident, value_type_attr.try_into()?)
                 .map(Self::StringLike),
-            Some(_) => Err(syn::Error::new_spanned(
+            _ => Err(syn::Error::new_spanned(
                 input.ident,
                 r#"Please specify value_type = "String""#,
             )),
