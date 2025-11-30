@@ -813,23 +813,25 @@ async fn entity_loader_self_join_via() -> Result<(), DbErr> {
         sam.name
     );
 
-    // the following doesn't work for now
-    // let sam_profile = profile::Entity::load()
-    //     .filter_by_id(sam.profile.as_ref().unwrap().id)
-    //     .with((user::Entity, user_follower::Entity::REVERSE))
-    //     .one(db)
-    //     .await?
-    //     .unwrap();
-    // assert_eq!(sam_profile.picture, sam.profile.as_ref().unwrap().picture);
-    // assert_eq!(sam_profile.user.as_ref().unwrap().following.len(), 2);
-    // assert_eq!(
-    //     sam_profile.user.as_ref().unwrap().following[0].name,
-    //     alice.name
-    // );
-    // assert_eq!(
-    //     sam_profile.user.as_ref().unwrap().following[1].name,
-    //     bob.name
-    // );
+    let sam_profile = profile::Entity::load()
+        .filter_by_id(sam.profile.as_ref().unwrap().id)
+        .with(sea_orm::compound::EntityLoaderWithSelfRev(
+            user::Entity,
+            user::Following,
+        ))
+        .one(db)
+        .await?
+        .unwrap();
+    assert_eq!(sam_profile.picture, sam.profile.as_ref().unwrap().picture);
+    assert_eq!(sam_profile.user.as_ref().unwrap().following.len(), 2);
+    assert_eq!(
+        sam_profile.user.as_ref().unwrap().following[0].name,
+        alice.name
+    );
+    assert_eq!(
+        sam_profile.user.as_ref().unwrap().following[1].name,
+        bob.name
+    );
 
     Ok(())
 }

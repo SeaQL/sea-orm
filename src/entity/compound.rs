@@ -97,8 +97,18 @@ where
     pub(crate) phantom: PhantomData<E>,
 }
 
+/// Just a marker trait on EntityReverse
+pub trait EntityReverse {
+    type Entity: EntityTrait;
+}
+
+/// Subject to change, not yet stable
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct EntityLoaderWithSelf<R: EntityTrait, S: EntityTrait>(pub R, pub S);
+
+/// Subject to change, not yet stable
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct EntityLoaderWithSelfRev<R: EntityTrait, S: EntityReverse>(pub R, pub S);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LoadTarget {
