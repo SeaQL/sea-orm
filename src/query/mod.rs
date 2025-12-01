@@ -1,4 +1,5 @@
 pub(crate) mod combine;
+mod debug;
 mod delete;
 mod helper;
 mod insert;
@@ -12,6 +13,7 @@ mod update;
 mod util;
 
 pub use combine::{SelectA, SelectB, SelectC};
+pub use debug::*;
 pub use delete::*;
 pub use helper::*;
 pub use insert::*;
@@ -21,9 +23,10 @@ pub use loader::*;
 pub use select::*;
 pub use traits::*;
 pub use update::*;
-pub use util::*;
+pub(crate) use util::*;
 
 pub use crate::{
     ConnectionTrait, CursorTrait, InsertResult, PaginatorTrait, Statement, StreamTrait,
     TransactionTrait, UpdateResult, Value, Values,
 };
+pub use sea_query::ExprTrait;

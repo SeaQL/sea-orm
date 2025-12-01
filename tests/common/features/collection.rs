@@ -1,6 +1,7 @@
 use super::sea_orm_active_enums::*;
 use sea_orm::entity::prelude::*;
 
+#[sea_orm::compact_model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "collection")]
 pub struct Model {

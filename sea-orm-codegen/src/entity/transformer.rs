@@ -1,8 +1,8 @@
 use crate::{
-    util::unpack_table_ref, ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error,
-    PrimaryKey, Relation, RelationType,
+    ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation,
+    RelationType,
 };
-use sea_query::{ColumnSpec, TableCreateStatement};
+use sea_query::TableCreateStatement;
 use std::collections::{BTreeMap, HashMap};
 
 #[derive(Clone, Debug)]
@@ -15,30 +15,19 @@ impl EntityTransformer {
         let mut entities = BTreeMap::new();
         for table_create in table_create_stmts.into_iter() {
             let table_name = match table_create.get_table_name() {
-                Some(table_ref) => match table_ref {
-                    sea_query::TableRef::Table(t)
-                    | sea_query::TableRef::SchemaTable(_, t)
-                    | sea_query::TableRef::DatabaseSchemaTable(_, _, t)
-                    | sea_query::TableRef::TableAlias(t, _)
-                    | sea_query::TableRef::SchemaTableAlias(_, t, _)
-                    | sea_query::TableRef::DatabaseSchemaTableAlias(_, _, t, _) => t.to_string(),
-                    _ => unimplemented!(),
-                },
+                Some(table_ref) => table_ref.sea_orm_table().to_string(),
                 None => {
                     return Err(Error::TransformError(
                         "Table name should not be empty".into(),
-                    ))
+                    ));
                 }
             };
             let mut primary_keys: Vec<PrimaryKey> = Vec::new();
-            let columns: Vec<Column> = table_create
+            let mut columns: Vec<Column> = table_create
                 .get_columns()
                 .iter()
                 .map(|col_def| {
-                    let primary_key = col_def
-                        .get_column_spec()
-                        .iter()
-                        .any(|spec| matches!(spec, ColumnSpec::PrimaryKey));
+                    let primary_key = col_def.get_column_spec().primary_key;
                     if primary_key {
                         primary_keys.push(PrimaryKey {
                             name: col_def.get_column_name(),
@@ -70,13 +59,32 @@ impl EntityTransformer {
                     }
                 })
                 .collect();
+            for index in table_create.get_indexes().iter() {
+                if index.is_unique_key() {
+                    let col_names = index.get_index_spec().get_column_names();
+                    if col_names.len() > 1 {
+                        if let Some(mut key_name) = index.get_index_spec().get_name() {
+                            if let Some((_, suffix)) = key_name.rsplit_once('-') {
+                                key_name = suffix;
+                            }
+                            for col_name in col_names {
+                                for column in columns.iter_mut() {
+                                    if column.name == col_name {
+                                        column.unique_key = Some(key_name.to_owned());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             let mut ref_table_counts: BTreeMap<String, usize> = BTreeMap::new();
             let relations: Vec<Relation> = table_create
                 .get_foreign_key_create_stmts()
                 .iter()
                 .map(|fk_create_stmt| fk_create_stmt.get_foreign_key())
                 .map(|tbl_fk| {
-                    let ref_tbl = unpack_table_ref(tbl_fk.get_ref_table().unwrap());
+                    let ref_tbl = tbl_fk.get_ref_table().unwrap().sea_orm_table().to_string();
                     if let Some(count) = ref_table_counts.get_mut(&ref_tbl) {
                         if *count == 0 {
                             *count = 1;
@@ -370,47 +378,79 @@ mod tests {
         )
     }
 
-    fn validate_compact_entities(
-        table_create_stmts: Vec<TableCreateStatement>,
-        files: Vec<(&str, &str)>,
-    ) -> Result<(), Box<dyn Error>> {
-        let entities: HashMap<_, _> = EntityTransformer::transform(table_create_stmts)?
-            .entities
-            .into_iter()
-            .map(|entity| (entity.table_name.clone(), entity))
-            .collect();
+    #[test]
+    fn test_indexes_transform() -> Result<(), Box<dyn Error>> {
+        let schema = Schema::new(DbBackend::Postgres);
 
-        for (entity_name, file_content) in files {
-            let entity = entities
-                .get(entity_name)
-                .expect("Forget to add entity to the list");
+        validate_compact_entities(
+            vec![
+                schema.create_table_with_index_from_entity(
+                    crate::tests_cfg::compact::indexes::Entity,
+                ),
+            ],
+            vec![("indexes", include_str!("../tests_cfg/compact/indexes.rs"))],
+        )?;
 
-            assert_eq!(
-                parse_from_file(file_content.as_bytes())?.to_string(),
-                EntityWriter::gen_compact_code_blocks(
-                    entity,
-                    &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
-                    &None,
-                    false,
-                    false,
-                    &Default::default(),
-                    &Default::default(),
-                    false,
-                    true,
-                )
-                .into_iter()
-                .skip(1)
-                .fold(TokenStream::new(), |mut acc, tok| {
-                    acc.extend(tok);
-                    acc
-                })
-                .to_string()
-            );
-        }
+        validate_dense_entities(
+            vec![
+                schema
+                    .create_table_with_index_from_entity(crate::tests_cfg::dense::indexes::Entity),
+            ],
+            vec![("indexes", include_str!("../tests_cfg/dense/indexes.rs"))],
+        )?;
 
         Ok(())
     }
+
+    macro_rules! validate_entities_fn {
+        ($fn_name: ident, $method: ident) => {
+            fn $fn_name(
+                table_create_stmts: Vec<TableCreateStatement>,
+                files: Vec<(&str, &str)>,
+            ) -> Result<(), Box<dyn Error>> {
+                let entities: HashMap<_, _> = EntityTransformer::transform(table_create_stmts)?
+                    .entities
+                    .into_iter()
+                    .map(|entity| (entity.table_name.clone(), entity))
+                    .collect();
+
+                for (entity_name, file_content) in files {
+                    let entity = entities
+                        .get(entity_name)
+                        .expect("Forget to add entity to the list");
+
+                    assert_eq!(
+                        parse_from_file(file_content.as_bytes())?.to_string(),
+                        EntityWriter::$method(
+                            entity,
+                            &crate::WithSerde::None,
+                            &Default::default(),
+                            &None,
+                            false,
+                            false,
+                            &Default::default(),
+                            &Default::default(),
+                            &Default::default(),
+                            false,
+                            true,
+                        )
+                        .into_iter()
+                        .skip(1)
+                        .fold(TokenStream::new(), |mut acc, tok| {
+                            acc.extend(tok);
+                            acc
+                        })
+                        .to_string()
+                    );
+                }
+
+                Ok(())
+            }
+        };
+    }
+
+    validate_entities_fn!(validate_compact_entities, gen_compact_code_blocks);
+    validate_entities_fn!(validate_dense_entities, gen_dense_code_blocks);
 
     fn parse_from_file<R>(inner: R) -> io::Result<TokenStream>
     where

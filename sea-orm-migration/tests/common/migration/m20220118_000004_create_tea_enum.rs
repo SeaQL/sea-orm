@@ -9,18 +9,15 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
 
-        match db.get_database_backend() {
-            DbBackend::MySql | DbBackend::Sqlite => {}
-            DbBackend::Postgres => {
-                manager
-                    .create_type(
-                        Type::create()
-                            .as_enum(Tea::Enum)
-                            .values([Tea::EverydayTea, Tea::BreakfastTea])
-                            .to_owned(),
-                    )
-                    .await?;
-            }
+        if db.get_database_backend() == DbBackend::Postgres {
+            manager
+                .create_type(
+                    Type::create()
+                        .as_enum(Tea::Enum)
+                        .values([Tea::EverydayTea, Tea::BreakfastTea])
+                        .to_owned(),
+                )
+                .await?;
         }
 
         Ok(())
@@ -29,13 +26,10 @@ impl MigrationTrait for Migration {
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
 
-        match db.get_database_backend() {
-            DbBackend::MySql | DbBackend::Sqlite => {}
-            DbBackend::Postgres => {
-                manager
-                    .drop_type(Type::drop().name(Tea::Enum).to_owned())
-                    .await?;
-            }
+        if db.get_database_backend() == DbBackend::Postgres {
+            manager
+                .drop_type(Type::drop().name(Tea::Enum).to_owned())
+                .await?;
         }
 
         Ok(())

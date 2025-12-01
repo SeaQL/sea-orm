@@ -4,7 +4,7 @@
 
 1. Modify the `DATABASE_URL` var in `.env` to point to your chosen database
 
-1. Turn on the appropriate database feature for your chosen db in `service/Cargo.toml` (the `"sqlx-mysql",` line)
+1. Turn on the appropriate database feature for your chosen db in `api/Cargo.toml` (the `"sqlx-mysql",` line)
 
 1. Execute `cargo run` to start the server
 
@@ -17,9 +17,21 @@ cargo install systemfd cargo-watch
 systemfd --no-pid -s http::8000 -- cargo watch -x run
 ```
 
-Run mock test on the service logic crate:
+Run tests:
 
 ```bash
-cd service
-cargo test --features mock
+cd api
+cargo test
+```
+
+Run migration:
+
+```bash
+cargo run -p migration -- up
+```
+
+Regenerate entity:
+
+```bash
+sea-orm-cli generate entity --output-dir ./entity/src --lib --entity-format dense --with-serde both
 ```

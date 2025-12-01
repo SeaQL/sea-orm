@@ -3,7 +3,8 @@
 [package]
 name = "migration"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 publish = false
 
 [lib]
@@ -11,16 +12,16 @@ name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
-async-std = { version = "1", features = ["attributes", "tokio1"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [dependencies.sea-orm]
 path = "../../../" # remove this line in your own project
-version = "~1.1.12" # sea-orm version
+version = "~2.0.0-rc.19" # sea-orm version
 
 [dependencies.sea-orm-migration]
 path = "../../../sea-orm-migration" # remove this line in your own project
-version = "~1.1.12" # sea-orm-migration version
+version = "~2.0.0-rc.19" # sea-orm-migration version
 features = [
-  "runtime-async-std-native-tls",
-  "sqlx-mysql",
+  "runtime-tokio-native-tls",
+  "sqlx-sqlite",
 ]

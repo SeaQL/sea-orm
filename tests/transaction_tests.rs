@@ -2,9 +2,25 @@
 
 pub mod common;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{prelude::*, AccessMode, DatabaseTransaction, IsolationLevel, Set, TransactionTrait};
+use sea_orm::{AccessMode, DatabaseTransaction, IsolationLevel, Set, TransactionTrait, prelude::*};
+
+fn seaside_bakery() -> bakery::ActiveModel {
+    bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+}
+
+fn top_bakery() -> bakery::ActiveModel {
+    bakery::ActiveModel {
+        name: Set("Top Bakery".to_owned()),
+        profit_margin: Set(15.0),
+        ..Default::default()
+    }
+}
 
 #[sea_orm_macros::test]
 pub async fn transaction() {
@@ -14,21 +30,8 @@ pub async fn transaction() {
     ctx.db
         .transaction::<_, _, DbErr>(|txn| {
             Box::pin(async move {
-                let _ = bakery::ActiveModel {
-                    name: Set("SeaSide Bakery".to_owned()),
-                    profit_margin: Set(10.4),
-                    ..Default::default()
-                }
-                .save(txn)
-                .await?;
-
-                let _ = bakery::ActiveModel {
-                    name: Set("Top Bakery".to_owned()),
-                    profit_margin: Set(15.0),
-                    ..Default::default()
-                }
-                .save(txn)
-                .await?;
+                let _ = seaside_bakery().save(txn).await?;
+                let _ = top_bakery().save(txn).await?;
 
                 let bakeries = Bakery::find()
                     .filter(bakery::Column::Name.contains("Bakery"))
@@ -42,6 +45,40 @@ pub async fn transaction() {
         })
         .await
         .unwrap();
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+#[cfg(feature = "rbac")]
+pub async fn rbac_transaction() {
+    use sea_orm::rbac::{RbacEngine, RbacSnapshot, RbacUserId};
+
+    let ctx = TestContext::new("rbac_transaction_test").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    ctx.db.replace_rbac(RbacEngine::from_snapshot(
+        RbacSnapshot::danger_unrestricted(),
+    ));
+    let db = ctx.db.restricted_for(RbacUserId(0)).unwrap();
+
+    db.transaction::<_, _, DbErr>(|txn| {
+        Box::pin(async move {
+            let _ = seaside_bakery().save(txn).await?;
+            let _ = top_bakery().save(txn).await?;
+
+            let bakeries = Bakery::find()
+                .filter(bakery::Column::Name.contains("Bakery"))
+                .all(txn)
+                .await?;
+
+            assert_eq!(bakeries.len(), 2);
+
+            Ok(())
+        })
+    })
+    .await
+    .unwrap();
 
     ctx.delete().await;
 }
@@ -107,23 +144,11 @@ pub async fn transaction_begin_out_of_scope() -> Result<(), DbErr> {
         // Transaction begin in this scope
         let txn = ctx.db.begin().await?;
 
-        bakery::ActiveModel {
-            name: Set("SeaSide Bakery".to_owned()),
-            profit_margin: Set(10.4),
-            ..Default::default()
-        }
-        .save(&txn)
-        .await?;
+        seaside_bakery().save(&txn).await?;
 
         assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 1);
 
-        bakery::ActiveModel {
-            name: Set("Top Bakery".to_owned()),
-            profit_margin: Set(15.0),
-            ..Default::default()
-        }
-        .save(&txn)
-        .await?;
+        top_bakery().save(&txn).await?;
 
         assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 2);
 
@@ -131,6 +156,42 @@ pub async fn transaction_begin_out_of_scope() -> Result<(), DbErr> {
     }
 
     assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
+
+    ctx.delete().await;
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+#[cfg(feature = "rbac")]
+pub async fn rbac_transaction_begin_out_of_scope() -> Result<(), DbErr> {
+    use sea_orm::rbac::{RbacEngine, RbacSnapshot, RbacUserId};
+
+    let ctx = TestContext::new("rbac_transaction_begin_out_of_scope_test").await;
+    create_tables(&ctx.db).await?;
+
+    ctx.db.replace_rbac(RbacEngine::from_snapshot(
+        RbacSnapshot::danger_unrestricted(),
+    ));
+    let db = ctx.db.restricted_for(RbacUserId(0)).unwrap();
+
+    assert_eq!(bakery::Entity::find().all(&db).await?.len(), 0);
+
+    {
+        // Transaction begin in this scope
+        let txn = db.begin().await?;
+
+        seaside_bakery().save(&txn).await?;
+
+        assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 1);
+
+        top_bakery().save(&txn).await?;
+
+        assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 2);
+
+        // The scope ended and transaction is dropped without commit
+    }
+
+    assert_eq!(bakery::Entity::find().all(&db).await?.len(), 0);
 
     ctx.delete().await;
     Ok(())
@@ -147,23 +208,11 @@ pub async fn transaction_begin_commit() -> Result<(), DbErr> {
         // Transaction begin in this scope
         let txn = ctx.db.begin().await?;
 
-        bakery::ActiveModel {
-            name: Set("SeaSide Bakery".to_owned()),
-            profit_margin: Set(10.4),
-            ..Default::default()
-        }
-        .save(&txn)
-        .await?;
+        seaside_bakery().save(&txn).await?;
 
         assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 1);
 
-        bakery::ActiveModel {
-            name: Set("Top Bakery".to_owned()),
-            profit_margin: Set(15.0),
-            ..Default::default()
-        }
-        .save(&txn)
-        .await?;
+        top_bakery().save(&txn).await?;
 
         assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 2);
 
@@ -172,6 +221,43 @@ pub async fn transaction_begin_commit() -> Result<(), DbErr> {
     }
 
     assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 2);
+
+    ctx.delete().await;
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+#[cfg(feature = "rbac")]
+pub async fn rbac_transaction_begin_commit() -> Result<(), DbErr> {
+    use sea_orm::rbac::{RbacEngine, RbacSnapshot, RbacUserId};
+
+    let ctx = TestContext::new("rbac_transaction_begin_commit_test").await;
+    create_tables(&ctx.db).await?;
+
+    ctx.db.replace_rbac(RbacEngine::from_snapshot(
+        RbacSnapshot::danger_unrestricted(),
+    ));
+    let db = ctx.db.restricted_for(RbacUserId(0)).unwrap();
+
+    assert_eq!(bakery::Entity::find().all(&db).await?.len(), 0);
+
+    {
+        // Transaction begin in this scope
+        let txn = db.begin().await?;
+
+        seaside_bakery().save(&txn).await?;
+
+        assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 1);
+
+        top_bakery().save(&txn).await?;
+
+        assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 2);
+
+        // Commit changes before the end of scope
+        txn.commit().await?;
+    }
+
+    assert_eq!(bakery::Entity::find().all(&db).await?.len(), 2);
 
     ctx.delete().await;
     Ok(())
@@ -188,23 +274,11 @@ pub async fn transaction_begin_rollback() -> Result<(), DbErr> {
         // Transaction begin in this scope
         let txn = ctx.db.begin().await?;
 
-        bakery::ActiveModel {
-            name: Set("SeaSide Bakery".to_owned()),
-            profit_margin: Set(10.4),
-            ..Default::default()
-        }
-        .save(&txn)
-        .await?;
+        seaside_bakery().save(&txn).await?;
 
         assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 1);
 
-        bakery::ActiveModel {
-            name: Set("Top Bakery".to_owned()),
-            profit_margin: Set(15.0),
-            ..Default::default()
-        }
-        .save(&txn)
-        .await?;
+        top_bakery().save(&txn).await?;
 
         assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 2);
 
@@ -229,23 +303,11 @@ pub async fn transaction_closure_commit() -> Result<(), DbErr> {
         .db
         .transaction::<_, _, DbErr>(|txn| {
             Box::pin(async move {
-                bakery::ActiveModel {
-                    name: Set("SeaSide Bakery".to_owned()),
-                    profit_margin: Set(10.4),
-                    ..Default::default()
-                }
-                .save(txn)
-                .await?;
+                seaside_bakery().save(txn).await?;
 
                 assert_eq!(bakery::Entity::find().all(txn).await?.len(), 1);
 
-                bakery::ActiveModel {
-                    name: Set("Top Bakery".to_owned()),
-                    profit_margin: Set(15.0),
-                    ..Default::default()
-                }
-                .save(txn)
-                .await?;
+                top_bakery().save(txn).await?;
 
                 assert_eq!(bakery::Entity::find().all(txn).await?.len(), 2);
 
@@ -273,23 +335,11 @@ pub async fn transaction_closure_rollback() -> Result<(), DbErr> {
         .db
         .transaction::<_, _, DbErr>(|txn| {
             Box::pin(async move {
-                bakery::ActiveModel {
-                    name: Set("SeaSide Bakery".to_owned()),
-                    profit_margin: Set(10.4),
-                    ..Default::default()
-                }
-                .save(txn)
-                .await?;
+                seaside_bakery().save(txn).await?;
 
                 assert_eq!(bakery::Entity::find().all(txn).await?.len(), 1);
 
-                bakery::ActiveModel {
-                    name: Set("Top Bakery".to_owned()),
-                    profit_margin: Set(15.0),
-                    ..Default::default()
-                }
-                .save(txn)
-                .await?;
+                top_bakery().save(txn).await?;
 
                 assert_eq!(bakery::Entity::find().all(txn).await?.len(), 2);
 
@@ -409,21 +459,9 @@ pub async fn transaction_nested() {
     ctx.db
         .transaction::<_, _, DbErr>(|txn| {
             Box::pin(async move {
-                let _ = bakery::ActiveModel {
-                    name: Set("SeaSide Bakery".to_owned()),
-                    profit_margin: Set(10.4),
-                    ..Default::default()
-                }
-                .save(txn)
-                .await?;
+                let _ = seaside_bakery().save(txn).await?;
 
-                let _ = bakery::ActiveModel {
-                    name: Set("Top Bakery".to_owned()),
-                    profit_margin: Set(15.0),
-                    ..Default::default()
-                }
-                .save(txn)
-                .await?;
+                let _ = top_bakery().save(txn).await?;
 
                 // Try nested transaction committed
                 txn.transaction::<_, _, DbErr>(|txn| {
@@ -636,6 +674,248 @@ pub async fn transaction_nested() {
         })
         .await
         .unwrap();
+
+    let bakeries = Bakery::find()
+        .filter(bakery::Column::Name.contains("Bakery"))
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(bakeries.len(), 4);
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+pub async fn transaction_manager_nested() -> Result<(), sea_orm::DbErr> {
+    let ctx = TestContext::new("transaction_manager_nested").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    let txn = ctx.db.begin().await?;
+    let _ = seaside_bakery().save(&txn).await?;
+    let _ = top_bakery().save(&txn).await?;
+
+    // Try nested transaction committed
+    {
+        let txn = txn.begin().await?;
+        let _ = bakery::ActiveModel {
+            name: Set("Nested Bakery".to_owned()),
+            profit_margin: Set(88.88),
+            ..Default::default()
+        }
+        .save(&txn)
+        .await?;
+
+        let bakeries = Bakery::find()
+            .filter(bakery::Column::Name.contains("Bakery"))
+            .all(&txn)
+            .await?;
+
+        assert_eq!(bakeries.len(), 3);
+
+        // Try nested-nested transaction rollbacked
+        {
+            let txn = txn.begin().await?;
+            let _ = bakery::ActiveModel {
+                name: Set("Rock n Roll Bakery".to_owned()),
+                profit_margin: Set(28.8),
+                ..Default::default()
+            }
+            .save(&txn)
+            .await?;
+
+            let bakeries = Bakery::find()
+                .filter(bakery::Column::Name.contains("Bakery"))
+                .all(&txn)
+                .await?;
+
+            assert_eq!(bakeries.len(), 4);
+        }
+
+        let bakeries = Bakery::find()
+            .filter(bakery::Column::Name.contains("Bakery"))
+            .all(&txn)
+            .await?;
+
+        assert_eq!(bakeries.len(), 3);
+
+        // Try nested-nested transaction committed
+        {
+            let txn = txn.begin().await?;
+            let _ = bakery::ActiveModel {
+                name: Set("Rock n Roll Bakery".to_owned()),
+                profit_margin: Set(28.8),
+                ..Default::default()
+            }
+            .save(&txn)
+            .await?;
+
+            let bakeries = Bakery::find()
+                .filter(bakery::Column::Name.contains("Bakery"))
+                .all(&txn)
+                .await?;
+
+            assert_eq!(bakeries.len(), 4);
+            txn.commit().await?;
+        }
+
+        txn.commit().await?;
+    }
+
+    // Try nested transaction rollbacked
+    {
+        let txn = txn.begin().await?;
+        let _ = bakery::ActiveModel {
+            name: Set("Rock n Roll Bakery".to_owned()),
+            profit_margin: Set(28.8),
+            ..Default::default()
+        }
+        .save(&txn)
+        .await?;
+
+        let bakeries = Bakery::find()
+            .filter(bakery::Column::Name.contains("Bakery"))
+            .all(&txn)
+            .await?;
+
+        assert_eq!(bakeries.len(), 5);
+
+        // Try nested-nested transaction committed
+        {
+            let txn = txn.begin().await?;
+            let _ = bakery::ActiveModel {
+                name: Set("Rock n Roll Bakery".to_owned()),
+                profit_margin: Set(28.8),
+                ..Default::default()
+            }
+            .save(&txn)
+            .await?;
+
+            let bakeries = Bakery::find()
+                .filter(bakery::Column::Name.contains("Bakery"))
+                .all(&txn)
+                .await?;
+
+            assert_eq!(bakeries.len(), 6);
+            txn.commit().await?;
+        }
+
+        let bakeries = Bakery::find()
+            .filter(bakery::Column::Name.contains("Bakery"))
+            .all(&txn)
+            .await?;
+
+        assert_eq!(bakeries.len(), 6);
+    }
+
+    let bakeries = Bakery::find()
+        .filter(bakery::Column::Name.contains("Bakery"))
+        .all(&txn)
+        .await?;
+
+    assert_eq!(bakeries.len(), 4);
+
+    txn.commit().await?;
+
+    let bakeries = Bakery::find()
+        .filter(bakery::Column::Name.contains("Bakery"))
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(bakeries.len(), 4);
+
+    ctx.delete().await;
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+#[cfg(feature = "rbac")]
+pub async fn rbac_transaction_nested() {
+    use sea_orm::rbac::{RbacEngine, RbacSnapshot, RbacUserId};
+
+    let ctx = TestContext::new("rbac_transaction_nested_test").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    ctx.db.replace_rbac(RbacEngine::from_snapshot(
+        RbacSnapshot::danger_unrestricted(),
+    ));
+    let db = ctx.db.restricted_for(RbacUserId(0)).unwrap();
+
+    db.transaction::<_, _, DbErr>(|txn| {
+        Box::pin(async move {
+            let _ = seaside_bakery().save(txn).await?;
+
+            let _ = top_bakery().save(txn).await?;
+
+            // Try nested transaction committed
+            txn.transaction::<_, _, DbErr>(|txn| {
+                Box::pin(async move {
+                    let _ = bakery::ActiveModel {
+                        name: Set("Nested Bakery".to_owned()),
+                        profit_margin: Set(88.88),
+                        ..Default::default()
+                    }
+                    .save(txn)
+                    .await?;
+
+                    let bakeries = Bakery::find()
+                        .filter(bakery::Column::Name.contains("Bakery"))
+                        .all(txn)
+                        .await?;
+
+                    assert_eq!(bakeries.len(), 3);
+
+                    // Try nested-nested transaction committed
+                    txn.transaction::<_, _, DbErr>(|txn| {
+                        Box::pin(async move {
+                            let _ = bakery::ActiveModel {
+                                name: Set("Rock n Roll Bakery".to_owned()),
+                                profit_margin: Set(28.8),
+                                ..Default::default()
+                            }
+                            .save(txn)
+                            .await?;
+
+                            let bakeries = Bakery::find()
+                                .filter(bakery::Column::Name.contains("Bakery"))
+                                .all(txn)
+                                .await?;
+
+                            assert_eq!(bakeries.len(), 4);
+
+                            Ok(())
+                        })
+                    })
+                    .await
+                    .unwrap();
+
+                    let bakeries = Bakery::find()
+                        .filter(bakery::Column::Name.contains("Bakery"))
+                        .all(txn)
+                        .await?;
+
+                    assert_eq!(bakeries.len(), 4);
+
+                    Ok(())
+                })
+            })
+            .await
+            .unwrap();
+
+            let bakeries = Bakery::find()
+                .filter(bakery::Column::Name.contains("Bakery"))
+                .all(txn)
+                .await?;
+
+            assert_eq!(bakeries.len(), 4);
+
+            Ok(())
+        })
+    })
+    .await
+    .unwrap();
 
     let bakeries = Bakery::find()
         .filter(bakery::Column::Name.contains("Bakery"))

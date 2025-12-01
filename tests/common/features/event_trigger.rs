@@ -1,7 +1,7 @@
 use sea_orm::entity::prelude::*;
 use sea_orm::{
-    sea_query::{ArrayType, ColumnType, ValueType},
     TryGetError, TryGetable,
+    sea_query::{ArrayType, ColumnType, ValueType},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -31,7 +31,7 @@ impl From<Events> for Value {
             Some(Box::new(
                 events
                     .into_iter()
-                    .map(|Event(s)| Value::String(Some(Box::new(s))))
+                    .map(|Event(s)| Value::String(Some(s)))
                     .collect(),
             )),
         )

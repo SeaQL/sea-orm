@@ -1,24 +1,25 @@
 [package]
 name = "sea-orm-rocket"
-version = "0.5.5"
+version = "0.6.0"
 authors = ["Sergio Benitez <sb@sergio.bz>", "Jeb Rosen <jeb@jebrosen.com>"]
 description = "SeaORM Rocket support crate"
 repository = "https://github.com/SeaQL/sea-orm"
 readme = "../README.md"
 keywords = ["rocket", "framework", "database", "pools"]
 license = "MIT OR Apache-2.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 
 [package.metadata.docs.rs]
 all-features = true
 
 [dependencies.rocket]
-version = "0.5"
+version = "0.5.1"
 default-features = false
 
 [dependencies.sea-orm-rocket-codegen]
 path = "../codegen"
-version = "0.5.5"
+version = "0.6.0"
 
 [dependencies.rocket_okapi]
 version = "0.9"
@@ -26,6 +27,6 @@ default-features = false
 optional = true
 
 [dev-dependencies.rocket]
-version = "0.5"
+version = "0.5.1"
 default-features = false
 features = ["json"]

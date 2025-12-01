@@ -2,17 +2,17 @@ use crate::{ConnAcquireErr, ConnectOptions, DbErr, RuntimeErr};
 
 /// Converts an [sqlx::error] execution error to a [DbErr]
 pub fn sqlx_error_to_exec_err(err: sqlx::Error) -> DbErr {
-    DbErr::Exec(RuntimeErr::SqlxError(err))
+    DbErr::Exec(RuntimeErr::SqlxError(err.into()))
 }
 
 /// Converts an [sqlx::error] query error to a [DbErr]
 pub fn sqlx_error_to_query_err(err: sqlx::Error) -> DbErr {
-    DbErr::Query(RuntimeErr::SqlxError(err))
+    DbErr::Query(RuntimeErr::SqlxError(err.into()))
 }
 
 /// Converts an [sqlx::error] connection error to a [DbErr]
 pub fn sqlx_error_to_conn_err(err: sqlx::Error) -> DbErr {
-    DbErr::Conn(RuntimeErr::SqlxError(err))
+    DbErr::Conn(RuntimeErr::SqlxError(err.into()))
 }
 
 /// Converts an [sqlx::error] error to a [DbErr]
@@ -31,7 +31,7 @@ pub fn sqlx_conn_acquire_err(sqlx_err: sqlx::Error) -> DbErr {
     match sqlx_err {
         sqlx::Error::PoolTimedOut => DbErr::ConnectionAcquire(ConnAcquireErr::Timeout),
         sqlx::Error::PoolClosed => DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed),
-        _ => DbErr::Conn(RuntimeErr::SqlxError(sqlx_err)),
+        _ => DbErr::Conn(RuntimeErr::SqlxError(sqlx_err.into())),
     }
 }
 
@@ -52,13 +52,13 @@ impl ConnectOptions {
             opt = opt.acquire_timeout(connect_timeout);
         }
         if let Some(idle_timeout) = self.idle_timeout {
-            opt = opt.idle_timeout(Some(idle_timeout));
+            opt = opt.idle_timeout(idle_timeout);
         }
         if let Some(acquire_timeout) = self.acquire_timeout {
             opt = opt.acquire_timeout(acquire_timeout);
         }
         if let Some(max_lifetime) = self.max_lifetime {
-            opt = opt.max_lifetime(Some(max_lifetime));
+            opt = opt.max_lifetime(max_lifetime);
         }
         opt = opt.test_before_acquire(self.test_before_acquire);
         opt

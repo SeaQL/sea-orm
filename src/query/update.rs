@@ -1,5 +1,5 @@
 use crate::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, Iterable, PrimaryKeyToColumn,
+    ActiveModelTrait, ActiveValue, ColumnTrait, DbErr, EntityTrait, Iterable, PrimaryKeyToColumn,
     QueryFilter, QueryTrait,
 };
 use core::marker::PhantomData;
@@ -9,14 +9,38 @@ use sea_query::{Expr, IntoIden, SimpleExpr, UpdateStatement};
 #[derive(Clone, Debug)]
 pub struct Update;
 
-/// Defines an UPDATE operation on one ActiveModel
+/// A request to update an [`ActiveModel`](ActiveModelTrait).
+///
+/// The primary key must be set.
+/// Otherwise, it's impossible to generate the SQL condition and find the record.
+/// In that case, [`exec`][Self::exec] will return an error and not send any queries to the database.
+///
+/// If you want to use [`QueryTrait`] and access the generated SQL query,
+/// you need to convert into [`ValidatedUpdateOne`] first.
 #[derive(Clone, Debug)]
-pub struct UpdateOne<A>
-where
-    A: ActiveModelTrait,
-{
+pub struct UpdateOne<A: ActiveModelTrait>(pub(crate) Result<ValidatedUpdateOne<A>, DbErr>);
+
+/// A validated [`UpdateOne`] request, where the primary key is set
+/// and it's possible to generate the right SQL condition.
+#[derive(Clone, Debug)]
+pub struct ValidatedUpdateOne<A: ActiveModelTrait> {
     pub(crate) query: UpdateStatement,
     pub(crate) model: A,
+}
+
+impl<A: ActiveModelTrait> TryFrom<UpdateOne<A>> for ValidatedUpdateOne<A> {
+    type Error = DbErr;
+
+    fn try_from(value: UpdateOne<A>) -> Result<Self, Self::Error> {
+        value.0
+    }
+}
+
+impl<A: ActiveModelTrait> UpdateOne<A> {
+    /// Check whether the primary key is set and we can proceed with the operation.
+    pub fn validate(self) -> Result<ValidatedUpdateOne<A>, DbErr> {
+        self.try_into()
+    }
 }
 
 /// Defines an UPDATE operation on multiple ActiveModels
@@ -33,37 +57,67 @@ impl Update {
     /// Update one ActiveModel
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     Update::one(cake::ActiveModel {
     ///         id: ActiveValue::set(1),
     ///         name: ActiveValue::set("Apple Pie".to_owned()),
     ///     })
+    ///     .validate()
+    ///     .unwrap()
     ///     .build(DbBackend::Postgres)
     ///     .to_string(),
     ///     r#"UPDATE "cake" SET "name" = 'Apple Pie' WHERE "cake"."id" = 1"#,
     /// );
     /// ```
+    //
+    // (non-doc comment for maintainers)
+    // Ideally, we would make this method fallible instead of stashing and delaying the error.
+    // But that's a bigger breaking change.
     pub fn one<E, A>(model: A) -> UpdateOne<A>
     where
         E: EntityTrait,
         A: ActiveModelTrait<Entity = E>,
     {
-        UpdateOne {
+        let mut myself = ValidatedUpdateOne {
             query: UpdateStatement::new()
                 .table(A::Entity::default().table_ref())
                 .to_owned(),
             model,
+        };
+        // Build the SQL condition from the primary key columns.
+        for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
+            let col = key.into_column();
+            match myself.model.get(col) {
+                ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
+                    myself = myself.filter(col.eq(value));
+                }
+                ActiveValue::NotSet => {
+                    return UpdateOne(Err(DbErr::PrimaryKeyNotSet { ctx: "UpdateOne" }));
+                }
+            }
         }
-        .prepare_filters()
-        .prepare_values()
+        // Set the values to update (from the other columns).
+        for col in <A::Entity as EntityTrait>::Column::iter() {
+            if <A::Entity as EntityTrait>::PrimaryKey::from_column(col).is_some() {
+                continue;
+            }
+            match myself.model.get(col) {
+                ActiveValue::Set(value) => {
+                    let expr = col.save_as(Expr::val(value));
+                    myself.query.value(col, expr);
+                }
+                ActiveValue::Unchanged(_) | ActiveValue::NotSet => {}
+            }
+        }
+        UpdateOne(Ok(myself))
     }
 
     /// Update many ActiveModel
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, sea_query::Expr, tests_cfg::fruit, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, sea_query::Expr, tests_cfg::fruit};
     ///
     /// assert_eq!(
     ///     Update::many(fruit::Entity)
@@ -85,41 +139,7 @@ impl Update {
     }
 }
 
-impl<A> UpdateOne<A>
-where
-    A: ActiveModelTrait,
-{
-    fn prepare_filters(mut self) -> Self {
-        for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
-            let col = key.into_column();
-            match self.model.get(col) {
-                ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
-                    self = self.filter(col.eq(value));
-                }
-                ActiveValue::NotSet => panic!("PrimaryKey is not set"),
-            }
-        }
-        self
-    }
-
-    fn prepare_values(mut self) -> Self {
-        for col in <A::Entity as EntityTrait>::Column::iter() {
-            if <A::Entity as EntityTrait>::PrimaryKey::from_column(col).is_some() {
-                continue;
-            }
-            match self.model.get(col) {
-                ActiveValue::Set(value) => {
-                    let expr = col.save_as(Expr::val(value));
-                    self.query.value(col, expr);
-                }
-                ActiveValue::Unchanged(_) | ActiveValue::NotSet => {}
-            }
-        }
-        self
-    }
-}
-
-impl<A> QueryFilter for UpdateOne<A>
+impl<A> QueryFilter for ValidatedUpdateOne<A>
 where
     A: ActiveModelTrait,
 {
@@ -141,7 +161,7 @@ where
     }
 }
 
-impl<A> QueryTrait for UpdateOne<A>
+impl<A> QueryTrait for ValidatedUpdateOne<A>
 where
     A: ActiveModelTrait,
 {
@@ -213,7 +233,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit, lunch_set, sea_orm_active_enums::Tea};
-    use crate::{entity::*, query::*, DbBackend};
+    use crate::{DbBackend, entity::*, query::*};
     use sea_query::{Expr, Value};
 
     #[test]
@@ -223,6 +243,8 @@ mod tests {
                 id: ActiveValue::set(1),
                 name: ActiveValue::set("Apple Pie".to_owned()),
             })
+            .validate()
+            .unwrap()
             .build(DbBackend::Postgres)
             .to_string(),
             r#"UPDATE "cake" SET "name" = 'Apple Pie' WHERE "cake"."id" = 1"#,
@@ -237,6 +259,8 @@ mod tests {
                 name: ActiveValue::set("Orange".to_owned()),
                 cake_id: ActiveValue::not_set(),
             })
+            .validate()
+            .unwrap()
             .build(DbBackend::Postgres)
             .to_string(),
             r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#,
@@ -251,6 +275,8 @@ mod tests {
                 name: ActiveValue::unchanged("Apple".to_owned()),
                 cake_id: ActiveValue::set(Some(3)),
             })
+            .validate()
+            .unwrap()
             .build(DbBackend::Postgres)
             .to_string(),
             r#"UPDATE "fruit" SET "cake_id" = 3 WHERE "fruit"."id" = 2"#,
@@ -323,6 +349,8 @@ mod tests {
                 tea: Set(Tea::EverydayTea),
                 ..Default::default()
             })
+            .validate()
+            .unwrap()
             .build(DbBackend::Postgres)
             .to_string(),
             r#"UPDATE "lunch_set" SET "tea" = CAST('EverydayTea' AS "tea") WHERE "lunch_set"."id" = 1"#,

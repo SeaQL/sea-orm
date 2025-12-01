@@ -2,7 +2,7 @@
 
 pub mod common;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, bakery_dense, setup::*};
 pub use sea_orm::entity::*;
 pub use sea_orm::{ConnectionTrait, QueryFilter, QuerySelect};
 
@@ -208,6 +208,15 @@ pub async fn select_only_exclude_option_fields() {
     .await
     .expect("could not insert customer");
 
+    let _ = customer::ActiveModel {
+        name: Set("Sam".to_owned()),
+        notes: Set(None),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await
+    .expect("could not insert customer");
+
     let customers = Customer::find()
         .select_only()
         .column(customer::Column::Id)
@@ -216,9 +225,34 @@ pub async fn select_only_exclude_option_fields() {
         .await
         .unwrap();
 
-    assert_eq!(customers.len(), 2);
+    assert_eq!(customers.len(), 3);
     assert_eq!(customers[0].notes, None);
     assert_eq!(customers[1].notes, None);
+    assert_eq!(customers[2].notes, None);
+
+    let sam = bakery_dense::customer::Entity::find()
+        .filter(bakery_dense::customer::COLUMN.name.eq("Sam"))
+        .one(&ctx.db)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let _: sea_orm::StringColumnNullable<bakery_dense::customer::Entity> =
+        bakery_dense::customer::COLUMN.notes;
+
+    assert_eq!(
+        sam,
+        bakery_dense::customer::Entity::find()
+            .filter(
+                bakery_dense::customer::COLUMN
+                    .notes
+                    .eq(Option::<String>::None)
+            )
+            .one(&ctx.db)
+            .await
+            .unwrap()
+            .unwrap()
+    );
 
     ctx.delete().await;
 }

@@ -1,7 +1,10 @@
-use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect, QueryTrait};
+use crate::{
+    ColumnTrait, EntityTrait, Iterable, Order, PrimaryKeyToColumn, QueryFilter, QueryOrder,
+    QuerySelect, QueryTrait,
+};
 use core::fmt::Debug;
 use core::marker::PhantomData;
-use sea_query::{Expr, IntoColumnRef, SelectStatement, SimpleExpr};
+use sea_query::{IntoColumnRef, SelectStatement, SimpleExpr};
 
 /// Defines a structure to perform select operations
 #[derive(Clone, Debug)]
@@ -11,6 +14,7 @@ where
 {
     pub(crate) query: SelectStatement,
     pub(crate) entity: PhantomData<E>,
+    pub(crate) linked_index: usize,
 }
 
 /// Defines a structure to perform a SELECT operation on two Models
@@ -35,16 +39,89 @@ where
     pub(crate) entity: PhantomData<(E, F)>,
 }
 
-/// Defines a structure to perform a SELECT operation on two Models
+/// Topology of multi-joins
+pub trait Topology {}
+
+/// A star topology
+#[derive(Debug)]
+pub struct TopologyStar;
+
+/// A chain topology
+#[derive(Debug)]
+pub struct TopologyChain;
+
+impl Topology for TopologyStar {}
+impl Topology for TopologyChain {}
+
+/// Perform a SELECT operation on three Models
 #[derive(Clone, Debug)]
-pub struct SelectThree<E, F, G>
+pub struct SelectThree<E, F, G, TOP>
 where
     E: EntityTrait,
     F: EntityTrait,
     G: EntityTrait,
+    TOP: Topology,
 {
     pub(crate) query: SelectStatement,
-    pub(crate) entity: PhantomData<(E, F, G)>,
+    pub(crate) entity: PhantomData<(E, F, G, TOP)>,
+}
+
+/// Perform a SELECT operation on three Models with results consolidated
+#[derive(Clone, Debug)]
+pub struct SelectThreeMany<E, F, G, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, TOP)>,
+}
+
+/// Perform a SELECT operation on 4 Models
+#[derive(Clone, Debug)]
+pub struct SelectFour<E, F, G, H, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, H, TOP)>,
+}
+
+/// Perform a SELECT operation on 5 Models
+#[derive(Clone, Debug)]
+pub struct SelectFive<E, F, G, H, I, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+    I: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, H, I, TOP)>,
+}
+
+/// Perform a SELECT operation on 6 Models
+#[derive(Clone, Debug)]
+pub struct SelectSix<E, F, G, H, I, J, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+    I: EntityTrait,
+    J: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, H, I, J, TOP)>,
 }
 
 /// Performs a conversion to [SimpleExpr]
@@ -96,19 +173,6 @@ macro_rules! impl_query_trait {
                 &mut self.query
             }
         }
-
-        impl<E, F, G> $trait for SelectThree<E, F, G>
-        where
-            E: EntityTrait,
-            F: EntityTrait,
-            G: EntityTrait,
-        {
-            type QueryStatement = SelectStatement;
-
-            fn query(&mut self) -> &mut SelectStatement {
-                &mut self.query
-            }
-        }
     };
 }
 
@@ -121,13 +185,7 @@ where
     C: ColumnTrait,
 {
     fn into_column_as_expr(self) -> SimpleExpr {
-        self.select_as(Expr::expr(self.as_column_ref().into_column_ref()))
-    }
-}
-
-impl ColumnAsExpr for Expr {
-    fn into_column_as_expr(self) -> SimpleExpr {
-        self.into_simple_expr()
+        self.select_as(self.as_column_ref().into_column_ref().into())
     }
 }
 
@@ -146,12 +204,6 @@ where
     }
 }
 
-impl IntoSimpleExpr for Expr {
-    fn into_simple_expr(self) -> SimpleExpr {
-        self.into()
-    }
-}
-
 impl IntoSimpleExpr for SimpleExpr {
     fn into_simple_expr(self) -> SimpleExpr {
         self
@@ -166,6 +218,7 @@ where
         Self {
             query: SelectStatement::new(),
             entity: PhantomData,
+            linked_index: 0,
         }
         .prepare_select()
         .prepare_from()
@@ -184,6 +237,26 @@ where
 
     fn prepare_from(mut self) -> Self {
         self.query.from(E::default().table_ref());
+        self
+    }
+
+    /// Apply order by primary key to the query statement
+    pub fn order_by_id_asc(self) -> Self {
+        self.order_by_id(Order::Asc)
+    }
+
+    /// Apply order by primary key to the query statement
+    pub fn order_by_id_desc(self) -> Self {
+        self.order_by_id(Order::Desc)
+    }
+
+    /// Apply order by primary key to the query statement
+    pub fn order_by_id(mut self, order: Order) -> Self {
+        for key in E::PrimaryKey::iter() {
+            let col = key.into_column();
+            self.query
+                .order_by_expr(col.into_simple_expr(), order.clone());
+        }
         self
     }
 }
@@ -227,21 +300,3 @@ macro_rules! select_two {
 
 select_two!(SelectTwo);
 select_two!(SelectTwoMany);
-
-impl<E, F, G> QueryTrait for SelectThree<E, F, G>
-where
-    E: EntityTrait,
-    F: EntityTrait,
-    G: EntityTrait,
-{
-    type QueryStatement = SelectStatement;
-    fn query(&mut self) -> &mut SelectStatement {
-        &mut self.query
-    }
-    fn as_query(&self) -> &SelectStatement {
-        &self.query
-    }
-    fn into_query(self) -> SelectStatement {
-        self.query
-    }
-}

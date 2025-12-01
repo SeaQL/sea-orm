@@ -2,9 +2,10 @@
 
 use entity::{Column, Entity};
 use sea_orm::{
-    prelude::*, sea_query::Alias, DerivePartialModel, FromQueryResult, IntoActiveModel, JoinType,
-    NotSet, QueryOrder, QuerySelect, Set,
+    DerivePartialModel, IntoActiveModel, JoinType, NotSet, QueryOrder, QuerySelect, Set,
+    prelude::*, sea_query::Alias,
 };
+use sea_query::ExprTrait;
 
 use crate::common::TestContext;
 use common::bakery_chain::*;
@@ -31,14 +32,14 @@ mod entity {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
-#[derive(FromQueryResult, DerivePartialModel)]
+#[derive(DerivePartialModel)]
 #[sea_orm(entity = "Entity")]
 struct SimpleTest {
     foo: i32,
     bar: String,
 }
 
-#[derive(FromQueryResult, DerivePartialModel)]
+#[derive(DerivePartialModel)]
 #[sea_orm(entity = "<entity::Model as ModelTrait>::Entity")]
 struct EntityNameNotAIdent {
     #[sea_orm(from_col = "foo2")]
@@ -47,7 +48,7 @@ struct EntityNameNotAIdent {
     bar: String,
 }
 
-#[derive(FromQueryResult, DerivePartialModel)]
+#[derive(DerivePartialModel)]
 #[sea_orm(entity = "Entity")]
 struct FieldFromDiffNameColumnTest {
     #[sea_orm(from_col = "foo2")]
@@ -56,7 +57,7 @@ struct FieldFromDiffNameColumnTest {
     bar: String,
 }
 
-#[derive(FromQueryResult, DerivePartialModel)]
+#[derive(DerivePartialModel)]
 struct FieldFromExpr {
     #[sea_orm(from_expr = "Column::Bar2.sum()")]
     foo: f64,
@@ -64,19 +65,19 @@ struct FieldFromExpr {
     bar: bool,
 }
 
-#[derive(FromQueryResult, DerivePartialModel)]
+#[derive(DerivePartialModel)]
 struct Nest {
     #[sea_orm(nested)]
     foo: SimpleTest,
 }
 
-#[derive(FromQueryResult, DerivePartialModel)]
+#[derive(DerivePartialModel)]
 struct NestOption {
     #[sea_orm(nested)]
     foo: Option<SimpleTest>,
 }
 
-#[derive(FromQueryResult, DerivePartialModel)]
+#[derive(Debug, DerivePartialModel)]
 #[sea_orm(entity = "bakery::Entity")]
 struct Bakery {
     id: i32,
@@ -84,8 +85,8 @@ struct Bakery {
     title: String,
 }
 
-#[derive(DerivePartialModel)]
-#[sea_orm(entity = "cake::Entity", from_query_result, into_active_model)]
+#[derive(Debug, DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity", into_active_model)]
 struct Cake {
     id: i32,
     name: String,
@@ -96,7 +97,7 @@ struct Cake {
 }
 
 #[derive(DerivePartialModel)]
-#[sea_orm(entity = "bakery::Entity", from_query_result)]
+#[sea_orm(entity = "bakery::Entity")]
 struct BakeryDetails {
     #[sea_orm(nested)]
     basics: Bakery,
@@ -104,7 +105,7 @@ struct BakeryDetails {
     profit: f64,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default, PartialEq, Eq)]
 struct Ignore {}
 
 #[sea_orm_macros::test]
@@ -149,32 +150,175 @@ async fn partial_model_left_join_exists() {
     assert_eq!(cake.id, 13);
     assert_eq!(cake.name, "Cheesecake");
     assert!(matches!(cake.bakery, Some(Bakery { id: 42, .. })));
-    assert_eq!(cake.bakery.unwrap().title, "cool little bakery");
+    assert_eq!(cake.bakery.as_ref().unwrap().title, "cool little bakery");
+
+    #[derive(Debug, DerivePartialModel)]
+    #[sea_orm(entity = "cake::Entity", into_active_model)]
+    struct Cake2 {
+        id: i32,
+        name: String,
+        #[sea_orm(nested, alias = "r0")]
+        bakery: Option<Bakery>,
+        #[sea_orm(skip)]
+        ignore: Ignore,
+    }
+
+    let cake2: Cake2 = cake::Entity::find()
+        .left_join_linked(cake::ToBakery)
+        .order_by_asc(cake::Column::Id)
+        .into_partial_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(
+        format!("{cake:?}").trim_start_matches("Cake "),
+        format!("{cake2:?}").trim_start_matches("Cake2 ")
+    );
+
+    #[derive(DerivePartialModel)]
+    #[sea_orm(entity = "cake::Entity")]
+    struct Cake3 {
+        id: i32,
+        name: String,
+        #[sea_orm(nested)]
+        bakery: Option<bakery::Model>,
+    }
+
+    let cake: Cake3 = cake::Entity::find()
+        .left_join(bakery::Entity)
+        .order_by_asc(cake::Column::Id)
+        .into_partial_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(cake.id, 13);
+    assert_eq!(cake.name, "Cheesecake");
+    assert_eq!(
+        cake.bakery.unwrap(),
+        bakery::Model {
+            id: 42,
+            name: "cool little bakery".to_string(),
+            profit_margin: 4.1,
+        }
+    );
+
+    #[derive(DerivePartialModel)]
+    #[sea_orm(entity = "cake::Entity")]
+    struct Cake4 {
+        id: i32,
+        price: Decimal,
+        #[sea_orm(from_expr = "cake::COLUMN.price.add(\"0.2\".parse::<Decimal>().unwrap())")]
+        price_vat: Decimal,
+    }
+
+    let cake: Cake4 = cake::Entity::find()
+        .order_by_asc(cake::COLUMN.id)
+        .into_partial_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(cake.id, 13);
+    assert_eq!(cake.price, "2".parse().unwrap());
+    assert_eq!(cake.price_vat, "2.2".parse().unwrap());
 
     ctx.delete().await;
 }
 
-#[derive(DerivePartialModel)]
-#[sea_orm(entity = "bakery::Entity", alias = "factory", from_query_result)]
-struct Factory {
-    id: i32,
-    #[sea_orm(from_col = "name")]
-    plant: String,
-}
+#[sea_orm_macros::test]
+async fn model_as_partial_model() {
+    let ctx = TestContext::new("model_as_partial_model").await;
+    create_tables(&ctx.db).await.unwrap();
 
-#[derive(DerivePartialModel)]
-#[sea_orm(entity = "cake::Entity", from_query_result)]
-struct CakeFactory {
-    id: i32,
-    name: String,
-    #[sea_orm(nested)]
-    bakery: Option<Factory>,
+    seed_data::init_1(&ctx, false).await;
+
+    let bakery: bakery::Model = bakery::Entity::find()
+        .order_by_asc(bakery::Column::Id)
+        .into_partial_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(
+        bakery,
+        bakery::Model {
+            id: 42,
+            name: "cool little bakery".to_string(),
+            profit_margin: 4.1,
+        }
+    );
+
+    ctx.delete().await;
 }
 
 #[sea_orm_macros::test]
 async fn partial_model_left_join_alias() {
+    #[derive(DerivePartialModel)]
+    #[sea_orm(entity = "bakery::Entity")]
+    struct Factory {
+        id: i32,
+        #[sea_orm(from_col = "name")]
+        plant: String,
+    }
+
+    #[derive(DerivePartialModel)]
+    #[sea_orm(entity = "cake::Entity")]
+    struct CakeFactory {
+        id: i32,
+        name: String,
+        #[sea_orm(nested, alias = "factory")]
+        bakery: Option<Factory>,
+    }
+
     // SELECT "cake"."id" AS "id", "cake"."name" AS "name", "factory"."id" AS "bakery_id", "factory"."name" AS "bakery_plant" FROM "cake" LEFT JOIN "bakery" AS "factory" ON "cake"."bakery_id" = "factory"."id" LIMIT 1
     let ctx = TestContext::new("partial_model_left_join_alias").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    seed_data::init_1(&ctx, true).await;
+
+    let cake: CakeFactory = cake::Entity::find()
+        .join_as(JoinType::LeftJoin, cake::Relation::Bakery.def(), "factory")
+        .order_by_asc(cake::Column::Id)
+        .into_partial_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(cake.id, 13);
+    assert_eq!(cake.name, "Cheesecake");
+    assert!(matches!(cake.bakery, Some(Factory { id: 42, .. })));
+    assert_eq!(cake.bakery.unwrap().plant, "cool little bakery");
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+async fn partial_model_left_join_alias_old() {
+    #[derive(DerivePartialModel)]
+    #[sea_orm(entity = "bakery::Entity", alias = "factory")]
+    struct Factory {
+        id: i32,
+        #[sea_orm(from_col = "name")]
+        plant: String,
+    }
+
+    #[derive(DerivePartialModel)]
+    #[sea_orm(entity = "cake::Entity")]
+    struct CakeFactory {
+        id: i32,
+        name: String,
+        #[sea_orm(nested)]
+        bakery: Option<Factory>,
+    }
+
+    let ctx = TestContext::new("partial_model_left_join_alias_old").await;
     create_tables(&ctx.db).await.unwrap();
 
     seed_data::init_1(&ctx, true).await;
@@ -246,7 +390,7 @@ async fn partial_model_join_three() {
     seed_data::init_1(&ctx, true).await;
 
     #[derive(Debug, DerivePartialModel, PartialEq)]
-    #[sea_orm(entity = "order::Entity", from_query_result)]
+    #[sea_orm(entity = "order::Entity")]
     struct OrderItem {
         id: i32,
         total: Decimal,
@@ -257,13 +401,13 @@ async fn partial_model_join_three() {
     }
 
     #[derive(Debug, DerivePartialModel, PartialEq)]
-    #[sea_orm(entity = "customer::Entity", from_query_result)]
+    #[sea_orm(entity = "customer::Entity")]
     struct Customer {
         name: String,
     }
 
     #[derive(Debug, DerivePartialModel, PartialEq)]
-    #[sea_orm(entity = "lineitem::Entity", from_query_result)]
+    #[sea_orm(entity = "lineitem::Entity")]
     struct LineItem {
         price: Decimal,
         quantity: i32,
@@ -272,7 +416,7 @@ async fn partial_model_join_three() {
     }
 
     #[derive(Debug, DerivePartialModel, PartialEq)]
-    #[sea_orm(entity = "cake::Entity", from_query_result)]
+    #[sea_orm(entity = "cake::Entity")]
     struct Cake {
         name: String,
     }
@@ -333,7 +477,7 @@ async fn partial_model_join_three_flat() {
     seed_data::init_1(&ctx, true).await;
 
     #[derive(Debug, DerivePartialModel, PartialEq)]
-    #[sea_orm(entity = "order::Entity", from_query_result)]
+    #[sea_orm(entity = "order::Entity")]
     struct OrderItem {
         #[sea_orm(nested)]
         order: Order,
@@ -346,7 +490,7 @@ async fn partial_model_join_three_flat() {
     }
 
     #[derive(Debug, DerivePartialModel, PartialEq)]
-    #[sea_orm(entity = "order::Entity", from_query_result)]
+    #[sea_orm(entity = "order::Entity")]
     struct Order {
         #[sea_orm(from_col = "id")]
         order_id: i32,
@@ -354,20 +498,20 @@ async fn partial_model_join_three_flat() {
     }
 
     #[derive(Debug, DerivePartialModel, PartialEq)]
-    #[sea_orm(entity = "customer::Entity", from_query_result)]
+    #[sea_orm(entity = "customer::Entity")]
     struct Customer {
         name: String,
     }
 
     #[derive(Debug, DerivePartialModel, PartialEq)]
-    #[sea_orm(entity = "lineitem::Entity", from_query_result)]
+    #[sea_orm(entity = "lineitem::Entity")]
     struct LineItem {
         price: Decimal,
         quantity: i32,
     }
 
     #[derive(Debug, DerivePartialModel, PartialEq)]
-    #[sea_orm(entity = "cake::Entity", from_query_result)]
+    #[sea_orm(entity = "cake::Entity")]
     struct Cake {
         name: String,
     }
@@ -425,6 +569,90 @@ async fn partial_model_join_three_flat() {
 }
 
 #[sea_orm_macros::test]
+async fn partial_model_join_two_linked() {
+    let ctx = TestContext::new("partial_model_join_two_linked").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    seed_data::init_1(&ctx, true).await;
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "order::Entity")]
+    struct OrderItem {
+        #[sea_orm(nested)]
+        order: Order,
+        #[sea_orm(nested, alias = "r0")]
+        customer: Customer,
+        #[sea_orm(nested, alias = "r1")]
+        line: LineItem,
+    }
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "order::Entity")]
+    struct Order {
+        #[sea_orm(from_col = "id")]
+        order_id: i32,
+        total: Decimal,
+    }
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "customer::Entity")]
+    struct Customer {
+        name: String,
+    }
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "lineitem::Entity")]
+    struct LineItem {
+        price: Decimal,
+        quantity: i32,
+    }
+
+    let items: Vec<OrderItem> = order::Entity::find()
+        .left_join_linked(order::ToCustomer)
+        .left_join_linked(order::ToLineitem)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(Expr::col(("r1", lineitem::Column::Id)))
+        .into_partial_model()
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        items,
+        [
+            OrderItem {
+                order: Order {
+                    order_id: 101,
+                    total: Decimal::from(10),
+                },
+                customer: Customer {
+                    name: "Bob".to_owned()
+                },
+                line: LineItem {
+                    price: Decimal::from(2),
+                    quantity: 2,
+                },
+            },
+            OrderItem {
+                order: Order {
+                    order_id: 101,
+                    total: Decimal::from(10),
+                },
+                customer: Customer {
+                    name: "Bob".to_owned()
+                },
+                line: LineItem {
+                    price: Decimal::from(3),
+                    quantity: 2,
+                },
+            }
+        ]
+    );
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
 async fn partial_model_into_active_model() {
     let mut cake = Cake {
         id: 12,
@@ -458,7 +686,7 @@ async fn partial_model_into_active_model() {
     );
 }
 
-#[derive(Debug, FromQueryResult, DerivePartialModel)]
+#[derive(Debug, DerivePartialModel)]
 #[sea_orm(entity = "bakery::Entity")]
 struct WrongBakery {
     id: String,
@@ -466,7 +694,7 @@ struct WrongBakery {
     title: String,
 }
 
-#[derive(Debug, FromQueryResult, DerivePartialModel)]
+#[derive(Debug, DerivePartialModel)]
 #[sea_orm(entity = "cake::Entity")]
 struct WrongCake {
     id: i32,

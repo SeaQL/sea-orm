@@ -1,6 +1,7 @@
 use sea_orm::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
-    ExecResult, IsolationLevel, QueryResult, Statement, TransactionError, TransactionTrait,
+    ExecResult, IsolationLevel, QueryResult, Schema, SchemaBuilder, Statement, TransactionError,
+    TransactionTrait,
 };
 use std::future::Future;
 use std::pin::Pin;
@@ -19,10 +20,10 @@ impl ConnectionTrait for SchemaManagerConnection<'_> {
         }
     }
 
-    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
+    async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
-            SchemaManagerConnection::Connection(conn) => conn.execute(stmt).await,
-            SchemaManagerConnection::Transaction(trans) => trans.execute(stmt).await,
+            SchemaManagerConnection::Connection(conn) => conn.execute_raw(stmt).await,
+            SchemaManagerConnection::Transaction(trans) => trans.execute_raw(stmt).await,
         }
     }
 
@@ -33,30 +34,25 @@ impl ConnectionTrait for SchemaManagerConnection<'_> {
         }
     }
 
-    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
+    async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
-            SchemaManagerConnection::Connection(conn) => conn.query_one(stmt).await,
-            SchemaManagerConnection::Transaction(trans) => trans.query_one(stmt).await,
+            SchemaManagerConnection::Connection(conn) => conn.query_one_raw(stmt).await,
+            SchemaManagerConnection::Transaction(trans) => trans.query_one_raw(stmt).await,
         }
     }
 
-    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+    async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         match self {
-            SchemaManagerConnection::Connection(conn) => conn.query_all(stmt).await,
-            SchemaManagerConnection::Transaction(trans) => trans.query_all(stmt).await,
-        }
-    }
-
-    fn is_mock_connection(&self) -> bool {
-        match self {
-            SchemaManagerConnection::Connection(conn) => conn.is_mock_connection(),
-            SchemaManagerConnection::Transaction(trans) => trans.is_mock_connection(),
+            SchemaManagerConnection::Connection(conn) => conn.query_all_raw(stmt).await,
+            SchemaManagerConnection::Transaction(trans) => trans.query_all_raw(stmt).await,
         }
     }
 }
 
 #[async_trait::async_trait]
 impl TransactionTrait for SchemaManagerConnection<'_> {
+    type Transaction = DatabaseTransaction;
+
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         match self {
             SchemaManagerConnection::Connection(conn) => conn.begin().await,
@@ -119,6 +115,53 @@ impl TransactionTrait for SchemaManagerConnection<'_> {
                     .await
             }
         }
+    }
+}
+
+#[cfg(feature = "sqlx-dep")]
+mod sea_schema_shim {
+    use super::{DatabaseConnection, DatabaseTransaction, SchemaManagerConnection};
+    use sea_orm::sea_query::SelectStatement;
+    use sea_schema::sqlx_types::{SqlxError, SqlxRow};
+
+    #[async_trait::async_trait]
+    impl sea_schema::Connection for SchemaManagerConnection<'_> {
+        async fn query_all(&self, select: SelectStatement) -> Result<Vec<SqlxRow>, SqlxError> {
+            match self {
+                Self::Connection(conn) => {
+                    <DatabaseConnection as sea_schema::Connection>::query_all(conn, select).await
+                }
+                Self::Transaction(txn) => {
+                    <DatabaseTransaction as sea_schema::Connection>::query_all(txn, select).await
+                }
+            }
+        }
+
+        async fn query_all_raw(&self, sql: String) -> Result<Vec<SqlxRow>, SqlxError> {
+            match self {
+                Self::Connection(conn) => {
+                    <DatabaseConnection as sea_schema::Connection>::query_all_raw(conn, sql).await
+                }
+                Self::Transaction(txn) => {
+                    <DatabaseTransaction as sea_schema::Connection>::query_all_raw(txn, sql).await
+                }
+            }
+        }
+    }
+}
+
+impl SchemaManagerConnection<'_> {
+    /// Creates a [`SchemaBuilder`] for this backend
+    pub fn get_schema_builder(&self) -> SchemaBuilder {
+        Schema::new(self.get_database_backend()).builder()
+    }
+
+    #[cfg(feature = "entity-registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "entity-registry")))]
+    /// Builds a schema for all the entites in the given module
+    pub fn get_schema_registry(&self, prefix: &str) -> SchemaBuilder {
+        let schema = Schema::new(self.get_database_backend());
+        sea_orm::EntityRegistry::build_schema(schema, prefix)
     }
 }
 

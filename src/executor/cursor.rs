@@ -1,11 +1,11 @@
 use crate::{
     ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IdentityOf, IntoIdentity,
-    PartialModelTrait, PrimaryKeyToColumn, QueryOrder, QuerySelect, Select, SelectModel,
-    SelectThree, SelectThreeModel, SelectTwo, SelectTwoModel, SelectorTrait,
+    PartialModelTrait, PrimaryKeyToColumn, QuerySelect, Select, SelectModel, SelectThree,
+    SelectThreeModel, SelectTwo, SelectTwoModel, SelectorTrait, Topology,
 };
 use sea_query::{
-    Condition, DynIden, Expr, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr, Value,
-    ValueTuple,
+    Condition, DynIden, Expr, ExprTrait, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr,
+    Value, ValueTuple,
 };
 use std::marker::PhantomData;
 use strum::IntoEnumIterator as Iterable;
@@ -36,8 +36,7 @@ impl<S> Cursor<S>
 where
     S: SelectorTrait,
 {
-    /// Create a new cursor
-    pub fn new<C>(query: SelectStatement, table: DynIden, order_columns: C) -> Self
+    pub(crate) fn new<C>(query: SelectStatement, table: DynIden, order_columns: C) -> Self
     where
         C: IntoIdentity,
     {
@@ -45,6 +44,7 @@ where
             query,
             table,
             order_columns: order_columns.into_identity(),
+            secondary_order_by: Default::default(),
             last: None,
             first: None,
             after: None,
@@ -52,7 +52,6 @@ where
             sort_asc: true,
             is_result_reversed: false,
             phantom: PhantomData,
-            secondary_order_by: Default::default(),
         }
     }
 
@@ -74,32 +73,36 @@ where
         self
     }
 
-    fn apply_filters(&mut self) -> &mut Self {
+    fn apply_filters(&mut self) -> Result<&mut Self, DbErr> {
         if let Some(values) = self.after.clone() {
+            if self.order_columns.arity() != values.arity() {
+                return Err(DbErr::KeyArityMismatch {
+                    expected: self.order_columns.arity() as u8,
+                    received: values.arity() as u8,
+                });
+            }
             let condition = self.apply_filter(values, |c, v| {
-                let exp = Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c)));
-                if self.sort_asc {
-                    exp.gt(v)
-                } else {
-                    exp.lt(v)
-                }
+                let exp = Expr::col((self.table.clone(), c.clone()));
+                if self.sort_asc { exp.gt(v) } else { exp.lt(v) }
             });
             self.query.cond_where(condition);
         }
 
         if let Some(values) = self.before.clone() {
+            if self.order_columns.arity() != values.arity() {
+                return Err(DbErr::KeyArityMismatch {
+                    expected: self.order_columns.arity() as u8,
+                    received: values.arity() as u8,
+                });
+            }
             let condition = self.apply_filter(values, |c, v| {
-                let exp = Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c)));
-                if self.sort_asc {
-                    exp.lt(v)
-                } else {
-                    exp.gt(v)
-                }
+                let exp = Expr::col((self.table.clone(), c.clone()));
+                if self.sort_asc { exp.lt(v) } else { exp.gt(v) }
             });
             self.query.cond_where(condition);
         }
 
-        self
+        Ok(self)
     }
 
     fn apply_filter<F>(&self, values: ValueTuple, f: F) -> Condition
@@ -111,28 +114,20 @@ where
             (Identity::Binary(c1, c2), ValueTuple::Two(v1, v2)) => Condition::any()
                 .add(
                     Condition::all()
-                        .add(
-                            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c1))).eq(v1.clone()),
-                        )
+                        .add(Expr::col((self.table.clone(), c1.clone())).eq(v1.clone()))
                         .add(f(c2, v2)),
                 )
                 .add(f(c1, v1)),
             (Identity::Ternary(c1, c2, c3), ValueTuple::Three(v1, v2, v3)) => Condition::any()
                 .add(
                     Condition::all()
-                        .add(
-                            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c1))).eq(v1.clone()),
-                        )
-                        .add(
-                            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c2))).eq(v2.clone()),
-                        )
+                        .add(Expr::col((self.table.clone(), c1.clone())).eq(v1.clone()))
+                        .add(Expr::col((self.table.clone(), c2.clone())).eq(v2.clone()))
                         .add(f(c3, v3)),
                 )
                 .add(
                     Condition::all()
-                        .add(
-                            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c1))).eq(v1.clone()),
-                        )
+                        .add(Expr::col((self.table.clone(), c1.clone())).eq(v1.clone()))
                         .add(f(c2, v2)),
                 )
                 .add(f(c1, v1)),
@@ -173,7 +168,7 @@ where
                                     // Construct a equal expression,
                                     // except for the last one being greater than or less than expression
                                     let expr = if i != (n - 1) {
-                                        Expr::col((SeaRc::clone(&self.table), SeaRc::clone(col)))
+                                        Expr::col((self.table.clone(), col.clone()))
                                             .eq(val)
                                     } else {
                                         f(col, val)
@@ -186,7 +181,7 @@ where
                         cond_any.add(inner_cond_all)
                     })
             }
-            _ => panic!("column arity mismatch"),
+            _ => unreachable!("checked by caller"),
         }
     }
 
@@ -242,8 +237,8 @@ where
         let ord = self.resolve_sort_order();
 
         let query = &mut self.query;
-        let order = |query: &mut SelectStatement, col| {
-            query.order_by((SeaRc::clone(&self.table), SeaRc::clone(col)), ord.clone());
+        let order = |query: &mut SelectStatement, col: &DynIden| {
+            query.order_by((self.table.clone(), col.clone()), ord.clone());
         };
         match &self.order_columns {
             Identity::Unary(c1) => {
@@ -281,10 +276,9 @@ where
     {
         self.apply_limit();
         self.apply_order_by();
-        self.apply_filters();
+        self.apply_filters()?;
 
-        let stmt = db.get_database_backend().build(&self.query);
-        let rows = db.query_all(stmt).await?;
+        let rows = db.query_all(&self.query).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
             buffer.push(S::from_raw_query_result(row)?);
@@ -304,6 +298,7 @@ where
             query: self.query,
             table: self.table,
             order_columns: self.order_columns,
+            secondary_order_by: self.secondary_order_by,
             last: self.last,
             first: self.first,
             after: self.after,
@@ -311,7 +306,6 @@ where
             sort_asc: self.sort_asc,
             is_result_reversed: self.is_result_reversed,
             phantom: PhantomData,
-            secondary_order_by: self.secondary_order_by,
         }
     }
 
@@ -330,6 +324,7 @@ where
             query: self.query,
             table: self.table,
             order_columns: self.order_columns,
+            secondary_order_by: self.secondary_order_by,
             last: self.last,
             first: self.first,
             after: self.after,
@@ -337,7 +332,6 @@ where
             sort_asc: self.sort_asc,
             is_result_reversed: self.is_result_reversed,
             phantom: PhantomData,
-            secondary_order_by: self.secondary_order_by,
         }
     }
 
@@ -349,17 +343,6 @@ where
 }
 
 impl<S> QuerySelect for Cursor<S>
-where
-    S: SelectorTrait,
-{
-    type QueryStatement = SelectStatement;
-
-    fn query(&mut self) -> &mut SelectStatement {
-        &mut self.query
-    }
-}
-
-impl<S> QueryOrder for Cursor<S>
 where
     S: SelectorTrait,
 {
@@ -408,7 +391,7 @@ where
     type Selector = SelectTwoModel<M, N>;
 }
 
-impl<E, F, G, M, N, O> CursorTrait for SelectThree<E, F, G>
+impl<E, F, G, M, N, O, TOP> CursorTrait for SelectThree<E, F, G, TOP>
 where
     E: EntityTrait<Model = M>,
     F: EntityTrait<Model = N>,
@@ -416,6 +399,7 @@ where
     M: FromQueryResult + Sized + Send + Sync,
     N: FromQueryResult + Sized + Send + Sync,
     O: FromQueryResult + Sized + Send + Sync,
+    TOP: Topology,
 {
     type Selector = SelectThreeModel<M, N, O>;
 }
@@ -472,7 +456,7 @@ where
     }
 }
 
-impl<E, F, G, M, N, O> SelectThree<E, F, G>
+impl<E, F, G, M, N, O, TOP> SelectThree<E, F, G, TOP>
 where
     E: EntityTrait<Model = M>,
     F: EntityTrait<Model = N>,
@@ -480,6 +464,7 @@ where
     M: FromQueryResult + Sized + Send + Sync,
     N: FromQueryResult + Sized + Send + Sync,
     O: FromQueryResult + Sized + Send + Sync,
+    TOP: Topology,
 {
     /// Convert into a cursor using column of first entity
     pub fn cursor_by<C>(self, order_columns: C) -> Cursor<SelectThreeModel<M, N, O>>
@@ -1369,12 +1354,14 @@ mod tests {
             }]])
             .into_connection();
 
-        assert!(!Entity::find()
-            .cursor_by((Column::Category, Column::Id))
-            .first(3)
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !Entity::find()
+                .cursor_by((Column::Category, Column::Id))
+                .first(3)
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -1406,13 +1393,15 @@ mod tests {
             }]])
             .into_connection();
 
-        assert!(!Entity::find()
-            .cursor_by((Column::Category, Column::Id))
-            .last(3)
-            .desc()
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !Entity::find()
+                .cursor_by((Column::Category, Column::Id))
+                .last(3)
+                .desc()
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -1444,13 +1433,15 @@ mod tests {
             }]])
             .into_connection();
 
-        assert!(!Entity::find()
-            .cursor_by((Column::Category, Column::Id))
-            .after(("A".to_owned(), 2))
-            .first(3)
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !Entity::find()
+                .cursor_by((Column::Category, Column::Id))
+                .after(("A".to_owned(), 2))
+                .first(3)
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -1479,6 +1470,35 @@ mod tests {
     }
 
     #[smol_potat::test]
+    async fn composite_keys_error() -> Result<(), DbErr> {
+        use test_entity::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[Model {
+                id: 1,
+                category: "CAT".into(),
+            }]])
+            .into_connection();
+
+        let result = Entity::find()
+            .cursor_by((Column::Category, Column::Id))
+            .after("A".to_owned())
+            .first(3)
+            .all(&db)
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(DbErr::KeyArityMismatch {
+                expected: 2,
+                received: 1,
+            })
+        ));
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
     async fn composite_keys_2_desc() -> Result<(), DbErr> {
         use test_entity::*;
 
@@ -1489,14 +1509,16 @@ mod tests {
             }]])
             .into_connection();
 
-        assert!(!Entity::find()
-            .cursor_by((Column::Category, Column::Id))
-            .before(("A".to_owned(), 2))
-            .last(3)
-            .desc()
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !Entity::find()
+                .cursor_by((Column::Category, Column::Id))
+                .before(("A".to_owned(), 2))
+                .last(3)
+                .desc()
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -1535,13 +1557,15 @@ mod tests {
             }]])
             .into_connection();
 
-        assert!(!Entity::find()
-            .cursor_by((Column::Category, Column::Id))
-            .before(("A".to_owned(), 2))
-            .last(3)
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !Entity::find()
+                .cursor_by((Column::Category, Column::Id))
+                .before(("A".to_owned(), 2))
+                .last(3)
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -1580,14 +1604,16 @@ mod tests {
             }]])
             .into_connection();
 
-        assert!(!Entity::find()
-            .cursor_by((Column::Category, Column::Id))
-            .after(("A".to_owned(), 2))
-            .first(3)
-            .desc()
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !Entity::find()
+                .cursor_by((Column::Category, Column::Id))
+                .after(("A".to_owned(), 2))
+                .first(3)
+                .desc()
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -1627,12 +1653,14 @@ mod tests {
             }]])
             .into_connection();
 
-        assert!(!Entity::find()
-            .cursor_by((Column::X, Column::Y, Column::Z))
-            .first(4)
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !Entity::find()
+                .cursor_by((Column::X, Column::Y, Column::Z))
+                .first(4)
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -1665,13 +1693,15 @@ mod tests {
             }]])
             .into_connection();
 
-        assert!(!Entity::find()
-            .cursor_by((Column::X, Column::Y, Column::Z))
-            .last(4)
-            .desc()
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !Entity::find()
+                .cursor_by((Column::X, Column::Y, Column::Z))
+                .last(4)
+                .desc()
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -1704,13 +1734,15 @@ mod tests {
             }]])
             .into_connection();
 
-        assert!(!Entity::find()
-            .cursor_by((Column::X, Column::Y, Column::Z))
-            .after(('x' as i32, "y".to_owned(), 'z' as i64))
-            .first(4)
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !Entity::find()
+                .cursor_by((Column::X, Column::Y, Column::Z))
+                .after(('x' as i32, "y".to_owned(), 'z' as i64))
+                .first(4)
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -1754,14 +1786,16 @@ mod tests {
             }]])
             .into_connection();
 
-        assert!(!Entity::find()
-            .cursor_by((Column::X, Column::Y, Column::Z))
-            .before(('x' as i32, "y".to_owned(), 'z' as i64))
-            .last(4)
-            .desc()
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !Entity::find()
+                .cursor_by((Column::X, Column::Y, Column::Z))
+                .before(('x' as i32, "y".to_owned(), 'z' as i64))
+                .last(4)
+                .desc()
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -1845,7 +1879,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4))
-                .after(("val_1", "val_2", "val_3", "val_4")).apply_limit().apply_order_by().apply_filters().query
+                .after(("val_1", "val_2", "val_3", "val_4")).apply_limit().apply_order_by().apply_filters()?.query
             ).to_string(),
             format!("{base_sql} {}", [
                 r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" > 'val_4')"#,
@@ -1860,7 +1894,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5))
-                .after(("val_1", "val_2", "val_3", "val_4", "val_5")).apply_limit().apply_order_by().apply_filters()
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5")).apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1877,7 +1911,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6))
-                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6")).apply_limit().apply_order_by().apply_filters()
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6")).apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1895,7 +1929,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7))
-                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7")).apply_limit().apply_order_by().apply_filters()
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7")).apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1914,7 +1948,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8))
-                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8")).apply_limit().apply_order_by().apply_filters()
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8")).apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1934,7 +1968,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8, Column::Col9))
-                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8", "val_9")).apply_limit().apply_order_by().apply_filters()
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8", "val_9")).apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1967,7 +2001,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4))
-                .before(("val_1", "val_2", "val_3", "val_4")).desc().apply_limit().apply_order_by().apply_filters().query
+                .before(("val_1", "val_2", "val_3", "val_4")).desc().apply_limit().apply_order_by().apply_filters()?.query
             ).to_string(),
             format!("{base_sql} {}", [
                 r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" > 'val_4')"#,
@@ -1982,7 +2016,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5))
-                .before(("val_1", "val_2", "val_3", "val_4", "val_5")).desc().apply_limit().apply_order_by().apply_filters()
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5")).desc().apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1999,7 +2033,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6))
-                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6")).desc().apply_limit().apply_order_by().apply_filters()
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6")).desc().apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -2017,7 +2051,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7))
-                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7")).desc().apply_limit().apply_order_by().apply_filters()
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7")).desc().apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -2036,7 +2070,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8))
-                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8")).desc().apply_limit().apply_order_by().apply_filters()
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8")).desc().apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -2056,7 +2090,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8, Column::Col9))
-                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8", "val_9")).desc().apply_limit().apply_order_by().apply_filters()
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8", "val_9")).desc().apply_limit().apply_order_by().apply_filters()?
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -2154,13 +2188,15 @@ mod tests {
             )]])
             .into_connection();
 
-        assert!(!test_base_entity::Entity::find()
-            .find_also_related(test_related_entity::Entity)
-            .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
-            .first(1)
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !test_base_entity::Entity::find()
+                .find_also_related(test_related_entity::Entity)
+                .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
+                .first(1)
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -2198,14 +2234,16 @@ mod tests {
             )]])
             .into_connection();
 
-        assert!(!test_base_entity::Entity::find()
-            .find_also_related(test_related_entity::Entity)
-            .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
-            .last(1)
-            .desc()
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !test_base_entity::Entity::find()
+                .find_also_related(test_related_entity::Entity)
+                .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
+                .last(1)
+                .desc()
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -2243,14 +2281,16 @@ mod tests {
             )]])
             .into_connection();
 
-        assert!(!test_base_entity::Entity::find()
-            .find_also_related(test_related_entity::Entity)
-            .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
-            .after((1, "C".to_string()))
-            .first(2)
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !test_base_entity::Entity::find()
+                .find_also_related(test_related_entity::Entity)
+                .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
+                .after((1, "C".to_string()))
+                .first(2)
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -2294,15 +2334,17 @@ mod tests {
             )]])
             .into_connection();
 
-        assert!(!test_base_entity::Entity::find()
-            .find_also_related(test_related_entity::Entity)
-            .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
-            .before((1, "C".to_string()))
-            .last(2)
-            .desc()
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !test_base_entity::Entity::find()
+                .find_also_related(test_related_entity::Entity)
+                .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
+                .before((1, "C".to_string()))
+                .last(2)
+                .desc()
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -2346,17 +2388,19 @@ mod tests {
             )]])
             .into_connection();
 
-        assert!(!test_base_entity::Entity::find()
-            .find_also_related(test_related_entity::Entity)
-            .cursor_by_other((
-                test_related_entity::Column::Id,
-                test_related_entity::Column::Name
-            ))
-            .after((1, "CAT".to_string()))
-            .first(2)
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !test_base_entity::Entity::find()
+                .find_also_related(test_related_entity::Entity)
+                .cursor_by_other((
+                    test_related_entity::Column::Id,
+                    test_related_entity::Column::Name
+                ))
+                .after((1, "CAT".to_string()))
+                .first(2)
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),
@@ -2400,18 +2444,20 @@ mod tests {
             )]])
             .into_connection();
 
-        assert!(!test_base_entity::Entity::find()
-            .find_also_related(test_related_entity::Entity)
-            .cursor_by_other((
-                test_related_entity::Column::Id,
-                test_related_entity::Column::Name
-            ))
-            .before((1, "CAT".to_string()))
-            .last(2)
-            .desc()
-            .all(&db)
-            .await?
-            .is_empty());
+        assert!(
+            !test_base_entity::Entity::find()
+                .find_also_related(test_related_entity::Entity)
+                .cursor_by_other((
+                    test_related_entity::Column::Id,
+                    test_related_entity::Column::Name
+                ))
+                .before((1, "CAT".to_string()))
+                .last(2)
+                .desc()
+                .all(&db)
+                .await?
+                .is_empty()
+        );
 
         assert_eq!(
             db.into_transaction_log(),

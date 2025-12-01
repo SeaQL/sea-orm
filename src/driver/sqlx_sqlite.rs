@@ -4,18 +4,18 @@ use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
+    Connection, Executor, Sqlite, SqlitePool,
     pool::PoolConnection,
     sqlite::{SqliteConnectOptions, SqliteQueryResult, SqliteRow},
-    Connection, Executor, Sqlite, SqlitePool,
 };
 
-use sea_query_binder::SqlxValues;
+use sea_query_sqlx::SqlxValues;
 use tracing::{instrument, warn};
 
 use crate::{
-    debug_print, error::*, executor::*, sqlx_error_to_exec_err, AccessMode, ConnectOptions,
-    DatabaseConnection, DatabaseTransaction, IsolationLevel, QueryStream, Statement,
-    TransactionError,
+    AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
+    IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
+    sqlx_error_to_exec_err,
 };
 
 use super::sqlx_common::*;
@@ -48,7 +48,7 @@ impl From<SqlitePool> for SqlxSqlitePoolConnection {
 
 impl From<SqlitePool> for DatabaseConnection {
     fn from(pool: SqlitePool) -> Self {
-        DatabaseConnection::SqlxSqlitePoolConnection(pool.into())
+        DatabaseConnectionType::SqlxSqlitePoolConnection(pool.into()).into()
     }
 }
 
@@ -62,20 +62,20 @@ impl SqlxSqliteConnector {
     #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let mut options = options;
-        let mut opt = options
+        let mut sqlx_opts = options
             .url
             .parse::<SqliteConnectOptions>()
             .map_err(sqlx_error_to_conn_err)?;
         if let Some(sqlcipher_key) = &options.sqlcipher_key {
-            opt = opt.pragma("key", sqlcipher_key.clone());
+            sqlx_opts = sqlx_opts.pragma("key", sqlcipher_key.clone());
         }
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
-            opt = opt.disable_statement_logging();
+            sqlx_opts = sqlx_opts.disable_statement_logging();
         } else {
-            opt = opt.log_statements(options.sqlx_logging_level);
+            sqlx_opts = sqlx_opts.log_statements(options.sqlx_logging_level);
             if options.sqlx_slow_statements_logging_level != LevelFilter::Off {
-                opt = opt.log_slow_statements(
+                sqlx_opts = sqlx_opts.log_slow_statements(
                     options.sqlx_slow_statements_logging_level,
                     options.sqlx_slow_statements_logging_threshold,
                 );
@@ -86,12 +86,18 @@ impl SqlxSqliteConnector {
             options.max_connections(1);
         }
 
+        if let Some(f) = &options.sqlite_opts_fn {
+            sqlx_opts = f(sqlx_opts);
+        }
+
+        let after_conn = options.after_connect.clone();
+
         let pool = if options.connect_lazy {
-            options.sqlx_pool_options().connect_lazy_with(opt)
+            options.sqlx_pool_options().connect_lazy_with(sqlx_opts)
         } else {
             options
                 .sqlx_pool_options()
-                .connect_with(opt)
+                .connect_with(sqlx_opts)
                 .await
                 .map_err(sqlx_error_to_conn_err)?
         };
@@ -107,17 +113,25 @@ impl SqlxSqliteConnector {
             ensure_returning_version(&version)?;
         }
 
-        Ok(DatabaseConnection::SqlxSqlitePoolConnection(pool))
+        let conn: DatabaseConnection =
+            DatabaseConnectionType::SqlxSqlitePoolConnection(pool).into();
+
+        if let Some(cb) = after_conn {
+            cb(conn.clone()).await?;
+        }
+
+        Ok(conn)
     }
 }
 
 impl SqlxSqliteConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_sqlite_pool(pool: SqlitePool) -> DatabaseConnection {
-        DatabaseConnection::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection {
+        DatabaseConnectionType::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection {
             pool,
             metric_callback: None,
         })
+        .into()
     }
 }
 
@@ -404,56 +418,90 @@ pub(crate) fn from_sqlx_sqlite_row_to_proxy_row(row: &sqlx::sqlite::SqliteRow) -
                 (
                     c.name().to_string(),
                     match c.type_info().name() {
-                        "BOOLEAN" => Value::Bool(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get boolean"),
-                        )),
+                        "BOOLEAN" => {
+                            Value::Bool(row.try_get(c.ordinal()).expect("Failed to get boolean"))
+                        }
 
-                        "INTEGER" => Value::Int(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get integer"),
-                        )),
+                        "INTEGER" => {
+                            Value::Int(row.try_get(c.ordinal()).expect("Failed to get integer"))
+                        }
 
-                        "BIGINT" | "INT8" => Value::BigInt(Some(
+                        "BIGINT" | "INT8" => Value::BigInt(
                             row.try_get(c.ordinal()).expect("Failed to get big integer"),
-                        )),
+                        ),
 
-                        "REAL" => Value::Double(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get double"),
-                        )),
+                        "REAL" => {
+                            Value::Double(row.try_get(c.ordinal()).expect("Failed to get double"))
+                        }
 
-                        "TEXT" => Value::String(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get string"),
-                        ))),
+                        "TEXT" => Value::String(
+                            row.try_get::<Option<String>, _>(c.ordinal())
+                                .expect("Failed to get string")
+                                .map(Box::new),
+                        ),
 
-                        "BLOB" => Value::Bytes(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get bytes"),
-                        ))),
-
-                        #[cfg(feature = "with-chrono")]
-                        "DATETIME" => Value::ChronoDateTimeUtc(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timestamp"),
-                        ))),
-                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "DATETIME" => Value::TimeDateTimeWithTimeZone(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timestamp"),
-                        ))),
+                        "BLOB" => Value::Bytes(
+                            row.try_get::<Option<Vec<u8>>, _>(c.ordinal())
+                                .expect("Failed to get bytes")
+                                .map(Box::new),
+                        ),
 
                         #[cfg(feature = "with-chrono")]
-                        "DATE" => Value::ChronoDate(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get date"),
-                        ))),
+                        "DATETIME" => {
+                            use chrono::{DateTime, Utc};
+
+                            Value::ChronoDateTimeUtc(
+                                row.try_get::<Option<DateTime<Utc>>, _>(c.ordinal())
+                                    .expect("Failed to get timestamp")
+                                    .map(Box::new),
+                            )
+                        }
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "DATE" => Value::TimeDate(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get date"),
-                        ))),
+                        "DATETIME" => {
+                            use time::OffsetDateTime;
+                            Value::TimeDateTimeWithTimeZone(
+                                row.try_get::<Option<OffsetDateTime>, _>(c.ordinal())
+                                    .expect("Failed to get timestamp")
+                                    .map(Box::new),
+                            )
+                        }
+                        #[cfg(feature = "with-chrono")]
+                        "DATE" => {
+                            use chrono::NaiveDate;
+                            Value::ChronoDate(
+                                row.try_get::<Option<NaiveDate>, _>(c.ordinal())
+                                    .expect("Failed to get date")
+                                    .map(Box::new),
+                            )
+                        }
+                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
+                        "DATE" => {
+                            use time::Date;
+                            Value::TimeDate(
+                                row.try_get::<Option<Date>, _>(c.ordinal())
+                                    .expect("Failed to get date")
+                                    .map(Box::new),
+                            )
+                        }
 
                         #[cfg(feature = "with-chrono")]
-                        "TIME" => Value::ChronoTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get time"),
-                        ))),
+                        "TIME" => {
+                            use chrono::NaiveTime;
+                            Value::ChronoTime(
+                                row.try_get::<Option<NaiveTime>, _>(c.ordinal())
+                                    .expect("Failed to get time")
+                                    .map(Box::new),
+                            )
+                        }
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIME" => Value::TimeTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get time"),
-                        ))),
+                        "TIME" => {
+                            use time::Time;
+                            Value::TimeTime(
+                                row.try_get::<Option<Time>, _>(c.ordinal())
+                                    .expect("Failed to get time")
+                                    .map(Box::new),
+                            )
+                        }
 
                         _ => unreachable!("Unknown column type: {}", c.type_info().name()),
                     },

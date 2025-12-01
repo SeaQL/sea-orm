@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, ProxyDatabaseTrait,
-    QueryResult, Statement,
+    DatabaseConnection, DatabaseConnectionType, DbBackend, ExecResult, ProxyDatabaseTrait,
+    QueryResult, Statement, debug_print, error::*,
 };
 use std::{fmt::Debug, sync::Arc};
 use tracing::instrument;
@@ -31,9 +31,12 @@ impl ProxyDatabaseConnector {
         db_type: DbBackend,
         func: Arc<Box<dyn ProxyDatabaseTrait>>,
     ) -> Result<DatabaseConnection, DbErr> {
-        Ok(DatabaseConnection::ProxyDatabaseConnection(Arc::new(
-            ProxyDatabaseConnection::new(db_type, func),
-        )))
+        Ok(
+            DatabaseConnectionType::ProxyDatabaseConnection(Arc::new(
+                ProxyDatabaseConnection::new(db_type, func),
+            ))
+            .into(),
+        )
     }
 }
 

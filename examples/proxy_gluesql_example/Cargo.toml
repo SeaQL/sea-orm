@@ -2,7 +2,8 @@
 name = "sea-orm-proxy-gluesql-example"
 version = "0.1.0"
 authors = ["Langyo <langyo.china@gmail.com>"]
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 publish = false
 
 [workspace]
@@ -17,10 +18,8 @@ futures-util = { version = "0.3" }
 async-trait = { version = "0.1" }
 
 sqlparser = "0.40"
-sea-orm = { path = "../../", features = ["proxy", "debug-print"] }
-gluesql = { version = "0.15", default-features = false, features = [
-  "memory-storage",
-] }
+sea-orm = { path = "../../", default-features = false, features = ["macros", "proxy", "debug-print"] }
+gluesql = { version = "0.15", default-features = false, features = ["memory-storage"] }
 
 [dev-dependencies]
 smol = { version = "1.2" }

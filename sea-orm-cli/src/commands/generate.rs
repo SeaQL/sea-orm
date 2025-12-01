@@ -1,13 +1,13 @@
+use crate::{BigIntegerType, DateTimeCrate, GenerateSubcommands};
 use core::time;
 use sea_orm_codegen::{
-    DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
-    WithPrelude, WithSerde,
+    BigIntegerType as CodegenBigIntegerType, DateTimeCrate as CodegenDateTimeCrate, EntityFormat,
+    EntityTransformer, EntityWriterContext, MergeReport, OutputFile, WithPrelude, WithSerde,
+    merge_entity_files,
 };
-use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
-use tracing_subscriber::{prelude::*, EnvFilter};
+use std::{error::Error, fs, path::Path, process::Command, str::FromStr};
+use tracing_subscriber::{EnvFilter, prelude::*};
 use url::Url;
-
-use crate::{DateTimeCrate, GenerateSubcommands};
 
 pub async fn run_generate_command(
     command: GenerateSubcommands,
@@ -15,8 +15,10 @@ pub async fn run_generate_command(
 ) -> Result<(), Box<dyn Error>> {
     match command {
         GenerateSubcommands::Entity {
+            entity_format,
             compact_format: _,
             expanded_format,
+            frontend_format,
             include_hidden_tables,
             tables,
             ignore_tables,
@@ -31,13 +33,16 @@ pub async fn run_generate_command(
             serde_skip_hidden_column,
             with_copy_enums,
             date_time_crate,
+            big_integer_type,
             lib,
             model_extra_derives,
             model_extra_attributes,
             enum_extra_derives,
             enum_extra_attributes,
+            column_extra_derives,
             seaography,
             impl_active_model_behavior,
+            preserve_user_modifications,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -217,11 +222,20 @@ pub async fn run_generate_command(
             println!("... discovered.");
 
             let writer_context = EntityWriterContext::new(
-                expanded_format,
+                if expanded_format {
+                    EntityFormat::Expanded
+                } else if frontend_format {
+                    EntityFormat::Frontend
+                } else if let Some(entity_format) = entity_format {
+                    EntityFormat::from_str(&entity_format).expect("Invalid entity-format option")
+                } else {
+                    EntityFormat::default()
+                },
                 WithPrelude::from_str(&with_prelude).expect("Invalid prelude option"),
                 WithSerde::from_str(&with_serde).expect("Invalid serde derive option"),
                 with_copy_enums,
                 date_time_crate.into(),
+                big_integer_type.into(),
                 schema_name,
                 lib,
                 serde_skip_deserializing_primary_key,
@@ -230,6 +244,7 @@ pub async fn run_generate_command(
                 model_extra_attributes,
                 enum_extra_derives,
                 enum_extra_attributes,
+                column_extra_derives,
                 seaography,
                 impl_active_model_behavior,
             );
@@ -238,11 +253,40 @@ pub async fn run_generate_command(
             let dir = Path::new(&output_dir);
             fs::create_dir_all(dir)?;
 
+            let mut merge_fallback_files: Vec<String> = Vec::new();
+
             for OutputFile { name, content } in output.files.iter() {
                 let file_path = dir.join(name);
                 println!("Writing {}", file_path.display());
-                let mut file = fs::File::create(file_path)?;
-                file.write_all(content.as_bytes())?;
+
+                if !matches!(
+                    name.as_str(),
+                    "mod.rs" | "lib.rs" | "prelude.rs" | "sea_orm_active_enums.rs"
+                ) && file_path.exists()
+                    && preserve_user_modifications
+                {
+                    let prev_content = fs::read_to_string(&file_path)?;
+                    match merge_entity_files(&prev_content, content) {
+                        Ok(merged) => {
+                            fs::write(file_path, merged)?;
+                        }
+                        Err(MergeReport {
+                            output,
+                            warnings,
+                            fallback_applied,
+                        }) => {
+                            for message in warnings {
+                                eprintln!("{message}");
+                            }
+                            fs::write(file_path, output)?;
+                            if fallback_applied {
+                                merge_fallback_files.push(name.clone());
+                            }
+                        }
+                    }
+                } else {
+                    fs::write(file_path, content)?;
+                };
             }
 
             // Format each of the files
@@ -254,7 +298,16 @@ pub async fn run_generate_command(
                 }
             }
 
-            println!("... Done.");
+            if merge_fallback_files.is_empty() {
+                println!("... Done.");
+            } else {
+                return Err(format!(
+                    "Merge fallback applied for {} file(s): \n{}",
+                    merge_fallback_files.len(),
+                    merge_fallback_files.join("\n")
+                )
+                .into());
+            }
         }
     }
 
@@ -295,6 +348,15 @@ impl From<DateTimeCrate> for CodegenDateTimeCrate {
         match date_time_crate {
             DateTimeCrate::Chrono => CodegenDateTimeCrate::Chrono,
             DateTimeCrate::Time => CodegenDateTimeCrate::Time,
+        }
+    }
+}
+
+impl From<BigIntegerType> for CodegenBigIntegerType {
+    fn from(date_time_crate: BigIntegerType) -> CodegenBigIntegerType {
+        match date_time_crate {
+            BigIntegerType::I64 => CodegenBigIntegerType::I64,
+            BigIntegerType::I32 => CodegenBigIntegerType::I32,
         }
     }
 }
@@ -359,25 +421,6 @@ mod tests {
             "entity",
             "--database-url",
             "mysql://root:root@localhost:3306/",
-        ]);
-
-        match cli.command {
-            Commands::Generate { command } => {
-                smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: PoolTimedOut")]
-    fn test_generate_entity_no_password() {
-        let cli = Cli::parse_from([
-            "sea-orm-cli",
-            "generate",
-            "entity",
-            "--database-url",
-            "mysql://root:@localhost:3306/database",
         ]);
 
         match cli.command {

@@ -5,7 +5,7 @@ use quote::quote;
 use sea_query::ColumnType;
 
 use crate::{
-    util::escape_rust_keyword, Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation,
+    Column, ColumnOption, ConjunctRelation, PrimaryKey, Relation, util::escape_rust_keyword,
 };
 
 #[derive(Clone, Debug)]
@@ -48,11 +48,11 @@ impl Entity {
             .collect()
     }
 
-    pub fn get_column_rs_types(&self, date_time_crate: &DateTimeCrate) -> Vec<TokenStream> {
+    pub fn get_column_rs_types(&self, opt: &ColumnOption) -> Vec<TokenStream> {
         self.columns
             .clone()
             .into_iter()
-            .map(|col| col.get_rs_type(date_time_crate))
+            .map(|col| col.get_rs_type(opt))
             .collect()
     }
 
@@ -120,6 +120,36 @@ impl Entity {
         self.relations.iter().map(|rel| rel.get_attrs()).collect()
     }
 
+    /// Trimmed get_related_entity_attrs down to just the entity module
+    pub fn get_related_entity_modules(&self) -> Vec<Ident> {
+        // 1st step get conjunct relations data
+        let conjunct_related_attrs = self
+            .conjunct_relations
+            .iter()
+            .map(|conj| conj.get_to_snake_case());
+
+        // helper function that generates attributes for `Relation` data
+        let produce_relation_attrs = |rel: &Relation, _reverse: bool| match rel.get_module_name() {
+            Some(module_name) => module_name,
+            None => format_ident!("self"),
+        };
+
+        // 2nd step get reverse self relations data
+        let self_relations_reverse_attrs = self
+            .relations
+            .iter()
+            .filter(|rel| rel.self_referencing)
+            .map(|rel| produce_relation_attrs(rel, true));
+
+        // 3rd step get normal relations data
+        self.relations
+            .iter()
+            .map(|rel| produce_relation_attrs(rel, false))
+            .chain(self_relations_reverse_attrs)
+            .chain(conjunct_related_attrs)
+            .collect()
+    }
+
     /// Used to generate the attributes for the `enum RelatedEntity` that is useful to the Seaography project
     pub fn get_related_entity_attrs(&self) -> Vec<TokenStream> {
         // 1st step get conjunct relations data
@@ -136,7 +166,7 @@ impl Entity {
         // helper function that generates attributes for `Relation` data
         let produce_relation_attrs = |rel: &Relation, reverse: bool| {
             let entity = match rel.get_module_name() {
-                Some(module_name) => format!("super::{}::Entity", module_name),
+                Some(module_name) => format!("super::{module_name}::Entity"),
                 None => String::from("Entity"),
             };
 
@@ -183,7 +213,7 @@ impl Entity {
         format_ident!("{}", auto_increment)
     }
 
-    pub fn get_primary_key_rs_type(&self, date_time_crate: &DateTimeCrate) -> TokenStream {
+    pub fn get_primary_key_rs_type(&self, opt: &ColumnOption) -> TokenStream {
         let types = self
             .primary_keys
             .iter()
@@ -192,7 +222,7 @@ impl Entity {
                     .iter()
                     .find(|col| col.name.eq(&primary_key.name))
                     .unwrap()
-                    .get_rs_type(date_time_crate)
+                    .get_rs_type(opt)
                     .to_string()
             })
             .collect::<Vec<_>>();
@@ -270,7 +300,7 @@ mod tests {
     use quote::{format_ident, quote};
     use sea_query::{ColumnType, ForeignKeyAction, StringLen};
 
-    use crate::{Column, DateTimeCrate, Entity, PrimaryKey, Relation, RelationType};
+    use crate::{Column, ColumnOption, Entity, PrimaryKey, Relation, RelationType};
 
     fn setup() -> Entity {
         Entity {
@@ -282,6 +312,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    unique_key: None,
                 },
                 Column {
                     name: "name".to_owned(),
@@ -289,6 +320,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    unique_key: None,
                 },
             ],
             relations: vec![
@@ -380,17 +412,12 @@ mod tests {
     #[test]
     fn test_get_column_rs_types() {
         let entity = setup();
+        let opt = ColumnOption::default();
 
-        for (i, elem) in entity
-            .get_column_rs_types(&DateTimeCrate::Chrono)
-            .into_iter()
-            .enumerate()
-        {
+        for (i, elem) in entity.get_column_rs_types(&opt).into_iter().enumerate() {
             assert_eq!(
                 elem.to_string(),
-                entity.columns[i]
-                    .get_rs_type(&DateTimeCrate::Chrono)
-                    .to_string()
+                entity.columns[i].get_rs_type(&opt).to_string()
             );
         }
     }
@@ -488,14 +515,11 @@ mod tests {
     #[test]
     fn test_get_primary_key_rs_type() {
         let entity = setup();
+        let opt = Default::default();
 
         assert_eq!(
-            entity
-                .get_primary_key_rs_type(&DateTimeCrate::Chrono)
-                .to_string(),
-            entity.columns[0]
-                .get_rs_type(&DateTimeCrate::Chrono)
-                .to_string()
+            entity.get_primary_key_rs_type(&opt).to_string(),
+            entity.columns[0].get_rs_type(&opt).to_string()
         );
     }
 

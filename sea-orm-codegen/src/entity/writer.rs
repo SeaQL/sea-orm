@@ -1,10 +1,15 @@
-use crate::{util::escape_rust_keyword, ActiveEnum, Entity};
+use crate::{ActiveEnum, ColumnOption, Entity, util::escape_rust_keyword};
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use std::{collections::BTreeMap, str::FromStr};
 use syn::{punctuated::Punctuated, token::Comma};
 use tracing::info;
+
+mod compact;
+mod dense;
+mod expanded;
+mod frontend;
 
 #[derive(Clone, Debug)]
 pub struct EntityWriter {
@@ -21,7 +26,7 @@ pub struct OutputFile {
     pub content: String,
 }
 
-#[derive(Default, PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
 pub enum WithPrelude {
     #[default]
     All,
@@ -29,27 +34,46 @@ pub enum WithPrelude {
     AllAllowUnusedImports,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
 pub enum WithSerde {
+    #[default]
     None,
     Serialize,
     Deserialize,
     Both,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
 pub enum DateTimeCrate {
+    #[default]
     Chrono,
     Time,
 }
 
+#[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
+pub enum BigIntegerType {
+    #[default]
+    I64,
+    I32,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
+pub enum EntityFormat {
+    #[default]
+    Compact,
+    Expanded,
+    Frontend,
+    Dense,
+}
+
 #[derive(Debug)]
 pub struct EntityWriterContext {
-    pub(crate) expanded_format: bool,
+    pub(crate) entity_format: EntityFormat,
     pub(crate) with_prelude: WithPrelude,
     pub(crate) with_serde: WithSerde,
     pub(crate) with_copy_enums: bool,
     pub(crate) date_time_crate: DateTimeCrate,
+    pub(crate) big_integer_type: BigIntegerType,
     pub(crate) schema_name: Option<String>,
     pub(crate) lib: bool,
     pub(crate) serde_skip_hidden_column: bool,
@@ -58,6 +82,7 @@ pub struct EntityWriterContext {
     pub(crate) model_extra_attributes: TokenStream,
     pub(crate) enum_extra_derives: TokenStream,
     pub(crate) enum_extra_attributes: TokenStream,
+    pub(crate) column_extra_derives: TokenStream,
     pub(crate) seaography: bool,
     pub(crate) impl_active_model_behavior: bool,
 }
@@ -135,7 +160,25 @@ impl FromStr for WithPrelude {
             v => {
                 return Err(crate::Error::TransformError(format!(
                     "Unsupported enum variant '{v}'"
-                )))
+                )));
+            }
+        })
+    }
+}
+
+impl FromStr for EntityFormat {
+    type Err = crate::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "compact" => Self::Compact,
+            "expanded" => Self::Expanded,
+            "frontend" => Self::Frontend,
+            "dense" => Self::Dense,
+            v => {
+                return Err(crate::Error::TransformError(format!(
+                    "Unsupported enum variant '{v}'"
+                )));
             }
         })
     }
@@ -153,7 +196,7 @@ impl FromStr for WithSerde {
             v => {
                 return Err(crate::Error::TransformError(format!(
                     "Unsupported enum variant '{v}'"
-                )))
+                )));
             }
         })
     }
@@ -162,11 +205,12 @@ impl FromStr for WithSerde {
 impl EntityWriterContext {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        expanded_format: bool,
+        entity_format: EntityFormat,
         with_prelude: WithPrelude,
         with_serde: WithSerde,
         with_copy_enums: bool,
         date_time_crate: DateTimeCrate,
+        big_integer_type: BigIntegerType,
         schema_name: Option<String>,
         lib: bool,
         serde_skip_deserializing_primary_key: bool,
@@ -175,15 +219,17 @@ impl EntityWriterContext {
         model_extra_attributes: Vec<String>,
         enum_extra_derives: Vec<String>,
         enum_extra_attributes: Vec<String>,
+        column_extra_derives: Vec<String>,
         seaography: bool,
         impl_active_model_behavior: bool,
     ) -> Self {
         Self {
-            expanded_format,
+            entity_format,
             with_prelude,
             with_serde,
             with_copy_enums,
             date_time_crate,
+            big_integer_type,
             schema_name,
             lib,
             serde_skip_deserializing_primary_key,
@@ -192,8 +238,16 @@ impl EntityWriterContext {
             model_extra_attributes: bonus_attributes(model_extra_attributes),
             enum_extra_derives: bonus_derive(enum_extra_derives),
             enum_extra_attributes: bonus_attributes(enum_extra_attributes),
+            column_extra_derives: bonus_derive(column_extra_derives),
             seaography,
             impl_active_model_behavior,
+        }
+    }
+
+    fn column_option(&self) -> ColumnOption {
+        ColumnOption {
+            date_time_crate: self.date_time_crate,
+            big_integer_type: self.big_integer_type,
         }
     }
 }
@@ -205,7 +259,7 @@ impl EntityWriter {
         let with_prelude = context.with_prelude != WithPrelude::None;
         files.push(self.write_index_file(context.lib, with_prelude, context.seaography));
         if with_prelude {
-            files.push(self.write_prelude(context.with_prelude));
+            files.push(self.write_prelude(context.with_prelude, context.entity_format));
         }
         if !self.enums.is_empty() {
             files.push(self.write_sea_orm_active_enums(
@@ -213,6 +267,7 @@ impl EntityWriter {
                 context.with_copy_enums,
                 &context.enum_extra_derives,
                 &context.enum_extra_attributes,
+                context.entity_format,
             ));
         }
         WriterOutput { files }
@@ -226,7 +281,7 @@ impl EntityWriter {
                 let column_info = entity
                     .columns
                     .iter()
-                    .map(|column| column.get_info(&context.date_time_crate))
+                    .map(|column| column.get_info(&context.column_option()))
                     .collect::<Vec<String>>();
                 // Serde must be enabled to use this
                 let serde_skip_deserializing_primary_key = context
@@ -245,16 +300,45 @@ impl EntityWriter {
 
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
-                let code_blocks = if context.expanded_format {
-                    Self::gen_expanded_code_blocks(
+                let code_blocks = if context.entity_format == EntityFormat::Frontend {
+                    Self::gen_frontend_code_blocks(
                         entity,
                         &context.with_serde,
-                        &context.date_time_crate,
+                        &context.column_option(),
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
                         serde_skip_hidden_column,
                         &context.model_extra_derives,
                         &context.model_extra_attributes,
+                        &context.column_extra_derives,
+                        context.seaography,
+                        context.impl_active_model_behavior,
+                    )
+                } else if context.entity_format == EntityFormat::Expanded {
+                    Self::gen_expanded_code_blocks(
+                        entity,
+                        &context.with_serde,
+                        &context.column_option(),
+                        &context.schema_name,
+                        serde_skip_deserializing_primary_key,
+                        serde_skip_hidden_column,
+                        &context.model_extra_derives,
+                        &context.model_extra_attributes,
+                        &context.column_extra_derives,
+                        context.seaography,
+                        context.impl_active_model_behavior,
+                    )
+                } else if context.entity_format == EntityFormat::Dense {
+                    Self::gen_dense_code_blocks(
+                        entity,
+                        &context.with_serde,
+                        &context.column_option(),
+                        &context.schema_name,
+                        serde_skip_deserializing_primary_key,
+                        serde_skip_hidden_column,
+                        &context.model_extra_derives,
+                        &context.model_extra_attributes,
+                        &context.column_extra_derives,
                         context.seaography,
                         context.impl_active_model_behavior,
                     )
@@ -262,12 +346,13 @@ impl EntityWriter {
                     Self::gen_compact_code_blocks(
                         entity,
                         &context.with_serde,
-                        &context.date_time_crate,
+                        &context.column_option(),
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
                         serde_skip_hidden_column,
                         &context.model_extra_derives,
                         &context.model_extra_attributes,
+                        &context.column_extra_derives,
                         context.seaography,
                         context.impl_active_model_behavior,
                     )
@@ -321,13 +406,27 @@ impl EntityWriter {
         }
     }
 
-    pub fn write_prelude(&self, with_prelude: WithPrelude) -> OutputFile {
+    pub fn write_prelude(
+        &self,
+        with_prelude: WithPrelude,
+        entity_format: EntityFormat,
+    ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
         if with_prelude == WithPrelude::AllAllowUnusedImports {
             Self::write_allow_unused_imports(&mut lines)
         }
-        let code_blocks = self.entities.iter().map(Self::gen_prelude_use).collect();
+        let code_blocks = self
+            .entities
+            .iter()
+            .map({
+                if entity_format == EntityFormat::Frontend {
+                    Self::gen_prelude_use_model
+                } else {
+                    Self::gen_prelude_use
+                }
+            })
+            .collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
             name: "prelude.rs".to_owned(),
@@ -341,10 +440,15 @@ impl EntityWriter {
         with_copy_enums: bool,
         extra_derives: &TokenStream,
         extra_attributes: &TokenStream,
+        entity_format: EntityFormat,
     ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        Self::write(&mut lines, vec![Self::gen_import(with_serde)]);
+        if entity_format == EntityFormat::Frontend {
+            Self::write(&mut lines, vec![Self::gen_import_serde(with_serde)]);
+        } else {
+            Self::write(&mut lines, vec![Self::gen_import(with_serde)]);
+        }
         lines.push("".to_owned());
         let code_blocks = self
             .enums
@@ -355,6 +459,7 @@ impl EntityWriter {
                     with_copy_enums,
                     extra_derives,
                     extra_attributes,
+                    entity_format,
                 )
             })
             .collect();
@@ -388,114 +493,29 @@ impl EntityWriter {
         lines.push("".to_owned());
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn gen_expanded_code_blocks(
-        entity: &Entity,
-        with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
-        schema_name: &Option<String>,
-        serde_skip_deserializing_primary_key: bool,
-        serde_skip_hidden_column: bool,
-        model_extra_derives: &TokenStream,
-        model_extra_attributes: &TokenStream,
-        seaography: bool,
-        impl_active_model_behavior: bool,
-    ) -> Vec<TokenStream> {
-        let mut imports = Self::gen_import(with_serde);
-        imports.extend(Self::gen_import_active_enum(entity));
-        let mut code_blocks = vec![
-            imports,
-            Self::gen_entity_struct(),
-            Self::gen_impl_entity_name(entity, schema_name),
-            Self::gen_model_struct(
-                entity,
-                with_serde,
-                date_time_crate,
-                serde_skip_deserializing_primary_key,
-                serde_skip_hidden_column,
-                model_extra_derives,
-                model_extra_attributes,
-            ),
-            Self::gen_column_enum(entity),
-            Self::gen_primary_key_enum(entity),
-            Self::gen_impl_primary_key(entity, date_time_crate),
-            Self::gen_relation_enum(entity),
-            Self::gen_impl_column_trait(entity),
-            Self::gen_impl_relation_trait(entity),
-        ];
-        code_blocks.extend(Self::gen_impl_related(entity));
-        code_blocks.extend(Self::gen_impl_conjunct_related(entity));
-        if impl_active_model_behavior {
-            code_blocks.extend([Self::impl_active_model_behavior()]);
-        }
-        if seaography {
-            code_blocks.extend([Self::gen_related_entity(entity)]);
-        }
-        code_blocks
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn gen_compact_code_blocks(
-        entity: &Entity,
-        with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
-        schema_name: &Option<String>,
-        serde_skip_deserializing_primary_key: bool,
-        serde_skip_hidden_column: bool,
-        model_extra_derives: &TokenStream,
-        model_extra_attributes: &TokenStream,
-        seaography: bool,
-        impl_active_model_behavior: bool,
-    ) -> Vec<TokenStream> {
-        let mut imports = Self::gen_import(with_serde);
-        imports.extend(Self::gen_import_active_enum(entity));
-        let mut code_blocks = vec![
-            imports,
-            Self::gen_compact_model_struct(
-                entity,
-                with_serde,
-                date_time_crate,
-                schema_name,
-                serde_skip_deserializing_primary_key,
-                serde_skip_hidden_column,
-                model_extra_derives,
-                model_extra_attributes,
-            ),
-            Self::gen_compact_relation_enum(entity),
-        ];
-        code_blocks.extend(Self::gen_impl_related(entity));
-        code_blocks.extend(Self::gen_impl_conjunct_related(entity));
-        if impl_active_model_behavior {
-            code_blocks.extend([Self::impl_active_model_behavior()]);
-        }
-        if seaography {
-            code_blocks.extend([Self::gen_related_entity(entity)]);
-        }
-        code_blocks
-    }
-
     pub fn gen_import(with_serde: &WithSerde) -> TokenStream {
-        let prelude_import = quote!(
+        let serde_import = Self::gen_import_serde(with_serde);
+        quote! {
             use sea_orm::entity::prelude::*;
-        );
+            #serde_import
+        }
+    }
 
+    pub fn gen_import_serde(with_serde: &WithSerde) -> TokenStream {
         match with_serde {
-            WithSerde::None => prelude_import,
+            WithSerde::None => Default::default(),
             WithSerde::Serialize => {
                 quote! {
-                    #prelude_import
                     use serde::Serialize;
                 }
             }
             WithSerde::Deserialize => {
                 quote! {
-                    #prelude_import
                     use serde::Deserialize;
                 }
             }
             WithSerde::Both => {
                 quote! {
-                    #prelude_import
                     use serde::{Deserialize,Serialize};
                 }
             }
@@ -555,37 +575,7 @@ impl EntityWriter {
             .0
     }
 
-    pub fn gen_model_struct(
-        entity: &Entity,
-        with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
-        serde_skip_deserializing_primary_key: bool,
-        serde_skip_hidden_column: bool,
-        model_extra_derives: &TokenStream,
-        model_extra_attributes: &TokenStream,
-    ) -> TokenStream {
-        let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types(date_time_crate);
-        let if_eq_needed = entity.get_eq_needed();
-        let serde_attributes = entity.get_column_serde_attributes(
-            serde_skip_deserializing_primary_key,
-            serde_skip_hidden_column,
-        );
-        let extra_derive = with_serde.extra_derive();
-
-        quote! {
-            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel #if_eq_needed #extra_derive #model_extra_derives)]
-            #model_extra_attributes
-            pub struct Model {
-                #(
-                    #serde_attributes
-                    pub #column_names_snake_case: #column_rs_types,
-                )*
-            }
-        }
-    }
-
-    pub fn gen_column_enum(entity: &Entity) -> TokenStream {
+    pub fn gen_column_enum(entity: &Entity, column_extra_derives: &TokenStream) -> TokenStream {
         let column_variants = entity.columns.iter().map(|col| {
             let variant = col.get_name_camel_case();
             let mut variant = quote! { #variant };
@@ -599,7 +589,7 @@ impl EntityWriter {
             variant
         });
         quote! {
-            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn #column_extra_derives)]
             pub enum Column {
                 #(#column_variants,)*
             }
@@ -616,9 +606,9 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_impl_primary_key(entity: &Entity, date_time_crate: &DateTimeCrate) -> TokenStream {
+    pub fn gen_impl_primary_key(entity: &Entity, column_option: &ColumnOption) -> TokenStream {
         let primary_key_auto_increment = entity.get_primary_key_auto_increment();
-        let value_type = entity.get_primary_key_rs_type(date_time_crate);
+        let value_type = entity.get_primary_key_rs_type(column_option);
         quote! {
             impl PrimaryKeyTrait for PrimaryKey {
                 type ValueType = #value_type;
@@ -812,108 +802,11 @@ impl EntityWriter {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn gen_compact_model_struct(
-        entity: &Entity,
-        with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
-        schema_name: &Option<String>,
-        serde_skip_deserializing_primary_key: bool,
-        serde_skip_hidden_column: bool,
-        model_extra_derives: &TokenStream,
-        model_extra_attributes: &TokenStream,
-    ) -> TokenStream {
-        let table_name = entity.table_name.as_str();
-        let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types(date_time_crate);
-        let if_eq_needed = entity.get_eq_needed();
-        let primary_keys: Vec<String> = entity
-            .primary_keys
-            .iter()
-            .map(|pk| pk.name.clone())
-            .collect();
-        let attrs: Vec<TokenStream> = entity
-            .columns
-            .iter()
-            .map(|col| {
-                let mut attrs: Punctuated<_, Comma> = Punctuated::new();
-                let is_primary_key = primary_keys.contains(&col.name);
-                if !col.is_snake_case_name() {
-                    let column_name = &col.name;
-                    attrs.push(quote! { column_name = #column_name });
-                }
-                if is_primary_key {
-                    attrs.push(quote! { primary_key });
-                    if !col.auto_increment {
-                        attrs.push(quote! { auto_increment = false });
-                    }
-                }
-                if let Some(ts) = col.get_col_type_attrs() {
-                    attrs.extend([ts]);
-                    if !col.not_null {
-                        attrs.push(quote! { nullable });
-                    }
-                };
-                if col.unique {
-                    attrs.push(quote! { unique });
-                }
-                let mut ts = quote! {};
-                if !attrs.is_empty() {
-                    for (i, attr) in attrs.into_iter().enumerate() {
-                        if i > 0 {
-                            ts = quote! { #ts, };
-                        }
-                        ts = quote! { #ts #attr };
-                    }
-                    ts = quote! { #[sea_orm(#ts)] };
-                }
-                let serde_attribute = col.get_serde_attribute(
-                    is_primary_key,
-                    serde_skip_deserializing_primary_key,
-                    serde_skip_hidden_column,
-                );
-                ts = quote! {
-                    #ts
-                    #serde_attribute
-                };
-                ts
-            })
-            .collect();
-        let schema_name = match Self::gen_schema_name(schema_name) {
-            Some(schema_name) => quote! {
-                schema_name = #schema_name,
-            },
-            None => quote! {},
-        };
-        let extra_derive = with_serde.extra_derive();
-
+    pub fn gen_prelude_use_model(entity: &Entity) -> TokenStream {
+        let table_name_snake_case_ident = entity.get_table_name_snake_case_ident();
+        let table_name_camel_case_ident = entity.get_table_name_camel_case_ident();
         quote! {
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel #if_eq_needed #extra_derive #model_extra_derives)]
-            #[sea_orm(
-                #schema_name
-                table_name = #table_name
-            )]
-            #model_extra_attributes
-            pub struct Model {
-                #(
-                    #attrs
-                    pub #column_names_snake_case: #column_rs_types,
-                )*
-            }
-        }
-    }
-
-    pub fn gen_compact_relation_enum(entity: &Entity) -> TokenStream {
-        let relation_enum_name = entity.get_relation_enum_name();
-        let attrs = entity.get_relation_attrs();
-        quote! {
-            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-            pub enum Relation {
-                #(
-                    #attrs
-                    #relation_enum_name,
-                )*
-            }
+            pub use super::#table_name_snake_case_ident::Model as #table_name_camel_case_ident;
         }
     }
 
@@ -927,15 +820,19 @@ impl EntityWriter {
 #[cfg(test)]
 mod tests {
     use crate::{
-        entity::writer::{bonus_attributes, bonus_derive},
-        Column, ConjunctRelation, DateTimeCrate, Entity, EntityWriter, PrimaryKey, Relation,
+        Column, ColumnOption, ConjunctRelation, Entity, EntityWriter, PrimaryKey, Relation,
         RelationType, WithSerde,
+        entity::writer::{bonus_attributes, bonus_derive},
     };
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
     use quote::quote;
     use sea_query::{Alias, ColumnType, ForeignKeyAction, RcOrArc, SeaRc, StringLen};
     use std::io::{self, BufRead, BufReader, Read};
+
+    fn default_column_option() -> ColumnOption {
+        Default::default()
+    }
 
     fn setup() -> Vec<Entity> {
         vec![
@@ -948,6 +845,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "name".to_owned(),
@@ -955,6 +853,7 @@ mod tests {
                         auto_increment: false,
                         not_null: false,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![Relation {
@@ -985,6 +884,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "filling_id".to_owned(),
@@ -992,6 +892,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![
@@ -1037,6 +938,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "filling_id".to_owned(),
@@ -1044,6 +946,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "price".to_owned(),
@@ -1051,6 +954,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![Relation {
@@ -1083,6 +987,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "name".to_owned(),
@@ -1090,6 +995,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![],
@@ -1110,6 +1016,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "name".to_owned(),
@@ -1117,6 +1024,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "cake_id".to_owned(),
@@ -1124,6 +1032,7 @@ mod tests {
                         auto_increment: false,
                         not_null: false,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![
@@ -1164,6 +1073,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "_name_".to_owned(),
@@ -1171,6 +1081,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "fruitId".to_owned(),
@@ -1178,6 +1089,7 @@ mod tests {
                         auto_increment: false,
                         not_null: false,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![Relation {
@@ -1205,6 +1117,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "testing".to_owned(),
@@ -1212,6 +1125,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "rust".to_owned(),
@@ -1219,6 +1133,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "keywords".to_owned(),
@@ -1226,6 +1141,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "type".to_owned(),
@@ -1233,6 +1149,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "typeof".to_owned(),
@@ -1240,6 +1157,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "crate".to_owned(),
@@ -1247,6 +1165,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "self".to_owned(),
@@ -1254,6 +1173,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "self_id1".to_owned(),
@@ -1261,6 +1181,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "self_id2".to_owned(),
@@ -1268,6 +1189,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "fruit_id1".to_owned(),
@@ -1275,6 +1197,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "fruit_id2".to_owned(),
@@ -1282,6 +1205,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "cake_id".to_owned(),
@@ -1289,6 +1213,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![
@@ -1362,6 +1287,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "name".to_owned(),
@@ -1369,6 +1295,7 @@ mod tests {
                         auto_increment: false,
                         not_null: false,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "price".to_owned(),
@@ -1376,6 +1303,7 @@ mod tests {
                         auto_increment: false,
                         not_null: false,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![Relation {
@@ -1406,6 +1334,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "name".to_owned(),
@@ -1413,6 +1342,7 @@ mod tests {
                         auto_increment: false,
                         not_null: false,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "price".to_owned(),
@@ -1420,6 +1350,7 @@ mod tests {
                         auto_increment: false,
                         not_null: false,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![Relation {
@@ -1450,6 +1381,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "integers".to_owned(),
@@ -1457,6 +1389,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "integers_opt".to_owned(),
@@ -1464,6 +1397,7 @@ mod tests {
                         auto_increment: false,
                         not_null: false,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![],
@@ -1481,6 +1415,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "floats".to_owned(),
@@ -1488,6 +1423,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "doubles".to_owned(),
@@ -1495,6 +1431,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![],
@@ -1512,6 +1449,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "id2".to_owned(),
@@ -1519,6 +1457,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![Relation {
@@ -1551,6 +1490,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "parent_id1".to_owned(),
@@ -1558,6 +1498,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "parent_id2".to_owned(),
@@ -1565,6 +1506,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![Relation {
@@ -1594,6 +1536,24 @@ mod tests {
         let mut lines: Vec<String> = Vec::new();
 
         reader.read_until(b';', &mut Vec::new())?;
+
+        let mut line = String::new();
+        while reader.read_line(&mut line)? > 0 {
+            lines.push(line.to_owned());
+            line.clear();
+        }
+        let content = lines.join("");
+        Ok(content.parse().unwrap())
+    }
+
+    fn parse_from_frontend_file<R>(inner: R) -> io::Result<TokenStream>
+    where
+        R: Read,
+    {
+        let mut reader = BufReader::new(inner);
+        let mut lines: Vec<String> = Vec::new();
+
+        reader.read_until(b'\n', &mut Vec::new())?;
 
         let mut line = String::new();
         while reader.read_line(&mut line)? > 0 {
@@ -1646,10 +1606,11 @@ mod tests {
                 EntityWriter::gen_expanded_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &None,
                     false,
                     false,
+                    &TokenStream::new(),
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
@@ -1668,10 +1629,11 @@ mod tests {
                 EntityWriter::gen_expanded_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &Some("schema_name".to_owned()),
                     false,
                     false,
+                    &TokenStream::new(),
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
@@ -1732,10 +1694,11 @@ mod tests {
                 EntityWriter::gen_compact_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &None,
                     false,
                     false,
+                    &TokenStream::new(),
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
@@ -1754,10 +1717,99 @@ mod tests {
                 EntityWriter::gen_compact_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &Some("schema_name".to_owned()),
                     false,
                     false,
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    false,
+                    true,
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_gen_frontend_code_blocks() -> io::Result<()> {
+        let entities = setup();
+        const ENTITY_FILES: [&str; 13] = [
+            include_str!("../../tests/frontend/cake.rs"),
+            include_str!("../../tests/frontend/cake_filling.rs"),
+            include_str!("../../tests/frontend/cake_filling_price.rs"),
+            include_str!("../../tests/frontend/filling.rs"),
+            include_str!("../../tests/frontend/fruit.rs"),
+            include_str!("../../tests/frontend/vendor.rs"),
+            include_str!("../../tests/frontend/rust_keyword.rs"),
+            include_str!("../../tests/frontend/cake_with_float.rs"),
+            include_str!("../../tests/frontend/cake_with_double.rs"),
+            include_str!("../../tests/frontend/collection.rs"),
+            include_str!("../../tests/frontend/collection_float.rs"),
+            include_str!("../../tests/frontend/parent.rs"),
+            include_str!("../../tests/frontend/child.rs"),
+        ];
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 13] = [
+            include_str!("../../tests/frontend_with_schema_name/cake.rs"),
+            include_str!("../../tests/frontend_with_schema_name/cake_filling.rs"),
+            include_str!("../../tests/frontend_with_schema_name/cake_filling_price.rs"),
+            include_str!("../../tests/frontend_with_schema_name/filling.rs"),
+            include_str!("../../tests/frontend_with_schema_name/fruit.rs"),
+            include_str!("../../tests/frontend_with_schema_name/vendor.rs"),
+            include_str!("../../tests/frontend_with_schema_name/rust_keyword.rs"),
+            include_str!("../../tests/frontend_with_schema_name/cake_with_float.rs"),
+            include_str!("../../tests/frontend_with_schema_name/cake_with_double.rs"),
+            include_str!("../../tests/frontend_with_schema_name/collection.rs"),
+            include_str!("../../tests/frontend_with_schema_name/collection_float.rs"),
+            include_str!("../../tests/frontend_with_schema_name/parent.rs"),
+            include_str!("../../tests/frontend_with_schema_name/child.rs"),
+        ];
+
+        assert_eq!(entities.len(), ENTITY_FILES.len());
+
+        for (i, entity) in entities.iter().enumerate() {
+            assert_eq!(
+                dbg!(parse_from_frontend_file(ENTITY_FILES[i].as_bytes())?.to_string()),
+                EntityWriter::gen_frontend_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &default_column_option(),
+                    &None,
+                    false,
+                    false,
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    false,
+                    true,
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+            assert_eq!(
+                parse_from_frontend_file(ENTITY_FILES_WITH_SCHEMA_NAME[i].as_bytes())?.to_string(),
+                EntityWriter::gen_frontend_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &default_column_option(),
+                    &Some("schema_name".to_owned()),
+                    false,
+                    false,
+                    &TokenStream::new(),
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
@@ -1788,10 +1840,11 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -1805,10 +1858,11 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::Serialize,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -1822,10 +1876,11 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::Deserialize,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 true,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -1837,10 +1892,11 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::Both,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 true,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -1854,10 +1910,11 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -1871,10 +1928,11 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::Serialize,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -1888,10 +1946,11 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::Deserialize,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 true,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -1903,10 +1962,81 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::Both,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 true,
                 false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+
+        // Frontend code blocks
+        assert_eq!(
+            comparable_file_string(include_str!("../../tests/frontend_with_serde/cake_none.rs"))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &default_column_option(),
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_serde/cake_serialize.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::Serialize,
+                &default_column_option(),
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_serde/cake_deserialize.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::Deserialize,
+                &default_column_option(),
+                &None,
+                true,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!("../../tests/frontend_with_serde/cake_both.rs"))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::Both,
+                &default_column_option(),
+                &None,
+                true,
+                false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -1928,6 +2058,7 @@ mod tests {
                     auto_increment: true,
                     not_null: true,
                     unique: false,
+                    unique_key: None,
                 },
                 Column {
                     name: "name".to_owned(),
@@ -1935,6 +2066,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    unique_key: None,
                 },
                 Column {
                     name: "base_id".to_owned(),
@@ -1942,6 +2074,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    unique_key: None,
                 },
             ],
             relations: vec![
@@ -1985,10 +2118,11 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 true,
@@ -2002,10 +2136,29 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &TokenStream::new(),
+                true,
+                true,
+            ))
+        );
+
+        // Frontend code blocks
+        assert_eq!(
+            comparable_file_string(include_str!("../../tests/with_seaography/cake_frontend.rs"))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &default_column_option(),
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 true,
@@ -2084,10 +2237,11 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -2099,11 +2253,12 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
                 &bonus_derive(["ts_rs::TS"]),
+                &TokenStream::new(),
                 &TokenStream::new(),
                 false,
                 true,
@@ -2116,11 +2271,12 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
                 &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
+                &TokenStream::new(),
                 &TokenStream::new(),
                 false,
                 true,
@@ -2135,10 +2291,11 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -2152,11 +2309,12 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
                 &bonus_derive(["ts_rs::TS"]),
+                &TokenStream::new(),
                 &TokenStream::new(),
                 false,
                 true,
@@ -2169,11 +2327,68 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
                 &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+
+        // Frontend code blocks
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_derives/cake_none.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &default_column_option(),
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_derives/cake_one.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &default_column_option(),
+                &None,
+                false,
+                false,
+                &bonus_derive(["ts_rs::TS"]),
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_derives/cake_multiple.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &default_column_option(),
+                &None,
+                false,
+                false,
+                &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
+                &TokenStream::new(),
                 &TokenStream::new(),
                 false,
                 true,
@@ -2203,6 +2418,63 @@ mod tests {
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
+        assert_serde_variant_results(
+            &cake_entity,
+            &(
+                include_str!(
+                    "../../tests/frontend_with_serde/cake_serialize_with_hidden_column.rs"
+                ),
+                WithSerde::Serialize,
+                None,
+            ),
+            Box::new(EntityWriter::gen_frontend_code_blocks),
+        )?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_gen_with_column_derives() -> io::Result<()> {
+        let cake_entity = setup().get_mut(0).unwrap().clone();
+
+        assert_eq!(cake_entity.get_table_name_snake_case(), "cake");
+
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/expanded_with_column_derives/cake_one.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_expanded_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &default_column_option(),
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &bonus_derive(["async_graphql::Enum"]),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/expanded_with_column_derives/cake_multiple.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_expanded_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &default_column_option(),
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &bonus_derive(["async_graphql::Enum", "Eq", "PartialEq"]),
+                false,
+                true,
+            ))
+        );
 
         Ok(())
     }
@@ -2215,10 +2487,11 @@ mod tests {
             dyn Fn(
                 &Entity,
                 &WithSerde,
-                &DateTimeCrate,
+                &ColumnOption,
                 &Option<String>,
                 bool,
                 bool,
+                &TokenStream,
                 &TokenStream,
                 &TokenStream,
                 bool,
@@ -2247,10 +2520,11 @@ mod tests {
         let generated = generator(
             cake_entity,
             &entity_serde_variant.1,
-            &DateTimeCrate::Chrono,
+            &default_column_option(),
             &entity_serde_variant.2,
             serde_skip_deserializing_primary_key,
             serde_skip_hidden_column,
+            &TokenStream::new(),
             &TokenStream::new(),
             &TokenStream::new(),
             false,
@@ -2280,10 +2554,11 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -2297,12 +2572,13 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
+                &TokenStream::new(),
                 false,
                 true,
             ))
@@ -2314,12 +2590,13 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
+                &TokenStream::new(),
                 false,
                 true,
             ))
@@ -2333,10 +2610,11 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -2350,12 +2628,13 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
+                &TokenStream::new(),
                 false,
                 true,
             ))
@@ -2367,12 +2646,69 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
-                &DateTimeCrate::Chrono,
+                &default_column_option(),
                 &None,
                 false,
                 false,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+
+        // Frontend code blocks
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_attributes/cake_none.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &default_column_option(),
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_attributes/cake_one.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &default_column_option(),
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/frontend_with_attributes/cake_multiple.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &default_column_option(),
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
+                &TokenStream::new(),
                 false,
                 true,
             ))
@@ -2425,6 +2761,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "payload".to_owned(),
@@ -2432,6 +2769,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "payload_binary".to_owned(),
@@ -2439,6 +2777,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![],
@@ -2461,10 +2800,11 @@ mod tests {
                 EntityWriter::gen_compact_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &None,
                     false,
                     false,
+                    &TokenStream::new(),
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
@@ -2483,10 +2823,11 @@ mod tests {
                 EntityWriter::gen_expanded_code_blocks(
                     entity,
                     &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
+                    &default_column_option(),
                     &Some("schema_name".to_owned()),
                     false,
                     false,
+                    &TokenStream::new(),
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
@@ -2517,6 +2858,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "first_tea".to_owned(),
@@ -2530,6 +2872,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "second_tea".to_owned(),
@@ -2543,6 +2886,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![],
@@ -2560,6 +2904,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "first_tea".to_owned(),
@@ -2573,6 +2918,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "second_tea".to_owned(),
@@ -2586,6 +2932,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                     Column {
                         name: "size".to_owned(),
@@ -2600,6 +2947,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unique_key: None,
                     },
                 ],
                 relations: vec![],
@@ -2626,6 +2974,56 @@ mod tests {
             .to_string(),
             EntityWriter::gen_import_active_enum(&entities[1]).to_string()
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_gen_dense_code_blocks() -> io::Result<()> {
+        let entities = setup();
+        const ENTITY_FILES: [&str; 13] = [
+            include_str!("../../tests/dense/cake.rs"),
+            include_str!("../../tests/dense/cake_filling.rs"),
+            include_str!("../../tests/dense/cake_filling_price.rs"),
+            include_str!("../../tests/dense/filling.rs"),
+            include_str!("../../tests/dense/fruit.rs"),
+            include_str!("../../tests/dense/vendor.rs"),
+            include_str!("../../tests/dense/rust_keyword.rs"),
+            include_str!("../../tests/dense/cake_with_float.rs"),
+            include_str!("../../tests/dense/cake_with_double.rs"),
+            include_str!("../../tests/dense/collection.rs"),
+            include_str!("../../tests/dense/collection_float.rs"),
+            include_str!("../../tests/dense/parent.rs"),
+            include_str!("../../tests/dense/child.rs"),
+        ];
+
+        assert_eq!(entities.len(), ENTITY_FILES.len());
+
+        for (i, entity) in entities.iter().enumerate() {
+            assert_eq!(
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
+                EntityWriter::gen_dense_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &default_column_option(),
+                    &None,
+                    false,
+                    false,
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    false,
+                    true,
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+        }
 
         Ok(())
     }

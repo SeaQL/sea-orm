@@ -1,6 +1,8 @@
 use crate::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, IntoActiveModel, Iterable,
-    PrimaryKeyToColumn, QueryFilter, QueryTrait,
+    ActiveModelTrait, ActiveValue, ColumnTrait, DbBackend, DbErr, EntityTrait, IntoActiveModel,
+    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryTrait,
+    query::column_tuple_in_condition,
+    sea_query::{IntoValueTuple, ValueTuple},
 };
 use core::marker::PhantomData;
 use sea_query::DeleteStatement;
@@ -9,14 +11,38 @@ use sea_query::DeleteStatement;
 #[derive(Clone, Debug)]
 pub struct Delete;
 
-/// Perform a delete operation on a model
+/// A request to delete an [`ActiveModel`](ActiveModelTrait).
+///
+/// The primary key must be set.
+/// Otherwise, it's impossible to generate the SQL condition and find the record.
+/// In that case, [`exec`][Self::exec] will return an error and not send any queries to the database.
+///
+/// If you want to use [`QueryTrait`] and access the generated SQL query,
+/// you need to convert into [`ValidatedDeleteOne`] first.
 #[derive(Clone, Debug)]
-pub struct DeleteOne<A>
-where
-    A: ActiveModelTrait,
-{
+pub struct DeleteOne<E: EntityTrait>(pub(crate) Result<ValidatedDeleteOne<E>, DbErr>);
+
+/// A validated [`DeleteOne`] request, where the primary key is set
+/// and it's possible to generate the right SQL condition.
+#[derive(Clone, Debug)]
+pub struct ValidatedDeleteOne<E: EntityTrait> {
     pub(crate) query: DeleteStatement,
-    pub(crate) model: A,
+    pub(crate) entity: PhantomData<E>,
+}
+
+impl<E: EntityTrait> TryFrom<DeleteOne<E>> for ValidatedDeleteOne<E> {
+    type Error = DbErr;
+
+    fn try_from(value: DeleteOne<E>) -> Result<Self, Self::Error> {
+        value.0
+    }
+}
+
+impl<E: EntityTrait> DeleteOne<E> {
+    /// Check whether the primary key is set and we can proceed with the operation.
+    pub fn validate(self) -> Result<ValidatedDeleteOne<E>, DbErr> {
+        self.try_into()
+    }
 }
 
 /// Perform a delete operation on multiple models
@@ -34,13 +60,15 @@ impl Delete {
     ///
     /// Model
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     Delete::one(cake::Model {
     ///         id: 1,
     ///         name: "Apple Pie".to_owned(),
     ///     })
+    ///     .validate()
+    ///     .unwrap()
     ///     .build(DbBackend::Postgres)
     ///     .to_string(),
     ///     r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,
@@ -48,37 +76,67 @@ impl Delete {
     /// ```
     /// ActiveModel
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
     /// assert_eq!(
     ///     Delete::one(cake::ActiveModel {
     ///         id: ActiveValue::set(1),
     ///         name: ActiveValue::set("Apple Pie".to_owned()),
     ///     })
+    ///     .validate()
+    ///     .unwrap()
     ///     .build(DbBackend::Postgres)
     ///     .to_string(),
     ///     r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,
     /// );
     /// ```
-    pub fn one<E, A, M>(model: M) -> DeleteOne<A>
+    //
+    // (non-doc comment for maintainers)
+    // Ideally, we would make this method fallible instead of stashing and delaying the error.
+    // But that's a bigger breaking change.
+    pub fn one<E, A, M>(model: M) -> DeleteOne<E>
     where
         E: EntityTrait,
         A: ActiveModelTrait<Entity = E>,
         M: IntoActiveModel<A>,
     {
-        let myself = DeleteOne {
+        let model = model.into_active_model();
+        let mut myself = ValidatedDeleteOne {
             query: DeleteStatement::new()
                 .from_table(A::Entity::default().table_ref())
                 .to_owned(),
-            model: model.into_active_model(),
+            entity: PhantomData,
         };
-        myself.prepare()
+        // Build the SQL condition from the primary key columns.
+        for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
+            let col = key.into_column();
+            let av = model.get(col);
+            match av {
+                ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
+                    myself = myself.filter(col.eq(value));
+                }
+                ActiveValue::NotSet => {
+                    return DeleteOne(Err(DbErr::PrimaryKeyNotSet { ctx: "DeleteOne" }));
+                }
+            }
+        }
+        DeleteOne(Ok(myself))
+    }
+
+    #[doc(hidden)]
+    pub fn _one_only_for_use_by_model_ex<E: EntityTrait>(entity: E) -> ValidatedDeleteOne<E> {
+        ValidatedDeleteOne {
+            query: DeleteStatement::new()
+                .from_table(entity.table_ref())
+                .to_owned(),
+            entity: PhantomData,
+        }
     }
 
     /// Delete many ActiveModel
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, DbBackend};
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::fruit};
     ///
     /// assert_eq!(
     ///     Delete::many(fruit::Entity)
@@ -101,28 +159,9 @@ impl Delete {
     }
 }
 
-impl<A> DeleteOne<A>
+impl<E> QueryFilter for ValidatedDeleteOne<E>
 where
-    A: ActiveModelTrait,
-{
-    pub(crate) fn prepare(mut self) -> Self {
-        for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
-            let col = key.into_column();
-            let av = self.model.get(col);
-            match av {
-                ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
-                    self = self.filter(col.eq(value));
-                }
-                ActiveValue::NotSet => panic!("PrimaryKey is not set"),
-            }
-        }
-        self
-    }
-}
-
-impl<A> QueryFilter for DeleteOne<A>
-where
-    A: ActiveModelTrait,
+    E: EntityTrait,
 {
     type QueryStatement = DeleteStatement;
 
@@ -142,9 +181,55 @@ where
     }
 }
 
-impl<A> QueryTrait for DeleteOne<A>
+impl<E> DeleteMany<E>
 where
-    A: ActiveModelTrait,
+    E: EntityTrait,
+{
+    /// Filter by vector of IDs by primary key
+    ///
+    /// # Panics
+    ///
+    /// Should not panic.
+    pub fn filter_by_ids<I>(mut self, values: I) -> Self
+    where
+        I: IntoIterator<Item = <E::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+    {
+        self.query.cond_where(
+            column_tuple_in_condition(
+                &E::default().table_ref(),
+                &E::primary_key_identity(),
+                &values
+                    .into_iter()
+                    .map(|v| v.into_value_tuple())
+                    .collect::<Vec<_>>(),
+                DbBackend::Sqlite,
+            )
+            .expect("trait bound ensured arity"),
+        );
+        self
+    }
+
+    #[doc(hidden)]
+    /// # Panics
+    ///
+    /// Panic if `ValueTuple` arity does not match primary key
+    pub fn filter_by_value_tuples(mut self, values: &[ValueTuple]) -> Self {
+        self.query.cond_where(
+            column_tuple_in_condition(
+                &E::default().table_ref(),
+                &E::primary_key_identity(),
+                values,
+                DbBackend::Sqlite,
+            )
+            .expect(""),
+        );
+        self
+    }
+}
+
+impl<E> QueryTrait for ValidatedDeleteOne<E>
+where
+    E: EntityTrait,
 {
     type QueryStatement = DeleteStatement;
 
@@ -183,7 +268,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit};
-    use crate::{entity::*, query::*, DbBackend};
+    use crate::{DbBackend, entity::*, query::*};
 
     #[test]
     fn delete_1() {
@@ -192,6 +277,8 @@ mod tests {
                 id: 1,
                 name: "Apple Pie".to_owned(),
             })
+            .validate()
+            .unwrap()
             .build(DbBackend::Postgres)
             .to_string(),
             r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,
@@ -201,6 +288,8 @@ mod tests {
                 id: ActiveValue::set(1),
                 name: ActiveValue::set("Apple Pie".to_owned()),
             })
+            .validate()
+            .unwrap()
             .build(DbBackend::Postgres)
             .to_string(),
             r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,

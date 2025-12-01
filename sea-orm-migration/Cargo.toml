@@ -3,9 +3,9 @@
 
 [package]
 name = "sea-orm-migration"
-version = "1.1.12"
+version = "2.0.0-rc.19"
 authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
-edition = "2021"
+edition = "2024"
 description = "Migration utility for SeaORM"
 license = "MIT OR Apache-2.0"
 homepage = "https://www.sea-ql.org/SeaORM"
@@ -13,7 +13,7 @@ documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
 categories = ["database"]
 keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
-rust-version = "1.65"
+rust-version = "1.85.0"
 
 [lib]
 name = "sea_orm_migration"
@@ -23,9 +23,9 @@ path = "src/lib.rs"
 async-trait = { version = "0.1", default-features = false }
 clap = { version = "4.3", features = ["env", "derive"], optional = true }
 dotenvy = { version = "0.15", default-features = false, optional = true }
-sea-orm = { version = "~1.1.12", path = "../", default-features = false, features = ["macros"] }
-sea-orm-cli = { version = "~1.1.12", path = "../sea-orm-cli", default-features = false, optional = true }
-sea-schema = { version = "0.16.2", default-features = false, features = ["discovery", "writer", "probe"] }
+sea-orm = { version = "~2.0.0-rc.19", path = "../", features = ["schema-sync"] }
+sea-orm-cli = { version = "~2.0.0-rc.19", path = "../sea-orm-cli", default-features = false, optional = true }
+sea-schema = { version = "0.17.0-rc", default-features = false, features = ["discovery", "writer", "probe"] }
 tracing = { version = "0.1", default-features = false, features = ["log"] }
 tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
 
@@ -35,17 +35,15 @@ async-std = { version = "1", features = ["attributes", "tokio1"] }
 [features]
 default = ["cli"]
 cli = ["clap", "dotenvy", "sea-orm-cli/cli"]
-sqlx-mysql = ["sea-orm/sqlx-mysql", "sea-schema/sqlx-mysql", "sea-schema/mysql", "sea-orm-cli?/sqlx-mysql"]
-sqlx-postgres = ["sea-orm/sqlx-postgres", "sea-schema/sqlx-postgres", "sea-schema/postgres", "sea-orm-cli?/sqlx-postgres"]
-sqlx-sqlite = ["sea-orm/sqlx-sqlite", "sea-schema/sqlx-sqlite", "sea-schema/sqlite", "sea-orm-cli?/sqlx-sqlite"]
+sqlx-dep = []
+sqlx-mysql = ["sqlx-dep", "sea-orm/sqlx-mysql", "sea-orm-cli?/sqlx-mysql"]
+sqlx-postgres = ["sqlx-dep", "sea-orm/sqlx-postgres", "sea-orm-cli?/sqlx-postgres"]
+sqlx-sqlite = ["sqlx-dep", "sea-orm/sqlx-sqlite", "sea-orm-cli?/sqlx-sqlite"]
 sqlite-use-returning-for-3_35 = ["sea-orm/sqlite-use-returning-for-3_35"]
-runtime-actix = ["sea-orm/runtime-actix", "sea-schema/runtime-actix", "sea-orm-cli?/runtime-actix"]
 runtime-async-std = ["sea-orm/runtime-async-std", "sea-schema/runtime-async-std", "sea-orm-cli?/runtime-async-std"]
 runtime-tokio = ["sea-orm/runtime-tokio", "sea-schema/runtime-tokio", "sea-orm-cli?/runtime-tokio"]
-runtime-actix-native-tls = ["sea-orm/runtime-actix-native-tls", "sea-schema/runtime-actix-native-tls", "sea-orm-cli?/runtime-actix-native-tls"]
 runtime-async-std-native-tls = ["sea-orm/runtime-async-std-native-tls", "sea-schema/runtime-async-std-native-tls", "sea-orm-cli?/runtime-async-std-native-tls"]
 runtime-tokio-native-tls = ["sea-orm/runtime-tokio-native-tls", "sea-schema/runtime-tokio-native-tls", "sea-orm-cli?/runtime-tokio-native-tls"]
-runtime-actix-rustls = ["sea-orm/runtime-actix-rustls", "sea-schema/runtime-actix-rustls", "sea-orm-cli?/runtime-actix-rustls"]
 runtime-async-std-rustls = ["sea-orm/runtime-async-std-rustls", "sea-schema/runtime-async-std-rustls", "sea-orm-cli?/runtime-async-std-rustls"]
 runtime-tokio-rustls = ["sea-orm/runtime-tokio-rustls", "sea-schema/runtime-tokio-rustls", "sea-orm-cli?/runtime-tokio-rustls"]
 with-json = ["sea-orm/with-json"]
@@ -55,3 +53,9 @@ with-bigdecimal = ["sea-orm/with-bigdecimal"]
 with-uuid = ["sea-orm/with-uuid"]
 with-time = ["sea-orm/with-time"]
 with-ipnetwork = ["sea-orm/with-ipnetwork"]
+entity-registry = ["sea-orm/entity-registry"]
+
+# This allows us to develop using an overridden version of sea-query
+[patch.crates-io]
+# sea-query = { path = "../sea-query" }
+# sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }

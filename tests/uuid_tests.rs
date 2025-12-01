@@ -2,14 +2,14 @@
 
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 use serde_json::json;
 
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
-    let ctx = TestContext::new("bakery_chain_schema_uuid_tests").await;
+    let ctx = TestContext::new("bakery_chain_uuid_tests").await;
     create_tables(&ctx.db).await?;
     create_and_update_metadata(&ctx.db).await?;
     insert_metadata(&ctx.db).await?;
@@ -78,6 +78,7 @@ pub async fn create_and_update_metadata(db: &DatabaseConnection) -> Result<(), D
         value: Set("0.22".to_owned()),
         ..metadata.clone().into_active_model()
     })
+    .validate()?
     .filter(metadata::Column::Uuid.eq(Uuid::default()))
     .exec(db)
     .await;

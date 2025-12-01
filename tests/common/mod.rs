@@ -1,5 +1,8 @@
 pub mod bakery_chain;
+pub mod bakery_dense;
+pub mod blogger;
 pub mod features;
+pub mod film_store;
 pub mod runtime;
 pub mod setup;
 

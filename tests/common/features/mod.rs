@@ -9,7 +9,7 @@ pub mod categories;
 pub mod collection;
 pub mod collection_expanded;
 pub mod custom_active_model;
-pub mod dyn_table_name_lazy_static;
+pub mod dyn_table_name;
 pub mod edit_log;
 #[cfg(feature = "postgres-vector")]
 pub mod embedding;
@@ -41,7 +41,7 @@ pub use byte_primary_key::Entity as BytePrimaryKey;
 pub use categories::Entity as Categories;
 pub use collection::Entity as Collection;
 pub use collection_expanded::Entity as CollectionExpanded;
-pub use dyn_table_name_lazy_static::Entity as DynTableNameLazyStatic;
+pub use dyn_table_name::Entity as DynTableName;
 pub use edit_log::Entity as EditLog;
 #[cfg(feature = "postgres-vector")]
 pub use embedding::Entity as Embedding;

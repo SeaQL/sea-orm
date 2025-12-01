@@ -1,10 +1,10 @@
 [package]
 name = "salvo-example-api"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 
 [dependencies]
-salvo-example-service = { path = "../service" }
 tokio = { version = "1.29.0", features = ["macros", "rt-multi-thread"] }
 salvo = { version = "0.50", features = ["affix", "serve-static"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
@@ -13,3 +13,14 @@ tera = "1.19.0"
 dotenvy = "0.15"
 entity = { path = "../entity" }
 migration = { path = "../migration" }
+
+[dependencies.sea-orm]
+path = "../../../" # remove this line in your own project
+version = "~2.0.0-rc.19" # sea-orm version
+features = [
+    "debug-print",
+    "runtime-tokio-native-tls",
+    # "sqlx-mysql",
+    # "sqlx-postgres",
+    "sqlx-sqlite",
+]

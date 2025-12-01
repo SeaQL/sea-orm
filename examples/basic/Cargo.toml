@@ -2,15 +2,14 @@
 # A separate workspace
 
 [package]
-name = "sea-orm-example-async-std"
+name = "sea-orm-example-basic"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 publish = false
 
 [dependencies]
-async-std = { version = "1.12", features = [ "attributes", "tokio1" ] }
-sea-orm = { path = "../../", features = [ "sqlx-all", "runtime-async-std-native-tls" ] }
+tokio = { version = "1", features = ["full"] }
+sea-orm = { path = "../../", features = [ "sqlx-mysql", "runtime-tokio-native-tls" ] }
 serde_json = { version = "1" }
-futures = { version = "0.3" }
-async-stream = { version = "0.3" }
 futures-util = { version = "0.3" }

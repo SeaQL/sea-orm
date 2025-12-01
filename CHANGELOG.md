@@ -5,6 +5,947 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.0.0 - pending
+
+### New Features
+
+* Role Based Access Control https://github.com/SeaQL/sea-orm/pull/2683
+
+  1. a hierarchical RBAC engine that is table scoped
+      + a user has 1 (and only 1) role
+      + a role has a set of permissions on a set of resources
+          + permissions here are CRUD operations and resources are tables
+          + but the engine is generic so can be used for other things
+      + roles have hierarchy, and so can inherit permissions
+      + there is a wildcard `*` to grant all permissions or resources
+      + individual users can have rules override
+  3. a set of Entities to load / store the access control rules to / from database
+  4. a query auditor that dissect queries for necessary permissions (implemented in SeaQuery)
+  5. integration of RBAC into SeaORM in form of `RestrictedConnection`.
+      it implements `ConnectionTrait`, and will audit all queries and perform permission check,
+      and reject them accordingly. all Entity operations except raw SQL are supported.
+      complex joins, insert select from, and even CTE queries are supported.
+```rust
+// load rules from database
+db_conn.load_rbac().await?;
+
+// admin can create bakery
+let db = db_conn.restricted_for(admin)?;
+let seaside_bakery = bakery::ActiveModel {
+    name: Set("SeaSide Bakery".to_owned()),
+    ..Default::default()
+};
+assert!(Bakery::insert(seaside_bakery).exec(&db).await.is_ok());
+
+// public cannot create bakery
+let db = db_conn.restricted_for(public)?;
+assert!(matches!(
+    Bakery::insert(bakery::ActiveModel::default())
+        .exec(&db)
+        .await,
+    Err(DbErr::AccessDenied { .. })
+));
+```
+
+* Overhauled `Entity::insert_many`. We've made a number of changes https://github.com/SeaQL/sea-orm/pull/2628
+    1. removed APIs that can panic
+    2. new helper struct `InsertMany`, `last_insert_id` is now `Option<Value>`
+    3. on empty iterator, `None` or `vec![]` is returned on exec operations
+    4. `TryInsert` API is unchanged
+
+Previously, `insert_many` shares the same helper struct with `insert_one`, which led to an awkard API.
+```rust
+let res = Bakery::insert_many(std::iter::empty())
+    .on_empty_do_nothing() // <- you need to add this
+    .exec(db)
+    .await;
+
+assert!(matches!(res, Ok(TryInsertResult::Empty)));
+```
+`last_insert_id` is now `Option<Value>`:
+```rust
+struct InsertManyResult<A: ActiveModelTrait>
+{
+    pub last_insert_id: Option<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>,
+}
+```
+Which means the awkardness is removed:
+```rust
+let res = Entity::insert_many::<ActiveModel, _>([]).exec(db).await;
+
+assert_eq!(res?.last_insert_id, None); // insert nothing return None
+
+let res = Entity::insert_many([ActiveModel { id: Set(1) }, ActiveModel { id: Set(2) }])
+    .exec(db)
+    .await;
+
+assert_eq!(res?.last_insert_id, Some(2)); // insert something return Some
+```
+Same on conflict API as before:
+```rust
+let res = Entity::insert_many([ActiveModel { id: Set(3) }, ActiveModel { id: Set(4) }])
+    .on_conflict_do_nothing()
+    .exec(db)
+    .await;
+
+assert!(matches!(conflict_insert, Ok(TryInsertResult::Conflicted)));
+```
+Exec with returning now returns a `Vec<Model>`, so it feels intuitive:
+```rust
+assert!(
+    Entity::insert_many::<ActiveModel, _>([])
+        .exec_with_returning(db)
+        .await?
+        .is_empty() // no footgun, nice
+);
+
+assert_eq!(
+    Entity::insert_many([
+        ActiveModel {
+            id: NotSet,
+            value: Set("two".into()),
+        }
+    ])
+    .exec_with_returning(db)
+    .await
+    .unwrap(),
+    [
+        Model {
+            id: 2,
+            value: "two".into(),
+        }
+    ]
+);
+```
+* Improved utility of `ActiveModel::from_json`. Consider the following Entity https://github.com/SeaQL/sea-orm/pull/2599
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
+#[sea_orm(table_name = "cake")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,      // <- not nullable
+    pub name: String,
+}
+```
+Previously, the following would result in error "missing field `id`":
+```rust
+assert!(
+    cake::ActiveModel::from_json(json!({
+        "name": "Apple Pie",
+    })).is_err();
+);
+```
+Now, the ActiveModel will be partially filled:
+```rust
+assert_eq!(
+    cake::ActiveModel::from_json(json!({
+        "name": "Apple Pie",
+    }))
+    .unwrap(),
+    cake::ActiveModel {
+        id: NotSet,
+        name: Set("Apple Pie".to_owned()),
+    }
+);
+```
+* A full `Model` can now be used as `PartialModel` in nested query https://github.com/SeaQL/sea-orm/pull/2642
+```rust
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity")]
+struct Cake {
+    id: i32,
+    name: String,
+    #[sea_orm(nested)]
+    bakery: Option<bakery::Model>,
+}
+
+let cake: Cake = cake::Entity::find()
+    .left_join(bakery::Entity)
+    .order_by_asc(cake::Column::Id)
+    .into_partial_model()
+    .one(&ctx.db)
+    .await?
+    .unwrap();
+
+assert_eq!(cake.id, 13);
+assert_eq!(cake.name, "Cheesecake");
+assert_eq!(
+    cake.bakery.unwrap(),
+    bakery::Model {
+        id: 42,
+        name: "cool little bakery".to_string(),
+    }
+);
+```
+* Wrapper type derived with `DeriveValueType` can now be used as primary key https://github.com/SeaQL/sea-orm/pull/2643
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "my_value_type")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: MyInteger,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
+pub struct MyInteger(pub i32);
+// only for i8 | i16 | i32 | i64 | u8 | u16 | u32 | u64
+```
+* You can now define unique keys that span multiple columns in Entity https://github.com/SeaQL/sea-orm/pull/2651
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "lineitem")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    #[sea_orm(unique_key = "item")]
+    pub order_id: i32,
+    #[sea_orm(unique_key = "item")]
+    pub cake_id: i32,
+}
+
+let stmts = Schema::new(backend).create_index_from_entity(lineitem::Entity);
+
+assert_eq!(
+    stmts[0],
+    Index::create()
+        .name("idx-lineitem-item")
+        .table(lineitem::Entity)
+        .col(lineitem::Column::OrderId)
+        .col(lineitem::Column::CakeId)
+        .unique()
+        .take()
+);
+
+assert_eq!(
+    backend.build(stmts[0]),
+    r#"CREATE UNIQUE INDEX "idx-lineitem-item" ON "lineitem" ("order_id", "cake_id")"#
+);
+```
+* Overhauled `ConnectionTrait` API: `execute`, `query_one`, `query_all`, `stream` now takes in SeaQuery statement instead of raw SQL statement https://github.com/SeaQL/sea-orm/pull/2657
+```rust
+// old
+let query: SelectStatement = Entity::find().filter(..).into_query();
+let backend = self.db.get_database_backend();
+let stmt = backend.build(&query);
+let rows = self.db.query_all(stmt).await?;
+
+// new
+let query: SelectStatement = Entity::find().filter(..).into_query();
+let rows = self.db.query_all(&query).await?;
+```
+* Added `raw_sql` macro for ergonomic parameter injection
+```rust
+#[derive(FromQueryResult)]
+struct Cake {
+    name: String,
+    #[sea_orm(nested)]
+    bakery: Option<Bakery>,
+}
+
+#[derive(FromQueryResult)]
+struct Bakery {
+    #[sea_orm(alias = "bakery_name")]
+    name: String,
+}
+
+let cake_ids = [2, 3, 4]; // expanded by the `..` operator
+
+let cake: Option<Cake> = Cake::find_by_statement(raw_sql!(
+    Sqlite,
+    r#"SELECT "cake"."name", "bakery"."name" AS "bakery_name"
+       FROM "cake"
+       LEFT JOIN "bakery" ON "cake"."bakery_id" = "bakery"."id"
+       WHERE "cake"."id" IN ({..cake_ids})"#
+))
+.one(db)
+.await?;
+```
+* Added `consolidate` method to `SelectThree`. This output has different shape depending on the topology of the join.
+```rust
+// Order -> Customer
+//       -> Lineitem
+
+let items: Vec<(order::Model, Option<customer::Model>, Option<lineitem::Model>)> =
+    order::Entity::find()
+        .find_also_related(customer::Entity)
+        .find_also_related(lineitem::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .all(&ctx.db)
+        .await?;
+
+// flat result
+assert_eq!(
+    items,
+    vec![
+        (order, Some(customer), Some(line_1)),
+        (order, Some(customer), Some(line_2)),
+    ]
+);
+
+let items: Vec<(order::Model, Vec<customer::Model>, Vec<lineitem::Model>)> =
+    order::Entity::find()
+        .find_also_related(customer::Entity)
+        .find_also_related(lineitem::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .consolidate() // <-
+        .all(&ctx.db)
+        .await?;
+
+// consolidated by order
+assert_eq!(
+    items,
+    vec![(
+        order,
+        vec![customer],
+        vec![line_1, line_2]
+    )]
+);
+
+// Order -> Lineitem -> Cake
+let items: Vec<(order::Model, Option<lineitem::Model>, Option<cake::Model>)> =
+    order::Entity::find()
+        .find_also_related(lineitem::Entity)
+        .and_also_related(cake::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .all(&ctx.db)
+        .await?;
+
+// flat result
+assert_eq!(
+    items,
+    vec![
+        (order, Some(line_1), Some(cake_1)),
+        (order, Some(line_2), Some(cake_2)),
+    ]
+);
+
+let items: Vec<(order::Model, Vec<(lineitem::Model, Vec<cake::Model>)>)> =
+    order::Entity::find()
+        .find_also_related(lineitem::Entity)
+        .and_also_related(cake::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .consolidate() // <-
+        .all(&ctx.db)
+        .await?;
+
+// consolidated by order first, then by line
+assert_eq!(
+    items,
+    vec![(
+        order,
+        vec![(line_1, vec![cake_1]), (line_2, vec![cake_2])]
+    )]
+);
+```
+* Added `Select::has_related`
+```rust
+// cake -> fruit: find all cakes containing mango
+assert_eq!(
+    cake::Entity::find()
+        .has_related(fruit::Entity, fruit::Column::Name.eq("Mango"))
+        .build(DbBackend::Sqlite)
+        .to_string(),
+    [
+        r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
+        r#"WHERE EXISTS(SELECT 1 FROM "fruit""#,
+        r#"WHERE "fruit"."name" = 'Mango'"#,
+        r#"AND "cake"."id" = "fruit"."cake_id")"#,
+    ]
+    .join(" ")
+);
+// cake -> cake_filling -> filling: find all cakes with orange fillings
+assert_eq!(
+    cake::Entity::find()
+        .has_related(filling::Entity, filling::Column::Name.eq("Marmalade"))
+        .build(DbBackend::Sqlite)
+        .to_string(),
+    [
+        r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
+        r#"WHERE EXISTS(SELECT 1 FROM "filling""#,
+        r#"INNER JOIN "cake_filling" ON "cake_filling"."filling_id" = "filling"."id""#,
+        r#"WHERE "filling"."name" = 'Marmalade'"#,
+        r#"AND "cake"."id" = "cake_filling"."cake_id")"#,
+    ]
+    .join(" ")
+);
+```
+* Support self-referencing relations in loader
+```rust
+#[sea_orm::model]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[sea_orm(table_name = "staff")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    pub name: String,
+    pub reports_to_id: Option<i32>,
+    #[sea_orm(self_ref, relation_enum = "ReportsTo", from = "reports_to_id", to = "id")]
+    pub reports_to: HasOne<Entity>,
+}
+
+// Entity Loader
+let staff = staff::Entity::load()
+    .with(staff::Relation::ReportsTo)
+    .all(db)
+    .await?;
+
+assert_eq!(staff[0].name, "Alan");
+assert_eq!(staff[0].reports_to, None);
+
+assert_eq!(staff[1].name, "Ben");
+assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+
+assert_eq!(staff[2].name, "Alice");
+assert_eq!(staff[2].reports_to.as_ref().unwrap().name, "Alan");
+
+// Model Loader
+let staff = staff::Entity::find().all(db).await?;
+
+let reports_to = staff
+    .load_self(staff::Entity, staff::Relation::ReportsTo, db)
+    .await?;
+
+assert_eq!(staff[0].name, "Alan");
+assert_eq!(reports_to[0], None);
+
+assert_eq!(staff[1].name, "Ben");
+assert_eq!(reports_to[1].unwrap().name, "Alan");
+
+assert_eq!(staff[2].name, "Alice");
+assert_eq!(reports_to[2].unwrap().name, "Alan");
+```
+* Strongly-typed column https://github.com/SeaQL/sea-orm/pull/2794
+```rust
+// old
+user::Entity::find().filter(user::Column::Name.contains("Bob"))
+
+// new
+user::Entity::find().filter(user::COLUMN.name.contains("Bob"))
+
+// compile error: the trait `From<{integer}>` is not implemented for `String`
+user::Entity::find().filter(user::COLUMN.name.like(2))
+```
+* Unix timestamp column type that will be mapped to big integer in database
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "access_log")]
+pub struct Model {
+    .. // with `chrono` crate
+    pub ts: ChronoUnixTimestamp,
+    pub ms: ChronoUnixTimestampMillis,
+    .. // with `time` crate
+    pub ts: TimeUnixTimestamp,
+    pub ms: TimeUnixTimestampMillis,
+}
+```
+* Nested ActiveModel (ActiveModelEx) and cascade operations https://github.com/SeaQL/sea-orm/pull/2818
+
+    The following operation saves a new set of user + profile + post + tag + post_tag into the database atomically:
+```rust
+let user = user::ActiveModel::builder()
+    .set_name("Bob")
+    .set_email("bob@sea-ql.org")
+    .set_profile(profile::ActiveModel::builder().set_picture("image.jpg"))
+    .add_post(
+        post::ActiveModel::builder()
+            .set_title("Nice weather")
+            .add_tag(tag::ActiveModel::builder().set_tag("sunny")),
+    )
+    .save(db)
+    .await?;
+```
+
+### Enhancements
+
+* [sea-orm-cli] Added `--column-extra-derives` https://github.com/SeaQL/sea-orm/pull/2212
+* [sea-orm-cli] Added `--big-integer-type=i32` to use i32 for bigint (for SQLite)
+* Added `Model::try_set`
+* Added new error variant `BackendNotSupported`. Previously, it panics with e.g. "Database backend doesn't support RETURNING" https://github.com/SeaQL/sea-orm/pull/2630
+```rust
+let result = cake::Entity::insert_many([])
+    .exec_with_returning_keys(db)
+    .await;
+
+if db.support_returning() {
+    // Postgres and SQLite
+    assert_eq!(result.unwrap(), []);
+} else {
+    // MySQL
+    assert!(matches!(result, Err(DbErr::BackendNotSupported { .. })));
+}
+```
+* Added new error variant `PrimaryKeyNotSet`. Previously, it panics with "PrimaryKey is not set" https://github.com/SeaQL/sea-orm/pull/2627
+```rust
+assert!(matches!(
+    Update::one(cake::ActiveModel {
+        ..Default::default()
+    })
+    .exec(&db)
+    .await,
+    Err(DbErr::PrimaryKeyNotSet { .. })
+));
+```
+* Remove panics in `Schema::create_enum_from_active_enum` https://github.com/SeaQL/sea-orm/pull/2634
+```rust
+fn create_enum_from_active_enum<A>(&self) -> Option<TypeCreateStatement>
+// method can now return None
+```
+* Added `ColumnTrait::eq_any` as a shorthand for the ` = ANY` operator. Postgres only.
+```rust
+assert_eq!(
+    cake::Entity::find()
+        .filter(cake::Column::Id.eq_any(vec![4, 5]))
+        .build(DbBackend::Postgres)
+        .to_string(),
+    r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY [4,5])"#
+);
+```
+* Added `ActiveModelTrait::try_set`
+```rust
+pub trait ActiveModelTrait {
+    /// old: set the Value of a ActiveModel field, panic if failed
+    fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) {
+        self.try_set(c, v).unwrap_or_else(|e| panic!(..))
+    }
+
+    /// new: same as above but non-panicking
+    fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
+}
+```
+* `Linked` can now be used in partial select, in case `Related` cannot be defined
+```rust
+pub struct ToBakery;
+impl Linked for ToBakery {
+    type FromEntity = super::cake::Entity;
+    type ToEntity = super::bakery::Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![Relation::Bakery.def()]
+    }
+}
+
+#[derive(Debug, DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity", into_active_model)]
+struct Cake2 {
+    id: i32,
+    name: String,
+    #[sea_orm(nested, alias = "r0")]
+    bakery: Option<Bakery>,
+    #[sea_orm(skip)]
+    ignore: Ignore,
+}
+
+let cake2: Cake2 = cake::Entity::find()
+    .left_join_linked(ToBakery)
+    .order_by_asc(cake::Column::Id)
+    .into_partial_model()
+    .one(&ctx.db)
+    .await?
+    .unwrap();
+```
+* `RelationDef` now implements `Clone`. `on_condition` is changed to `Arc` but this is a minor breaking change.
+* Added `extra` on column attribute:
+```rust
+#[cfg(feature = "with-rust_decimal")]
+#[sea_orm(extra = "CHECK (price > 0)")]
+pub price: Decimal,
+
+// results in:
+ColumnDef::new("price")
+    .decimal()
+    .not_null()
+    .extra("CHECK (price > 0)"),
+```
+* Added `ColumnTrait::avg`, in addition to `sum`, `min`, `max` etc
+```rust
+let average: Decimal = order::Entity::find()
+    .select_only()
+    .column_as(order::Column::Total.avg(), "avg")
+    .into_tuple()
+    .one(&ctx.db)
+    .await?
+    .unwrap();
+```
+* `SchemaBuilder::sync` can now be used in migrations
+```rust
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        let db = manager.get_connection();
+
+        db.get_schema_builder()
+            .register(note::Entity)
+            .sync(db)
+            .await
+    }
+}
+```
+* Allowed None for `max_lifetime` and `idle_timeout` Parameters https://github.com/SeaQL/sea-orm/pull/2748
+* Try to parse `u32` in Postgres as `i32` https://github.com/SeaQL/sea-orm/pull/2753
+* `DeriveActiveEnum` now also impl `IntoActiveValue` https://github.com/SeaQL/sea-orm/issues/1972
+* `DeriveValueType` now also supports any structs that can be converted to / from string https://github.com/SeaQL/sea-orm/issues/2811
+```rust
+#[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(value_type = "String")]
+pub struct Tag3 {
+    pub i: i64,
+}
+
+impl std::fmt::Display for Tag3 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.i)
+    }
+}
+
+impl std::str::FromStr for Tag3 {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let i: i64 = s.parse()?;
+        Ok(Self { i })
+    }
+}
+```
+
+### Breaking Changes
+
+Please read [SeaQuery's breaking changes](https://github.com/SeaQL/sea-query/blob/master/CHANGELOG.md#breaking-changes) as well. But for most compile errors, you can simply add `use sea_orm::ExprTrait;` in scope.
+```rust
+error[E0599]: no method named `like` found for enum `sea_query::Expr` in the current scope
+    |
+    |         Expr::col((self.entity_name(), *self)).like(s)
+    |
+    |     fn like<L>(self, like: L) -> Expr
+    |        ---- the method is available for `sea_query::Expr` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `ExprTrait` which provides `like` is implemented but not in scope; perhaps you want to import it
+    |
+ -> + use sea_orm::ExprTrait;
+```
+```rust
+error[E0308]: mismatched types
+  --> src/sqlite/discovery.rs:27:57
+   |
+   |             .and_where(Expr::col(Alias::new("type")).eq("table"))
+   |                                                      -- ^^^^^^^ expected `&Expr`, found `&str`
+   |                                                      |
+   |                                                      arguments to this method are incorrect
+   |
+   = note: expected reference `&sea_query::Expr`
+              found reference `&'static str`
+```
+```rust
+error[E0308]: mismatched types
+    |
+390 |             Some(Expr::col(Name).eq(PgFunc::any(query.symbol)))
+    |                                  -- ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&Expr`, found `FunctionCall`
+    |                                  |
+    |                                  arguments to this method are incorrect
+    |
+note: method defined here
+   --> /rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library/core/src/cmp.rs:254:8
+```
+```rust
+error[E0277]: the trait bound `sea_orm::Condition: From<bool>` is not satisfied
+    |
+367 |         .add_option(option)
+    |          ---------- ^^^^^^ the trait `From<bool>` is not implemented for `sea_orm::Condition`
+    |          |
+    |          required by a bound introduced by this call
+    |
+    = note: required for `bool` to implement `Into<sea_orm::Condition>`
+```
+
+* Removed `runtime-actix` feature flag. It's been an alias of `runtime-tokio` for more than a year, so there should be no impact.
+* Enabled `sqlite-use-returning-for-3_35` by default. SQLite `3.35` was released in 2021, it should be the default by now.
+* Now implemented `impl<T: ModelTrait + FromQueryResult> PartialModelTrait for T`, there may be a potential conflict https://github.com/SeaQL/sea-orm/pull/2642
+* Now `DeriveValueType` will also `TryFromU64` if applicable, there may be a potential conflict https://github.com/SeaQL/sea-orm/pull/2643
+* Added `TryIntoModel` and `Serialize` to trait bounds of `ActiveModel::from_json`. There should be no impact if your models are derived with `DeriveEntityModel` https://github.com/SeaQL/sea-orm/pull/2599
+```rust
+fn from_json(mut json: serde_json::Value) -> Result<Self, DbErr>
+where
+    Self: TryIntoModel<<Self::Entity as EntityTrait>::Model>,
+    <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+    for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
+        serde::de::Deserialize<'de> + serde::Serialize,
+```
+* `DerivePartialModel` now implement `FromQueryResult` by default, so there may be a potential conflict. Remove `FromQueryResult` in these cases https://github.com/SeaQL/sea-orm/pull/2653
+```rust
+error[E0119]: conflicting implementations of trait `sea_orm::FromQueryResult` for type `CakeWithFruit`
+  |
+> | #[derive(DerivePartialModel, FromQueryResult)]
+  |          ------------------  ^^^^^^^^^^^^^^^ conflicting implementation for `CakeWithFruit`
+```
+* Changed `IdenStatic` and `EntityName` definition https://github.com/SeaQL/sea-orm/pull/2667
+```rust
+trait IdenStatic {
+    fn as_str(&self) -> &'static str; // added static lifetime
+}
+trait EntityName {
+    fn table_name(&self) -> &'static str; // added static lifetime
+}
+```
+* Removed `DeriveCustomColumn` and `default_as_str` https://github.com/SeaQL/sea-orm/pull/2667
+```rust
+// This is no longer supported:
+#[derive(Copy, Clone, Debug, EnumIter, DeriveCustomColumn)]
+pub enum Column {
+    Id,
+    Name,
+}
+
+impl IdenStatic for Column {
+    fn as_str(&self) -> &str {
+        match self {
+            Self::Name => "my_name",
+            _ => self.default_as_str(),
+        }
+    }
+}
+
+// Do the following instead:
+#[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+pub enum Column {
+    Id,
+    #[sea_orm(column_name = "my_name")]
+    Name,
+}
+```
+* `execute`, `query_one`, `query_all`, `stream` now takes in SeaQuery statement instead of raw SQL statement. a new set of methods `execute_raw`, `query_one_raw`, `query_all_raw`, `stream_raw` is added https://github.com/SeaQL/sea-orm/pull/2657
+```rust
+  --> src/executor/paginator.rs:53:38
+   |
+>  |         let rows = self.db.query_all(stmt).await?;
+   |                            --------- ^^^^ expected `&_`, found `Statement`
+   |                            |
+   |                            arguments to this method are incorrect
+   |
+   = note: expected reference `&_`
+                 found struct `statement::Statement`
+```
+```rust
+let backend = self.db.get_database_backend();
+let stmt = backend.build(&query);
+// change to:
+let rows = self.db.query_all_raw(stmt).await?;
+// if the query is a SeaQuery statement, then just do this:
+let rows = self.db.query_all(&query).await?; // no need to build query
+```
+* `DatabaseConnection` is changed from enum to struct. The original enum is moved into `DatabaseConnection::inner`. The new enum is named `DatabaseConnectionType` https://github.com/SeaQL/sea-orm/pull/2671
+```rust
+error[E0599]: no associated item named `Disconnected` found for struct `db_connection::DatabaseConnection` in the current scope
+   --> src/database/db_connection.rs:137:33
+    |
+>   | pub struct DatabaseConnection {
+    | ----------------------------- associated item `Disconnected` not found for this struct
+...
+>   |             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
+    |                                 ^^^^^^^^^^^^ associated item not found in `DatabaseConnection`
+```
+```rust
+match conn.inner {
+    DatabaseConnectionType::Disconnected => (),
+    _ => (),
+}
+```
+* `DeleteOne` and `UpdateOne` no longer implement `QueryFilter` and `QueryTrait`
+  directly. Those implementations could expose an incomplete SQL query with an
+  incomplete condition that touches too many records. To generate the right
+  condition, we must make sure that the primary key is set on the input
+  `ActiveModel`. If you need to access the generated SQL query, convert into
+  `ValidatedDeleteOne`/`ValidatedUpdateOne` first.
+```rust
+error[E0599]: no method named `build` found for struct `query::update::UpdateOne` in the current scope
+   --> src/entity/column.rs:607:22
+    |
+  > | /                 Update::one(active_model)
+  > | |                     .build(DbBackend::Postgres)
+    | |                     -^^^^^ method not found in `UpdateOne<A>`
+    | |_____________________|
+    |
+```
+Call the `validate()` method:
+```rust
+Update::one(active_model)
+  + .validate()?
+    .build(DbBackend::Postgres)
+```
+* Removed `DbBackend::get_query_builder()` because `QueryBuilder` is not longer object safe.
+```rust
+  - fn get_query_builder(&self) -> Box<dyn QueryBuilder>
+```
+* A number of methods has been removed from `SelectTwoMany`: `into_partial_model`, `into_json`, `stream`. These methods are same as those in `SelectTwo`.
+Please use `Cake::find().find_also_related(Fruit).into_json()` instead.
+* The `delete_by_id` method has changed to returning `DeleteOne` instead of `DeleteMany`. It doesn't change normal `exec` usage, but would change return type of `exec_with_returning` to `Option<Model>`
+```rust
+fn delete_by_id<T>(values: T) -> DeleteMany<Self>         // old
+
+fn delete_by_id<T>(values: T) -> ValidatedDeleteOne<Self> // new
+```
+* `DeriveActiveEnum` now also automatically impl `IntoActiveValue`, if you have a custom impl before, there would be a collision
+
+### Upgrades
+
+* Upgraded Rust Edition to 2024 https://github.com/SeaQL/sea-orm/pull/2596
+* Upgraded `strum` to `0.27`
+
+## 1.1.19 - 2025-11-11
+
+### Enhancements
+
+* Add `find_linked_recursive` method to ModelTrait https://github.com/SeaQL/sea-orm/pull/2480
+* Skip drop extension type in fresh https://github.com/SeaQL/sea-orm/pull/2716
+
+### Bug Fixes
+
+* Handle null values in `from_sqlx_*_row_to_proxy_row` functions https://github.com/SeaQL/sea-orm/pull/2744
+
+## 1.1.17 - 2025-10-09
+
+### New Features
+
+* Added `map_sqlx_mysql_opts`, `map_sqlx_postgres_opts`, `map_sqlx_sqlite_opts` to `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/2731
+```rust
+let mut opt = ConnectOptions::new(url);
+opt.map_sqlx_postgres_opts(|pg_opt: PgConnectOptions| {
+    pg_opt.ssl_mode(PgSslMode::Require)
+});
+```
+* Added `mariadb-use-returning` to use returning syntax for MariaDB https://github.com/SeaQL/sea-orm/pull/2710
+* Released `sea-orm-rocket` 0.6 https://github.com/SeaQL/sea-orm/pull/2732
+
+## 1.1.16 - 2025-09-11
+
+### Bug Fixes
+
+* Fix enum casting in DerivePartialModel https://github.com/SeaQL/sea-orm/pull/2719 https://github.com/SeaQL/sea-orm/pull/2720
+```rust
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "active_enum::Entity", from_query_result, alias = "zzz")]
+struct PartialWithEnumAndAlias {
+    #[sea_orm(from_col = "tea")]
+    foo: Option<Tea>,
+}
+
+let sql = active_enum::Entity::find()
+    .into_partial_model::<PartialWithEnumAndAlias>()
+    .into_statement(DbBackend::Postgres)
+    .sql;
+
+assert_eq!(
+    sql,
+    r#"SELECT CAST("zzz"."tea" AS "text") AS "foo" FROM "public"."active_enum""#,
+);
+```
+
+### Enhancements
+
+* [sea-orm-cli] Use tokio (optional) instead of async-std https://github.com/SeaQL/sea-orm/pull/2721
+
+## 1.1.15 - 2025-08-31
+
+### Enhancements
+
+* Allow `DerivePartialModel` to have nested aliases https://github.com/SeaQL/sea-orm/pull/2686
+```rust
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "bakery::Entity", from_query_result)]
+struct Factory {
+    id: i32,
+    #[sea_orm(from_col = "name")]
+    plant: String,
+}
+
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity", from_query_result)]
+struct CakeFactory {
+    id: i32,
+    name: String,
+    #[sea_orm(nested, alias = "factory")] // <- new
+    bakery: Option<Factory>,
+}
+```
+* Add `ActiveModelTrait::try_set` https://github.com/SeaQL/sea-orm/pull/2706
+```rust
+fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
+/// New: a non-panicking version of above
+fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
+```
+
+### Bug Fixes
+
+* [sea-orm-cli] Fix compilation issue https://github.com/SeaQL/sea-orm/pull/2713
+
+## 1.1.14 - 2025-07-21
+
+### Enhancements
+
+* [sea-orm-cli] Mask sensitive ENV values https://github.com/SeaQL/sea-orm/pull/2658
+
+### Bug Fixes
+
+* `FromJsonQueryResult`: panic on serialization failures https://github.com/SeaQL/sea-orm/pull/2635
+```rust
+#[derive(Clone, Debug, PartialEq, Deserialize, FromJsonQueryResult)]
+pub struct NonSerializableStruct;
+
+impl Serialize for NonSerializableStruct {
+    fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        Err(serde::ser::Error::custom(
+            "intentionally failing serialization",
+        ))
+    }
+}
+
+let model = Model {
+    json: Some(NonSerializableStruct),
+};
+
+let _ = model.into_active_model().insert(&ctx.db).await; // panic here
+```
+
+## 1.1.13 - 2025-06-29
+
+### New Features
+
+* [sea-orm-cli] New `--frontend-format` flag to generate entities in pure Rust https://github.com/SeaQL/sea-orm/pull/2631
+```rust
+// for example, below is the normal (compact) Entity:
+use sea_orm::entity::prelude::*;
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
+#[sea_orm(table_name = "cake")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    #[serde(skip_deserializing)]
+    pub id: i32,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub name: Option<String> ,
+}
+// this is the generated frontend model, there is no SeaORM dependency:
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Model {
+    #[serde(skip_deserializing)]
+    pub id: i32,
+    pub name: Option<String> ,
+}
+```
+
+### Enhancements
+
+* Removed potential panics from `Loader` https://github.com/SeaQL/sea-orm/pull/2637
+
 ## 1.1.12 - 2025-05-27
 
 ### Enhancements
@@ -302,7 +1243,7 @@ let items: Vec<(order::Model, Option<lineitem::Model>, Option<cake::Model>)> =
 ### Enhancements
 
 * Support complex type path in `DeriveIntoActiveModel` https://github.com/SeaQL/sea-orm/pull/2517
-```rust 
+```rust
 #[derive(DeriveIntoActiveModel)]
 #[sea_orm(active_model = "<fruit::Entity as EntityTrait>::ActiveModel")]
 struct Fruit {
@@ -333,7 +1274,7 @@ pub struct Model {
     pub id: i32,
     pub embedding: PgVector,
 }
- 
+
 // Schema
 sea_query::Table::create()
     .table(image_model::Entity.table_ref())
@@ -1063,7 +2004,7 @@ pub struct JsonColumn {
 
 ## 0.12.1 - 2023-07-27
 
-+ `0.12.0-rc.1`: Yanked    
++ `0.12.0-rc.1`: Yanked
 + `0.12.0-rc.2`: 2023-05-19
 + `0.12.0-rc.3`: 2023-06-22
 + `0.12.0-rc.4`: 2023-07-08

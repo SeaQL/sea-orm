@@ -2,20 +2,20 @@ use std::path::Path;
 
 use async_trait::async_trait;
 use loco_rs::{
-    app::{AppContext, Hooks},
+    Result,
+    app::{AppContext, Hooks, Initializer},
     bgworker::{BackgroundWorker, Queue},
-    boot::{create_app, BootResult, StartMode},
+    boot::{BootResult, StartMode, create_app},
     config::Config,
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
     task::Tasks,
-    Result,
 };
 use migration::Migrator;
 
 use crate::{
-    controllers,
+    controllers, initializers,
     models::_entities::{notes, users},
     tasks,
     workers::downloader::DownloadWorker,
@@ -44,6 +44,13 @@ impl Hooks for App {
         config: Config,
     ) -> Result<BootResult> {
         create_app::<Self, Migrator>(mode, environment, config).await
+    }
+
+    async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        let initializers: Vec<Box<dyn Initializer>> =
+            vec![Box::new(initializers::graphql::GraphQLInitializer)];
+
+        Ok(initializers)
     }
 
     fn routes(_ctx: &AppContext) -> AppRoutes {

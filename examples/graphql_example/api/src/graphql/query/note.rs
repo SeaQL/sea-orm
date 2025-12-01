@@ -1,6 +1,6 @@
+use crate::service::Query;
 use async_graphql::{Context, Object, Result};
-use entity::{async_graphql, note};
-use graphql_example_service::Query;
+use entity::note;
 
 use crate::db::Database;
 

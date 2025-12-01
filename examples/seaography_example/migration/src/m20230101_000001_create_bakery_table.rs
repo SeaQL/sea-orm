@@ -9,10 +9,10 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Bakery::Table)
-                    .col(pk_auto(Bakery::Id))
-                    .col(string(Bakery::Name))
-                    .col(double(Bakery::ProfitMargin))
+                    .table("bakery")
+                    .col(pk_auto("id"))
+                    .col(string("name"))
+                    .col(double("profit_margin"))
                     .to_owned(),
             )
             .await
@@ -20,15 +20,7 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Bakery::Table).to_owned())
+            .drop_table(Table::drop().table("bakery").to_owned())
             .await
     }
-}
-
-#[derive(DeriveIden)]
-enum Bakery {
-    Table,
-    Id,
-    Name,
-    ProfitMargin,
 }

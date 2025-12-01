@@ -2,9 +2,9 @@
 
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -125,6 +125,7 @@ pub async fn create_and_update_repository(db: &DatabaseConnection) -> Result<(),
     };
 
     let update_res = Repository::update(updated_active_model.clone())
+        .validate()?
         .filter(repository::Column::Id.eq("not-exists-id".to_owned()))
         .exec(db)
         .await;
@@ -132,6 +133,7 @@ pub async fn create_and_update_repository(db: &DatabaseConnection) -> Result<(),
     assert_eq!(update_res, Err(DbErr::RecordNotUpdated));
 
     let update_res = Repository::update(updated_active_model)
+        .validate()?
         .filter(repository::Column::Id.eq("unique-id-002".to_owned()))
         .exec(db)
         .await?;
@@ -152,6 +154,7 @@ pub async fn create_and_update_repository(db: &DatabaseConnection) -> Result<(),
     };
 
     let update_res = Repository::update(updated_active_model.clone())
+        .validate()?
         .filter(repository::Column::Id.eq("unique-id-002".to_owned()))
         .exec(db)
         .await?;

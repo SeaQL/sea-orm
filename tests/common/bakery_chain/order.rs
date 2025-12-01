@@ -9,7 +9,7 @@ pub struct Model {
     pub total: Decimal,
     pub bakery_id: i32,
     pub customer_id: i32,
-    pub placed_at: DateTime,
+    pub placed_at: DateTimeUtc,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -47,6 +47,26 @@ impl Related<super::customer::Entity> for Entity {
 impl Related<super::lineitem::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Lineitem.def()
+    }
+}
+
+pub struct ToCustomer;
+impl Linked for ToCustomer {
+    type FromEntity = Entity;
+    type ToEntity = super::customer::Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![Relation::Customer.def()]
+    }
+}
+
+pub struct ToLineitem;
+impl Linked for ToLineitem {
+    type FromEntity = Entity;
+    type ToEntity = super::lineitem::Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![Relation::Lineitem.def()]
     }
 }
 

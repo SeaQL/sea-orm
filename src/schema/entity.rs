@@ -1,22 +1,25 @@
 use crate::{
-    ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, Iterable, PrimaryKeyArity,
-    PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
+    ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, IdenStatic, Iterable,
+    PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
+    ColumnDef, DynIden, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement,
     extension::postgres::{Type, TypeCreateStatement},
-    ColumnDef, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement,
 };
+use std::collections::BTreeMap;
 
 impl Schema {
-    /// Creates Postgres enums from an ActiveEnum. See [TypeCreateStatement] for more details
-    pub fn create_enum_from_active_enum<A>(&self) -> TypeCreateStatement
+    /// Creates Postgres enums from an ActiveEnum. See [`TypeCreateStatement`] for more details.
+    /// Returns None if not Postgres.
+    pub fn create_enum_from_active_enum<A>(&self) -> Option<TypeCreateStatement>
     where
         A: ActiveEnum,
     {
         create_enum_from_active_enum::<A>(self.backend)
     }
 
-    /// Creates Postgres enums from an Entity. See [TypeCreateStatement] for more details
+    /// Creates Postgres enums from an Entity. See [`TypeCreateStatement`] for more details.
+    /// Returns empty vec if not Postgres.
     pub fn create_enum_from_entity<E>(&self, entity: E) -> Vec<TypeCreateStatement>
     where
         E: EntityTrait,
@@ -32,6 +35,18 @@ impl Schema {
         create_table_from_entity(entity, self.backend)
     }
 
+    #[doc(hidden)]
+    pub fn create_table_with_index_from_entity<E>(&self, entity: E) -> TableCreateStatement
+    where
+        E: EntityTrait,
+    {
+        let mut table = create_table_from_entity(entity, self.backend);
+        for mut index in create_index_from_entity(entity, self.backend) {
+            table.index(&mut index);
+        }
+        table
+    }
+
     /// Creates the indexes from an Entity, returning an empty Vec if there are none
     /// to create. See [IndexCreateStatement] for more details
     pub fn create_index_from_entity<E>(&self, entity: E) -> Vec<IndexCreateStatement>
@@ -44,40 +59,33 @@ impl Schema {
     /// Creates a column definition for example to update a table.
     ///
     /// ```
-    /// use crate::sea_orm::IdenStatic;
-    /// use sea_orm::{
-    ///     ActiveModelBehavior, ColumnDef, ColumnTrait, ColumnType, DbBackend, EntityName,
-    ///     EntityTrait, EnumIter, PrimaryKeyTrait, RelationDef, RelationTrait, Schema,
-    /// };
-    /// use sea_orm_macros::{DeriveEntityModel, DerivePrimaryKey};
-    /// use sea_query::{MysqlQueryBuilder, TableAlterStatement};
+    /// use sea_orm::sea_query::TableAlterStatement;
+    /// use sea_orm::{DbBackend, Schema, Statement};
     ///
-    /// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-    /// #[sea_orm(table_name = "posts")]
-    /// pub struct Model {
-    ///     #[sea_orm(primary_key)]
-    ///     pub id: u32,
-    ///     pub title: String,
-    /// }
+    /// mod post {
+    ///     use sea_orm::entity::prelude::*;
     ///
-    /// #[derive(Copy, Clone, Debug, EnumIter)]
-    /// pub enum Relation {}
-    ///
-    /// impl RelationTrait for Relation {
-    ///     fn def(&self) -> RelationDef {
-    ///         panic!("No RelationDef")
+    ///     #[sea_orm::model]
+    ///     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+    ///     #[sea_orm(table_name = "posts")]
+    ///     pub struct Model {
+    ///         #[sea_orm(primary_key)]
+    ///         pub id: u32,
+    ///         pub title: String,
     ///     }
+    ///
+    ///     impl ActiveModelBehavior for ActiveModel {}
     /// }
-    /// impl ActiveModelBehavior for ActiveModel {}
     ///
     /// let schema = Schema::new(DbBackend::MySql);
     ///
-    /// let mut alter_table = TableAlterStatement::new()
-    ///     .table(Entity)
-    ///     .add_column(&mut schema.get_column_def::<Entity>(Column::Title))
-    ///     .take();
+    /// let alter_table: Statement = DbBackend::MySql.build(
+    ///     TableAlterStatement::new()
+    ///         .table(post::Entity)
+    ///         .add_column(&mut schema.get_column_def::<post::Entity>(post::Column::Title)),
+    /// );
     /// assert_eq!(
-    ///     alter_table.to_string(MysqlQueryBuilder::default()),
+    ///     alter_table.to_string(),
     ///     "ALTER TABLE `posts` ADD COLUMN `title` varchar(255) NOT NULL"
     /// );
     /// ```
@@ -89,24 +97,24 @@ impl Schema {
     }
 }
 
-pub(crate) fn create_enum_from_active_enum<A>(backend: DbBackend) -> TypeCreateStatement
+pub(crate) fn create_enum_from_active_enum<A>(backend: DbBackend) -> Option<TypeCreateStatement>
 where
     A: ActiveEnum,
 {
     if matches!(backend, DbBackend::MySql | DbBackend::Sqlite) {
-        panic!("TypeCreateStatement is not supported in MySQL & SQLite");
+        return None;
     }
     let col_def = A::db_type();
     let col_type = col_def.get_column_type();
     create_enum_from_column_type(col_type)
 }
 
-pub(crate) fn create_enum_from_column_type(col_type: &ColumnType) -> TypeCreateStatement {
+pub(crate) fn create_enum_from_column_type(col_type: &ColumnType) -> Option<TypeCreateStatement> {
     let (name, values) = match col_type {
         ColumnType::Enum { name, variants } => (name.clone(), variants.clone()),
-        _ => panic!("Should be ColumnType::Enum"),
+        _ => return None,
     };
-    Type::create().as_enum(name).values(values).to_owned()
+    Some(Type::create().as_enum(name).values(values).to_owned())
 }
 
 #[allow(clippy::needless_borrow)]
@@ -124,8 +132,9 @@ where
         if !matches!(col_type, ColumnType::Enum { .. }) {
             continue;
         }
-        let stmt = create_enum_from_column_type(&col_type);
-        vec.push(stmt);
+        if let Some(stmt) = create_enum_from_column_type(&col_type) {
+            vec.push(stmt);
+        }
     }
     vec
 }
@@ -137,20 +146,42 @@ pub(crate) fn create_index_from_entity<E>(
 where
     E: EntityTrait,
 {
-    let mut vec = Vec::new();
+    let mut indexes = Vec::new();
+    let mut unique_keys: BTreeMap<String, Vec<DynIden>> = Default::default();
+
     for column in E::Column::iter() {
         let column_def = column.def();
-        if !column_def.indexed {
-            continue;
+
+        if column_def.indexed || column_def.unique {
+            let mut stmt = Index::create()
+                .name(format!("idx-{}-{}", entity.to_string(), column.to_string()))
+                .table(entity)
+                .col(column)
+                .take();
+            if column_def.unique {
+                stmt.unique();
+            }
+            indexes.push(stmt);
         }
-        let stmt = Index::create()
-            .name(format!("idx-{}-{}", entity.to_string(), column.to_string()))
-            .table(entity)
-            .col(column)
-            .to_owned();
-        vec.push(stmt)
+
+        if let Some(key) = column_def.unique_key {
+            unique_keys.entry(key).or_default().push(SeaRc::new(column));
+        }
     }
-    vec
+
+    for (key, cols) in unique_keys {
+        let mut stmt = Index::create()
+            .name(format!("idx-{}-{}", entity.to_string(), key))
+            .table(entity)
+            .unique()
+            .take();
+        for col in cols {
+            stmt.col(col);
+        }
+        indexes.push(stmt);
+    }
+
+    indexes
 }
 
 pub(crate) fn create_table_from_entity<E>(entity: E, backend: DbBackend) -> TableCreateStatement
@@ -178,7 +209,7 @@ where
 
     for relation in E::Relation::iter() {
         let relation = relation.def();
-        if relation.is_owner {
+        if relation.is_owner || relation.skip_fk {
             continue;
         }
         stmt.foreign_key(&mut relation.into());
@@ -196,9 +227,9 @@ where
         ColumnType::Enum { name, variants } => match backend {
             DbBackend::MySql => {
                 let variants: Vec<String> = variants.iter().map(|v| v.to_string()).collect();
-                ColumnType::custom(format!("ENUM('{}')", variants.join("', '")).as_str())
+                ColumnType::custom(format!("ENUM('{}')", variants.join("', '")))
             }
-            DbBackend::Postgres => ColumnType::Custom(SeaRc::clone(name)),
+            DbBackend::Postgres => ColumnType::Custom(name.clone()),
             DbBackend::Sqlite => orm_column_def.col_type,
         },
         _ => orm_column_def.col_type,
@@ -213,11 +244,23 @@ where
     if let Some(default) = orm_column_def.default {
         column_def.default(default);
     }
-    if let Some(comment) = orm_column_def.comment {
+    if let Some(comment) = &orm_column_def.comment {
         column_def.comment(comment);
     }
+    if let Some(extra) = &orm_column_def.extra {
+        column_def.extra(extra);
+    }
+    match (&orm_column_def.renamed_from, &orm_column_def.comment) {
+        (Some(renamed_from), Some(comment)) => {
+            column_def.comment(format!("{comment}; renamed_from \"{renamed_from}\""));
+        }
+        (Some(renamed_from), None) => {
+            column_def.comment(format!("renamed_from \"{renamed_from}\""));
+        }
+        (None, _) => {}
+    }
     for primary_key in E::PrimaryKey::iter() {
-        if column.to_string() == primary_key.into_column().to_string() {
+        if column.as_str() == primary_key.into_column().as_str() {
             if E::PrimaryKey::auto_increment() {
                 column_def.auto_increment();
             }
@@ -231,7 +274,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{sea_query::*, tests_cfg::*, DbBackend, EntityName, Schema};
+    use crate::{DbBackend, EntityName, Schema, sea_query::*, tests_cfg::*};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -264,7 +307,8 @@ mod tests {
             .col(
                 ColumnDef::new(cake_filling_price::Column::Price)
                     .decimal()
-                    .not_null(),
+                    .not_null()
+                    .extra("CHECK (price > 0)"),
             )
             .primary_key(
                 Index::create()
@@ -294,32 +338,50 @@ mod tests {
             assert_eq!(
                 builder.build(&schema.create_table_from_entity(indexes::Entity)),
                 builder.build(
-                    &get_indexes_stmt()
+                    &get_indexes_table_stmt()
                         .table(indexes::Entity.table_ref())
                         .to_owned()
                 )
             );
 
             let stmts = schema.create_index_from_entity(indexes::Entity);
-            assert_eq!(stmts.len(), 2);
+            assert_eq!(stmts.len(), 4);
+
+            let idx: IndexCreateStatement = Index::create()
+                .name("idx-indexes-unique_attr")
+                .table(indexes::Entity)
+                .col(indexes::Column::UniqueAttr)
+                .unique()
+                .to_owned();
+            assert_eq!(builder.build(&stmts[0]), builder.build(&idx));
 
             let idx: IndexCreateStatement = Index::create()
                 .name("idx-indexes-index1_attr")
                 .table(indexes::Entity)
                 .col(indexes::Column::Index1Attr)
                 .to_owned();
-            assert_eq!(builder.build(&stmts[0]), builder.build(&idx));
+            assert_eq!(builder.build(&stmts[1]), builder.build(&idx));
 
             let idx: IndexCreateStatement = Index::create()
                 .name("idx-indexes-index2_attr")
                 .table(indexes::Entity)
                 .col(indexes::Column::Index2Attr)
-                .to_owned();
-            assert_eq!(builder.build(&stmts[1]), builder.build(&idx));
+                .unique()
+                .take();
+            assert_eq!(builder.build(&stmts[2]), builder.build(&idx));
+
+            let idx: IndexCreateStatement = Index::create()
+                .name("idx-indexes-my_unique")
+                .table(indexes::Entity)
+                .col(indexes::Column::UniqueKeyA)
+                .col(indexes::Column::UniqueKeyB)
+                .unique()
+                .take();
+            assert_eq!(builder.build(&stmts[3]), builder.build(&idx));
         }
     }
 
-    fn get_indexes_stmt() -> TableCreateStatement {
+    fn get_indexes_table_stmt() -> TableCreateStatement {
         Table::create()
             .col(
                 ColumnDef::new(indexes::Column::IndexesId)
@@ -344,6 +406,16 @@ mod tests {
                     .integer()
                     .not_null()
                     .unique_key(),
+            )
+            .col(
+                ColumnDef::new(indexes::Column::UniqueKeyA)
+                    .string()
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(indexes::Column::UniqueKeyB)
+                    .string()
+                    .not_null(),
             )
             .to_owned()
     }

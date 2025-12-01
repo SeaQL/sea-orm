@@ -2,9 +2,9 @@
 
 pub mod common;
 
-pub use common::{bakery_chain, setup::*, TestContext};
-use sea_orm::{entity::prelude::*, IntoActiveModel, NotSet, Set};
-pub use sea_query::{Expr, Query};
+use common::{TestContext, bakery_chain, setup::*};
+use sea_orm::{IntoActiveModel, NotSet, Set, entity::prelude::*};
+use sea_query::{Expr, Query};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -25,8 +25,8 @@ async fn main() -> Result<(), DbErr> {
     update
         .table(Entity)
         .values([
-            (Column::Name, "Bakery Shop".into()),
-            (Column::ProfitMargin, 0.5.into()),
+            (Column::Name, "Bakery 2".into()),
+            (Column::ProfitMargin, 0.8.into()),
         ])
         .and_where(Column::Id.eq(1));
 
@@ -39,26 +39,32 @@ async fn main() -> Result<(), DbErr> {
     if db.support_returning() {
         insert.returning(returning.clone());
         let insert_res = db
-            .query_one(builder.build(&insert))
+            .query_one(&insert)
             .await?
             .expect("Insert failed with query_one");
-        let _id: i32 = insert_res.try_get("", "id")?;
-        let _name: String = insert_res.try_get("", "name")?;
-        let _profit_margin: f64 = insert_res.try_get("", "profit_margin")?;
+        let id: i32 = insert_res.try_get("", "id")?;
+        assert_eq!(id, 1);
+        let name: String = insert_res.try_get("", "name")?;
+        assert_eq!(name, "Bakery Shop");
+        let profit_margin: f64 = insert_res.try_get("", "profit_margin")?;
+        assert_eq!(profit_margin, 0.5);
 
         update.returning(returning.clone());
         let update_res = db
-            .query_one(builder.build(&update))
+            .query_one(&update)
             .await?
             .expect("Update filed with query_one");
-        let _id: i32 = update_res.try_get("", "id")?;
-        let _name: String = update_res.try_get("", "name")?;
-        let _profit_margin: f64 = update_res.try_get("", "profit_margin")?;
+        let id: i32 = update_res.try_get("", "id")?;
+        assert_eq!(id, 1);
+        let name: String = update_res.try_get("", "name")?;
+        assert_eq!(name, "Bakery 2");
+        let profit_margin: f64 = update_res.try_get("", "profit_margin")?;
+        assert_eq!(profit_margin, 0.8);
     } else {
-        let insert_res = db.execute(builder.build(&insert)).await?;
+        let insert_res = db.execute(&insert).await?;
         assert!(insert_res.rows_affected() > 0);
 
-        let update_res = db.execute(builder.build(&update)).await?;
+        let update_res = db.execute(&update).await?;
         assert!(update_res.rows_affected() > 0);
     }
 
@@ -68,18 +74,8 @@ async fn main() -> Result<(), DbErr> {
 }
 
 #[sea_orm_macros::test]
-#[cfg_attr(
-    any(
-        feature = "sqlx-mysql",
-        all(
-            feature = "sqlx-sqlite",
-            not(feature = "sqlite-use-returning-for-3_35")
-        )
-    ),
-    should_panic(expected = "Database backend doesn't support RETURNING")
-)]
 async fn insert_many() {
-    pub use common::{features::*, TestContext};
+    pub use common::{TestContext, features::*};
     use edit_log::*;
 
     let ctx = TestContext::new("returning_tests_insert_many").await;
@@ -105,70 +101,83 @@ async fn insert_many() {
         },]
     );
 
-    assert_eq!(
-        Entity::insert_many([
-            ActiveModel {
-                id: NotSet,
-                action: Set("two".into()),
-                values: Set(json!({ "id": "unique-id-002" })),
-            },
-            ActiveModel {
-                id: NotSet,
-                action: Set("three".into()),
-                values: Set(json!({ "id": "unique-id-003" })),
-            },
-        ])
-        .exec_with_returning_many(db)
-        .await
-        .unwrap(),
-        [
-            Model {
-                id: 2,
-                action: "two".into(),
-                values: json!({ "id": "unique-id-002" }),
-            },
-            Model {
-                id: 3,
-                action: "three".into(),
-                values: json!({ "id": "unique-id-003" }),
-            },
-        ]
+    assert!(
+        Entity::insert_many::<ActiveModel, _>([])
+            .exec_with_returning(db)
+            .await
+            .unwrap()
+            .is_empty()
     );
 
-    assert_eq!(
-        Entity::insert_many([
-            ActiveModel {
-                id: NotSet,
-                action: Set("four".into()),
-                values: Set(json!({ "id": "unique-id-004" })),
-            },
-            ActiveModel {
-                id: NotSet,
-                action: Set("five".into()),
-                values: Set(json!({ "id": "unique-id-005" })),
-            },
-        ])
-        .exec_with_returning_keys(db)
-        .await
-        .unwrap(),
-        [4, 5]
+    let result = Entity::insert_many([
+        ActiveModel {
+            id: NotSet,
+            action: Set("two".into()),
+            values: Set(json!({ "id": "unique-id-002" })),
+        },
+        ActiveModel {
+            id: NotSet,
+            action: Set("three".into()),
+            values: Set(json!({ "id": "unique-id-003" })),
+        },
+    ])
+    .exec_with_returning(db)
+    .await;
+
+    if db.support_returning() {
+        assert_eq!(
+            result.unwrap(),
+            [
+                Model {
+                    id: 2,
+                    action: "two".into(),
+                    values: json!({ "id": "unique-id-002" }),
+                },
+                Model {
+                    id: 3,
+                    action: "three".into(),
+                    values: json!({ "id": "unique-id-003" }),
+                },
+            ]
+        );
+    } else {
+        assert!(matches!(result, Err(DbErr::BackendNotSupported { .. })));
+    }
+
+    assert!(
+        Entity::insert_many::<ActiveModel, _>([])
+            .exec_with_returning_keys(db)
+            .await
+            .unwrap()
+            .is_empty()
     );
+
+    let result = Entity::insert_many([
+        ActiveModel {
+            id: NotSet,
+            action: Set("four".into()),
+            values: Set(json!({ "id": "unique-id-004" })),
+        },
+        ActiveModel {
+            id: NotSet,
+            action: Set("five".into()),
+            values: Set(json!({ "id": "unique-id-005" })),
+        },
+    ])
+    .exec_with_returning_keys(db)
+    .await;
+
+    if db.support_returning() {
+        assert_eq!(result.unwrap(), [4, 5]);
+    } else {
+        assert!(matches!(result, Err(DbErr::BackendNotSupported { .. })));
+    }
 }
 
 #[sea_orm_macros::test]
-#[cfg_attr(
-    any(
-        feature = "sqlx-mysql",
-        all(
-            feature = "sqlx-sqlite",
-            not(feature = "sqlite-use-returning-for-3_35")
-        )
-    ),
-    should_panic(expected = "Database backend doesn't support RETURNING")
-)]
 async fn insert_many_composite_key() {
     use bakery_chain::{baker, cake, cakes_bakers};
-    pub use common::{features::*, TestContext};
+    pub use common::{TestContext, features::*};
 
     let ctx = TestContext::new("returning_tests_insert_many_composite_key").await;
     let db = &ctx.db;
@@ -215,109 +224,103 @@ async fn insert_many_composite_key() {
     .await
     .unwrap();
 
-    assert_eq!(
-        cakes_bakers::Entity::insert_many([
-            cakes_bakers::ActiveModel {
-                cake_id: Set(1),
-                baker_id: Set(2),
-            },
-            cakes_bakers::ActiveModel {
-                cake_id: Set(2),
-                baker_id: Set(1),
-            },
-        ])
-        .exec_with_returning_keys(db)
-        .await
-        .unwrap(),
-        [(1, 2), (2, 1)]
-    );
+    let result = cakes_bakers::Entity::insert_many([
+        cakes_bakers::ActiveModel {
+            cake_id: Set(1),
+            baker_id: Set(2),
+        },
+        cakes_bakers::ActiveModel {
+            cake_id: Set(2),
+            baker_id: Set(1),
+        },
+    ])
+    .exec_with_returning_keys(db)
+    .await;
+
+    if db.support_returning() {
+        assert_eq!(result.unwrap(), [(1, 2), (2, 1)]);
+    } else {
+        assert!(matches!(result, Err(DbErr::BackendNotSupported { .. })));
+    }
 }
 
 #[sea_orm_macros::test]
-#[cfg_attr(
-    any(
-        feature = "sqlx-mysql",
-        all(
-            feature = "sqlx-sqlite",
-            not(feature = "sqlite-use-returning-for-3_35")
-        )
-    ),
-    should_panic(expected = "Database backend doesn't support RETURNING")
-)]
-async fn update_many() {
-    pub use common::{features::*, TestContext};
+async fn update_many() -> Result<(), DbErr> {
+    pub use common::{TestContext, features::*};
     use edit_log::*;
 
-    let run = || async {
-        let ctx = TestContext::new("returning_tests_update_many").await;
-        let db = &ctx.db;
+    let ctx = TestContext::new("returning_tests_update_many").await;
+    let db = &ctx.db;
 
-        create_tables(db).await?;
+    create_tables(db).await?;
 
-        Entity::insert(
+    Entity::insert(
+        Model {
+            id: 1,
+            action: "before_save".into(),
+            values: json!({ "id": "unique-id-001" }),
+        }
+        .into_active_model(),
+    )
+    .exec(db)
+    .await?;
+
+    Entity::insert(
+        Model {
+            id: 2,
+            action: "before_save".into(),
+            values: json!({ "id": "unique-id-002" }),
+        }
+        .into_active_model(),
+    )
+    .exec(db)
+    .await?;
+
+    Entity::insert(
+        Model {
+            id: 3,
+            action: "before_save".into(),
+            values: json!({ "id": "unique-id-003" }),
+        }
+        .into_active_model(),
+    )
+    .exec(db)
+    .await?;
+
+    assert_eq!(
+        Entity::find().all(db).await?,
+        [
             Model {
                 id: 1,
                 action: "before_save".into(),
                 values: json!({ "id": "unique-id-001" }),
-            }
-            .into_active_model(),
-        )
-        .exec(db)
-        .await?;
-
-        Entity::insert(
+            },
             Model {
                 id: 2,
                 action: "before_save".into(),
                 values: json!({ "id": "unique-id-002" }),
-            }
-            .into_active_model(),
-        )
-        .exec(db)
-        .await?;
-
-        Entity::insert(
+            },
             Model {
                 id: 3,
                 action: "before_save".into(),
                 values: json!({ "id": "unique-id-003" }),
-            }
-            .into_active_model(),
+            },
+        ]
+    );
+
+    // Update many with returning
+    let result = Entity::update_many()
+        .col_expr(
+            Column::Values,
+            Expr::value(json!({ "remarks": "save log" })),
         )
-        .exec(db)
-        .await?;
+        .filter(Column::Action.eq("before_save"))
+        .exec_with_returning(db)
+        .await;
 
+    if db.support_returning() {
         assert_eq!(
-            Entity::find().all(db).await?,
-            [
-                Model {
-                    id: 1,
-                    action: "before_save".into(),
-                    values: json!({ "id": "unique-id-001" }),
-                },
-                Model {
-                    id: 2,
-                    action: "before_save".into(),
-                    values: json!({ "id": "unique-id-002" }),
-                },
-                Model {
-                    id: 3,
-                    action: "before_save".into(),
-                    values: json!({ "id": "unique-id-003" }),
-                },
-            ]
-        );
-
-        // Update many with returning
-        assert_eq!(
-            Entity::update_many()
-                .col_expr(
-                    Column::Values,
-                    Expr::value(json!({ "remarks": "save log" }))
-                )
-                .filter(Column::Action.eq("before_save"))
-                .exec_with_returning(db)
-                .await?,
+            result.unwrap(),
             [
                 Model {
                     id: 1,
@@ -336,56 +339,46 @@ async fn update_many() {
                 },
             ]
         );
+    } else {
+        assert!(matches!(result, Err(DbErr::BackendNotSupported { .. })));
+    }
 
-        // No-op
-        assert_eq!(
-            Entity::update_many()
-                .filter(Column::Action.eq("before_save"))
-                .exec_with_returning(db)
-                .await?,
-            []
-        );
+    // No-op
+    assert_eq!(
+        Entity::update_many()
+            .filter(Column::Action.eq("before_save"))
+            .exec_with_returning(db)
+            .await?,
+        []
+    );
 
-        Result::<(), DbErr>::Ok(())
-    };
-
-    run().await.unwrap();
+    Ok(())
 }
 
 #[sea_orm_macros::test]
-#[cfg_attr(
-    any(
-        feature = "sqlx-mysql",
-        all(
-            feature = "sqlx-sqlite",
-            not(feature = "sqlite-use-returning-for-3_35")
-        )
-    ),
-    should_panic(expected = "Database backend doesn't support RETURNING")
-)]
-async fn delete_many() {
-    pub use common::{features::*, TestContext};
+async fn delete_many() -> Result<(), DbErr> {
+    pub use common::{TestContext, features::*};
     use edit_log::*;
 
-    let run = || async {
-        let ctx = TestContext::new("returning_tests_delete_many").await;
-        let db = &ctx.db;
+    let ctx = TestContext::new("returning_tests_delete_many").await;
+    let db = &ctx.db;
 
-        create_tables(db).await?;
+    create_tables(db).await?;
 
-        let inserted_models = [
-            Model {
-                id: 1,
-                action: "before_save".to_string(),
-                values: json!({ "id": "unique-id-001" }),
-            },
-            Model {
-                id: 2,
-                action: "before_save".to_string(),
-                values: json!({ "id": "unique-id-002" }),
-            },
-        ];
-        // Delete many with returning
+    let inserted_models = [
+        Model {
+            id: 1,
+            action: "before_save".to_string(),
+            values: json!({ "id": "unique-id-001" }),
+        },
+        Model {
+            id: 2,
+            action: "before_save".to_string(),
+            values: json!({ "id": "unique-id-002" }),
+        },
+    ];
+
+    if db.support_returning() {
         assert_eq!(
             Entity::insert_many(vec![
                 ActiveModel {
@@ -399,49 +392,97 @@ async fn delete_many() {
                     values: Set(json!({ "id": "unique-id-002" })),
                 },
             ])
-            .exec_with_returning_many(db)
-            .await?,
+            .exec_with_returning(db)
+            .await
+            .unwrap(),
             inserted_models
         );
+    } else {
+        Entity::insert_many(vec![
+            ActiveModel {
+                id: NotSet,
+                action: Set("before_save".to_string()),
+                values: Set(json!({ "id": "unique-id-001" })),
+            },
+            ActiveModel {
+                id: NotSet,
+                action: Set("before_save".to_string()),
+                values: Set(json!({ "id": "unique-id-002" })),
+            },
+        ])
+        .exec(db)
+        .await
+        .unwrap();
+    }
 
+    if db.support_returning() {
         assert_eq!(
             Entity::delete_many()
                 .filter(Column::Action.eq("before_save"))
                 .exec_with_returning(db)
-                .await?,
+                .await
+                .unwrap(),
             inserted_models
         );
+    } else {
+        assert_eq!(
+            Entity::delete_many().exec(db).await.unwrap().rows_affected,
+            2
+        );
+    }
 
-        let inserted_model_3 = Model {
-            id: 3,
-            action: "before_save".to_string(),
-            values: json!({ "id": "unique-id-003" }),
-        };
+    let inserted_model_3 = Model {
+        id: 3,
+        action: "before_save".to_string(),
+        values: json!({ "id": "unique-id-003" }),
+    };
 
-        Entity::insert(ActiveModel {
-            id: NotSet,
-            action: Set("before_save".to_string()),
-            values: Set(json!({ "id": "unique-id-003" })),
-        })
-        .exec(db)
-        .await?;
+    Entity::insert(ActiveModel {
+        id: NotSet,
+        action: Set("before_save".to_string()),
+        values: Set(json!({ "id": "unique-id-003" })),
+    })
+    .exec(db)
+    .await?;
 
-        // One
+    // Delete one
+    if db.support_returning() {
         assert_eq!(
             Entity::delete(ActiveModel {
                 id: Set(3),
                 ..Default::default()
             })
             .exec_with_returning(db)
-            .await?,
+            .await
+            .unwrap(),
             Some(inserted_model_3)
         );
+    } else {
+        assert_eq!(
+            Entity::delete(ActiveModel {
+                id: Set(3),
+                ..Default::default()
+            })
+            .exec(db)
+            .await
+            .unwrap()
+            .rows_affected,
+            1
+        );
+    }
 
-        // No-op
-        assert_eq!(Entity::delete_many().exec_with_returning(db).await?, []);
+    // No-op
+    if db.support_returning() {
+        assert_eq!(
+            Entity::delete_many().exec_with_returning(db).await.unwrap(),
+            []
+        );
+    } else {
+        assert_eq!(
+            Entity::delete_many().exec(db).await.unwrap().rows_affected,
+            0
+        );
+    }
 
-        Result::<(), DbErr>::Ok(())
-    };
-
-    run().await.unwrap();
+    Ok(())
 }

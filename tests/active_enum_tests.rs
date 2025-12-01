@@ -3,19 +3,19 @@
 pub mod common;
 
 use active_enum::Entity as ActiveEnumEntity;
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
 #[cfg(feature = "sqlx-postgres")]
 use sea_orm::QueryTrait;
 use sea_orm::{
-    entity::prelude::*,
+    ActiveEnum as ActiveEnumTrait, DatabaseConnection, DbErr, FromQueryResult, QueryFilter,
+    QuerySelect,
     entity::*,
-    sea_query::{BinOper, Expr},
-    ActiveEnum as ActiveEnumTrait, DatabaseConnection, FromQueryResult, QuerySelect,
+    sea_query::{BinOper, Expr, ExprTrait},
 };
 
 #[sea_orm_macros::test]
-async fn main() -> Result<(), DbErr> {
+async fn active_enum_tests() -> Result<(), DbErr> {
     let ctx = TestContext::new("active_enum_tests").await;
     create_tables(&ctx.db).await?;
     insert_active_enum(&ctx.db).await?;
@@ -26,6 +26,37 @@ async fn main() -> Result<(), DbErr> {
 
     find_related_active_enum(&ctx.db).await?;
     find_linked_active_enum(&ctx.db).await?;
+
+    delete_active_enum(&ctx.db).await?;
+
+    ctx.delete().await;
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+async fn active_enum_schema_sync_test() -> Result<(), DbErr> {
+    let ctx = TestContext::new("active_enum_schema_sync_test").await;
+    let db = &ctx.db;
+
+    let mut schema_builder = db.get_schema_builder().register(active_enum::Entity);
+
+    #[cfg(feature = "sqlx-postgres")]
+    {
+        schema_builder = schema_builder
+            .register(active_enum_child::Entity)
+            .register(categories::Entity);
+    }
+
+    #[cfg(not(feature = "schema-sync"))]
+    schema_builder.apply(db).await?;
+
+    #[cfg(feature = "schema-sync")]
+    schema_builder.sync(db).await?;
+
+    insert_active_enum(&ctx.db).await?;
+    #[cfg(feature = "sqlx-postgres")]
+    insert_active_enum_vec(&ctx.db).await?;
 
     ctx.delete().await;
 
@@ -141,10 +172,10 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(
         model,
         Entity::find()
-            .filter(
-                Expr::col(Column::Tea)
-                    .binary(BinOper::In, Expr::tuple([Tea::EverydayTea.as_enum()]))
-            )
+            .filter(Expr::col(Column::Tea).binary(
+                BinOper::In,
+                Expr::tuple([ActiveEnumTrait::as_enum(&Tea::EverydayTea)])
+            ))
             .one(db)
             .await?
             .unwrap()
@@ -173,10 +204,10 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
         model,
         Entity::find()
             .filter(Column::Tea.is_not_null())
-            .filter(
-                Expr::col(Column::Tea)
-                    .binary(BinOper::NotIn, Expr::tuple([Tea::BreakfastTea.as_enum()]))
-            )
+            .filter(Expr::col(Column::Tea).binary(
+                BinOper::NotIn,
+                Expr::tuple([ActiveEnumTrait::as_enum(&Tea::BreakfastTea)])
+            ))
             .one(db)
             .await?
             .unwrap()
@@ -662,6 +693,24 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
     Ok(())
 }
 
+async fn delete_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
+    use active_enum_child::*;
+
+    let model = Entity::find().one(db).await?.unwrap();
+
+    assert_eq!(model.id, 1);
+
+    assert_eq!(
+        model,
+        Entity::delete(model.clone().into_active_model())
+            .exec_with_returning(db)
+            .await?
+            .unwrap()
+    );
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1033,15 +1082,17 @@ mod tests {
                 .collect::<Vec<_>>(),
             [Statement::from_string(
                 db_postgres,
-                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea')"#.to_owned()
+                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea', 'AfternoonTea')"#
+                    .to_owned()
             ),]
         );
 
         assert_eq!(
-            db_postgres.build(&schema.create_enum_from_active_enum::<Tea>()),
+            db_postgres.build(&schema.create_enum_from_active_enum::<Tea>().unwrap()),
             Statement::from_string(
                 db_postgres,
-                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea')"#.to_owned()
+                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea', 'AfternoonTea')"#
+                    .to_owned()
             )
         );
     }
@@ -1052,5 +1103,81 @@ mod tests {
         assert_eq!(format!("{}", DisplayTea::BreakfastTea), "Breakfast");
         assert_eq!(format!("{}", Tea::EverydayTea), "EverydayTea");
         assert_eq!(format!("{}", DisplayTea::EverydayTea), "Everyday");
+    }
+
+    #[cfg(feature = "sqlx-postgres")]
+    #[test]
+    fn derive_partial_model_active_enum_casts_to_text() {
+        use sea_orm::*;
+        use sea_query::PostgresQueryBuilder;
+
+        #[derive(Debug, DerivePartialModel)]
+        #[sea_orm(entity = "active_enum::Entity")]
+        struct PartialWithEnum {
+            tea: Option<Tea>,
+        }
+
+        let sql = active_enum::Entity::find()
+            .into_partial_model::<PartialWithEnum>()
+            .into_statement(DbBackend::Postgres)
+            .sql;
+
+        assert_eq!(
+            sql,
+            r#"SELECT CAST("active_enum"."tea" AS "text") AS "tea" FROM "public"."active_enum""#,
+        );
+
+        #[derive(Debug, DerivePartialModel)]
+        #[sea_orm(entity = "active_enum::Entity", from_query_result, alias = "zzz")]
+        struct PartialWithEnumAndAlias {
+            #[sea_orm(from_col = "tea")]
+            foo: Option<Tea>,
+        }
+
+        let sql = active_enum::Entity::find()
+            .into_partial_model::<PartialWithEnumAndAlias>()
+            .into_statement(DbBackend::Postgres)
+            .sql;
+
+        assert_eq!(
+            sql,
+            r#"SELECT CAST("zzz"."tea" AS "text") AS "foo" FROM "public"."active_enum""#,
+        );
+
+        #[derive(Debug, DerivePartialModel)]
+        #[sea_orm(entity = "active_enum::Entity", from_query_result)]
+        struct PartialWithEnumNested {
+            tea: Option<Tea>,
+            #[sea_orm(nested, alias = "foo")]
+            nested: Option<PartialWithEnum>,
+        }
+
+        let sql = active_enum::Entity::find()
+            .into_partial_model::<PartialWithEnumNested>()
+            .into_statement(DbBackend::Postgres)
+            .sql;
+
+        assert_eq!(
+            sql,
+            r#"SELECT CAST("active_enum"."tea" AS "text") AS "tea", CAST("foo"."tea" AS "text") AS "nested_tea" FROM "public"."active_enum""#,
+        );
+
+        #[derive(Debug, DerivePartialModel)]
+        #[sea_orm(entity = "active_enum::Entity", from_query_result, alias = "aaa")]
+        struct PartialWithEnumNestedWithAlias {
+            tea: Option<Tea>,
+            #[sea_orm(nested, alias = "foo")]
+            nested: Option<PartialWithEnum>,
+        }
+
+        let sql = active_enum::Entity::find()
+            .into_partial_model::<PartialWithEnumNestedWithAlias>()
+            .into_statement(DbBackend::Postgres)
+            .sql;
+
+        assert_eq!(
+            sql,
+            r#"SELECT CAST("aaa"."tea" AS "text") AS "tea", CAST("foo"."tea" AS "text") AS "nested_tea" FROM "public"."active_enum""#,
+        );
     }
 }

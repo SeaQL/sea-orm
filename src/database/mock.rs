@@ -1,7 +1,7 @@
 use crate::{
-    error::*, DatabaseConnection, DbBackend, EntityTrait, ExecResult, ExecResultHolder, Iden,
-    IdenStatic, Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult,
-    QueryResultRow, SelectA, SelectB, Statement,
+    DatabaseConnection, DatabaseConnectionType, DbBackend, EntityTrait, ExecResult,
+    ExecResultHolder, Iden, IdenStatic, Iterable, MockDatabaseConnection, MockDatabaseTrait,
+    ModelTrait, QueryResult, QueryResultRow, SelectA, SelectB, Statement, error::*,
 };
 use sea_query::{Value, ValueType, Values};
 use std::{collections::BTreeMap, sync::Arc};
@@ -68,7 +68,8 @@ impl MockDatabase {
 
     /// Create a database connection
     pub fn into_connection(self) -> DatabaseConnection {
-        DatabaseConnection::MockDatabaseConnection(Arc::new(MockDatabaseConnection::new(self)))
+        DatabaseConnectionType::MockDatabaseConnection(Arc::new(MockDatabaseConnection::new(self)))
+            .into()
     }
 
     /// Add some [MockExecResult]s to `exec_results`
@@ -426,8 +427,8 @@ impl OpenTransaction {
 #[cfg(feature = "mock")]
 mod tests {
     use crate::{
-        entity::*, error::*, tests_cfg::*, DbBackend, DbErr, IntoMockRow, MockDatabase, Statement,
-        Transaction, TransactionError, TransactionTrait,
+        DbBackend, DbErr, IntoMockRow, MockDatabase, Statement, Transaction, TransactionError,
+        TransactionTrait, entity::*, error::*, tests_cfg::*,
     };
     use pretty_assertions::assert_eq;
 

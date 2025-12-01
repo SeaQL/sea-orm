@@ -1,7 +1,7 @@
 use crate::{
-    debug_print, error::*, AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult,
-    InnerConnection, IsolationLevel, QueryResult, Statement, StreamTrait, TransactionStream,
-    TransactionTrait,
+    AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
+    QueryResult, Statement, StreamTrait, TransactionSession, TransactionStream, TransactionTrait,
+    debug_print, error::*,
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
@@ -11,9 +11,10 @@ use sqlx::TransactionManager;
 use std::{future::Future, pin::Pin, sync::Arc};
 use tracing::instrument;
 
-// a Transaction is just a sugar for a connection where START TRANSACTION has been executed
 /// Defines a database transaction, whether it is an open transaction and the type of
-/// backend to use
+/// backend to use.
+/// Under the hood, a Transaction is just a wrapper for a connection where
+/// START TRANSACTION has been executed.
 pub struct DatabaseTransaction {
     conn: Arc<Mutex<InnerConnection>>,
     backend: DbBackend,
@@ -90,8 +91,8 @@ impl DatabaseTransaction {
         Ok(res)
     }
 
-    /// Runs a transaction to completion returning an rolling back the transaction on
-    /// encountering an error if it fails
+    /// Runs a transaction to completion passing through the result.
+    /// Rolling back the transaction on encountering an error.
     #[instrument(level = "trace", skip(callback))]
     pub(crate) async fn run<F, T, E>(self, callback: F) -> Result<T, TransactionError<E>>
     where
@@ -113,7 +114,7 @@ impl DatabaseTransaction {
         res
     }
 
-    /// Commit a transaction atomically
+    /// Commit a transaction
     #[instrument(level = "trace")]
     #[allow(unreachable_code, unused_mut)]
     pub async fn commit(mut self) -> Result<(), DbErr> {
@@ -153,7 +154,7 @@ impl DatabaseTransaction {
         Ok(())
     }
 
-    /// rolls back a transaction in case error are encountered during the operation
+    /// Rolls back a transaction explicitly
     #[instrument(level = "trace")]
     #[allow(unreachable_code, unused_mut)]
     pub async fn rollback(mut self) -> Result<(), DbErr> {
@@ -231,6 +232,17 @@ impl DatabaseTransaction {
     }
 }
 
+#[async_trait::async_trait]
+impl TransactionSession for DatabaseTransaction {
+    async fn commit(self) -> Result<(), DbErr> {
+        self.commit().await
+    }
+
+    async fn rollback(self) -> Result<(), DbErr> {
+        self.rollback().await
+    }
+}
+
 impl Drop for DatabaseTransaction {
     fn drop(&mut self) {
         self.start_rollback().expect("Fail to rollback transaction");
@@ -240,13 +252,13 @@ impl Drop for DatabaseTransaction {
 #[async_trait::async_trait]
 impl ConnectionTrait for DatabaseTransaction {
     fn get_database_backend(&self) -> DbBackend {
-        // this way we don't need to lock
+        // this way we don't need to lock just to know the backend
         self.backend
     }
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
-    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
+    async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
         match &mut *self.conn.lock().await {
@@ -335,7 +347,7 @@ impl ConnectionTrait for DatabaseTransaction {
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
-    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
+    async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
         match &mut *self.conn.lock().await {
@@ -380,7 +392,7 @@ impl ConnectionTrait for DatabaseTransaction {
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
-    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+    async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
         match &mut *self.conn.lock().await {
@@ -433,8 +445,12 @@ impl ConnectionTrait for DatabaseTransaction {
 impl StreamTrait for DatabaseTransaction {
     type Stream<'a> = TransactionStream<'a>;
 
+    fn get_database_backend(&self) -> DbBackend {
+        self.backend
+    }
+
     #[instrument(level = "trace")]
-    fn stream<'a>(
+    fn stream_raw<'a>(
         &'a self,
         stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>> {
@@ -451,6 +467,8 @@ impl StreamTrait for DatabaseTransaction {
 
 #[async_trait::async_trait]
 impl TransactionTrait for DatabaseTransaction {
+    type Transaction = DatabaseTransaction;
+
     #[instrument(level = "trace")]
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         DatabaseTransaction::begin(
@@ -479,8 +497,9 @@ impl TransactionTrait for DatabaseTransaction {
         .await
     }
 
-    /// Execute the function inside a transaction.
-    /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
+    /// Execute the async function inside a transaction.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
     #[instrument(level = "trace", skip(_callback))]
     async fn transaction<F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>
     where
@@ -495,8 +514,9 @@ impl TransactionTrait for DatabaseTransaction {
         transaction.run(_callback).await
     }
 
-    /// Execute the function inside a transaction with isolation level and/or access mode.
-    /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
+    /// Execute the async function inside a transaction.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
     #[instrument(level = "trace", skip(_callback))]
     async fn transaction_with_config<F, T, E>(
         &self,

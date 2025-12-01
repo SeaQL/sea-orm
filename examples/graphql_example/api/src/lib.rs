@@ -1,17 +1,16 @@
 mod db;
 mod graphql;
+pub mod service;
 
-use entity::async_graphql;
-
-use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
+use async_graphql::http::{GraphQLPlaygroundConfig, playground_source};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{
+    Router,
     extract::State,
     response::{Html, IntoResponse},
     routing::get,
-    Router,
 };
-use graphql::schema::{build_schema, AppSchema};
+use graphql::schema::{AppSchema, build_schema};
 
 #[cfg(debug_assertions)]
 use dotenvy::dotenv;

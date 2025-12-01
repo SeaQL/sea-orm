@@ -1,8 +1,9 @@
 use rocket_okapi_example_service::sea_orm;
 
 use async_trait::async_trait;
+use rocket_db_pools::Database;
 use sea_orm::ConnectOptions;
-use sea_orm_rocket::{rocket::figment::Figment, Config, Database};
+use sea_orm_rocket::{Config, rocket::figment::Figment};
 use std::time::Duration;
 
 #[derive(Database, Debug)]
@@ -15,7 +16,7 @@ pub struct SeaOrmPool {
 }
 
 #[async_trait]
-impl sea_orm_rocket::Pool for SeaOrmPool {
+impl rocket_db_pools::Pool for SeaOrmPool {
     type Error = sea_orm::DbErr;
 
     type Connection = sea_orm::DatabaseConnection;
@@ -35,7 +36,10 @@ impl sea_orm_rocket::Pool for SeaOrmPool {
         Ok(SeaOrmPool { conn })
     }
 
-    fn borrow(&self) -> &Self::Connection {
-        &self.conn
+    async fn get(&self) -> Result<Self::Connection, Self::Error> {
+        Ok(self.conn.clone())
     }
+
+    // DatabaseConnection automatically closes on drop
+    async fn close(&self) {}
 }

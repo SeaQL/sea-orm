@@ -1,70 +1,45 @@
 use crate as sea_orm;
-use crate::entity::prelude::*;
+use sea_orm::entity::prelude::*;
 
-#[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-pub struct Entity;
-
-impl EntityName for Entity {
-    fn table_name(&self) -> &str {
-        "cake_filling"
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
+#[sea_orm::compact_model]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "cake_filling")]
 pub struct Model {
+    #[sea_orm(primary_key, auto_increment = false)]
     pub cake_id: i32,
+    #[sea_orm(primary_key, auto_increment = false)]
     pub filling_id: i32,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
-pub enum Column {
-    CakeId,
-    FillingId,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
-pub enum PrimaryKey {
-    CakeId,
-    FillingId,
-}
-
-impl PrimaryKeyTrait for PrimaryKey {
-    type ValueType = (i32, i32);
-
-    fn auto_increment() -> bool {
-        false
-    }
-}
-
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::cake::Entity",
+        from = "Column::CakeId",
+        to = "super::cake::Column::Id",
+        on_update = "Cascade",
+        on_delete = "Cascade"
+    )]
     Cake,
+    #[sea_orm(
+        belongs_to = "super::filling::Entity",
+        from = "Column::FillingId",
+        to = "super::filling::Column::Id",
+        on_update = "Cascade",
+        on_delete = "Cascade"
+    )]
     Filling,
 }
 
-impl ColumnTrait for Column {
-    type EntityName = Entity;
-
-    fn def(&self) -> ColumnDef {
-        match self {
-            Self::CakeId => ColumnType::Integer.def(),
-            Self::FillingId => ColumnType::Integer.def(),
-        }
+impl Related<super::cake::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Cake.def()
     }
 }
 
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        match self {
-            Self::Cake => Entity::belongs_to(super::cake::Entity)
-                .from(Column::CakeId)
-                .to(super::cake::Column::Id)
-                .into(),
-            Self::Filling => Entity::belongs_to(super::filling::Entity)
-                .from(Column::FillingId)
-                .to(super::filling::Column::Id)
-                .into(),
-        }
+impl Related<super::filling::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Filling.def()
     }
 }
 

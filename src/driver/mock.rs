@@ -1,14 +1,14 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
-    Statement, Transaction,
+    DatabaseConnection, DatabaseConnectionType, DbBackend, ExecResult, MockDatabase, QueryResult,
+    Statement, Transaction, debug_print, error::*,
 };
 use futures_util::Stream;
 use std::{
     fmt::Debug,
     pin::Pin,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc, Mutex,
+        atomic::{AtomicUsize, Ordering},
     },
 };
 use tracing::instrument;
@@ -77,9 +77,10 @@ impl MockDatabaseConnector {
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
         macro_rules! connect_mock_db {
             ( $syntax: expr ) => {
-                Ok(DatabaseConnection::MockDatabaseConnection(Arc::new(
+                Ok(DatabaseConnectionType::MockDatabaseConnection(Arc::new(
                     MockDatabaseConnection::new(MockDatabase::new($syntax)),
-                )))
+                ))
+                .into())
             };
         }
 
@@ -101,9 +102,10 @@ impl MockDatabaseConnector {
 
 impl MockDatabaseConnection {
     /// Create a connection to the [MockDatabase]
-    pub fn new<M: 'static>(m: M) -> Self
+    pub fn new<M>(m: M) -> Self
     where
         M: MockDatabaseTrait,
+        M: 'static,
     {
         Self {
             execute_counter: AtomicUsize::new(0),
@@ -176,6 +178,10 @@ impl MockDatabaseConnection {
     }
 
     /// Create a statement block  of SQL statements that execute together.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the lock cannot be acquired.
     #[instrument(level = "trace")]
     pub fn begin(&self) {
         self.mocker
@@ -185,6 +191,10 @@ impl MockDatabaseConnection {
     }
 
     /// Commit a transaction atomically to the database
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the lock cannot be acquired.
     #[instrument(level = "trace")]
     pub fn commit(&self) {
         self.mocker
@@ -194,6 +204,10 @@ impl MockDatabaseConnection {
     }
 
     /// Roll back a faulty transaction
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the lock cannot be acquired.
     #[instrument(level = "trace")]
     pub fn rollback(&self) {
         self.mocker

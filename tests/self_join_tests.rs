@@ -2,9 +2,9 @@
 
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, query::*, DbBackend, IntoActiveModel, QueryOrder};
+use sea_orm::{DbBackend, IntoActiveModel, QueryOrder, entity::prelude::*, query::*};
 
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
@@ -52,7 +52,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
             .find_linked(self_join::SelfReferencingLink)
             .all(db)
             .await?,
-        []
+        Vec::<self_join::Model>::new()
     );
 
     assert_eq!(
@@ -68,7 +68,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
             .find_linked(self_join::SelfReferencingLink)
             .all(db)
             .await?,
-        []
+        Vec::<self_join::Model>::new()
     );
 
     assert_eq!(

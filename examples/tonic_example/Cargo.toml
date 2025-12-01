@@ -1,13 +1,14 @@
 [package]
 name = "sea-orm-tonic-example"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
-members = [".", "api", "service", "entity", "migration"]
+members = [".", "api", "entity", "migration"]
 
 [dependencies]
 tonic-example-api = { path = "api" }
