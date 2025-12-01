@@ -228,7 +228,6 @@ where
         Self: Send + Sized,
     {
         let paginator = self.paginate(db, 1);
-        let builder = db.get_database_backend();
         let stmt = SelectStatement::new()
             .expr(Expr::cust("1"))
             .from_subquery(
@@ -244,8 +243,7 @@ where
             )
             .limit(1)
             .to_owned();
-        let stmt = builder.build(&stmt);
-        let result = db.query_one(stmt).await?;
+        let result = db.query_one(&stmt).await?;
         Ok(result.is_some())
     }
 }
