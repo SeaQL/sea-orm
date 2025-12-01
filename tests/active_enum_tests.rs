@@ -696,17 +696,19 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
 async fn delete_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     use active_enum_child::*;
 
-    let model = Entity::find().one(db).await?.unwrap();
+    if db.get_database_backend().support_returning() {
+        let model = Entity::find().one(db).await?.unwrap();
 
-    assert_eq!(model.id, 1);
+        assert_eq!(model.id, 1);
 
-    assert_eq!(
-        model,
-        Entity::delete(model.clone().into_active_model())
-            .exec_with_returning(db)
-            .await?
-            .unwrap()
-    );
+        assert_eq!(
+            model,
+            Entity::delete(model.clone().into_active_model())
+                .exec_with_returning(db)
+                .await?
+                .unwrap()
+        );
+    }
 
     Ok(())
 }
