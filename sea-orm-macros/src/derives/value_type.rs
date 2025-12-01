@@ -2,7 +2,7 @@ use super::attributes::value_type_attr;
 use super::value_type_match::{array_type_expr, can_try_from_u64, column_type_expr};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DataEnum, Type, spanned::Spanned};
+use syn::{Field, Ident, Type, punctuated::Punctuated, spanned::Spanned, token::Comma};
 
 #[allow(clippy::large_enum_variant)]
 enum DeriveValueType {
@@ -18,6 +18,23 @@ struct DeriveValueTypeStruct {
     can_try_from_u64: bool,
 }
 
+#[derive(Default)]
+struct DeriveValueTypeStructAttrs {
+    column_type: Option<TokenStream>,
+    array_type: Option<TokenStream>,
+}
+
+impl TryFrom<value_type_attr::SeaOrm> for DeriveValueTypeStructAttrs {
+    type Error = syn::Error;
+
+    fn try_from(attrs: value_type_attr::SeaOrm) -> syn::Result<Self> {
+        Ok(Self {
+            column_type: attrs.column_type.map(|s| s.parse()).transpose()?,
+            array_type: attrs.array_type.map(|s| s.parse()).transpose()?,
+        })
+    }
+}
+
 struct DeriveValueTypeString {
     name: syn::Ident,
     from_str: Option<TokenStream>,
@@ -25,23 +42,74 @@ struct DeriveValueTypeString {
     column_type: Option<TokenStream>,
 }
 
+struct DeriveValueTypeStringAttrs {
+    from_str: Option<TokenStream>,
+    to_str: Option<TokenStream>,
+    column_type: Option<TokenStream>,
+}
+
+impl TryFrom<value_type_attr::SeaOrm> for DeriveValueTypeStringAttrs {
+    type Error = syn::Error;
+
+    fn try_from(attrs: value_type_attr::SeaOrm) -> syn::Result<Self> {
+        let value_type = attrs.value_type.map(|s| s.value());
+        assert_eq!(value_type.as_deref(), Some("String"));
+
+        Ok(Self {
+            from_str: attrs.from_str.map(|s| s.parse()).transpose()?,
+            to_str: attrs.to_str.map(|s| s.parse()).transpose()?,
+            column_type: attrs.column_type.map(|s| s.parse()).transpose()?,
+        })
+    }
+}
+
 impl DeriveValueType {
     fn new(input: syn::DeriveInput) -> syn::Result<Self> {
-        match &input.data {
-            syn::Data::Struct(syn::DataStruct {
-                fields: syn::Fields::Unnamed(_),
-                ..
-            }) => DeriveValueTypeStruct::new(input).map(Self::TupleStruct),
-            syn::Data::Struct(syn::DataStruct {
-                fields: syn::Fields::Named(_),
-                ..
-            })
-            | syn::Data::Enum(DataEnum { .. }) => {
-                DeriveValueTypeString::new(input).map(Self::StringLike)
+        // Produce an error if the macro attributes are malformed
+        let value_type_attr = value_type_attr::SeaOrm::try_from_attributes(&input.attrs)?;
+
+        // If some attributes were set, inspect the optional `value_type`
+        let value_type = if let Some(ref value_type_attr) = value_type_attr {
+            value_type_attr.value_type.as_ref().map(|s| s.value())
+        } else {
+            None
+        };
+
+        // If either `value_type` is unset, or no attributes were passed, assume
+        // `DeriveValueTypeStruct`. If no attrs were set, use default values.
+        if value_type.is_none() || value_type_attr.is_none() {
+            let value_type_attr = if let Some(value_type_attr) = value_type_attr {
+                value_type_attr.try_into()?
+            } else {
+                DeriveValueTypeStructAttrs::default()
+            };
+
+            match input.data {
+                syn::Data::Struct(syn::DataStruct {
+                    fields: syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }),
+                    ..
+                }) => {
+                    return DeriveValueTypeStruct::new(input.ident, value_type_attr, unnamed)
+                        .map(Self::TupleStruct);
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        input,
+                        "You can only derive `DeriveValueType` on a struct with a single unnamed field, unless `value_type` is set.",
+                    ));
+                }
             }
+        }
+
+        let value_type_attr = value_type_attr.unwrap();
+        let value_type = value_type.unwrap();
+
+        match value_type.as_str() {
+            "String" => DeriveValueTypeString::new(input.ident, value_type_attr.try_into()?)
+                .map(Self::StringLike),
             _ => Err(syn::Error::new_spanned(
-                input,
-                "You can only derive `DeriveValueType` on struct or enum",
+                input.ident,
+                r#"Please specify value_type = "String""#,
             )),
         }
     }
@@ -55,35 +123,17 @@ impl DeriveValueType {
 }
 
 impl DeriveValueTypeStruct {
-    fn new(input: syn::DeriveInput) -> syn::Result<Self> {
-        let name = input.ident;
-        let fields = match input.data {
-            syn::Data::Struct(syn::DataStruct {
-                fields: syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }),
-                ..
-            }) => unnamed,
-            _ => {
-                return Err(syn::Error::new_spanned(
-                    name,
-                    "You can only derive `DeriveValueType` on struct",
-                ));
-            }
-        };
-
+    fn new(
+        name: Ident,
+        attrs: DeriveValueTypeStructAttrs,
+        fields: Punctuated<Field, Comma>,
+    ) -> syn::Result<Self> {
         let Some(field) = fields.into_iter().next() else {
             return Err(syn::Error::new_spanned(
                 name,
                 "You can only derive `DeriveValueType` on tuple struct with 1 inner value",
             ));
         };
-
-        let mut column_type = None;
-        let mut array_type = None;
-
-        if let Ok(value_type_attr) = value_type_attr::SeaOrm::from_attributes(&input.attrs) {
-            column_type = value_type_attr.column_type.map(|s| s.parse()).transpose()?;
-            array_type = value_type_attr.array_type.map(|s| s.parse()).transpose()?;
-        }
 
         let field_span = field.span();
         let ty = field.ty;
@@ -96,8 +146,8 @@ impl DeriveValueTypeStruct {
             field_type.as_str()
         };
 
-        let column_type = column_type_expr(column_type, field_type, field_span);
-        let array_type = array_type_expr(array_type, field_type, field_span);
+        let column_type = column_type_expr(attrs.column_type, field_type, field_span);
+        let array_type = array_type_expr(attrs.array_type, field_type, field_span);
         let can_try_from_u64 = can_try_from_u64(field_type);
 
         Ok(Self {
@@ -181,35 +231,12 @@ impl DeriveValueTypeStruct {
 }
 
 impl DeriveValueTypeString {
-    fn new(input: syn::DeriveInput) -> syn::Result<Self> {
-        let name = input.ident;
-        let mut from_str = None;
-        let mut to_str = None;
-        let mut value_type = None;
-        let mut column_type = None;
-
-        if let Ok(value_type_attr) = value_type_attr::SeaOrm::from_attributes(&input.attrs) {
-            from_str = value_type_attr.from_str.map(|s| s.parse()).transpose()?;
-            to_str = value_type_attr.to_str.map(|s| s.parse()).transpose()?;
-            value_type = value_type_attr.value_type.map(|s| s.value());
-            column_type = value_type_attr.column_type.map(|s| s.parse()).transpose()?;
-        }
-
-        match value_type.as_deref() {
-            Some("String") => (),
-            _ => {
-                return Err(syn::Error::new_spanned(
-                    name,
-                    r#"Please specify value_type = "String""#,
-                ));
-            }
-        }
-
+    fn new(name: Ident, attrs: DeriveValueTypeStringAttrs) -> syn::Result<Self> {
         Ok(Self {
             name,
-            from_str,
-            to_str,
-            column_type,
+            from_str: attrs.from_str,
+            to_str: attrs.to_str,
+            column_type: attrs.column_type,
         })
     }
 
