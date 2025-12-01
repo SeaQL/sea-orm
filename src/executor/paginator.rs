@@ -234,23 +234,29 @@ where
         let paginator = self.paginate(db, 1);
         let builder = db.get_database_backend();
         let stmt = SelectStatement::new()
-            .expr(Expr::cust("1"))
-            .from_subquery(
-                paginator
-                    .query
-                    .clone()
-                    .reset_limit()
-                    .reset_offset()
-                    .clear_order_by()
-                    .limit(1)
-                    .to_owned(),
-                "sub_query",
+            .expr_as(
+                Expr::exists(
+                    paginator
+                        .query
+                        .clone()
+                        .reset_limit()
+                        .reset_offset()
+                        .clear_order_by()
+                        .limit(1)
+                        .to_owned(),
+                ),
+                "record_exists",
             )
-            .limit(1)
             .to_owned();
         let stmt = builder.build(&stmt);
-        let result = db.query_one(stmt).await?;
-        Ok(result.is_some())
+        let result = db.query_one(stmt).await?.ok_or(DbErr::RecordNotFound(
+            "EXISTS query returned no result".to_owned(),
+        ))?;
+        let exists = match builder {
+            DbBackend::Postgres => result.try_get::<bool>("", "record_exists")?,
+            _ => result.try_get::<i32>("", "record_exists")? != 0,
+        };
+        Ok(exists)
     }
 }
 
