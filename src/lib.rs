@@ -32,7 +32,7 @@
 //!
 //! ### Familiar Concepts
 //!
-//! Inspired by popular ORMs in the Python, Ruby, and Node.js ecosystem, SeaORM offers a developer experience that feels instantly recognizable.
+//! Inspired by popular ORMs in the Ruby, Python, and Node.js ecosystem, SeaORM offers a developer experience that feels instantly recognizable.
 //!
 //! ### Feature Rich
 //!
