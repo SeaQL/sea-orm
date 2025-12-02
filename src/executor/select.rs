@@ -7,6 +7,7 @@ use crate::{
     StreamTrait, TryGetableMany, error::*,
 };
 use futures_util::{Stream, TryStreamExt};
+use itertools::Itertools;
 use sea_query::SelectStatement;
 use std::{marker::PhantomData, pin::Pin};
 
@@ -674,12 +675,11 @@ where
     where
         C: ConnectionTrait,
     {
-        let rows = db.query_all(&self.query).await?;
-        let mut models = Vec::new();
-        for row in rows.into_iter() {
-            models.push(S::from_raw_query_result(row)?);
-        }
-        Ok(models)
+        db.query_all(&self.query)
+            .await?
+            .into_iter()
+            .map(|row| S::from_raw_query_result(row))
+            .try_collect()
     }
 
     /// Stream the results of the Select operation
@@ -952,12 +952,11 @@ where
     where
         C: ConnectionTrait,
     {
-        let rows = db.query_all_raw(self.stmt).await?;
-        let mut models = Vec::new();
-        for row in rows.into_iter() {
-            models.push(S::from_raw_query_result(row)?);
-        }
-        Ok(models)
+        db.query_all_raw(self.stmt)
+            .await?
+            .into_iter()
+            .map(|row| S::from_raw_query_result(row))
+            .try_collect()
     }
 
     /// Stream the results of the Select operation
