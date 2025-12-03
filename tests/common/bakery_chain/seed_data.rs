@@ -1,6 +1,6 @@
 use super::*;
 use crate::common::TestContext;
-use sea_orm::{prelude::*, NotSet, Set};
+use sea_orm::{NotSet, Set, prelude::*};
 
 pub async fn init_1(ctx: &TestContext, link: bool) {
     bakery::Entity::insert(bakery::ActiveModel {

@@ -6,3 +6,4 @@ pub mod profile;
 pub mod tag;
 pub mod user;
 pub mod user_follower;
+pub mod user_mono;

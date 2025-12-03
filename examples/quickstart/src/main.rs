@@ -16,6 +16,10 @@ mod user {
         pub profile: HasOne<super::profile::Entity>,
         #[sea_orm(has_many)]
         pub posts: HasMany<super::post::Entity>,
+        #[sea_orm(self_ref, via = "user_follower", from = "User", to = "Follower")]
+        pub followers: HasMany<Entity>,
+        #[sea_orm(self_ref, via = "user_follower", reverse)]
+        pub following: HasMany<Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -116,6 +120,31 @@ mod post_tag {
         pub post: Option<super::post::Entity>,
         #[sea_orm(belongs_to, from = "tag_id", to = "id")]
         pub tag: Option<super::tag::Entity>,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+mod user_follower {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+    #[sea_orm(table_name = "user_follower")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub user_id: i32,
+        #[sea_orm(primary_key)]
+        pub follower_id: i32,
+        #[sea_orm(belongs_to, from = "user_id", to = "id")]
+        pub user: Option<super::user::Entity>,
+        #[sea_orm(
+            belongs_to,
+            relation_enum = "Follower",
+            from = "follower_id",
+            to = "id"
+        )]
+        pub follower: Option<super::user::Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -258,7 +287,7 @@ async fn main() -> Result<(), sea_orm::DbErr> {
             .set_comment("interesting!")
             .set_user_id(alice.id),
     );
-    bob.save(db).await?;
+    let bob = bob.save(db).await?;
 
     info!("Find all posts with author along with comments and who commented:");
     let posts = post::Entity::load()
@@ -392,6 +421,40 @@ async fn main() -> Result<(), sea_orm::DbErr> {
 
     info!("cascade delete post, remove tag associations");
     post.delete(db).await?;
+
+    ///// Part 3: self-referencing relations /////
+
+    info!("save a new user with a new profile");
+    let sam = user::ActiveModel::builder()
+        .set_name("Sam")
+        .set_email("sam@rustacean.net")
+        .set_profile(profile::ActiveModel::builder().set_picture("Crab.jpg"))
+        .save(db)
+        .await?;
+
+    // we can do it from left to right: user <- follower
+    info!("Add follower to Alice");
+    let alice = alice.into_active_model().add_follower(bob).save(db).await?;
+
+    // we can also do it in reverse: user -> following
+    info!("Sam starts following Alice");
+    sam.add_following(alice).save(db).await?;
+
+    info!("Query Alice's profile and followers");
+    let alice = user::Entity::load()
+        .filter_by_email("alice@rust-lang.org")
+        .with(profile::Entity)
+        .with(user_follower::Entity)
+        .with(user_follower::Entity::REVERSE)
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(alice.name, "Alice");
+    assert_eq!(alice.profile.as_ref().unwrap().picture, "Park");
+    assert_eq!(alice.followers.len(), 2);
+    assert_eq!(alice.followers[0].name, "Bob");
+    assert_eq!(alice.followers[1].name, "Sam");
 
     Ok(())
 }

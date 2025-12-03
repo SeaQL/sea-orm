@@ -621,7 +621,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
 
 #[sea_orm_macros::test]
 async fn entity_loader_self_join_via() -> Result<(), DbErr> {
-    use common::blogger::{profile, user, user_follower};
+    use common::blogger::{profile, user, user_follower, user_mono};
 
     let ctx = TestContext::new("test_entity_loader_self_join_via").await;
     let db = &ctx.db;
@@ -678,6 +678,25 @@ async fn entity_loader_self_join_via() -> Result<(), DbErr> {
     // test user + follower
 
     let users = user::Entity::load()
+        .with(user_follower::Entity)
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].name, alice.name);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0].name, bob.name);
+    assert_eq!(users[0].followers[1].name, sam.name);
+
+    assert_eq!(users[1].name, bob.name);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0].name, sam.name);
+
+    assert_eq!(users[2].name, sam.name);
+    assert!(users[2].followers.is_empty());
+
+    // test user + follower, but on an Entity without reverse relation (following)
+
+    let users = user_mono::Entity::load()
         .with(user_follower::Entity)
         .all(db)
         .await?;
