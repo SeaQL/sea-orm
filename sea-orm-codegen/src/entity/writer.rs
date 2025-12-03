@@ -66,6 +66,15 @@ pub enum EntityFormat {
     Dense,
 }
 
+#[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
+pub enum BannerVersion {
+    Off,
+    Major,
+    #[default]
+    Minor,
+    Patch,
+}
+
 #[derive(Debug)]
 pub struct EntityWriterContext {
     pub(crate) entity_format: EntityFormat,
@@ -85,6 +94,7 @@ pub struct EntityWriterContext {
     pub(crate) column_extra_derives: TokenStream,
     pub(crate) seaography: bool,
     pub(crate) impl_active_model_behavior: bool,
+    pub(crate) banner_version: BannerVersion,
 }
 
 impl WithSerde {
@@ -222,6 +232,7 @@ impl EntityWriterContext {
         column_extra_derives: Vec<String>,
         seaography: bool,
         impl_active_model_behavior: bool,
+        banner_version: BannerVersion,
     ) -> Self {
         Self {
             entity_format,
@@ -241,6 +252,7 @@ impl EntityWriterContext {
             column_extra_derives: bonus_derive(column_extra_derives),
             seaography,
             impl_active_model_behavior,
+            banner_version,
         }
     }
 
@@ -257,9 +269,18 @@ impl EntityWriter {
         let mut files = Vec::new();
         files.extend(self.write_entities(context));
         let with_prelude = context.with_prelude != WithPrelude::None;
-        files.push(self.write_index_file(context.lib, with_prelude, context.seaography));
+        files.push(self.write_index_file(
+            context.lib,
+            with_prelude,
+            context.seaography,
+            context.banner_version,
+        ));
         if with_prelude {
-            files.push(self.write_prelude(context.with_prelude, context.entity_format));
+            files.push(self.write_prelude(
+                context.with_prelude,
+                context.entity_format,
+                context.banner_version,
+            ));
         }
         if !self.enums.is_empty() {
             files.push(self.write_sea_orm_active_enums(
@@ -268,6 +289,7 @@ impl EntityWriter {
                 &context.enum_extra_derives,
                 &context.enum_extra_attributes,
                 context.entity_format,
+                context.banner_version,
             ));
         }
         WriterOutput { files }
@@ -299,7 +321,7 @@ impl EntityWriter {
                 }
 
                 let mut lines = Vec::new();
-                Self::write_doc_comment(&mut lines);
+                Self::write_doc_comment(&mut lines, context.banner_version);
                 let code_blocks = if context.entity_format == EntityFormat::Frontend {
                     Self::gen_frontend_code_blocks(
                         entity,
@@ -366,9 +388,15 @@ impl EntityWriter {
             .collect()
     }
 
-    pub fn write_index_file(&self, lib: bool, prelude: bool, seaography: bool) -> OutputFile {
+    pub fn write_index_file(
+        &self,
+        lib: bool,
+        prelude: bool,
+        seaography: bool,
+        banner_version: BannerVersion,
+    ) -> OutputFile {
         let mut lines = Vec::new();
-        Self::write_doc_comment(&mut lines);
+        Self::write_doc_comment(&mut lines, banner_version);
         let code_blocks: Vec<TokenStream> = self.entities.iter().map(Self::gen_mod).collect();
         if prelude {
             Self::write(
@@ -410,9 +438,10 @@ impl EntityWriter {
         &self,
         with_prelude: WithPrelude,
         entity_format: EntityFormat,
+        banner_version: BannerVersion,
     ) -> OutputFile {
         let mut lines = Vec::new();
-        Self::write_doc_comment(&mut lines);
+        Self::write_doc_comment(&mut lines, banner_version);
         if with_prelude == WithPrelude::AllAllowUnusedImports {
             Self::write_allow_unused_imports(&mut lines)
         }
@@ -441,9 +470,10 @@ impl EntityWriter {
         extra_derives: &TokenStream,
         extra_attributes: &TokenStream,
         entity_format: EntityFormat,
+        banner_version: BannerVersion,
     ) -> OutputFile {
         let mut lines = Vec::new();
-        Self::write_doc_comment(&mut lines);
+        Self::write_doc_comment(&mut lines, banner_version);
         if entity_format == EntityFormat::Frontend {
             Self::write(&mut lines, vec![Self::gen_import_serde(with_serde)]);
         } else {
@@ -479,10 +509,30 @@ impl EntityWriter {
         );
     }
 
-    pub fn write_doc_comment(lines: &mut Vec<String>) {
+    pub fn write_doc_comment(lines: &mut Vec<String>, banner_version: BannerVersion) {
         let ver = env!("CARGO_PKG_VERSION");
+        let version_str = match banner_version {
+            BannerVersion::Off => String::new(),
+            BannerVersion::Patch => ver.to_owned(),
+            _ => {
+                let parts: Vec<&str> = ver.split('.').collect();
+                match banner_version {
+                    BannerVersion::Major => {
+                        parts.first().map(|x| (*x).to_owned()).unwrap_or_default()
+                    }
+                    BannerVersion::Minor => {
+                        if parts.len() >= 2 {
+                            format!("{}.{}", parts[0], parts[1])
+                        } else {
+                            ver.to_owned()
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        };
         let comments = vec![format!(
-            "//! `SeaORM` Entity, @generated by sea-orm-codegen {ver}"
+            "//! `SeaORM` Entity, @generated by sea-orm-codegen {version_str}"
         )];
         lines.extend(comments);
         lines.push("".to_owned());

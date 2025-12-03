@@ -1,9 +1,9 @@
-use crate::{BigIntegerType, DateTimeCrate, GenerateSubcommands};
+use crate::{BannerVersion, BigIntegerType, DateTimeCrate, GenerateSubcommands};
 use core::time;
 use sea_orm_codegen::{
-    BigIntegerType as CodegenBigIntegerType, DateTimeCrate as CodegenDateTimeCrate, EntityFormat,
-    EntityTransformer, EntityWriterContext, MergeReport, OutputFile, WithPrelude, WithSerde,
-    merge_entity_files,
+    BannerVersion as CodegenBannerVersion, BigIntegerType as CodegenBigIntegerType,
+    DateTimeCrate as CodegenDateTimeCrate, EntityFormat, EntityTransformer, EntityWriterContext,
+    MergeReport, OutputFile, WithPrelude, WithSerde, merge_entity_files,
 };
 use std::{error::Error, fs, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{EnvFilter, prelude::*};
@@ -43,6 +43,7 @@ pub async fn run_generate_command(
             seaography,
             impl_active_model_behavior,
             preserve_user_modifications,
+            banner_version,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -247,6 +248,7 @@ pub async fn run_generate_command(
                 column_extra_derives,
                 seaography,
                 impl_active_model_behavior,
+                banner_version.into(),
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
@@ -357,6 +359,17 @@ impl From<BigIntegerType> for CodegenBigIntegerType {
         match date_time_crate {
             BigIntegerType::I64 => CodegenBigIntegerType::I64,
             BigIntegerType::I32 => CodegenBigIntegerType::I32,
+        }
+    }
+}
+
+impl From<BannerVersion> for CodegenBannerVersion {
+    fn from(banner_version: BannerVersion) -> CodegenBannerVersion {
+        match banner_version {
+            BannerVersion::Off => CodegenBannerVersion::Off,
+            BannerVersion::Major => CodegenBannerVersion::Major,
+            BannerVersion::Minor => CodegenBannerVersion::Minor,
+            BannerVersion::Patch => CodegenBannerVersion::Patch,
         }
     }
 }
