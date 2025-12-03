@@ -1,5 +1,6 @@
 use super::SelectorTrait;
 use crate::{ConnectionTrait, StatementBuilder, error::*};
+use itertools::Itertools;
 use std::marker::PhantomData;
 
 #[derive(Clone, Debug)]
@@ -39,11 +40,10 @@ where
     where
         C: ConnectionTrait,
     {
-        let rows = db.query_all(&self.query).await?;
-        let mut models = Vec::new();
-        for row in rows.into_iter() {
-            models.push(S::from_raw_query_result(row)?);
-        }
-        Ok(models)
+        db.query_all(&self.query)
+            .await?
+            .into_iter()
+            .map(|row| S::from_raw_query_result(row))
+            .try_collect()
     }
 }
