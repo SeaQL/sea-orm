@@ -364,9 +364,11 @@ where
 mod tests {
     use super::*;
     use crate::entity::prelude::*;
+    #[cfg(feature = "sync")]
+    use crate::util::StreamShim;
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
     use crate::{Statement, tests_cfg::*};
-    use futures_util::TryStreamExt;
+    use futures_util::{TryStreamExt, stream::TryNext};
     use pretty_assertions::assert_eq;
     use sea_query::{Expr, SelectStatement, Value};
     use std::sync::LazyLock;

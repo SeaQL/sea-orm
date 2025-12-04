@@ -47,48 +47,52 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
         },
     ];
 
-    let _insert_res = futures_util::try_join!(
+    let _insert_res = futures_util::future::try_join_all([
         metadata[0].clone().into_active_model().insert(db),
         metadata[1].clone().into_active_model().insert(db),
         metadata[2].clone().into_active_model().insert(db),
-    )?;
+    ])
+    .await?;
 
-    let find_res = futures_util::try_join!(
+    let find_res = futures_util::future::try_join_all([
         Metadata::find_by_id(metadata[0].uuid).one(db),
         Metadata::find_by_id(metadata[1].uuid).one(db),
         Metadata::find_by_id(metadata[2].uuid).one(db),
-    )?;
+    ])
+    .await?;
 
     assert_eq!(
         metadata,
         [
-            find_res.0.clone().unwrap(),
-            find_res.1.clone().unwrap(),
-            find_res.2.clone().unwrap(),
+            find_res[0].clone().unwrap(),
+            find_res[1].clone().unwrap(),
+            find_res[2].clone().unwrap(),
         ]
     );
 
     let mut active_models = (
-        find_res.0.unwrap().into_active_model(),
-        find_res.1.unwrap().into_active_model(),
-        find_res.2.unwrap().into_active_model(),
+        find_res[0].clone().unwrap().into_active_model(),
+        find_res[1].clone().unwrap().into_active_model(),
+        find_res[2].clone().unwrap().into_active_model(),
     );
 
     active_models.0.bytes = Set(vec![0]);
     active_models.1.bytes = Set(vec![1]);
     active_models.2.bytes = Set(vec![2]);
 
-    let _update_res = futures_util::try_join!(
+    let _update_res = futures_util::future::try_join_all([
         active_models.0.clone().update(db),
         active_models.1.clone().update(db),
         active_models.2.clone().update(db),
-    )?;
+    ])
+    .await?;
 
-    let find_res = futures_util::try_join!(
+    let find_res = futures_util::future::try_join_all([
         Metadata::find_by_id(metadata[0].uuid).one(db),
         Metadata::find_by_id(metadata[1].uuid).one(db),
         Metadata::find_by_id(metadata[2].uuid).one(db),
-    )?;
+    ])
+    .await?;
 
     assert_eq!(
         [
@@ -97,17 +101,18 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
             active_models.2.bytes.clone().unwrap(),
         ],
         [
-            find_res.0.clone().unwrap().bytes,
-            find_res.1.clone().unwrap().bytes,
-            find_res.2.clone().unwrap().bytes,
+            find_res[0].clone().unwrap().bytes,
+            find_res[1].clone().unwrap().bytes,
+            find_res[2].clone().unwrap().bytes,
         ]
     );
 
-    let _delete_res = futures_util::try_join!(
+    let _delete_res = futures_util::future::try_join_all([
         active_models.0.delete(db),
         active_models.1.delete(db),
         active_models.2.delete(db),
-    )?;
+    ])
+    .await?;
 
     assert_eq!(Metadata::find().all(db).await?, []);
 

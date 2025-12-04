@@ -36,6 +36,18 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
     let mut into_with_param_impl = TokenStream::new();
     let mut arity = 1;
 
+    let (async_, await_) = if cfg!(feature = "async") {
+        (quote!(async), quote!(.await))
+    } else {
+        (quote!(), quote!())
+    };
+
+    let async_trait = if cfg!(feature = "async") {
+        quote!(#[async_trait::async_trait])
+    } else {
+        quote!()
+    };
+
     one_fields.push(quote!(model));
 
     let mut total_count = HashMap::new();
@@ -178,8 +190,8 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
 
             load_one.extend(quote! {
                 if with.#field {
-                    let #field = models.as_slice().load_one_ex(#entity, db).await?;
-                    let #field = #entity_module::EntityLoader::load_nest(#field, &nest.#field, db).await?;
+                    let #field = models.as_slice().load_one_ex(#entity, db)#await_?;
+                    let #field = #entity_module::EntityLoader::load_nest(#field, &nest.#field, db)#await_?;
 
                     for (model, #field) in models.iter_mut().zip(#field) {
                         model.#field = #field.map(Into::into).map(Box::new).into();
@@ -188,7 +200,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             });
             load_one_nest.extend(quote! {
                 if with.#field {
-                    let #field = models.as_slice().load_one_ex(#entity, db).await?;
+                    let #field = models.as_slice().load_one_ex(#entity, db)#await_?;
 
                     for (model, #field) in models.iter_mut().zip(#field) {
                         if let Some(model) = model.as_mut() {
@@ -199,7 +211,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             });
             load_one_nest_nest.extend(quote! {
                 if with.#field {
-                    let #field = models.as_slice().load_one_ex(#entity, db).await?;
+                    let #field = models.as_slice().load_one_ex(#entity, db)#await_?;
 
                     for (models, #field) in models.iter_mut().zip(#field) {
                         for (model, #field) in models.iter_mut().zip(#field) {
@@ -211,8 +223,8 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
         } else if !is_one && !is_self {
             load_many.extend(quote! {
                 if with.#field {
-                    let #field = models.as_slice().load_many_ex(#entity, db).await?;
-                    let #field = #entity_module::EntityLoader::load_nest_nest(#field, &nest.#field, db).await?;
+                    let #field = models.as_slice().load_many_ex(#entity, db)#await_?;
+                    let #field = #entity_module::EntityLoader::load_nest_nest(#field, &nest.#field, db)#await_?;
 
                     for (model, #field) in models.iter_mut().zip(#field) {
                         model.#field = #field.into();
@@ -221,7 +233,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             });
             load_many_nest.extend(quote! {
                 if with.#field {
-                    let #field = models.as_slice().load_many_ex(#entity, db).await?;
+                    let #field = models.as_slice().load_many_ex(#entity, db)#await_?;
 
                     for (model, #field) in models.iter_mut().zip(#field) {
                         if let Some(model) = model.as_mut() {
@@ -232,7 +244,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
             });
             load_many_nest_nest.extend(quote! {
                 if with.#field {
-                    let #field = models.as_slice().load_many_ex(#entity, db).await?;
+                    let #field = models.as_slice().load_many_ex(#entity, db)#await_?;
 
                     for (models, #field) in models.iter_mut().zip(#field) {
                         for (model, #field) in models.iter_mut().zip(#field) {
@@ -246,7 +258,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                 let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
                 load_one.extend(quote! {
                     if with.#field {
-                        let #field = models.as_slice().load_self_ex(#entity, Relation::#relation_enum, db).await?;
+                        let #field = models.as_slice().load_self_ex(#entity, Relation::#relation_enum, db)#await_?;
 
                         for (model, #field) in models.iter_mut().zip(#field) {
                             model.#field = #field.map(Into::into).map(Box::new).into();
@@ -259,7 +271,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                 let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
                 load_many.extend(quote! {
                     if with.#field {
-                        let #field = models.as_slice().load_self_many_ex(#entity, Relation::#relation_enum, db).await?;
+                        let #field = models.as_slice().load_self_many_ex(#entity, Relation::#relation_enum, db)#await_?;
 
                         for (model, #field) in models.iter_mut().zip(#field) {
                             model.#field = #field.into();
@@ -271,8 +283,8 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                 let via = Ident::new(&via.value(), via.span());
                 load_many.extend(quote! {
                     if with.#field {
-                        let #field = models.as_slice().load_self_via_ex(super::#via::Entity, #is_reverse, db).await?;
-                        let #field = EntityLoader::load_nest_nest(#field, &nest.#field, db).await?;
+                        let #field = models.as_slice().load_self_via_ex(super::#via::Entity, #is_reverse, db)#await_?;
+                        let #field = EntityLoader::load_nest_nest(#field, &nest.#field, db)#await_?;
 
                         for (model, #field) in models.iter_mut().zip(#field) {
                             model.#field = #field.into();
@@ -281,7 +293,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                 });
                 load_many_nest.extend(quote! {
                     if with.#field {
-                        let #field = models.as_slice().load_self_via_ex(super::#via::Entity, #is_reverse, db).await?;
+                        let #field = models.as_slice().load_self_via_ex(super::#via::Entity, #is_reverse, db)#await_?;
 
                         for (model, #field) in models.iter_mut().zip(#field) {
                             if let Some(model) = model.as_mut() {
@@ -292,7 +304,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                 });
                 load_many_nest_nest.extend(quote! {
                     if with.#field {
-                        let #field = models.as_slice().load_self_via_ex(super::#via::Entity, #is_reverse, db).await?;
+                        let #field = models.as_slice().load_self_via_ex(super::#via::Entity, #is_reverse, db)#await_?;
 
                         for (models, #field) in models.iter_mut().zip(#field) {
                             for (model, #field) in models.iter_mut().zip(#field) {
@@ -459,16 +471,16 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
     }
 
     #[automatically_derived]
-    #[async_trait::async_trait]
+    #async_trait
     impl sea_orm::compound::EntityLoaderTrait<Entity> for EntityLoader {
         type ModelEx = ModelEx;
 
-        async fn fetch<C: sea_orm::ConnectionTrait>(self, db: &C, page: u64, page_size: u64) -> Result<Vec<Self::ModelEx>, sea_orm::DbErr> {
-            self.fetch(db, page, page_size).await
+        #async_ fn fetch<C: sea_orm::ConnectionTrait>(self, db: &C, page: u64, page_size: u64) -> Result<Vec<Self::ModelEx>, sea_orm::DbErr> {
+            self.fetch(db, page, page_size)#await_
         }
 
-        async fn num_items<C: sea_orm::ConnectionTrait>(self, db: &C, page_size: u64) -> Result<u64, sea_orm::DbErr> {
-            self.select.paginate(db, page_size).num_items().await
+        #async_ fn num_items<C: sea_orm::ConnectionTrait>(self, db: &C, page_size: u64) -> Result<u64, sea_orm::DbErr> {
+            self.select.paginate(db, page_size).num_items()#await_
         }
     }
 
@@ -485,16 +497,16 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
 
     impl EntityLoader {
         #[doc = " Generated by sea-orm-macros"]
-        pub async fn one<C: sea_orm::ConnectionTrait>(mut self, db: &C) -> Result<Option<ModelEx>, sea_orm::DbErr> {
+        pub #async_ fn one<C: sea_orm::ConnectionTrait>(mut self, db: &C) -> Result<Option<ModelEx>, sea_orm::DbErr> {
             use sea_orm::QuerySelect;
 
             self.select = self.select.limit(1);
-            Ok(self.all(db).await?.into_iter().next())
+            Ok(self.all(db)#await_?.into_iter().next())
         }
 
         #[doc = " Generated by sea-orm-macros"]
-        pub async fn all<C: sea_orm::ConnectionTrait>(self, db: &C) -> Result<Vec<ModelEx>, sea_orm::DbErr> {
-            self.fetch(db, 0, 0).await
+        pub #async_ fn all<C: sea_orm::ConnectionTrait>(self, db: &C) -> Result<Vec<ModelEx>, sea_orm::DbErr> {
+            self.fetch(db, 0, 0)#await_
         }
 
         #[doc = " Generated by sea-orm-macros"]
@@ -516,16 +528,16 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
         }
 
         #[doc = " Generated by sea-orm-macros"]
-        async fn fetch<C: sea_orm::ConnectionTrait>(mut self, db: &C, page: u64, page_size: u64) -> Result<Vec<ModelEx>, sea_orm::DbErr> {
+        #async_ fn fetch<C: sea_orm::ConnectionTrait>(mut self, db: &C, page: u64, page_size: u64) -> Result<Vec<ModelEx>, sea_orm::DbErr> {
             let select = self.select;
             let mut loaded = EntityLoaderWith::default();
 
             #select_impl
 
             let models = if page_size != 0 {
-                select.paginate(db, page_size).fetch_page(page).await?
+                select.paginate(db, page_size).fetch_page(page)#await_?
             } else {
-                select.all(db).await?
+                select.all(db)#await_?
             };
 
             let models = models.into_iter().map(|(#one_fields)| {
@@ -534,13 +546,13 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
                 model
             }).collect::<Vec<_>>();
 
-            let models = Self::load(models, &self.with, &self.nest, db).await?;
+            let models = Self::load(models, &self.with, &self.nest, db)#await_?;
 
             Ok(models)
         }
 
         #[doc = " Generated by sea-orm-macros"]
-        pub async fn load<C: sea_orm::ConnectionTrait>(mut models: Vec<ModelEx>, with: &EntityLoaderWith, nest: &EntityLoaderNest, db: &C) -> Result<Vec<ModelEx>, DbErr> {
+        pub #async_ fn load<C: sea_orm::ConnectionTrait>(mut models: Vec<ModelEx>, with: &EntityLoaderWith, nest: &EntityLoaderNest, db: &C) -> Result<Vec<ModelEx>, DbErr> {
             use sea_orm::LoaderTraitEx;
             #load_one
             #load_many
@@ -548,7 +560,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
         }
 
         #[doc = " Generated by sea-orm-macros"]
-        pub async fn load_nest<C: sea_orm::ConnectionTrait>(mut models: Vec<Option<ModelEx>>, with: &EntityLoaderWith, db: &C) -> Result<Vec<Option<ModelEx>>, DbErr> {
+        pub #async_ fn load_nest<C: sea_orm::ConnectionTrait>(mut models: Vec<Option<ModelEx>>, with: &EntityLoaderWith, db: &C) -> Result<Vec<Option<ModelEx>>, DbErr> {
             use sea_orm::LoaderTraitEx;
             #load_one_nest
             #load_many_nest
@@ -556,7 +568,7 @@ pub fn expand_entity_loader(schema: EntityLoaderSchema) -> TokenStream {
         }
 
         #[doc = " Generated by sea-orm-macros"]
-        pub async fn load_nest_nest<C: sea_orm::ConnectionTrait>(mut models: Vec<Vec<ModelEx>>, with: &EntityLoaderWith, db: &C) -> Result<Vec<Vec<ModelEx>>, DbErr> {
+        pub #async_ fn load_nest_nest<C: sea_orm::ConnectionTrait>(mut models: Vec<Vec<ModelEx>>, with: &EntityLoaderWith, db: &C) -> Result<Vec<Vec<ModelEx>>, DbErr> {
             use sea_orm::NestedLoaderTrait;
             #load_one_nest_nest
             #load_many_nest_nest

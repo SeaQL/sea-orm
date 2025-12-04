@@ -33,6 +33,7 @@ serde = { version = "1.0", features = ["derive"] }
 
 [features]
 default = ["derive"]
+async = []
 postgres-array = []
 derive = ["bae"]
 strum = []

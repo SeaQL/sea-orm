@@ -700,7 +700,7 @@ impl DbBackend {
 mod tests {
     use crate::DatabaseConnection;
 
-    #[cfg(feature = "sync")]
+    #[cfg(not(feature = "sync"))]
     #[test]
     fn assert_database_connection_traits() {
         fn assert_send_sync<T: Send + Sync>() {}

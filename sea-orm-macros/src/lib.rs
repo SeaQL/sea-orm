@@ -937,23 +937,41 @@ pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
     let body = &input.block;
     let attrs = &input.attrs;
 
-    quote::quote! (
-        #[test]
-        #[cfg(any(
-            feature = "sqlx-mysql",
-            feature = "sqlx-sqlite",
-            feature = "sqlx-postgres",
-        ))]
-        #(#attrs)*
-        fn #name() #ret {
-            let _ = ::tracing_subscriber::fmt()
-                .with_max_level(::tracing::Level::DEBUG)
-                .with_test_writer()
-                .try_init();
-            crate::block_on!(async { #body })
-        }
-    )
-    .into()
+    if cfg!(feature = "async") {
+        quote::quote! (
+            #[test]
+            #[cfg(any(
+                feature = "sqlx-mysql",
+                feature = "sqlx-sqlite",
+                feature = "sqlx-postgres",
+            ))]
+            #(#attrs)*
+            fn #name() #ret {
+                let _ = ::tracing_subscriber::fmt()
+                    .with_max_level(::tracing::Level::DEBUG)
+                    .with_test_writer()
+                    .try_init();
+                crate::block_on!(async { #body })
+            }
+        )
+        .into()
+    } else {
+        quote::quote! (
+            #[test]
+            #[cfg(any(
+                feature = "rusqlite",
+            ))]
+            #(#attrs)*
+            fn #name() #ret {
+                let _ = ::tracing_subscriber::fmt()
+                    .with_max_level(::tracing::Level::DEBUG)
+                    .with_test_writer()
+                    .try_init();
+                #body
+            }
+        )
+        .into()
+    }
 }
 
 /// Creates a new type that iterates of the variants of an enum.
