@@ -4,13 +4,12 @@ use crate::{
     PrimaryKeyTrait, QueryFilter, QueryResult, Related, Select, SelectModel, SelectorRaw,
     Statement, TryGetError, find_linked_recursive,
 };
-use async_trait::async_trait;
 pub use sea_query::Value;
 use sea_query::{ArrayType, ValueTuple};
 use std::fmt::Debug;
 
 /// The interface for Model, implemented by data structs
-#[async_trait]
+#[async_trait::async_trait]
 pub trait ModelTrait: Clone + Send + Debug {
     #[allow(missing_docs)]
     type Entity: EntityTrait;

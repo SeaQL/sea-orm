@@ -46,6 +46,9 @@ use crate::error::*;
 #[derive(Debug, Default)]
 pub struct Database;
 
+#[cfg(feature = "sync")]
+type BoxFuture<'a, T> = T;
+
 type AfterConnectCallback = Option<
     Arc<
         dyn Fn(DatabaseConnection) -> BoxFuture<'static, Result<(), DbErr>> + Send + Sync + 'static,

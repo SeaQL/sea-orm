@@ -569,6 +569,7 @@ mod tests {
         tests_cfg::{cake, fruit},
     };
 
+    #[cfg(feature = "sync")]
     #[test]
     fn assert_relation_traits() {
         fn assert_send_sync<T: Send + Sync>() {}

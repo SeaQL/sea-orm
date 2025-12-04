@@ -19,6 +19,7 @@ pub use crate::{
 pub use super::active_model_ex::{HasManyModel, HasOneModel};
 pub use super::compound::{HasMany, HasOne};
 
+#[cfg(not(feature = "sync"))]
 pub use async_trait;
 
 #[cfg(feature = "with-json")]

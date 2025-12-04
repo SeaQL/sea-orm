@@ -455,7 +455,10 @@ impl StreamTrait for DatabaseTransaction {
         stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>> {
         Box::pin(async move {
+            #[cfg(not(feature = "sync"))]
             let conn = self.conn.lock().await;
+            #[cfg(feature = "sync")]
+            let conn = self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
             Ok(crate::TransactionStream::build(
                 conn,
                 stmt,

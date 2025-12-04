@@ -1,10 +1,9 @@
 #![allow(missing_docs)]
 use super::{ColumnTrait, EntityTrait, PrimaryKeyToColumn, PrimaryKeyTrait};
 use crate::{
-    ConnectionTrait, DbErr, IntoSimpleExpr, ItemsAndPagesNumber, Iterable, ModelTrait,
-    PinBoxStream, QueryFilter, QueryOrder,
+    ConnectionTrait, DbErr, IntoSimpleExpr, ItemsAndPagesNumber, Iterable, ModelTrait, QueryFilter,
+    QueryOrder,
 };
-use async_stream::stream;
 use sea_query::{IntoValueTuple, Order, TableRef};
 use std::marker::PhantomData;
 
@@ -180,18 +179,6 @@ where
         self.next();
         let opt = if !vec.is_empty() { Some(vec) } else { None };
         Ok(opt)
-    }
-
-    /// Convert self into an async stream
-    pub fn into_stream(mut self) -> PinBoxStream<'db, Result<Vec<L::ModelEx>, DbErr>>
-    where
-        L: 'db,
-    {
-        Box::pin(stream! {
-            while let Some(vec) = self.fetch_and_next().await? {
-                yield Ok(vec);
-            }
-        })
     }
 }
 

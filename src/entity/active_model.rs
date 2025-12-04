@@ -9,7 +9,6 @@ use crate::{
         set_key_on_active_model,
     },
 };
-use async_trait::async_trait;
 use sea_query::ValueTuple;
 use std::fmt::Debug;
 
@@ -24,7 +23,7 @@ use std::fmt::Debug;
 ///
 /// - omit columns from the query,
 /// - know which columns have changed after editing a record.
-#[async_trait]
+#[async_trait::async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
     /// The Entity this ActiveModel belongs to
     type Entity: EntityTrait;
@@ -929,7 +928,7 @@ pub trait ActiveModelTrait: Clone + Debug {
 /// ```
 /// See module level docs [crate::entity] for a full example
 #[allow(unused_variables)]
-#[async_trait]
+#[async_trait::async_trait]
 pub trait ActiveModelBehavior: ActiveModelTrait {
     /// Create a new ActiveModel with default values. This is also called by `Default::default()`.
     ///

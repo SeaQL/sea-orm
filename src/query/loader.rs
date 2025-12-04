@@ -4,7 +4,6 @@ use crate::{
     ModelTrait, QueryFilter, QuerySelect, Related, RelatedSelfVia, RelationDef, RelationTrait,
     RelationType, Select, dynamic, query::column_tuple_in_condition, query_err,
 };
-use async_trait::async_trait;
 use sea_query::{ColumnRef, DynIden, Expr, ExprTrait, IntoColumnRef, TableRef, ValueTuple};
 use std::{collections::HashMap, str::FromStr};
 
@@ -22,7 +21,7 @@ type LoaderRelation<T> =
     <<<T as LoaderTrait>::Model as ModelTrait>::Entity as EntityTrait>::Relation;
 
 /// This trait implements the Data Loader API
-#[async_trait]
+#[async_trait::async_trait]
 pub trait LoaderTrait {
     /// Source model
     type Model: ModelTrait;
@@ -122,7 +121,7 @@ type LoaderExRelation<T> =
     <<<T as LoaderTraitEx>::Model as ModelTrait>::Entity as EntityTrait>::Relation;
 
 #[doc(hidden)]
-#[async_trait]
+#[async_trait::async_trait]
 pub trait LoaderTraitEx {
     type Model: ModelTrait;
 
@@ -193,7 +192,7 @@ type NestedLoaderRelation<T> =
     <<<T as NestedLoaderTrait>::Model as ModelTrait>::Entity as EntityTrait>::Relation;
 
 #[doc(hidden)]
-#[async_trait]
+#[async_trait::async_trait]
 pub trait NestedLoaderTrait {
     type Model: ModelTrait;
 
@@ -281,7 +280,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl<M> LoaderTrait for Vec<M>
 where
     M: ModelTrait + Sync,
@@ -387,7 +386,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl<M> LoaderTrait for &[M]
 where
     M: ModelTrait + Sync,
@@ -609,7 +608,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl<M> LoaderTraitEx for &[M]
 where
     M: ModelTrait + Sync,
@@ -715,7 +714,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl<M> LoaderTraitEx for &[Option<M>]
 where
     M: ModelTrait + Sync,
@@ -842,7 +841,7 @@ where
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl<M> NestedLoaderTrait for &[Vec<M>]
 where
     M: ModelTrait + Sync,

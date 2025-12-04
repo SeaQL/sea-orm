@@ -54,7 +54,6 @@ itertools = "0.14.0"
 [dev-dependencies]
 smol = { version = "1.2" }
 smol-potat = { version = "1.1" }
-futures = { version = "0.3" }
 tokio = { version = "1.6", features = ["full"] }
 maplit = { version = "1" }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
@@ -80,6 +79,7 @@ macros = ["sea-orm-macros/derive"]
 mock = []
 rbac = ["sea-query/audit", "macros"]
 proxy = ["serde_json", "serde/derive"]
+sync = []
 with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "rust_decimal?/serde", "bigdecimal?/serde", "uuid?/serde", "time?/serde", "pgvector?/serde", "sea-query-sqlx?/with-json", "sqlx?/json"]
 with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-sqlx?/with-chrono", "sqlx?/chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-sqlx?/with-rust_decimal", "sqlx?/rust_decimal"]

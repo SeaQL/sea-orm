@@ -7,8 +7,10 @@ use futures_util::Stream;
 use sea_query::{Expr, SelectStatement};
 use std::{marker::PhantomData, pin::Pin};
 
-/// Pin a Model so that stream operations can be performed on the model
-pub type PinBoxStream<'db, Item> = Pin<Box<dyn Stream<Item = Item> + 'db>>;
+#[cfg(not(feature = "sync"))]
+type PinBoxStream<'db, Item> = Pin<Box<dyn Stream<Item = Item> + 'db>>;
+#[cfg(feature = "sync")]
+type PinBoxStream<'db, Item> = Box<dyn Iterator<Item = Item> + 'db>;
 
 /// Defined a structure to handle pagination of a result from a query operation on a Model
 #[derive(Clone, Debug)]
@@ -179,7 +181,7 @@ where
     /// #     .into_connection();
     /// # let db = &owned_db;
     /// #
-    /// use futures::TryStreamExt;
+    /// use futures_util::TryStreamExt;
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     /// let mut cake_stream = cake::Entity::find()
     ///     .order_by_asc(cake::Column::Id)
@@ -193,13 +195,32 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub fn into_stream(mut self) -> PinBoxStream<'db, Result<Vec<S::Item>, DbErr>> {
-        Box::pin(stream! {
-            while let Some(vec) = self.fetch_and_next().await? {
-                yield Ok(vec);
-            }
-        })
+    pub fn into_stream(self) -> PinBoxStream<'db, Result<Vec<S::Item>, DbErr>> {
+        #[cfg(not(feature = "sync"))]
+        {
+            let mut streamer = self;
+            Box::pin(stream! {
+                while let Some(vec) = streamer.fetch_and_next().await? {
+                    yield Ok(vec);
+                }
+            })
+        }
+        #[cfg(feature = "sync")]
+        {
+            Box::new(PaginatorStream { paginator: self })
+        }
     }
+}
+
+#[cfg(feature = "sync")]
+#[derive(Debug)]
+/// Stream items by page
+pub struct PaginatorStream<'db, C, S>
+where
+    C: ConnectionTrait,
+    S: SelectorTrait + 'db,
+{
+    paginator: Paginator<'db, C, S>,
 }
 
 #[async_trait::async_trait]
@@ -318,6 +339,23 @@ where
 
     fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, Self::Selector> {
         self.into_model().paginate(db, page_size)
+    }
+}
+
+#[cfg(feature = "sync")]
+impl<'db, C, S> Iterator for PaginatorStream<'db, C, S>
+where
+    C: ConnectionTrait,
+    S: SelectorTrait + 'db,
+{
+    type Item = Result<Vec<S::Item>, DbErr>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.paginator.fetch_and_next() {
+            Ok(Some(vec)) => Some(Ok(vec)),
+            Ok(None) => None,
+            Err(e) => Some(Err(e)),
+        }
     }
 }
 

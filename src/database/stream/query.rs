@@ -105,6 +105,7 @@ impl QueryStream {
     }
 }
 
+#[cfg(not(feature = "sync"))]
 impl Stream for QueryStream {
     type Item = Result<QueryResult, DbErr>;
 
@@ -114,5 +115,14 @@ impl Stream for QueryStream {
     ) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
         this.with_stream_mut(|stream| Pin::new(stream).poll_next(cx))
+    }
+}
+
+#[cfg(feature = "sync")]
+impl Iterator for QueryStream {
+    type Item = Result<QueryResult, DbErr>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.with_stream_mut(|stream| stream.next())
     }
 }

@@ -27,7 +27,7 @@
 //! #
 //! // execute multiple queries in parallel
 //! let cakes_and_fruits: (Vec<cake::Model>, Vec<fruit::Model>) =
-//!     futures::try_join!(Cake::find().all(&db), Fruit::find().all(&db))?;
+//!     use futures_util::future::try_join(Cake::find().all(&db), Fruit::find().all(&db)).await?;
 //! # assert_eq!(
 //! #     cakes_and_fruits,
 //! #     (

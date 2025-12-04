@@ -19,6 +19,11 @@ mod three;
 #[cfg(feature = "with-json")]
 use crate::JsonValue;
 
+#[cfg(not(feature = "sync"))]
+type PinBoxStream<'b, S> = Pin<Box<dyn Stream<Item = Result<S, DbErr>> + 'b + Send>>;
+#[cfg(feature = "sync")]
+type PinBoxStream<'b, S> = Box<dyn Iterator<Item = Result<S, DbErr>> + 'b + Send>;
+
 /// Defines a type to do `SELECT` operations through a [SelectStatement] on a Model
 #[derive(Clone, Debug)]
 pub struct Selector<S>
@@ -683,19 +688,26 @@ where
     }
 
     /// Stream the results of the Select operation
-    pub async fn stream<'a: 'b, 'b, C>(
-        self,
-        db: &'a C,
-    ) -> Result<Pin<Box<dyn Stream<Item = Result<S::Item, DbErr>> + 'b + Send>>, DbErr>
+    pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<PinBoxStream<'b, S::Item>, DbErr>
     where
         C: ConnectionTrait + StreamTrait + Send,
         S: 'b,
         S::Item: Send,
     {
         let stream = db.stream(&self.query).await?;
-        Ok(Box::pin(stream.and_then(|row| {
-            futures_util::future::ready(S::from_raw_query_result(row))
-        })))
+
+        #[cfg(not(feature = "sync"))]
+        {
+            Ok(Box::pin(stream.and_then(|row| {
+                futures_util::future::ready(S::from_raw_query_result(row))
+            })))
+        }
+        #[cfg(feature = "sync")]
+        {
+            Ok(Box::new(
+                stream.map(|item| item.and_then(S::from_raw_query_result)),
+            ))
+        }
     }
 }
 
@@ -960,18 +972,25 @@ where
     }
 
     /// Stream the results of the Select operation
-    pub async fn stream<'a: 'b, 'b, C>(
-        self,
-        db: &'a C,
-    ) -> Result<Pin<Box<dyn Stream<Item = Result<S::Item, DbErr>> + 'b + Send>>, DbErr>
+    pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<PinBoxStream<'b, S::Item>, DbErr>
     where
         C: ConnectionTrait + StreamTrait + Send,
         S: 'b,
         S::Item: Send,
     {
         let stream = db.stream_raw(self.stmt).await?;
-        Ok(Box::pin(stream.and_then(|row| {
-            futures_util::future::ready(S::from_raw_query_result(row))
-        })))
+
+        #[cfg(not(feature = "sync"))]
+        {
+            Ok(Box::pin(stream.and_then(|row| {
+                futures_util::future::ready(S::from_raw_query_result(row))
+            })))
+        }
+        #[cfg(feature = "sync")]
+        {
+            Ok(Box::new(
+                stream.map(|item| item.and_then(S::from_raw_query_result)),
+            ))
+        }
     }
 }

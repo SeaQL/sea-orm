@@ -107,6 +107,9 @@ pub enum DbErr {
         /// The requested resource
         resource: String,
     },
+    /// Mutex was poisoned by another thread
+    #[error("Mutex poisoned")]
+    MutexPoisonError,
 }
 
 /// An error from trying to get a row from a Model
