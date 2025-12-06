@@ -136,7 +136,7 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
 /// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
 #[cfg(feature = "derive")]
-#[proc_macro_derive(DeriveEntityModel, attributes(sea_orm, seaography))]
+#[proc_macro_derive(DeriveEntityModel, attributes(sea_orm, seaography, serde))]
 pub fn derive_entity_model(input: TokenStream) -> TokenStream {
     let DeriveInput {
         ident, data, attrs, ..

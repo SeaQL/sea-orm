@@ -49,6 +49,38 @@ pub fn impl_iden(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
             Ok::<TokenStream, syn::Error>(quote! { #column_name })
         })
         .collect::<Result<_, _>>()?;
+    let serde_name: Vec<TokenStream> = variants
+        .iter()
+        .map(|v| {
+            let mut column_name = v.ident.to_string().to_snake_case();
+            for attr in v.attrs.iter() {
+                if attr.path().is_ident("sea_orm") {
+                    attr.parse_nested_meta(|meta| {
+                        if meta.path.is_ident("column_name") {
+                            column_name = meta.value()?.parse::<LitStr>()?.value();
+                        } else {
+                            // Reads the value expression to advance the parse stream.
+                            // Some parameters, such as `primary_key`, do not have any value,
+                            // so ignoring an error occurred here.
+                            let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
+                        }
+                        Ok(())
+                    })?;
+                } else if attr.path().is_ident("serde") {
+                    attr.parse_nested_meta(|meta| {
+                        if meta.path.is_ident("rename") {
+                            column_name = meta.value()?.parse::<LitStr>()?.value();
+                        }
+
+                        Ok(())
+                    })?;
+                    
+                }
+            }
+            all_static &= is_static_iden(&column_name);
+            Ok::<TokenStream, syn::Error>(quote! { #column_name })
+        })
+        .collect::<Result<_, _>>()?;
 
     let quoted = if all_static {
         quote! {
@@ -66,6 +98,11 @@ pub fn impl_iden(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
             fn as_str(&self) -> &'static str {
                 match self {
                     #(Self::#variant => #name),*
+                }
+            }
+            fn as_serde_str(&self) -> &'static str {
+                match self {
+                    #(Self::#variant => #serde_name),*
                 }
             }
         }

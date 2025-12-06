@@ -485,7 +485,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         let mut json_keys: Vec<(<Self::Entity as EntityTrait>::Column, bool)> = Vec::new();
 
         for col in <<Self::Entity as EntityTrait>::Column>::iter() {
-            let key = col.as_str();
+            let key = col.as_serde_str();
             let has_key = obj.contains_key(key);
             json_keys.push((col, has_key));
         }
@@ -1763,6 +1763,48 @@ mod tests {
             cake_filling::ActiveModel {
                 cake_id: Set(4),
                 filling_id: NotSet,
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "with-json")]
+    fn test_from_json_with_serde_rename() {
+        use serde_json::json;
+        mod serde_cake {
+            use crate::entity::prelude::*;
+
+            use serde::{Deserialize, Serialize};
+
+            #[sea_orm::model]
+            #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, DeriveEntityModel)]
+            #[sea_orm(table_name = "cake")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                #[serde(rename = "cake_name")]
+                pub name: String,
+            }
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        let from_json = serde_cake::ActiveModel::from_json(json!({
+            "cake_name": "Chocolate Cake"
+        })).expect("couldn't create cake");
+
+        dbg!(&from_json);
+        let cols = <serde_cake::Entity as crate::EntityTrait>::Column::iter()
+            .map(|x| x.as_serde_str())
+            .collect::<Vec<_>>();
+        dbg!(cols);
+
+
+        assert_eq!(
+            from_json,
+            serde_cake::ActiveModel {
+                id: NotSet,
+                name: Set("Chocolate Cake".to_owned()),
             }
         );
     }
