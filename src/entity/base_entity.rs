@@ -12,6 +12,12 @@ pub use strum::IntoEnumIterator as Iterable;
 pub trait IdenStatic: Iden + Copy + Debug + Send + Sync + 'static {
     /// Method to call to get the static string identity
     fn as_str(&self) -> &'static str;
+
+    /// Method to call to get the static string identity for serde de/serialization.
+    /// Defaults to being equivalent to [`as_str`]
+    fn as_serde_str(&self) -> &'static str {
+        Self::as_str(self)
+    }
 }
 
 /// A Trait for mapping an Entity to a database table
