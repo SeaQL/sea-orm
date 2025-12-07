@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Enhancements
+
+* Add `exists` method to `PaginatorTrait` https://github.com/SeaQL/sea-orm/discussions/730
+
 ## 1.1.19 - 2025-11-11
 
 ### Enhancements
@@ -454,7 +460,7 @@ let items: Vec<(order::Model, Option<lineitem::Model>, Option<cake::Model>)> =
 ### Enhancements
 
 * Support complex type path in `DeriveIntoActiveModel` https://github.com/SeaQL/sea-orm/pull/2517
-```rust 
+```rust
 #[derive(DeriveIntoActiveModel)]
 #[sea_orm(active_model = "<fruit::Entity as EntityTrait>::ActiveModel")]
 struct Fruit {
@@ -485,7 +491,7 @@ pub struct Model {
     pub id: i32,
     pub embedding: PgVector,
 }
- 
+
 // Schema
 sea_query::Table::create()
     .table(image_model::Entity.table_ref())
@@ -1215,7 +1221,7 @@ pub struct JsonColumn {
 
 ## 0.12.1 - 2023-07-27
 
-+ `0.12.0-rc.1`: Yanked    
++ `0.12.0-rc.1`: Yanked
 + `0.12.0-rc.2`: 2023-05-19
 + `0.12.0-rc.3`: 2023-06-22
 + `0.12.0-rc.4`: 2023-07-08
