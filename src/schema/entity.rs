@@ -1,6 +1,6 @@
 use crate::{
-    ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, Iterable, PrimaryKeyArity,
-    PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
+    ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, IdenStatic, Iterable,
+    PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
     ColumnDef, DynIden, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement,
@@ -33,6 +33,18 @@ impl Schema {
         E: EntityTrait,
     {
         create_table_from_entity(entity, self.backend)
+    }
+
+    #[doc(hidden)]
+    pub fn create_table_with_index_from_entity<E>(&self, entity: E) -> TableCreateStatement
+    where
+        E: EntityTrait,
+    {
+        let mut table = create_table_from_entity(entity, self.backend);
+        for mut index in create_index_from_entity(entity, self.backend) {
+            table.index(&mut index);
+        }
+        table
     }
 
     /// Creates the indexes from an Entity, returning an empty Vec if there are none
@@ -140,7 +152,7 @@ where
     for column in E::Column::iter() {
         let column_def = column.def();
 
-        if column_def.indexed {
+        if column_def.indexed || column_def.unique {
             let mut stmt = Index::create()
                 .name(format!("idx-{}-{}", entity.to_string(), column.to_string()))
                 .table(entity)
@@ -197,7 +209,7 @@ where
 
     for relation in E::Relation::iter() {
         let relation = relation.def();
-        if relation.is_owner {
+        if relation.is_owner || relation.skip_fk {
             continue;
         }
         stmt.foreign_key(&mut relation.into());
@@ -232,11 +244,23 @@ where
     if let Some(default) = orm_column_def.default {
         column_def.default(default);
     }
-    if let Some(comment) = orm_column_def.comment {
+    if let Some(comment) = &orm_column_def.comment {
         column_def.comment(comment);
     }
+    if let Some(extra) = &orm_column_def.extra {
+        column_def.extra(extra);
+    }
+    match (&orm_column_def.renamed_from, &orm_column_def.comment) {
+        (Some(renamed_from), Some(comment)) => {
+            column_def.comment(format!("{comment}; renamed_from \"{renamed_from}\""));
+        }
+        (Some(renamed_from), None) => {
+            column_def.comment(format!("renamed_from \"{renamed_from}\""));
+        }
+        (None, _) => {}
+    }
     for primary_key in E::PrimaryKey::iter() {
-        if column.to_string() == primary_key.into_column().to_string() {
+        if column.as_str() == primary_key.into_column().as_str() {
             if E::PrimaryKey::auto_increment() {
                 column_def.auto_increment();
             }
@@ -283,7 +307,8 @@ mod tests {
             .col(
                 ColumnDef::new(cake_filling_price::Column::Price)
                     .decimal()
-                    .not_null(),
+                    .not_null()
+                    .extra("CHECK (price > 0)"),
             )
             .primary_key(
                 Index::create()
@@ -320,14 +345,22 @@ mod tests {
             );
 
             let stmts = schema.create_index_from_entity(indexes::Entity);
-            assert_eq!(stmts.len(), 3);
+            assert_eq!(stmts.len(), 4);
+
+            let idx: IndexCreateStatement = Index::create()
+                .name("idx-indexes-unique_attr")
+                .table(indexes::Entity)
+                .col(indexes::Column::UniqueAttr)
+                .unique()
+                .to_owned();
+            assert_eq!(builder.build(&stmts[0]), builder.build(&idx));
 
             let idx: IndexCreateStatement = Index::create()
                 .name("idx-indexes-index1_attr")
                 .table(indexes::Entity)
                 .col(indexes::Column::Index1Attr)
                 .to_owned();
-            assert_eq!(builder.build(&stmts[0]), builder.build(&idx));
+            assert_eq!(builder.build(&stmts[1]), builder.build(&idx));
 
             let idx: IndexCreateStatement = Index::create()
                 .name("idx-indexes-index2_attr")
@@ -335,7 +368,7 @@ mod tests {
                 .col(indexes::Column::Index2Attr)
                 .unique()
                 .take();
-            assert_eq!(builder.build(&stmts[1]), builder.build(&idx));
+            assert_eq!(builder.build(&stmts[2]), builder.build(&idx));
 
             let idx: IndexCreateStatement = Index::create()
                 .name("idx-indexes-my_unique")
@@ -344,7 +377,7 @@ mod tests {
                 .col(indexes::Column::UniqueKeyB)
                 .unique()
                 .take();
-            assert_eq!(builder.build(&stmts[2]), builder.build(&idx));
+            assert_eq!(builder.build(&stmts[3]), builder.build(&idx));
         }
     }
 

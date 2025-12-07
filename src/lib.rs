@@ -10,45 +10,52 @@
 
 //! <div align="center">
 //!
-//!   <img src="https://www.sea-ql.org/SeaORM/img/SeaORM banner.png"/>
+//!   <img alt="SeaORM" src="https://www.sea-ql.org/blog/img/SeaORM 2.0 Banner.png"/>
 //!
-//!   <h1>SeaORM</h1>
-//!
-//!   <h3>🐚 An async & dynamic ORM for Rust</h3>
+//!   <h1></h1>
+//!   <h3>SeaORM is a powerful ORM for building web services in Rust</h3>
 //!
 //!   [![crate](https://img.shields.io/crates/v/sea-orm.svg)](https://crates.io/crates/sea-orm)
-//!   [![docs](https://docs.rs/sea-orm/badge.svg)](https://docs.rs/sea-orm)
 //!   [![build status](https://github.com/SeaQL/sea-orm/actions/workflows/rust.yml/badge.svg)](https://github.com/SeaQL/sea-orm/actions/workflows/rust.yml)
+//!   [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
+//!   <br>Support us with a ⭐ !
 //!
 //! </div>
 //!
-//! # SeaORM
+//! # 🐚 SeaORM
 //!
 //! [中文文档](https://github.com/SeaQL/sea-orm/blob/master/README-zh.md)
 //!
-//! #### SeaORM is a relational ORM to help you build web services in Rust with the familiarity of dynamic languages.
+//! ### Advanced Relations
 //!
-//! [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
-//! If you like what we do, consider starring, sharing and contributing!
+//! Model complex relationships 1-1, 1-N, M-N, and even self-referential in a high-level, conceptual way.
 //!
-//! Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2025](https://www.sea-ql.org/community-survey/)!
+//! ### Familiar Concepts
 //!
-//! [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
-//! Join our Discord server to chat with other members of the SeaQL community!
+//! Inspired by popular ORMs in the Ruby, Python, and Node.js ecosystem, SeaORM offers a developer experience that feels instantly recognizable.
+//!
+//! ### Feature Rich
+//!
+//! SeaORM is a batteries-included ORM with filters, pagination, and nested queries to accelerate building REST, GraphQL, and gRPC APIs.
+//!
+//! ### Production Ready
+//!
+//! With 250k+ weekly downloads, SeaORM is production-ready, trusted by startups and enterprises worldwide.
 //!
 //! ## Getting Started
 //!
+//! [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
+//! Join our Discord server to chat with others!
+//!
 //! + [Documentation](https://www.sea-ql.org/SeaORM)
-//! + [Tutorial](https://www.sea-ql.org/sea-orm-tutorial)
-//! + [Cookbook](https://www.sea-ql.org/sea-orm-cookbook)
 //!
 //! Integration examples:
 //!
-//! + [Actix v4 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
+//! + [Actix Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
 //! + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
 //! + [GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/graphql_example)
 //! + [jsonrpsee Example](https://github.com/SeaQL/sea-orm/tree/master/examples/jsonrpsee_example)
-//! + [Loco TODO Example](https://github.com/SeaQL/sea-orm/tree/master/examples/loco_example) / [Loco REST Starter](https://github.com/SeaQL/sea-orm/tree/master/examples/loco_starter)
+//! + [Loco Example](https://github.com/SeaQL/sea-orm/tree/master/examples/loco_example) / [Loco REST Starter](https://github.com/SeaQL/sea-orm/tree/master/examples/loco_starter)
 //! + [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
 //! + [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example) / [Rocket OpenAPI Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_okapi_example)
 //! + [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
@@ -58,167 +65,233 @@
 //! If you want a simple, clean example that fits in a single file that demonstrates the best of SeaORM, you can try:
 //! + [Quickstart](https://github.com/SeaQL/sea-orm/blob/master/examples/quickstart/src/main.rs)
 //!
-//! ## Features
-//!
-//! 1. Async
-//!
-//!     Relying on [SQLx](https://github.com/launchbadge/sqlx), SeaORM is a new library with async support from day 1.
-//!
-//! 2. Dynamic
-//!
-//!     Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex dynamic queries.
-//!
-//! 3. Service Oriented
-//!
-//!     Quickly build services that join, filter, sort and paginate data in REST, GraphQL and gRPC APIs.
-//!
-//! 4. Production Ready
-//!
-//!     SeaORM is feature-rich, well-tested and used in production by companies and startups.
-//!
-//! ## A quick taste of SeaORM
-//!
 //! Let's have a quick walk through of the unique features of SeaORM.
 //!
-//! ### Entity
-//! You don't have to write this by hand! Entity files can be generated from an existing database with `sea-orm-cli`,
-//! following is generated with `--entity-format dense` (new in 2.0).
+//! ## Expressive Entity format
+//! You don't have to write this by hand! Entity files can be generated from an existing database using `sea-orm-cli`,
+//! following is generated with `--entity-format dense` *(new in 2.0)*.
 //! ```
 //! # #[cfg(feature = "macros")]
 //! # mod entities {
-//! # mod filling {
+//! # mod profile {
 //! # use sea_orm::entity::prelude::*;
 //! # #[sea_orm::model]
-//! # #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-//! # #[sea_orm(table_name = "filling")]
+//! # #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+//! # #[sea_orm(table_name = "profile")]
 //! # pub struct Model {
 //! #     #[sea_orm(primary_key)]
 //! #     pub id: i32,
-//! #     pub name: String,
-//! #     #[sea_orm(has_many, via = "cake_filling")]
-//! #     pub cakes: Vec<super::cake::Entity>,
+//! #     pub picture: String,
+//! #     #[sea_orm(unique)]
+//! #     pub user_id: i32,
+//! #     #[sea_orm(belongs_to, from = "user_id", to = "id")]
+//! #     pub user: HasOne<super::user::Entity>,
 //! # }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! # }
-//! # mod cake_filling {
+//! # mod tag {
+//! # use sea_orm::entity::prelude::*;
+//! # #[sea_orm::model]
+//! # #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+//! # #[sea_orm(table_name = "post")]
+//! # pub struct Model {
+//! #     #[sea_orm(primary_key)]
+//! #     pub id: i32,
+//! #     #[sea_orm(has_many, via = "post_tag")]
+//! #     pub tags: HasMany<super::tag::Entity>,
+//! # }
+//! # impl ActiveModelBehavior for ActiveModel {}
+//! # }
+//! # mod post_tag {
 //! # use sea_orm::entity::prelude::*;
 //! # #[sea_orm::model]
 //! # #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-//! # #[sea_orm(table_name = "cake_filling")]
+//! # #[sea_orm(table_name = "post_tag")]
 //! # pub struct Model {
 //! #     #[sea_orm(primary_key, auto_increment = false)]
-//! #     pub cake_id: i32,
+//! #     pub post_id: i32,
 //! #     #[sea_orm(primary_key, auto_increment = false)]
-//! #     pub filling_id: i32,
-//! #     #[sea_orm(belongs_to, from = "CakeId", to = "Id")]
-//! #     pub cake: Option<super::cake::Entity> ,
-//! #     #[sea_orm(belongs_to, from = "FillingId", to = "Id")]
-//! #     pub filling: Option<super::filling::Entity> ,
+//! #     pub tag_id: i32,
+//! #     #[sea_orm(belongs_to, from = "post_id", to = "id")]
+//! #     pub post: Option<super::post::Entity>,
+//! #     #[sea_orm(belongs_to, from = "tag_id", to = "id")]
+//! #     pub tag: Option<super::tag::Entity>,
 //! # }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! # }
-//! mod cake {
+//! mod user {
 //!     use sea_orm::entity::prelude::*;
 //!
 //!     #[sea_orm::model]
-//!     #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-//!     #[sea_orm(table_name = "cake")]
-//!     pub struct Model {
-//!         #[sea_orm(primary_key)]
-//!         pub id: i32,
-//!         pub name: String,
-//!         #[sea_orm(has_one)]
-//!         pub fruit: HasOne<super::fruit::Entity>,
-//!         #[sea_orm(has_many, via = "cake_filling")] // M-N relation with junction
-//!         pub fillings: HasMany<super::filling::Entity>,
-//!     }
-//! # impl ActiveModelBehavior for ActiveModel {}
-//! }
-//! mod fruit {
-//!     use sea_orm::entity::prelude::*;
-//!
-//!     #[sea_orm::model]
-//!     #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-//!     #[sea_orm(table_name = "fruit")]
+//!     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+//!     #[sea_orm(table_name = "user")]
 //!     pub struct Model {
 //!         #[sea_orm(primary_key)]
 //!         pub id: i32,
 //!         pub name: String,
 //!         #[sea_orm(unique)]
-//!         pub cake_id: Option<i32>,
-//!         #[sea_orm(belongs_to, from = "cake_id", to = "id")]
-//!         pub cake: HasOne<super::cake::Entity>,
+//!         pub email: String,
+//!         #[sea_orm(has_one)]
+//!         pub profile: HasOne<super::profile::Entity>,
+//!         #[sea_orm(has_many)]
+//!         pub posts: HasMany<super::post::Entity>,
+//!     }
+//! # impl ActiveModelBehavior for ActiveModel {}
+//! }
+//! mod post {
+//!     use sea_orm::entity::prelude::*;
+//!
+//!     #[sea_orm::model]
+//!     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+//!     #[sea_orm(table_name = "post")]
+//!     pub struct Model {
+//!         #[sea_orm(primary_key)]
+//!         pub id: i32,
+//!         pub user_id: i32,
+//!         pub title: String,
+//!         #[sea_orm(belongs_to, from = "user_id", to = "id")]
+//!         pub author: HasOne<super::user::Entity>,
+//!         #[sea_orm(has_many, via = "post_tag")] // M-N relation with junction
+//!         pub tags: HasMany<super::tag::Entity>,
 //!     }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! }
 //! # }
 //! ```
-//! ### Entity Loader
 //!
+//! ## Smart Entity Loader
 //! The Entity Loader intelligently uses join for 1-1 and data loader for 1-N relations,
 //! eliminating the N+1 problem even when performing nested queries.
 //! ```
-//! # use sea_orm::{DbConn, error::*, prelude::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, prelude::*, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! // join paths:
-//! // cake -> fruit
-//! //      -> filling -> ingredient
-//!
-//! let super_cake = cake::Entity::load()
-//!     .filter_by_id(42) // shorthand for .filter(cake::Column::Id.eq(42))
-//!     .with(fruit::Entity) // 1-1 uses join
-//!     .with((filling::Entity, ingredient::Entity)) // 1-N uses data loader
+//! // user -> profile
+//! // user -> post
+//! //         post -> post_tag -> tag
+//! let smart_user = user::Entity::load()
+//!     .filter_by_id(42) // shorthand for .filter(user::COLUMN.id.eq(42))
+//!     .with(profile::Entity) // 1-1 uses join
+//!     .with((post::Entity, tag::Entity)) // 1-N uses data loader
 //!     .one(db)
 //!     .await?
 //!     .unwrap();
 //!
 //! // 3 queries are executed under the hood:
-//! // 1. SELECT FROM cake JOIN fruit WHERE id = $
-//! // 2. SELECT FROM filling JOIN cake_filling WHERE cake_id IN (..)
-//! // 3. SELECT FROM ingredient WHERE filling_id IN (..)
+//! // 1. SELECT FROM user JOIN profile WHERE id = $
+//! // 2. SELECT FROM post WHERE user_id IN (..)
+//! // 3. SELECT FROM tag JOIN post_tag WHERE post_id IN (..)
 //!
-//! super_cake
-//!     == cake::ModelEx {
+//! smart_user
+//!     == user::ModelEx {
 //!         id: 42,
-//!         name: "Black Forest".into(),
-//!         fruit: Some(
-//!             fruit::ModelEx {
+//!         name: "Bob".into(),
+//!         email: "bob@sea-ql.org".into(),
+//!         profile: HasOne::Loaded(
+//!             profile::ModelEx {
 //! #           id: 1,
-//!                 name: "Cherry".into(),
-//! #           cake_id: Some(1),
+//!                 picture: "image.jpg".into(),
+//! #           user_id: 1,
+//! #           user: HasOne::Unloaded,
 //!             }
 //!             .into(),
 //!         ),
-//!         fillings: vec![filling::ModelEx {
+//!         posts: HasMany::Loaded(vec![post::ModelEx {
 //! #           id: 2,
-//!             name: "Chocolate".into(),
-//! #           vendor_id: None,
-//! #           ignored_attr: 0,
-//!             ingredients: vec![ingredient::ModelEx {
+//! #           user_id: 1,
+//!             title: "Nice weather".into(),
+//! #           author: HasOne::Unloaded,
+//! #           comments: HasMany::Unloaded,
+//!             tags: HasMany::Loaded(vec![tag::ModelEx {
 //! #               id: 3,
-//!                 name: "Syrup".into(),
-//! #               filling_id: Some(2),
-//! #               filling: Default::default(),
-//! #               ingredient_id: None,
-//! #               ingredient: None,
-//!             }],
-//!         }],
+//!                 tag: "sunny".into(),
+//! #               posts: HasMany::Unloaded,
+//!             }]),
+//!         }]),
 //!     };
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! ## ActiveModel: nested persistence made simple
+//! Persist an entire object graph: user, profile (1-1), posts (1-N), and tags (M-N)
+//! in a single operation using a fluent builder API. SeaORM automatically determines
+//! the dependencies and inserts or deletes objects in the correct order.
+//!
+//! ```
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
+//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
+//! // this creates the nested object as shown above:
+//! let user = user::ActiveModel::builder()
+//!     .set_name("Bob")
+//!     .set_email("bob@sea-ql.org")
+//!     .set_profile(profile::ActiveModel::builder().set_picture("image.jpg"))
+//!     .add_post(
+//!         post::ActiveModel::builder()
+//!             .set_title("Nice weather")
+//!             .add_tag(tag::ActiveModel::builder().set_tag("sunny")),
+//!     )
+//!     .save(db)
+//!     .await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Schema first or Entity first? Your choice
+//!
+//! SeaORM provides a powerful migration system that lets you create tables, modify schemas, and seed data with ease.
+//!
+//! With SeaORM 2.0, you also get a first-class [Entity First Workflow](https://www.sea-ql.org/blog/2025-10-30-sea-orm-2.0/):
+//! simply define new entities or add columns to existing ones,
+//! and SeaORM will automatically detect the changes and create the new tables, columns, unique keys, and foreign keys.
+//!
+//! ```ignore
+//! // SeaORM resolves foreign key dependencies and creates the tables in topological order.
+//! // Requires the `entity-registry` and `schema-sync` feature flags.
+//! db.get_schema_registry("my_crate::entity::*").sync(db).await;
+//! ```
+//!
+//! ## Ergonomic Raw SQL
+//!
+//! Let SeaORM handle 95% of your transactional queries.
+//! For the remaining cases that are too complex to express,
+//! SeaORM still offers convenient support for writing raw SQL.
+//! ```
+//! # use sea_orm::{DbErr, DbConn};
+//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
+//! # use sea_orm::{entity::*, query::*, tests_cfg::*, raw_sql};
+//! # struct Item<'a> { name: &'a str }
+//! let user = Item { name: "Bob" }; // nested parameter access
+//! let ids = [2, 3, 4]; // expanded by the `..` operator
+//!
+//! let user: Option<user::Model> = user::Entity::find()
+//!     .from_raw_sql(raw_sql!(
+//!         Sqlite,
+//!         r#"SELECT "id", "name" FROM "user"
+//!            WHERE "name" LIKE {user.name}
+//!            AND "id" in ({..ids})
+//!         "#
+//!     ))
+//!     .one(db)
+//!     .await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Basics
+//!
 //! ### Select
 //! SeaORM models 1-N and M-N relationships at the Entity level,
 //! letting you traverse many-to-many links through a junction table in a single call.
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! // find all models
 //! let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
 //!
 //! // find and filter
 //! let chocolate: Vec<cake::Model> = Cake::find()
-//!     .filter(cake::Column::Name.contains("chocolate"))
+//!     .filter(Cake::COLUMN.name.contains("chocolate"))
 //!     .all(db)
 //!     .await?;
 //!
@@ -246,7 +319,7 @@
 //! Partial models prevent overfetching by letting you querying only the fields
 //! you need; it also makes writing deeply nested relational queries simple.
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! use sea_orm::DerivePartialModel;
 //!
@@ -273,7 +346,7 @@
 //! persist them through a simple API.
 //! It's easy to insert large batches of rows from different data sources.
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! let apple = fruit::ActiveModel {
 //!     name: Set("Apple".to_owned()),
@@ -311,7 +384,7 @@
 //! ### Insert (advanced)
 //! You can take advantage of database specific features to perform upsert and idempotent insert.
 //! ```
-//! # use sea_orm::{DbConn, TryInsertResult, error::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, TryInsertResult, DbErr, entity::*, query::*, tests_cfg::*};
 //! # async fn function_1(db: &DbConn) -> Result<(), DbErr> {
 //! # let apple = fruit::ActiveModel {
 //! #     name: Set("Apple".to_owned()),
@@ -359,8 +432,7 @@
 //! never overwriting untouched columns.
 //! You can also craft complex bulk update queries with a fluent query building API.
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
-//! use fruit::Column::CakeId;
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
 //! use sea_orm::sea_query::{Expr, Value};
 //!
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
@@ -375,8 +447,8 @@
 //! // update many: UPDATE "fruit" SET "cake_id" = "cake_id" + 2
 //! //               WHERE "fruit"."name" LIKE '%Apple%'
 //! Fruit::update_many()
-//!     .col_expr(CakeId, Expr::col(CakeId).add(Expr::val(2)))
-//!     .filter(fruit::Column::Name.contains("Apple"))
+//!     .col_expr(fruit::COLUMN.cake_id, fruit::COLUMN.cake_id.add(2))
+//!     .filter(fruit::COLUMN.name.contains("Apple"))
 //!     .exec(db)
 //!     .await?;
 //! # Ok(())
@@ -385,7 +457,7 @@
 //! ### Save
 //! You can perform "insert or update" operation with ActiveModel, making it easy to compose transactional operations.
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! let banana = fruit::ActiveModel {
 //!     id: NotSet,
@@ -407,7 +479,7 @@
 //! ### Delete
 //! The same ActiveModel API consistent with insert and update.
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! // delete one: Active Record style
 //! let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
@@ -423,38 +495,18 @@
 //!
 //! // delete many: DELETE FROM "fruit" WHERE "fruit"."name" LIKE '%Orange%'
 //! fruit::Entity::delete_many()
-//!     .filter(fruit::Column::Name.contains("Orange"))
+//!     .filter(fruit::COLUMN.name.contains("Orange"))
 //!     .exec(db)
 //!     .await?;
 //!
 //! # Ok(())
 //! # }
 //! ```
-//! ### Ergonomic Raw SQL
-//! Let SeaORM handle 90% of all the transactional queries.
-//! When your query is too complex to express, SeaORM still offer convenience in writing raw SQL.
-//!
+//! ### Raw SQL Query
 //! The `raw_sql!` macro is like the `format!` macro but without the risk of SQL injection.
 //! It supports nested parameter interpolation, array and tuple expansion, and even repeating group,
 //! offering great flexibility in crafting complex queries.
 //!
-//! ```
-//! # use sea_orm::{DbErr, DbConn};
-//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
-//! # use sea_orm::{entity::*, query::*, tests_cfg::*, raw_sql};
-//! # struct Item { id: i32 }
-//! let item = Item { id: 2 }; // nested parameter access
-//!
-//! let cake: Option<cake::Model> = Cake::find()
-//!     .from_raw_sql(raw_sql!(
-//!         Sqlite,
-//!         r#"SELECT "id", "name" FROM "cake" WHERE id = {item.id}"#
-//!     ))
-//!     .one(db)
-//!     .await?;
-//! # Ok(())
-//! # }
-//! ```
 //! ```
 //! # use sea_orm::{DbErr, DbConn};
 //! # async fn functio(db: &DbConn) -> Result<(), DbErr> {
@@ -503,7 +555,7 @@
 //!
 //! [SeaORM Pro](https://github.com/SeaQL/sea-orm-pro/) is an admin panel solution allowing you to quickly and easily launch an admin panel for your application - frontend development skills not required, but certainly nice to have!
 //!
-//! SeaORM Pro will be updated to support the latest features in SeaORM 2.0.
+//! SeaORM Pro has been updated to support the latest features in SeaORM 2.0.
 //!
 //! Features:
 //!
@@ -511,13 +563,9 @@
 //! + Built on React + GraphQL
 //! + Built-in GraphQL resolver
 //! + Customize the UI with TOML config
-//! + Custom GraphQL endpoints *(new in 2.0)*
 //! + Role Based Access Control *(new in 2.0)*
 //!
-//! Learn More
-//!
-//! + [Example Repo](https://github.com/SeaQL/sea-orm-pro)
-//! + [Getting Started](https://www.sea-ql.org/sea-orm-pro/docs/install-and-config/getting-started/)
+//! Read the [Getting Started](https://www.sea-ql.org/sea-orm-pro/docs/install-and-config/getting-started/) guide to learn more.
 //!
 //! ![](https://raw.githubusercontent.com/SeaQL/sea-orm/refs/heads/master/docs/sea-orm-pro-dark.png#gh-dark-mode-only)
 //! ![](https://raw.githubusercontent.com/SeaQL/sea-orm/refs/heads/master/docs/sea-orm-pro-light.png#gh-light-mode-only)
@@ -528,21 +576,25 @@
 //!
 //! ## Releases
 //!
-//! SeaORM 2.0 has reached its release candidate phase. We'd love for you to try it out and help shape the final release by [sharing your feedback](https://github.com/SeaQL/sea-orm/discussions/2548).
+//! SeaORM 2.0 has reached its release candidate phase. We'd love for you to try it out and help shape the final release by [sharing your feedback](https://github.com/SeaQL/sea-orm/discussions/).
+//!
+//! + [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 //!
 //! SeaORM 2.0 is shaping up to be our most significant release yet - with a few breaking changes, plenty of enhancements, and a clear focus on developer experience.
 //!
 //! + [A Sneak Peek at SeaORM 2.0](https://www.sea-ql.org/blog/2025-09-16-sea-orm-2.0/)
 //! + [SeaORM 2.0: A closer look](https://www.sea-ql.org/blog/2025-09-24-sea-orm-2.0/)
 //! + [Role Based Access Control in SeaORM 2.0](https://www.sea-ql.org/blog/2025-09-30-sea-orm-rbac/)
+//! + [Seaography 2.0: A Powerful and Extensible GraphQL Framework](https://www.sea-ql.org/blog/2025-10-08-seaography/)
+//! + [SeaORM 2.0: New Entity Format](https://www.sea-ql.org/blog/2025-10-20-sea-orm-2.0/)
+//! + [SeaORM 2.0: Entity First Workflow](https://www.sea-ql.org/blog/2025-10-30-sea-orm-2.0/)
+//! + [SeaORM 2.0: Strongly-Typed Column](https://www.sea-ql.org/blog/2025-11-11-sea-orm-2.0/)
+//! + [What's new in SeaORM Pro 2.0](https://www.sea-ql.org/blog/2025-11-21-whats-new-in-seaormpro-2.0/)
+//! + [SeaORM 2.0: Nested ActiveModel](https://www.sea-ql.org/blog/2025-11-25-sea-orm-2.0/)
 //!
-//! If you make extensive use of SeaORM's underlying query builder, we recommend checking out our blog post on SeaQuery 1.0 release:
+//! If you make extensive use of SeaQuery, we recommend checking out our blog post on SeaQuery 1.0 release:
 //!
 //! + [The road to SeaQuery 1.0](https://www.sea-ql.org/blog/2025-08-30-sea-query-1.0/)
-//!
-//! It doesn't mean that SeaORM is 'done', we've designed an architecture to allow us to deliver new features without major breaking changes.
-//!
-//! + [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 //!
 //! ## License
 //!
@@ -569,10 +621,7 @@
 //!
 //! ## Who's using SeaORM?
 //!
-//! SeaORM is trusted by companies and startups for both internal tools and public‑facing applications, thanks to its ergonomics and the familiarity it brings from dynamic languages.
-//! Built on async Rust, it combines high performance and a strong type system without sacrificing developer productivity.
-//!
-//! Here is a short list of awesome open source software built with SeaORM. [Full list here](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to submit yours!
+//! Here is a short list of awesome open source software built with SeaORM. Feel free to [submit yours](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm)!
 //!
 //! | Project | GitHub | Tagline |
 //! |---------|--------|---------|
@@ -589,7 +638,8 @@
 //!
 //! ## Sponsorship
 //!
-//! [SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers. If you enjoy using our libraries, please star and share our repositories. If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
+//! [SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers.
+//! If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
 //!
 //! ### Gold Sponsors
 //!
@@ -600,7 +650,7 @@
 //! </tr></table>
 //!
 //! [QDX](https://qdx.co/) pioneers quantum dynamics-powered drug discovery, leveraging AI and supercomputing to accelerate molecular modeling.
-//! We're immensely grateful to QDX for sponsoring the development of SeaORM, the SQL toolkit that powers their data engineering workflows.
+//! We're immensely grateful to QDX for sponsoring the development of SeaORM, the SQL toolkit that powers their data intensive applications.
 //!
 //! ### Silver Sponsors
 //!
@@ -622,17 +672,14 @@
 //!
 //! <img alt="Terres" src="https://www.sea-ql.org/SeaORM/img/Terres.png" width="400"/>
 //!
-//! ### Rustacean Sticker Pack 🦀
-//!
-//! The Rustacean Sticker Pack is the perfect way to express your passion for Rust.
-//! Our stickers are made with a premium water-resistant vinyl with a unique matte finish.
-//! Stick them on your laptop, notebook, or any gadget to show off your love for Rust!
+//! ## 🦀 Rustacean Sticker Pack
+//! The Rustacean Sticker Pack is the perfect way to express your passion for Rust. Our stickers are made with a premium water-resistant vinyl with a unique matte finish.
 //!
 //! Sticker Pack Contents:
-//! - Logo of SeaQL projects: SeaQL, SeaORM, SeaQuery, Seaography, FireDBG
-//! - Mascot of SeaQL: Terres the Hermit Crab
-//! - Mascot of Rust: Ferris the Crab
-//! - The Rustacean word
+//!
+//! + Logo of SeaQL projects: SeaQL, SeaORM, SeaQuery, Seaography
+//! + Mascots: Ferris the Crab x 3, Terres the Hermit Crab
+//! + The Rustacean wordmark
 //!
 //! [Support SeaQL and get a Sticker Pack!](https://www.sea-ql.org/sticker-pack/) All proceeds contributes directly to the ongoing development of SeaQL projects.
 //!
@@ -679,11 +726,11 @@ pub use schema::*;
 
 #[cfg(feature = "macros")]
 pub use sea_orm_macros::{
-    DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveDisplay,
-    DeriveEntity, DeriveEntityModel, DeriveIden, DeriveIntoActiveModel, DeriveMigrationName,
-    DeriveModel, DeriveModelEx, DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity,
-    DeriveRelation, DeriveValueType, FromJsonQueryResult, FromQueryResult, raw_sql,
-    sea_orm_compact_model as compact_model, sea_orm_model as model,
+    DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveActiveModelEx,
+    DeriveColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIden,
+    DeriveIntoActiveModel, DeriveMigrationName, DeriveModel, DeriveModelEx, DerivePartialModel,
+    DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, DeriveValueType, FromJsonQueryResult,
+    FromQueryResult, raw_sql, sea_orm_compact_model as compact_model, sea_orm_model as model,
 };
 
 pub use sea_query;

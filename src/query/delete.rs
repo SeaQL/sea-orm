@@ -1,6 +1,8 @@
 use crate::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, DbErr, EntityTrait, IntoActiveModel, Iterable,
-    PrimaryKeyToColumn, QueryFilter, QueryTrait,
+    ActiveModelTrait, ActiveValue, ColumnTrait, DbBackend, DbErr, EntityTrait, IntoActiveModel,
+    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryTrait,
+    query::column_tuple_in_condition,
+    sea_query::{IntoValueTuple, ValueTuple},
 };
 use core::marker::PhantomData;
 use sea_query::DeleteStatement;
@@ -18,27 +20,27 @@ pub struct Delete;
 /// If you want to use [`QueryTrait`] and access the generated SQL query,
 /// you need to convert into [`ValidatedDeleteOne`] first.
 #[derive(Clone, Debug)]
-pub struct DeleteOne<A: ActiveModelTrait>(pub(crate) Result<ValidatedDeleteOne<A>, DbErr>);
+pub struct DeleteOne<E: EntityTrait>(pub(crate) Result<ValidatedDeleteOne<E>, DbErr>);
 
 /// A validated [`DeleteOne`] request, where the primary key is set
 /// and it's possible to generate the right SQL condition.
 #[derive(Clone, Debug)]
-pub struct ValidatedDeleteOne<A: ActiveModelTrait> {
+pub struct ValidatedDeleteOne<E: EntityTrait> {
     pub(crate) query: DeleteStatement,
-    pub(crate) model: A,
+    pub(crate) entity: PhantomData<E>,
 }
 
-impl<A: ActiveModelTrait> TryFrom<DeleteOne<A>> for ValidatedDeleteOne<A> {
+impl<E: EntityTrait> TryFrom<DeleteOne<E>> for ValidatedDeleteOne<E> {
     type Error = DbErr;
 
-    fn try_from(value: DeleteOne<A>) -> Result<Self, Self::Error> {
+    fn try_from(value: DeleteOne<E>) -> Result<Self, Self::Error> {
         value.0
     }
 }
 
-impl<A: ActiveModelTrait> DeleteOne<A> {
+impl<E: EntityTrait> DeleteOne<E> {
     /// Check whether the primary key is set and we can proceed with the operation.
-    pub fn validate(self) -> Result<ValidatedDeleteOne<A>, DbErr> {
+    pub fn validate(self) -> Result<ValidatedDeleteOne<E>, DbErr> {
         self.try_into()
     }
 }
@@ -92,22 +94,23 @@ impl Delete {
     // (non-doc comment for maintainers)
     // Ideally, we would make this method fallible instead of stashing and delaying the error.
     // But that's a bigger breaking change.
-    pub fn one<E, A, M>(model: M) -> DeleteOne<A>
+    pub fn one<E, A, M>(model: M) -> DeleteOne<E>
     where
         E: EntityTrait,
         A: ActiveModelTrait<Entity = E>,
         M: IntoActiveModel<A>,
     {
+        let model = model.into_active_model();
         let mut myself = ValidatedDeleteOne {
             query: DeleteStatement::new()
                 .from_table(A::Entity::default().table_ref())
                 .to_owned(),
-            model: model.into_active_model(),
+            entity: PhantomData,
         };
         // Build the SQL condition from the primary key columns.
         for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
-            let av = myself.model.get(col);
+            let av = model.get(col);
             match av {
                 ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
                     myself = myself.filter(col.eq(value));
@@ -118,6 +121,16 @@ impl Delete {
             }
         }
         DeleteOne(Ok(myself))
+    }
+
+    #[doc(hidden)]
+    pub fn _one_only_for_use_by_model_ex<E: EntityTrait>(entity: E) -> ValidatedDeleteOne<E> {
+        ValidatedDeleteOne {
+            query: DeleteStatement::new()
+                .from_table(entity.table_ref())
+                .to_owned(),
+            entity: PhantomData,
+        }
     }
 
     /// Delete many ActiveModel
@@ -146,9 +159,9 @@ impl Delete {
     }
 }
 
-impl<A> QueryFilter for ValidatedDeleteOne<A>
+impl<E> QueryFilter for ValidatedDeleteOne<E>
 where
-    A: ActiveModelTrait,
+    E: EntityTrait,
 {
     type QueryStatement = DeleteStatement;
 
@@ -168,9 +181,55 @@ where
     }
 }
 
-impl<A> QueryTrait for ValidatedDeleteOne<A>
+impl<E> DeleteMany<E>
 where
-    A: ActiveModelTrait,
+    E: EntityTrait,
+{
+    /// Filter by vector of IDs by primary key
+    ///
+    /// # Panics
+    ///
+    /// Should not panic.
+    pub fn filter_by_ids<I>(mut self, values: I) -> Self
+    where
+        I: IntoIterator<Item = <E::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+    {
+        self.query.cond_where(
+            column_tuple_in_condition(
+                &E::default().table_ref(),
+                &E::primary_key_identity(),
+                &values
+                    .into_iter()
+                    .map(|v| v.into_value_tuple())
+                    .collect::<Vec<_>>(),
+                DbBackend::Sqlite,
+            )
+            .expect("trait bound ensured arity"),
+        );
+        self
+    }
+
+    #[doc(hidden)]
+    /// # Panics
+    ///
+    /// Panic if `ValueTuple` arity does not match primary key
+    pub fn filter_by_value_tuples(mut self, values: &[ValueTuple]) -> Self {
+        self.query.cond_where(
+            column_tuple_in_condition(
+                &E::default().table_ref(),
+                &E::primary_key_identity(),
+                values,
+                DbBackend::Sqlite,
+            )
+            .expect(""),
+        );
+        self
+    }
+}
+
+impl<E> QueryTrait for ValidatedDeleteOne<E>
+where
+    E: EntityTrait,
 {
     type QueryStatement = DeleteStatement;
 

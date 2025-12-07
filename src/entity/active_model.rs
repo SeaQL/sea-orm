@@ -1,106 +1,16 @@
+use super::{ActiveValue, ActiveValue::*};
 use crate::{
-    ColumnTrait, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyArity,
-    PrimaryKeyToColumn, PrimaryKeyTrait, Value, error::*,
+    ColumnTrait, Condition, ConnectionTrait, DbBackend, DeleteResult, EntityName, EntityTrait,
+    IdenStatic, Iterable, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter,
+    Related, RelatedSelfVia, RelationDef, RelationTrait, Value,
+    error::*,
+    query::{
+        clear_key_on_active_model, column_tuple_in_condition, get_key_from_active_model,
+        set_key_on_active_model,
+    },
 };
-use async_trait::async_trait;
-use sea_query::{Nullable, ValueTuple};
+use sea_query::ValueTuple;
 use std::fmt::Debug;
-
-pub use ActiveValue::{NotSet, Set, Unchanged};
-
-/// The state of a field in an [ActiveModel][ActiveModelTrait].
-///
-/// There are three possible states represented by three enum variants:
-///
-/// - [Set] - a value that's explicitly set by the application and sent to the database.
-/// - [Unchanged] - an existing, unchanged value from the database.
-/// - [NotSet] - an undefined value (nothing is sent to the database).
-///
-/// The difference between these states is useful
-/// when constructing `INSERT` and `UPDATE` SQL statements (see an example below).
-/// It's also useful for knowing which fields have changed in a record.
-///
-/// # Examples
-///
-/// ```
-/// use sea_orm::tests_cfg::{cake, fruit};
-/// use sea_orm::{DbBackend, entity::*, query::*};
-///
-/// // Here, we use `NotSet` to let the database automatically generate an `id`.
-/// // This is different from `Set(None)` that explicitly sets `cake_id` to `NULL`.
-/// assert_eq!(
-///     Insert::one(fruit::ActiveModel {
-///         id: ActiveValue::NotSet,
-///         name: ActiveValue::Set("Orange".to_owned()),
-///         cake_id: ActiveValue::Set(None),
-///     })
-///     .build(DbBackend::Postgres)
-///     .to_string(),
-///     r#"INSERT INTO "fruit" ("name", "cake_id") VALUES ('Orange', NULL)"#
-/// );
-///
-/// // Here, we update the record, set `cake_id` to the new value
-/// // and use `NotSet` to avoid updating the `name` field.
-/// // `id` is the primary key, so it's used in the condition and not updated.
-/// assert_eq!(
-///     Update::one(fruit::ActiveModel {
-///         id: ActiveValue::Unchanged(1),
-///         name: ActiveValue::NotSet,
-///         cake_id: ActiveValue::Set(Some(2)),
-///     })
-///     .validate()
-///     .unwrap()
-///     .build(DbBackend::Postgres)
-///     .to_string(),
-///     r#"UPDATE "fruit" SET "cake_id" = 2 WHERE "fruit"."id" = 1"#
-/// );
-/// ```
-#[derive(Clone, Debug)]
-pub enum ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    /// A [Value] that's explicitly set by the application and sent to the database.
-    ///
-    /// Use this to insert or set a specific value.
-    ///
-    /// When editing an existing value, you can use [set_if_not_equals][ActiveValue::set_if_not_equals]
-    /// to preserve the [Unchanged] state when the new value is the same as the old one.
-    /// Then you can meaningfully use methods like [ActiveModelTrait::is_changed].
-    Set(V),
-    /// An existing, unchanged [Value] from the database.
-    ///
-    /// You get these when you query an existing [Model][crate::ModelTrait]
-    /// from the database and convert it into an [ActiveModel][ActiveModelTrait].
-    ///
-    /// When you edit it, you can use [set_if_not_equals][ActiveValue::set_if_not_equals]
-    /// to preserve this "unchanged" state if the new value is the same as the old one.
-    /// Then you can meaningfully use methods like [ActiveModelTrait::is_changed].
-    Unchanged(V),
-    /// An undefined [Value]. Nothing is sent to the database.
-    ///
-    /// When you create a new [ActiveModel][ActiveModelTrait],
-    /// its fields are [NotSet][ActiveValue::NotSet] by default.
-    ///
-    /// This can be useful when:
-    ///
-    /// - You insert a new record and want the database to generate a default value (e.g., an id).
-    /// - In an `UPDATE` statement, you don't want to update some field.
-    NotSet,
-}
-
-/// Defines an not set operation on an [ActiveValue]
-#[deprecated(
-    since = "0.5.0",
-    note = "Please use [`ActiveValue::NotSet`] or [`NotSet`]"
-)]
-#[allow(non_snake_case)]
-pub fn Unset<V>(_: Option<bool>) -> ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    ActiveValue::not_set()
-}
 
 /// `ActiveModel` is a type for constructing `INSERT` and `UPDATE` statements for a particular table.
 ///
@@ -113,7 +23,7 @@ where
 ///
 /// - omit columns from the query,
 /// - know which columns have changed after editing a record.
-#[async_trait]
+#[async_trait::async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
     /// The Entity this ActiveModel belongs to
     type Entity: EntityTrait;
@@ -129,6 +39,9 @@ pub trait ActiveModelTrait: Clone + Debug {
         self.try_set(c, v)
             .unwrap_or_else(|e| panic!("Failed to set value for {:?}: {e:?}", c.as_column_ref()))
     }
+
+    /// Set the Value of a ActiveModel field if value is different, panic if failed
+    fn set_if_not_equals(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
 
     /// Set the Value of a ActiveModel field, return error if failed
     fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
@@ -158,25 +71,12 @@ pub trait ActiveModelTrait: Clone + Debug {
         self
     }
 
-    /// Get the primary key of the ActiveModel
-    ///
-    /// # Panics
-    ///
-    /// Panics if arity of primary key exceed maximum arity of [ValueTuple]
-    #[allow(clippy::question_mark)]
+    /// Get the primary key of the ActiveModel, only if it's fully specified.
     fn get_primary_key_value(&self) -> Option<ValueTuple> {
         let mut cols = <Self::Entity as EntityTrait>::PrimaryKey::iter();
         macro_rules! next {
             () => {
-                if let Some(col) = cols.next() {
-                    if let Some(val) = self.get(col.into_column()).into_value() {
-                        val
-                    } else {
-                        return None;
-                    }
-                } else {
-                    return None;
-                }
+                self.get(cols.next()?.into_column()).into_value()?
             };
         }
         match <<<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY {
@@ -315,7 +215,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn insert<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
+        Self: ActiveModelBehavior,
         C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, db, true).await?;
@@ -437,7 +337,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn update<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
+        Self: ActiveModelBehavior,
         C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, db, false).await?;
@@ -450,9 +350,20 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn save<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
+        Self: ActiveModelBehavior,
         C: ConnectionTrait,
     {
+        let res = if !self.is_update() {
+            self.insert(db).await
+        } else {
+            self.update(db).await
+        }?;
+        Ok(res.into_active_model())
+    }
+
+    /// Returns true if the primary key is fully-specified
+    #[doc(hidden)]
+    fn is_update(&self) -> bool {
         let mut is_update = true;
         for key in <Self::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
@@ -461,12 +372,7 @@ pub trait ActiveModelTrait: Clone + Debug {
                 break;
             }
         }
-        let res = if !is_update {
-            self.insert(db).await
-        } else {
-            self.update(db).await
-        }?;
-        Ok(res.into_active_model())
+        is_update
     }
 
     /// Delete an active model by its primary key
@@ -514,7 +420,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// ```
     async fn delete<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
-        Self: ActiveModelBehavior + 'a,
+        Self: ActiveModelBehavior,
         C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_delete(self, db).await?;
@@ -625,7 +531,372 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Return `true` if any attribute of `ActiveModel` is `Set`
     fn is_changed(&self) -> bool {
         <Self::Entity as EntityTrait>::Column::iter()
-            .any(|col| self.get(col).is_set() && !self.get(col).is_unchanged())
+            .any(|col| matches!(self.get(col), ActiveValue::Set(_)))
+    }
+
+    #[doc(hidden)]
+    /// Set the key to parent's key value for a belongs to relation.
+    fn set_parent_key<R, AM>(&mut self, model: &AM) -> Result<(), DbErr>
+    where
+        R: EntityTrait,
+        AM: ActiveModelTrait<Entity = R>,
+        Self::Entity: Related<R>,
+    {
+        let rel_def = Self::Entity::to();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation from {} to {} is not belongs_to",
+                <Self::Entity as Default>::default().as_str(),
+                <R as Default>::default().as_str()
+            )));
+        }
+
+        let values = get_key_from_active_model(&rel_def.to_col, model)?;
+
+        set_key_on_active_model(&rel_def.from_col, self, values)?;
+
+        Ok(())
+    }
+
+    #[doc(hidden)]
+    fn set_parent_key_for<R, AM>(
+        &mut self,
+        model: &AM,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<(), DbErr>
+    where
+        R: EntityTrait,
+        AM: ActiveModelTrait<Entity = R>,
+    {
+        let rel_def = rel.def();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!("Relation {rel:?} is not belongs_to")));
+        }
+
+        let values = get_key_from_active_model(&rel_def.to_col, model)?;
+
+        set_key_on_active_model(&rel_def.from_col, self, values)?;
+
+        Ok(())
+    }
+
+    #[doc(hidden)]
+    fn set_parent_key_for_def<R, AM>(
+        &mut self,
+        model: &AM,
+        rel_def: &RelationDef,
+    ) -> Result<(), DbErr>
+    where
+        R: EntityTrait,
+        AM: ActiveModelTrait<Entity = R>,
+    {
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation {rel_def:?} is not belongs_to"
+            )));
+        }
+
+        let values = get_key_from_active_model(&rel_def.to_col, model)?;
+
+        set_key_on_active_model(&rel_def.from_col, self, values)?;
+
+        Ok(())
+    }
+
+    #[doc(hidden)]
+    fn set_parent_key_for_self_rev<AM>(
+        &mut self,
+        model: &AM,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<(), DbErr>
+    where
+        AM: ActiveModelTrait<Entity = Self::Entity>,
+    {
+        let rel_def = rel.def();
+
+        if !rel_def.is_owner {
+            return Err(DbErr::Type(format!("Relation {rel:?} is not owner")));
+        }
+
+        let values = get_key_from_active_model(&rel_def.from_col, model)?;
+
+        set_key_on_active_model(&rel_def.to_col, self, values)?;
+
+        Ok(())
+    }
+
+    #[doc(hidden)]
+    /// Clear parent association if the relation is optional and return true
+    fn clear_parent_key<R>(&mut self) -> Result<bool, DbErr>
+    where
+        R: EntityTrait,
+        Self::Entity: Related<R>,
+    {
+        let rel_def = Self::Entity::to();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation from {} to {} is not belongs_to",
+                <Self::Entity as Default>::default().as_str(),
+                <R as Default>::default().as_str()
+            )));
+        }
+
+        clear_key_on_active_model(&rel_def.from_col, self)
+    }
+
+    #[doc(hidden)]
+    fn clear_parent_key_for_self_rev(
+        &mut self,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<bool, DbErr> {
+        let rel_def = rel.def();
+
+        if !rel_def.is_owner {
+            return Err(DbErr::Type(format!("Relation {rel:?} is not owner")));
+        }
+
+        clear_key_on_active_model(&rel_def.to_col, self)
+    }
+
+    #[doc(hidden)]
+    /// Get the key value of belongs to relation
+    fn get_parent_key<R>(&self) -> Result<ValueTuple, DbErr>
+    where
+        R: EntityTrait,
+        Self::Entity: Related<R>,
+    {
+        let rel_def = Self::Entity::to();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation from {} to {} is not belongs_to",
+                <Self::Entity as Default>::default().as_str(),
+                <R as Default>::default().as_str()
+            )));
+        }
+
+        get_key_from_active_model(&rel_def.from_col, self)
+    }
+
+    #[doc(hidden)]
+    /// Get the key value of belongs to relation
+    fn get_parent_key_for(
+        &self,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<ValueTuple, DbErr> {
+        let rel_def = rel.def();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!("Relation {rel:?} is not belongs_to")));
+        }
+
+        get_key_from_active_model(&rel_def.from_col, self)
+    }
+
+    #[doc(hidden)]
+    fn find_belongs_to_self(
+        &self,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<crate::query::Select<Self::Entity>, DbErr> {
+        let rel_def = rel.def();
+
+        if !rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation {rel:?} is not has_one / has_many"
+            )));
+        }
+
+        let id = get_key_from_active_model(&rel_def.from_col, self)?;
+
+        Ok(Self::Entity::find().filter(
+            column_tuple_in_condition(
+                &<Self::Entity as Default>::default().table_ref(),
+                &rel_def.to_col,
+                &[id],
+                DbBackend::Sqlite,
+            )
+            .expect(""),
+        ))
+    }
+
+    #[doc(hidden)]
+    fn find_belongs_to_model<AM>(
+        rel_def: &RelationDef,
+        belongs_to: &AM,
+    ) -> Result<crate::query::Select<Self::Entity>, DbErr>
+    where
+        AM: ActiveModelTrait,
+    {
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation {rel_def:?} is not belongs_to"
+            )));
+        }
+
+        let id = get_key_from_active_model(&rel_def.to_col, belongs_to)?;
+        Ok(<Self::Entity as EntityTrait>::find().filter(
+            column_tuple_in_condition(
+                &rel_def.from_tbl,
+                &rel_def.from_col,
+                &[id],
+                DbBackend::Sqlite,
+            )
+            .expect(""),
+        ))
+    }
+
+    /// Find related Models belonging to self
+    fn find_related<R>(&self, _: R) -> crate::query::Select<R>
+    where
+        R: EntityTrait,
+        Self::Entity: Related<R>,
+    {
+        Self::Entity::find_related().belongs_to_active_model(self)
+    }
+
+    #[doc(hidden)]
+    fn find_related_of<AM>(&self, _: &[AM]) -> crate::query::Select<AM::Entity>
+    where
+        AM: ActiveModelTrait,
+        Self::Entity: Related<AM::Entity>,
+    {
+        self.find_related(AM::Entity::default())
+    }
+
+    /// Establish links between self and a related Entity for a many-to-many relation.
+    /// New associations will be added, and leftovers can be optionally deleted.
+    #[doc(hidden)]
+    async fn establish_links<J, R, RM, C>(
+        &self,
+        _: J,
+        related_models: &[RM],
+        delete_leftover: bool,
+        db: &C,
+    ) -> Result<(), DbErr>
+    where
+        R: EntityTrait,
+        RM: ActiveModelTrait<Entity = R> + Sync,
+        J: EntityTrait + Related<R> + Related<Self::Entity>,
+        J::Model: IntoActiveModel<J::ActiveModel>,
+        J::ActiveModel: ActiveModelBehavior + Send,
+        C: ConnectionTrait,
+    {
+        let left = <J as Related<Self::Entity>>::to();
+        let right = <J as Related<R>>::to();
+
+        establish_links::<_, J, _, C>(self, related_models, left, right, delete_leftover, db).await
+    }
+
+    #[doc(hidden)]
+    async fn establish_links_self<J, RM, C>(
+        &self,
+        _: J,
+        related_models: &[RM],
+        delete_leftover: bool,
+        db: &C,
+    ) -> Result<(), DbErr>
+    where
+        RM: ActiveModelTrait<Entity = Self::Entity> + Sync,
+        J: EntityTrait,
+        J::Model: IntoActiveModel<J::ActiveModel>,
+        J::ActiveModel: ActiveModelBehavior + Send,
+        C: ConnectionTrait,
+        Self::Entity: RelatedSelfVia<J>,
+    {
+        let left = <Self::Entity as RelatedSelfVia<J>>::via().rev();
+        let right = <Self::Entity as RelatedSelfVia<J>>::to();
+
+        establish_links::<_, J, _, C>(self, related_models, left, right, delete_leftover, db).await
+    }
+
+    #[doc(hidden)]
+    async fn establish_links_self_rev<J, RM, C>(
+        &self,
+        _: J,
+        related_models: &[RM],
+        delete_leftover: bool,
+        db: &C,
+    ) -> Result<(), DbErr>
+    where
+        RM: ActiveModelTrait<Entity = Self::Entity> + Sync,
+        J: EntityTrait,
+        J::Model: IntoActiveModel<J::ActiveModel>,
+        J::ActiveModel: ActiveModelBehavior + Send,
+        C: ConnectionTrait,
+        Self::Entity: RelatedSelfVia<J>,
+    {
+        let left = <Self::Entity as RelatedSelfVia<J>>::to();
+        let right = <Self::Entity as RelatedSelfVia<J>>::via().rev();
+
+        establish_links::<_, J, _, C>(self, related_models, left, right, delete_leftover, db).await
+    }
+
+    #[doc(hidden)]
+    async fn delete_links<J, C>(&self, _: J, db: &C) -> Result<DeleteResult, DbErr>
+    where
+        J: EntityTrait + Related<Self::Entity>,
+        C: ConnectionTrait,
+    {
+        let rel_def = <J as Related<Self::Entity>>::to();
+        let id = get_key_from_active_model(&rel_def.to_col, self)?;
+
+        J::delete_many()
+            .filter(
+                column_tuple_in_condition(
+                    &rel_def.from_tbl,
+                    &rel_def.from_col,
+                    &[id],
+                    DbBackend::Sqlite,
+                )
+                .expect(""),
+            )
+            .exec(db)
+            .await
+    }
+
+    #[doc(hidden)]
+    async fn delete_links_self<J, C>(&self, _: J, db: &C) -> Result<DeleteResult, DbErr>
+    where
+        J: EntityTrait,
+        C: ConnectionTrait,
+        Self::Entity: RelatedSelfVia<J>,
+    {
+        let left = <Self::Entity as RelatedSelfVia<J>>::via().rev();
+        let right = <Self::Entity as RelatedSelfVia<J>>::to();
+
+        let id = get_key_from_active_model(&left.to_col, self)?;
+
+        if left.to_col != right.to_col {
+            return Err(DbErr::Type("Expect Self Referencing Relation".into()));
+        }
+
+        J::delete_many()
+            .filter(
+                Condition::any()
+                    .add(
+                        column_tuple_in_condition(
+                            &left.from_tbl,
+                            &left.from_col,
+                            std::slice::from_ref(&id),
+                            DbBackend::Sqlite,
+                        )
+                        .expect(""),
+                    )
+                    .add(
+                        column_tuple_in_condition(
+                            &right.from_tbl,
+                            &right.from_col,
+                            std::slice::from_ref(&id),
+                            DbBackend::Sqlite,
+                        )
+                        .expect(""),
+                    ),
+            )
+            .exec(db)
+            .await
     }
 }
 
@@ -657,9 +928,20 @@ pub trait ActiveModelTrait: Clone + Debug {
 /// ```
 /// See module level docs [crate::entity] for a full example
 #[allow(unused_variables)]
-#[async_trait]
+#[async_trait::async_trait]
 pub trait ActiveModelBehavior: ActiveModelTrait {
-    /// Create a new ActiveModel with default values. Also used by `Default::default()`.
+    /// Create a new ActiveModel with default values. This is also called by `Default::default()`.
+    ///
+    /// You can override it like the following:
+    ///
+    /// ```ignore
+    /// fn new() -> Self {
+    ///     Self {
+    ///         status: Set(Status::New),
+    ///         ..ActiveModelTrait::default()
+    ///     }
+    /// }
+    /// ```
     fn new() -> Self {
         <Self as ActiveModelTrait>::default()
     }
@@ -719,311 +1001,97 @@ where
     }
 }
 
-/// Any type that can be converted into an [ActiveValue]
-pub trait IntoActiveValue<V>
+async fn establish_links<EM, J, RM, C>(
+    model: &EM,
+    related_models: &[RM],
+    left: RelationDef,
+    right: RelationDef,
+    delete_leftover: bool,
+    db: &C,
+) -> Result<(), DbErr>
 where
-    V: Into<Value>,
+    EM: ActiveModelTrait,
+    RM: ActiveModelTrait,
+    J: EntityTrait,
+    J::Model: IntoActiveModel<J::ActiveModel>,
+    J::ActiveModel: ActiveModelBehavior,
+    C: ConnectionTrait,
 {
-    /// Method to perform the conversion
-    fn into_active_value(self) -> ActiveValue<V>;
-}
+    let mut require_leftover = true;
 
-impl<V> IntoActiveValue<Option<V>> for Option<V>
-where
-    V: IntoActiveValue<V> + Into<Value> + Nullable,
-{
-    fn into_active_value(self) -> ActiveValue<Option<V>> {
-        match self {
-            Some(value) => Set(Some(value)),
-            None => NotSet,
+    if related_models.is_empty() {
+        // if there are no related models, then there is no risk of insert conflict
+        require_leftover = false;
+    }
+
+    let primary_key = J::primary_key_identity();
+    if require_leftover
+        && primary_key.fully_contains(&left.from_col)
+        && primary_key.fully_contains(&right.from_col)
+    {
+        // if the primary key is a composite key of the two relations
+        // we can use on conflict no action safely
+        require_leftover = false;
+    }
+
+    let mut leftover = Vec::new();
+    if delete_leftover || require_leftover {
+        for item in <J::ActiveModel as ActiveModelTrait>::find_belongs_to_model(&left, model)?
+            .all(db)
+            .await?
+        {
+            let item = item.into_active_model();
+            let key = get_key_from_active_model(&right.from_col, &item)?;
+            leftover.push((item, key));
         }
     }
-}
+    let leftover = leftover; // un-mut
 
-impl<V> IntoActiveValue<Option<V>> for Option<Option<V>>
-where
-    V: IntoActiveValue<V> + Into<Value> + Nullable,
-{
-    fn into_active_value(self) -> ActiveValue<Option<V>> {
-        match self {
-            Some(value) => Set(value),
-            None => NotSet,
+    let mut via_models = Vec::new();
+    let mut all_keys = std::collections::HashSet::new();
+
+    for related_model in related_models {
+        let mut via: J::ActiveModel = ActiveModelBehavior::new();
+        via.set_parent_key_for_def(model, &left)?;
+        via.set_parent_key_for_def(related_model, &right)?;
+        let via_key = get_key_from_active_model(&right.from_col, &via)?;
+        if !leftover.iter().any(|t| t.1 == via_key) {
+            // if not already exist, save for insert
+            via_models.push(via);
+        }
+        if delete_leftover {
+            all_keys.insert(via_key);
         }
     }
-}
 
-macro_rules! impl_into_active_value {
-    ($ty: ty) => {
-        impl IntoActiveValue<$ty> for $ty {
-            fn into_active_value(self) -> ActiveValue<$ty> {
-                Set(self)
+    if delete_leftover {
+        let mut to_delete = Vec::new();
+        for (leftover, key) in leftover {
+            if !all_keys.contains(&key) {
+                to_delete.push(
+                    leftover
+                        .get_primary_key_value()
+                        .expect("item is a full model"),
+                );
             }
         }
-    };
-}
-
-impl_into_active_value!(bool);
-impl_into_active_value!(i8);
-impl_into_active_value!(i16);
-impl_into_active_value!(i32);
-impl_into_active_value!(i64);
-impl_into_active_value!(u8);
-impl_into_active_value!(u16);
-impl_into_active_value!(u32);
-impl_into_active_value!(u64);
-impl_into_active_value!(f32);
-impl_into_active_value!(f64);
-impl_into_active_value!(&'static str);
-impl_into_active_value!(String);
-impl_into_active_value!(Vec<u8>);
-
-#[cfg(feature = "with-json")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-json")))]
-impl_into_active_value!(crate::prelude::Json);
-
-#[cfg(feature = "with-chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::Date);
-
-#[cfg(feature = "with-chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::Time);
-
-#[cfg(feature = "with-chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::DateTime);
-
-#[cfg(feature = "with-chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::DateTimeWithTimeZone);
-
-#[cfg(feature = "with-chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::DateTimeUtc);
-
-#[cfg(feature = "with-chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::DateTimeLocal);
-
-#[cfg(feature = "with-rust_decimal")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-rust_decimal")))]
-impl_into_active_value!(crate::prelude::Decimal);
-
-#[cfg(feature = "with-uuid")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-uuid")))]
-impl_into_active_value!(crate::prelude::Uuid);
-
-#[cfg(feature = "with-time")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
-impl_into_active_value!(crate::prelude::TimeDate);
-
-#[cfg(feature = "with-time")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
-impl_into_active_value!(crate::prelude::TimeTime);
-
-#[cfg(feature = "with-time")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
-impl_into_active_value!(crate::prelude::TimeDateTime);
-
-#[cfg(feature = "with-time")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
-impl_into_active_value!(crate::prelude::TimeDateTimeWithTimeZone);
-
-#[cfg(feature = "with-ipnetwork")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-ipnetwork")))]
-impl_into_active_value!(crate::prelude::IpNetwork);
-
-impl<V> Default for ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    /// Create an [ActiveValue::NotSet]
-    fn default() -> Self {
-        Self::NotSet
-    }
-}
-
-impl<V> ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    /// Create an [ActiveValue::Set]
-    pub fn set(value: V) -> Self {
-        Self::Set(value)
-    }
-
-    /// Check if the [ActiveValue] is [ActiveValue::Set]
-    pub fn is_set(&self) -> bool {
-        matches!(self, Self::Set(_))
-    }
-
-    /// Create an [ActiveValue::Unchanged]
-    pub fn unchanged(value: V) -> Self {
-        Self::Unchanged(value)
-    }
-
-    /// Check if the [ActiveValue] is [ActiveValue::Unchanged]
-    pub fn is_unchanged(&self) -> bool {
-        matches!(self, Self::Unchanged(_))
-    }
-
-    /// Create an [ActiveValue::NotSet]
-    pub fn not_set() -> Self {
-        Self::default()
-    }
-
-    /// Check if the [ActiveValue] is [ActiveValue::NotSet]
-    pub fn is_not_set(&self) -> bool {
-        matches!(self, Self::NotSet)
-    }
-
-    /// Get the mutable value an [ActiveValue]
-    /// also setting itself to [ActiveValue::NotSet]
-    pub fn take(&mut self) -> Option<V> {
-        match std::mem::take(self) {
-            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value),
-            ActiveValue::NotSet => None,
+        if !to_delete.is_empty() {
+            J::delete_many()
+                .filter_by_value_tuples(&to_delete)
+                .exec(db)
+                .await?;
         }
     }
 
-    /// Get an owned value of the [ActiveValue]
-    ///
-    /// # Panics
-    ///
-    /// Panics if it is [ActiveValue::NotSet]
-    pub fn unwrap(self) -> V {
-        match self {
-            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
-            ActiveValue::NotSet => panic!("Cannot unwrap ActiveValue::NotSet"),
-        }
+    if !via_models.is_empty() {
+        // insert new junctions
+        J::insert_many(via_models)
+            .on_conflict_do_nothing()
+            .exec(db)
+            .await?;
     }
 
-    /// Check if a [Value] exists or not
-    pub fn into_value(self) -> Option<Value> {
-        match self {
-            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value.into()),
-            ActiveValue::NotSet => None,
-        }
-    }
-
-    /// Wrap the [Value] into a `ActiveValue<Value>`
-    pub fn into_wrapped_value(self) -> ActiveValue<Value> {
-        match self {
-            Self::Set(value) => ActiveValue::set(value.into()),
-            Self::Unchanged(value) => ActiveValue::unchanged(value.into()),
-            Self::NotSet => ActiveValue::not_set(),
-        }
-    }
-
-    /// Reset the value from [ActiveValue::Unchanged] to [ActiveValue::Set],
-    /// leaving [ActiveValue::NotSet] untouched.
-    pub fn reset(&mut self) {
-        *self = match self.take() {
-            Some(value) => ActiveValue::Set(value),
-            None => ActiveValue::NotSet,
-        };
-    }
-
-    /// `Set(value)`, except when [`self.is_unchanged()`][ActiveValue#method.is_unchanged]
-    /// and `value` equals the current [Unchanged][ActiveValue::Unchanged] value.
-    ///
-    /// This is useful when you have an [Unchanged][ActiveValue::Unchanged] value from the database,
-    /// then update it using this method,
-    /// and then use [`.is_unchanged()`][ActiveValue#method.is_unchanged] to see whether it has *actually* changed.
-    ///
-    /// The same nice effect applies to the entire `ActiveModel`.
-    /// You can now meaningfully use [ActiveModelTrait::is_changed][ActiveModelTrait#method.is_changed]
-    /// to see whether are any changes that need to be saved to the database.
-    ///
-    /// ## Examples
-    ///
-    /// ```
-    /// # use sea_orm::ActiveValue;
-    /// #
-    /// let mut value = ActiveValue::Unchanged("old");
-    ///
-    /// // This wouldn't be the case if we used plain `value = Set("old");`
-    /// value.set_if_not_equals("old");
-    /// assert!(value.is_unchanged());
-    ///
-    /// // Only when we change the actual `&str` value, it becomes `Set`
-    /// value.set_if_not_equals("new");
-    /// assert_eq!(value.is_unchanged(), false);
-    /// assert_eq!(value, ActiveValue::Set("new"));
-    /// ```
-    pub fn set_if_not_equals(&mut self, value: V)
-    where
-        V: PartialEq,
-    {
-        match self {
-            ActiveValue::Unchanged(current) if &value == current => {}
-            _ => *self = ActiveValue::Set(value),
-        }
-    }
-
-    /// Get the inner value, unless `self` is [NotSet][ActiveValue::NotSet].
-    ///
-    /// There's also a panicking version: [ActiveValue::as_ref].
-    ///
-    /// ## Examples
-    ///
-    /// ```
-    /// # use sea_orm::ActiveValue;
-    /// #
-    /// assert_eq!(ActiveValue::Unchanged(42).try_as_ref(), Some(&42));
-    /// assert_eq!(ActiveValue::Set(42).try_as_ref(), Some(&42));
-    /// assert_eq!(ActiveValue::NotSet.try_as_ref(), None::<&i32>);
-    /// ```
-    pub fn try_as_ref(&self) -> Option<&V> {
-        match self {
-            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value),
-            ActiveValue::NotSet => None,
-        }
-    }
-}
-
-impl<V> std::convert::AsRef<V> for ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    /// # Panics
-    ///
-    /// Panics if it is [ActiveValue::NotSet].
-    ///
-    /// See [ActiveValue::try_as_ref] for a fallible non-panicking version.
-    fn as_ref(&self) -> &V {
-        match self {
-            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
-            ActiveValue::NotSet => panic!("Cannot borrow ActiveValue::NotSet"),
-        }
-    }
-}
-
-impl<V> PartialEq for ActiveValue<V>
-where
-    V: Into<Value> + std::cmp::PartialEq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (ActiveValue::Set(l), ActiveValue::Set(r)) => l == r,
-            (ActiveValue::Unchanged(l), ActiveValue::Unchanged(r)) => l == r,
-            (ActiveValue::NotSet, ActiveValue::NotSet) => true,
-            _ => false,
-        }
-    }
-}
-
-impl<V> From<ActiveValue<V>> for ActiveValue<Option<V>>
-where
-    V: Into<Value> + Nullable,
-{
-    fn from(value: ActiveValue<V>) -> Self {
-        match value {
-            ActiveValue::Set(value) => ActiveValue::set(Some(value)),
-            ActiveValue::Unchanged(value) => ActiveValue::unchanged(Some(value)),
-            ActiveValue::NotSet => ActiveValue::not_set(),
-        }
-    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -1646,6 +1714,56 @@ mod tests {
                 name: Set("".into()),
                 tea: NotSet,
             },
+        );
+    }
+
+    #[test]
+    fn test_active_model_set_parent_key() {
+        let mut fruit = fruit::Model {
+            id: 2,
+            name: "F".into(),
+            cake_id: None,
+        }
+        .into_active_model();
+
+        let cake = cake::Model {
+            id: 4,
+            name: "C".into(),
+        }
+        .into_active_model();
+
+        fruit.set_parent_key(&cake).unwrap();
+
+        assert_eq!(
+            fruit,
+            fruit::ActiveModel {
+                id: Unchanged(2),
+                name: Unchanged("F".into()),
+                cake_id: Set(Some(4)),
+            }
+        );
+
+        assert!(fruit.clear_parent_key::<cake::Entity>().unwrap());
+
+        assert_eq!(
+            fruit,
+            fruit::ActiveModel {
+                id: Unchanged(2),
+                name: Unchanged("F".into()),
+                cake_id: Set(None),
+            }
+        );
+
+        let mut cake_filling = cake_filling::ActiveModel::new();
+
+        cake_filling.set_parent_key(&cake).unwrap();
+
+        assert_eq!(
+            cake_filling,
+            cake_filling::ActiveModel {
+                cake_id: Set(4),
+                filling_id: NotSet,
+            }
         );
     }
 }

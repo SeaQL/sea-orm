@@ -525,6 +525,14 @@ impl DatabaseConnection {
         Schema::new(self.get_database_backend()).builder()
     }
 
+    #[cfg(feature = "entity-registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "entity-registry")))]
+    /// Builds a schema for all the entites in the given module
+    pub fn get_schema_registry(&self, prefix: &str) -> SchemaBuilder {
+        let schema = Schema::new(self.get_database_backend());
+        crate::EntityRegistry::build_schema(schema, prefix)
+    }
+
     /// Sets a callback to metric this connection
     pub fn set_metric_callback<F>(&mut self, _callback: F)
     where
@@ -692,6 +700,7 @@ impl DbBackend {
 mod tests {
     use crate::DatabaseConnection;
 
+    #[cfg(not(feature = "sync"))]
     #[test]
     fn assert_database_connection_traits() {
         fn assert_send_sync<T: Send + Sync>() {}

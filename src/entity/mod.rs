@@ -98,6 +98,8 @@
 /// ```
 mod active_enum;
 mod active_model;
+mod active_model_ex;
+mod active_value;
 mod base_entity;
 pub(crate) mod column;
 mod column_def;
@@ -109,18 +111,23 @@ mod partial_model;
 /// Re-export common types from the entity
 pub mod prelude;
 mod primary_key;
+#[cfg(feature = "entity-registry")]
+mod registry;
 mod relation;
 
 pub use active_enum::*;
 pub use active_model::*;
+pub use active_model_ex::*;
+pub use active_value::*;
 pub use base_entity::*;
 pub use column::*;
+pub use column_def::*;
 pub use compound::EntityLoaderTrait;
 pub use identity::*;
 pub use link::*;
 pub use model::*;
 pub use partial_model::*;
-// pub use prelude::*;
-pub use column_def::*;
 pub use primary_key::*;
+#[cfg(feature = "entity-registry")]
+pub use registry::*;
 pub use relation::*;

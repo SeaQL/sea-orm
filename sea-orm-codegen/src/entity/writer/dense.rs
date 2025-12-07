@@ -7,14 +7,14 @@ impl EntityWriter {
     pub fn gen_dense_code_blocks(
         entity: &Entity,
         with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
+        column_option: &ColumnOption,
         schema_name: &Option<String>,
         serde_skip_deserializing_primary_key: bool,
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
         _column_extra_derives: &TokenStream,
-        seaography: bool,
+        _seaography: bool,
         impl_active_model_behavior: bool,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
@@ -24,7 +24,7 @@ impl EntityWriter {
             Self::gen_dense_model_struct(
                 entity,
                 with_serde,
-                date_time_crate,
+                column_option,
                 schema_name,
                 serde_skip_deserializing_primary_key,
                 serde_skip_hidden_column,
@@ -35,9 +35,6 @@ impl EntityWriter {
         if impl_active_model_behavior {
             code_blocks.push(Self::impl_active_model_behavior());
         }
-        if seaography {
-            code_blocks.push(Self::gen_dense_related_entity(entity));
-        }
         code_blocks
     }
 
@@ -45,7 +42,7 @@ impl EntityWriter {
     pub fn gen_dense_model_struct(
         entity: &Entity,
         with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
+        column_option: &ColumnOption,
         schema_name: &Option<String>,
         serde_skip_deserializing_primary_key: bool,
         serde_skip_hidden_column: bool,
@@ -54,7 +51,7 @@ impl EntityWriter {
     ) -> TokenStream {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types(date_time_crate);
+        let column_rs_types = entity.get_column_rs_types(column_option);
         let if_eq_needed = entity.get_eq_needed();
         let primary_keys: Vec<String> = entity
             .primary_keys
@@ -85,6 +82,8 @@ impl EntityWriter {
                 };
                 if col.unique {
                     attrs.push(quote! { unique });
+                } else if let Some(unique_key) = &col.unique_key {
+                    attrs.push(quote! { unique_key = #unique_key });
                 }
                 let mut ts = quote! {};
                 if !attrs.is_empty() {
@@ -247,7 +246,7 @@ impl EntityWriter {
 
         quote! {
             #[sea_orm::model]
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel #if_eq_needed #extra_derive #model_extra_derives)]
+            #[derive(Clone, Debug, PartialEq #if_eq_needed, DeriveEntityModel #extra_derive #model_extra_derives)]
             #[sea_orm(
                 #schema_name
                 table_name = #table_name
@@ -263,7 +262,7 @@ impl EntityWriter {
         }
     }
 
-    // we will not need this soon
+    #[allow(dead_code)]
     fn gen_dense_related_entity(entity: &Entity) -> TokenStream {
         let via_entities = entity.get_conjunct_relations_via_snake_case();
 

@@ -1,6 +1,7 @@
 use sea_orm::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
-    ExecResult, IsolationLevel, QueryResult, Statement, TransactionError, TransactionTrait,
+    ExecResult, IsolationLevel, QueryResult, Schema, SchemaBuilder, Statement, TransactionError,
+    TransactionTrait,
 };
 use std::future::Future;
 use std::pin::Pin;
@@ -114,6 +115,53 @@ impl TransactionTrait for SchemaManagerConnection<'_> {
                     .await
             }
         }
+    }
+}
+
+#[cfg(feature = "sqlx-dep")]
+mod sea_schema_shim {
+    use super::{DatabaseConnection, DatabaseTransaction, SchemaManagerConnection};
+    use sea_orm::sea_query::SelectStatement;
+    use sea_schema::sqlx_types::{SqlxError, SqlxRow};
+
+    #[async_trait::async_trait]
+    impl sea_schema::Connection for SchemaManagerConnection<'_> {
+        async fn query_all(&self, select: SelectStatement) -> Result<Vec<SqlxRow>, SqlxError> {
+            match self {
+                Self::Connection(conn) => {
+                    <DatabaseConnection as sea_schema::Connection>::query_all(conn, select).await
+                }
+                Self::Transaction(txn) => {
+                    <DatabaseTransaction as sea_schema::Connection>::query_all(txn, select).await
+                }
+            }
+        }
+
+        async fn query_all_raw(&self, sql: String) -> Result<Vec<SqlxRow>, SqlxError> {
+            match self {
+                Self::Connection(conn) => {
+                    <DatabaseConnection as sea_schema::Connection>::query_all_raw(conn, sql).await
+                }
+                Self::Transaction(txn) => {
+                    <DatabaseTransaction as sea_schema::Connection>::query_all_raw(txn, sql).await
+                }
+            }
+        }
+    }
+}
+
+impl SchemaManagerConnection<'_> {
+    /// Creates a [`SchemaBuilder`] for this backend
+    pub fn get_schema_builder(&self) -> SchemaBuilder {
+        Schema::new(self.get_database_backend()).builder()
+    }
+
+    #[cfg(feature = "entity-registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "entity-registry")))]
+    /// Builds a schema for all the entites in the given module
+    pub fn get_schema_registry(&self, prefix: &str) -> SchemaBuilder {
+        let schema = Schema::new(self.get_database_backend());
+        sea_orm::EntityRegistry::build_schema(schema, prefix)
     }
 }
 

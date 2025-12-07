@@ -5,7 +5,7 @@ use sea_orm::Iterable;
 use sea_orm::prelude::*;
 use sea_orm_macros::DeriveEntityModel;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "user", rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key)]

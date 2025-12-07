@@ -1,8 +1,22 @@
 use heck::ToUpperCamelCase;
-use quote::format_ident;
 use syn::{Field, Ident, Meta, MetaNameValue, punctuated::Punctuated, token::Comma};
 
+/// Remove ignored fields and compound fields
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
+    let field_type = &field.ty;
+    let field_type = quote::quote! { #field_type }
+        .to_string() // e.g.: "Option < String >"
+        .replace(' ', ""); // Remove spaces
+
+    if is_compound_field(&field_type) {
+        return false;
+    }
+
+    field_not_ignored_compound(field)
+}
+
+/// Remove ignored fields, compound fields okay
+pub(crate) fn field_not_ignored_compound(field: &Field) -> bool {
     for attr in field.attrs.iter() {
         if let Some(ident) = attr.path().get_ident() {
             if ident != "sea_orm" {
@@ -25,15 +39,6 @@ pub(crate) fn field_not_ignored(field: &Field) -> bool {
         }
     }
 
-    let field_type = &field.ty;
-    let field_type = quote::quote! { #field_type }
-        .to_string() // e.g.: "Option < String >"
-        .replace(' ', ""); // Remove spaces
-
-    if is_compound_field(&field_type) {
-        return false;
-    }
-
     true
 }
 
@@ -44,12 +49,22 @@ pub(crate) fn is_compound_field(field_type: &str) -> bool {
     || field_type.starts_with("HasOne<") || field_type.starts_with("HasMany<")
 }
 
-pub(crate) fn format_field_ident(field: Field) -> Ident {
-    format_field_ident_ref(&field)
+pub(crate) fn extract_compound_entity(ty: &str) -> &str {
+    if ty.starts_with("HasMany<") {
+        &ty["HasMany<".len()..(ty.len() - 1)]
+    } else if ty.starts_with("HasOne<") {
+        &ty["HasOne<".len()..(ty.len() - 1)]
+    } else if ty.starts_with("Option<") {
+        &ty["Option<".len()..(ty.len() - 1)]
+    } else if ty.starts_with("Vec<") {
+        &ty["Vec<".len()..(ty.len() - 1)]
+    } else {
+        panic!("Relation applied to non compound type: {ty}")
+    }
 }
 
-pub(crate) fn format_field_ident_ref(field: &Field) -> Ident {
-    format_ident!("{}", field.ident.as_ref().unwrap().to_string())
+pub(crate) fn format_field_ident(field: &Field) -> Ident {
+    field.ident.clone().unwrap()
 }
 
 pub(crate) fn trim_starting_raw_identifier<T>(string: T) -> String

@@ -7,7 +7,7 @@ use sea_orm::{
     error::*, sea_query,
 };
 use sea_query::{
-    Alias, ColumnDef, ColumnType, ForeignKeyCreateStatement, IntoIden, StringLen,
+    Alias, ColumnDef, ColumnType, ForeignKeyCreateStatement, IntoIden, IntoTableRef, StringLen,
     extension::postgres::Type,
 };
 
@@ -28,7 +28,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
             let schema = Schema::new(db_backend);
             let enum_create_stmt = Type::create()
                 .as_enum("tea")
-                .values(["EverydayTea", "BreakfastTea"])
+                .values(["EverydayTea", "BreakfastTea", "AfternoonTea"])
                 .to_owned();
             assert_eq!(
                 db_backend.build(&enum_create_stmt),
@@ -221,10 +221,14 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
         )
         .col(ColumnDef::new(active_enum::Column::Category).string_len(1))
         .col(ColumnDef::new(active_enum::Column::Color).integer())
-        .col(
-            ColumnDef::new(active_enum::Column::Tea)
-                .enumeration(TeaEnum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea]),
-        )
+        .col(ColumnDef::new(active_enum::Column::Tea).enumeration(
+            TeaEnum,
+            [
+                TeaVariant::EverydayTea,
+                TeaVariant::BreakfastTea,
+                TeaVariant::AfternoonTea,
+            ],
+        ))
         .to_owned();
 
     create_table(db, &create_table_stmt, ActiveEnum).await
@@ -247,16 +251,24 @@ pub async fn create_active_enum_child_table(db: &DbConn) -> Result<ExecResult, D
         )
         .col(ColumnDef::new(active_enum_child::Column::Category).string_len(1))
         .col(ColumnDef::new(active_enum_child::Column::Color).integer())
-        .col(
-            ColumnDef::new(active_enum_child::Column::Tea)
-                .enumeration(TeaEnum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea]),
-        )
+        .col(ColumnDef::new(active_enum_child::Column::Tea).enumeration(
+            TeaEnum,
+            [
+                TeaVariant::EverydayTea,
+                TeaVariant::BreakfastTea,
+                TeaVariant::AfternoonTea,
+            ],
+        ))
         .foreign_key(
             ForeignKeyCreateStatement::new()
                 .name("fk-active_enum_child-active_enum")
                 .from_tbl(ActiveEnumChild)
                 .from_col(active_enum_child::Column::ParentId)
-                .to_tbl(ActiveEnum)
+                .to_tbl(if cfg!(feature = "sqlx-postgres") {
+                    ("public", ActiveEnum).into_table_ref()
+                } else {
+                    ActiveEnum.into_table_ref()
+                })
                 .to_col(active_enum::Column::Id),
         )
         .to_owned();
@@ -455,6 +467,7 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                     variants: vec![
                         TeaVariant::EverydayTea.into_iden(),
                         TeaVariant::BreakfastTea.into_iden(),
+                        TeaVariant::AfternoonTea.into_iden(),
                     ],
                 })
                 .not_null(),
@@ -465,6 +478,7 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 variants: vec![
                     TeaVariant::EverydayTea.into_iden(),
                     TeaVariant::BreakfastTea.into_iden(),
+                    TeaVariant::AfternoonTea.into_iden(),
                 ],
             }),
         )
@@ -620,7 +634,14 @@ pub async fn create_teas_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .table(teas::Entity.table_ref())
         .col(
             ColumnDef::new(teas::Column::Id)
-                .enumeration(TeaEnum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea])
+                .enumeration(
+                    TeaEnum,
+                    [
+                        TeaVariant::EverydayTea,
+                        TeaVariant::BreakfastTea,
+                        TeaVariant::AfternoonTea,
+                    ],
+                )
                 .not_null()
                 .primary_key(),
         )
@@ -787,7 +808,7 @@ pub async fn create_value_type_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(value_type::value_type_general::Column::Tag2)
-                .string()
+                .text()
                 .not_null(),
         )
         .to_owned();

@@ -2,6 +2,9 @@
 
 //! Configurations for test cases and examples. Not intended for actual use.
 
+#[cfg(feature = "entity-registry")]
+mod registry;
+
 pub mod cake;
 pub mod cake_compact;
 pub mod cake_expanded;
@@ -18,6 +21,13 @@ pub mod rust_keyword;
 pub mod sea_orm_active_enums;
 pub mod serde_rename;
 pub mod vendor;
+
+pub mod comment;
+pub mod post;
+pub mod post_tag;
+pub mod profile;
+pub mod tag;
+pub mod user;
 
 pub use cake::Entity as Cake;
 pub use cake_filling::Entity as CakeFilling;

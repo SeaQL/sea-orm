@@ -1,5 +1,6 @@
 use sea_orm::entity::prelude::*;
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "self_join")]
 pub struct Model {
@@ -7,12 +8,8 @@ pub struct Model {
     pub uuid: Uuid,
     pub uuid_ref: Option<Uuid>,
     pub time: Option<Time>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(belongs_to = "Entity", from = "Column::UuidRef", to = "Column::Uuid")]
-    SelfReferencing,
+    #[sea_orm(self_ref, relation_enum = "SelfRef", from = "uuid_ref", to = "uuid")]
+    pub other: HasOne<Entity>,
 }
 
 pub struct SelfReferencingLink;
@@ -23,7 +20,7 @@ impl Linked for SelfReferencingLink {
     type ToEntity = Entity;
 
     fn link(&self) -> Vec<RelationDef> {
-        vec![Relation::SelfReferencing.def()]
+        vec![Relation::SelfRef.def()]
     }
 }
 

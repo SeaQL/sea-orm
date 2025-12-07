@@ -1,22 +1,25 @@
 pub use crate::{
     ActiveEnum, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait, ColumnType,
     ColumnTypeTrait, ConnectionTrait, CursorTrait, DatabaseConnection, DbConn, EntityName,
-    EntityTrait, EnumIter, ForeignKeyAction, FromJsonQueryResult, Iden, IdenStatic, Linked,
-    LoaderTrait, ModelTrait, PaginatorTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait,
-    QueryFilter, QueryResult, Related, RelationDef, RelationTrait, Select, Value,
+    EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked, LoaderTrait, ModelTrait,
+    PaginatorTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryResult,
+    Related, RelatedSelfVia, RelationDef, RelationTrait, Select, Value,
     error::*,
     sea_query::{DynIden, Expr, RcOrArc, SeaRc, StringLen},
 };
 
 #[cfg(feature = "macros")]
 pub use crate::{
-    DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveDisplay,
-    DeriveEntity, DeriveEntityModel, DeriveIden, DeriveIntoActiveModel, DeriveModel, DeriveModelEx,
-    DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, DeriveValueType,
+    DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveActiveModelEx,
+    DeriveColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIden,
+    DeriveIntoActiveModel, DeriveModel, DeriveModelEx, DerivePartialModel, DerivePrimaryKey,
+    DeriveRelatedEntity, DeriveRelation, DeriveValueType, FromJsonQueryResult,
 };
 
+pub use super::active_model_ex::{HasManyModel, HasOneModel};
 pub use super::compound::{HasMany, HasOne};
 
+#[cfg(not(feature = "sync"))]
 pub use async_trait;
 
 #[cfg(feature = "with-json")]
@@ -68,6 +71,9 @@ pub type ChronoUtc = chrono::Utc;
 #[cfg(feature = "with-chrono")]
 pub type ChronoDateTimeLocal = chrono::DateTime<chrono::Local>;
 
+#[cfg(feature = "with-chrono")]
+pub use crate::value::{ChronoUnixTimestamp, ChronoUnixTimestampMillis};
+
 #[cfg(feature = "with-time")]
 pub use time::Date as TimeDate;
 
@@ -79,6 +85,9 @@ pub use time::PrimitiveDateTime as TimeDateTime;
 
 #[cfg(feature = "with-time")]
 pub use time::OffsetDateTime as TimeDateTimeWithTimeZone;
+
+#[cfg(feature = "with-time")]
+pub use crate::value::{TimeUnixTimestamp, TimeUnixTimestampMillis};
 
 #[cfg(feature = "with-rust_decimal")]
 pub use rust_decimal::Decimal;

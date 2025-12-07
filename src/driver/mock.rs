@@ -13,6 +13,11 @@ use std::{
 };
 use tracing::instrument;
 
+#[cfg(not(feature = "sync"))]
+type PinBoxStream = Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send>>;
+#[cfg(feature = "sync")]
+type PinBoxStream = Box<dyn Iterator<Item = Result<QueryResult, DbErr>>>;
+
 /// Defines a database driver for the [MockDatabase]
 #[derive(Debug)]
 pub struct MockDatabaseConnector;
@@ -167,13 +172,20 @@ impl MockDatabaseConnection {
 
     /// Return [QueryResult]s  from a multi-query operation
     #[instrument(level = "trace")]
-    pub fn fetch(
-        &self,
-        statement: &Statement,
-    ) -> Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send>> {
-        match self.query_all(statement.clone()) {
-            Ok(v) => Box::pin(futures_util::stream::iter(v.into_iter().map(Ok))),
-            Err(e) => Box::pin(futures_util::stream::iter(Some(Err(e)).into_iter())),
+    pub fn fetch(&self, statement: &Statement) -> PinBoxStream {
+        #[cfg(not(feature = "sync"))]
+        {
+            match self.query_all(statement.clone()) {
+                Ok(v) => Box::pin(futures_util::stream::iter(v.into_iter().map(Ok))),
+                Err(e) => Box::pin(futures_util::stream::iter(Some(Err(e)).into_iter())),
+            }
+        }
+        #[cfg(feature = "sync")]
+        {
+            match self.query_all(statement.clone()) {
+                Ok(v) => Box::new(v.into_iter().map(Ok)),
+                Err(e) => Box::new(Some(Err(e)).into_iter()),
+            }
         }
     }
 

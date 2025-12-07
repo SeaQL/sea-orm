@@ -8,10 +8,10 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .create_table(
-                table_auto(Notes::Table)
-                    .col(pk_auto(Notes::Id))
-                    .col(string_null(Notes::Title))
-                    .col(string_null(Notes::Content))
+                table_auto("notes")
+                    .col(pk_auto("id"))
+                    .col(string_null("title"))
+                    .col(string_null("content"))
                     .to_owned(),
             )
             .await
@@ -19,15 +19,7 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Notes::Table).to_owned())
+            .drop_table(Table::drop().table("notes").to_owned())
             .await
     }
-}
-
-#[derive(DeriveIden)]
-pub enum Notes {
-    Table,
-    Id,
-    Title,
-    Content,
 }

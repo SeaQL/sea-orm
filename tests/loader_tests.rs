@@ -287,22 +287,15 @@ async fn loader_load_many_enum_pk_postgres() -> Result<(), DbErr> {
         return Ok(());
     }
 
-    let schema = Schema::new(DbBackend::Postgres);
-
     let mut drop_type = Type::drop();
-    drop_type.if_exists().name(Alias::new("tea")).cascade();
+    drop_type.if_exists().name("tea").cascade();
     db.execute(&drop_type).await?;
 
-    let mut create_type = Type::create();
-    create_type
-        .as_enum(Alias::new("tea"))
-        .values(["EverydayTea", "BreakfastTea"]);
-    db.execute(&create_type).await?;
-
-    let inventory_table = schema.create_table_from_entity(TeaInventoryEntity);
-    create_table_without_asserts(db, &inventory_table).await?;
-    let order_table = schema.create_table_from_entity(TeaOrderEntity);
-    create_table_without_asserts(db, &order_table).await?;
+    db.get_schema_builder()
+        .register(TeaInventoryEntity)
+        .register(TeaOrderEntity)
+        .apply(db)
+        .await?;
 
     TeaInventoryActiveModel {
         tea: Set(Tea::EverydayTea),
@@ -382,6 +375,7 @@ async fn loader_load_many_enum_pk_postgres() -> Result<(), DbErr> {
                     }]
                 );
             }
+            Tea::AfternoonTea => {}
         }
     }
 
@@ -516,6 +510,225 @@ async fn loader_load_many_to_many_dyn() -> Result<(), DbErr> {
             vec![]
         ]
     );
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+async fn loader_self_join() -> Result<(), DbErr> {
+    use common::blogger::{user, user_follower};
+    use common::film_store::{staff, staff_compact};
+
+    let ctx = TestContext::new("test_loader_self_join").await;
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(staff::Entity)
+        .register(user::Entity)
+        .register(user_follower::Entity)
+        .apply(db)
+        .await?;
+
+    let alan = staff::ActiveModel {
+        name: Set("Alan".into()),
+        reports_to_id: Set(None),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    staff::ActiveModel {
+        name: Set("Ben".into()),
+        reports_to_id: Set(Some(alan.id)),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    staff::ActiveModel {
+        name: Set("Alice".into()),
+        reports_to_id: Set(Some(alan.id)),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    staff::ActiveModel {
+        name: Set("Elle".into()),
+        reports_to_id: Set(None),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    let staff = staff::Entity::find()
+        .order_by_asc(staff::Column::Id)
+        .all(db)
+        .await?;
+
+    let reports_to = staff
+        .load_self(staff::Entity, staff::Relation::ReportsTo, db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(reports_to[0], None);
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(reports_to[1].as_ref().unwrap().name, "Alan");
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(reports_to[2].as_ref().unwrap().name, "Alan");
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(reports_to[3], None);
+
+    let manages = staff
+        .load_self_many(
+            staff::Entity::find().order_by_asc(staff::COLUMN.id),
+            staff::Relation::ReportsTo,
+            db,
+        )
+        .await?;
+
+    assert_eq!(
+        manages,
+        staff
+            .load_self_many(
+                staff::Entity::find().order_by_asc(staff::COLUMN.id),
+                staff::Relation::Manages,
+                db,
+            )
+            .await?
+    );
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(manages[0].len(), 2);
+    assert_eq!(manages[0][0].name, "Ben");
+    assert_eq!(manages[0][1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(manages[1].len(), 0);
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(manages[2].len(), 0);
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(manages[3].len(), 0);
+
+    // test self_ref on compact_model
+
+    let staff = staff_compact::Entity::find()
+        .order_by_asc(staff_compact::COLUMN.id)
+        .all(db)
+        .await?;
+
+    let reports_to = staff
+        .load_self(
+            staff_compact::Entity,
+            staff_compact::Relation::ReportsTo,
+            db,
+        )
+        .await?;
+
+    let manages = staff
+        .load_self_many(
+            staff_compact::Entity::find().order_by_asc(staff_compact::COLUMN.id),
+            staff_compact::Relation::ReportsTo,
+            db,
+        )
+        .await?;
+
+    assert_eq!(
+        manages,
+        staff
+            .load_self_many(
+                staff_compact::Entity::find().order_by_asc(staff_compact::COLUMN.id),
+                staff_compact::Relation::Manages,
+                db,
+            )
+            .await?
+    );
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(reports_to[0], None);
+    assert_eq!(manages[0].len(), 2);
+    assert_eq!(manages[0][0].name, "Ben");
+    assert_eq!(manages[0][1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(reports_to.get(1).unwrap().as_ref().unwrap().name, "Alan");
+    assert_eq!(manages[1].len(), 0);
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(reports_to.get(2).unwrap().as_ref().unwrap().name, "Alan");
+    assert_eq!(manages[2].len(), 0);
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(reports_to[3], None);
+    assert_eq!(manages[3].len(), 0);
+
+    // self_ref + via
+
+    let alice = user::ActiveModel {
+        name: Set("Alice".into()),
+        email: Set("@1".into()),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    let bob = user::ActiveModel {
+        name: Set("Bob".into()),
+        email: Set("@2".into()),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    let sam = user::ActiveModel {
+        name: Set("Sam".into()),
+        email: Set("@3".into()),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(alice.id),
+        follower_id: Set(bob.id),
+    }
+    .insert(db)
+    .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(alice.id),
+        follower_id: Set(sam.id),
+    }
+    .insert(db)
+    .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(bob.id),
+        follower_id: Set(sam.id),
+    }
+    .insert(db)
+    .await?;
+
+    let users = user::Entity::find().all(db).await?;
+    let followers = users.load_self_via(user_follower::Entity, db).await?;
+    let following = users.load_self_via_rev(user_follower::Entity, db).await?;
+
+    assert_eq!(users[0], alice);
+    assert_eq!(followers[0], [bob.clone(), sam.clone()]);
+    assert!(following[0].is_empty());
+
+    assert_eq!(users[1], bob);
+    assert_eq!(followers[1], [sam.clone()]);
+    assert_eq!(following[1], [alice.clone()]);
+
+    assert_eq!(users[2], sam);
+    assert!(followers[2].is_empty());
+    assert_eq!(following[2], [alice, bob]);
 
     Ok(())
 }

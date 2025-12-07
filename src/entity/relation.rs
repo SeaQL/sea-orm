@@ -9,7 +9,7 @@ use sea_query::{
 use std::{fmt::Debug, sync::Arc};
 
 /// Defines the type of relationship
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum RelationType {
     /// An Entity has one relationship
     HasOne,
@@ -25,17 +25,22 @@ pub type ForeignKeyAction = sea_query::ForeignKeyAction;
 pub trait RelationTrait: Iterable + Debug + 'static {
     /// Creates a [`RelationDef`]
     fn def(&self) -> RelationDef;
+
+    /// Name of the relation enum
+    fn name(&self) -> String {
+        format!("{self:?}")
+    }
 }
 
-/// Checks if Entities are related
+/// A trait to relate two Entities for them to be joined in queries
 pub trait Related<R>
 where
     R: EntityTrait,
 {
-    /// Check if an entity is related to another entity
+    /// The RelationDef to the related Entity
     fn to() -> RelationDef;
 
-    /// Check if an entity is related through another entity
+    /// The RelationDef to the junction table, if any
     fn via() -> Option<RelationDef> {
         None
     }
@@ -46,6 +51,23 @@ where
     }
 }
 
+/// A trait to relate an Entity to itself through a junction table
+pub trait RelatedSelfVia<R>
+where
+    R: EntityTrait,
+{
+    /// The RelationDef to the related Entity
+    fn to() -> RelationDef;
+
+    /// The RelationDef to the junction table
+    fn via() -> RelationDef;
+
+    /// Find related Entities
+    fn find_related() -> Select<R> {
+        Select::<R>::new().join_join_rev(JoinType::InnerJoin, Self::to(), Some(Self::via()))
+    }
+}
+
 /// Defines a relationship
 #[derive(derive_more::Debug, Clone)]
 pub struct RelationDef {
@@ -53,7 +75,7 @@ pub struct RelationDef {
     pub rel_type: RelationType,
     /// Reference from another Entity
     pub from_tbl: TableRef,
-    /// Reference to another ENtity
+    /// Reference to another Entity
     pub to_tbl: TableRef,
     /// Reference to from a Column
     pub from_col: Identity,
@@ -61,6 +83,8 @@ pub struct RelationDef {
     pub to_col: Identity,
     /// Defines the owner of the Relation
     pub is_owner: bool,
+    /// Specifies if the foreign key should be skipped
+    pub skip_fk: bool,
     /// Defines an operation to be performed on a Foreign Key when a
     /// `DELETE` Operation is performed
     pub on_delete: Option<ForeignKeyAction>,
@@ -151,6 +175,7 @@ where
     from_col: Option<Identity>,
     to_col: Option<Identity>,
     is_owner: bool,
+    skip_fk: bool,
     on_delete: Option<ForeignKeyAction>,
     on_update: Option<ForeignKeyAction>,
     #[debug("{}", on_condition.is_some())]
@@ -169,6 +194,7 @@ impl RelationDef {
             from_col: self.to_col,
             to_col: self.from_col,
             is_owner: !self.is_owner,
+            skip_fk: self.skip_fk,
             on_delete: self.on_delete,
             on_update: self.on_update,
             on_condition: self.on_condition,
@@ -321,6 +347,7 @@ where
             from_col: None,
             to_col: None,
             is_owner,
+            skip_fk: false,
             on_delete: None,
             on_update: None,
             on_condition: None,
@@ -338,6 +365,7 @@ where
             from_col: Some(rel.from_col),
             to_col: Some(rel.to_col),
             is_owner,
+            skip_fk: false,
             on_delete: None,
             on_update: None,
             on_condition: None,
@@ -361,6 +389,12 @@ where
         T: IdentityOf<R>,
     {
         self.to_col = Some(identifier.identity_of());
+        self
+    }
+
+    /// Force the foreign key to not be created
+    pub fn skip_fk(mut self) -> Self {
+        self.skip_fk = true;
         self
     }
 
@@ -414,6 +448,7 @@ where
             from_col: b.from_col.expect("Reference column is not set"),
             to_col: b.to_col.expect("Owner column is not set"),
             is_owner: b.is_owner,
+            skip_fk: b.skip_fk,
             on_delete: b.on_delete,
             on_update: b.on_update,
             on_condition: b.on_condition,
@@ -458,8 +493,8 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
         let mut foreign_key_stmt = Self::new();
         set_foreign_key_stmt!(relation, foreign_key_stmt);
         foreign_key_stmt
-            .from_tbl(relation.from_tbl.sea_orm_table().clone())
-            .to_tbl(relation.to_tbl.sea_orm_table().clone())
+            .from_tbl(relation.from_tbl)
+            .to_tbl(relation.to_tbl)
             .take()
     }
 }
@@ -480,6 +515,7 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
 ///     on_update: None,
 ///     on_condition: None,
 ///     fk_name: Some("foo-bar".to_string()),
+///     skip_fk: false,
 ///     condition_type: ConditionType::All,
 /// };
 ///
@@ -502,6 +538,30 @@ impl From<RelationDef> for TableForeignKey {
     }
 }
 
+impl std::hash::Hash for RelationDef {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.rel_type.hash(state);
+        self.from_tbl.sea_orm_table().hash(state);
+        self.to_tbl.sea_orm_table().hash(state);
+        self.from_col.hash(state);
+        self.to_col.hash(state);
+        self.is_owner.hash(state);
+    }
+}
+
+impl PartialEq for RelationDef {
+    fn eq(&self, other: &Self) -> bool {
+        self.rel_type.eq(&other.rel_type)
+            && self.from_tbl.eq(&other.from_tbl)
+            && self.to_tbl.eq(&other.to_tbl)
+            && itertools::equal(self.from_col.iter(), other.from_col.iter())
+            && itertools::equal(self.to_col.iter(), other.to_col.iter())
+            && self.is_owner.eq(&other.is_owner)
+    }
+}
+
+impl Eq for RelationDef {}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -509,6 +569,7 @@ mod tests {
         tests_cfg::{cake, fruit},
     };
 
+    #[cfg(not(feature = "sync"))]
     #[test]
     fn assert_relation_traits() {
         fn assert_send_sync<T: Send + Sync>() {}

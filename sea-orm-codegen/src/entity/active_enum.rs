@@ -28,7 +28,12 @@ impl ActiveEnum {
             if v.chars().next().map(char::is_numeric).unwrap_or(false) {
                 format_ident!("_{}", v)
             } else {
-                let variant_name = v.to_upper_camel_case();
+                let variant_name = if v.is_empty() {
+                    println!("Warning: item in the enumeration '{enum_name}' is an empty string, it will be converted to `__EmptyString`. You can modify it later as needed.");
+                    "__EmptyString".to_string()
+                } else {
+                    v.to_upper_camel_case()
+                };
                 if variant_name.is_empty() {
                     println!("Warning: item '{v}' in the enumeration '{enum_name}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.");
                     let mut ss = String::new();

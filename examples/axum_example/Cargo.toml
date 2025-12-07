@@ -7,7 +7,7 @@ rust-version = "1.85.0"
 publish = false
 
 [workspace]
-members = [".", "api", "service", "entity", "migration", "seeder"]
+members = [".", "api", "entity", "migration"]
 
 [dependencies]
 axum-example-api = { path = "api" }

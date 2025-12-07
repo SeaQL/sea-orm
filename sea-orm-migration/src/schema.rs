@@ -19,14 +19,14 @@
 //! #[async_trait::async_trait]
 //! impl MigrationTrait for Migration {
 //!     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-//!         let table = table_auto(Users::Table)
-//!             .col(pk_auto(Users::Id))
-//!             .col(uuid(Users::Pid))
-//!             .col(string_uniq(Users::Email))
-//!             .col(string(Users::Password))
-//!             .col(string(Users::Name))
-//!             .col(string_null(Users::ResetToken))
-//!             .col(timestamp_null(Users::ResetSentAt))
+//!         let table = table_auto("users")
+//!             .col(pk_auto("id"))
+//!             .col(uuid("pid"))
+//!             .col(string_uniq("email"))
+//!             .col(string("password"))
+//!             .col(string("name"))
+//!             .col(string_null("reset_token"))
+//!             .col(timestamp_null("reset_sent_at"))
 //!             .to_owned();
 //!         manager.create_table(table).await?;
 //!         Ok(())
@@ -34,21 +34,9 @@
 //!
 //!     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
 //!         manager
-//!             .drop_table(Table::drop().table(Users::Table).to_owned())
+//!             .drop_table(Table::drop().table("users").to_owned())
 //!             .await
 //!     }
-//! }
-//!
-//! #[derive(Iden)]
-//! pub enum Users {
-//!     Table,
-//!     Id,
-//!     Pid,
-//!     Email,
-//!     Name,
-//!     Password,
-//!     ResetToken,
-//!     ResetSentAt,
 //! }
 //! ```
 
@@ -63,7 +51,7 @@ enum GeneralIds {
     UpdatedAt,
 }
 
-/// Wrapping table schema creation.
+/// Create a table with `created_at` and `updated_at` added by default
 pub fn table_auto<T: IntoIden + 'static>(name: T) -> TableCreateStatement {
     timestamps(Table::create().table(name).if_not_exists().take())
 }

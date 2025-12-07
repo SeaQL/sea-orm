@@ -1,7 +1,7 @@
 use crate::{
     ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QueryFilter, QuerySelect, QueryTrait,
     Related, Select, SelectA, SelectB, SelectThree, SelectTwo, SelectTwoMany, TopologyChain,
-    TopologyStar, join_tbl_on_condition,
+    TopologyStar, find_linked_recursive, join_tbl_on_condition,
 };
 pub use sea_query::JoinType;
 use sea_query::{Condition, Expr, IntoCondition, IntoIden, SelectExpr};
@@ -194,6 +194,15 @@ where
         self.query.cond_where(Expr::exists(subquery));
         self
     }
+
+    #[doc(hidden)]
+    /// Recursive self-join with CTE
+    pub fn find_with_linked_recursive<L>(self, l: L) -> Select<E>
+    where
+        L: Linked<FromEntity = E, ToEntity = E>,
+    {
+        find_linked_recursive(self, l.link())
+    }
 }
 
 impl<E, F> SelectTwo<E, F>
@@ -324,6 +333,20 @@ mod tests {
             ]
             .join(" ")
         );
+
+        let find_fruit: Select<fruit::Entity> = cake::Entity::find_related_rev();
+        assert_eq!(
+            find_fruit
+                .filter(cake::Column::Id.eq(11))
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
+                "INNER JOIN `cake` ON `fruit`.`cake_id` = `cake`.`id`",
+                "WHERE `cake`.`id` = 11",
+            ]
+            .join(" ")
+        );
     }
 
     #[test]
@@ -374,6 +397,17 @@ mod tests {
                 "SELECT `filling`.`id`, `filling`.`name`, `filling`.`vendor_id` FROM `filling`",
                 "INNER JOIN `cake_filling` ON `cake_filling`.`filling_id` = `filling`.`id`",
                 "INNER JOIN `cake` ON `cake`.`id` = `cake_filling`.`cake_id`",
+            ]
+            .join(" ")
+        );
+
+        let find_filling: Select<filling::Entity> = cake::Entity::find_related_rev();
+        assert_eq!(
+            find_filling.build(DbBackend::MySql).to_string(),
+            [
+                "SELECT `filling`.`id`, `filling`.`name`, `filling`.`vendor_id` FROM `filling`",
+                "INNER JOIN `cake_filling` ON `filling`.`id` = `cake_filling`.`filling_id`",
+                "INNER JOIN `cake` ON `cake_filling`.`cake_id` = `cake`.`id`",
             ]
             .join(" ")
         );
@@ -542,25 +576,7 @@ mod tests {
 
     #[test]
     fn join_16() {
-        let cake_model = cake::Model {
-            id: 18,
-            name: "".to_owned(),
-        };
-        assert_eq!(
-            cake_model
-                .find_linked(entity_linked::JoinWithoutReverse)
-                .build(DbBackend::MySql)
-                .to_string(),
-            [
-                r#"SELECT `vendor`.`id`, `vendor`.`name`"#,
-                r#"FROM `vendor`"#,
-                r#"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`"#,
-                r#"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`"#,
-                r#"INNER JOIN `cake_filling` AS `r2` ON `r2`.`cake_id` = `r1`.`id` AND `r2`.`name` LIKE '%cheese%'"#,
-                r#"WHERE `r2`.`id` = 18"#,
-            ]
-            .join(" ")
-        );
+        // removed wrong test case
     }
 
     #[test]
@@ -584,21 +600,7 @@ mod tests {
 
     #[test]
     fn join_18() {
-        assert_eq!(
-            cake::Entity::find()
-                .find_also_linked(entity_linked::JoinWithoutReverse)
-                .build(DbBackend::MySql)
-                .to_string(),
-                [
-                    r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
-                    r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
-                    r#"FROM `cake`"#,
-                    r#"LEFT JOIN `cake` AS `r0` ON `cake_filling`.`cake_id` = `r0`.`id` AND `cake_filling`.`name` LIKE '%cheese%'"#,
-                    r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
-                    r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
-                ]
-                .join(" ")
-        );
+        // removed wrong test case
     }
 
     #[test]
@@ -728,6 +730,80 @@ mod tests {
                 "SELECT `cake`.`id`, `cake`.`name`, `cake_filling_alias`.`cake_id` AS `cake_filling_cake_id` FROM `cake`",
                 "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` OR `fruit`.`name` LIKE '%tropical%'",
                 "LEFT JOIN `cake_filling` AS `cake_filling_alias` ON `cake_filling_alias`.`cake_id` = `cake`.`id` OR `cake_filling_alias`.`cake_id` > 10",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_23() {
+        let cake_model = cake::Model {
+            id: 18,
+            name: "".to_owned(),
+        };
+
+        assert_eq!(
+            cake_model
+                .find_linked(entity_linked::CakeToCakeViaFilling)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
+                "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
+                "INNER JOIN `cake` AS `r3` ON `r3`.`id` = `r2`.`cake_id`",
+                "WHERE `r3`.`id` = 18",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_24() {
+        let cake_model = cake::Model {
+            id: 12,
+            name: "".to_owned(),
+        };
+
+        assert_eq!(
+            cake_model
+                .find_linked_recursive(entity_linked::CakeToCakeViaFilling)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "WITH `cte` AS (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
+                "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
+                "INNER JOIN `cake` AS `r3` ON `r3`.`id` = `r2`.`cake_id`",
+                "WHERE `r3`.`id` = 12",
+                "UNION ALL (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
+                "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
+                "INNER JOIN `cte` AS `r3` ON `r3`.`id` = `r2`.`cake_id`))",
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cte` AS `cake`",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_25() {
+        assert_eq!(
+            cake::Entity::find()
+                .find_with_linked_recursive(entity_linked::CakeToCakeViaFilling)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "WITH `cte` AS (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "UNION ALL (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
+                "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
+                "INNER JOIN `cte` AS `r3` ON `r3`.`id` = `r2`.`cake_id`))",
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cte` AS `cake`",
             ]
             .join(" ")
         );

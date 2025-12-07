@@ -14,6 +14,8 @@ pub struct ColumnDef {
     pub(crate) default: Option<SimpleExpr>,
     pub(crate) comment: Option<String>,
     pub(crate) unique_key: Option<String>,
+    pub(crate) renamed_from: Option<String>,
+    pub(crate) extra: Option<String>,
     pub(crate) seaography: SeaographyColumnAttr,
 }
 
@@ -41,6 +43,12 @@ impl ColumnDef {
     /// This column belongs to a unique key
     pub fn unique_key(mut self, key: &str) -> Self {
         self.unique_key = Some(key.into());
+        self
+    }
+
+    /// This column is renamed from a previous name
+    pub fn renamed_from(mut self, col: &str) -> Self {
+        self.renamed_from = Some(col.into());
         self
     }
 
@@ -82,6 +90,12 @@ impl ColumnDef {
         T: Into<SimpleExpr>,
     {
         self.default = Some(default.into());
+        self
+    }
+
+    /// Set the extra SQL string for the column (e.g. "COLLATE NOCASE")
+    pub fn extra(mut self, value: &str) -> Self {
+        self.extra = Some(value.into());
         self
     }
 
@@ -637,6 +651,41 @@ mod tests {
         assert_eq!(
             Column::B.def(),
             ColumnType::string(None).def().unique_key("my_unique")
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn column_def_renamed_from() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "my_entity")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            #[sea_orm(column_name = "new_a", renamed_from = "old_a")]
+            pub a: String,
+            #[sea_orm(renamed_from = "old_b")]
+            pub b: String,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+
+        assert_eq!(Column::A.to_string(), "new_a");
+        assert_eq!(Column::B.to_string(), "b");
+
+        assert_eq!(
+            Column::A.def(),
+            ColumnType::string(None).def().renamed_from("old_a")
+        );
+        assert_eq!(
+            Column::B.def(),
+            ColumnType::string(None).def().renamed_from("old_b")
         );
     }
 }

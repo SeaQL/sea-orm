@@ -1,6 +1,6 @@
 use crate::{
-    ColumnAsExpr, ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable,
-    ModelTrait, PrimaryKeyToColumn, RelationDef,
+    ActiveModelTrait, ColumnAsExpr, ColumnTrait, EntityTrait, Identity, IntoIdentity,
+    IntoSimpleExpr, Iterable, ModelTrait, PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
     Alias, Expr, ExprTrait, IntoCondition, IntoIden, LockBehavior, LockType, NullOrdering, SeaRc,
@@ -842,6 +842,19 @@ pub trait QueryFilter: Sized {
         for key in <M::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
             self = self.filter(col.eq(model.get(col)));
+        }
+        self
+    }
+
+    /// Like `belongs_to`, but for an ActiveModel. Panic if primary key is not set.
+    #[doc(hidden)]
+    fn belongs_to_active_model<AM>(mut self, model: &AM) -> Self
+    where
+        AM: ActiveModelTrait,
+    {
+        for key in <AM::Entity as EntityTrait>::PrimaryKey::iter() {
+            let col = key.into_column();
+            self = self.filter(col.eq(model.get(col).unwrap()));
         }
         self
     }

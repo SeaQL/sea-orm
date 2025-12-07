@@ -108,7 +108,8 @@ impl std::str::FromStr for Tag1 {
 #[sea_orm(
     value_type = "String",
     from_str = "Tag2::from_str",
-    to_str = "Tag2::to_str"
+    to_str = "Tag2::to_str",
+    column_type = "Text"
 )]
 pub enum Tag2 {
     Color,
@@ -129,5 +130,64 @@ impl Tag2 {
             "grey" => Self::Grey,
             _ => return Err(sea_query::ValueTypeErr),
         })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(value_type = "String")]
+pub struct Tag3 {
+    pub i: i64,
+}
+
+impl std::fmt::Display for Tag3 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.i)
+    }
+}
+
+impl std::str::FromStr for Tag3 {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let i: i64 = s.parse()?;
+        Ok(Self { i })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(value_type = "String")]
+pub struct Tag4(pub i64);
+
+impl std::fmt::Display for Tag4 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::str::FromStr for Tag4 {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let i: i64 = s.parse()?;
+        Ok(Self(i))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(value_type = "String")]
+// Test with inner type that doesn't implement ToString/FromStr
+pub struct Tag5(pub std::path::PathBuf);
+
+impl std::fmt::Display for Tag5 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.display())
+    }
+}
+
+impl std::str::FromStr for Tag5 {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(std::path::PathBuf::from(s)))
     }
 }

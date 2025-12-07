@@ -3,7 +3,7 @@
 use sea_orm::entity::prelude::*;
 
 #[sea_orm::compact_model]
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "lineitem")]
 pub struct Model {
     #[sea_orm(primary_key)]

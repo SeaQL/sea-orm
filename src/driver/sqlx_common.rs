@@ -52,13 +52,13 @@ impl ConnectOptions {
             opt = opt.acquire_timeout(connect_timeout);
         }
         if let Some(idle_timeout) = self.idle_timeout {
-            opt = opt.idle_timeout(Some(idle_timeout));
+            opt = opt.idle_timeout(idle_timeout);
         }
         if let Some(acquire_timeout) = self.acquire_timeout {
             opt = opt.acquire_timeout(acquire_timeout);
         }
         if let Some(max_lifetime) = self.max_lifetime {
-            opt = opt.max_lifetime(Some(max_lifetime));
+            opt = opt.max_lifetime(max_lifetime);
         }
         opt = opt.test_before_acquire(self.test_before_acquire);
         opt

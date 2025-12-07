@@ -7,7 +7,7 @@ pub struct ModelType {
     pub fields: Vec<FieldType>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldType {
     pub(super) field: Arc<str>,
     pub(super) type_: ArrayType,
@@ -132,9 +132,6 @@ fn try_get(res: &QueryResult, pre: &str, col: &str, ty: &ArrayType) -> Result<Va
         ArrayType::BigDecimal => {
             Value::BigDecimal(res.try_get::<Option<_>>(pre, col)?.map(Box::new))
         }
-
-        #[cfg(feature = "postgres-vector")]
-        ArrayType::Vector => Value::Vector(res.try_get(pre, col)?),
 
         #[cfg(feature = "with-ipnetwork")]
         ArrayType::IpNetwork => Value::IpNetwork(res.try_get(pre, col)?),

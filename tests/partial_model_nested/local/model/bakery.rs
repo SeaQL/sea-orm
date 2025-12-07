@@ -1,5 +1,6 @@
 use sea_orm::entity::prelude::*;
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(table_name = "bakery")]
 pub struct Model {
@@ -9,22 +10,10 @@ pub struct Model {
     pub profit_margin: f64,
     pub manager_id: i32,
     pub cashier_id: i32,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::worker::Entity",
-        from = "Column::ManagerId",
-        to = "super::worker::Column::Id"
-    )]
-    Manager,
-    #[sea_orm(
-        belongs_to = "super::worker::Entity",
-        from = "Column::CashierId",
-        to = "super::worker::Column::Id"
-    )]
-    Cashier,
+    #[sea_orm(belongs_to, relation_enum = "Manager", from = "manager_id", to = "id")]
+    pub manager: HasOne<super::worker::Entity>,
+    #[sea_orm(belongs_to, relation_enum = "Cashier", from = "cashier_id", to = "id")]
+    pub cashier: HasOne<super::worker::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -9,7 +9,6 @@ publish = false
 [dependencies]
 async-stream = { version = "0.3" }
 async-trait = { version = "0.1" }
-rocket-example-service = { path = "../service" }
 futures = { version = "0.3" }
 futures-util = { version = "0.3" }
 rocket = { version = "0.5", features = ["json"] }
@@ -21,5 +20,22 @@ migration = { path = "../migration" }
 tokio = "1.41"
 
 [dependencies.sea-orm-rocket]
-path = "../../../sea-orm-rocket/lib" # remove this line in your own project and uncomment the following line
-# version = "0.5"
+path = "../../../sea-orm-rocket/lib" # remove this line in your own project
+version = "0.6"
+
+[dependencies.sea-orm]
+path = "../../../" # remove this line in your own project
+version = "~2.0.0-rc.20" # sea-orm version
+features = [
+    "debug-print",
+    "runtime-tokio-native-tls",
+    "sqlx-postgres",
+    # "sqlx-mysql",
+    # "sqlx-sqlite",
+]
+
+[dev-dependencies]
+rocket-example-api = { path = ".", features = ["sqlite"] }
+
+[features]
+sqlite = ["sea-orm/sqlx-sqlite"]

@@ -5,7 +5,7 @@ use crate::{
     TryInsert, error::*,
 };
 use sea_query::{FromValueTuple, Iden, InsertStatement, Query, ReturningClause, ValueTuple};
-use std::{future::Future, marker::PhantomData};
+use std::marker::PhantomData;
 
 type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
 
@@ -93,7 +93,6 @@ where
     /// Number of rows affected is returned
     pub async fn exec_without_returning<C>(self, db: &C) -> Result<TryInsertResult<u64>, DbErr>
     where
-        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
     {
         if self.empty {
@@ -175,7 +174,7 @@ where
     A: ActiveModelTrait,
 {
     /// Execute an insert operation
-    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+    pub async fn exec<'a, C>(self, db: &'a C) -> Result<InsertResult<A>, DbErr>
     where
         C: ConnectionTrait,
         A: 'a,
@@ -185,63 +184,67 @@ where
         if db.support_returning() {
             query.returning(returning_pk::<A>(db.get_database_backend()));
         }
-        Inserter::<A>::new(self.primary_key, query).exec(db)
+        Inserter::<A>::new(self.primary_key, query).exec(db).await
     }
 
     /// Execute an insert operation without returning (don't use `RETURNING` syntax)
     /// Number of rows affected is returned
-    pub fn exec_without_returning<'a, C>(
-        self,
-        db: &'a C,
-    ) -> impl Future<Output = Result<u64, DbErr>> + 'a
+    pub async fn exec_without_returning<'a, C>(self, db: &'a C) -> Result<u64, DbErr>
     where
-        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
-        Inserter::<A>::new(self.primary_key, self.query).exec_without_returning(db)
+        Inserter::<A>::new(self.primary_key, self.query)
+            .exec_without_returning(db)
+            .await
     }
 
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
     ///
     /// + To get back all inserted models, use [`exec_with_returning_many`].
     /// + To get back all inserted primary keys, use [`exec_with_returning_keys`].
-    pub fn exec_with_returning<'a, C>(
+    pub async fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + 'a
+    ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
-        Inserter::<A>::new(self.primary_key, self.query).exec_with_returning(db)
+        Inserter::<A>::new(self.primary_key, self.query)
+            .exec_with_returning(db)
+            .await
     }
 
     /// Execute an insert operation and return primary keys of inserted models
-    pub fn exec_with_returning_keys<'a, C>(
+    pub async fn exec_with_returning_keys<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr>> + 'a
+    ) -> Result<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
-        Inserter::<A>::new(self.primary_key, self.query).exec_with_returning_keys(db)
+        Inserter::<A>::new(self.primary_key, self.query)
+            .exec_with_returning_keys(db)
+            .await
     }
 
     /// Execute an insert operation and return all inserted models
-    pub fn exec_with_returning_many<'a, C>(
+    pub async fn exec_with_returning_many<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>> + 'a
+    ) -> Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
-        Inserter::<A>::new(self.primary_key, self.query).exec_with_returning_many(db)
+        Inserter::<A>::new(self.primary_key, self.query)
+            .exec_with_returning_many(db)
+            .await
     }
 }
 
@@ -272,7 +275,6 @@ where
     /// Number of rows affected is returned
     pub async fn exec_without_returning<C>(self, db: &C) -> Result<u64, DbErr>
     where
-        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
     {
         if self.empty {
@@ -348,63 +350,60 @@ where
     }
 
     /// Execute an insert operation, returning the last inserted id
-    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+    pub async fn exec<'a, C>(self, db: &'a C) -> Result<InsertResult<A>, DbErr>
     where
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert(self.primary_key, self.query, db)
+        exec_insert(self.primary_key, self.query, db).await
     }
 
     /// Execute an insert operation
-    pub fn exec_without_returning<'a, C>(
-        self,
-        db: &'a C,
-    ) -> impl Future<Output = Result<u64, DbErr>> + 'a
+    pub async fn exec_without_returning<'a, C>(self, db: &'a C) -> Result<u64, DbErr>
     where
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert_without_returning(self.query, db)
+        exec_insert_without_returning(self.query, db).await
     }
 
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
-    pub fn exec_with_returning<'a, C>(
+    pub async fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + 'a
+    ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert_with_returning::<A, _>(self.primary_key, self.query, db)
+        exec_insert_with_returning::<A, _>(self.primary_key, self.query, db).await
     }
 
     /// Execute an insert operation and return primary keys of inserted models
-    pub fn exec_with_returning_keys<'a, C>(
+    pub async fn exec_with_returning_keys<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr>> + 'a
+    ) -> Result<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert_with_returning_keys::<A, _>(self.query, db)
+        exec_insert_with_returning_keys::<A, _>(self.query, db).await
     }
 
     /// Execute an insert operation and return all inserted models
-    pub fn exec_with_returning_many<'a, C>(
+    pub async fn exec_with_returning_many<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>> + 'a
+    ) -> Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert_with_returning_many::<A, _>(self.query, db)
+        exec_insert_with_returning_many::<A, _>(self.query, db).await
     }
 }
 

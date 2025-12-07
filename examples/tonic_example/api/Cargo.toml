@@ -6,16 +6,23 @@ rust-version = "1.85.0"
 publish = false
 
 [dependencies]
-tonic-example-service = { path = "../service" }
 tonic = "0.9.2"
-tokio = { version = "1.29", features = ["macros", "rt-multi-thread", "full"] }
+tokio = { version = "1.29", features = ["full"] }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
 prost = "0.11.9"
 serde = "1.0"
 
-[lib]
-path = "./src/lib.rs"
+[dependencies.sea-orm]
+path = "../../../" # remove this line in your own project
+version = "~2.0.0-rc.20" # sea-orm version
+features = [
+    "debug-print",
+    "runtime-tokio-rustls",
+    # "sqlx-mysql",
+    # "sqlx-postgres",
+    "sqlx-sqlite",
+]
 
 [build-dependencies]
 tonic-build = "0.9.2"

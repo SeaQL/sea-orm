@@ -1,11 +1,6 @@
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-postgres",
-    feature = "sqlx-sqlite",
-))]
-use std::sync::Arc;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
+use futures_util::future::BoxFuture;
 #[cfg(feature = "sqlx-mysql")]
 use sqlx::mysql::MySqlConnectOptions;
 #[cfg(feature = "sqlx-postgres")]
@@ -23,6 +18,8 @@ mod mock;
 mod proxy;
 #[cfg(feature = "rbac")]
 mod restricted_connection;
+#[cfg(all(feature = "schema-sync", feature = "sqlx-dep"))]
+mod sea_schema_shim;
 mod statement;
 mod stream;
 mod transaction;
@@ -49,6 +46,15 @@ use crate::error::*;
 #[derive(Debug, Default)]
 pub struct Database;
 
+#[cfg(feature = "sync")]
+type BoxFuture<'a, T> = T;
+
+type AfterConnectCallback = Option<
+    Arc<
+        dyn Fn(DatabaseConnection) -> BoxFuture<'static, Result<(), DbErr>> + Send + Sync + 'static,
+    >,
+>;
+
 /// Defines the configuration options of a database
 #[derive(derive_more::Debug, Clone)]
 pub struct ConnectOptions {
@@ -62,11 +68,11 @@ pub struct ConnectOptions {
     pub(crate) connect_timeout: Option<Duration>,
     /// Maximum idle time for a particular connection to prevent
     /// network resource exhaustion
-    pub(crate) idle_timeout: Option<Duration>,
+    pub(crate) idle_timeout: Option<Option<Duration>>,
     /// Set the maximum amount of time to spend waiting for acquiring a connection
     pub(crate) acquire_timeout: Option<Duration>,
     /// Set the maximum lifetime of individual connections
-    pub(crate) max_lifetime: Option<Duration>,
+    pub(crate) max_lifetime: Option<Option<Duration>>,
     /// Enable SQLx statement logging
     pub(crate) sqlx_logging: bool,
     /// SQLx statement logging level (ignored if `sqlx_logging` is false)
@@ -84,6 +90,10 @@ pub struct ConnectOptions {
     /// be created using SQLx's [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy)
     /// method.
     pub(crate) connect_lazy: bool,
+
+    #[debug(skip)]
+    pub(crate) after_connect: AfterConnectCallback,
+
     #[cfg(feature = "sqlx-mysql")]
     #[debug(skip)]
     pub(crate) mysql_opts_fn:
@@ -198,6 +208,7 @@ impl ConnectOptions {
             schema_search_path: None,
             test_before_acquire: true,
             connect_lazy: false,
+            after_connect: None,
             #[cfg(feature = "sqlx-mysql")]
             mysql_opts_fn: None,
             #[cfg(feature = "sqlx-postgres")]
@@ -245,14 +256,17 @@ impl ConnectOptions {
         self.connect_timeout
     }
 
-    /// Set the idle duration before closing a connection
-    pub fn idle_timeout(&mut self, value: Duration) -> &mut Self {
-        self.idle_timeout = Some(value);
+    /// Set the idle duration before closing a connection.
+    pub fn idle_timeout<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<Option<Duration>>,
+    {
+        self.idle_timeout = Some(value.into());
         self
     }
 
     /// Get the idle duration before closing a connection, if set
-    pub fn get_idle_timeout(&self) -> Option<Duration> {
+    pub fn get_idle_timeout(&self) -> Option<Option<Duration>> {
         self.idle_timeout
     }
 
@@ -267,14 +281,17 @@ impl ConnectOptions {
         self.acquire_timeout
     }
 
-    /// Set the maximum lifetime of individual connections
-    pub fn max_lifetime(&mut self, lifetime: Duration) -> &mut Self {
-        self.max_lifetime = Some(lifetime);
+    /// Set the maximum lifetime of individual connections.
+    pub fn max_lifetime<T>(&mut self, lifetime: T) -> &mut Self
+    where
+        T: Into<Option<Duration>>,
+    {
+        self.max_lifetime = Some(lifetime.into());
         self
     }
 
     /// Get the maximum lifetime of individual connections, if set
-    pub fn get_max_lifetime(&self) -> Option<Duration> {
+    pub fn get_max_lifetime(&self) -> Option<Option<Duration>> {
         self.max_lifetime
     }
 
@@ -355,6 +372,16 @@ impl ConnectOptions {
     /// Get whether DB connections will be established when the pool is created or only as needed.
     pub fn get_connect_lazy(&self) -> bool {
         self.connect_lazy
+    }
+
+    /// Set a callback function that will be called after a new connection is established.
+    pub fn after_connect<F>(&mut self, f: F) -> &mut Self
+    where
+        F: Fn(DatabaseConnection) -> BoxFuture<'static, Result<(), DbErr>> + Send + Sync + 'static,
+    {
+        self.after_connect = Some(Arc::new(f));
+
+        self
     }
 
     #[cfg(feature = "sqlx-mysql")]

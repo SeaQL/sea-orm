@@ -36,7 +36,7 @@ fn convert_case(s: &str, case_style: CaseStyle) -> String {
 }
 
 /// Method to derive an Model
-pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
+pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Result<TokenStream> {
     // if #[sea_orm(table_name = "foo", schema_name = "bar")] specified, create Entity struct
     let mut table_name = None;
     let mut comment = quote! {None};
@@ -94,7 +94,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         .as_ref()
         .map(|table_name| {
             let entity_extra_attr = if model_ex {
-                quote!(#[sea_orm(model_ex = ModelEx)])
+                quote!(#[sea_orm(model_ex = ModelEx, active_model_ex = ActiveModelEx)])
             } else {
                 quote!()
             };
@@ -149,14 +149,12 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         }
     }
     if let Data::Struct(item_struct) = data {
-        if let Fields::Named(fields) = item_struct.fields {
-            for field in fields.named {
+        if let Fields::Named(fields) = &item_struct.fields {
+            for field in &fields.named {
                 if let Some(ident) = &field.ident {
                     let original_field_name = trim_starting_raw_identifier(ident);
-                    let mut field_name = Ident::new(
-                        &original_field_name.to_upper_camel_case(),
-                        Span::call_site(),
-                    );
+                    let mut field_name =
+                        Ident::new(&original_field_name.to_upper_camel_case(), ident.span());
 
                     let mut nullable = false;
                     let mut default_value = None;
@@ -165,12 +163,15 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut select_as = None;
                     let mut save_as = None;
                     let mut unique_key = None;
+                    let mut renamed_from = None;
                     let mut indexed = false;
                     let mut ignore = false;
                     let mut unique = false;
                     let mut sql_type = None;
                     let mut enum_name = None;
                     let mut is_primary_key = false;
+                    let mut is_auto_increment = false;
+                    let mut extra = None;
                     let mut seaography_ignore = false;
                     #[cfg(feature = "with-json")]
                     let mut serde_rename = None;
@@ -204,6 +205,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 } else if meta.path.is_ident("auto_increment") {
                                     let lit = meta.value()?.parse()?;
                                     if let Lit::Bool(litbool) = lit {
+                                        is_auto_increment = litbool.value();
                                         auto_increment = litbool.value();
                                     } else {
                                         return Err(
@@ -280,6 +282,22 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                             meta.error(format!("Invalid unique_key {lit:?}"))
                                         );
                                     }
+                                } else if meta.path.is_ident("renamed_from") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        renamed_from = Some(litstr.value());
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid renamed_from {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("extra") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        extra = Some(litstr.value());
+                                    } else {
+                                        return Err(meta.error(format!("Invalid extra {lit:?}")));
+                                    }
                                 } else {
                                     // Reads the value expression to advance the parse stream.
                                     // Some parameters, such as `primary_key`, do not have any value,
@@ -322,7 +340,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         field_name = enum_name;
                     }
 
-                    field_name = Ident::new(&escape_rust_keyword(field_name), Span::call_site());
+                    field_name = Ident::new(&escape_rust_keyword(field_name), ident.span());
 
                     let variant_attrs = match &column_name {
                         Some(column_name) => quote! {
@@ -359,6 +377,20 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         });
                     }
 
+                    if !is_primary_key && is_auto_increment {
+                        return Err(syn::Error::new_spanned(
+                            ident,
+                            "auto_increment can only be used on primary_key",
+                        ));
+                    }
+
+                    if primary_key_types.len() > 1 && is_auto_increment {
+                        return Err(syn::Error::new_spanned(
+                            ident,
+                            "auto_increment cannot be used on composite primary_key",
+                        ));
+                    }
+
                     if let Some(select_as) = select_as {
                         columns_select_as.push(quote! {
                             Self::#field_name => sea_orm::sea_query::ExprTrait::cast_as(expr, #select_as)
@@ -372,15 +404,14 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
                     let field_type = if field_type.starts_with("Option<") {
                         nullable = true;
-                        &field_type[7..(field_type.len() - 1)] // Extract `T` out of `Option<T>`
+                        &field_type["Option<".len()..(field_type.len() - 1)] // Extract `T` out of `Option<T>`
                     } else {
                         field_type.as_str()
                     };
                     let field_span = field.span();
 
-                    let sea_query_col_type = crate::derives::sql_type_match::column_type_match(
-                        sql_type, field_type, field_span,
-                    );
+                    let sea_query_col_type =
+                        super::value_type_match::column_type_expr(sql_type, field_type, field_span);
 
                     let col_def =
                         quote! { sea_orm::prelude::ColumnTypeTrait::def(#sea_query_col_type) };
@@ -401,6 +432,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     if unique_key.is_some() {
                         match_row = quote! { #match_row.unique_key(#unique_key) };
                     }
+                    if renamed_from.is_some() {
+                        match_row = quote! { #match_row.renamed_from(#renamed_from) };
+                    }
                     if let Some(default_value) = default_value {
                         match_row = quote! { #match_row.default_value(#default_value) };
                     }
@@ -409,6 +443,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     }
                     if let Some(default_expr) = default_expr {
                         match_row = quote! { #match_row.default(#default_expr) };
+                    }
+                    if let Some(extra) = extra {
+                        match_row = quote! { #match_row.extra(#extra) };
                     }
                     // match_row = quote! { #match_row.comment() };
                     columns_trait.push(match_row);

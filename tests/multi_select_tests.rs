@@ -1,9 +1,14 @@
 #![allow(unused_imports, dead_code)]
 
-pub mod common;
+mod common;
 
 use crate::common::TestContext;
-pub use sea_orm::{Database, DbConn, entity::*, error::*, query::*, sea_query, tests_cfg::*};
+use sea_orm::{
+    Database, DbConn, DbErr,
+    entity::*,
+    query::*,
+    sea_query::{Expr, Query},
+};
 
 mod one {
     use sea_orm::entity::prelude::*;
@@ -165,6 +170,24 @@ mod composite_b_without_index {
         #[sea_orm(primary_key)]
         pub id: i32,
         pub left_id: i32,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+mod composite_c {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "composite_c")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        #[sea_orm(unique_key = "season_episode")]
+        pub season_number: i32,
+        #[sea_orm(unique_key = "season_episode")]
+        pub episode_number: i32,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -398,8 +421,9 @@ async fn test_select_six() -> Result<(), DbErr> {
         .await?
         .unwrap();
     assert_eq!(one_ex.id, 1);
-    assert_eq!(one_ex.two.as_ref().unwrap().id, 2);
-    assert_eq!(one_ex.two.unwrap().three.unwrap().id, 3);
+    let two = one_ex.two.unwrap();
+    assert_eq!(two.id, 2);
+    assert_eq!(two.three.unwrap().id, 3);
 
     let one_ex = one::Entity::load()
         .with(six::Entity)
@@ -408,9 +432,11 @@ async fn test_select_six() -> Result<(), DbErr> {
         .await?
         .unwrap();
     assert_eq!(one_ex.id, 1);
-    assert_eq!(one_ex.two.as_ref().unwrap().id, 2);
-    assert_eq!(one_ex.two.unwrap().three.unwrap().id, 3);
-    assert_eq!(one_ex.six.unwrap().id, 6);
+    let two = one_ex.two.unwrap();
+    assert_eq!(two.id, 2);
+    assert_eq!(two.three.unwrap().id, 3);
+    let six = one_ex.six.unwrap();
+    assert_eq!(six.id, 6);
 
     let one_ex = one::Entity::load()
         .with((six::Entity, five::Entity))
@@ -419,10 +445,12 @@ async fn test_select_six() -> Result<(), DbErr> {
         .await?
         .unwrap();
     assert_eq!(one_ex.id, 1);
-    assert_eq!(one_ex.two.as_ref().unwrap().id, 2);
-    assert_eq!(one_ex.two.unwrap().three.unwrap().id, 3);
-    assert_eq!(one_ex.six.as_ref().unwrap().id, 6);
-    assert_eq!(one_ex.six.unwrap().five.unwrap().id, 55);
+    let two = one_ex.two.unwrap();
+    assert_eq!(two.id, 2);
+    assert_eq!(two.three.unwrap().id, 3);
+    let six = one_ex.six.unwrap();
+    assert_eq!(six.id, 6);
+    assert_eq!(six.five.unwrap().id, 55);
 
     Ok(())
 }
@@ -462,8 +490,39 @@ async fn test_composite_foreign_key() -> Result<(), DbErr> {
         db.get_schema_builder()
             .register(composite_a::Entity)
             .register(composite_b::Entity)
+            .register(composite_c::Entity)
             .sync(db)
             .await?;
+
+        // sync again just to be sure
+        db.get_schema_builder()
+            .register(composite_a::Entity)
+            .register(composite_b::Entity)
+            .register(composite_c::Entity)
+            .sync(db)
+            .await?;
+
+        #[cfg(feature = "sqlx-postgres")]
+        {
+            let has_index: bool = db
+                .query_one(
+                    Query::select()
+                        .expr(Expr::cust("COUNT(*) > 0"))
+                        .from("pg_indexes")
+                        .cond_where(
+                            Condition::all()
+                                .add(Expr::cust("schemaname = CURRENT_SCHEMA()"))
+                                .add(Expr::col("tablename").eq("composite_c"))
+                                .add(Expr::col("indexname").eq("idx-composite_c-season_episode")),
+                        ),
+                )
+                .await?
+                .unwrap()
+                .try_get_by_index(0)
+                .unwrap();
+
+            assert!(has_index, "Should have index on `composite_c`");
+        }
     }
 
     composite_a::ActiveModel {
@@ -531,7 +590,7 @@ async fn test_composite_foreign_key() -> Result<(), DbErr> {
         .unwrap();
 
     assert_eq!(a.id, 101);
-    assert!(a.b.is_none());
+    assert!(a.b.is_not_found());
 
     let a = composite_a::Entity::load()
         .filter_by_id(102)
@@ -544,6 +603,29 @@ async fn test_composite_foreign_key() -> Result<(), DbErr> {
     assert_eq!(a.left_id, 2);
     assert_eq!(a.right_id, 3);
     assert_eq!(a.b.unwrap().id, 202);
+
+    assert_eq!(
+        composite_b::Entity::delete_by_id(202)
+            .exec(db)
+            .await?
+            .rows_affected,
+        1
+    );
+
+    assert_eq!(
+        composite_a::Entity::delete_by_pair((2, 3))
+            .exec(db)
+            .await?
+            .rows_affected,
+        1
+    );
+
+    assert!(
+        composite_a::Entity::find_by_id(102)
+            .one(db)
+            .await?
+            .is_none()
+    );
 
     Ok(())
 }

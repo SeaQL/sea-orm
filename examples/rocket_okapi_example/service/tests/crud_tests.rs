@@ -1,12 +1,14 @@
 use entity::post;
 use rocket_okapi_example_service::{Mutation, Query};
-use sea_orm::{ConnectionTrait, Database, Schema};
+use sea_orm::Database;
 
 #[tokio::test]
 async fn main() {
     let db = &Database::connect("sqlite::memory:").await.unwrap();
 
-    db.execute(&Schema::new(db.get_database_backend()).create_table_from_entity(post::Entity))
+    db.get_schema_builder()
+        .register(post::Entity)
+        .apply(db)
         .await
         .unwrap();
 

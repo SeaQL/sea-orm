@@ -98,7 +98,12 @@ impl DeriveRelation {
                 }??;
 
                 let mut result = if let (Some(has_many), Some(via)) = (&attr.has_many, &attr.via_rel) {
-                    let via: TokenStream = format!("{}::{}", lit_str(has_many)?.trim_end_matches("::Entity"), lit_str(via)?).parse().unwrap();
+                    let has_many = lit_str(has_many)?;
+                    let via: TokenStream = if has_many == "Entity" {
+                        lit_str(via)?
+                    } else {
+                        format!("{}::{}", has_many.trim_end_matches("::Entity"), lit_str(via)?)
+                    }.parse().unwrap();
                     quote!(
                         Self::#variant_ident => #entity_ident::has_many_via(#related_to, #via)
                     )
@@ -181,6 +186,10 @@ impl DeriveRelation {
                             syn::Error::new_spanned(variant, "Missing value for 'fk_name'")
                         })??;
                     result = quote! { #result.fk_name(#fk_name) };
+                }
+
+                if attr.skip_fk.is_some() {
+                    result = quote! { #result.skip_fk() };
                 }
 
                 if attr.condition_type.is_some() {

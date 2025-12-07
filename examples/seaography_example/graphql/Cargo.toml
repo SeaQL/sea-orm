@@ -4,17 +4,20 @@ name = "sea-orm-seaography-example"
 version = "0.1.0"
 
 [dependencies]
-axum = { version = "0.7" }
+axum = { version = "0.8" }
 async-graphql-axum = { version = "7.0" }
 dotenv = "0.15.0"
-sea-orm = { version = "~2.0.0-rc", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "seaography"] }
 tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
 tracing = { version = "0.1.37" }
 tracing-subscriber = { version = "0.3.17" }
 
+[dependencies.sea-orm]
+version = "~2.0.0-rc"
+features = ["sqlx-sqlite", "runtime-tokio-native-tls", "seaography"]
+
 [dependencies.seaography]
-version = "~2.0.0-rc.2" # seaography version
-features = ["with-decimal", "with-chrono"]
+version = "~2.0.0-rc.3" # seaography version
+features = ["graphql-playground", "with-decimal", "with-chrono"]
 
 [dev-dependencies]
 serde_json = { version = "1.0.103" }

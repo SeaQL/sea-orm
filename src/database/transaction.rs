@@ -43,51 +43,67 @@ impl DatabaseTransaction {
             open: true,
             metric_callback,
         };
-        match *res.conn.lock().await {
-            #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(ref mut c) => {
-                // in MySQL SET TRANSACTION operations must be executed before transaction start
-                crate::driver::sqlx_mysql::set_transaction_config(c, isolation_level, access_mode)
+        {
+            #[cfg(not(feature = "sync"))]
+            let conn = &mut *res.conn.lock().await;
+            #[cfg(feature = "sync")]
+            let conn = &mut *res.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+
+            match conn {
+                #[cfg(feature = "sqlx-mysql")]
+                InnerConnection::MySql(c) => {
+                    // in MySQL SET TRANSACTION operations must be executed before transaction start
+                    crate::driver::sqlx_mysql::set_transaction_config(
+                        c,
+                        isolation_level,
+                        access_mode,
+                    )
                     .await?;
-                <sqlx::MySql as sqlx::Database>::TransactionManager::begin(c, None)
+                    <sqlx::MySql as sqlx::Database>::TransactionManager::begin(c, None)
+                        .await
+                        .map_err(sqlx_error_to_query_err)
+                }
+                #[cfg(feature = "sqlx-postgres")]
+                InnerConnection::Postgres(c) => {
+                    <sqlx::Postgres as sqlx::Database>::TransactionManager::begin(c, None)
+                        .await
+                        .map_err(sqlx_error_to_query_err)?;
+                    // in PostgreSQL SET TRANSACTION operations must be executed inside transaction
+                    crate::driver::sqlx_postgres::set_transaction_config(
+                        c,
+                        isolation_level,
+                        access_mode,
+                    )
                     .await
-                    .map_err(sqlx_error_to_query_err)
-            }
-            #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(ref mut c) => {
-                <sqlx::Postgres as sqlx::Database>::TransactionManager::begin(c, None)
-                    .await
-                    .map_err(sqlx_error_to_query_err)?;
-                // in PostgreSQL SET TRANSACTION operations must be executed inside transaction
-                crate::driver::sqlx_postgres::set_transaction_config(
-                    c,
-                    isolation_level,
-                    access_mode,
-                )
-                .await
-            }
-            #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(ref mut c) => {
-                // in SQLite isolation level and access mode are global settings
-                crate::driver::sqlx_sqlite::set_transaction_config(c, isolation_level, access_mode)
+                }
+                #[cfg(feature = "sqlx-sqlite")]
+                InnerConnection::Sqlite(c) => {
+                    // in SQLite isolation level and access mode are global settings
+                    crate::driver::sqlx_sqlite::set_transaction_config(
+                        c,
+                        isolation_level,
+                        access_mode,
+                    )
                     .await?;
-                <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, None)
-                    .await
-                    .map_err(sqlx_error_to_query_err)
-            }
-            #[cfg(feature = "mock")]
-            InnerConnection::Mock(ref mut c) => {
-                c.begin();
-                Ok(())
-            }
-            #[cfg(feature = "proxy")]
-            InnerConnection::Proxy(ref mut c) => {
-                c.begin().await;
-                Ok(())
-            }
-            #[allow(unreachable_patterns)]
-            _ => Err(conn_err("Disconnected")),
-        }?;
+                    <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, None)
+                        .await
+                        .map_err(sqlx_error_to_query_err)
+                }
+                #[cfg(feature = "mock")]
+                InnerConnection::Mock(c) => {
+                    c.begin();
+                    Ok(())
+                }
+                #[cfg(feature = "proxy")]
+                InnerConnection::Proxy(c) => {
+                    c.begin().await;
+                    Ok(())
+                }
+                #[allow(unreachable_patterns)]
+                _ => Err(conn_err("Disconnected")),
+            }?
+        };
+
         Ok(res)
     }
 
@@ -118,32 +134,37 @@ impl DatabaseTransaction {
     #[instrument(level = "trace")]
     #[allow(unreachable_code, unused_mut)]
     pub async fn commit(mut self) -> Result<(), DbErr> {
-        match *self.conn.lock().await {
+        #[cfg(not(feature = "sync"))]
+        let conn = &mut *self.conn.lock().await;
+        #[cfg(feature = "sync")]
+        let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+
+        match conn {
             #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(ref mut c) => {
+            InnerConnection::MySql(c) => {
                 <sqlx::MySql as sqlx::Database>::TransactionManager::commit(c)
                     .await
                     .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(ref mut c) => {
+            InnerConnection::Postgres(c) => {
                 <sqlx::Postgres as sqlx::Database>::TransactionManager::commit(c)
                     .await
                     .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(ref mut c) => {
+            InnerConnection::Sqlite(c) => {
                 <sqlx::Sqlite as sqlx::Database>::TransactionManager::commit(c)
                     .await
                     .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "mock")]
-            InnerConnection::Mock(ref mut c) => {
+            InnerConnection::Mock(c) => {
                 c.commit();
                 Ok(())
             }
             #[cfg(feature = "proxy")]
-            InnerConnection::Proxy(ref mut c) => {
+            InnerConnection::Proxy(c) => {
                 c.commit().await;
                 Ok(())
             }
@@ -158,32 +179,37 @@ impl DatabaseTransaction {
     #[instrument(level = "trace")]
     #[allow(unreachable_code, unused_mut)]
     pub async fn rollback(mut self) -> Result<(), DbErr> {
-        match *self.conn.lock().await {
+        #[cfg(not(feature = "sync"))]
+        let conn = &mut *self.conn.lock().await;
+        #[cfg(feature = "sync")]
+        let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+
+        match conn {
             #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(ref mut c) => {
+            InnerConnection::MySql(c) => {
                 <sqlx::MySql as sqlx::Database>::TransactionManager::rollback(c)
                     .await
                     .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(ref mut c) => {
+            InnerConnection::Postgres(c) => {
                 <sqlx::Postgres as sqlx::Database>::TransactionManager::rollback(c)
                     .await
                     .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(ref mut c) => {
+            InnerConnection::Sqlite(c) => {
                 <sqlx::Sqlite as sqlx::Database>::TransactionManager::rollback(c)
                     .await
                     .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "mock")]
-            InnerConnection::Mock(ref mut c) => {
+            InnerConnection::Mock(c) => {
                 c.rollback();
                 Ok(())
             }
             #[cfg(feature = "proxy")]
-            InnerConnection::Proxy(ref mut c) => {
+            InnerConnection::Proxy(c) => {
                 c.rollback().await;
                 Ok(())
             }
@@ -261,7 +287,12 @@ impl ConnectionTrait for DatabaseTransaction {
     async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
-        match &mut *self.conn.lock().await {
+        #[cfg(not(feature = "sync"))]
+        let conn = &mut *self.conn.lock().await;
+        #[cfg(feature = "sync")]
+        let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+
+        match conn {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
@@ -303,7 +334,12 @@ impl ConnectionTrait for DatabaseTransaction {
     async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug_print!("{}", sql);
 
-        match &mut *self.conn.lock().await {
+        #[cfg(not(feature = "sync"))]
+        let conn = &mut *self.conn.lock().await;
+        #[cfg(feature = "sync")]
+        let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+
+        match conn {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(conn) => {
                 let conn: &mut sqlx::MySqlConnection = &mut *conn;
@@ -350,7 +386,12 @@ impl ConnectionTrait for DatabaseTransaction {
     async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
-        match &mut *self.conn.lock().await {
+        #[cfg(not(feature = "sync"))]
+        let conn = &mut *self.conn.lock().await;
+        #[cfg(feature = "sync")]
+        let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+
+        match conn {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
@@ -395,7 +436,12 @@ impl ConnectionTrait for DatabaseTransaction {
     async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
-        match &mut *self.conn.lock().await {
+        #[cfg(not(feature = "sync"))]
+        let conn = &mut *self.conn.lock().await;
+        #[cfg(feature = "sync")]
+        let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+
+        match conn {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
@@ -455,7 +501,10 @@ impl StreamTrait for DatabaseTransaction {
         stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>> {
         Box::pin(async move {
+            #[cfg(not(feature = "sync"))]
             let conn = self.conn.lock().await;
+            #[cfg(feature = "sync")]
+            let conn = self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
             Ok(crate::TransactionStream::build(
                 conn,
                 stmt,
