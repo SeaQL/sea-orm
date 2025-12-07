@@ -80,6 +80,9 @@ pub struct ConnectOptions {
     /// be created using SQLx's [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy)
     /// method.
     pub(crate) connect_lazy: bool,
+    /// Default value for prepared statement caching when not explicitly set on queries
+    /// None means use sqlx default (true), Some(false) disables by default, Some(true) enables by default
+    pub(crate) default_persistent: Option<bool>,
     #[cfg(feature = "sqlx-mysql")]
     #[debug(skip)]
     pub(crate) mysql_opts_fn:
@@ -194,6 +197,7 @@ impl ConnectOptions {
             schema_search_path: None,
             test_before_acquire: true,
             connect_lazy: false,
+            default_persistent: None,
             #[cfg(feature = "sqlx-mysql")]
             mysql_opts_fn: None,
             #[cfg(feature = "sqlx-postgres")]
@@ -351,6 +355,30 @@ impl ConnectOptions {
     /// Get whether DB connections will be established when the pool is created or only as needed.
     pub fn get_connect_lazy(&self) -> bool {
         self.connect_lazy
+    }
+
+    /// Set the default persistent prepared statement caching behavior
+    ///
+    /// When set to Some(false), prepared statement caching will be disabled by default
+    /// unless explicitly enabled on individual queries.
+    /// When set to Some(true), prepared statement caching will be enabled by default.
+    /// When set to None, uses sqlx default behavior (enabled).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use sea_orm::ConnectOptions;
+    /// let mut opt = ConnectOptions::new("protocol://localhost/database");
+    /// opt.default_persistent(false); // Disable statement caching by default
+    /// ```
+    pub fn default_persistent(&mut self, value: bool) -> &mut Self {
+        self.default_persistent = Some(value);
+        self
+    }
+
+    /// Get the default persistent prepared statement caching behavior
+    pub fn get_default_persistent(&self) -> Option<bool> {
+        self.default_persistent
     }
 
     #[cfg(feature = "sqlx-mysql")]

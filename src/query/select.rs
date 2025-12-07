@@ -11,6 +11,7 @@ where
 {
     pub(crate) query: SelectStatement,
     pub(crate) entity: PhantomData<E>,
+    pub(crate) persistent: Option<bool>,
 }
 
 /// Defines a structure to perform a SELECT operation on two Models
@@ -22,6 +23,7 @@ where
 {
     pub(crate) query: SelectStatement,
     pub(crate) entity: PhantomData<(E, F)>,
+    pub(crate) persistent: Option<bool>,
 }
 
 /// Defines a structure to perform a SELECT operation on many Models
@@ -33,6 +35,7 @@ where
 {
     pub(crate) query: SelectStatement,
     pub(crate) entity: PhantomData<(E, F)>,
+    pub(crate) persistent: Option<bool>,
 }
 
 /// Defines a structure to perform a SELECT operation on two Models
@@ -45,6 +48,7 @@ where
 {
     pub(crate) query: SelectStatement,
     pub(crate) entity: PhantomData<(E, F, G)>,
+    pub(crate) persistent: Option<bool>,
 }
 
 /// Performs a conversion to [SimpleExpr]
@@ -166,6 +170,7 @@ where
         Self {
             query: SelectStatement::new(),
             entity: PhantomData,
+            persistent: None,
         }
         .prepare_select()
         .prepare_from()
@@ -186,6 +191,32 @@ where
         self.query.from(E::default().table_ref());
         self
     }
+
+    /// Set whether to use prepared statement caching
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
+    /// #
+    /// use sea_orm::QuerySelect;
+    ///
+    /// let _select = cake::Entity::find()
+    ///     .persistent(false);
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn persistent(mut self, value: bool) -> Self {
+        self.persistent = Some(value);
+        self
+    }
 }
 
 impl<E> QueryTrait for Select<E>
@@ -201,6 +232,15 @@ where
     }
     fn into_query(self) -> SelectStatement {
         self.query
+    }
+    fn build(&self, db_backend: crate::DbBackend) -> crate::Statement {
+        let query_builder = db_backend.get_query_builder();
+        let mut statement = crate::Statement::from_string_values_tuple(
+            db_backend,
+            self.as_query().build_any(query_builder.as_ref()),
+        );
+        statement.persistent = self.persistent;
+        statement
     }
 }
 
@@ -220,6 +260,15 @@ macro_rules! select_two {
             }
             fn into_query(self) -> SelectStatement {
                 self.query
+            }
+            fn build(&self, db_backend: crate::DbBackend) -> crate::Statement {
+                let query_builder = db_backend.get_query_builder();
+                let mut statement = crate::Statement::from_string_values_tuple(
+                    db_backend,
+                    self.as_query().build_any(query_builder.as_ref()),
+                );
+                statement.persistent = self.persistent;
+                statement
             }
         }
     };
@@ -243,5 +292,14 @@ where
     }
     fn into_query(self) -> SelectStatement {
         self.query
+    }
+    fn build(&self, db_backend: crate::DbBackend) -> crate::Statement {
+        let query_builder = db_backend.get_query_builder();
+        let mut statement = crate::Statement::from_string_values_tuple(
+            db_backend,
+            self.as_query().build_any(query_builder.as_ref()),
+        );
+        statement.persistent = self.persistent;
+        statement
     }
 }

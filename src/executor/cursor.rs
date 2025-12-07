@@ -29,6 +29,7 @@ where
     after: Option<ValueTuple>,
     sort_asc: bool,
     is_result_reversed: bool,
+    persistent: Option<bool>,
     phantom: PhantomData<S>,
 }
 
@@ -51,6 +52,7 @@ where
             before: None,
             sort_asc: true,
             is_result_reversed: false,
+            persistent: None,
             phantom: PhantomData,
             secondary_order_by: Default::default(),
         }
@@ -283,7 +285,8 @@ where
         self.apply_order_by();
         self.apply_filters();
 
-        let stmt = db.get_database_backend().build(&self.query);
+        let mut stmt = db.get_database_backend().build(&self.query);
+        stmt.persistent = self.persistent;
         let rows = db.query_all(stmt).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
@@ -310,6 +313,7 @@ where
             before: self.before,
             sort_asc: self.sort_asc,
             is_result_reversed: self.is_result_reversed,
+            persistent: self.persistent,
             phantom: PhantomData,
             secondary_order_by: self.secondary_order_by,
         }
@@ -336,6 +340,7 @@ where
             before: self.before,
             sort_asc: self.sort_asc,
             is_result_reversed: self.is_result_reversed,
+            persistent: self.persistent,
             phantom: PhantomData,
             secondary_order_by: self.secondary_order_by,
         }
@@ -344,6 +349,12 @@ where
     /// Set the cursor ordering for another table when dealing with SelectTwo
     pub fn set_secondary_order_by(&mut self, tbl_col: Vec<(DynIden, Identity)>) -> &mut Self {
         self.secondary_order_by = tbl_col;
+        self
+    }
+
+    /// Set whether to use prepared statement caching (persistent prepared statements)
+    pub fn persistent(&mut self, persistent: bool) -> &mut Self {
+        self.persistent = Some(persistent);
         self
     }
 }
@@ -394,7 +405,9 @@ where
     where
         C: IntoIdentity,
     {
-        Cursor::new(self.query, SeaRc::new(E::default()), order_columns)
+        let mut cursor = Cursor::new(self.query, SeaRc::new(E::default()), order_columns);
+        cursor.persistent = self.persistent;
+        cursor
     }
 }
 
@@ -446,6 +459,7 @@ where
             order_columns.identity_of(),
         );
         cursor.set_secondary_order_by(primary_keys);
+        cursor.persistent = self.persistent;
         cursor
     }
 
@@ -468,6 +482,7 @@ where
             order_columns.identity_of(),
         );
         cursor.set_secondary_order_by(primary_keys);
+        cursor.persistent = self.persistent;
         cursor
     }
 }
@@ -513,6 +528,7 @@ where
                 .collect();
             cursor.set_secondary_order_by(primary_keys);
         }
+        cursor.persistent = self.persistent;
         cursor
     }
 }

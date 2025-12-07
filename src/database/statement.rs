@@ -13,6 +13,9 @@ pub struct Statement {
     /// The database backend this statement is constructed for.
     /// The SQL dialect and values should be valid for the DbBackend.
     pub db_backend: DbBackend,
+    /// Whether to use prepared statement caching (persistent prepared statements)
+    /// None means use the default behavior, Some(true) enables caching, Some(false) disables it
+    pub persistent: Option<bool>,
 }
 
 /// Any type that can build a [Statement]
@@ -31,6 +34,7 @@ impl Statement {
             sql: stmt.into(),
             values: None,
             db_backend,
+            persistent: None,
         }
     }
 
@@ -52,6 +56,7 @@ impl Statement {
             sql: stmt.0.into(),
             values: Some(stmt.1),
             db_backend,
+            persistent: None,
         }
     }
 }
