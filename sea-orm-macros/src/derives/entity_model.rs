@@ -54,7 +54,7 @@ fn serde_deserialize_name(
 }
 
 fn consume_meta(meta: ParseNestedMeta<'_>) {
-    let _ = meta.value().and_then(|v| v.parse::<LitStr>());
+    let _ = meta.value().and_then(|v| v.parse::<syn::Expr>());
 }
 
 /// Method to derive an Model
