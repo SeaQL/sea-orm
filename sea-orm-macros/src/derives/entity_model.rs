@@ -6,6 +6,7 @@ use heck::{
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use std::str::FromStr;
+use syn::meta::ParseNestedMeta;
 use syn::{
     Attribute, Data, Expr, Fields, Lit, LitStr, punctuated::Punctuated, spanned::Spanned,
     token::Comma,
@@ -52,6 +53,10 @@ fn serde_deserialize_name(
     }
 }
 
+fn consume_meta(meta: ParseNestedMeta<'_>) {
+    let _ = meta.value().and_then(|v| v.parse::<LitStr>());
+}
+
 /// Method to derive an Model
 pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Result<TokenStream> {
     // if #[sea_orm(table_name = "foo", schema_name = "bar")] specified, create Entity struct
@@ -70,8 +75,23 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
         .try_for_each(|attr| {
             attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("rename_all") {
-                    let lit: LitStr = meta.value()?.parse()?;
-                    serde_rename_all = CaseStyle::from_str(&lit.value()).ok();
+                    if let Ok(lit) = meta.value().and_then(|v| v.parse::<LitStr>()) {
+                        // #[serde(rename_all = "camelCase")]
+                        serde_rename_all = CaseStyle::from_str(&lit.value()).ok();
+                    } else {
+                        // #[serde(rename_all(serialize = "...", deserialize = "..."))]
+                        meta.parse_nested_meta(|nested| {
+                            if nested.path.is_ident("deserialize") {
+                                let lit: LitStr = nested.value()?.parse()?;
+                                serde_rename_all = CaseStyle::from_str(&lit.value()).ok();
+                            } else {
+                                consume_meta(nested);
+                            }
+                            Ok(())
+                        })?;
+                    }
+                } else {
+                    consume_meta(meta);
                 }
                 Ok(())
             })
@@ -97,10 +117,7 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
                 } else if meta.path.is_ident("rename_all") {
                     rename_all = Some((&meta).try_into()?);
                 } else {
-                    // Reads the value expression to advance the parse stream.
-                    // Some parameters, such as `primary_key`, do not have any value,
-                    // so ignoring an error occurred here.
-                    let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
+                    consume_meta(meta);
                 }
 
                 Ok(())
@@ -316,10 +333,7 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
                                         return Err(meta.error(format!("Invalid extra {lit:?}")));
                                     }
                                 } else {
-                                    // Reads the value expression to advance the parse stream.
-                                    // Some parameters, such as `primary_key`, do not have any value,
-                                    // so ignoring an error occurred here.
-                                    let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
+                                    consume_meta(meta);
                                 }
 
                                 Ok(())
@@ -346,13 +360,14 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
                                             if nested.path.is_ident("deserialize") {
                                                 let lit: LitStr = nested.value()?.parse()?;
                                                 serde_rename = Some(lit.value());
-                                            } else if nested.path.is_ident("serialize") {
-                                                // consume but ignore serialize
-                                                let _: LitStr = nested.value()?.parse()?;
+                                            } else {
+                                                consume_meta(nested);
                                             }
                                             Ok(())
                                         })?;
                                     }
+                                } else {
+                                    consume_meta(meta);
                                 }
                                 Ok(())
                             })?;

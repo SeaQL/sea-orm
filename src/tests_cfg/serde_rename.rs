@@ -33,7 +33,10 @@ pub mod field_rename {
     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[cfg_attr(feature = "with-json", derive(Serialize, Deserialize))]
     #[sea_orm(table_name = "order")]
-    #[cfg_attr(feature = "with-json", serde(rename_all = "camelCase"))]
+    #[cfg_attr(
+        feature = "with-json",
+        serde(rename_all = "camelCase", rename = "Model")
+    )]
     pub struct Model {
         #[sea_orm(primary_key)]
         pub id: i32,
@@ -69,6 +72,32 @@ pub mod no_serde_rename {
         #[sea_orm(primary_key)]
         pub id: i32,
         pub field_name: String,
+    }
+
+    #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+    pub enum Relation {}
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+pub mod directional_rename_all {
+    use crate as sea_orm;
+    use sea_orm::entity::prelude::*;
+
+    #[cfg(feature = "with-json")]
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[cfg_attr(feature = "with-json", derive(Serialize, Deserialize))]
+    #[sea_orm(table_name = "directional")]
+    #[cfg_attr(
+        feature = "with-json",
+        serde(rename_all(serialize = "SCREAMING_SNAKE_CASE", deserialize = "camelCase"))
+    )]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub user_name: String,
     }
 
     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -158,5 +187,23 @@ mod tests {
 
         assert_eq!(am.id, ActiveValue::Set(1));
         assert_eq!(am.field_name, ActiveValue::Set("value".to_string()));
+    }
+
+    #[test]
+    fn test_directional_rename_all() {
+        use directional_rename_all::{ActiveModel, Column, Model};
+
+        assert_eq!(Column::Id.json_key(), "id");
+        assert_eq!(Column::UserName.json_key(), "userName");
+
+        let json = serde_json::json!({
+            "id": 1,
+            "userName": "test_user"
+        });
+
+        let am = ActiveModel::from_json(json).unwrap();
+
+        assert_eq!(am.id, ActiveValue::Set(1));
+        assert_eq!(am.user_name, ActiveValue::Set("test_user".to_string()));
     }
 }
