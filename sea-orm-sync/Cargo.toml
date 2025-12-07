@@ -1,0 +1,98 @@
+[workspace]
+
+[package]
+name = "sea-orm-sync"
+version = "2.0.0-rc.20"
+authors = ["Chris Tsang <chris.2y3@outlook.com>"]
+edition = "2024"
+description = "🐚 The sync version of SeaORM"
+license = "MIT OR Apache-2.0"
+homepage = "https://www.sea-ql.org/SeaORM"
+documentation = "https://docs.rs/sea-orm"
+repository = "https://github.com/SeaQL/sea-orm"
+categories = ["database"]
+keywords = ["orm", "mysql", "postgres", "sqlite"]
+rust-version = "1.85.0"
+
+[package.metadata.docs.rs]
+features = ["default", "mock", "proxy", "rbac", "schema-sync", "postgres-array", "postgres-vector", "sea-orm-internal"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lib]
+name = "sea_orm"
+path = "src/lib.rs"
+
+[dependencies]
+chrono = { version = "0.4.30", default-features = false, optional = true }
+time = { version = "0.3.36", default-features = false, optional = true }
+log = { version = "0.4", default-features = false }
+tracing = { version = "0.1", default-features = false, features = ["attributes", "log"] }
+rust_decimal = { version = "1", default-features = false, features = ["std"], optional = true }
+bigdecimal = { version = "0.4", default-features = false, features = ["std"], optional = true }
+sea-orm-macros = { version = "~2.0.0-rc.20", path = "../sea-orm-macros", default-features = false, features = ["strum"] }
+sea-query = { version = "1.0.0-rc.22", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite", "sea-orm"] }
+sea-schema = { version = "0.17.0-rc.15", default-features = false, features = ["discovery", "writer", "probe"], optional = true }
+sea-query-rusqlite = { version = "0.8.0-rc.9", optional = true }
+strum = { version = "0.27", default-features = false }
+serde = { version = "1.0", default-features = false }
+serde_json = { version = "1.0", default-features = false, optional = true }
+uuid = { version = "1", default-features = false, optional = true }
+pgvector = { version = "~0.4", default-features = false, optional = true }
+ipnetwork = { version = "0.20", default-features = false, optional = true }
+ouroboros = { version = "0.18", default-features = false }
+url = { version = "2.2", default-features = false }
+thiserror = { version = "2", default-features = false }
+inventory = { version = "0.3", optional = true }
+derive_more = { version = "2", features = ["debug"] }
+itertools = "0.14.0"
+
+[dev-dependencies]
+maplit = { version = "1" }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+sea-orm-sync = { path = ".", features = ["mock", "debug-print", "tests-cfg", "postgres-array", "with-ipnetwork"] }
+pretty_assertions = { version = "0.7" }
+time = { version = "0.3.36", features = ["macros"] }
+uuid = { version = "1", features = ["v4"] }
+dotenv = "0.15"
+
+[features]
+debug-print = []
+default = [
+    "sync",
+    "macros",
+    "with-json",
+    "with-chrono",
+    "with-rust_decimal",
+    "with-bigdecimal",
+    "with-uuid",
+    "with-time",
+    "sqlite-use-returning-for-3_35",
+]
+macros = ["sea-orm-macros/derive"]
+mock = []
+rbac = ["sea-query/audit", "macros"]
+proxy = ["serde_json", "serde/derive"]
+sync = []
+with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "rust_decimal?/serde", "bigdecimal?/serde", "uuid?/serde", "time?/serde", "pgvector?/serde", "sea-query-rusqlite?/with-json"]
+with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-rusqlite?/with-chrono"]
+with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-rusqlite?/with-rust_decimal"]
+with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-rusqlite?/with-bigdecimal"]
+with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-rusqlite?/with-uuid"]
+with-time = ["time", "sea-query/with-time", "sea-query-rusqlite?/with-time"]
+with-ipnetwork = ["ipnetwork", "sea-query/with-ipnetwork", "sea-query-rusqlite?/with-ipnetwork"]
+postgres-array = ["sea-query/postgres-array", "sea-orm-macros/postgres-array", "sea-query-rusqlite?/postgres-array"]
+postgres-vector = ["pgvector", "sea-query/postgres-vector", "sea-query-rusqlite?/postgres-vector"]
+json-array = ["postgres-array"] # this does not actually enable postgres, but only a few traits to support array in sea-query
+sea-orm-internal = []
+sqlx-dep = []
+sqlx-mysql = []
+sqlx-postgres = []
+sqlx-sqlite = []
+rusqlite = ["sea-query-rusqlite"]
+sqlite-use-returning-for-3_35 = []
+sqlite-no-row-value-before-3_15 = []
+mariadb-use-returning = []
+tests-cfg = ["serde/derive"]
+seaography = ["sea-orm-macros/seaography"]
+schema-sync = ["sea-schema"]
+entity-registry = ["inventory", "sea-orm-macros/entity-registry"]

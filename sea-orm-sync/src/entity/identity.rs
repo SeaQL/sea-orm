@@ -1,0 +1,325 @@
+use crate::{ColumnTrait, EntityTrait, IdenStatic};
+use sea_query::{Alias, DynIden, Iden, IntoIden, SeaRc};
+use std::{borrow::Cow, fmt::Write};
+
+/// List of column identifier
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Identity {
+    /// Column identifier consists of 1 column
+    Unary(DynIden),
+    /// Column identifier consists of 2 columns
+    Binary(DynIden, DynIden),
+    /// Column identifier consists of 3 columns
+    Ternary(DynIden, DynIden, DynIden),
+    /// Column identifier consists of more than 3 columns
+    Many(Vec<DynIden>),
+}
+
+impl Identity {
+    /// Get arity for this value
+    pub fn arity(&self) -> usize {
+        match self {
+            Self::Unary(_) => 1,
+            Self::Binary(_, _) => 2,
+            Self::Ternary(_, _, _) => 3,
+            Self::Many(vec) => vec.len(),
+        }
+    }
+
+    /// Iterate components of Identity
+    pub fn iter(&self) -> BorrowedIdentityIter<'_> {
+        BorrowedIdentityIter {
+            identity: self,
+            index: 0,
+        }
+    }
+
+    /// Check if this identity contains a component column
+    pub fn contains(&self, col: &DynIden) -> bool {
+        self.iter().any(|c| c == col)
+    }
+
+    /// Check if this identity is a superset of another identity
+    pub fn fully_contains(&self, other: &Identity) -> bool {
+        for col in other.iter() {
+            if !self.contains(col) {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+impl IntoIterator for Identity {
+    type Item = DynIden;
+    type IntoIter = OwnedIdentityIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        OwnedIdentityIter {
+            identity: self,
+            index: 0,
+        }
+    }
+}
+
+impl Iden for Identity {
+    fn quoted(&self) -> Cow<'static, str> {
+        match self {
+            Identity::Unary(iden) => iden.inner(),
+            Identity::Binary(iden1, iden2) => Cow::Owned(format!("{iden1}{iden2}")),
+            Identity::Ternary(iden1, iden2, iden3) => Cow::Owned(format!("{iden1}{iden2}{iden3}")),
+            Identity::Many(vec) => {
+                let mut s = String::new();
+                for iden in vec.iter() {
+                    write!(&mut s, "{iden}").expect("Infallible");
+                }
+                Cow::Owned(s)
+            }
+        }
+    }
+
+    fn to_string(&self) -> String {
+        match self.quoted() {
+            Cow::Borrowed(s) => s.to_owned(),
+            Cow::Owned(s) => s,
+        }
+    }
+
+    fn unquoted(&self) -> &str {
+        panic!("Should not call this")
+    }
+}
+
+/// Iterator for [`Identity`]
+#[derive(Debug)]
+pub struct BorrowedIdentityIter<'a> {
+    identity: &'a Identity,
+    index: usize,
+}
+
+/// Iterator for [`Identity`]
+#[derive(Debug)]
+pub struct OwnedIdentityIter {
+    identity: Identity,
+    index: usize,
+}
+
+impl<'a> Iterator for BorrowedIdentityIter<'a> {
+    type Item = &'a DynIden;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = match self.identity {
+            Identity::Unary(iden1) => {
+                if self.index == 0 {
+                    Some(iden1)
+                } else {
+                    None
+                }
+            }
+            Identity::Binary(iden1, iden2) => match self.index {
+                0 => Some(iden1),
+                1 => Some(iden2),
+                _ => None,
+            },
+            Identity::Ternary(iden1, iden2, iden3) => match self.index {
+                0 => Some(iden1),
+                1 => Some(iden2),
+                2 => Some(iden3),
+                _ => None,
+            },
+            Identity::Many(vec) => vec.get(self.index),
+        };
+        self.index += 1;
+        result
+    }
+}
+
+impl Iterator for OwnedIdentityIter {
+    type Item = DynIden;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = match &self.identity {
+            Identity::Unary(iden1) => {
+                if self.index == 0 {
+                    Some(iden1.clone())
+                } else {
+                    None
+                }
+            }
+            Identity::Binary(iden1, iden2) => match self.index {
+                0 => Some(iden1.clone()),
+                1 => Some(iden2.clone()),
+                _ => None,
+            },
+            Identity::Ternary(iden1, iden2, iden3) => match self.index {
+                0 => Some(iden1.clone()),
+                1 => Some(iden2.clone()),
+                2 => Some(iden3.clone()),
+                _ => None,
+            },
+            Identity::Many(vec) => vec.get(self.index).cloned(),
+        };
+        self.index += 1;
+        result
+    }
+}
+
+/// Performs a conversion into an [Identity]
+pub trait IntoIdentity {
+    /// Method to perform the conversion
+    fn into_identity(self) -> Identity;
+}
+
+/// Check the [Identity] of an Entity
+pub trait IdentityOf<E>
+where
+    E: EntityTrait,
+{
+    /// Method to call to perform this check
+    fn identity_of(self) -> Identity;
+}
+
+impl IntoIdentity for Identity {
+    fn into_identity(self) -> Identity {
+        self
+    }
+}
+
+impl IntoIdentity for String {
+    fn into_identity(self) -> Identity {
+        self.as_str().into_identity()
+    }
+}
+
+impl IntoIdentity for &str {
+    fn into_identity(self) -> Identity {
+        Identity::Unary(SeaRc::new(Alias::new(self)))
+    }
+}
+
+impl<T> IntoIdentity for T
+where
+    T: IdenStatic,
+{
+    fn into_identity(self) -> Identity {
+        Identity::Unary(self.into_iden())
+    }
+}
+
+impl<T, C> IntoIdentity for (T, C)
+where
+    T: IdenStatic,
+    C: IdenStatic,
+{
+    fn into_identity(self) -> Identity {
+        Identity::Binary(self.0.into_iden(), self.1.into_iden())
+    }
+}
+
+impl<T, C, R> IntoIdentity for (T, C, R)
+where
+    T: IdenStatic,
+    C: IdenStatic,
+    R: IdenStatic,
+{
+    fn into_identity(self) -> Identity {
+        Identity::Ternary(self.0.into_iden(), self.1.into_iden(), self.2.into_iden())
+    }
+}
+
+macro_rules! impl_into_identity {
+    ( $($T:ident : $N:tt),+ $(,)? ) => {
+        impl< $($T),+ > IntoIdentity for ( $($T),+ )
+        where
+            $($T: IdenStatic),+
+        {
+            fn into_identity(self) -> Identity {
+                Identity::Many(vec![
+                    $(self.$N.into_iden()),+
+                ])
+            }
+        }
+    };
+}
+
+#[rustfmt::skip]
+mod impl_into_identity {
+    use super::*;
+
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7, T8:8);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7, T8:8, T9:9);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7, T8:8, T9:9, T10:10);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7, T8:8, T9:9, T10:10, T11:11);
+}
+
+impl<E, C> IdentityOf<E> for C
+where
+    E: EntityTrait<Column = C>,
+    C: ColumnTrait,
+{
+    fn identity_of(self) -> Identity {
+        self.into_identity()
+    }
+}
+
+macro_rules! impl_identity_of {
+    ( $($T:ident),+ $(,)? ) => {
+        impl<E, C> IdentityOf<E> for ( $($T),+ )
+        where
+            E: EntityTrait<Column = C>,
+            C: ColumnTrait,
+        {
+            fn identity_of(self) -> Identity {
+                self.into_identity()
+            }
+        }
+    };
+}
+
+#[rustfmt::skip]
+mod impl_identity_of {
+    use super::*;
+
+    impl_identity_of!(C, C);
+    impl_identity_of!(C, C, C);
+    impl_identity_of!(C, C, C, C);
+    impl_identity_of!(C, C, C, C, C);
+    impl_identity_of!(C, C, C, C, C, C);
+    impl_identity_of!(C, C, C, C, C, C, C);
+    impl_identity_of!(C, C, C, C, C, C, C, C);
+    impl_identity_of!(C, C, C, C, C, C, C, C, C);
+    impl_identity_of!(C, C, C, C, C, C, C, C, C, C);
+    impl_identity_of!(C, C, C, C, C, C, C, C, C, C, C);
+    impl_identity_of!(C, C, C, C, C, C, C, C, C, C, C, C);
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_identity_contains() {
+        let abc = Identity::Ternary("a".into(), "b".into(), "c".into());
+        let a = Identity::Unary("a".into());
+        let ab = Identity::Binary("a".into(), "b".into());
+        let bc = Identity::Binary("b".into(), "c".into());
+        let d = Identity::Unary("d".into());
+        let bcd = Identity::Ternary("b".into(), "c".into(), "d".into());
+
+        assert!(abc.contains(&"a".into()));
+        assert!(abc.contains(&"b".into()));
+        assert!(abc.contains(&"c".into()));
+        assert!(!abc.contains(&"d".into()));
+
+        assert!(abc.fully_contains(&a));
+        assert!(abc.fully_contains(&ab));
+        assert!(abc.fully_contains(&bc));
+        assert!(!abc.fully_contains(&d));
+        assert!(!abc.fully_contains(&bcd));
+    }
+}
