@@ -1,31 +1,29 @@
 [package]
-name = "rocket-example-api"
-version = "0.1.0"
-authors = ["Sam Samai <sam@studio2pi.com.au>"]
-edition = "2024"
+authors      = ["Sam Samai <sam@studio2pi.com.au>"]
+edition      = "2024"
+name         = "rocket-example-api"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [dependencies]
-async-stream = { version = "0.3" }
-async-trait = { version = "0.1" }
-futures = { version = "0.3" }
-futures-util = { version = "0.3" }
-rocket = { version = "0.5", features = ["json"] }
+async-stream         = { version = "0.3" }
+async-trait          = { version = "0.1" }
+entity               = { path = "../entity" }
+futures              = { version = "0.3" }
+futures-util         = { version = "0.3" }
+migration            = { path = "../migration" }
+rocket               = { version = "0.5", features = ["json"] }
+rocket_db_pools      = "0.2"
 rocket_dyn_templates = { version = "0.2", features = ["tera"] }
-rocket_db_pools = "0.2"
-serde_json = { version = "1" }
-entity = { path = "../entity" }
-migration = { path = "../migration" }
-tokio = "1.41"
+serde_json           = { version = "1" }
+tokio                = "1.41"
 
 [dependencies.sea-orm-rocket]
-path = "../../../sea-orm-rocket/lib" # remove this line in your own project
+path    = "../../../sea-orm-rocket/lib" # remove this line in your own project
 version = "0.6"
 
 [dependencies.sea-orm]
-path = "../../../" # remove this line in your own project
-version = "~2.0.0-rc.20" # sea-orm version
 features = [
     "debug-print",
     "runtime-tokio-native-tls",
@@ -33,6 +31,8 @@ features = [
     # "sqlx-mysql",
     # "sqlx-sqlite",
 ]
+path = "../../../" # remove this line in your own project
+version = "~2.0.0-rc.20" # sea-orm version
 
 [dev-dependencies]
 rocket-example-api = { path = ".", features = ["sqlite"] }

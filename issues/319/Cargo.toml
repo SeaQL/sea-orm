@@ -2,15 +2,14 @@
 # A separate workspace
 
 [package]
-name = "sea-orm-issues-319"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "sea-orm-issues-319"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [dependencies]
 async-std = { version = "1", features = ["attributes", "tokio1"] }
-serde = { version = "1", features = ["derive"] }
 sea-orm = { path = "../../", features = [
     "sqlx-mysql",
     "runtime-async-std-native-tls",
@@ -18,3 +17,4 @@ sea-orm = { path = "../../", features = [
     "with-chrono",
     "macros",
 ], default-features = false }
+serde = { version = "1", features = ["derive"] }

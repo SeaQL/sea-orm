@@ -1,11 +1,11 @@
 [workspace]
 
 [package]
-name = "migration"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "migration"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [lib]
 name = "migration"
@@ -15,13 +15,13 @@ path = "src/lib.rs"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [dependencies.sea-orm]
-path = "../../../" # remove this line in your own project
+path    = "../../../"    # remove this line in your own project
 version = "~2.0.0-rc.20" # sea-orm version
 
 [dependencies.sea-orm-migration]
+features = [
+    "runtime-tokio-native-tls",
+    "sqlx-sqlite",
+]
 path = "../../../sea-orm-migration" # remove this line in your own project
 version = "~2.0.0-rc.20" # sea-orm-migration version
-features = [
-  "runtime-tokio-native-tls",
-  "sqlx-sqlite",
-]

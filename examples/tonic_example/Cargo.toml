@@ -1,9 +1,9 @@
 [package]
-name = "sea-orm-tonic-example"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "sea-orm-tonic-example"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -11,9 +11,9 @@ publish = false
 members = [".", "api", "entity", "migration"]
 
 [dependencies]
+tokio             = { version = "1.29", features = ["macros", "rt-multi-thread", "full"] }
+tonic             = "0.9.2"
 tonic-example-api = { path = "api" }
-tonic = "0.9.2"
-tokio = { version = "1.29", features = ["macros", "rt-multi-thread", "full"] }
 
 [[bin]]
 name = "server"
