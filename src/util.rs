@@ -27,12 +27,12 @@ macro_rules! debug_print {
     };
 }
 
-#[cfg(feature = "sync")]
+#[cfg(all(test, feature = "sync"))]
 pub trait StreamShim<T> {
     fn try_next(&mut self) -> Result<Option<T>, crate::DbErr>;
 }
 
-#[cfg(feature = "sync")]
+#[cfg(all(test, feature = "sync"))]
 impl<I, T> StreamShim<T> for I
 where
     I: Iterator<Item = Result<T, crate::DbErr>>,

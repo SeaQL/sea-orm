@@ -78,6 +78,17 @@ impl QueryStream {
                     let elapsed = start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
+                #[cfg(feature = "rusqlite")]
+                InnerConnection::Rusqlite(conn) => {
+                    use itertools::Either;
+                    let start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let stream = match conn.query_all_stmt(stmt) {
+                        Ok(rows) => Either::Left(rows.into_iter().map(Ok)),
+                        Err(err) => Either::Right(std::iter::once(Err(err))),
+                    };
+                    let elapsed = start.map(|s| s.elapsed().unwrap_or_default());
+                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
+                }
                 #[cfg(feature = "mock")]
                 InnerConnection::Mock(c) => {
                     let start = _metric_callback.is_some().then(std::time::SystemTime::now);

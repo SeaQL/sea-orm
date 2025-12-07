@@ -11,7 +11,7 @@ use url::Url;
 use sqlx::pool::PoolConnection;
 
 #[cfg(feature = "rusqlite")]
-use crate::driver::rusqlite::RusqliteSharedConnection;
+use crate::driver::rusqlite::{RusqliteInnerConnection, RusqliteSharedConnection};
 
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use std::sync::Arc;
@@ -104,7 +104,7 @@ pub(crate) enum InnerConnection {
     #[cfg(feature = "sqlx-sqlite")]
     Sqlite(PoolConnection<sqlx::Sqlite>),
     #[cfg(feature = "rusqlite")]
-    RusqliteSharedConnection(RusqliteSharedConnection),
+    Rusqlite(RusqliteInnerConnection),
     #[cfg(feature = "mock")]
     Mock(Arc<crate::MockDatabaseConnection>),
     #[cfg(feature = "proxy")]

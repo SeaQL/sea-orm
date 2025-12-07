@@ -37,7 +37,9 @@ path = "src/lib.rs"
 [dependencies]
 async-stream = { version = "0.3", default-features = false }
 async-trait = { version = "0.1", default-features = false }
-bigdecimal = { version = "0.4", default-features = false, optional = true }
+bigdecimal = { version = "0.4", default-features = false, features = [
+    "std",
+], optional = true }
 chrono = { version = "0.4.30", default-features = false, optional = true }
 derive_more = { version = "2", features = ["debug"] }
 futures-util = { version = "0.3", default-features = false, features = [
@@ -49,7 +51,9 @@ itertools = "0.14.0"
 log = { version = "0.4", default-features = false }
 ouroboros = { version = "0.18", default-features = false }
 pgvector = { version = "~0.4", default-features = false, optional = true }
-rust_decimal = { version = "1", default-features = false, optional = true }
+rust_decimal = { version = "1", default-features = false, features = [
+    "std",
+], optional = true }
 sea-orm-macros = { version = "~2.0.0-rc.20", path = "sea-orm-macros", default-features = false, features = [
     "async",
     "strum",
@@ -142,6 +146,7 @@ runtime-async-std-rustls = [
 runtime-tokio = ["sqlx?/runtime-tokio"]
 runtime-tokio-native-tls = ["sqlx?/runtime-tokio-native-tls", "runtime-tokio"]
 runtime-tokio-rustls = ["sqlx?/runtime-tokio-rustls", "runtime-tokio"]
+rusqlite = []
 schema-sync = ["sea-schema"]
 sea-orm-internal = []
 seaography = ["sea-orm-macros/seaography"]

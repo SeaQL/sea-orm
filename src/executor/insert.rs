@@ -421,14 +421,7 @@ where
     let db_backend = db.get_database_backend();
 
     let last_insert_id = match (primary_key, db.support_returning()) {
-        (Some(value_tuple), _) => {
-            let res = db.execute(&statement).await?;
-            if res.rows_affected() == 0 {
-                return Err(DbErr::RecordNotInserted);
-            }
-            FromValueTuple::from_value_tuple(value_tuple)
-        }
-        (None, true) => {
+        (_, true) => {
             let mut rows = db.query_all(&statement).await?;
             let row = match rows.pop() {
                 Some(row) => row,
@@ -439,6 +432,13 @@ where
                 .collect::<Vec<_>>();
             row.try_get_many("", cols.as_ref())
                 .map_err(|_| DbErr::UnpackInsertId)?
+        }
+        (Some(value_tuple), false) => {
+            let res = db.execute(&statement).await?;
+            if res.rows_affected() == 0 {
+                return Err(DbErr::RecordNotInserted);
+            }
+            FromValueTuple::from_value_tuple(value_tuple)
         }
         (None, false) => {
             let res = db.execute(&statement).await?;

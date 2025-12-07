@@ -136,6 +136,10 @@ impl Database {
         if DbBackend::Sqlite.is_prefix_of(&opt.url) {
             return crate::SqlxSqliteConnector::connect(opt).await;
         }
+        #[cfg(feature = "rusqlite")]
+        if DbBackend::Sqlite.is_prefix_of(&opt.url) {
+            return crate::driver::rusqlite::RusqliteConnector::connect(opt);
+        }
         #[cfg(feature = "mock")]
         if crate::MockDatabaseConnector::accepts(&opt.url) {
             return crate::MockDatabaseConnector::connect(&opt.url).await;

@@ -4,19 +4,19 @@ use std::{
     sync::{Arc, Mutex, MutexGuard, TryLockError},
     time::{Duration, Instant},
 };
-use tracing::{instrument, warn};
+use tracing::{debug, instrument, warn};
 
 pub use OwnedRow as RusqliteRow;
-pub use rusqlite::{Connection as RusqliteConnection, Error as RusqliteError};
 use rusqlite::{
-    Row, Rows,
+    CachedStatement, Row, Rows,
     types::{FromSql, FromSqlError, Value},
 };
+pub use rusqlite::{Connection as RusqliteConnection, Error as RusqliteError};
 use sea_query_rusqlite::{RusqliteValue, RusqliteValues, rusqlite};
 
 use crate::{
     AccessMode, ColIdx, ConnectOptions, DatabaseConnection, DatabaseConnectionType,
-    DatabaseTransaction, IsolationLevel, QueryStream, Statement, TransactionError, debug_print,
+    DatabaseTransaction, InnerConnection, IsolationLevel, QueryStream, Statement, TransactionError,
     error::*, executor::*,
 };
 
@@ -32,6 +32,12 @@ pub struct RusqliteSharedConnection {
     pub(crate) conn: Arc<Mutex<State>>,
     acquire_timeout: Duration,
     metric_callback: Option<crate::metric::Callback>,
+}
+
+pub struct RusqliteInnerConnection {
+    conn: State,
+    loan: Arc<Mutex<State>>,
+    transaction_depth: u32,
 }
 
 #[derive(Debug)]
@@ -55,6 +61,13 @@ pub enum State {
 }
 
 impl OwnedRow {
+    pub(crate) fn dummy() -> Self {
+        Self {
+            columns: Vec::new(),
+            values: Vec::new(),
+        }
+    }
+
     pub fn columns(&self) -> &[Arc<str>] {
         &self.columns
     }
@@ -107,6 +120,12 @@ impl OwnedRow {
 impl std::fmt::Debug for RusqliteSharedConnection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "RusqliteSharedConnection {{ conn: {:?} }}", self.conn)
+    }
+}
+
+impl std::fmt::Debug for RusqliteInnerConnection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "RusqliteInnerConnection {{ conn: {:?} }}", self.conn)
     }
 }
 
@@ -184,7 +203,7 @@ impl RusqliteSharedConnection {
             match self.conn.try_lock() {
                 Ok(state) => match *state {
                     State::Idle(_) => return Ok(state),
-                    State::Loaned => (), // transaction in progress, wait
+                    State::Loaned => (), // borrowed for streaming or transaction
                     State::Disconnected => {
                         return Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed));
                     }
@@ -201,10 +220,22 @@ impl RusqliteSharedConnection {
         }
     }
 
+    fn loan(&self) -> Result<RusqliteInnerConnection, DbErr> {
+        let conn = {
+            let mut conn = self.acquire()?;
+            conn.loan()
+        };
+        Ok(RusqliteInnerConnection {
+            conn: State::Idle(conn),
+            loan: self.conn.clone(),
+            transaction_depth: 0,
+        })
+    }
+
     /// Execute a [Statement] on a SQLite backend
     #[instrument(level = "trace")]
     pub fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
-        debug_print!("{}", stmt);
+        debug!("{}", stmt);
 
         let values = sql_values(&stmt);
         let conn = self.acquire()?;
@@ -224,7 +255,7 @@ impl RusqliteSharedConnection {
     /// Execute an unprepared SQL statement on a SQLite backend
     #[instrument(level = "trace")]
     pub fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
-        debug_print!("{}", sql);
+        debug!("{}", sql);
 
         let conn = self.acquire()?;
         let conn = conn.conn();
@@ -241,17 +272,13 @@ impl RusqliteSharedConnection {
     /// Get one result from a SQL query. Returns [Option::None] if no match was found
     #[instrument(level = "trace")]
     pub fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
-        debug_print!("{}", stmt);
+        debug!("{}", stmt);
 
         let values = sql_values(&stmt);
         let conn = self.acquire()?;
         let conn = conn.conn();
         let mut sql = conn.prepare_cached(&stmt.sql).map_err(query_err)?;
-        let columns: Vec<Arc<str>> = sql
-            .column_names()
-            .into_iter()
-            .map(|r| Arc::from(r))
-            .collect();
+        let columns: Vec<Arc<str>> = column_names(&sql);
 
         crate::metric::metric!(self.metric_callback, &stmt, {
             match sql.query(&*values.as_params()) {
@@ -270,17 +297,13 @@ impl RusqliteSharedConnection {
     /// Get the results of a query returning them as a Vec<[QueryResult]>
     #[instrument(level = "trace")]
     pub fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
-        debug_print!("{}", stmt);
+        debug!("{}", stmt);
 
         let values = sql_values(&stmt);
         let conn = self.acquire()?;
         let conn = conn.conn();
         let mut sql = conn.prepare_cached(&stmt.sql).map_err(query_err)?;
-        let columns: Vec<Arc<str>> = sql
-            .column_names()
-            .into_iter()
-            .map(|r| Arc::from(r))
-            .collect();
+        let columns: Vec<Arc<str>> = column_names(&sql);
 
         crate::metric::metric!(self.metric_callback, &stmt, {
             match sql.query(&*values.as_params()) {
@@ -299,16 +322,13 @@ impl RusqliteSharedConnection {
     /// Stream the results of executing a SQL query
     #[instrument(level = "trace")]
     pub fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
-        debug_print!("{}", stmt);
+        debug!("{}", stmt);
 
-        todo!()
-        // let conn = self.acquire()?;
-        // let conn = conn.conn();
-        // Ok(QueryStream::from((
-        //     conn,
-        //     stmt,
-        //     self.metric_callback.clone(),
-        // )))
+        Ok(QueryStream::build(
+            stmt,
+            InnerConnection::Rusqlite(self.loan()?),
+            self.metric_callback.clone(),
+        ))
     }
 
     /// Bundle a set of SQL statements that execute together.
@@ -318,15 +338,14 @@ impl RusqliteSharedConnection {
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
     ) -> Result<DatabaseTransaction, DbErr> {
-        todo!()
-        // let conn = self.acquire()?;
-        // let conn = conn.conn();
-        // DatabaseTransaction::new_sqlite(
-        //     conn,
-        //     self.metric_callback.clone(),
-        //     isolation_level,
-        //     access_mode,
-        // )
+        let mut conn = self.loan()?;
+        DatabaseTransaction::begin(
+            Arc::new(Mutex::new(InnerConnection::Rusqlite(conn))),
+            crate::DbBackend::Sqlite,
+            self.metric_callback.clone(),
+            isolation_level,
+            access_mode,
+        )
     }
 
     /// Create a SQLite transaction
@@ -341,17 +360,9 @@ impl RusqliteSharedConnection {
         F: for<'b> FnOnce(&'b DatabaseTransaction) -> Result<T, E>,
         E: std::fmt::Display + std::fmt::Debug,
     {
-        todo!()
-        // let conn = self.acquire()?;
-        // let conn = conn.conn();
-        // let transaction = DatabaseTransaction::new_sqlite(
-        //     conn,
-        //     self.metric_callback.clone(),
-        //     isolation_level,
-        //     access_mode,
-        // )
-        // .map_err(|e| TransactionError::Connection(e))?;
-        // transaction.run(callback)
+        self.begin(isolation_level, access_mode)
+            .map_err(|e| TransactionError::Connection(e))?
+            .run(callback)
     }
 
     pub(crate) fn set_metric_callback<F>(&mut self, callback: F)
@@ -386,12 +397,192 @@ impl RusqliteSharedConnection {
     }
 }
 
+impl RusqliteInnerConnection {
+    #[instrument(level = "trace", skip(metric_callback))]
+    pub fn execute(
+        &self,
+        stmt: Statement,
+        metric_callback: &Option<crate::metric::Callback>,
+    ) -> Result<ExecResult, DbErr> {
+        debug!("{}", stmt);
+
+        let values = sql_values(&stmt);
+        let conn = self.conn.conn();
+        crate::metric::metric!(metric_callback, &stmt, {
+            match conn.execute(&stmt.sql, &*values.as_params()) {
+                Ok(rows_affected) => Ok(RusqliteExecResult {
+                    rows_affected: rows_affected as u64,
+                    last_insert_rowid: conn.last_insert_rowid(),
+                }
+                .into()),
+                Err(err) => Err(exec_err(err)),
+            }
+        })
+    }
+
+    #[instrument(level = "trace")]
+    pub(crate) fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+        debug!("{}", sql);
+
+        let conn = self.conn.conn();
+        match conn.execute_batch(sql) {
+            Ok(()) => Ok(RusqliteExecResult {
+                rows_affected: conn.changes(),
+                last_insert_rowid: conn.last_insert_rowid(),
+            }
+            .into()),
+            Err(err) => Err(exec_err(err)),
+        }
+    }
+
+    #[instrument(level = "trace", skip(metric_callback))]
+    pub fn query_one(
+        &self,
+        stmt: Statement,
+        metric_callback: &Option<crate::metric::Callback>,
+    ) -> Result<Option<QueryResult>, DbErr> {
+        debug!("{}", stmt);
+
+        let values = sql_values(&stmt);
+        let conn = self.conn.conn();
+        let mut sql = conn.prepare_cached(&stmt.sql).map_err(query_err)?;
+        let columns: Vec<Arc<str>> = column_names(&sql);
+
+        crate::metric::metric!(metric_callback, &stmt, {
+            match sql.query(&*values.as_params()) {
+                Ok(mut rows) => {
+                    let mut out = None;
+                    if let Some(row) = rows.next().map_err(query_err)? {
+                        out = Some(OwnedRow::from_row(columns.clone(), row).into());
+                    }
+                    Ok(out)
+                }
+                Err(err) => Err(query_err(err)),
+            }
+        })
+    }
+
+    #[instrument(level = "trace", skip(metric_callback))]
+    pub fn query_all(
+        &self,
+        stmt: Statement,
+        metric_callback: &Option<crate::metric::Callback>,
+    ) -> Result<Vec<QueryResult>, DbErr> {
+        debug!("{}", stmt);
+
+        let values = sql_values(&stmt);
+        let conn = self.conn.conn();
+        let mut sql = conn.prepare_cached(&stmt.sql).map_err(query_err)?;
+        let columns: Vec<Arc<str>> = column_names(&sql);
+
+        crate::metric::metric!(metric_callback, &stmt, {
+            match sql.query(&*values.as_params()) {
+                Ok(mut rows) => {
+                    let mut out = Vec::new();
+                    while let Some(row) = rows.next().map_err(query_err)? {
+                        out.push(OwnedRow::from_row(columns.clone(), row).into());
+                    }
+                    Ok(out)
+                }
+                Err(err) => Err(query_err(err)),
+            }
+        })
+    }
+
+    #[instrument(level = "trace")]
+    pub(crate) fn stream(&self, stmt: &Statement) -> Result<Vec<QueryResult>, DbErr> {
+        debug!("{}", stmt);
+
+        let values = sql_values(stmt);
+        let conn = self.conn.conn();
+        let mut sql = conn.prepare_cached(&stmt.sql).map_err(query_err)?;
+        let columns: Vec<Arc<str>> = column_names(&sql);
+
+        let rows = match sql.query(&*values.as_params()) {
+            Ok(mut rows) => {
+                let mut out = Vec::new();
+                while let Some(row) = rows.next().map_err(query_err)? {
+                    out.push(OwnedRow::from_row(columns.clone(), row).into());
+                }
+                out
+            }
+            Err(err) => return Err(query_err(err)),
+        };
+
+        Ok(rows)
+    }
+
+    #[instrument(level = "trace")]
+    pub(crate) fn begin(&mut self) -> Result<(), DbErr> {
+        if self.transaction_depth == 0 {
+            self.execute_unprepared("BEGIN")?;
+        } else {
+            self.execute_unprepared(&format!("SAVEPOINT sp{}", self.transaction_depth))?;
+        }
+        self.transaction_depth += 1;
+        Ok(())
+    }
+
+    #[instrument(level = "trace")]
+    pub(crate) fn commit(&mut self) -> Result<(), DbErr> {
+        if self.transaction_depth == 1 {
+            self.execute_unprepared("COMMIT")?;
+        } else {
+            self.execute_unprepared(&format!(
+                "RELEASE SAVEPOINT sp{}",
+                self.transaction_depth - 1
+            ))?;
+        }
+        self.transaction_depth -= 1;
+        Ok(())
+    }
+
+    #[instrument(level = "trace")]
+    pub(crate) fn rollback(&mut self) -> Result<(), DbErr> {
+        if self.transaction_depth == 1 {
+            self.execute_unprepared("ROLLBACK")?;
+        } else {
+            self.execute_unprepared(&format!("ROLLBACK TO sp{}", self.transaction_depth - 1))?;
+        }
+        self.transaction_depth -= 1;
+        Ok(())
+    }
+
+    #[instrument(level = "trace")]
+    pub(crate) fn start_rollback(&mut self) -> Result<(), DbErr> {
+        if self.transaction_depth > 0 {
+            self.rollback()?;
+        }
+        Ok(())
+    }
+}
+
+impl Drop for RusqliteInnerConnection {
+    fn drop(&mut self) {
+        let mut loan = self.loan.lock().unwrap();
+        loan.return_(self.conn.loan());
+    }
+}
+
 impl State {
     fn conn(&self) -> &RusqliteConnection {
         match self {
             State::Idle(conn) => conn,
             _ => panic!("No connection"),
         }
+    }
+
+    fn loan(&mut self) -> RusqliteConnection {
+        let mut conn = State::Loaned;
+        std::mem::swap(&mut conn, self);
+        match conn {
+            State::Idle(conn) => conn,
+            _ => panic!("No connection"),
+        }
+    }
+
+    fn return_(&mut self, conn: RusqliteConnection) {
+        *self = State::Idle(conn);
     }
 }
 
@@ -419,18 +610,11 @@ pub(crate) fn sql_values(stmt: &Statement) -> RusqliteValues {
     RusqliteValues(values)
 }
 
-pub(crate) fn set_transaction_config(
-    _conn: RusqliteSharedConnection,
-    isolation_level: Option<IsolationLevel>,
-    access_mode: Option<AccessMode>,
-) -> Result<(), DbErr> {
-    if isolation_level.is_some() {
-        warn!("Setting isolation level in a SQLite transaction isn't supported");
-    }
-    if access_mode.is_some() {
-        warn!("Setting access mode in a SQLite transaction isn't supported");
-    }
-    Ok(())
+fn column_names(sql: &CachedStatement) -> Vec<Arc<str>> {
+    sql.column_names()
+        .into_iter()
+        .map(|r| Arc::from(r))
+        .collect()
 }
 
 #[cfg(feature = "sqlite-use-returning-for-3_35")]
@@ -460,38 +644,3 @@ fn exec_err(err: RusqliteError) -> DbErr {
 fn query_err(err: RusqliteError) -> DbErr {
     DbErr::Query(RuntimeErr::Rusqlite(err.into()))
 }
-
-// impl
-//     From<(
-//         PoolConnection<sqlx::Sqlite>,
-//         Statement,
-//         Option<crate::metric::Callback>,
-//     )> for crate::QueryStream
-// {
-//     fn from(
-//         (conn, stmt, metric_callback): (
-//             PoolConnection<sqlx::Sqlite>,
-//             Statement,
-//             Option<crate::metric::Callback>,
-//         ),
-//     ) -> Self {
-//         crate::QueryStream::build(stmt, crate::InnerConnection::Sqlite(conn), metric_callback)
-//     }
-// }
-
-// impl crate::DatabaseTransaction {
-//     pub(crate) fn new_sqlite(
-//         inner: PoolConnection<sqlx::Sqlite>,
-//         metric_callback: Option<crate::metric::Callback>,
-//         isolation_level: Option<IsolationLevel>,
-//         access_mode: Option<AccessMode>,
-//     ) -> Result<crate::DatabaseTransaction, DbErr> {
-//         Self::begin(
-//             Arc::new(Mutex::new(crate::InnerConnection::Sqlite(inner))),
-//             crate::DbBackend::Sqlite,
-//             metric_callback,
-//             isolation_level,
-//             access_mode,
-//         )
-//     }
-// }

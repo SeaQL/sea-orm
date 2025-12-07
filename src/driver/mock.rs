@@ -73,6 +73,10 @@ impl MockDatabaseConnector {
         if DbBackend::Sqlite.is_prefix_of(string) {
             return true;
         }
+        #[cfg(feature = "rusqlite")]
+        if DbBackend::Sqlite.is_prefix_of(string) {
+            return true;
+        }
         false
     }
 
@@ -99,6 +103,10 @@ impl MockDatabaseConnector {
         }
         #[cfg(feature = "sqlx-sqlite")]
         if crate::SqlxSqliteConnector::accepts(string) {
+            return connect_mock_db!(DbBackend::Sqlite);
+        }
+        #[cfg(feature = "rusqlite")]
+        if crate::driver::rusqlite::RusqliteConnector::accepts(string) {
             return connect_mock_db!(DbBackend::Sqlite);
         }
         connect_mock_db!(DbBackend::Postgres)
