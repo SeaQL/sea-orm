@@ -4,7 +4,7 @@ pub mod common;
 
 pub use common::{TestContext, bakery_chain::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{DatabaseExecutor, IntoDatabaseExecutor, TransactionTrait, prelude::*};
+use sea_orm::{DatabaseExecutor, IntoDatabaseExecutor, Set, TransactionTrait, prelude::*};
 
 #[sea_orm_macros::test]
 pub async fn connection_or_transaction_from_connection() {
