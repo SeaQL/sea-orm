@@ -89,8 +89,8 @@ impl TransactionTrait for SchemaManagerConnection<'_> {
 #[cfg(feature = "sqlx-dep")]
 mod sea_schema_shim {
     use super::SchemaManagerConnection;
-    use sea_orm::{DatabaseConnection, DatabaseExecutor, DatabaseTransaction};
     use sea_orm::sea_query::SelectStatement;
+    use sea_orm::{DatabaseConnection, DatabaseExecutor, DatabaseTransaction};
     use sea_schema::sqlx_types::{SqlxError, SqlxRow};
 
     #[async_trait::async_trait]
