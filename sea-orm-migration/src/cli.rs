@@ -10,8 +10,6 @@ use sea_orm_cli::{run_migrate_generate, run_migrate_init, MigrateSubcommands};
 
 use super::MigratorTrait;
 
-const MIGRATION_DIR: &str = "./";
-
 pub async fn run_cli<M>(migrator: M)
 where
     M: MigratorTrait,
@@ -33,6 +31,8 @@ where
     dotenv().ok();
     let cli = Cli::parse();
 
+    let migration_dir = cli.migration_dir;
+
     let url = cli
         .database_url
         .expect("Environment variable 'DATABASE_URL' not set");
@@ -46,9 +46,15 @@ where
         .await
         .expect("Fail to acquire database connection");
 
-    run_migrate(migrator, &db, cli.command, cli.verbose)
-        .await
-        .unwrap_or_else(handle_error);
+    run_migrate(
+        migrator,
+        &db,
+        cli.command,
+        cli.verbose,
+        migration_dir.as_str(),
+    )
+    .await
+    .unwrap_or_else(handle_error);
 }
 
 pub async fn run_migrate<M>(
@@ -56,6 +62,7 @@ pub async fn run_migrate<M>(
     db: &DbConn,
     command: Option<MigrateSubcommands>,
     verbose: bool,
+    migration_dir: impl AsRef<str>,
 ) -> Result<(), Box<dyn Error>>
 where
     M: MigratorTrait,
@@ -91,12 +98,12 @@ where
         Some(MigrateSubcommands::Status) => M::status(db).await?,
         Some(MigrateSubcommands::Up { num }) => M::up(db, num).await?,
         Some(MigrateSubcommands::Down { num }) => M::down(db, Some(num)).await?,
-        Some(MigrateSubcommands::Init) => run_migrate_init(MIGRATION_DIR)?,
+        Some(MigrateSubcommands::Init) => run_migrate_init(migration_dir.as_ref())?,
         Some(MigrateSubcommands::Generate {
             migration_name,
             universal_time: _,
             local_time,
-        }) => run_migrate_generate(MIGRATION_DIR, &migration_name, !local_time)?,
+        }) => run_migrate_generate(migration_dir.as_ref(), &migration_name, !local_time)?,
         _ => M::up(db, None).await?,
     };
 
@@ -128,6 +135,15 @@ pub struct Cli {
         help = "Database URL"
     )]
     database_url: Option<String>,
+
+    #[arg(
+        global = true,
+        short = 'd',
+        long,
+        env = "MIGRATION_DIR",
+        default_value = "./"
+    )]
+    migration_dir: String,
 
     #[command(subcommand)]
     command: Option<MigrateSubcommands>,
