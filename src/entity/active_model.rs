@@ -579,7 +579,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         let mut json_keys: Vec<(<Self::Entity as EntityTrait>::Column, bool)> = Vec::new();
 
         for col in <<Self::Entity as EntityTrait>::Column>::iter() {
-            let key = col.as_str();
+            let key = col.json_key();
             let has_key = obj.contains_key(key);
             json_keys.push((col, has_key));
         }

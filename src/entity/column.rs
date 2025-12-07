@@ -317,6 +317,12 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     fn save_enum_as(&self, val: Expr) -> SimpleExpr {
         cast_enum_as(val, &self.def(), save_enum_as)
     }
+
+    /// Get the JSON key name for serialization/deserialization.
+    #[cfg(feature = "with-json")]
+    fn json_key(&self) -> &'static str {
+        self.as_str()
+    }
 }
 
 /// SeaORM's utility methods that act on [ColumnType]

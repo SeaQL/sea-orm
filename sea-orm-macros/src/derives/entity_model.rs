@@ -1,12 +1,39 @@
 use super::case_style::{CaseStyle, CaseStyleHelpers};
 use super::util::{escape_rust_keyword, trim_starting_raw_identifier};
-use heck::{ToSnakeCase, ToUpperCamelCase};
+use heck::{
+    ToKebabCase, ToLowerCamelCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase, ToUpperCamelCase,
+};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
+use std::str::FromStr;
 use syn::{
     Attribute, Data, Expr, Fields, Lit, LitStr, punctuated::Punctuated, spanned::Spanned,
     token::Comma,
 };
+
+fn convert_case(s: &str, case_style: CaseStyle) -> String {
+    match case_style {
+        CaseStyle::PascalCase => s.to_upper_camel_case(),
+        CaseStyle::KebabCase => s.to_kebab_case(),
+        CaseStyle::MixedCase => s.to_lower_camel_case(),
+        CaseStyle::ShoutySnakeCase => s.to_shouty_snake_case(),
+        CaseStyle::SnakeCase => s.to_snake_case(),
+        CaseStyle::TitleCase => s.to_title_case(),
+        CaseStyle::UpperCase => s.to_uppercase(),
+        CaseStyle::LowerCase => s.to_lowercase(),
+        CaseStyle::ScreamingKebabCase => s.to_kebab_case().to_uppercase(),
+        CaseStyle::CamelCase => {
+            let camel_case = s.to_upper_camel_case();
+            let mut result = String::with_capacity(camel_case.len());
+            let mut it = camel_case.chars();
+            if let Some(ch) = it.next() {
+                result.extend(ch.to_lowercase());
+            }
+            result.extend(it);
+            result
+        }
+    }
+}
 
 /// Method to derive an Model
 pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
@@ -17,6 +44,21 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     let mut table_iden = false;
     let mut model_ex = false;
     let mut rename_all: Option<CaseStyle> = None;
+    let mut serde_rename_all: Option<CaseStyle> = None;
+
+    // Parse #[serde(rename_all = "...")] at struct level
+    attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("serde"))
+        .try_for_each(|attr| {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("rename_all") {
+                    let lit: LitStr = meta.value()?.parse()?;
+                    serde_rename_all = CaseStyle::from_str(&lit.value()).ok();
+                }
+                Ok(())
+            })
+        })?;
 
     attrs
         .iter()
@@ -89,6 +131,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     let mut primary_keys: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_key_types: Punctuated<_, Comma> = Punctuated::new();
     let mut auto_increment = true;
+    #[cfg(feature = "with-json")]
+    let mut columns_json_keys: Punctuated<_, Comma> = Punctuated::new();
+
     if table_iden {
         if let Some(table_name) = &table_name {
             let table_field_name = Ident::new("Table", Span::call_site());
@@ -127,6 +172,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut enum_name = None;
                     let mut is_primary_key = false;
                     let mut seaography_ignore = false;
+                    #[cfg(feature = "with-json")]
+                    let mut serde_rename = None;
 
                     let mut column_name = if let Some(case_style) = rename_all {
                         Some(field_name.convert_case(Some(case_style)))
@@ -250,8 +297,26 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
                                 Ok(())
                             })?;
+                        } else if cfg!(feature = "with-json") && attr.path().is_ident("serde") {
+                            #[cfg(feature = "with-json")]
+                            attr.parse_nested_meta(|meta| {
+                                if meta.path.is_ident("rename") {
+                                    let lit: LitStr = meta.value()?.parse()?;
+                                    serde_rename = Some(lit.value());
+                                }
+                                Ok(())
+                            })?;
                         }
                     }
+
+                    #[cfg(feature = "with-json")]
+                    let json_key_name = if let Some(rename) = &serde_rename {
+                        rename.clone()
+                    } else if let Some(case_style) = serde_rename_all {
+                        convert_case(&original_field_name, case_style)
+                    } else {
+                        original_field_name.clone()
+                    };
 
                     if let Some(enum_name) = enum_name {
                         field_name = enum_name;
@@ -280,6 +345,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         columns_enum.push(quote! {
                             #variant_attrs
                             #field_name
+                        });
+                        #[cfg(feature = "with-json")]
+                        columns_json_keys.push(quote! {
+                            Self::#field_name => #json_key_name
                         });
                     }
 
@@ -405,6 +474,20 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         }
     };
 
+    let with_json_impls = {
+        #[cfg(feature = "with-json")]
+        quote! {
+            fn json_key(&self) -> &'static str {
+                match self {
+                    #columns_json_keys
+                }
+            }
+        }
+
+        #[cfg(not(feature = "with-json"))]
+        quote! {}
+    };
+
     Ok(quote! {
         #impl_model_ex
 
@@ -443,6 +526,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     _ => sea_orm::prelude::ColumnTrait::save_enum_as(self, val),
                 }
             }
+
+            #with_json_impls
         }
 
         #entity_def

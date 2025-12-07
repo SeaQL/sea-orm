@@ -16,6 +16,7 @@ pub mod lunch_set;
 pub mod lunch_set_expanded;
 pub mod rust_keyword;
 pub mod sea_orm_active_enums;
+pub mod serde_rename;
 pub mod vendor;
 
 pub use cake::Entity as Cake;
