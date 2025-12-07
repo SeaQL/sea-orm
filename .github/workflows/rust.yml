@@ -139,6 +139,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo install --locked taplo-cli
       - run: taplo fmt --check 
 
