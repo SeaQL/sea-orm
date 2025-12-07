@@ -35,6 +35,23 @@ fn convert_case(s: &str, case_style: CaseStyle) -> String {
     }
 }
 
+#[cfg(feature = "with-json")]
+fn serde_deserialize_name(
+    orig: &str,
+    serde_rename: Option<&str>,
+    serde_rename_all: Option<CaseStyle>,
+) -> String {
+    if let Some(rename) = serde_rename.as_ref() {
+        return rename.to_string();
+    }
+
+    if let Some(case_style) = serde_rename_all {
+        convert_case(orig, case_style)
+    } else {
+        orig.to_string()
+    }
+}
+
 /// Method to derive an Model
 pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Result<TokenStream> {
     // if #[sea_orm(table_name = "foo", schema_name = "bar")] specified, create Entity struct
@@ -174,7 +191,7 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
                     let mut extra = None;
                     let mut seaography_ignore = false;
                     #[cfg(feature = "with-json")]
-                    let mut serde_rename = None;
+                    let mut serde_rename: Option<String> = None;
 
                     let mut column_name = if let Some(case_style) = rename_all {
                         Some(field_name.convert_case(Some(case_style)))
@@ -319,8 +336,23 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
                             #[cfg(feature = "with-json")]
                             attr.parse_nested_meta(|meta| {
                                 if meta.path.is_ident("rename") {
-                                    let lit: LitStr = meta.value()?.parse()?;
-                                    serde_rename = Some(lit.value());
+                                    if let Ok(lit) = meta.value().and_then(|v| v.parse::<LitStr>())
+                                    {
+                                        // #[serde(rename = "xxx")]
+                                        serde_rename = Some(lit.value());
+                                    } else {
+                                        // #[serde(rename(serialize = "...", deserialize = "..."))]
+                                        meta.parse_nested_meta(|nested| {
+                                            if nested.path.is_ident("deserialize") {
+                                                let lit: LitStr = nested.value()?.parse()?;
+                                                serde_rename = Some(lit.value());
+                                            } else if nested.path.is_ident("serialize") {
+                                                // consume but ignore serialize
+                                                let _: LitStr = nested.value()?.parse()?;
+                                            }
+                                            Ok(())
+                                        })?;
+                                    }
                                 }
                                 Ok(())
                             })?;
@@ -328,13 +360,11 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
                     }
 
                     #[cfg(feature = "with-json")]
-                    let json_key_name = if let Some(rename) = &serde_rename {
-                        rename.clone()
-                    } else if let Some(case_style) = serde_rename_all {
-                        convert_case(&original_field_name, case_style)
-                    } else {
-                        original_field_name.clone()
-                    };
+                    let json_key_name = serde_deserialize_name(
+                        &original_field_name,
+                        serde_rename.as_deref(),
+                        serde_rename_all,
+                    );
 
                     if let Some(enum_name) = enum_name {
                         field_name = enum_name;
