@@ -8,10 +8,10 @@ use quote::quote;
 use std::str::FromStr;
 use syn::meta::ParseNestedMeta;
 use syn::{
-    Attribute, Data, Expr, Fields, Lit, LitStr, punctuated::Punctuated, spanned::Spanned,
-    token::Comma,
+    Attribute, Data, Fields, Lit, LitStr, punctuated::Punctuated, spanned::Spanned, token::Comma,
 };
 
+#[allow(dead_code)]
 fn convert_case(s: &str, case_style: CaseStyle) -> String {
     match case_style {
         CaseStyle::PascalCase => s.to_upper_camel_case(),
