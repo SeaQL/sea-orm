@@ -1,28 +1,26 @@
 [package]
-name = "actix-example-api"
-version = "0.1.0"
-authors = ["Sam Samai <sam@studio2pi.com.au>"]
-edition = "2024"
+authors      = ["Sam Samai <sam@studio2pi.com.au>"]
+edition      = "2024"
+name         = "actix-example-api"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [dependencies]
-actix-files = "0.6"
-actix-http = "3"
-actix-rt = "2.8"
-actix-service = "2"
-actix-web = "4"
-tera = "1.19.0"
-dotenvy = "0.15"
-listenfd = "1"
-serde = "1"
+actix-files        = "0.6"
+actix-http         = "3"
+actix-rt           = "2.8"
+actix-service      = "2"
+actix-web          = "4"
+dotenvy            = "0.15"
+entity             = { path = "../entity" }
+listenfd           = "1"
+migration          = { path = "../migration" }
+serde              = "1"
+tera               = "1.19.0"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
-entity = { path = "../entity" }
-migration = { path = "../migration" }
 
 [dependencies.sea-orm]
-path = "../../../" # remove this line in your own project
-version = "~2.0.0-rc.20" # sea-orm version
 features = [
     "debug-print",
     "runtime-tokio-native-tls",
@@ -30,10 +28,12 @@ features = [
     # "sqlx-postgres",
     # "sqlx-sqlite",
 ]
+path = "../../../" # remove this line in your own project
+version = "~2.0.0-rc.20" # sea-orm version
 
 [dev-dependencies]
-tokio = { version = "1.20.0", features = ["macros", "rt"] }
 actix-example-api = { path = ".", features = ["sqlite"] }
+tokio             = { version = "1.20.0", features = ["macros", "rt"] }
 
 [features]
 sqlite = ["sea-orm/sqlx-sqlite"]

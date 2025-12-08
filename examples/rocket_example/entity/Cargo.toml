@@ -1,9 +1,9 @@
 [package]
-name = "entity"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "entity"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [lib]
 name = "entity"
@@ -13,5 +13,5 @@ path = "src/lib.rs"
 rocket = { version = "0.5", features = ["json"] }
 
 [dependencies.sea-orm]
-path = "../../../" # remove this line in your own project
+path    = "../../../"    # remove this line in your own project
 version = "~2.0.0-rc.20" # sea-orm version

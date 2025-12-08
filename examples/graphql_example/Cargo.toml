@@ -1,10 +1,10 @@
 [package]
-name = "sea-orm-graphql-example"
-authors = ["Aaron Leopold <aaronleopold1221@gmail.com>"]
-version = "0.1.0"
-edition = "2024"
+authors      = ["Aaron Leopold <aaronleopold1221@gmail.com>"]
+edition      = "2024"
+name         = "sea-orm-graphql-example"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]

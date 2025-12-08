@@ -2,17 +2,23 @@
 # A separate workspace
 
 [package]
-name = "sea-orm-quickstart"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "sea-orm-quickstart"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [dependencies]
 env_logger = { version = "0.11" }
-log = { version = "0.4" }
-tokio = { version = "1", features = ["full"] }
+log        = { version = "0.4" }
+tokio      = { version = "1", features = ["full"] }
 
 [dependencies.sea-orm]
+features = [
+    "sqlx-sqlite",
+    "runtime-tokio",
+    "debug-print",
+    "entity-registry",
+    "schema-sync",
+]
 path = "../../"
-features = [ "sqlx-sqlite", "runtime-tokio", "debug-print", "entity-registry", "schema-sync" ]

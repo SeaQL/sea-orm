@@ -2,76 +2,129 @@
 # A separate workspace
 
 [package]
-name = "sea-orm-cli"
-version = "2.0.0-rc.20"
 authors = [
     "Chris Tsang <chris.2y3@outlook.com>",
     "Billy Chan <ccw.billy.123@gmail.com>",
 ]
-edition = "2024"
-description = "Command line utility for SeaORM"
-license = "MIT OR Apache-2.0"
-homepage = "https://www.sea-ql.org/SeaORM"
-documentation = "https://docs.rs/sea-orm"
-repository = "https://github.com/SeaQL/sea-orm"
 categories = ["database"]
-keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 default-run = "sea-orm-cli"
+description = "Command line utility for SeaORM"
+documentation = "https://docs.rs/sea-orm"
+edition = "2024"
+homepage = "https://www.sea-ql.org/SeaORM"
+keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
+license = "MIT OR Apache-2.0"
+name = "sea-orm-cli"
+repository = "https://github.com/SeaQL/sea-orm"
 rust-version = "1.85.0"
+version = "2.0.0-rc.20"
 
 [lib]
 name = "sea_orm_cli"
 path = "src/lib.rs"
 
 [[bin]]
-name = "sea-orm-cli"
-path = "src/bin/main.rs"
+name              = "sea-orm-cli"
+path              = "src/bin/main.rs"
 required-features = ["cli", "codegen"]
 
 [[bin]]
-name = "sea"
-path = "src/bin/main.rs"
+name              = "sea"
+path              = "src/bin/main.rs"
 required-features = ["cli", "codegen"]
 
 [dependencies]
+async-std = { version = "1.9", default-features = false, features = [
+    "attributes",
+    "tokio1",
+], optional = true }
+chrono = { version = "0.4.20", default-features = false, features = [
+    "clock",
+] }
 clap = { version = "4.3", features = ["env", "derive"], optional = true }
 dotenvy = { version = "0.15", default-features = false, optional = true }
-async-std = { version = "1.9", default-features = false, features = ["attributes", "tokio1"], optional = true }
-sea-orm-codegen = { version = "=2.0.0-rc.20", path = "../sea-orm-codegen", default-features = false, optional = true }
-sea-schema = { version = "0.17.0-rc.1", default-features = false, features = ["discovery", "writer", "probe"], optional = true }
-sqlx = { version = "0.8.4", default-features = false, optional = true }
-tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
-tracing = { version = "0.1", default-features = false }
-url = { version = "2.2", default-features = false }
-chrono = { version = "0.4.20", default-features = false, features = ["clock"] }
-regex = { version = "1.11.2" }
 glob = { version = "0.3", default-features = false }
-tokio = { version = "1.38.2", default-features = false, features = ["rt-multi-thread", "macros"], optional = true }
 indoc = "2.0.6"
+regex = { version = "1.11.2" }
+sea-orm-codegen = { version = "=2.0.0-rc.20", path = "../sea-orm-codegen", default-features = false, optional = true }
+sea-schema = { version = "0.17.0-rc.1", default-features = false, features = [
+    "discovery",
+    "writer",
+    "probe",
+], optional = true }
+sqlx = { version = "0.8.4", default-features = false, optional = true }
+tokio = { version = "1.38.2", default-features = false, features = [
+    "rt-multi-thread",
+    "macros",
+], optional = true }
+tracing = { version = "0.1", default-features = false }
+tracing-subscriber = { version = "0.3.17", default-features = false, features = [
+    "env-filter",
+    "fmt",
+] }
+url = { version = "2.2", default-features = false }
 
 [dev-dependencies]
 smol = "1.2.5"
 
 [features]
-default = ["codegen", "sqlx-mysql", "sqlx-postgres", "sqlx-sqlite", "runtime-tokio-native-tls"]
-codegen = ["cli", "sqlx", "sea-schema", "sea-orm-codegen"]
 cli = ["clap", "dotenvy"]
-sqlx-mysql = ["sqlx?/sqlx-mysql", "sea-schema?/sqlx-mysql", "sea-schema?/mysql"]
-sqlx-postgres = ["sqlx?/sqlx-postgres", "sea-schema?/sqlx-postgres", "sea-schema?/postgres"]
-sqlx-sqlite = ["sqlx?/sqlx-sqlite", "sea-schema?/sqlx-sqlite", "sea-schema?/sqlite"]
+codegen = ["cli", "sqlx", "sea-schema", "sea-orm-codegen"]
+default = [
+    "codegen",
+    "sqlx-mysql",
+    "sqlx-postgres",
+    "sqlx-sqlite",
+    "runtime-tokio-native-tls",
+]
 postgres-vector = ["sea-schema/postgres-vector"]
+sqlx-mysql = [
+    "sqlx?/sqlx-mysql",
+    "sea-schema?/sqlx-mysql",
+    "sea-schema?/mysql",
+]
+sqlx-postgres = [
+    "sqlx?/sqlx-postgres",
+    "sea-schema?/sqlx-postgres",
+    "sea-schema?/postgres",
+]
+sqlx-sqlite = [
+    "sqlx?/sqlx-sqlite",
+    "sea-schema?/sqlx-sqlite",
+    "sea-schema?/sqlite",
+]
 
-runtime-actix = ["runtime-tokio"]
+runtime-actix            = ["runtime-tokio"]
 runtime-actix-native-tls = ["runtime-tokio-native-tls"]
-runtime-actix-rustls = ["runtime-tokio-rustls"]
+runtime-actix-rustls     = ["runtime-tokio-rustls"]
 
-runtime-async-std = ["async-std", "sqlx?/runtime-async-std", "sea-schema?/runtime-async-std"]
-runtime-async-std-native-tls = ["async-std", "sqlx?/runtime-async-std-native-tls", "sea-schema?/runtime-async-std-native-tls"]
-runtime-async-std-rustls = ["async-std", "sqlx?/runtime-async-std-rustls", "sea-schema?/runtime-async-std-rustls"]
+runtime-async-std = [
+    "async-std",
+    "sqlx?/runtime-async-std",
+    "sea-schema?/runtime-async-std",
+]
+runtime-async-std-native-tls = [
+    "async-std",
+    "sqlx?/runtime-async-std-native-tls",
+    "sea-schema?/runtime-async-std-native-tls",
+]
+runtime-async-std-rustls = [
+    "async-std",
+    "sqlx?/runtime-async-std-rustls",
+    "sea-schema?/runtime-async-std-rustls",
+]
 
 runtime-tokio = ["tokio", "sqlx?/runtime-tokio", "sea-schema?/runtime-tokio"]
-runtime-tokio-native-tls = ["tokio", "sqlx?/runtime-tokio-native-tls", "sea-schema?/runtime-tokio-native-tls"]
-runtime-tokio-rustls = ["tokio", "sqlx?/runtime-tokio-rustls", "sea-schema?/runtime-tokio-rustls"]
+runtime-tokio-native-tls = [
+    "tokio",
+    "sqlx?/runtime-tokio-native-tls",
+    "sea-schema?/runtime-tokio-native-tls",
+]
+runtime-tokio-rustls = [
+    "tokio",
+    "sqlx?/runtime-tokio-rustls",
+    "sea-schema?/runtime-tokio-rustls",
+]
 
 # This allows us to develop using an overridden version of sea-query
 [patch.crates-io]

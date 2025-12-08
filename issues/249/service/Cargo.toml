@@ -1,9 +1,9 @@
 [package]
-name = "service"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "service"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [dependencies]
 sea-orm = { path = "../../../", default-features = false }

@@ -1,23 +1,23 @@
 [package]
-name = "migration"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "migration"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [lib]
 name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 loco-rs = { version = "0.16" }
+tokio   = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [dependencies.sea-orm-migration]
-version = "~2.0.0-rc.20" # sea-orm-migration version
 features = [
-  # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
-  # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
-  # e.g.
-  "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
+    # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
+    # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
+    # e.g.
+    "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
 ]
+version = "~2.0.0-rc.20" # sea-orm-migration version
