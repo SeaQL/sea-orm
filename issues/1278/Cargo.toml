@@ -2,17 +2,17 @@
 # A separate workspace
 
 [package]
-name = "sea-orm-issues-1278"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "sea-orm-issues-1278"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [dependencies]
 serde = "1"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 
 [dependencies.sea-orm]
-path = "../../"
 default-features = false
-features = ["macros", "runtime-tokio-native-tls"]
+features         = ["macros", "runtime-tokio-native-tls"]
+path             = "../../"

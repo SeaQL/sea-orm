@@ -1,23 +1,21 @@
 [package]
-name = "graphql-example-api"
-authors = ["Aaron Leopold <aaronleopold1221@gmail.com>"]
-version = "0.1.0"
-edition = "2024"
+authors      = ["Aaron Leopold <aaronleopold1221@gmail.com>"]
+edition      = "2024"
+name         = "graphql-example-api"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [dependencies]
-async-graphql = { version = "7.0.17" }
-tokio = { version = "1.29", features = ["full"] }
-axum = "0.8"
-dotenvy = "0.15.7"
+async-graphql      = { version = "7.0.17" }
 async-graphql-axum = "7.0"
-entity = { path = "../entity" }
-migration = { path = "../migration" }
+axum               = "0.8"
+dotenvy            = "0.15.7"
+entity             = { path = "../entity" }
+migration          = { path = "../migration" }
+tokio              = { version = "1.29", features = ["full"] }
 
 [dependencies.sea-orm]
-path = "../../../" # remove this line in your own project
-version = "~2.0.0-rc.20" # sea-orm version
 features = [
     "debug-print",
     "runtime-tokio-native-tls",
@@ -25,3 +23,5 @@ features = [
     # "sqlx-mysql",
     "sqlx-sqlite",
 ]
+path = "../../../" # remove this line in your own project
+version = "~2.0.0-rc.20" # sea-orm version

@@ -40,7 +40,9 @@ async-trait = { version = "0.1", default-features = false }
 bigdecimal = { version = "0.4", default-features = false, optional = true }
 chrono = { version = "0.4.30", default-features = false, optional = true }
 derive_more = { version = "2", features = ["debug"] }
-futures-util = { version = "0.3", default-features = false, features = ["std"] }
+futures-util = { version = "0.3", default-features = false, features = [
+    "std",
+] }
 inventory = { version = "0.3", optional = true }
 ipnetwork = { version = "0.20", default-features = false, optional = true }
 itertools = "0.14.0"
@@ -147,7 +149,11 @@ sqlite-no-row-value-before-3_15 = []
 sqlite-use-returning-for-3_35 = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-dep = ["sqlx"]
-sqlx-mysql = ["sqlx-dep", "sea-query-sqlx/sqlx-mysql", "sea-schema/sqlx-mysql"]
+sqlx-mysql = [
+    "sqlx-dep",
+    "sea-query-sqlx/sqlx-mysql",
+    "sea-schema/sqlx-mysql",
+]
 sqlx-postgres = [
     "sqlx-dep",
     "sea-query-sqlx/sqlx-postgres",
@@ -166,7 +172,11 @@ with-bigdecimal = [
     "sea-query/with-bigdecimal",
     "sea-query-sqlx?/with-bigdecimal",
 ]
-with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-sqlx?/with-chrono"]
+with-chrono = [
+    "chrono",
+    "sea-query/with-chrono",
+    "sea-query-sqlx?/with-chrono",
+]
 with-ipnetwork = [
     "ipnetwork",
     "sea-query/with-ipnetwork",

@@ -1,21 +1,19 @@
 [package]
-name = "tonic-example-api"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "tonic-example-api"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [dependencies]
-tonic = "0.9.2"
-tokio = { version = "1.29", features = ["full"] }
-entity = { path = "../entity" }
+entity    = { path = "../entity" }
 migration = { path = "../migration" }
-prost = "0.11.9"
-serde = "1.0"
+prost     = "0.11.9"
+serde     = "1.0"
+tokio     = { version = "1.29", features = ["full"] }
+tonic     = "0.9.2"
 
 [dependencies.sea-orm]
-path = "../../../" # remove this line in your own project
-version = "~2.0.0-rc.20" # sea-orm version
 features = [
     "debug-print",
     "runtime-tokio-rustls",
@@ -23,6 +21,8 @@ features = [
     # "sqlx-postgres",
     "sqlx-sqlite",
 ]
+path = "../../../" # remove this line in your own project
+version = "~2.0.0-rc.20" # sea-orm version
 
 [build-dependencies]
 tonic-build = "0.9.2"

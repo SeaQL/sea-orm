@@ -5,6 +5,8 @@
 # Following jobs will always run
 #
 #   - `clippy`
+#   - `rustfmt`
+#   - `taplo`
 #   - `test`
 #   - `examples`
 #
@@ -130,6 +132,16 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo fmt --manifest-path sea-orm-cli/Cargo.toml --all -- --check
       - run: cargo fmt --manifest-path sea-orm-migration/Cargo.toml --all -- --check
+
+  taplo:
+    name: Taplo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - run: cargo install --locked taplo-cli
+      - run: taplo fmt --check 
 
   compile:
     name: Compile

@@ -1,9 +1,9 @@
 [package]
-name = "sea-orm-jsonrpsee-example"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "sea-orm-jsonrpsee-example"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]

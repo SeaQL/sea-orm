@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+taplo fmt
 if [ -d ./build-tools ]; then
     targets=(
         "Cargo.toml"

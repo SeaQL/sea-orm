@@ -2,14 +2,17 @@
 # A separate workspace
 
 [package]
-name = "sea-orm-example-basic"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "sea-orm-example-basic"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
-sea-orm = { path = "../../", features = [ "sqlx-mysql", "runtime-tokio-native-tls" ] }
-serde_json = { version = "1" }
 futures-util = { version = "0.3" }
+sea-orm = { path = "../../", features = [
+    "sqlx-mysql",
+    "runtime-tokio-native-tls",
+] }
+serde_json = { version = "1" }
+tokio = { version = "1", features = ["full"] }
