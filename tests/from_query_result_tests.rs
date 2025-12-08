@@ -49,6 +49,14 @@ struct BakeryFlat {
     profit: f64,
 }
 
+#[derive(FromQueryResult)]
+struct CakeWithOptionalBakeryModel {
+    id: i32,
+    name: String,
+    #[sea_orm(nested, prefix)]
+    bakery: Option<bakery::Model>,
+}
+
 #[sea_orm_macros::test]
 async fn from_query_result_left_join_does_not_exist() {
     let ctx = TestContext::new("from_query_result_left_join_does_not_exist").await;
@@ -89,9 +97,9 @@ async fn from_query_result_left_join_with_optional_model_does_not_exist() {
         .select_only()
         .column(cake::Column::Id)
         .column(cake::Column::Name)
-        .column(bakery::Column::Id)
-        .column(bakery::Column::Name)
-        .column(bakery::Column::ProfitMargin)
+        .column_as(bakery::Column::Id, "bakery_id")
+        .column_as(bakery::Column::Name, "bakery_name")
+        .column_as(bakery::Column::ProfitMargin, "bakery_profit_margin")
         .left_join(bakery::Entity)
         .order_by_asc(cake::Column::Id)
         .into_model()

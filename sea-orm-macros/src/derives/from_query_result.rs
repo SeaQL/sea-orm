@@ -27,6 +27,8 @@ pub(super) struct FromQueryResultItem {
     pub typ: ItemType,
     pub ident: Ident,
     pub alias: Option<String>,
+    pub field_type: syn::Type,
+    pub prefix: bool,
 }
 
 /// Initially, we try to obtain the value for each field and check if it is an ordinary DB error
@@ -42,15 +44,26 @@ struct TryFromQueryResultCheck<'a>(bool, &'a FromQueryResultItem);
 
 impl ToTokens for TryFromQueryResultCheck<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let FromQueryResultItem { ident, typ, alias } = self.1;
+        let FromQueryResultItem {
+            ident,
+            typ,
+            alias,
+            field_type,
+            ..
+        } = self.1;
 
         match typ {
             ItemType::Flat => {
                 let name = alias
                     .to_owned()
                     .unwrap_or_else(|| ident.unraw().to_string());
+                let prefix_to_use = if alias.is_some() {
+                    quote! { "" }
+                } else {
+                    quote! { pre }
+                };
                 tokens.extend(quote! {
-                    let #ident = match row.try_get_nullable(pre, #name) {
+                    let #ident = match row.try_get_nullable(#prefix_to_use, #name) {
                         Err(v @ sea_orm::TryGetError::DbErr(_)) => {
                             return Err(v);
                         }
@@ -64,14 +77,32 @@ impl ToTokens for TryFromQueryResultCheck<'_> {
                 });
             }
             ItemType::Nested => {
-                let prefix = if self.0 {
+                let prefix_str = if self.1.prefix {
                     let name = ident.unraw().to_string();
                     quote! { &format!("{pre}{}_", #name) }
+                } else if self.0 {
+                    let is_option = if let syn::Type::Path(type_path) = field_type {
+                        type_path
+                            .path
+                            .segments
+                            .last()
+                            .map(|seg| seg.ident == "Option")
+                            .unwrap_or(false)
+                    } else {
+                        false
+                    };
+
+                    if is_option {
+                        let name = ident.unraw().to_string();
+                        quote! { &format!("{pre}{}_", #name) }
+                    } else {
+                        quote! { pre }
+                    }
                 } else {
                     quote! { pre }
                 };
                 tokens.extend(quote! {
-                    let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(row, #prefix) {
+                    let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(row, #prefix_str) {
                         Err(v @ sea_orm::TryGetError::DbErr(_)) => {
                             return Err(v);
                         }
@@ -87,13 +118,44 @@ struct TryFromQueryResultAssignment<'a>(&'a FromQueryResultItem);
 
 impl ToTokens for TryFromQueryResultAssignment<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let FromQueryResultItem { ident, typ, .. } = self.0;
+        let FromQueryResultItem {
+            ident,
+            typ,
+            field_type,
+            ..
+        } = self.0;
 
         match typ {
-            ItemType::Flat | ItemType::Nested => {
+            ItemType::Flat => {
                 tokens.extend(quote! {
                     #ident: #ident?,
                 });
+            }
+            ItemType::Nested => {
+                let is_option = if let syn::Type::Path(type_path) = field_type {
+                    type_path
+                        .path
+                        .segments
+                        .last()
+                        .map(|seg| seg.ident == "Option")
+                        .unwrap_or(false)
+                } else {
+                    false
+                };
+
+                if is_option {
+                    tokens.extend(quote! {
+                        #ident: match #ident {
+                            Ok(v) => Some(v),
+                            Err(sea_orm::TryGetError::Null(_)) => None,
+                            Err(e) => return Err(e),
+                        },
+                    });
+                } else {
+                    tokens.extend(quote! {
+                        #ident: #ident?,
+                    });
+                }
             }
             ItemType::Skip => {
                 tokens.extend(quote! {
@@ -125,6 +187,7 @@ impl DeriveFromQueryResult {
         for parsed_field in parsed_fields {
             let mut typ = ItemType::Flat;
             let mut alias = None;
+            let mut prefix = false;
             for attr in parsed_field.attrs.iter() {
                 if !attr.path().is_ident("sea_orm") {
                     continue;
@@ -136,6 +199,8 @@ impl DeriveFromQueryResult {
                             typ = ItemType::Skip;
                         } else if meta.exists("nested") {
                             typ = ItemType::Nested;
+                        } else if meta.exists("prefix") {
+                            prefix = true;
                         } else if let Some(alias_) = meta.get_as_kv("from_alias") {
                             alias = Some(alias_);
                         } else {
@@ -145,7 +210,14 @@ impl DeriveFromQueryResult {
                 }
             }
             let ident = format_ident!("{}", parsed_field.ident.unwrap().to_string());
-            fields.push(FromQueryResultItem { typ, ident, alias });
+            let field_type = parsed_field.ty;
+            fields.push(FromQueryResultItem {
+                typ,
+                ident,
+                alias,
+                field_type,
+                prefix,
+            });
         }
 
         Ok(Self {
