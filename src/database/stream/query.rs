@@ -82,7 +82,7 @@ impl QueryStream {
                 InnerConnection::Rusqlite(conn) => {
                     use itertools::Either;
                     let start = _metric_callback.is_some().then(std::time::SystemTime::now);
-                    let stream = match conn.query_all_stmt(stmt) {
+                    let stream = match conn.stream(stmt) {
                         Ok(rows) => Either::Left(rows.into_iter().map(Ok)),
                         Err(err) => Either::Right(std::iter::once(Err(err))),
                     };

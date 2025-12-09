@@ -1,0 +1,1366 @@
+#![allow(unused_imports, dead_code)]
+
+pub mod common;
+
+pub use common::{TestContext, bakery_chain::*, setup::*};
+use pretty_assertions::assert_eq;
+use sea_orm::sea_query::{Expr, Func, SimpleExpr};
+use sea_orm::{
+    DbBackend, DbErr, DerivePartialModel, FromQueryResult,
+    entity::*,
+    prelude::{ChronoUtc, DateTimeUtc, Decimal, Uuid},
+    query::*,
+};
+
+// Run the test locally:
+// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std-native-tls --test relational_tests
+#[sea_orm_macros::test]
+pub fn left_join() {
+    let ctx = TestContext::new("test_left_join");
+    create_tables(&ctx.db).unwrap();
+
+    let bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert bakery");
+
+    let _baker_1 = baker::ActiveModel {
+        name: Set("Baker 1".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+61424000000",
+            "home": "0395555555",
+            "address": "12 Test St, Testville, Vic, Australia"
+        })),
+        bakery_id: Set(Some(bakery.id)),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert baker");
+
+    let _baker_2 = baker::ActiveModel {
+        name: Set("Baker 2".to_owned()),
+        contact_details: Set(serde_json::json!({})),
+        bakery_id: Set(None),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert baker");
+
+    #[derive(Debug, FromQueryResult)]
+    struct SelectResult {
+        name: String,
+        bakery_name: Option<String>,
+    }
+
+    let select = baker::Entity::find()
+        .left_join(bakery::Entity)
+        .select_only()
+        .column(baker::Column::Name)
+        .column_as(bakery::Column::Name, "bakery_name")
+        .filter(baker::Column::Name.contains("Baker 1"));
+
+    let result = select
+        .clone()
+        .into_model::<SelectResult>()
+        .one(&ctx.db)
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.name.as_str(), "Baker 1");
+    assert_eq!(result.bakery_name, Some("SeaSide Bakery".to_string()));
+
+    #[derive(DerivePartialModel, Debug, PartialEq)]
+    #[sea_orm(entity = "Baker")]
+    struct PartialSelectResult {
+        name: String,
+        #[sea_orm(from_expr = "Expr::col((bakery::Entity, bakery::Column::Name))")]
+        bakery_name: Option<String>,
+        #[sea_orm(
+            from_expr = r#"SimpleExpr::FunctionCall(Func::upper(Expr::col((bakery::Entity, bakery::Column::Name))))"#
+        )]
+        bakery_name_upper: Option<String>,
+    }
+
+    let result = select
+        .into_partial_model::<PartialSelectResult>()
+        .one(&ctx.db)
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.name.as_str(), "Baker 1");
+    assert_eq!(result.bakery_name, Some("SeaSide Bakery".to_string()));
+    assert_eq!(result.bakery_name_upper, Some("SEASIDE BAKERY".to_string()));
+
+    let select = baker::Entity::find()
+        .left_join(bakery::Entity)
+        .select_only()
+        .column(baker::Column::Name)
+        .column_as(bakery::Column::Name, "bakery_name")
+        .filter(baker::Column::Name.contains("Baker 2"));
+
+    let result = select
+        .into_model::<SelectResult>()
+        .one(&ctx.db)
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.bakery_name, None);
+
+    ctx.delete();
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
+pub fn right_join() {
+    let ctx = TestContext::new("test_right_join");
+    create_tables(&ctx.db).unwrap();
+
+    let bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert bakery");
+
+    let customer_kate = customer::ActiveModel {
+        name: Set("Kate".to_owned()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert customer");
+
+    let _customer_jim = customer::ActiveModel {
+        name: Set("Jim".to_owned()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert customer");
+
+    let _order = order::ActiveModel {
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
+        total: Set(rust_dec(15.10)),
+        placed_at: Set(ChronoUtc::now()),
+
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert order");
+
+    #[derive(FromQueryResult)]
+    #[allow(dead_code)]
+    struct SelectResult {
+        name: String,
+        order_total: Option<Decimal>,
+    }
+
+    let select = order::Entity::find()
+        .right_join(customer::Entity)
+        .select_only()
+        .column(customer::Column::Name)
+        .column_as(order::Column::Total, "order_total")
+        .filter(customer::Column::Name.contains("Kate"));
+
+    let result = select
+        .into_model::<SelectResult>()
+        .one(&ctx.db)
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.order_total, Some(rust_dec(15.10)));
+
+    let select = order::Entity::find()
+        .right_join(customer::Entity)
+        .select_only()
+        .column(customer::Column::Name)
+        .column_as(order::Column::Total, "order_total")
+        .filter(customer::Column::Name.contains("Jim"));
+
+    let result = select
+        .into_model::<SelectResult>()
+        .one(&ctx.db)
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.order_total, None);
+
+    ctx.delete();
+}
+
+#[sea_orm_macros::test]
+pub fn inner_join() {
+    let ctx = TestContext::new("test_inner_join");
+    create_tables(&ctx.db).unwrap();
+
+    let bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert bakery");
+
+    let customer_kate = customer::ActiveModel {
+        name: Set("Kate".to_owned()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert customer");
+
+    let _customer_jim = customer::ActiveModel {
+        name: Set("Jim".to_owned()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert customer");
+
+    let kate_order_1 = order::ActiveModel {
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
+        total: Set(rust_dec(15.10)),
+        placed_at: Set(ChronoUtc::now()),
+
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert order");
+
+    let kate_order_2 = order::ActiveModel {
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
+        total: Set(rust_dec(100.00)),
+        placed_at: Set(ChronoUtc::now()),
+
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert order");
+
+    #[derive(Debug, FromQueryResult)]
+    struct SelectResult {
+        name: String,
+        order_total: Option<Decimal>,
+    }
+
+    let select = order::Entity::find()
+        .inner_join(customer::Entity)
+        .select_only()
+        .column(customer::Column::Name)
+        .column_as(order::Column::Total, "order_total");
+
+    let results = select.into_model::<SelectResult>().all(&ctx.db).unwrap();
+
+    assert_eq!(results.len(), 2);
+    assert!(
+        results
+            .iter()
+            .any(|result| result.name == customer_kate.name.clone()
+                && result.order_total == Some(kate_order_1.total))
+    );
+    assert!(
+        results
+            .iter()
+            .any(|result| result.name == customer_kate.name.clone()
+                && result.order_total == Some(kate_order_2.total))
+    );
+
+    ctx.delete();
+}
+
+#[sea_orm_macros::test]
+pub fn group_by() {
+    let ctx = TestContext::new("test_group_by");
+    create_tables(&ctx.db).unwrap();
+
+    let bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert bakery");
+
+    let customer_kate = customer::ActiveModel {
+        name: Set("Kate".to_owned()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert customer");
+
+    let customer_sam = customer::ActiveModel {
+        name: Set("Sam".to_owned()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert customer");
+
+    let kate_order_1 = order::ActiveModel {
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
+        total: Set(rust_dec(99.95)),
+        placed_at: Set(ChronoUtc::now()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert order");
+
+    let kate_order_2 = order::ActiveModel {
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
+        total: Set(rust_dec(200.00)),
+        placed_at: Set(ChronoUtc::now()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert order");
+
+    let sam_order = order::ActiveModel {
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_sam.id),
+        total: Set(rust_dec(28.24)),
+        placed_at: Set(ChronoUtc::now()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert order");
+
+    type Count = i64;
+
+    #[derive(Debug, FromQueryResult)]
+    struct SelectResult {
+        name: String,
+        number_orders: Count,
+        total_spent: Decimal,
+        min_spent: Decimal,
+        max_spent: Decimal,
+    }
+
+    let select = customer::Entity::find()
+        .left_join(order::Entity)
+        .select_only()
+        .column(customer::Column::Name)
+        .column_as(order::Column::Total.count(), "number_orders")
+        .column_as(order::Column::Total.sum(), "total_spent")
+        .column_as(order::Column::Total.min(), "min_spent")
+        .column_as(order::Column::Total.max(), "max_spent")
+        .order_by_asc(customer::Column::Name)
+        .group_by(customer::Column::Name);
+
+    let result = select
+        .into_model::<SelectResult>()
+        .one(&ctx.db)
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(result.name, "Kate");
+    assert_eq!(result.number_orders, 2);
+    assert_eq!(result.total_spent, kate_order_1.total + kate_order_2.total);
+    assert_eq!(result.min_spent, kate_order_1.total.min(kate_order_2.total));
+    assert_eq!(result.max_spent, kate_order_1.total.max(kate_order_2.total));
+
+    let (customer, total_spent): (String, Decimal) = customer::Entity::find()
+        .left_join(order::Entity)
+        .select_only()
+        .column(customer::Column::Name)
+        .column_as(order::Column::Total.sum(), "sum")
+        .group_by(customer::Column::Name)
+        .into_tuple()
+        .one(&ctx.db)
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(customer, "Kate");
+    assert_eq!(total_spent, result.total_spent);
+
+    let sum_order_value: Decimal = order::Entity::find()
+        .select_only()
+        .column_as(order::Column::Total.sum(), "sum")
+        .into_tuple()
+        .one(&ctx.db)
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        sum_order_value,
+        kate_order_1.total + kate_order_2.total + sam_order.total
+    );
+
+    ctx.delete();
+}
+
+#[sea_orm_macros::test]
+pub fn having() {
+    // customers with orders with total equal to $90
+    let ctx = TestContext::new("test_having");
+    create_tables(&ctx.db).unwrap();
+
+    let bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert bakery");
+
+    let customer_kate = customer::ActiveModel {
+        name: Set("Kate".to_owned()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert customer");
+
+    let kate_order_1 = order::ActiveModel {
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
+        total: Set(rust_dec(100.00)),
+        placed_at: Set(ChronoUtc::now()),
+
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert order");
+
+    let _kate_order_2 = order::ActiveModel {
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
+        total: Set(rust_dec(12.00)),
+        placed_at: Set(ChronoUtc::now()),
+
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert order");
+
+    let customer_bob = customer::ActiveModel {
+        name: Set("Bob".to_owned()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert customer");
+
+    let _bob_order_1 = order::ActiveModel {
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_bob.id),
+        total: Set(rust_dec(50.0)),
+        placed_at: Set(ChronoUtc::now()),
+
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert order");
+
+    let _bob_order_2 = order::ActiveModel {
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_bob.id),
+        total: Set(rust_dec(50.0)),
+        placed_at: Set(ChronoUtc::now()),
+
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .expect("could not insert order");
+
+    #[derive(Debug, FromQueryResult)]
+    struct SelectResult {
+        name: String,
+        order_total: Option<Decimal>,
+    }
+
+    let results = customer::Entity::find()
+        .inner_join(order::Entity)
+        .select_only()
+        .column(customer::Column::Name)
+        .column_as(order::Column::Total, "order_total")
+        .group_by(customer::Column::Name)
+        .group_by(order::Column::Total)
+        .having(order::Column::Total.gt(rust_dec(90.00)))
+        .into_model::<SelectResult>()
+        .all(&ctx.db)
+        .unwrap();
+
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].name, customer_kate.name.clone());
+    assert_eq!(results[0].order_total, Some(kate_order_1.total));
+
+    ctx.delete();
+}
+
+#[sea_orm_macros::test]
+pub fn related() -> Result<(), DbErr> {
+    use sea_orm::{SelectA, SelectB};
+
+    let ctx = TestContext::new("test_related");
+    create_tables(&ctx.db)?;
+
+    // SeaSide Bakery
+    let seaside_bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    };
+    let seaside_bakery_res = Bakery::insert(seaside_bakery).exec(&ctx.db)?;
+
+    // Bob's Baker
+    let baker_bob = baker::ActiveModel {
+        name: Set("Baker Bob".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+61424000000",
+            "home": "0395555555",
+            "address": "12 Test St, Testville, Vic, Australia"
+        })),
+        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        ..Default::default()
+    }
+    .insert(&ctx.db)?;
+
+    // Bobby's Baker
+    let baker_bobby = baker::ActiveModel {
+        name: Set("Baker Bobby".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+85212345678",
+        })),
+        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        ..Default::default()
+    };
+    let _baker_bobby_res = Baker::insert(baker_bobby).exec(&ctx.db)?;
+
+    // Terres Bakery
+    let terres_bakery = bakery::ActiveModel {
+        name: Set("Terres Bakery".to_owned()),
+        profit_margin: Set(13.5),
+        ..Default::default()
+    };
+    let terres_bakery_res = Bakery::insert(terres_bakery).exec(&ctx.db)?;
+
+    // Ada's Baker
+    let baker_ada = baker::ActiveModel {
+        name: Set("Baker Ada".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+61424000000",
+            "home": "0395555555",
+            "address": "12 Test St, Testville, Vic, Australia"
+        })),
+        bakery_id: Set(Some(terres_bakery_res.last_insert_id)),
+        ..Default::default()
+    }
+    .insert(&ctx.db)?;
+
+    // Stone Bakery, with no baker
+    let stone_bakery = bakery::ActiveModel {
+        name: Set("Stone Bakery".to_owned()),
+        profit_margin: Set(13.5),
+        ..Default::default()
+    };
+    let _stone_bakery_res = Bakery::insert(stone_bakery).exec(&ctx.db)?;
+
+    let cake = cake::ActiveModel {
+        name: Set("Chocolate".to_owned()),
+        price: Set("1.2".parse().unwrap()),
+        gluten_free: Set(false),
+        bakery_id: Set(None),
+        ..Default::default()
+    }
+    .insert(&ctx.db)?;
+
+    cakes_bakers::ActiveModel {
+        cake_id: Set(cake.id),
+        baker_id: Set(baker_bob.id),
+    }
+    .insert(&ctx.db)?;
+
+    cakes_bakers::ActiveModel {
+        cake_id: Set(cake.id),
+        baker_id: Set(baker_ada.id),
+    }
+    .insert(&ctx.db)?;
+
+    #[derive(Debug, FromQueryResult, PartialEq)]
+    struct BakerLite {
+        name: String,
+    }
+
+    #[derive(Debug, FromQueryResult, PartialEq)]
+    struct BakeryLite {
+        name: String,
+    }
+
+    // get all bakery and baker's name and put them into tuples
+    let bakers_in_bakery: Vec<(BakeryLite, Option<BakerLite>)> = Bakery::find()
+        .find_also_related(Baker)
+        .select_only()
+        .column_as(bakery::Column::Name, (SelectA, bakery::Column::Name))
+        .column_as(baker::Column::Name, (SelectB, baker::Column::Name))
+        .order_by_asc(bakery::Column::Id)
+        .order_by_asc(baker::Column::Id)
+        .into_model()
+        .all(&ctx.db)?;
+
+    assert_eq!(
+        bakers_in_bakery,
+        [
+            (
+                BakeryLite {
+                    name: "SeaSide Bakery".to_owned(),
+                },
+                Some(BakerLite {
+                    name: "Baker Bob".to_owned(),
+                })
+            ),
+            (
+                BakeryLite {
+                    name: "SeaSide Bakery".to_owned(),
+                },
+                Some(BakerLite {
+                    name: "Baker Bobby".to_owned(),
+                })
+            ),
+            (
+                BakeryLite {
+                    name: "Terres Bakery".to_owned(),
+                },
+                Some(BakerLite {
+                    name: "Baker Ada".to_owned(),
+                })
+            ),
+            (
+                BakeryLite {
+                    name: "Stone Bakery".to_owned(),
+                },
+                None,
+            ),
+        ]
+    );
+
+    let seaside_bakery = Bakery::find()
+        .filter(bakery::Column::Id.eq(1))
+        .one(&ctx.db)?
+        .unwrap();
+
+    let bakers = seaside_bakery.find_related(Baker).all(&ctx.db)?;
+
+    assert_eq!(
+        bakers,
+        [
+            baker::Model {
+                id: 1,
+                name: "Baker Bob".to_owned(),
+                contact_details: serde_json::json!({
+                    "mobile": "+61424000000",
+                    "home": "0395555555",
+                    "address": "12 Test St, Testville, Vic, Australia"
+                }),
+                bakery_id: Some(1),
+            },
+            baker::Model {
+                id: 2,
+                name: "Baker Bobby".to_owned(),
+                contact_details: serde_json::json!({
+                    "mobile": "+85212345678",
+                }),
+                bakery_id: Some(1),
+            }
+        ]
+    );
+
+    let select_bakery_with_baker = Bakery::find()
+        .find_with_related(Baker)
+        .order_by_asc(baker::Column::Id);
+
+    assert_eq!(
+        select_bakery_with_baker
+            .build(sea_orm::DatabaseBackend::MySql)
+            .to_string(),
+        [
+            "SELECT `bakery`.`id` AS `A_id`,",
+            "`bakery`.`name` AS `A_name`,",
+            "`bakery`.`profit_margin` AS `A_profit_margin`,",
+            "`baker`.`id` AS `B_id`,",
+            "`baker`.`name` AS `B_name`,",
+            "`baker`.`contact_details` AS `B_contact_details`,",
+            "`baker`.`bakery_id` AS `B_bakery_id`",
+            "FROM `bakery`",
+            "LEFT JOIN `baker` ON `bakery`.`id` = `baker`.`bakery_id`",
+            "ORDER BY `bakery`.`id` ASC, `baker`.`id` ASC"
+        ]
+        .join(" ")
+    );
+
+    let select_bakery_with_baker_result = select_bakery_with_baker.all(&ctx.db)?;
+
+    assert_eq!(
+        select_bakery_with_baker_result,
+        [
+            (
+                bakery::Model {
+                    id: 1,
+                    name: "SeaSide Bakery".to_owned(),
+                    profit_margin: 10.4,
+                },
+                vec![
+                    baker::Model {
+                        id: 1,
+                        name: "Baker Bob".to_owned(),
+                        contact_details: serde_json::json!({
+                            "mobile": "+61424000000",
+                            "home": "0395555555",
+                            "address": "12 Test St, Testville, Vic, Australia"
+                        }),
+                        bakery_id: Some(seaside_bakery_res.last_insert_id),
+                    },
+                    baker::Model {
+                        id: 2,
+                        name: "Baker Bobby".to_owned(),
+                        contact_details: serde_json::json!({
+                            "mobile": "+85212345678",
+                        }),
+                        bakery_id: Some(seaside_bakery_res.last_insert_id),
+                    }
+                ]
+            ),
+            (
+                bakery::Model {
+                    id: 2,
+                    name: "Terres Bakery".to_owned(),
+                    profit_margin: 13.5,
+                },
+                vec![baker::Model {
+                    id: 3,
+                    name: "Baker Ada".to_owned(),
+                    contact_details: serde_json::json!({
+                        "mobile": "+61424000000",
+                        "home": "0395555555",
+                        "address": "12 Test St, Testville, Vic, Australia"
+                    }),
+                    bakery_id: Some(terres_bakery_res.last_insert_id),
+                }]
+            ),
+            (
+                bakery::Model {
+                    id: 3,
+                    name: "Stone Bakery".to_owned(),
+                    profit_margin: 13.5,
+                },
+                vec![]
+            ),
+        ]
+    );
+
+    assert_eq!(
+        select_bakery_with_baker_result,
+        Bakery::find()
+            .find_with_linked(bakery::ToBaker)
+            .order_by_asc(bakery::Column::Id)
+            .order_by_asc(Expr::col(("r0", baker::Column::Id)))
+            .all(&ctx.db)?
+    );
+
+    let select_cake_with_baker = Cake::find().find_with_related(Baker);
+
+    assert_eq!(
+        select_cake_with_baker
+            .build(sea_orm::DatabaseBackend::MySql)
+            .to_string(),
+        [
+            "SELECT",
+            "`cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`, `cake`.`price` AS `A_price`,",
+            "`cake`.`bakery_id` AS `A_bakery_id`, `cake`.`gluten_free` AS `A_gluten_free`,",
+            "`cake`.`serial` AS `A_serial`, `baker`.`id` AS `B_id`, `baker`.`name` AS `B_name`,",
+            "`baker`.`contact_details` AS `B_contact_details`, `baker`.`bakery_id` AS `B_bakery_id`",
+            "FROM `cake` LEFT JOIN `cakes_bakers` ON `cake`.`id` = `cakes_bakers`.`cake_id`",
+            "LEFT JOIN `baker` ON `cakes_bakers`.`baker_id` = `baker`.`id`",
+            "ORDER BY `cake`.`id` ASC"
+        ].join(" ")
+    );
+
+    assert_eq!(
+        select_cake_with_baker.all(&ctx.db)?,
+        [(cake.try_into_model().unwrap(), vec![baker_bob, baker_ada])]
+    );
+
+    ctx.delete();
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+pub fn linked() -> Result<(), DbErr> {
+    use common::bakery_chain::Order;
+    use sea_orm::{SelectA, SelectB};
+    use sea_query::{Alias, Expr};
+
+    let ctx = TestContext::new("test_linked");
+    create_tables(&ctx.db)?;
+
+    // SeaSide Bakery
+    let seaside_bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    };
+    let seaside_bakery_res = Bakery::insert(seaside_bakery).exec(&ctx.db)?;
+
+    // Bob's Baker, Cake & Cake Baker
+    let baker_bob = baker::ActiveModel {
+        name: Set("Baker Bob".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+61424000000",
+            "home": "0395555555",
+            "address": "12 Test St, Testville, Vic, Australia"
+        })),
+        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        ..Default::default()
+    };
+    let baker_bob_res = Baker::insert(baker_bob).exec(&ctx.db)?;
+    let mud_cake = cake::ActiveModel {
+        name: Set("Mud Cake".to_owned()),
+        price: Set(rust_dec(10.25)),
+        gluten_free: Set(false),
+        serial: Set(Uuid::new_v4()),
+        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        ..Default::default()
+    };
+    let mud_cake_res = Cake::insert(mud_cake).exec(&ctx.db)?;
+    let bob_cakes_bakers = cakes_bakers::ActiveModel {
+        cake_id: Set(mud_cake_res.last_insert_id),
+        baker_id: Set(baker_bob_res.last_insert_id),
+    };
+    CakesBakers::insert(bob_cakes_bakers).exec(&ctx.db)?;
+
+    // Bobby's Baker, Cake & Cake Baker
+    let baker_bobby = baker::ActiveModel {
+        name: Set("Baker Bobby".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+85212345678",
+        })),
+        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        ..Default::default()
+    };
+    let baker_bobby_res = Baker::insert(baker_bobby).exec(&ctx.db)?;
+    let cheese_cake = cake::ActiveModel {
+        name: Set("Cheese Cake".to_owned()),
+        price: Set(rust_dec(20.5)),
+        gluten_free: Set(false),
+        serial: Set(Uuid::new_v4()),
+        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        ..Default::default()
+    };
+    let cheese_cake_res = Cake::insert(cheese_cake).exec(&ctx.db)?;
+    let bobby_cakes_bakers = cakes_bakers::ActiveModel {
+        cake_id: Set(cheese_cake_res.last_insert_id),
+        baker_id: Set(baker_bobby_res.last_insert_id),
+    };
+    CakesBakers::insert(bobby_cakes_bakers).exec(&ctx.db)?;
+    let chocolate_cake = cake::ActiveModel {
+        name: Set("Chocolate Cake".to_owned()),
+        price: Set(rust_dec(30.15)),
+        gluten_free: Set(false),
+        serial: Set(Uuid::new_v4()),
+        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        ..Default::default()
+    };
+    let chocolate_cake_res = Cake::insert(chocolate_cake).exec(&ctx.db)?;
+    let bobby_cakes_bakers = cakes_bakers::ActiveModel {
+        cake_id: Set(chocolate_cake_res.last_insert_id),
+        baker_id: Set(baker_bobby_res.last_insert_id),
+    };
+    CakesBakers::insert(bobby_cakes_bakers).exec(&ctx.db)?;
+
+    // Freerider's Baker, no cake baked
+    let baker_freerider = baker::ActiveModel {
+        name: Set("Freerider".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+85298765432",
+        })),
+        bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
+        ..Default::default()
+    };
+    let _baker_freerider_res = Baker::insert(baker_freerider).exec(&ctx.db)?;
+
+    // Kate's Customer, Order & Line Item
+    let customer_kate = customer::ActiveModel {
+        name: Set("Kate".to_owned()),
+        notes: Set(Some("Loves cheese cake".to_owned())),
+        ..Default::default()
+    };
+    let customer_kate_res = Customer::insert(customer_kate).exec(&ctx.db)?;
+    let kate_order_1 = order::ActiveModel {
+        bakery_id: Set(seaside_bakery_res.last_insert_id),
+        customer_id: Set(customer_kate_res.last_insert_id),
+        total: Set(rust_dec(15.10)),
+        placed_at: Set(ChronoUtc::now()),
+        ..Default::default()
+    };
+    let kate_order_1_res = Order::insert(kate_order_1).exec(&ctx.db)?;
+    lineitem::ActiveModel {
+        cake_id: Set(cheese_cake_res.last_insert_id),
+        order_id: Set(kate_order_1_res.last_insert_id),
+        price: Set(rust_dec(7.55)),
+        quantity: Set(2),
+        ..Default::default()
+    }
+    .save(&ctx.db)?;
+    let kate_order_2 = order::ActiveModel {
+        bakery_id: Set(seaside_bakery_res.last_insert_id),
+        customer_id: Set(customer_kate_res.last_insert_id),
+        total: Set(rust_dec(29.7)),
+        placed_at: Set(ChronoUtc::now()),
+        ..Default::default()
+    };
+    let kate_order_2_res = Order::insert(kate_order_2).exec(&ctx.db)?;
+    lineitem::ActiveModel {
+        cake_id: Set(chocolate_cake_res.last_insert_id),
+        order_id: Set(kate_order_2_res.last_insert_id),
+        price: Set(rust_dec(9.9)),
+        quantity: Set(3),
+        ..Default::default()
+    }
+    .save(&ctx.db)?;
+
+    // Kara's Customer, Order & Line Item
+    let customer_kara = customer::ActiveModel {
+        name: Set("Kara".to_owned()),
+        notes: Set(Some("Loves all cakes".to_owned())),
+        ..Default::default()
+    };
+    let customer_kara_res = Customer::insert(customer_kara).exec(&ctx.db)?;
+    let kara_order_1 = order::ActiveModel {
+        bakery_id: Set(seaside_bakery_res.last_insert_id),
+        customer_id: Set(customer_kara_res.last_insert_id),
+        total: Set(rust_dec(15.10)),
+        placed_at: Set(ChronoUtc::now()),
+        ..Default::default()
+    };
+    let kara_order_1_res = Order::insert(kara_order_1).exec(&ctx.db)?;
+    lineitem::ActiveModel {
+        cake_id: Set(mud_cake_res.last_insert_id),
+        order_id: Set(kara_order_1_res.last_insert_id),
+        price: Set(rust_dec(7.55)),
+        quantity: Set(2),
+        ..Default::default()
+    }
+    .save(&ctx.db)?;
+    let kara_order_2 = order::ActiveModel {
+        bakery_id: Set(seaside_bakery_res.last_insert_id),
+        customer_id: Set(customer_kara_res.last_insert_id),
+        total: Set(rust_dec(29.7)),
+        placed_at: Set(ChronoUtc::now()),
+        ..Default::default()
+    };
+    let kara_order_2_res = Order::insert(kara_order_2).exec(&ctx.db)?;
+    lineitem::ActiveModel {
+        cake_id: Set(cheese_cake_res.last_insert_id),
+        order_id: Set(kara_order_2_res.last_insert_id),
+        price: Set(rust_dec(9.9)),
+        quantity: Set(3),
+        ..Default::default()
+    }
+    .save(&ctx.db)?;
+
+    #[derive(Debug, FromQueryResult, PartialEq)]
+    struct BakerLite {
+        name: String,
+    }
+
+    #[derive(Debug, FromQueryResult, PartialEq)]
+    struct CustomerLite {
+        name: String,
+    }
+
+    // filtered find
+    let baked_for_customers: Vec<(BakerLite, Option<CustomerLite>)> = Baker::find()
+        .find_also_linked(baker::BakedForCustomer)
+        .select_only()
+        .column_as(baker::Column::Name, (SelectA, baker::Column::Name))
+        .column_as(
+            Expr::col(("r4", customer::Column::Name)),
+            (SelectB, customer::Column::Name),
+        )
+        .group_by(baker::Column::Id)
+        .group_by(Expr::col(("r4", customer::Column::Id)))
+        .group_by(baker::Column::Name)
+        .group_by(Expr::col(("r4", customer::Column::Name)))
+        .order_by_asc(baker::Column::Id)
+        .order_by_asc(Expr::col(("r4", customer::Column::Id)))
+        .into_model()
+        .all(&ctx.db)?;
+
+    assert_eq!(
+        baked_for_customers,
+        [
+            (
+                BakerLite {
+                    name: "Baker Bob".to_owned(),
+                },
+                Some(CustomerLite {
+                    name: "Kara".to_owned(),
+                })
+            ),
+            (
+                BakerLite {
+                    name: "Baker Bobby".to_owned(),
+                },
+                Some(CustomerLite {
+                    name: "Kate".to_owned(),
+                })
+            ),
+            (
+                BakerLite {
+                    name: "Baker Bobby".to_owned(),
+                },
+                Some(CustomerLite {
+                    name: "Kara".to_owned(),
+                })
+            ),
+            (
+                BakerLite {
+                    name: "Freerider".to_owned(),
+                },
+                None,
+            ),
+        ]
+    );
+
+    // try to use find_linked instead
+    let baker_bob = Baker::find()
+        .filter(baker::Column::Id.eq(1))
+        .one(&ctx.db)?
+        .unwrap();
+
+    let baker_bob_customers = baker_bob
+        .find_linked(baker::BakedForCustomer)
+        .all(&ctx.db)?;
+
+    assert_eq!(
+        baker_bob_customers,
+        [customer::Model {
+            id: 2,
+            name: "Kara".to_owned(),
+            notes: Some("Loves all cakes".to_owned()),
+        }]
+    );
+
+    // find full model using with_linked
+    let select_baker_with_customer = Baker::find()
+        .find_with_linked(baker::BakedForCustomer)
+        .order_by_asc(baker::Column::Id)
+        .order_by_asc(Expr::col(("r4", customer::Column::Id)));
+
+    assert_eq!(
+        select_baker_with_customer
+            .build(sea_orm::DatabaseBackend::MySql)
+            .to_string(),
+        [
+            "SELECT `baker`.`id` AS `A_id`,",
+            "`baker`.`name` AS `A_name`,",
+            "`baker`.`contact_details` AS `A_contact_details`,",
+            "`baker`.`bakery_id` AS `A_bakery_id`,",
+            "`r4`.`id` AS `B_id`,",
+            "`r4`.`name` AS `B_name`,",
+            "`r4`.`notes` AS `B_notes`",
+            "FROM `baker`",
+            "LEFT JOIN `cakes_bakers` AS `r0` ON `baker`.`id` = `r0`.`baker_id`",
+            "LEFT JOIN `cake` AS `r1` ON `r0`.`cake_id` = `r1`.`id`",
+            "LEFT JOIN `lineitem` AS `r2` ON `r1`.`id` = `r2`.`cake_id`",
+            "LEFT JOIN `order` AS `r3` ON `r2`.`order_id` = `r3`.`id`",
+            "LEFT JOIN `customer` AS `r4` ON `r3`.`customer_id` = `r4`.`id`",
+            "ORDER BY `baker`.`id` ASC, `r4`.`id` ASC"
+        ]
+        .join(" ")
+    );
+
+    assert_eq!(
+        select_baker_with_customer.all(&ctx.db)?,
+        [
+            (
+                baker::Model {
+                    id: 1,
+                    name: "Baker Bob".into(),
+                    contact_details: serde_json::json!({
+                        "mobile": "+61424000000",
+                        "home": "0395555555",
+                        "address": "12 Test St, Testville, Vic, Australia",
+                    }),
+                    bakery_id: Some(1),
+                },
+                vec![customer::Model {
+                    id: 2,
+                    name: "Kara".into(),
+                    notes: Some("Loves all cakes".into()),
+                }]
+            ),
+            (
+                baker::Model {
+                    id: 2,
+                    name: "Baker Bobby".into(),
+                    contact_details: serde_json::json!({
+                        "mobile": "+85212345678",
+                    }),
+                    bakery_id: Some(1),
+                },
+                vec![
+                    customer::Model {
+                        id: 1,
+                        name: "Kate".into(),
+                        notes: Some("Loves cheese cake".into()),
+                    },
+                    customer::Model {
+                        id: 1,
+                        name: "Kate".into(),
+                        notes: Some("Loves cheese cake".into()),
+                    },
+                    customer::Model {
+                        id: 2,
+                        name: "Kara".into(),
+                        notes: Some("Loves all cakes".into()),
+                    },
+                ]
+            ),
+            (
+                baker::Model {
+                    id: 3,
+                    name: "Freerider".into(),
+                    contact_details: serde_json::json!({
+                        "mobile": "+85298765432",
+                    }),
+                    bakery_id: Some(1),
+                },
+                vec![]
+            ),
+        ]
+    );
+
+    ctx.delete();
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+pub fn select_three() -> Result<(), DbErr> {
+    use common::bakery_chain::*;
+
+    let ctx = TestContext::new("test_select_three");
+    create_tables(&ctx.db)?;
+
+    seed_data::init_1(&ctx, true);
+
+    let items: Vec<(order::Model, Option<customer::Model>)> = order::Entity::find()
+        .find_also_related(customer::Entity)
+        .order_by_asc(order::Column::Id)
+        .all(&ctx.db)
+        .unwrap();
+
+    let order = order::Model {
+        id: 101,
+        total: Decimal::from(10),
+        bakery_id: 42,
+        customer_id: 11,
+        placed_at: "2020-01-01T00:00:00Z".parse().unwrap(),
+    };
+
+    let customer = customer::Model {
+        id: 11,
+        name: "Bob".to_owned(),
+        notes: Some("Sweet tooth".to_owned()),
+    };
+
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].0, order);
+    assert_eq!(items[0].1.as_ref().unwrap(), &customer);
+
+    let line_1 = lineitem::Model {
+        id: 1,
+        price: 2.into(),
+        quantity: 2,
+        order_id: 101,
+        cake_id: 13,
+    };
+
+    let line_2 = lineitem::Model {
+        id: 2,
+        price: 3.into(),
+        quantity: 2,
+        order_id: 101,
+        cake_id: 15,
+    };
+
+    let cake_1 = cake::Entity::find_by_id(13).one(&ctx.db).unwrap().unwrap();
+
+    let cake_2 = cake::Entity::find_by_id(15).one(&ctx.db).unwrap().unwrap();
+
+    let items: Vec<(
+        order::Model,
+        Option<customer::Model>,
+        Option<lineitem::Model>,
+    )> = order::Entity::find()
+        .find_also_related(customer::Entity)
+        .find_also_related(lineitem::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .all(&ctx.db)
+        .unwrap();
+
+    assert_eq!(
+        items,
+        vec![
+            (order.clone(), Some(customer.clone()), Some(line_1.clone())),
+            (order.clone(), Some(customer.clone()), Some(line_2.clone())),
+        ]
+    );
+
+    // same, just different API
+    let items: Vec<(
+        order::Model,
+        Option<customer::Model>,
+        Option<lineitem::Model>,
+    )> = order::Entity::find()
+        .find_also(order::Entity, customer::Entity)
+        .find_also(order::Entity, lineitem::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .all(&ctx.db)
+        .unwrap();
+
+    assert_eq!(
+        items,
+        vec![
+            (order.clone(), Some(customer.clone()), Some(line_1.clone())),
+            (order.clone(), Some(customer.clone()), Some(line_2.clone())),
+        ]
+    );
+
+    let items: Vec<(order::Model, Vec<customer::Model>, Vec<lineitem::Model>)> =
+        order::Entity::find()
+            .find_also_related(customer::Entity)
+            .find_also_related(lineitem::Entity)
+            .order_by_asc(order::Column::Id)
+            .order_by_asc(lineitem::Column::Id)
+            .consolidate()
+            .all(&ctx.db)
+            .unwrap();
+
+    assert_eq!(
+        items,
+        vec![(
+            order.clone(),
+            vec![customer.clone()],
+            vec![line_1.clone(), line_2.clone()]
+        )]
+    );
+
+    let items: Vec<(order::Model, Option<lineitem::Model>, Option<cake::Model>)> =
+        order::Entity::find()
+            .find_also_related(lineitem::Entity)
+            .and_also_related(cake::Entity)
+            .order_by_asc(order::Column::Id)
+            .order_by_asc(lineitem::Column::Id)
+            .all(&ctx.db)
+            .unwrap();
+
+    assert_eq!(
+        items,
+        vec![
+            (order.clone(), Some(line_1.clone()), Some(cake_1.clone())),
+            (order.clone(), Some(line_2.clone()), Some(cake_2.clone())),
+        ]
+    );
+
+    let items: Vec<(order::Model, Vec<(lineitem::Model, Vec<cake::Model>)>)> =
+        order::Entity::find()
+            .find_also_related(lineitem::Entity)
+            .and_also_related(cake::Entity)
+            .order_by_asc(order::Column::Id)
+            .order_by_asc(lineitem::Column::Id)
+            .consolidate()
+            .all(&ctx.db)
+            .unwrap();
+
+    assert_eq!(
+        items,
+        vec![(
+            order.clone(),
+            vec![(line_1, vec![cake_1]), (line_2, vec![cake_2])]
+        )]
+    );
+
+    ctx.delete();
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+pub fn select_has_related() -> Result<(), DbErr> {
+    use common::bakery_chain::*;
+
+    let ctx = TestContext::new("test_select_has_related");
+    create_tables(&ctx.db)?;
+    let db = &ctx.db;
+    seed_data::init_2(&ctx)?;
+
+    let bakery: Vec<bakery::Model> = bakery::Entity::find()
+        .has_related(cake::Entity, cake::Column::Name.contains("Chocolate"))
+        .all(db)?;
+
+    assert_eq!(bakery.len(), 1);
+    assert_eq!(bakery[0].name, "SeaSide Bakery");
+
+    let bakery: Vec<bakery::Model> = bakery::Entity::find()
+        .has_related(cake::Entity, cake::Column::Name.contains("Lemon"))
+        .order_by_asc(bakery::Column::Id)
+        .all(db)?;
+
+    assert_eq!(bakery.len(), 2);
+    assert_eq!(bakery[0].name, "SeaSide Bakery");
+    assert_eq!(bakery[1].name, "LakeSide Bakery");
+
+    let cake: Option<cake::Model> = cake::Entity::find()
+        .has_related(bakery::Entity, bakery::Column::Name.eq("SeaSide Bakery"))
+        .order_by_asc(cake::Column::Name)
+        .one(db)?;
+
+    assert_eq!(
+        cake::Entity::find()
+            .has_related(bakery::Entity, bakery::Column::Name.eq("SeaSide Bakery"))
+            .build(DbBackend::Sqlite)
+            .to_string(),
+        [
+            r#"SELECT "cake"."id", "cake"."name", "cake"."price", "cake"."bakery_id", "cake"."gluten_free", "cake"."serial" FROM "cake""#,
+            r#"WHERE EXISTS(SELECT 1 FROM "bakery""#,
+            r#"WHERE "bakery"."name" = 'SeaSide Bakery'"#,
+            r#"AND "cake"."bakery_id" = "bakery"."id")"#,
+        ]
+        .join(" ")
+    );
+
+    assert_eq!(cake.unwrap().name, "Chocolate Cake");
+
+    let baker: Vec<baker::Model> = baker::Entity::find()
+        .has_related(cake::Entity, cake::Column::Name.contains("Chocolate"))
+        .all(db)?;
+
+    assert_eq!(baker.len(), 1);
+    assert_eq!(baker[0].name, "Alice");
+
+    let baker: Vec<baker::Model> = baker::Entity::find()
+        .has_related(cake::Entity, cake::Column::Name.contains("Strawberry"))
+        .all(db)?;
+
+    assert_eq!(baker.len(), 1);
+    assert_eq!(baker[0].name, "Bob");
+
+    let baker: Vec<baker::Model> = baker::Entity::find()
+        .has_related(cake::Entity, cake::Column::Name.contains("Lemon"))
+        .order_by_asc(baker::Column::Id)
+        .all(db)?;
+
+    assert_eq!(baker.len(), 2);
+    assert_eq!(baker[0].name, "Alice");
+    assert_eq!(baker[1].name, "Bob");
+
+    let cake: Option<cake::Model> = cake::Entity::find()
+        .has_related(baker::Entity, baker::Column::Name.eq("Alice"))
+        .order_by_asc(cake::Column::Name)
+        .one(db)?;
+
+    assert_eq!(cake.unwrap().name, "Chocolate Cake");
+
+    Ok(())
+}

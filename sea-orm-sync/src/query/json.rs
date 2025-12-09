@@ -215,6 +215,30 @@ impl FromQueryResult for JsonValue {
                 }
                 Ok(JsonValue::Object(map))
             }
+            #[cfg(feature = "rusqlite")]
+            crate::QueryResultRow::Rusqlite(row) => {
+                use crate::driver::rusqlite::RusqliteOwnedValue;
+                use serde_json::json;
+
+                for (i, column) in row.columns.iter().enumerate() {
+                    let column = if !column.starts_with(pre) {
+                        continue;
+                    } else {
+                        column.replacen(pre, "", 1)
+                    };
+                    map.insert(
+                        column,
+                        match &row.values[i] {
+                            RusqliteOwnedValue::Integer(v) => json!(v),
+                            RusqliteOwnedValue::Real(v) => json!(v),
+                            RusqliteOwnedValue::Text(v) => json!(v),
+                            RusqliteOwnedValue::Blob(v) => json!(v),
+                            RusqliteOwnedValue::Null => json!(null),
+                        },
+                    );
+                }
+                Ok(JsonValue::Object(map))
+            }
             #[cfg(feature = "mock")]
             crate::QueryResultRow::Mock(row) => {
                 for (column, value) in row.clone().into_column_value_tuples() {

@@ -1261,7 +1261,6 @@ pub trait TryGetableMany: Sized {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
     /// # #[cfg(all(feature = "mock", feature = "macros"))]
     /// # pub fn main() -> Result<(), DbErr> {
     /// #

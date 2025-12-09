@@ -89,6 +89,8 @@ impl DatabaseTransaction {
                         .await
                         .map_err(sqlx_error_to_query_err)
                 }
+                #[cfg(feature = "rusqlite")]
+                InnerConnection::Rusqlite(c) => c.begin(),
                 #[cfg(feature = "mock")]
                 InnerConnection::Mock(c) => {
                     c.begin();
@@ -158,6 +160,8 @@ impl DatabaseTransaction {
                     .await
                     .map_err(sqlx_error_to_query_err)
             }
+            #[cfg(feature = "rusqlite")]
+            InnerConnection::Rusqlite(c) => c.commit(),
             #[cfg(feature = "mock")]
             InnerConnection::Mock(c) => {
                 c.commit();
@@ -203,6 +207,8 @@ impl DatabaseTransaction {
                     .await
                     .map_err(sqlx_error_to_query_err)
             }
+            #[cfg(feature = "rusqlite")]
+            InnerConnection::Rusqlite(c) => c.rollback(),
             #[cfg(feature = "mock")]
             InnerConnection::Mock(c) => {
                 c.rollback();
@@ -237,6 +243,10 @@ impl DatabaseTransaction {
                     #[cfg(feature = "sqlx-sqlite")]
                     InnerConnection::Sqlite(c) => {
                         <sqlx::Sqlite as sqlx::Database>::TransactionManager::start_rollback(c);
+                    }
+                    #[cfg(feature = "rusqlite")]
+                    InnerConnection::Rusqlite(c) => {
+                        c.start_rollback()?;
                     }
                     #[cfg(feature = "mock")]
                     InnerConnection::Mock(c) => {
@@ -320,6 +330,8 @@ impl ConnectionTrait for DatabaseTransaction {
                 })
                 .map_err(sqlx_error_to_exec_err)
             }
+            #[cfg(feature = "rusqlite")]
+            InnerConnection::Rusqlite(conn) => conn.execute(stmt, &self.metric_callback),
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.execute(stmt),
             #[cfg(feature = "proxy")]
@@ -364,6 +376,8 @@ impl ConnectionTrait for DatabaseTransaction {
                     .map(Into::into)
                     .map_err(sqlx_error_to_exec_err)
             }
+            #[cfg(feature = "rusqlite")]
+            InnerConnection::Rusqlite(conn) => conn.execute_unprepared(sql),
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => {
                 let db_backend = conn.get_database_backend();
@@ -422,6 +436,8 @@ impl ConnectionTrait for DatabaseTransaction {
                     )
                 })
             }
+            #[cfg(feature = "rusqlite")]
+            InnerConnection::Rusqlite(conn) => conn.query_one(stmt, &self.metric_callback),
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_one(stmt),
             #[cfg(feature = "proxy")]
@@ -478,6 +494,8 @@ impl ConnectionTrait for DatabaseTransaction {
                         .map_err(sqlx_error_to_query_err)
                 })
             }
+            #[cfg(feature = "rusqlite")]
+            InnerConnection::Rusqlite(conn) => conn.query_all(stmt, &self.metric_callback),
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_all(stmt),
             #[cfg(feature = "proxy")]

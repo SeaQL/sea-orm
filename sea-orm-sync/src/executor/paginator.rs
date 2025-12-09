@@ -125,7 +125,6 @@ where
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
     /// # pub fn main() -> Result<(), DbErr> {
     /// #
@@ -164,8 +163,7 @@ where
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
-    /// # #[cfg(feature = "mock")]
+    /// # #[cfg(all(feature = "mock", not(feature = "sync")))]
     /// # pub fn main() -> Result<(), DbErr> {
     /// #
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
@@ -179,7 +177,6 @@ where
     /// #     .into_connection();
     /// # let db = &owned_db;
     /// #
-    /// use futures_util::TryStreamExt;
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     /// let mut cake_stream = cake::Entity::find()
     ///     .order_by_asc(cake::Column::Id)
@@ -187,6 +184,38 @@ where
     ///     .into_stream();
     ///
     /// while let Some(cakes) = cake_stream.try_next()? {
+    ///     // Do something on cakes: Vec<cake::Model>
+    /// }
+    /// #
+    /// # Ok(())
+    /// # }
+    /// # #[cfg(all(feature = "mock", feature = "sync"))]
+    /// # fn main() {}
+    /// ```
+    /// (for SeaORM Sync)
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// # #[cfg(all(feature = "mock", feature = "sync"))]
+    /// # fn example() -> Result<(), DbErr> {
+    /// #
+    /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results([
+    /// #         vec![cake::Model {
+    /// #             id: 1,
+    /// #             name: "Cake".to_owned(),
+    /// #         }],
+    /// #         vec![],
+    /// #     ])
+    /// #     .into_connection();
+    /// # let db = &owned_db;
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    /// let mut cake_stream = cake::Entity::find()
+    ///     .order_by_asc(cake::Column::Id)
+    ///     .paginate(db, 50)
+    ///     .into_stream();
+    ///
+    /// while let Some(cakes) = cake_stream.next() {
     ///     // Do something on cakes: Vec<cake::Model>
     /// }
     /// #

@@ -142,7 +142,6 @@ pub trait FromQueryResult: Sized {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
     /// # pub fn main() -> Result<(), DbErr> {
     /// #

@@ -33,24 +33,43 @@ pub async fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     assert_eq!(result, metadata);
 
-    let json = metadata::Entity::find()
+    let mut json = metadata::Entity::find()
         .filter(metadata::Column::Uuid.eq(metadata.uuid))
         .into_json()
-        .one(db)
-        .await?;
+        .one(db)?;
 
-    assert_eq!(
-        json,
-        Some(json!({
-            "uuid": metadata.uuid,
-            "type": metadata.ty,
-            "key": metadata.key,
-            "value": metadata.value,
-            "bytes": metadata.bytes,
-            "date": metadata.date,
-            "time": metadata.time,
-        }))
-    );
+    if cfg!(feature = "rusqlite") {
+        json.as_mut()
+            .unwrap()
+            .as_object_mut()
+            .unwrap()
+            .remove("uuid");
+        // rusqlite current has no rich type info to properly deserialize a uuid
+        assert_eq!(
+            json,
+            Some(json!({
+                "type": metadata.ty,
+                "key": metadata.key,
+                "value": metadata.value,
+                "bytes": metadata.bytes,
+                "date": metadata.date,
+                "time": metadata.time,
+            }))
+        );
+    } else {
+        assert_eq!(
+            json,
+            Some(json!({
+                "uuid": metadata.uuid,
+                "type": metadata.ty,
+                "key": metadata.key,
+                "value": metadata.value,
+                "bytes": metadata.bytes,
+                "date": metadata.date,
+                "time": metadata.time,
+            }))
+        );
+    }
 
     Ok(())
 }
