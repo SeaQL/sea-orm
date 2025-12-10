@@ -185,6 +185,7 @@ with-ipnetwork = [
 with-json = [
     "serde_json",
     "sea-query/with-json",
+    "sea-orm-macros/with-json",
     "chrono?/serde",
     "rust_decimal?/serde",
     "bigdecimal?/serde",
