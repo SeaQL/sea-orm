@@ -51,7 +51,7 @@ pub fn get_migration_dir() -> Result<String, Box<dyn Error>> {
     }
 }
 
-pub fn get_config_dir() -> Result<PathBuf, Box<dyn Error>> {
+fn get_config_dir() -> Result<PathBuf, Box<dyn Error>> {
     let config_path = find_config_file()?;
     let config_dir = config_path.parent().unwrap_or(Path::new(".")).to_path_buf();
     Ok(config_dir)
