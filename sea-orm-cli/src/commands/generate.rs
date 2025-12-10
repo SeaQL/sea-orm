@@ -9,6 +9,8 @@ use std::{error::Error, fs, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{EnvFilter, prelude::*};
 use url::Url;
 
+use crate::config::get_database_url;
+
 pub async fn run_generate_command(
     command: GenerateSubcommands,
     verbose: bool,
@@ -26,7 +28,6 @@ pub async fn run_generate_command(
             acquire_timeout,
             output_dir,
             database_schema,
-            database_url,
             with_prelude,
             with_serde,
             serde_skip_deserializing_primary_key,
@@ -63,6 +64,7 @@ pub async fn run_generate_command(
                     .try_init();
             }
 
+            let database_url = get_database_url()?;
             // The database should be a valid URL that can be parsed
             // protocol://username:password@host/database_name
             let url = Url::parse(&database_url)?;

@@ -222,15 +222,6 @@ pub enum GenerateSubcommands {
         database_schema: Option<String>,
 
         #[arg(
-            short = 'u',
-            long,
-            env = "DATABASE_URL",
-            help = "Database URL",
-            hide_env_values = true
-        )]
-        database_url: String,
-
-        #[arg(
             long,
             default_value = "all",
             help = "Generate prelude.rs file (all, none, all-allow-unused-imports)"
