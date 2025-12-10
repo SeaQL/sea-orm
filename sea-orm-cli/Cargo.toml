@@ -63,6 +63,8 @@ tracing-subscriber = { version = "0.3.17", default-features = false, features = 
     "fmt",
 ] }
 url = { version = "2.2", default-features = false }
+toml = "0.9.8"
+serde = { version = "1.0.228", features = ["derive"] }
 
 [dev-dependencies]
 smol = "1.2.5"

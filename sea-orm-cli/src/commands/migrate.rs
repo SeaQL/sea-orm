@@ -10,34 +10,34 @@ use std::{
 };
 
 #[cfg(feature = "cli")]
-use crate::MigrateSubcommands;
+use crate::{config::get_migration_dir, config::get_database_url, MigrateSubcommands};
 
 #[cfg(feature = "cli")]
 pub fn run_migrate_command(
     command: Option<MigrateSubcommands>,
-    migration_dir: &str,
     database_schema: Option<String>,
-    database_url: Option<String>,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
+    let migration_dir = get_migration_dir()?;
+    let database_url = get_database_url()?;
     match command {
-        Some(MigrateSubcommands::Init) => run_migrate_init(migration_dir)?,
+        Some(MigrateSubcommands::Init) => run_migrate_init(&migration_dir)?,
         Some(MigrateSubcommands::Generate {
             migration_name,
             universal_time: _,
             local_time,
-        }) => run_migrate_generate(migration_dir, &migration_name, !local_time)?,
+        }) => run_migrate_generate(&migration_dir, &migration_name, !local_time)?,
         _ => {
             let (subcommand, migration_dir, steps, verbose) = match command {
-                Some(MigrateSubcommands::Fresh) => ("fresh", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Refresh) => ("refresh", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Reset) => ("reset", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Status) => ("status", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Up { num }) => ("up", migration_dir, num, verbose),
+                Some(MigrateSubcommands::Fresh) => ("fresh", &migration_dir, None, verbose),
+                Some(MigrateSubcommands::Refresh) => ("refresh", &migration_dir, None, verbose),
+                Some(MigrateSubcommands::Reset) => ("reset", &migration_dir, None, verbose),
+                Some(MigrateSubcommands::Status) => ("status", &migration_dir, None, verbose),
+                Some(MigrateSubcommands::Up { num }) => ("up", &migration_dir, num, verbose),
                 Some(MigrateSubcommands::Down { num }) => {
-                    ("down", migration_dir, Some(num), verbose)
+                    ("down", &migration_dir, Some(num), verbose)
                 }
-                _ => ("up", migration_dir, None, verbose),
+                _ => ("up", &migration_dir, None, verbose),
             };
 
             // Construct the `--manifest-path`
@@ -57,9 +57,8 @@ pub fn run_migrate_command(
             if !num.is_empty() {
                 args.extend(["-n", &num])
             }
-            if let Some(database_url) = &database_url {
-                envs.push(("DATABASE_URL", database_url));
-            }
+            envs.push(("DATABASE_URL", &database_url));
+
             if let Some(database_schema) = &database_schema {
                 envs.push(("DATABASE_SCHEMA", database_schema));
             }
