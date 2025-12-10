@@ -10,7 +10,7 @@ use std::{
 };
 
 #[cfg(feature = "cli")]
-use crate::{config::get_migration_dir, config::get_database_url, MigrateSubcommands};
+use crate::{MigrateSubcommands, config::get_database_url, config::get_migration_dir};
 
 #[cfg(feature = "cli")]
 pub fn run_migrate_command(

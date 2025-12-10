@@ -413,11 +413,6 @@ pub async fn main() {
         Commands::Migrate {
             database_schema,
             command,
-        } => run_migrate_command(
-            command,
-            database_schema,
-            verbose,
-        )
-        .unwrap_or_else(handle_error),
+        } => run_migrate_command(command, database_schema, verbose).unwrap_or_else(handle_error),
     }
 }
