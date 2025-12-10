@@ -1,12 +1,61 @@
 use super::case_style::{CaseStyle, CaseStyleHelpers};
 use super::util::{escape_rust_keyword, trim_starting_raw_identifier};
-use heck::{ToSnakeCase, ToUpperCamelCase};
+use heck::{
+    ToKebabCase, ToLowerCamelCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase, ToUpperCamelCase,
+};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
+use std::str::FromStr;
+use syn::meta::ParseNestedMeta;
 use syn::{
-    Attribute, Data, Expr, Fields, Lit, LitStr, punctuated::Punctuated, spanned::Spanned,
-    token::Comma,
+    Attribute, Data, Fields, Lit, LitStr, punctuated::Punctuated, spanned::Spanned, token::Comma,
 };
+
+#[allow(dead_code)]
+fn convert_case(s: &str, case_style: CaseStyle) -> String {
+    match case_style {
+        CaseStyle::PascalCase => s.to_upper_camel_case(),
+        CaseStyle::KebabCase => s.to_kebab_case(),
+        CaseStyle::MixedCase => s.to_lower_camel_case(),
+        CaseStyle::ShoutySnakeCase => s.to_shouty_snake_case(),
+        CaseStyle::SnakeCase => s.to_snake_case(),
+        CaseStyle::TitleCase => s.to_title_case(),
+        CaseStyle::UpperCase => s.to_uppercase(),
+        CaseStyle::LowerCase => s.to_lowercase(),
+        CaseStyle::ScreamingKebabCase => s.to_kebab_case().to_uppercase(),
+        CaseStyle::CamelCase => {
+            let camel_case = s.to_upper_camel_case();
+            let mut result = String::with_capacity(camel_case.len());
+            let mut it = camel_case.chars();
+            if let Some(ch) = it.next() {
+                result.extend(ch.to_lowercase());
+            }
+            result.extend(it);
+            result
+        }
+    }
+}
+
+#[cfg(feature = "with-json")]
+fn serde_deserialize_name(
+    orig: &str,
+    serde_rename: Option<&str>,
+    serde_rename_all: Option<CaseStyle>,
+) -> String {
+    if let Some(rename) = serde_rename.as_ref() {
+        return rename.to_string();
+    }
+
+    if let Some(case_style) = serde_rename_all {
+        convert_case(orig, case_style)
+    } else {
+        orig.to_string()
+    }
+}
+
+fn consume_meta(meta: ParseNestedMeta<'_>) {
+    let _ = meta.value().and_then(|v| v.parse::<syn::Expr>());
+}
 
 /// Method to derive an Model
 pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Result<TokenStream> {
@@ -17,6 +66,36 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
     let mut table_iden = false;
     let mut model_ex = false;
     let mut rename_all: Option<CaseStyle> = None;
+    let mut serde_rename_all: Option<CaseStyle> = None;
+
+    // Parse #[serde(rename_all = "...")] at struct level
+    attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("serde"))
+        .try_for_each(|attr| {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("rename_all") {
+                    if let Ok(lit) = meta.value().and_then(|v| v.parse::<LitStr>()) {
+                        // #[serde(rename_all = "camelCase")]
+                        serde_rename_all = CaseStyle::from_str(&lit.value()).ok();
+                    } else {
+                        // #[serde(rename_all(serialize = "...", deserialize = "..."))]
+                        meta.parse_nested_meta(|nested| {
+                            if nested.path.is_ident("deserialize") {
+                                let lit: LitStr = nested.value()?.parse()?;
+                                serde_rename_all = CaseStyle::from_str(&lit.value()).ok();
+                            } else {
+                                consume_meta(nested);
+                            }
+                            Ok(())
+                        })?;
+                    }
+                } else {
+                    consume_meta(meta);
+                }
+                Ok(())
+            })
+        })?;
 
     attrs
         .iter()
@@ -38,10 +117,7 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
                 } else if meta.path.is_ident("rename_all") {
                     rename_all = Some((&meta).try_into()?);
                 } else {
-                    // Reads the value expression to advance the parse stream.
-                    // Some parameters, such as `primary_key`, do not have any value,
-                    // so ignoring an error occurred here.
-                    let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
+                    consume_meta(meta);
                 }
 
                 Ok(())
@@ -89,6 +165,9 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
     let mut primary_keys: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_key_types: Punctuated<_, Comma> = Punctuated::new();
     let mut auto_increment = true;
+    #[cfg(feature = "with-json")]
+    let mut columns_json_keys: Punctuated<_, Comma> = Punctuated::new();
+
     if table_iden {
         if let Some(table_name) = &table_name {
             let table_field_name = Ident::new("Table", Span::call_site());
@@ -128,6 +207,8 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
                     let mut is_auto_increment = false;
                     let mut extra = None;
                     let mut seaography_ignore = false;
+                    #[cfg(feature = "with-json")]
+                    let mut serde_rename: Option<String> = None;
 
                     let mut column_name = if let Some(case_style) = rename_all {
                         Some(field_name.convert_case(Some(case_style)))
@@ -252,10 +333,7 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
                                         return Err(meta.error(format!("Invalid extra {lit:?}")));
                                     }
                                 } else {
-                                    // Reads the value expression to advance the parse stream.
-                                    // Some parameters, such as `primary_key`, do not have any value,
-                                    // so ignoring an error occurred here.
-                                    let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
+                                    consume_meta(meta);
                                 }
 
                                 Ok(())
@@ -268,8 +346,40 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
 
                                 Ok(())
                             })?;
+                        } else if cfg!(feature = "with-json") && attr.path().is_ident("serde") {
+                            #[cfg(feature = "with-json")]
+                            attr.parse_nested_meta(|meta| {
+                                if meta.path.is_ident("rename") {
+                                    if let Ok(lit) = meta.value().and_then(|v| v.parse::<LitStr>())
+                                    {
+                                        // #[serde(rename = "xxx")]
+                                        serde_rename = Some(lit.value());
+                                    } else {
+                                        // #[serde(rename(serialize = "...", deserialize = "..."))]
+                                        meta.parse_nested_meta(|nested| {
+                                            if nested.path.is_ident("deserialize") {
+                                                let lit: LitStr = nested.value()?.parse()?;
+                                                serde_rename = Some(lit.value());
+                                            } else {
+                                                consume_meta(nested);
+                                            }
+                                            Ok(())
+                                        })?;
+                                    }
+                                } else {
+                                    consume_meta(meta);
+                                }
+                                Ok(())
+                            })?;
                         }
                     }
+
+                    #[cfg(feature = "with-json")]
+                    let json_key_name = serde_deserialize_name(
+                        &original_field_name,
+                        serde_rename.as_deref(),
+                        serde_rename_all,
+                    );
 
                     if let Some(enum_name) = enum_name {
                         field_name = enum_name;
@@ -298,6 +408,10 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
                         columns_enum.push(quote! {
                             #variant_attrs
                             #field_name
+                        });
+                        #[cfg(feature = "with-json")]
+                        columns_json_keys.push(quote! {
+                            Self::#field_name => #json_key_name
                         });
                     }
 
@@ -442,6 +556,20 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
         }
     };
 
+    let with_json_impls = {
+        #[cfg(feature = "with-json")]
+        quote! {
+            fn json_key(&self) -> &'static str {
+                match self {
+                    #columns_json_keys
+                }
+            }
+        }
+
+        #[cfg(not(feature = "with-json"))]
+        quote! {}
+    };
+
     Ok(quote! {
         #impl_model_ex
 
@@ -480,6 +608,8 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
                     _ => sea_orm::prelude::ColumnTrait::save_enum_as(self, val),
                 }
             }
+
+            #with_json_impls
         }
 
         #entity_def
