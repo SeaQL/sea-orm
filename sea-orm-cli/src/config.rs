@@ -72,6 +72,6 @@ fn find_config_file() -> Result<PathBuf, Box<dyn Error>> {
     }
     Err(Box::new(std::io::Error::new(
         std::io::ErrorKind::NotFound,
-        "SeaORM config file not found, use `sea-orm-cli config inint` to create one",
+        "SeaORM config file not found, use `sea-orm-cli config init` to create one",
     )))
 }
