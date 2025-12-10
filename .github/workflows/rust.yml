@@ -323,6 +323,33 @@ jobs:
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
+  rusqlite:
+    name: rusqlite
+    needs:
+      - init
+      - compile
+    if: >-
+      ${{
+        needs.init.outputs.run-partial == 'false' ||
+        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-sqlite == 'true')
+      }}
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "sqlite::memory:"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-sqlite-tests-${{ hashFiles('**/Cargo.toml') }}
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - working-directory: ./sea-orm-sync
+        run: cargo test --test '*' --features default,rbac,rusqlite
+
   mysql:
     name: MySQL
     needs:
