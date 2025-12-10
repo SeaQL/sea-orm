@@ -5,7 +5,7 @@ use std::{env, error::Error, fs};
 #[derive(Deserialize)]
 pub struct Config {
     database: Database,
-    migration: Migration,
+    migrations: Migrations,
 }
 
 #[derive(Deserialize)]
@@ -14,7 +14,7 @@ struct Database {
 }
 
 #[derive(Deserialize)]
-struct Migration {
+struct Migrations {
     directory: String,
 }
 
@@ -40,8 +40,8 @@ pub fn get_database_url() -> Result<String, Box<dyn Error>> {
 
 pub fn get_migration_dir() -> Result<String, Box<dyn Error>> {
     let config = get_config()?;
-    
-    let migration_dir = config.migration.directory;
+
+    let migration_dir = config.migrations.directory;
     if migration_dir.starts_with(".") {
         let config_dir = get_config_dir()?;
         let migration_dir = config_dir.join(migration_dir);
