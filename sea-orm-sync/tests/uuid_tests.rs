@@ -38,7 +38,8 @@ pub fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
         .into_json()
         .one(db)?;
 
-    if cfg!(feature = "rusqlite") {
+    #[cfg(feature = "rusqlite")]
+    {
         json.as_mut()
             .unwrap()
             .as_object_mut()
@@ -56,7 +57,9 @@ pub fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
                 "time": metadata.time,
             }))
         );
-    } else {
+    }
+    #[cfg(not(feature = "rusqlite"))]
+    {
         assert_eq!(
             json,
             Some(json!({

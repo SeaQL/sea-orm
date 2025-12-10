@@ -36,9 +36,11 @@ pub async fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
     let mut json = metadata::Entity::find()
         .filter(metadata::Column::Uuid.eq(metadata.uuid))
         .into_json()
-        .one(db)?;
+        .one(db)
+        .await?;
 
-    if cfg!(feature = "rusqlite") {
+    #[cfg(feature = "rusqlite")]
+    {
         json.as_mut()
             .unwrap()
             .as_object_mut()
@@ -56,7 +58,9 @@ pub async fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
                 "time": metadata.time,
             }))
         );
-    } else {
+    }
+    #[cfg(not(feature = "rusqlite"))]
+    {
         assert_eq!(
             json,
             Some(json!({
