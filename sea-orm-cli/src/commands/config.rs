@@ -11,8 +11,15 @@ pub struct Config {
 }
 
 #[derive(Deserialize)]
+#[serde(untagged)]
+enum DatabaseUrl {
+    Direct(String),
+    FromEnv { env: String },
+}
+
+#[derive(Deserialize)]
 struct Database {
-    url: String,
+    url: DatabaseUrl,
 }
 
 #[derive(Deserialize)]
@@ -22,7 +29,9 @@ struct Migrations {
 
 pub fn run_config_command(command: ConfigSubcommands) -> Result<(), Box<dyn Error>> {
     match command {
-        ConfigSubcommands::Init => run_config_init(),
+        ConfigSubcommands::Init{
+            force
+        } => run_config_init(force),
     }
 }
 
@@ -37,25 +46,24 @@ pub fn get_config() -> Result<Config, Box<dyn Error>> {
 
 pub fn get_database_url() -> Result<String, Box<dyn Error>> {
     let config = get_config()?;
-    if config.database.url.starts_with("env:") {
-        let env_var = config.database.url.split(":").nth(1).unwrap();
-        let value = env::var(env_var)?;
-        Ok(value)
-    } else {
-        Ok(config.database.url)
-    }
+    let url = match config.database.url {
+        DatabaseUrl::Direct(url) => url,
+        DatabaseUrl::FromEnv { env } => env::var(&env)?,
+    };
+
+    Ok(url)
 }
 
 pub fn get_migration_dir() -> Result<String, Box<dyn Error>> {
     let config = get_config()?;
 
-    let migration_dir = config.migrations.directory;
-    if migration_dir.starts_with(".") {
+    let migration_dir = Path::new(&config.migrations.directory);
+    if migration_dir.is_relative() {
         let config_dir = get_config_dir()?;
         let migration_dir = config_dir.join(migration_dir);
-        return Ok(migration_dir.to_string_lossy().to_string());
+        Ok(migration_dir.to_string_lossy().to_string())
     } else {
-        return Ok(migration_dir);
+        Ok(config.migrations.directory)
     }
 }
 
@@ -84,11 +92,18 @@ fn find_config_file() -> Result<PathBuf, Box<dyn Error>> {
     )))
 }
 
-fn run_config_init() -> Result<(), Box<dyn Error>> {
+fn run_config_init(force: bool) -> Result<(), Box<dyn Error>> {
     let config_path = Path::new("sea-orm.toml");
     let config_template = include_str!("../../template/sea-orm.toml");
 
-    fs::write(config_path, config_template.to_string())?;
+    if config_path.exists() && !force {
+        return Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            "A sea-orm.toml file already exists, use --force to rewrite it"
+        )));
+    }
+
+    fs::write(config_path, config_template)?;
 
     println!("Config file created at {}", config_path.display());
     Ok(())

@@ -112,7 +112,10 @@ you should provide the directory of that submodule.",
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum ConfigSubcommands {
     #[command(about = "Initialize config file", display_order = 10)]
-    Init,
+    Init {
+        #[arg(long, help = "Overwrite existing config file")]
+        force: bool
+    }
 }
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
