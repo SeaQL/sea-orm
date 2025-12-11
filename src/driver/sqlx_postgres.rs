@@ -506,10 +506,9 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                             feature = "with-rust_decimal",
                             not(feature = "with-bigdecimal")
                         ))]
-                        "NUMERIC" => Value::Decimal(
-                            row.try_get(c.ordinal())
-                                .expect("Failed to get numeric"),
-                        ),
+                        "NUMERIC" => {
+                            Value::Decimal(row.try_get(c.ordinal()).expect("Failed to get numeric"))
+                        }
 
                         #[cfg(all(feature = "with-bigdecimal", feature = "postgres-array"))]
                         "NUMERIC[]" => Value::Array(
@@ -693,10 +692,9 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 .expect("Failed to get timetz"),
                         ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIMETZ" => Value::TimeTime(
-                            row.try_get(c.ordinal())
-                                .expect("Failed to get timetz"),
-                        ),
+                        "TIMETZ" => {
+                            Value::TimeTime(row.try_get(c.ordinal()).expect("Failed to get timetz"))
+                        }
 
                         #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
                         "TIMETZ[]" => Value::Array(

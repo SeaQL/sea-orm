@@ -560,11 +560,7 @@ where
             match expr {
                 Expr::Value(Value::Array(Some(Array::Json(json_vec)))) => {
                     // flatten Array(Vec<Json>) into Json
-                    let json_vec: Vec<Json> = json_vec
-                        .into_vec()
-                        .into_iter()
-                        .flatten()
-                        .collect();
+                    let json_vec: Vec<Json> = json_vec.into_vec().into_iter().flatten().collect();
                     Expr::Value(Value::Json(Some(json_vec.into())))
                 }
                 Expr::Value(Value::Array(None)) => Expr::Value(Value::Json(None)),
