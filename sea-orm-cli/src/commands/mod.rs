@@ -1,12 +1,16 @@
 use std::fmt::Display;
 
-#[cfg(feature = "codegen")]
+#[cfg(feature = "cli")]
 pub mod config;
+
+#[cfg(feature = "codegen")]
 pub mod generate;
 pub mod migrate;
 
-#[cfg(feature = "codegen")]
+#[cfg(feature = "cli")]
 pub use config::*;
+
+#[cfg(feature = "codegen")]
 pub use generate::*;
 pub use migrate::*;
 
