@@ -81,7 +81,7 @@ If your migrations are in a submodule of your app,
 you should provide the directory of that submodule.",
             default_value = "./migration"
         )]
-        migration_dir: String,
+        migration_dir: Option<String>,
 
         #[arg(
             global = true,
@@ -252,7 +252,7 @@ pub enum GenerateSubcommands {
             help = "Database URL",
             hide_env_values = true
         )]
-        database_url: String,
+        database_url: Option<String>,
 
         #[arg(
             long,
@@ -435,10 +435,17 @@ pub async fn main() {
                 .unwrap_or_else(handle_error);
         }
         Commands::Migrate {
-            migration_dir: _,
+            migration_dir,
             database_schema,
-            database_url: _,
+            database_url,
             command,
-        } => run_migrate_command(command, database_schema, verbose).unwrap_or_else(handle_error),
+        } => run_migrate_command(
+            command,
+            migration_dir,
+            database_schema,
+            database_url,
+            verbose,
+        )
+        .unwrap_or_else(handle_error),
     }
 }

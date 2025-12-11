@@ -15,11 +15,19 @@ use crate::{MigrateSubcommands, config::get_database_url, config::get_migration_
 #[cfg(feature = "cli")]
 pub fn run_migrate_command(
     command: Option<MigrateSubcommands>,
+    migration_dir: Option<String>,
     database_schema: Option<String>,
+    database_url: Option<String>,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
-    let migration_dir = get_migration_dir()?;
-    let database_url = get_database_url()?;
+    let migration_dir = match migration_dir {
+        Some(dir) => dir,
+        None => get_migration_dir()?,
+    };
+    let database_url = match database_url {
+        Some(url) => url,
+        None => get_database_url()?,
+    };
     match command {
         Some(MigrateSubcommands::Init) => run_migrate_init(&migration_dir)?,
         Some(MigrateSubcommands::Generate {
