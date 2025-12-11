@@ -28,6 +28,7 @@ pub async fn run_generate_command(
             acquire_timeout,
             output_dir,
             database_schema,
+            database_url: _,
             with_prelude,
             with_serde,
             serde_skip_deserializing_primary_key,

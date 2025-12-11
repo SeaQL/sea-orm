@@ -71,6 +71,20 @@ pub enum Commands {
     Migrate {
         #[arg(
             global = true,
+            short = 'd',
+            long,
+            env = "MIGRATION_DIR",
+            help = "Migration script directory.
+If your migrations are in their own crate,
+you can provide the root of that crate.
+If your migrations are in a submodule of your app,
+you should provide the directory of that submodule.",
+            default_value = "./migration"
+        )]
+        migration_dir: String,
+
+        #[arg(
+            global = true,
             short = 's',
             long,
             env = "DATABASE_SCHEMA",
@@ -79,6 +93,16 @@ pub enum Commands {
                         - For PostgreSQL, this argument is optional with default value 'public'.\n"
         )]
         database_schema: Option<String>,
+
+        #[arg(
+            global = true,
+            short = 'u',
+            long,
+            env = "DATABASE_URL",
+            help = "Database URL",
+            hide_env_values = true
+        )]
+        database_url: Option<String>,
 
         #[command(subcommand)]
         command: Option<MigrateSubcommands>,
@@ -220,6 +244,15 @@ pub enum GenerateSubcommands {
                         - For PostgreSQL, this argument is optional with default value 'public'."
         )]
         database_schema: Option<String>,
+
+        #[arg(
+            short = 'u',
+            long,
+            env = "DATABASE_URL",
+            help = "Database URL",
+            hide_env_values = true
+        )]
+        database_url: String,
 
         #[arg(
             long,
@@ -402,7 +435,9 @@ pub async fn main() {
                 .unwrap_or_else(handle_error);
         }
         Commands::Migrate {
+            migration_dir: _,
             database_schema,
+            database_url: _,
             command,
         } => run_migrate_command(command, database_schema, verbose).unwrap_or_else(handle_error),
     }
