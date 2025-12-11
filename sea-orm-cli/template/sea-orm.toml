@@ -1,5 +1,5 @@
 [database]
-url = { env = "DATABASE_URL" }       # Use an environment variable or provide a direct URL string
+url = { env = "DATABASE_URL" } # Use an environment variable or provide a direct URL string
 
 [migrations]
-directory = "./migration"      # Where migrations live, relative path
+directory = "./migration" # Where migrations live, relative path

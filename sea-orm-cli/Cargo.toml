@@ -52,10 +52,15 @@ sea-schema = { version = "0.17.0-rc.1", default-features = false, features = [
     "writer",
     "probe",
 ], optional = true }
+serde = { version = "1.0.228", features = ["derive"], optional = true }
 sqlx = { version = "0.8.4", default-features = false, optional = true }
 tokio = { version = "1.38.2", default-features = false, features = [
     "rt-multi-thread",
     "macros",
+], optional = true }
+toml = { version = "0.9.8", default-features = false, features = [
+    "parse",
+    "serde",
 ], optional = true }
 tracing = { version = "0.1", default-features = false }
 tracing-subscriber = { version = "0.3.17", default-features = false, features = [
@@ -63,8 +68,6 @@ tracing-subscriber = { version = "0.3.17", default-features = false, features = 
     "fmt",
 ] }
 url = { version = "2.2", default-features = false }
-toml = { version = "0.9.8", default-features = false, features = ["parse", "serde"], optional = true }
-serde = { version = "1.0.228", features = ["derive"], optional = true }
 
 [dev-dependencies]
 smol = "1.2.5"
