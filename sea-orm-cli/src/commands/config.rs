@@ -29,9 +29,7 @@ struct Migrations {
 
 pub fn run_config_command(command: ConfigSubcommands) -> Result<(), Box<dyn Error>> {
     match command {
-        ConfigSubcommands::Init{
-            force
-        } => run_config_init(force),
+        ConfigSubcommands::Init { force } => run_config_init(force),
     }
 }
 
@@ -99,7 +97,7 @@ fn run_config_init(force: bool) -> Result<(), Box<dyn Error>> {
     if config_path.exists() && !force {
         return Err(Box::new(std::io::Error::new(
             std::io::ErrorKind::AlreadyExists,
-            "A sea-orm.toml file already exists, use --force to rewrite it"
+            "A sea-orm.toml file already exists, use --force to rewrite it",
         )));
     }
 

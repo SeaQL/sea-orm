@@ -114,8 +114,8 @@ pub enum ConfigSubcommands {
     #[command(about = "Initialize config file", display_order = 10)]
     Init {
         #[arg(long, help = "Overwrite existing config file")]
-        force: bool
-    }
+        force: bool,
+    },
 }
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
