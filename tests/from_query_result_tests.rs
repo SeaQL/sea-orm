@@ -49,6 +49,14 @@ struct BakeryFlat {
     profit: f64,
 }
 
+#[derive(FromQueryResult)]
+struct CakeWithOptionalBakeryModel {
+    id: i32,
+    name: String,
+    #[sea_orm(nested)]
+    bakery: Option<bakery::Model>,
+}
+
 #[sea_orm_macros::test]
 async fn from_query_result_left_join_does_not_exist() {
     let ctx = TestContext::new("from_query_result_left_join_does_not_exist").await;
@@ -62,6 +70,36 @@ async fn from_query_result_left_join_does_not_exist() {
         .column(cake::Column::Name)
         .column_as(bakery::Column::Id, "bakery_id")
         .column_as(bakery::Column::Name, "bakery_name")
+        .left_join(bakery::Entity)
+        .order_by_asc(cake::Column::Id)
+        .into_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(cake.id, 13);
+    assert_eq!(cake.name, "Cheesecake");
+    assert!(cake.bakery.is_none());
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+async fn from_query_result_left_join_with_optional_model_does_not_exist() {
+    let ctx =
+        TestContext::new("from_query_result_left_join_with_optional_model_does_not_exist").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    seed_data::init_1(&ctx, false).await;
+
+    let cake: CakeWithOptionalBakeryModel = cake::Entity::find()
+        .select_only()
+        .column(cake::Column::Id)
+        .column(cake::Column::Name)
+        .column(bakery::Column::Id)
+        .column(bakery::Column::Name)
+        .column(bakery::Column::ProfitMargin)
         .left_join(bakery::Entity)
         .order_by_asc(cake::Column::Id)
         .into_model()
