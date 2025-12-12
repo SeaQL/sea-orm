@@ -1,3 +1,4 @@
+#![allow(unused_assignments)]
 use crate::{
     AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
     QueryResult, Statement, StreamTrait, TransactionSession, TransactionStream, TransactionTrait,
@@ -175,7 +176,7 @@ impl DatabaseTransaction {
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }?;
-        self.open = false;
+        self.open = false; // read by start_rollback
         Ok(())
     }
 
@@ -222,7 +223,7 @@ impl DatabaseTransaction {
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }?;
-        self.open = false;
+        self.open = false; // read by start_rollback
         Ok(())
     }
 
