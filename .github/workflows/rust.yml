@@ -348,7 +348,7 @@ jobs:
           key: ${{ runner.os }}-cargo-sqlite-tests-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - working-directory: ./sea-orm-sync
-        run: cargo test --test '*' --features default,rbac,rusqlite
+        run: cargo test --test '*' --features default,rbac,schema-sync,rusqlite
 
   mysql:
     name: MySQL

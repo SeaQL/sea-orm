@@ -63,13 +63,6 @@ pub enum State {
 }
 
 impl OwnedRow {
-    pub(crate) fn dummy() -> Self {
-        Self {
-            columns: Vec::new(),
-            values: Vec::new(),
-        }
-    }
-
     pub fn columns(&self) -> &[Arc<str>] {
         &self.columns
     }

@@ -18,6 +18,8 @@ mod mock;
 mod proxy;
 #[cfg(feature = "rbac")]
 mod restricted_connection;
+#[cfg(all(feature = "schema-sync", feature = "rusqlite"))]
+mod sea_schema_rusqlite;
 #[cfg(all(feature = "schema-sync", feature = "sqlx-dep"))]
 mod sea_schema_shim;
 mod statement;

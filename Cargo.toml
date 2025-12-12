@@ -146,7 +146,6 @@ runtime-async-std-rustls = [
 runtime-tokio = ["sqlx?/runtime-tokio"]
 runtime-tokio-native-tls = ["sqlx?/runtime-tokio-native-tls", "runtime-tokio"]
 runtime-tokio-rustls = ["sqlx?/runtime-tokio-rustls", "runtime-tokio"]
-rusqlite = []
 schema-sync = ["sea-schema"]
 sea-orm-internal = []
 seaography = ["sea-orm-macros/seaography"]
@@ -170,6 +169,7 @@ sqlx-sqlite = [
     "sea-query-sqlx/sqlx-sqlite",
     "sea-schema/sqlx-sqlite",
 ]
+rusqlite = []
 sync = []
 tests-cfg = ["serde/derive"]
 with-bigdecimal = [
