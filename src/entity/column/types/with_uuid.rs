@@ -28,12 +28,14 @@ impl<E: EntityTrait> UuidColumn<E> {
 
     /// `= ANY(..)` operator. Postgres only.
     #[cfg(feature = "postgres-array")]
-    pub fn eq_any<V, I>(&self, v: I) -> Expr
+    pub fn eq_any<V>(&self, v: impl IntoIterator<Item = V>) -> Expr
     where
-        V: Into<Value> + Into<Uuid> + sea_query::ValueType + sea_query::with_array::NotU8,
-        I: IntoIterator<Item = V>,
+        V: Into<Uuid>,
     {
-        self.0.eq_any(v)
+        use itertools::Itertools;
+
+        let vec = v.into_iter().map(Into::into).collect_vec();
+        self.0.eq_any(vec)
     }
 
     bind_subquery_func!(pub in_subquery);
