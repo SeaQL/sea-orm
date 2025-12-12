@@ -147,7 +147,11 @@ pub trait ActiveEnum: Sized + Iterable {
 /// The Rust Value backing ActiveEnums
 pub trait ActiveEnumValue: Into<Value> + ValueType + Nullable + TryGetable {
     /// For getting an array of enum. Postgres only
-    fn try_get_vec_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<Self>, TryGetError>;
+    /// Returns `Vec<Option<Self>>` because PostgreSQL array elements can be NULL
+    fn try_get_vec_by<I: ColIdx>(
+        res: &QueryResult,
+        index: I,
+    ) -> Result<Vec<Option<Self>>, TryGetError>;
 }
 
 macro_rules! impl_active_enum_value {
@@ -156,7 +160,7 @@ macro_rules! impl_active_enum_value {
             fn try_get_vec_by<I: ColIdx>(
                 _res: &QueryResult,
                 _index: I,
-            ) -> Result<Vec<Self>, TryGetError> {
+            ) -> Result<Vec<Option<Self>>, TryGetError> {
                 Err(TryGetError::DbErr(DbErr::BackendNotSupported {
                     db: "Postgres",
                     ctx: "ActiveEnumValue::try_get_vec_by",
@@ -172,10 +176,10 @@ macro_rules! impl_active_enum_value_with_pg_array {
             fn try_get_vec_by<I: ColIdx>(
                 _res: &QueryResult,
                 _index: I,
-            ) -> Result<Vec<Self>, TryGetError> {
+            ) -> Result<Vec<Option<Self>>, TryGetError> {
                 #[cfg(feature = "postgres-array")]
                 {
-                    <Vec<Self>>::try_get_by(_res, _index)
+                    <Vec<Option<Self>>>::try_get_by(_res, _index)
                 }
                 #[cfg(not(feature = "postgres-array"))]
                 Err(TryGetError::DbErr(DbErr::BackendNotSupported {
