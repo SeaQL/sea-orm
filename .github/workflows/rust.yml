@@ -348,6 +348,8 @@ jobs:
       - uses: mozilla-actions/sccache-action@v0.0.9
       - working-directory: ./sea-orm-sync
         run: cargo test --test '*' --features default,rbac,schema-sync,rusqlite
+      - working-directory: ./sea-orm-sync/examples/quickstart
+        run: cargo run
 
   mysql:
     name: MySQL

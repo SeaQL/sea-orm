@@ -1,4 +1,5 @@
 [workspace]
+members = [".", "examples/quickstart"]
 
 [package]
 authors       = ["Chris Tsang <chris.2y3@outlook.com>"]
