@@ -81,10 +81,15 @@ pub async fn insert_value_pk(db: &DatabaseConnection) -> Result<(), DbErr> {
 }
 
 pub async fn insert_value_postgres(db: &DatabaseConnection) -> Result<(), DbErr> {
+    let str_vec = vec!["ab", "cd"]
+        .into_iter()
+        .map(|x| x.to_string())
+        .map(Some)
+        .collect();
     let model = value_type_pg::Model {
         id: 1,
         number: 48.into(),
-        str_vec: StringVec(vec!["ab".to_string(), "cd".to_string()]),
+        str_vec: StringVec(str_vec),
     };
     let result = model.clone().into_active_model().insert(db).await?;
     assert_eq!(result, model);
@@ -147,18 +152,15 @@ pub fn type_test() {
 }
 
 pub fn conversion_test() {
-    let stringvec = StringVec(vec!["ab".to_string(), "cd".to_string()]);
+    let vec: Vec<_> = vec!["ab", "cd"]
+        .into_iter()
+        .map(|x| x.to_string())
+        .map(Some)
+        .collect();
+    let stringvec = StringVec(vec.clone());
     let string: Value = stringvec.into();
-    assert_eq!(
-        string,
-        Value::Array(
-            ArrayType::String,
-            Some(Box::new(vec![
-                "ab".to_string().into(),
-                "cd".to_string().into()
-            ]))
-        )
-    );
+    let array = sea_query::Array::String(vec.into());
+    assert_eq!(string, Value::Array(Some(array)));
 
     let value_random_int = Value::Int(Some(523));
     let unwrap_int = MyInteger::unwrap(value_random_int.clone());

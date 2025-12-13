@@ -31,7 +31,7 @@ pub mod json_struct_vec {
         #[sea_orm(primary_key)]
         pub id: i32,
         #[sea_orm(column_type = "JsonBinary")]
-        pub struct_vec: Vec<JsonColumn>,
+        pub struct_vec: sea_orm::JsonField<Vec<JsonColumn>>,
     }
 
     #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]

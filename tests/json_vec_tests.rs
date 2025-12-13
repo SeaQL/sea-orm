@@ -84,7 +84,7 @@ pub async fn insert_json_string_vec_derive(db: &DatabaseConnection) -> Result<()
 pub async fn insert_json_struct_vec_derive(db: &DatabaseConnection) -> Result<(), DbErr> {
     let json_vec = json_vec_derive::json_struct_vec::Model {
         id: 2,
-        struct_vec: vec![
+        struct_vec: sea_orm::JsonField(vec![
             json_vec_derive::json_struct_vec::JsonColumn {
                 value: "4".to_string(),
             },
@@ -94,7 +94,7 @@ pub async fn insert_json_struct_vec_derive(db: &DatabaseConnection) -> Result<()
             json_vec_derive::json_struct_vec::JsonColumn {
                 value: "6".to_string(),
             },
-        ],
+        ]),
     };
 
     let _result = json_vec.clone().into_active_model().insert(db).await?;

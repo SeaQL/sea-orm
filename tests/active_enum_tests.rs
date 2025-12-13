@@ -406,7 +406,7 @@ pub async fn insert_active_enum_vec(db: &DatabaseConnection) -> Result<(), DbErr
 
     let _ = ActiveModel {
         id: Set(1),
-        categories: Set(Some(vec![Category::Big, Category::Small])),
+        categories: Set(Some(vec![Some(Category::Big), Some(Category::Small)])),
         ..model.into_active_model()
     }
     .save(db)
@@ -417,7 +417,7 @@ pub async fn insert_active_enum_vec(db: &DatabaseConnection) -> Result<(), DbErr
         model,
         Model {
             id: 1,
-            categories: Some(vec![Category::Big, Category::Small]),
+            categories: Some(vec![Some(Category::Big), Some(Category::Small)]),
         }
     );
     assert_eq!(

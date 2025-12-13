@@ -21,39 +21,29 @@ impl ActiveModelBehavior for ActiveModel {}
 pub struct Event(pub String);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Events(pub Vec<Event>);
+pub struct Events(pub Vec<Option<Event>>);
 
 impl From<Events> for Value {
     fn from(events: Events) -> Self {
         let Events(events) = events;
-        Value::Array(
-            ArrayType::String,
-            Some(Box::new(
-                events
-                    .into_iter()
-                    .map(|Event(s)| Value::String(Some(s)))
-                    .collect(),
-            )),
-        )
+        let arr: Vec<Option<String>> = events.into_iter().map(|opt| opt.map(|it| it.0)).collect();
+        Value::from(arr)
     }
 }
 
 impl TryGetable for Events {
     fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
-        let vec: Vec<String> = res.try_get_by(idx).map_err(TryGetError::DbErr)?;
-        Ok(Events(vec.into_iter().map(Event).collect()))
+        let vec: Vec<Option<String>> = res.try_get_by(idx).map_err(TryGetError::DbErr)?;
+        let events = vec.into_iter().map(|opt| opt.map(Event)).collect();
+        Ok(Events(events))
     }
 }
 
 impl ValueType for Events {
     fn try_from(v: Value) -> Result<Self, sea_query::ValueTypeErr> {
-        let value: Option<Vec<String>> =
-            v.expect("This Value::Array should consist of Value::String");
-        let vec = match value {
-            Some(v) => v.into_iter().map(Event).collect(),
-            None => vec![],
-        };
-        Ok(Events(vec))
+        let vec: Vec<Option<String>> = <Vec<Option<String>> as ValueType>::try_from(v)?;
+        let events = vec.into_iter().map(|opt| opt.map(Event)).collect();
+        Ok(Events(events))
     }
 
     fn type_name() -> String {

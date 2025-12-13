@@ -791,8 +791,8 @@ mod tests {
             pub struct Model {
                 #[sea_orm(primary_key)]
                 pub id: i32,
-                pub integers: Vec<i32>,
-                pub integers_opt: Option<Vec<i32>>,
+                pub integers: Vec<Option<i32>>,
+                pub integers_opt: Option<Vec<Option<i32>>>,
             }
 
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -805,8 +805,8 @@ mod tests {
             .append_query_results([[
                 collection::Model {
                     id: 1,
-                    integers: vec![1, 2, 3],
-                    integers_opt: Some(vec![1, 2, 3]),
+                    integers: vec![1, 2, 3].into_iter().map(Some).collect(),
+                    integers_opt: Some(vec![1, 2, 3].into_iter().map(Some).collect()),
                 },
                 collection::Model {
                     id: 2,
@@ -815,7 +815,7 @@ mod tests {
                 },
                 collection::Model {
                     id: 3,
-                    integers: vec![3, 1, 4],
+                    integers: vec![3, 1, 4].into_iter().map(Some).collect(),
                     integers_opt: None,
                 },
             ]])
@@ -826,8 +826,8 @@ mod tests {
             [
                 collection::Model {
                     id: 1,
-                    integers: vec![1, 2, 3],
-                    integers_opt: Some(vec![1, 2, 3]),
+                    integers: vec![Some(1), Some(2), Some(3)],
+                    integers_opt: Some(vec![Some(1), Some(2), Some(3)]),
                 },
                 collection::Model {
                     id: 2,
@@ -836,7 +836,7 @@ mod tests {
                 },
                 collection::Model {
                     id: 3,
-                    integers: vec![3, 1, 4],
+                    integers: vec![Some(3), Some(1), Some(4)],
                     integers_opt: None,
                 },
             ]
