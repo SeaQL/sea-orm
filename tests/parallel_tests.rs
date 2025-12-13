@@ -7,6 +7,7 @@ use pretty_assertions::assert_eq;
 use sea_orm::{DatabaseConnection, IntoActiveModel, Set, entity::prelude::*};
 
 #[sea_orm_macros::test]
+#[cfg(not(feature = "sync"))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("features_parallel_tests").await;
     create_tables(&ctx.db).await?;
@@ -16,6 +17,7 @@ async fn main() -> Result<(), DbErr> {
     Ok(())
 }
 
+#[cfg(not(feature = "sync"))]
 pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
     let metadata = [
         metadata::Model {

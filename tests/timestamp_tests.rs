@@ -108,7 +108,7 @@ pub async fn create_applog(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(log.id, res.last_insert_id);
     assert_eq!(Applog::find().one(db).await?, Some(log.clone()));
 
-    #[cfg(feature = "sqlx-sqlite")]
+    #[cfg(all(not(feature = "sync"), feature = "sqlx-sqlite"))]
     assert_eq!(
         Applog::find().into_json().one(db).await?,
         Some(serde_json::json!({
@@ -116,6 +116,16 @@ pub async fn create_applog(db: &DatabaseConnection) -> Result<(), DbErr> {
             "action": "Testing",
             "json": r#""HI""#,
             "created_at": "2021-09-17T17:50:20+08:00",
+        }))
+    );
+    #[cfg(feature = "rusqlite")]
+    assert_eq!(
+        Applog::find().into_json().one(db)?,
+        Some(serde_json::json!({
+            "id": 1,
+            "action": "Testing",
+            "json": r#""HI""#,
+            "created_at": "2021-09-17 17:50:20+08:00",
         }))
     );
     #[cfg(feature = "sqlx-mysql")]
@@ -157,7 +167,7 @@ pub async fn create_satellites_log(db: &DatabaseConnection) -> Result<(), DbErr>
     assert_eq!(archive.id, res.last_insert_id);
     assert_eq!(Satellite::find().one(db).await?, Some(archive.clone()));
 
-    #[cfg(feature = "sqlx-sqlite")]
+    #[cfg(all(not(feature = "sync"), feature = "sqlx-sqlite"))]
     assert_eq!(
         Satellite::find().into_json().one(db).await?,
         Some(serde_json::json!({
@@ -165,6 +175,16 @@ pub async fn create_satellites_log(db: &DatabaseConnection) -> Result<(), DbErr>
             "satellite_name": "Sea-00001-2022",
             "launch_date": "2022-01-07T12:11:23+00:00",
             "deployment_date": "2022-01-07T12:11:23Z".parse::<DateTimeLocal>().unwrap().to_rfc3339(),
+        }))
+    );
+    #[cfg(feature = "rusqlite")]
+    assert_eq!(
+        Satellite::find().into_json().one(db)?,
+        Some(serde_json::json!({
+            "id": 1,
+            "satellite_name": "Sea-00001-2022",
+            "launch_date": "2022-01-07 12:11:23+00:00",
+            "deployment_date": "2022-01-07 12:11:23+00:00"
         }))
     );
     #[cfg(feature = "sqlx-mysql")]

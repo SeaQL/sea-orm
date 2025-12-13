@@ -1,0 +1,193 @@
+pub mod value_type_general {
+    use super::*;
+    use sea_orm::entity::prelude::*;
+
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "value_type")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub number: MyInteger,
+        pub tag_1: Tag1,
+        pub tag_2: Tag2,
+    }
+
+    #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+    pub enum Relation {}
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+pub mod value_type_pg {
+    use super::*;
+    use sea_orm::entity::prelude::*;
+
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "value_type_postgres")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub number: MyInteger,
+        pub str_vec: StringVec,
+    }
+
+    #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+    pub enum Relation {}
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+pub mod value_type_pk {
+    use super::*;
+    use sea_orm::entity::prelude::*;
+
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "value_type_pk")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: MyInteger,
+        pub val: MyInteger,
+    }
+
+    #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+    pub enum Relation {}
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+use sea_orm::entity::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
+pub struct MyInteger(pub i32);
+
+impl<T> From<T> for MyInteger
+where
+    T: Into<i32>,
+{
+    fn from(v: T) -> MyInteger {
+        MyInteger(v.into())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
+pub struct StringVec(pub Vec<String>);
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(value_type = "String")]
+pub enum Tag1 {
+    Hard,
+    Soft,
+}
+
+impl std::fmt::Display for Tag1 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Hard => "hard",
+                Self::Soft => "soft",
+            }
+        )
+    }
+}
+
+impl std::str::FromStr for Tag1 {
+    type Err = sea_query::ValueTypeErr;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "hard" => Self::Hard,
+            "soft" => Self::Soft,
+            _ => return Err(sea_query::ValueTypeErr),
+        })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(
+    value_type = "String",
+    from_str = "Tag2::from_str",
+    to_str = "Tag2::to_str",
+    column_type = "Text"
+)]
+pub enum Tag2 {
+    Color,
+    Grey,
+}
+
+impl Tag2 {
+    fn to_str(&self) -> &'static str {
+        match self {
+            Self::Color => "color",
+            Self::Grey => "grey",
+        }
+    }
+
+    fn from_str(s: &str) -> Result<Self, sea_query::ValueTypeErr> {
+        Ok(match s {
+            "color" => Self::Color,
+            "grey" => Self::Grey,
+            _ => return Err(sea_query::ValueTypeErr),
+        })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(value_type = "String")]
+pub struct Tag3 {
+    pub i: i64,
+}
+
+impl std::fmt::Display for Tag3 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.i)
+    }
+}
+
+impl std::str::FromStr for Tag3 {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let i: i64 = s.parse()?;
+        Ok(Self { i })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(value_type = "String")]
+pub struct Tag4(pub i64);
+
+impl std::fmt::Display for Tag4 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::str::FromStr for Tag4 {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let i: i64 = s.parse()?;
+        Ok(Self(i))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(value_type = "String")]
+// Test with inner type that doesn't implement ToString/FromStr
+pub struct Tag5(pub std::path::PathBuf);
+
+impl std::fmt::Display for Tag5 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.display())
+    }
+}
+
+impl std::str::FromStr for Tag5 {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(std::path::PathBuf::from(s)))
+    }
+}

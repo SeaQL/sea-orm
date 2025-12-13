@@ -63,7 +63,7 @@ pub async fn create_transaction_log(db: &DatabaseConnection) -> Result<(), DbErr
         })
     );
 
-    #[cfg(feature = "sqlx-sqlite")]
+    #[cfg(all(not(feature = "sync"), feature = "sqlx-sqlite"))]
     assert_eq!(
         json,
         json!({
@@ -72,6 +72,18 @@ pub async fn create_transaction_log(db: &DatabaseConnection) -> Result<(), DbErr
             "time": "16:24:00.0",
             "date_time": "2022-03-13 16:24:00.0",
             "date_time_tz": "2022-03-13T16:24:00Z",
+        })
+    );
+
+    #[cfg(feature = "rusqlite")]
+    assert_eq!(
+        json,
+        json!({
+            "id": 1,
+            "date": "2022-03-13",
+            "time": "16:24:00.0",
+            "date_time": "2022-03-13 16:24:00.0",
+            "date_time_tz": "2022-03-13 16:24:00.0+00:00",
         })
     );
 

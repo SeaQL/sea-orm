@@ -1,0 +1,268 @@
+use super::*;
+use crate::common::setup::{create_table, create_table_with_index};
+use sea_orm::{
+    ConnectionTrait, DatabaseConnection, DbConn, ExecResult, Schema, error::*, sea_query,
+};
+use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, Table};
+
+pub fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
+    create_bakery_table(db)?;
+    create_baker_table(db)?;
+    create_customer_table(db)?;
+    create_order_table(db)?;
+    create_cake_table(db)?;
+    create_cakes_bakers_table(db)?;
+    create_lineitem_table(db)?;
+    Ok(())
+}
+
+pub fn create_bakery_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = Table::create()
+        .table(bakery::Entity)
+        .col(
+            ColumnDef::new(bakery::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(bakery::Column::Name).string().not_null())
+        .col(
+            ColumnDef::new(bakery::Column::ProfitMargin)
+                .double()
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, Bakery)
+}
+
+pub fn create_baker_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = Table::create()
+        .table(baker::Entity)
+        .col(
+            ColumnDef::new(baker::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(baker::Column::Name).string().not_null())
+        .col(
+            ColumnDef::new(baker::Column::ContactDetails)
+                .json()
+                .not_null(),
+        )
+        .col(ColumnDef::new(baker::Column::BakeryId).integer())
+        .foreign_key(
+            ForeignKey::create()
+                .name("fk-baker-bakery_id")
+                .from(baker::Entity, baker::Column::BakeryId)
+                .to(bakery::Entity, bakery::Column::Id)
+                .on_delete(ForeignKeyAction::SetNull)
+                .on_update(ForeignKeyAction::Cascade),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, Baker)
+}
+
+pub fn create_customer_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = Table::create()
+        .table(customer::Entity)
+        .col(
+            ColumnDef::new(customer::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(customer::Column::Name).string().not_null())
+        .col(ColumnDef::new(customer::Column::Notes).text())
+        .to_owned();
+
+    create_table(db, &stmt, Customer)
+}
+
+pub fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = Table::create()
+        .table(order::Entity)
+        .col(
+            ColumnDef::new(order::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(order::Column::Total)
+                .decimal_len(16, 4)
+                .not_null(),
+        )
+        .col(ColumnDef::new(order::Column::BakeryId).integer().not_null())
+        .col(
+            ColumnDef::new(order::Column::CustomerId)
+                .integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(order::Column::PlacedAt)
+                .timestamp_with_time_zone()
+                .not_null(),
+        )
+        .foreign_key(
+            ForeignKey::create()
+                .name("fk-order-bakery_id")
+                .from(order::Entity, order::Column::BakeryId)
+                .to(bakery::Entity, bakery::Column::Id),
+        )
+        .foreign_key(
+            ForeignKey::create()
+                .name("fk-order-customer_id")
+                .from(order::Entity, order::Column::CustomerId)
+                .to(customer::Entity, customer::Column::Id)
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::Cascade),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, Order)
+}
+
+pub fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = Table::create()
+        .table(lineitem::Entity)
+        .col(
+            ColumnDef::new(lineitem::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(lineitem::Column::Price)
+                .decimal_len(16, 4)
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(lineitem::Column::Quantity)
+                .integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(lineitem::Column::OrderId)
+                .integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(lineitem::Column::CakeId)
+                .integer()
+                .not_null(),
+        )
+        .foreign_key(
+            ForeignKey::create()
+                .name("fk-lineitem-order_id")
+                .from(lineitem::Entity, lineitem::Column::OrderId)
+                .to(order::Entity, order::Column::Id)
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::Cascade),
+        )
+        .foreign_key(
+            ForeignKey::create()
+                .name("fk-lineitem-cake_id")
+                .from(lineitem::Entity, lineitem::Column::CakeId)
+                .to(cake::Entity, cake::Column::Id),
+        )
+        .to_owned();
+
+    let backend = db.get_database_backend();
+    let stmts = Schema::new(backend).create_index_from_entity(lineitem::Entity);
+    assert_eq!(stmts.len(), 1);
+    assert_eq!(
+        backend.build(&stmts[0]),
+        backend.build(
+            Index::create()
+                .name("idx-lineitem-lineitem")
+                .table(lineitem::Entity)
+                .col(lineitem::Column::OrderId)
+                .col(lineitem::Column::CakeId)
+                .unique()
+        )
+    );
+
+    create_table_with_index(db, &stmt, Lineitem)
+}
+
+pub fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = Table::create()
+        .table(cakes_bakers::Entity)
+        .col(
+            ColumnDef::new(cakes_bakers::Column::CakeId)
+                .integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(cakes_bakers::Column::BakerId)
+                .integer()
+                .not_null(),
+        )
+        .primary_key(
+            Index::create()
+                .name("pk-cakes_bakers")
+                .col(cakes_bakers::Column::CakeId)
+                .col(cakes_bakers::Column::BakerId),
+        )
+        .foreign_key(
+            ForeignKey::create()
+                .name("fk-cakes_bakers-cake_id")
+                .from(cakes_bakers::Entity, cakes_bakers::Column::CakeId)
+                .to(cake::Entity, cake::Column::Id)
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::Cascade),
+        )
+        .foreign_key(
+            ForeignKey::create()
+                .name("fk-cakes_bakers-baker_id")
+                .from(cakes_bakers::Entity, cakes_bakers::Column::BakerId)
+                .to(baker::Entity, baker::Column::Id),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, CakesBakers)
+}
+
+pub fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = Table::create()
+        .table(cake::Entity)
+        .col(
+            ColumnDef::new(cake::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(cake::Column::Name).string().not_null())
+        .col(
+            ColumnDef::new(cake::Column::Price)
+                .decimal_len(16, 4)
+                .not_null(),
+        )
+        .col(ColumnDef::new(cake::Column::BakeryId).integer())
+        .foreign_key(
+            ForeignKey::create()
+                .name("fk-cake-bakery_id")
+                .from(cake::Entity, cake::Column::BakeryId)
+                .to(bakery::Entity, bakery::Column::Id)
+                .on_delete(ForeignKeyAction::SetNull)
+                .on_update(ForeignKeyAction::Cascade),
+        )
+        .col(
+            ColumnDef::new(cake::Column::GlutenFree)
+                .boolean()
+                .not_null(),
+        )
+        .col(ColumnDef::new(cake::Column::Serial).uuid().not_null())
+        .to_owned();
+
+    create_table(db, &stmt, Cake)
+}

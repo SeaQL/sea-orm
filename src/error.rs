@@ -139,6 +139,10 @@ pub enum RuntimeErr {
     #[cfg(feature = "sqlx-dep")]
     #[error("{0}")]
     SqlxError(Arc<sqlx::error::Error>),
+    /// Rusqlite Error
+    #[cfg(feature = "rusqlite")]
+    #[error("{0}")]
+    Rusqlite(Arc<crate::driver::rusqlite::RusqliteError>),
     /// Error generated from within SeaORM
     #[error("{0}")]
     Internal(String),
@@ -288,6 +292,29 @@ impl DbErr {
                             _ => return None,
                         }
                     }
+                }
+            }
+        }
+        #[cfg(feature = "rusqlite")]
+        if let DbErr::Exec(RuntimeErr::Rusqlite(err)) | DbErr::Query(RuntimeErr::Rusqlite(err)) =
+            self
+        {
+            use crate::driver::rusqlite::RusqliteError;
+            use std::ops::Deref;
+
+            if let RusqliteError::SqliteFailure(err, msg) = err.deref() {
+                match err.extended_code {
+                    1555 | 2067 => {
+                        return Some(SqlErr::UniqueConstraintViolation(
+                            msg.to_owned().unwrap_or_else(|| err.to_string()),
+                        ));
+                    }
+                    787 => {
+                        return Some(SqlErr::ForeignKeyConstraintViolation(
+                            msg.to_owned().unwrap_or_else(|| err.to_string()),
+                        ));
+                    }
+                    _ => (),
                 }
             }
         }
