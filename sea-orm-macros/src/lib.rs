@@ -146,21 +146,42 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
         panic!("Struct name must be Model");
     }
 
+    let is_view = attrs.iter().any(|attr| {
+        if attr.path().is_ident("sea_orm") {
+            let mut found_view = false;
+            let _ = attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("view") {
+                    found_view = true;
+                } else {
+                    let _ = meta.value().and_then(|v| v.parse::<syn::Expr>());
+                }
+                Ok(())
+            });
+            found_view
+        } else {
+            false
+        }
+    });
+
     let mut ts: TokenStream = derives::expand_derive_entity_model(&data, &attrs)
         .unwrap_or_else(Error::into_compile_error)
         .into();
 
+    // Views are read-only: we still derive Model (ModelTrait + FromQueryResult),
+    // but skip deriving an ActiveModel / IntoActiveModel.
     ts.extend::<TokenStream>(
         derives::expand_derive_model(&ident, &data, &attrs)
             .unwrap_or_else(Error::into_compile_error)
             .into(),
     );
 
-    ts.extend::<TokenStream>(
-        derives::expand_derive_active_model(&ident, &data)
-            .unwrap_or_else(Error::into_compile_error)
-            .into(),
-    );
+    if !is_view {
+        ts.extend::<TokenStream>(
+            derives::expand_derive_active_model(&ident, &data)
+                .unwrap_or_else(Error::into_compile_error)
+                .into(),
+        );
+    }
 
     ts
 }

@@ -79,7 +79,12 @@ pub trait ActiveModelTrait: Clone + Debug {
                 self.get(cols.next()?.into_column()).into_value()?
             };
         }
-        match <<<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY {
+        let arity =
+            <<<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY;
+        if arity == 0 {
+            return None;
+        }
+        match arity {
             1 => {
                 let s1 = next!();
                 Some(ValueTuple::One(s1))

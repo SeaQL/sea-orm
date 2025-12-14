@@ -130,6 +130,7 @@ impl EntityTransformer {
                 relations: relations.clone(),
                 conjunct_relations: vec![],
                 primary_keys,
+                is_view: false,
             };
             entities.insert(table_name.clone(), entity.clone());
             for mut rel in relations.into_iter() {

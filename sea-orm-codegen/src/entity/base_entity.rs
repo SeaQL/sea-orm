@@ -15,9 +15,14 @@ pub struct Entity {
     pub(crate) relations: Vec<Relation>,
     pub(crate) conjunct_relations: Vec<ConjunctRelation>,
     pub(crate) primary_keys: Vec<PrimaryKey>,
+    pub(crate) is_view: bool,
 }
 
 impl Entity {
+    pub fn is_view(&self) -> bool {
+        self.is_view
+    }
+
     pub fn get_table_name_snake_case(&self) -> String {
         self.table_name.to_snake_case()
     }
@@ -351,6 +356,7 @@ mod tests {
             primary_keys: vec![PrimaryKey {
                 name: "id".to_owned(),
             }],
+            is_view: false,
         }
     }
 

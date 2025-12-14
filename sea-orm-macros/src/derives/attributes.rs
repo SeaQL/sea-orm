@@ -15,6 +15,7 @@ pub mod derive_attr {
         pub relation: Option<syn::Ident>,
         pub schema_name: Option<syn::LitStr>,
         pub table_name: Option<syn::LitStr>,
+        pub view: Option<()>,
         pub comment: Option<syn::LitStr>,
         pub table_iden: Option<()>,
         pub rename_all: Option<syn::LitStr>,

@@ -921,6 +921,7 @@ mod tests {
                     via: "cake_filling".to_owned(),
                     to: "filling".to_owned(),
                 }],
+                is_view: false,
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -970,6 +971,7 @@ mod tests {
                     },
                 ],
                 conjunct_relations: vec![],
+                is_view: false,
                 primary_keys: vec![
                     PrimaryKey {
                         name: "cake_id".to_owned(),
@@ -1019,6 +1021,7 @@ mod tests {
                     impl_related: true,
                 }],
                 conjunct_relations: vec![],
+                is_view: false,
                 primary_keys: vec![
                     PrimaryKey {
                         name: "cake_id".to_owned(),
@@ -1053,6 +1056,7 @@ mod tests {
                     via: "cake_filling".to_owned(),
                     to: "cake".to_owned(),
                 }],
+                is_view: false,
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -1110,6 +1114,7 @@ mod tests {
                     },
                 ],
                 conjunct_relations: vec![],
+                is_view: false,
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -1154,6 +1159,7 @@ mod tests {
                     impl_related: true,
                 }],
                 conjunct_relations: vec![],
+                is_view: false,
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -1324,6 +1330,7 @@ mod tests {
                     },
                 ],
                 conjunct_relations: vec![],
+                is_view: false,
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -1371,6 +1378,7 @@ mod tests {
                     via: "cake_filling".to_owned(),
                     to: "filling".to_owned(),
                 }],
+                is_view: false,
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -1418,6 +1426,7 @@ mod tests {
                     via: "cake_filling".to_owned(),
                     to: "filling".to_owned(),
                 }],
+                is_view: false,
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -1452,6 +1461,7 @@ mod tests {
                 ],
                 relations: vec![],
                 conjunct_relations: vec![],
+                is_view: false,
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -1486,6 +1496,7 @@ mod tests {
                 ],
                 relations: vec![],
                 conjunct_relations: vec![],
+                is_view: false,
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -1522,6 +1533,7 @@ mod tests {
                     impl_related: true,
                 }],
                 conjunct_relations: vec![],
+                is_view: false,
                 primary_keys: vec![
                     PrimaryKey {
                         name: "id1".to_owned(),
@@ -1571,6 +1583,7 @@ mod tests {
                     impl_related: true,
                 }],
                 conjunct_relations: vec![],
+                is_view: false,
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -2155,6 +2168,7 @@ mod tests {
                 via: "cake_filling".to_owned(),
                 to: "filling".to_owned(),
             }],
+            is_view: false,
             primary_keys: vec![PrimaryKey {
                 name: "id".to_owned(),
             }],
@@ -2832,6 +2846,7 @@ mod tests {
                 ],
                 relations: vec![],
                 conjunct_relations: vec![],
+                is_view: false,
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -2941,6 +2956,7 @@ mod tests {
                 ],
                 relations: vec![],
                 conjunct_relations: vec![],
+                is_view: false,
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -3002,6 +3018,7 @@ mod tests {
                 ],
                 relations: vec![],
                 conjunct_relations: vec![],
+                is_view: false,
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
