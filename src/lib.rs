@@ -278,6 +278,12 @@
 //! # }
 //! ```
 //!
+//! ## Synchronous Support
+//!
+//! [`sea-orm-sync`](https://crates.io/crates/sea-orm-sync) provides the full SeaORM API without requiring an async runtime, making it ideal for lightweight CLI programs with SQLite.
+//!
+//! See the [quickstart example](https://github.com/SeaQL/sea-orm/blob/master/sea-orm-sync/examples/quickstart/src/main.rs) for usage.
+//!
 //! ## Basics
 //!
 //! ### Select
@@ -591,6 +597,8 @@
 //! + [SeaORM 2.0: Strongly-Typed Column](https://www.sea-ql.org/blog/2025-11-11-sea-orm-2.0/)
 //! + [What's new in SeaORM Pro 2.0](https://www.sea-ql.org/blog/2025-11-21-whats-new-in-seaormpro-2.0/)
 //! + [SeaORM 2.0: Nested ActiveModel](https://www.sea-ql.org/blog/2025-11-25-sea-orm-2.0/)
+//! + [A walk-through of SeaORM 2.0](https://www.sea-ql.org/blog/2025-12-05-sea-orm-2.0/)
+//! + [How we made SeaORM synchronous](https://www.sea-ql.org/blog/2025-12-12-sea-orm-2.0/)
 //!
 //! If you make extensive use of SeaQuery, we recommend checking out our blog post on SeaQuery 1.0 release:
 //!
