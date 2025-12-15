@@ -20,7 +20,7 @@ pub struct Model {
     pub colors: Vec<Color>,
     pub colors_opt: Option<Vec<Color>>,
     pub uuid: Vec<Uuid>,
-    pub uuid_hyphenated: Vec<Option<uuid::fmt::Hyphenated>>,
+    pub uuid_hyphenated: Vec<uuid::fmt::Hyphenated>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

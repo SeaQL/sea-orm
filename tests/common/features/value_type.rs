@@ -70,7 +70,7 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
-pub struct StringVec(pub Vec<Option<String>>);
+pub struct StringVec(pub Vec<String>);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
 #[sea_orm(value_type = "String")]

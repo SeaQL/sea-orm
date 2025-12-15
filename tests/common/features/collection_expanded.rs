@@ -16,8 +16,8 @@ impl EntityName for Entity {
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Eq)]
 pub struct Model {
     pub id: i32,
-    pub integers: Vec<Option<i32>>,
-    pub integers_opt: Option<Vec<Option<i32>>>,
+    pub integers: Vec<i32>,
+    pub integers_opt: Option<Vec<i32>>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
