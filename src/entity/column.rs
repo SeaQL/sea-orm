@@ -388,7 +388,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///         .filter(cake::Column::Id.eq_any(vec![4, 5]))
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY [4,5])"#
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY[4,5])"#
     /// );
     /// ```
     #[cfg(feature = "postgres-array")]
