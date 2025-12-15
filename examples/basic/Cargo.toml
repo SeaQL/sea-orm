@@ -16,3 +16,7 @@ sea-orm = { path = "../../", features = [
 ] }
 serde_json = { version = "1" }
 tokio = { version = "1", features = ["full"] }
+
+[patch.crates-io]
+sea-query = { git = "https://github.com/Huliiiiii/sea-query", branch = "value-array" }
+sea-query-sqlx = { git = "https://github.com/Huliiiiii/sea-query", branch = "value-array" }
