@@ -6,6 +6,12 @@ pub use common::{TestContext, bakery_chain::*, setup::*};
 use pretty_assertions::assert_eq;
 use sea_orm::{AccessMode, DatabaseTransaction, IsolationLevel, Set, TransactionTrait, prelude::*};
 
+#[cfg(not(feature = "sync"))]
+type FutureResult<'a> =
+    std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), DbErr>> + Send + 'a>>;
+#[cfg(feature = "sync")]
+type FutureResult<'a> = Result<(), DbErr>;
+
 fn seaside_bakery() -> bakery::ActiveModel {
     bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -104,7 +110,7 @@ fn _transaction_with_reference<'a>(
     name1: &'a str,
     name2: &'a str,
     search_name: &'a str,
-) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), DbErr>> + Send + 'a>> {
+) -> FutureResult<'a> {
     Box::pin(async move {
         let _ = bakery::ActiveModel {
             name: Set(name1.to_owned()),
@@ -983,7 +989,7 @@ fn _transaction_with_config<'a>(
     name1: String,
     name2: String,
     search_name: String,
-) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), DbErr>> + Send + 'a>> {
+) -> FutureResult<'a> {
     Box::pin(async move {
         let _ = bakery::ActiveModel {
             name: Set(name1),

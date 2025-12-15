@@ -27,6 +27,8 @@ pub(crate) enum QueryResultRow {
     SqlxPostgres(sqlx::postgres::PgRow),
     #[cfg(feature = "sqlx-sqlite")]
     SqlxSqlite(sqlx::sqlite::SqliteRow),
+    #[cfg(feature = "rusqlite")]
+    Rusqlite(crate::driver::rusqlite::RusqliteRow),
     #[cfg(feature = "mock")]
     Mock(crate::MockRow),
     #[cfg(feature = "proxy")]
@@ -157,6 +159,8 @@ impl QueryResult {
             QueryResultRow::SqlxSqlite(row) => {
                 row.columns().iter().map(|c| c.name().to_string()).collect()
             }
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(row) => row.columns().iter().map(|c| c.to_string()).collect(),
             #[cfg(feature = "mock")]
             QueryResultRow::Mock(row) => row
                 .clone()
@@ -235,6 +239,8 @@ impl Debug for QueryResultRow {
             Self::SqlxPostgres(_) => write!(f, "QueryResultRow::SqlxPostgres cannot be inspected"),
             #[cfg(feature = "sqlx-sqlite")]
             Self::SqlxSqlite(_) => write!(f, "QueryResultRow::SqlxSqlite cannot be inspected"),
+            #[cfg(feature = "rusqlite")]
+            Self::Rusqlite(row) => write!(f, "{row:?}"),
             #[cfg(feature = "mock")]
             Self::Mock(row) => write!(f, "{row:?}"),
             #[cfg(feature = "proxy")]
@@ -384,6 +390,10 @@ macro_rules! try_getable_all {
                         .try_get::<Option<$type>, _>(idx.as_sqlx_sqlite_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into())
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                    #[cfg(feature = "rusqlite")]
+                    QueryResultRow::Rusqlite(row) => row
+                        .try_get::<Option<$type>, _>(idx)
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
@@ -423,6 +433,10 @@ macro_rules! try_getable_unsigned {
                     QueryResultRow::SqlxSqlite(row) => row
                         .try_get::<Option<$type>, _>(idx.as_sqlx_sqlite_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                    #[cfg(feature = "rusqlite")]
+                    QueryResultRow::Rusqlite(row) => row
+                        .try_get::<Option<$type>, _>(idx)
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
@@ -465,6 +479,12 @@ macro_rules! try_getable_mysql {
                         stringify!($type)
                     ))
                     .into()),
+                    #[cfg(feature = "rusqlite")]
+                    QueryResultRow::Rusqlite(row) => Err(type_err(format!(
+                        "{} unsupported by rusqlite",
+                        stringify!($type)
+                    ))
+                    .into()),
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
@@ -504,6 +524,12 @@ macro_rules! try_getable_postgres {
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
                         "{} unsupported by sqlx-sqlite",
+                        stringify!($type)
+                    ))
+                    .into()),
+                    #[cfg(feature = "rusqlite")]
+                    QueryResultRow::Rusqlite(row) => Err(type_err(format!(
+                        "{} unsupported by rusqlite",
                         stringify!($type)
                     ))
                     .into()),
@@ -550,6 +576,13 @@ macro_rules! try_getable_date_time {
                         use chrono::{DateTime, Utc};
                         row.try_get::<Option<DateTime<Utc>>, _>(idx.as_sqlx_sqlite_index())
                             .map_err(|e| sqlx_error_to_query_err(e).into())
+                            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
+                            .map(|v| v.into())
+                    }
+                    #[cfg(feature = "rusqlite")]
+                    QueryResultRow::Rusqlite(row) => {
+                        use chrono::{DateTime, Utc};
+                        row.try_get::<Option<DateTime<Utc>>, _>(idx)
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                             .map(|v| v.into())
                     }
@@ -651,6 +684,21 @@ impl TryGetable for Decimal {
                     None => Err(err_null_idx_col(idx)),
                 }
             }
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(row) => {
+                let val: Option<f64> = row.try_get(idx)?;
+                match val {
+                    Some(v) => Decimal::try_from(v).map_err(|e| {
+                        DbErr::TryIntoErr {
+                            from: "f64",
+                            into: "Decimal",
+                            source: Arc::new(e),
+                        }
+                        .into()
+                    }),
+                    None => Err(err_null_idx_col(idx)),
+                }
+            }
             #[cfg(feature = "mock")]
             #[allow(unused_variables)]
             QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
@@ -692,6 +740,21 @@ impl TryGetable for BigDecimal {
                 let val: Option<f64> = row
                     .try_get(idx.as_sqlx_sqlite_index())
                     .map_err(sqlx_error_to_query_err)?;
+                match val {
+                    Some(v) => BigDecimal::try_from(v).map_err(|e| {
+                        DbErr::TryIntoErr {
+                            from: "f64",
+                            into: "BigDecimal",
+                            source: Arc::new(e),
+                        }
+                        .into()
+                    }),
+                    None => Err(err_null_idx_col(idx)),
+                }
+            }
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(row) => {
+                let val: Option<f64> = row.try_get(idx)?;
                 match val {
                     Some(v) => BigDecimal::try_from(v).map_err(|e| {
                         DbErr::TryIntoErr {
@@ -771,6 +834,10 @@ macro_rules! try_getable_uuid {
                         .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_sqlite_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into())
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                    #[cfg(feature = "rusqlite")]
+                    QueryResultRow::Rusqlite(row) => row
+                        .try_get::<Option<uuid::Uuid>, _>(idx)
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
                     QueryResultRow::Mock(row) => row.try_get::<uuid::Uuid, _>(idx).map_err(|e| {
@@ -848,6 +915,10 @@ impl TryGetable for u32 {
                 .try_get::<Option<u32>, _>(idx.as_sqlx_sqlite_index())
                 .map_err(|e| sqlx_error_to_query_err(e).into())
                 .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(row) => row
+                .try_get::<Option<u32>, _>(idx)
+                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
             #[cfg(feature = "mock")]
             #[allow(unused_variables)]
             QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
@@ -895,6 +966,10 @@ impl TryGetable for String {
                 .try_get::<Option<String>, _>(idx.as_sqlx_sqlite_index())
                 .map_err(|e| sqlx_error_to_query_err(e).into())
                 .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(row) => row
+                .try_get::<Option<String>, _>(idx)
+                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
             #[cfg(feature = "mock")]
             QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                 debug_print!("{:#?}", e.to_string());
@@ -941,6 +1016,12 @@ mod postgres_array {
                         #[cfg(feature = "sqlx-sqlite")]
                         QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
                             "{} unsupported by sqlx-sqlite",
+                            stringify!($type)
+                        ))
+                        .into()),
+                        #[cfg(feature = "rusqlite")]
+                        QueryResultRow::Rusqlite(_) => Err(type_err(format!(
+                            "{} unsupported by rusqlite",
                             stringify!($type)
                         ))
                         .into()),
@@ -1042,6 +1123,12 @@ mod postgres_array {
                             stringify!($type)
                         ))
                         .into()),
+                        #[cfg(feature = "rusqlite")]
+                        QueryResultRow::Rusqlite(_) => Err(type_err(format!(
+                            "{} unsupported by rusqlite",
+                            stringify!($type)
+                        ))
+                        .into()),
                         #[cfg(feature = "mock")]
                         QueryResultRow::Mock(row) => {
                             row.try_get::<Vec<Option<uuid::Uuid>>, _>(idx).map_err(|e| {
@@ -1104,6 +1191,10 @@ mod postgres_array {
                     stringify!($type)
                 ))
                 .into()),
+                #[cfg(feature = "rusqlite")]
+                QueryResultRow::Rusqlite(_) => {
+                    Err(type_err(format!("{} unsupported by rusqlite", stringify!($type))).into())
+                }
                 #[cfg(feature = "mock")]
                 #[allow(unused_variables)]
                 QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
@@ -1218,6 +1309,8 @@ impl TryGetable for pgvector::Vector {
             QueryResultRow::SqlxSqlite(_) => {
                 Err(type_err("Vector unsupported by sqlx-sqlite").into())
             }
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(_) => Err(type_err("Vector unsupported by rusqlite").into()),
             #[cfg(feature = "mock")]
             QueryResultRow::Mock(row) => row.try_get::<pgvector::Vector, _>(idx).map_err(|e| {
                 debug_print!("{:#?}", e.to_string());
@@ -1460,6 +1553,13 @@ where
                 .try_get::<Option<sqlx::types::Json<Self>>, _>(idx.as_sqlx_sqlite_index())
                 .map_err(|e| sqlx_error_to_query_err(e).into())
                 .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0)),
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(row) => row
+                .try_get::<Option<serde_json::Value>, _>(idx)?
+                .ok_or_else(|| err_null_idx_col(idx))
+                .and_then(|json| {
+                    serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
+                }),
             #[cfg(feature = "mock")]
             QueryResultRow::Mock(row) => row
                 .try_get::<serde_json::Value, I>(idx)

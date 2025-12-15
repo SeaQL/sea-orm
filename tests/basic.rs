@@ -4,9 +4,8 @@ pub mod common;
 
 pub use sea_orm::{Database, DbConn, entity::*, error::*, query::*, sea_query, tests_cfg::*};
 
-// cargo test --features sqlx-sqlite,runtime-tokio --test basic
-// export DATABASE_URL=mysql://root:root@localhost:3306
-// export DATABASE_URL=sqlite::memory:
+// DATABASE_URL=sqlite::memory: cargo test --features rusqlite --test basic
+// DATABASE_URL=sqlite::memory: cargo test --features sqlx-sqlite,runtime-tokio --test basic
 #[sea_orm_macros::test]
 #[cfg(feature = "sqlx-sqlite")]
 async fn main() -> Result<(), DbErr> {

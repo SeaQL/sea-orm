@@ -146,6 +146,24 @@ impl SchemaBuilder {
                         enums: vec![],
                     }
                 }
+                #[cfg(feature = "rusqlite")]
+                DbBackend::Sqlite => {
+                    use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
+                    let schema = SchemaDiscovery::discover_with(db)
+                        .map_err(|err| {
+                            DbErr::Query(match err {
+                                SqliteDiscoveryError::RusqliteError(err) => {
+                                    crate::RuntimeErr::Rusqlite(err.into())
+                                }
+                                _ => crate::RuntimeErr::Internal(format!("{err:?}")),
+                            })
+                        })?
+                        .merge_indexes_into_table();
+                    DiscoveredSchema {
+                        tables: schema.tables.iter().map(|table| table.write()).collect(),
+                        enums: vec![],
+                    }
+                }
                 #[allow(unreachable_patterns)]
                 other => {
                     return Err(DbErr::BackendNotSupported {

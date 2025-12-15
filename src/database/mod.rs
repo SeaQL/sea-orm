@@ -18,6 +18,8 @@ mod mock;
 mod proxy;
 #[cfg(feature = "rbac")]
 mod restricted_connection;
+#[cfg(all(feature = "schema-sync", feature = "rusqlite"))]
+mod sea_schema_rusqlite;
 #[cfg(all(feature = "schema-sync", feature = "sqlx-dep"))]
 mod sea_schema_shim;
 mod statement;
@@ -135,6 +137,10 @@ impl Database {
         #[cfg(feature = "sqlx-sqlite")]
         if DbBackend::Sqlite.is_prefix_of(&opt.url) {
             return crate::SqlxSqliteConnector::connect(opt).await;
+        }
+        #[cfg(feature = "rusqlite")]
+        if DbBackend::Sqlite.is_prefix_of(&opt.url) {
+            return crate::driver::rusqlite::RusqliteConnector::connect(opt);
         }
         #[cfg(feature = "mock")]
         if crate::MockDatabaseConnector::accepts(&opt.url) {
