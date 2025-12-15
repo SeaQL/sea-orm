@@ -13,13 +13,13 @@ pub struct Model {
         save_as = "citext"
     )]
     pub name: String,
-    pub integers: Vec<Option<i32>>,
-    pub integers_opt: Option<Vec<Option<i32>>>,
-    pub teas: Vec<Option<Tea>>,
-    pub teas_opt: Option<Vec<Option<Tea>>>,
-    pub colors: Vec<Option<Color>>,
-    pub colors_opt: Option<Vec<Option<Color>>>,
-    pub uuid: Vec<Option<Uuid>>,
+    pub integers: Vec<i32>,
+    pub integers_opt: Option<Vec<i32>>,
+    pub teas: Vec<Tea>,
+    pub teas_opt: Option<Vec<Tea>>,
+    pub colors: Vec<Color>,
+    pub colors_opt: Option<Vec<Color>>,
+    pub uuid: Vec<Uuid>,
     pub uuid_hyphenated: Vec<Option<uuid::fmt::Hyphenated>>,
 }
 

@@ -29,13 +29,13 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
         Model {
             id: 1,
             name: "Collection 1".into(),
-            integers: vec![1, 2, 3].into_iter().map(Some).collect(),
-            integers_opt: Some(vec![1, 2, 3].into_iter().map(Some).collect()),
-            teas: vec![Tea::BreakfastTea].into_iter().map(Some).collect(),
-            teas_opt: Some(vec![Tea::BreakfastTea].into_iter().map(Some).collect()),
-            colors: vec![Color::Black].into_iter().map(Some).collect(),
-            colors_opt: Some(vec![Color::Black].into_iter().map(Some).collect()),
-            uuid: vec![uuid].into_iter().map(Some).collect(),
+            integers: vec![1, 2, 3],
+            integers_opt: Some(vec![1, 2, 3]),
+            teas: vec![Tea::BreakfastTea],
+            teas_opt: Some(vec![Tea::BreakfastTea]),
+            colors: vec![Color::Black],
+            colors_opt: Some(vec![Color::Black]),
+            uuid: vec![uuid],
             uuid_hyphenated: vec![uuid.hyphenated()].into_iter().map(Some).collect(),
         }
         .into_active_model()
@@ -44,13 +44,13 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
         Model {
             id: 1,
             name: "Collection 1".into(),
-            integers: vec![1, 2, 3].into_iter().map(Some).collect(),
-            integers_opt: Some(vec![1, 2, 3].into_iter().map(Some).collect()),
-            teas: vec![Tea::BreakfastTea].into_iter().map(Some).collect(),
-            teas_opt: Some(vec![Tea::BreakfastTea].into_iter().map(Some).collect()),
-            colors: vec![Color::Black].into_iter().map(Some).collect(),
-            colors_opt: Some(vec![Color::Black].into_iter().map(Some).collect()),
-            uuid: vec![uuid].into_iter().map(Some).collect(),
+            integers: vec![1, 2, 3],
+            integers_opt: Some(vec![1, 2, 3]),
+            teas: vec![Tea::BreakfastTea],
+            teas_opt: Some(vec![Tea::BreakfastTea]),
+            colors: vec![Color::Black],
+            colors_opt: Some(vec![Color::Black]),
+            uuid: vec![uuid],
             uuid_hyphenated: vec![uuid.hyphenated()].into_iter().map(Some).collect(),
         }
     );
@@ -59,16 +59,13 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
         Model {
             id: 2,
             name: "Collection 2".into(),
-            integers: vec![10, 9].into_iter().map(Some).collect(),
+            integers: vec![10, 9],
             integers_opt: None,
-            teas: vec![Tea::BreakfastTea, Tea::AfternoonTea]
-                .into_iter()
-                .map(Some)
-                .collect(),
+            teas: vec![Tea::BreakfastTea, Tea::AfternoonTea],
             teas_opt: None,
-            colors: vec![Color::Black].into_iter().map(Some).collect(),
+            colors: vec![Color::Black],
             colors_opt: None,
-            uuid: vec![uuid].into_iter().map(Some).collect(),
+            uuid: vec![uuid],
             uuid_hyphenated: vec![uuid.hyphenated()].into_iter().map(Some).collect(),
         }
         .into_active_model()
@@ -77,16 +74,13 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
         Model {
             id: 2,
             name: "Collection 2".into(),
-            integers: vec![10, 9].into_iter().map(Some).collect(),
+            integers: vec![10, 9],
             integers_opt: None,
-            teas: vec![Tea::BreakfastTea, Tea::AfternoonTea]
-                .into_iter()
-                .map(Some)
-                .collect(),
+            teas: vec![Tea::BreakfastTea, Tea::AfternoonTea],
             teas_opt: None,
-            colors: vec![Color::Black].into_iter().map(Some).collect(),
+            colors: vec![Color::Black],
             colors_opt: None,
-            uuid: vec![uuid].into_iter().map(Some).collect(),
+            uuid: vec![uuid],
             uuid_hyphenated: vec![uuid.hyphenated()].into_iter().map(Some).collect(),
         }
     );
@@ -101,7 +95,7 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: Some(vec![]),
             colors: vec![],
             colors_opt: Some(vec![]),
-            uuid: vec![uuid].into_iter().map(Some).collect(),
+            uuid: vec![uuid],
             uuid_hyphenated: vec![uuid.hyphenated()].into_iter().map(Some).collect(),
         }
         .into_active_model()
@@ -116,7 +110,7 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: Some(vec![]),
             colors: vec![],
             colors_opt: Some(vec![]),
-            uuid: vec![uuid].into_iter().map(Some).collect(),
+            uuid: vec![uuid],
             uuid_hyphenated: vec![uuid.hyphenated()].into_iter().map(Some).collect(),
         }
     );
@@ -242,7 +236,7 @@ pub async fn update_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
         colors: Set(vec![Color::White]),
         colors_opt: Set(None),
         uuid: Set(vec![uuid]),
-        uuid_hyphenated: Set(vec![uuid.hyphenated()]),
+        uuid_hyphenated: Set(vec![uuid.hyphenated()].into_iter().map(Some).collect()),
     }
     .update(db)
     .await?;

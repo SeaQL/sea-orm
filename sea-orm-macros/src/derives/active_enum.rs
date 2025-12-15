@@ -328,6 +328,29 @@ impl ActiveEnum {
                             .collect()
                     }
                 }
+
+                #[automatically_derived]
+                impl sea_orm::sea_query::value::with_array::PgArrayElement for #ident {
+                    type ArrayValueType = <Self as sea_orm::ActiveEnum>::Value;
+
+                    fn into_array_value(self) -> Self::ArrayValueType {
+                        <Self as sea_orm::ActiveEnum>::into_value(self)
+                    }
+
+                    fn try_from_value(v: sea_orm::sea_query::Value) -> std::result::Result<Vec<Option<Self>>, sea_orm::sea_query::ValueTypeErr> {
+                        let vec_opt = <Vec<Option<<Self as sea_orm::ActiveEnum>::Value>> as sea_orm::sea_query::ValueType>::try_from(v)?;
+                        vec_opt
+                            .into_iter()
+                            .map(|opt| {
+                                opt.map(|value| {
+                                    <Self as sea_orm::ActiveEnum>::try_from_value(&value)
+                                        .map_err(|_| sea_orm::sea_query::ValueTypeErr)
+                                })
+                                .transpose()
+                            })
+                            .collect()
+                    }
+                }
             )
         } else {
             quote!()

@@ -1121,6 +1121,84 @@ mod postgres_array {
             }
         }
     }
+
+    macro_rules! try_getable_postgres_non_null_array_from_opt {
+        ( $($type: ty),* $(,)?) => {
+            $(
+                impl TryGetable for Vec<$type> {
+                    fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+                        let vec_opt = <Vec<Option<$type>> as TryGetable>::try_get_by(res, idx)?;
+                        vec_opt
+                            .into_iter()
+                            .enumerate()
+                            .map(|(i, opt)| {
+                                opt.ok_or_else(|| {
+                                    TryGetError::DbErr(type_err(format!(
+                                        "NULL element at index {} in non-nullable array of {}",
+                                        i,
+                                        std::any::type_name::<$type>()
+                                    )))
+                                })
+                            })
+                            .collect()
+                    }
+                }
+            )*
+        };
+    }
+
+    try_getable_postgres_non_null_array_from_opt!(
+        bool,
+        i8,
+        i16,
+        i32,
+        i64,
+        f32,
+        f64,
+        String,
+        Vec<u8>,
+        u32
+    );
+
+    #[cfg(feature = "with-json")]
+    try_getable_postgres_non_null_array_from_opt!(serde_json::Value);
+
+    #[cfg(feature = "with-chrono")]
+    try_getable_postgres_non_null_array_from_opt!(
+        chrono::NaiveDate,
+        chrono::NaiveTime,
+        chrono::NaiveDateTime,
+        chrono::DateTime<chrono::FixedOffset>,
+        chrono::DateTime<chrono::Utc>,
+        chrono::DateTime<chrono::Local>,
+    );
+
+    #[cfg(feature = "with-time")]
+    try_getable_postgres_non_null_array_from_opt!(
+        time::Date,
+        time::Time,
+        time::PrimitiveDateTime,
+        time::OffsetDateTime,
+    );
+
+    #[cfg(feature = "with-rust_decimal")]
+    try_getable_postgres_non_null_array_from_opt!(rust_decimal::Decimal);
+
+    #[cfg(feature = "with-bigdecimal")]
+    try_getable_postgres_non_null_array_from_opt!(bigdecimal::BigDecimal);
+
+    #[cfg(feature = "with-ipnetwork")]
+    try_getable_postgres_non_null_array_from_opt!(ipnetwork::IpNetwork);
+
+    #[cfg(feature = "with-uuid")]
+    try_getable_postgres_non_null_array_from_opt!(
+        uuid::Uuid,
+        uuid::fmt::Braced,
+        uuid::fmt::Hyphenated,
+        uuid::fmt::Simple,
+        uuid::fmt::Urn,
+    );
+
 }
 
 #[cfg(feature = "postgres-vector")]
@@ -1331,6 +1409,28 @@ where
 {
     fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
         T::try_get_by(res, index)
+    }
+}
+
+impl<T> TryGetable for Vec<T>
+where
+    T: TryGetableArray,
+{
+    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
+        let vec_opt = T::try_get_by(res, index)?;
+        let ty = std::any::type_name::<T>();
+        vec_opt
+            .into_iter()
+            .enumerate()
+            .map(|(i, opt)| {
+                opt.ok_or_else(|| {
+                    TryGetError::DbErr(type_err(format!(
+                        "NULL element at index {} in non-nullable array of {}",
+                        i, ty
+                    )))
+                })
+            })
+            .collect()
     }
 }
 

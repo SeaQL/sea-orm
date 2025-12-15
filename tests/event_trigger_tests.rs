@@ -30,7 +30,7 @@ pub async fn insert_event_trigger(db: &DatabaseConnection) -> Result<(), DbErr> 
         events: Events(
             ["A", "B", "C"]
                 .into_iter()
-                .map(|s| Event(s.to_owned()))
+                .map(|s| Some(Event(s.to_owned())))
                 .collect(),
         ),
     };
