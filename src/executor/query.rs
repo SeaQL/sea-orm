@@ -1198,7 +1198,6 @@ mod postgres_array {
         uuid::fmt::Simple,
         uuid::fmt::Urn,
     );
-
 }
 
 #[cfg(feature = "postgres-vector")]
