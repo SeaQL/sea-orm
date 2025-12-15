@@ -330,7 +330,7 @@ impl ActiveEnum {
                 }
 
                 #[automatically_derived]
-                impl sea_orm::sea_query::value::with_array::PgArrayElement for #ident {
+                impl sea_orm::sea_query::value::ArrayElement for #ident {
                     type ArrayValueType = <Self as sea_orm::ActiveEnum>::Value;
 
                     fn into_array_value(self) -> Self::ArrayValueType {
