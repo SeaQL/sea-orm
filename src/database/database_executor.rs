@@ -2,6 +2,7 @@ use crate::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
     ExecResult, IsolationLevel, QueryResult, Statement, TransactionError, TransactionTrait,
 };
+use crate::{Schema, SchemaBuilder};
 use std::future::Future;
 use std::pin::Pin;
 
@@ -157,5 +158,20 @@ impl<'c> IntoDatabaseExecutor<'c> for &'c DatabaseConnection {
 impl<'c> IntoDatabaseExecutor<'c> for &'c DatabaseTransaction {
     fn into_database_executor(self) -> DatabaseExecutor<'c> {
         DatabaseExecutor::Transaction(self)
+    }
+}
+
+impl DatabaseExecutor<'_> {
+    /// Creates a [`SchemaBuilder`] for this backend
+    pub fn get_schema_builder(&self) -> SchemaBuilder {
+        Schema::new(self.get_database_backend()).builder()
+    }
+
+    #[cfg(feature = "entity-registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "entity-registry")))]
+    /// Builds a schema for all the entities in the given module
+    pub fn get_schema_registry(&self, prefix: &str) -> SchemaBuilder {
+        let schema = Schema::new(self.get_database_backend());
+        crate::EntityRegistry::build_schema(schema, prefix)
     }
 }
