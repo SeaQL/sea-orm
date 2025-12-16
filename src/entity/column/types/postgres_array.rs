@@ -8,7 +8,7 @@ macro_rules! bind_array_oper {
         where
             A: Into<sea_query::value::Array>,
         {
-            let value = Value::Array(Some(arr.into()));
+            let value = Value::Array(arr.into());
             Expr::col(self.as_column_ref()).$op(self.0.save_as(Expr::val(value)))
         }
     };
@@ -18,7 +18,7 @@ macro_rules! bind_array_oper {
         where
             A: Into<sea_query::value::Array>,
         {
-            let value = Value::Array(Some(arr.into()));
+            let value = Value::Array(arr.into());
             Expr::col(self.as_column_ref()).$op(self.0.save_as(Expr::val(value)))
         }
     };

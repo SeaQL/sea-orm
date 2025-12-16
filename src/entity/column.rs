@@ -67,7 +67,7 @@ pub(crate) mod macros {
             {
                 use sea_query::extension::postgres::PgBinOper;
 
-                let value = Value::Array(Some(arr.into()));
+                let value = Value::Array(arr.into());
                 Expr::col(self.as_column_ref()).binary(PgBinOper::$oper, self.save_as(Expr::val(value)))
             }
         };
@@ -398,7 +398,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     {
         use sea_query::extension::postgres::PgFunc;
 
-        let value = Value::Array(Some(arr.into()));
+        let value = Value::Array(arr.into());
         Expr::col(self.as_column_ref()).eq(PgFunc::any(Expr::val(value)))
     }
 
@@ -554,16 +554,18 @@ where
     match col_type {
         #[cfg(all(feature = "with-json", feature = "postgres-array"))]
         ColumnType::Json | ColumnType::JsonBinary => {
-            use sea_query::value::Array;
+            use sea_query::value::{Array, ArrayType};
             use serde_json::Value as Json;
 
             match expr {
-                Expr::Value(Value::Array(Some(Array::Json(json_vec)))) => {
+                Expr::Value(Value::Array(Array::Json(json_vec))) => {
                     // flatten Array(Vec<Json>) into Json
                     let json_vec: Vec<Json> = json_vec.into_vec().into_iter().flatten().collect();
                     Expr::Value(Value::Json(Some(json_vec.into())))
                 }
-                Expr::Value(Value::Array(None)) => Expr::Value(Value::Json(None)),
+                Expr::Value(Value::Array(Array::Null(ArrayType::Json))) => {
+                    Expr::Value(Value::Json(None))
+                }
                 _ => expr,
             }
         }

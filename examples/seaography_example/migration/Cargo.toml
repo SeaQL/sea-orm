@@ -25,3 +25,7 @@ features = [
 ]
 path = "../../../sea-orm-migration" # remove this line in your own project
 version = "~2.0.0-rc.21" # sea-orm-migration version
+
+[patch.crates-io]
+sea-query      = { git = "https://github.com/Huliiiiii/sea-query", branch = "value-array" }
+sea-query-sqlx = { git = "https://github.com/Huliiiiii/sea-query", branch = "value-array" }
