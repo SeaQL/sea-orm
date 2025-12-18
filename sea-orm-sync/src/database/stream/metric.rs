@@ -1,4 +1,4 @@
-use std::{pin::Pin, task::Poll, time::Duration};
+use std::time::Duration;
 
 use crate::{DbErr, QueryResult, Statement};
 

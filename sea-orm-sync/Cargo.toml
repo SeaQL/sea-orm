@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "examples/quickstart"]
+members = [".", "examples/quickstart", "examples/pi_spigot"]
 
 [package]
 authors       = ["Chris Tsang <chris.2y3@outlook.com>"]

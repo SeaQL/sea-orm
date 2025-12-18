@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 
-use std::{ops::DerefMut, task::Poll};
+use std::ops::DerefMut;
 use tracing::instrument;
 
 #[cfg(feature = "sqlx-dep")]

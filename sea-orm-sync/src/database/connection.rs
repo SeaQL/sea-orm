@@ -1,7 +1,6 @@
 use crate::{
     DbBackend, DbErr, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError,
 };
-use std::future::Future;
 
 /// The generic API for a database connection that can perform query or execute statements.
 /// It abstracts database connection and transaction

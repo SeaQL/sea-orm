@@ -42,6 +42,13 @@ find src -type f -name '*.rs' -exec sed -i '' 's/S: Stream</S: Iterator</' {} +
 find src -type f -name '*.rs' -exec sed -i '' 's/use futures_util::lock::Mutex;/use std::sync::Mutex;/' {} +
 find src -type f -name '*.rs' -exec sed -i '' 's/use futures_util::lock::MutexGuard;/use std::sync::MutexGuard;/' {} +
 find src -type f -name '*.rs' -exec sed -i '' 's/, pin::Pin//' {} +
+find src -type f -name '*.rs' -exec sed -i '' 's/{pin::Pin, /{/' {} +
+find src -type f -name '*.rs' -exec sed -i '' 's/{task::Poll, /{/' {} +
+find src -type f -name '*.rs' -exec sed -i '' 's/{future::Future, /{/' {} +
+find src -type f -name '*.rs' -exec sed -i '' 's/, task::Poll//' {} +
+find src -type f -name '*.rs' -exec sed -i '' '/use std::{pin::Pin};/d' {} +
+find src -type f -name '*.rs' -exec sed -i '' '/use std::{task::Poll};/d' {} +
+find src -type f -name '*.rs' -exec sed -i '' '/use std::{future::Future};/d' {} +
 find src -type f -name '*.rs' -exec sed -i '' 's/, future::Future//' {} +
 find src -type f -name '*.rs' -exec sed -i '' '/use futures_util::Stream/d' {} +
 find src -type f -name '*.rs' -exec sed -i '' '/use futures_util::{Stream/d' {} +
