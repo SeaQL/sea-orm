@@ -168,6 +168,7 @@ impl FromQueryResult for JsonValue {
             #[cfg(feature = "sqlx-sqlite")]
             crate::QueryResultRow::SqlxSqlite(row) => {
                 use serde_json::json;
+                use sqlx::TypeInfo;
                 use sqlx::{Column, Row, Sqlite, Type};
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
@@ -176,6 +177,41 @@ impl FromQueryResult for JsonValue {
                         column.name().replacen(pre, "", 1)
                     };
                     let col_type = column.type_info();
+
+                    // The types of exprs and sub queries are null
+                    // https://github.com/launchbadge/sqlx/blob/v0.8.6/sqlx-sqlite/src/statement/handle.rs#L125-L139
+                    if col_type.is_null() {
+                        try_get_type!(bool, col);
+                        try_get_type!(i8, col);
+                        try_get_type!(i16, col);
+                        try_get_type!(i32, col);
+                        try_get_type!(i64, col);
+                        try_get_type!(u8, col);
+                        try_get_type!(u16, col);
+                        try_get_type!(u32, col);
+                        // try_get_type!(u64, col); // unsupported by SQLx Sqlite
+                        try_get_type!(f32, col);
+                        try_get_type!(f64, col);
+                        #[cfg(feature = "with-chrono")]
+                        try_get_type!(chrono::NaiveDate, col);
+                        #[cfg(feature = "with-chrono")]
+                        try_get_type!(chrono::NaiveTime, col);
+                        #[cfg(feature = "with-chrono")]
+                        try_get_type!(chrono::NaiveDateTime, col);
+                        #[cfg(feature = "with-time")]
+                        try_get_type!(time::Date, col);
+                        #[cfg(feature = "with-time")]
+                        try_get_type!(time::Time, col);
+                        #[cfg(feature = "with-time")]
+                        try_get_type!(time::PrimitiveDateTime, col);
+                        #[cfg(feature = "with-time")]
+                        try_get_type!(time::OffsetDateTime, col);
+                        try_get_type!(String, col);
+                        #[cfg(feature = "with-uuid")]
+                        try_get_type!(uuid::Uuid, col);
+                        try_get_type!(Vec<u8>, col);
+                    }
+
                     macro_rules! match_sqlite_type {
                         ( $type: ty ) => {
                             if <$type as Type<Sqlite>>::type_info().eq(col_type) {
