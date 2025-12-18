@@ -144,14 +144,30 @@ jobs:
       - run: taplo fmt --check 
 
   compile:
-    name: Compile
+    name: Compile (${{ matrix.label }})
     needs: init
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        runtime: [tokio]
-        tls: [native-tls, rustls]
+        include:
+          - label: build
+            kind: build
+          - label: tokio native-tls mysql
+            kind: test
+            features: default,sqlx-mysql,runtime-tokio-native-tls
+          - label: tokio rustls mysql
+            kind: test
+            features: default,sqlx-mysql,runtime-tokio-rustls
+          - label: tokio native-tls postgres
+            kind: test
+            features: default,sqlx-postgres,runtime-tokio-native-tls
+          - label: tokio rustls postgres
+            kind: test
+            features: default,sqlx-postgres,runtime-tokio-rustls
+          - label: tokio sqlite
+            kind: test
+            features: default,sqlx-sqlite,runtime-tokio
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -163,12 +179,13 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-compile-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo build --no-default-features
-      - run: cargo build --no-default-features --features seaography
-      - run: cargo build --features rbac,schema-sync
-      - run: cargo test --test '*' --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }} --no-run
+      - if: matrix.kind == 'build'
+        run: |
+          cargo build --no-default-features
+          cargo build --no-default-features --features seaography
+          cargo build --features rbac,schema-sync
+      - if: matrix.kind == 'test'
+        run: cargo test --test '*' --features ${{ matrix.features }} --no-run
 
   test:
     name: Unit Test
