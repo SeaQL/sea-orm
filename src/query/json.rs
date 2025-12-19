@@ -3,6 +3,8 @@ use serde_json::Map;
 pub use serde_json::Value as JsonValue;
 
 impl FromQueryResult for JsonValue {
+    /// # Warnings
+    /// If the database does not provide a data type for a value, that value may be lost.
     #[allow(unused_variables, unused_mut)]
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
         let mut map = Map::new();
