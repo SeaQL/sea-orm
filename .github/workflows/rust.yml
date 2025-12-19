@@ -108,13 +108,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml', 'sea-orm-cli/Cargo.toml', 'sea-orm-migration/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo clippy --all -- -D warnings
       - run: cargo clippy --all --features runtime-tokio-native-tls,sqlx-all -- -D warnings
@@ -144,31 +144,48 @@ jobs:
       - run: taplo fmt --check 
 
   compile:
-    name: Compile
+    name: Compile (${{ matrix.label }})
     needs: init
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        runtime: [tokio]
-        tls: [native-tls, rustls]
+        include:
+          - label: build
+            kind: build
+          - label: tokio native-tls mysql
+            kind: test
+            features: default,sqlx-mysql,runtime-tokio-native-tls
+          - label: tokio rustls mysql
+            kind: test
+            features: default,sqlx-mysql,runtime-tokio-rustls
+          - label: tokio native-tls postgres
+            kind: test
+            features: default,sqlx-postgres,runtime-tokio-native-tls
+          - label: tokio rustls postgres
+            kind: test
+            features: default,sqlx-postgres,runtime-tokio-rustls
+          - label: tokio sqlite
+            kind: test
+            features: default,sqlx-sqlite,runtime-tokio
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-compile-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-compile-${{ matrix.label }}-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo build --no-default-features
-      - run: cargo build --no-default-features --features seaography
-      - run: cargo build --features rbac,schema-sync
-      - run: cargo test --test '*' --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }} --no-run
+      - if: matrix.kind == 'build'
+        run: |
+          cargo build --no-default-features
+          cargo build --no-default-features --features seaography
+          cargo build --features rbac,schema-sync
+      - if: matrix.kind == 'test'
+        run: cargo test --test '*' --features ${{ matrix.features }} --no-run
 
   test:
     name: Unit Test
@@ -176,13 +193,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml', 'sea-orm-macros/Cargo.toml', 'sea-orm-codegen/Cargo.toml', 'sea-orm-cli/Cargo.toml', 'sea-orm-migration/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo test --workspace --no-run
       - run: cargo test --workspace
@@ -234,13 +251,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-examples-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-examples-${{ matrix.path }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - working-directory: ./examples/
         run: |
@@ -278,7 +295,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
@@ -309,13 +326,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-sqlite-tests-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-sqlite-tests-sqlite-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-sqlite,runtime-${{ matrix.runtime }} --no-run
       - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-sqlite,runtime-${{ matrix.runtime }}
@@ -338,13 +355,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-sqlite-tests-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-sqlite-tests-rusqlite-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - working-directory: ./sea-orm-sync
         run: cargo test --test '*' --features default,rbac,schema-sync,rusqlite
@@ -389,7 +406,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
@@ -442,13 +459,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-pg-tests-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-mariadb-tests-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
@@ -489,13 +506,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-postgres-tests-${{ matrix.runtime }}-${{ matrix.tls }}-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
