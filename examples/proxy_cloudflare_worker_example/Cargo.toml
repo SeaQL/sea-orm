@@ -51,5 +51,3 @@ sea-orm = { path = "../../", default-features = false, features = [
 [patch.crates-io]
 # https://github.com/cloudflare/workers-rs/pull/591
 worker = { git = "https://github.com/cloudflare/workers-rs.git", rev = "ff2e6a0fd58b7e7b4b7651aba46e04067597eb03" }
-sea-query = { git = "https://github.com/Huliiiiii/sea-query", branch = "value-array" }
-sea-query-sqlx = { git = "https://github.com/Huliiiiii/sea-query", branch = "value-array" }

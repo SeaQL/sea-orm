@@ -11,7 +11,3 @@ members = [".", "api", "entity", "migration"]
 
 [dependencies]
 jsonrpsee-example-api = { path = "api" }
-
-[patch.crates-io]
-sea-query = { git = "https://github.com/Huliiiiii/sea-query", branch = "value-array" }
-sea-query-sqlx = { git = "https://github.com/Huliiiiii/sea-query", branch = "value-array" }
