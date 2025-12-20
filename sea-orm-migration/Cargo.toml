@@ -32,6 +32,7 @@ sea-schema = { version = "0.17.0-rc", default-features = false, features = [
     "writer",
     "probe",
 ] }
+time = { version = "0.3.36", default-features = false, optional = true }
 tracing = { version = "0.1", default-features = false, features = ["log"] }
 tracing-subscriber = { version = "0.3.17", default-features = false, features = [
     "env-filter",
