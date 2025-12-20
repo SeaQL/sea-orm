@@ -90,7 +90,7 @@ with-chrono = ["sea-orm/with-chrono"]
 with-ipnetwork = ["sea-orm/with-ipnetwork"]
 with-json = ["sea-orm/with-json"]
 with-rust_decimal = ["sea-orm/with-rust_decimal"]
-with-time = ["sea-orm/with-time"]
+with-time = ["time", "sea-orm/with-time"]
 with-uuid = ["sea-orm/with-uuid"]
 
 # This allows us to develop using an overridden version of sea-query
