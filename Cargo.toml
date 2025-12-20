@@ -58,7 +58,7 @@ sea-orm-macros = { version = "~2.0.0-rc.21", path = "sea-orm-macros", default-fe
     "async",
     "strum",
 ] }
-sea-query = { version = "1.0.0-rc.22", default-features = false, features = [
+sea-query = { version = "1.0.0-rc.23", default-features = false, features = [
     "thread-safe",
     "hashable-value",
     "backend-mysql",
