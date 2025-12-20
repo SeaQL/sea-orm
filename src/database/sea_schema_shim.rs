@@ -41,6 +41,31 @@ impl sea_schema::Connection for DatabaseTransaction {
     }
 }
 
+#[async_trait::async_trait]
+impl sea_schema::Connection for crate::DatabaseExecutor<'_> {
+    async fn query_all(&self, select: SelectStatement) -> Result<Vec<SqlxRow>, SqlxError> {
+        match self {
+            crate::DatabaseExecutor::Connection(conn) => {
+                <DatabaseConnection as sea_schema::Connection>::query_all(conn, select).await
+            }
+            crate::DatabaseExecutor::Transaction(txn) => {
+                <DatabaseTransaction as sea_schema::Connection>::query_all(txn, select).await
+            }
+        }
+    }
+
+    async fn query_all_raw(&self, sql: String) -> Result<Vec<SqlxRow>, SqlxError> {
+        match self {
+            crate::DatabaseExecutor::Connection(conn) => {
+                <DatabaseConnection as sea_schema::Connection>::query_all_raw(conn, sql).await
+            }
+            crate::DatabaseExecutor::Transaction(txn) => {
+                <DatabaseTransaction as sea_schema::Connection>::query_all_raw(txn, sql).await
+            }
+        }
+    }
+}
+
 fn map_result(result: Result<Vec<QueryResult>, DbErr>) -> Result<Vec<SqlxRow>, SqlxError> {
     match result {
         Ok(rows) => Ok(rows

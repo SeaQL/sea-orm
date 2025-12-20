@@ -289,7 +289,7 @@ where
         &'b SchemaManager<'_>,
     ) -> Pin<Box<dyn Future<Output = Result<(), DbErr>> + Send + 'b>>,
 {
-    let db = db.into_schema_manager_connection();
+    let db = db.into_database_executor();
 
     match db.get_database_backend() {
         DbBackend::Postgres => {

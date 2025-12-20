@@ -20,7 +20,7 @@ impl<'c> SchemaManager<'c> {
         T: IntoSchemaManagerConnection<'c>,
     {
         Self {
-            conn: conn.into_schema_manager_connection(),
+            conn: conn.into_database_executor(),
         }
     }
 
