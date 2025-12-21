@@ -1,6 +1,5 @@
 #![allow(missing_docs, unreachable_code, unused_variables)]
 
-use std::{pin::Pin, task::Poll};
 use tracing::instrument;
 
 #[cfg(feature = "sqlx-dep")]

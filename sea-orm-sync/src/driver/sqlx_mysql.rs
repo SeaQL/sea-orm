@@ -1,7 +1,7 @@
 use log::LevelFilter;
 use sea_query::Values;
+use std::sync::Arc;
 use std::sync::Mutex;
-use std::{future::Future, sync::Arc};
 
 use sqlx::{
     Connection, Executor, MySql, MySqlPool,

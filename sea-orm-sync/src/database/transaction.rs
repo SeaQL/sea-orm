@@ -8,8 +8,8 @@ use crate::{
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 #[cfg(feature = "sqlx-dep")]
 use sqlx::TransactionManager;
+use std::sync::Arc;
 use std::sync::Mutex;
-use std::{future::Future, sync::Arc};
 use tracing::instrument;
 
 /// Defines a database transaction, whether it is an open transaction and the type of

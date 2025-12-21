@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "examples/quickstart"]
+members = [".", "examples/quickstart", "examples/pi_spigot"]
 
 [package]
 authors       = ["Chris Tsang <chris.2y3@outlook.com>"]
@@ -13,7 +13,7 @@ license       = "MIT OR Apache-2.0"
 name          = "sea-orm-sync"
 repository    = "https://github.com/SeaQL/sea-orm"
 rust-version  = "1.85.0"
-version       = "2.0.0-rc.21"
+version       = "2.0.0-rc.22"
 
 [package.metadata.docs.rs]
 features = [
@@ -50,7 +50,7 @@ rust_decimal = { version = "1", default-features = false, features = [
 sea-orm-macros = { version = "~2.0.0-rc.20", path = "../sea-orm-macros", default-features = false, features = [
     "strum",
 ] }
-sea-query = { version = "1.0.0-rc.23", default-features = false, features = [
+sea-query = { version = "=1.0.0-rc.23", default-features = false, features = [
     "thread-safe",
     "hashable-value",
     "backend-mysql",

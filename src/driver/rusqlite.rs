@@ -1,4 +1,3 @@
-use log::LevelFilter;
 use std::{
     ops::Deref,
     sync::{Arc, Mutex, MutexGuard, TryLockError},
@@ -8,7 +7,7 @@ use tracing::{debug, instrument, warn};
 
 pub use OwnedRow as RusqliteRow;
 use rusqlite::{
-    CachedStatement, Row, Rows,
+    CachedStatement, Row,
     types::{FromSql, FromSqlError, Value},
 };
 pub use rusqlite::{
@@ -141,6 +140,7 @@ impl From<RusqliteSharedConnection> for DatabaseConnection {
 }
 
 impl RusqliteConnector {
+    #[cfg(feature = "mock")]
     /// Check if the URI provided corresponds to `sqlite:` for a SQLite database
     pub fn accepts(string: &str) -> bool {
         string.starts_with("sqlite:")
@@ -184,13 +184,13 @@ impl RusqliteConnector {
     }
 }
 
-impl RusqliteConnector {
-    /// Convert a Rusqlite connection to a [DatabaseConnection]
-    pub fn from_rusqlite_connection(conn: RusqliteConnection) -> DatabaseConnection {
-        let conn: RusqliteSharedConnection = conn.into();
-        conn.into()
-    }
-}
+// impl RusqliteConnector {
+//     /// Convert a Rusqlite connection to a [DatabaseConnection]
+//     pub fn from_rusqlite_connection(conn: RusqliteConnection) -> DatabaseConnection {
+//         let conn: RusqliteSharedConnection = conn.into();
+//         conn.into()
+//     }
+// }
 
 impl RusqliteSharedConnection {
     pub fn acquire(&self) -> Result<MutexGuard<'_, State>, DbErr> {
@@ -334,7 +334,7 @@ impl RusqliteSharedConnection {
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
     ) -> Result<DatabaseTransaction, DbErr> {
-        let mut conn = self.loan()?;
+        let conn = self.loan()?;
         DatabaseTransaction::begin(
             Arc::new(Mutex::new(InnerConnection::Rusqlite(conn))),
             crate::DbBackend::Sqlite,
