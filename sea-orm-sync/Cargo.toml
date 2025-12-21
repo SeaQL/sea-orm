@@ -50,7 +50,7 @@ rust_decimal = { version = "1", default-features = false, features = [
 sea-orm-macros = { version = "~2.0.0-rc.20", path = "../sea-orm-macros", default-features = false, features = [
     "strum",
 ] }
-sea-query = { version = "1.0.0-rc.23", default-features = false, features = [
+sea-query = { version = "=1.0.0-rc.23", default-features = false, features = [
     "thread-safe",
     "hashable-value",
     "backend-mysql",
