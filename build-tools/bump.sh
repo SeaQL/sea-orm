@@ -28,6 +28,11 @@ sed -i 's/^sea-orm-cli [^,]*,/sea-orm-cli = { version = "'~$1'",/' Cargo.toml
 sed -i 's/^sea-orm [^,]*,/sea-orm = { version = "'~$1'",/' Cargo.toml
 cd ..
 
+# Bump `sea-orm-sync` version
+cd sea-orm-sync
+sed -i 's/^version.*$/version       = "'$1'"/' Cargo.toml
+cd ..
+
 git commit -am "$1"
 
 # Bump examples' dependency version
