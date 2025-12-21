@@ -404,94 +404,80 @@ pub(crate) fn from_sqlx_mysql_row_to_proxy_row(row: &sqlx::mysql::MySqlRow) -> c
                         "BIT" | "BINARY" | "VARBINARY" | "TINYBLOB" | "BLOB" | "MEDIUMBLOB"
                         | "LONGBLOB" => Value::Bytes(
                             row.try_get::<Option<Vec<u8>>, _>(c.ordinal())
-                                .expect("Failed to get bytes")
-                                .map(Box::new),
+                                .expect("Failed to get bytes"),
                         ),
 
                         "CHAR" | "VARCHAR" | "TINYTEXT" | "TEXT" | "MEDIUMTEXT" | "LONGTEXT" => {
                             Value::String(
                                 row.try_get::<Option<String>, _>(c.ordinal())
-                                    .expect("Failed to get string")
-                                    .map(Box::new),
+                                    .expect("Failed to get string"),
                             )
                         }
 
                         #[cfg(feature = "with-chrono")]
                         "TIMESTAMP" => Value::ChronoDateTimeUtc(
                             row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(c.ordinal())
-                                .expect("Failed to get timestamp")
-                                .map(Box::new),
+                                .expect("Failed to get timestamp"),
                         ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "TIMESTAMP" => Value::TimeDateTime(
                             row.try_get::<Option<time::PrimitiveDateTime>, _>(c.ordinal())
-                                .expect("Failed to get timestamp")
-                                .map(Box::new),
+                                .expect("Failed to get timestamp"),
                         ),
 
                         #[cfg(feature = "with-chrono")]
                         "DATE" => Value::ChronoDate(
                             row.try_get::<Option<chrono::NaiveDate>, _>(c.ordinal())
-                                .expect("Failed to get date")
-                                .map(Box::new),
+                                .expect("Failed to get date"),
                         ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "DATE" => Value::TimeDate(
                             row.try_get::<Option<time::Date>, _>(c.ordinal())
-                                .expect("Failed to get date")
-                                .map(Box::new),
+                                .expect("Failed to get date"),
                         ),
 
                         #[cfg(feature = "with-chrono")]
                         "TIME" => Value::ChronoTime(
                             row.try_get::<Option<chrono::NaiveTime>, _>(c.ordinal())
-                                .expect("Failed to get time")
-                                .map(Box::new),
+                                .expect("Failed to get time"),
                         ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "TIME" => Value::TimeTime(
                             row.try_get::<Option<time::Time>, _>(c.ordinal())
-                                .expect("Failed to get time")
-                                .map(Box::new),
+                                .expect("Failed to get time"),
                         ),
 
                         #[cfg(feature = "with-chrono")]
                         "DATETIME" => Value::ChronoDateTime(
                             row.try_get::<Option<chrono::NaiveDateTime>, _>(c.ordinal())
-                                .expect("Failed to get datetime")
-                                .map(Box::new),
+                                .expect("Failed to get datetime"),
                         ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "DATETIME" => Value::TimeDateTime(
                             row.try_get::<Option<time::PrimitiveDateTime>, _>(c.ordinal())
-                                .expect("Failed to get datetime")
-                                .map(Box::new),
+                                .expect("Failed to get datetime"),
                         ),
 
                         #[cfg(feature = "with-chrono")]
                         "YEAR" => Value::ChronoDate(
                             row.try_get::<Option<chrono::NaiveDate>, _>(c.ordinal())
-                                .expect("Failed to get year")
-                                .map(Box::new),
+                                .expect("Failed to get year"),
                         ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "YEAR" => Value::TimeDate(
                             row.try_get::<Option<time::Date>, _>(c.ordinal())
-                                .expect("Failed to get year")
-                                .map(Box::new),
+                                .expect("Failed to get year"),
                         ),
 
                         "ENUM" | "SET" | "GEOMETRY" => Value::String(
                             row.try_get::<Option<String>, _>(c.ordinal())
-                                .expect("Failed to get serialized string")
-                                .map(Box::new),
+                                .expect("Failed to get serialized string"),
                         ),
 
                         #[cfg(feature = "with-bigdecimal")]
                         "DECIMAL" => Value::BigDecimal(
                             row.try_get::<Option<bigdecimal::BigDecimal>, _>(c.ordinal())
-                                .expect("Failed to get decimal")
-                                .map(Box::new),
+                                .expect("Failed to get decimal"),
                         ),
                         #[cfg(all(
                             feature = "with-rust_decimal",
@@ -499,15 +485,13 @@ pub(crate) fn from_sqlx_mysql_row_to_proxy_row(row: &sqlx::mysql::MySqlRow) -> c
                         ))]
                         "DECIMAL" => Value::Decimal(
                             row.try_get::<Option<rust_decimal::Decimal>, _>(c.ordinal())
-                                .expect("Failed to get decimal")
-                                .map(Box::new),
+                                .expect("Failed to get decimal"),
                         ),
 
                         #[cfg(feature = "with-json")]
                         "JSON" => Value::Json(
                             row.try_get::<Option<serde_json::Value>, _>(c.ordinal())
-                                .expect("Failed to get json")
-                                .map(Box::new),
+                                .expect("Failed to get json"),
                         ),
 
                         _ => unreachable!("Unknown column type: {}", c.type_info().name()),

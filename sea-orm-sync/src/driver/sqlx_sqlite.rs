@@ -397,14 +397,12 @@ pub(crate) fn from_sqlx_sqlite_row_to_proxy_row(row: &sqlx::sqlite::SqliteRow) -
 
                         "TEXT" => Value::String(
                             row.try_get::<Option<String>, _>(c.ordinal())
-                                .expect("Failed to get string")
-                                .map(Box::new),
+                                .expect("Failed to get string"),
                         ),
 
                         "BLOB" => Value::Bytes(
                             row.try_get::<Option<Vec<u8>>, _>(c.ordinal())
-                                .expect("Failed to get bytes")
-                                .map(Box::new),
+                                .expect("Failed to get bytes"),
                         ),
 
                         #[cfg(feature = "with-chrono")]
@@ -413,8 +411,7 @@ pub(crate) fn from_sqlx_sqlite_row_to_proxy_row(row: &sqlx::sqlite::SqliteRow) -
 
                             Value::ChronoDateTimeUtc(
                                 row.try_get::<Option<DateTime<Utc>>, _>(c.ordinal())
-                                    .expect("Failed to get timestamp")
-                                    .map(Box::new),
+                                    .expect("Failed to get timestamp"),
                             )
                         }
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
@@ -422,8 +419,7 @@ pub(crate) fn from_sqlx_sqlite_row_to_proxy_row(row: &sqlx::sqlite::SqliteRow) -
                             use time::OffsetDateTime;
                             Value::TimeDateTimeWithTimeZone(
                                 row.try_get::<Option<OffsetDateTime>, _>(c.ordinal())
-                                    .expect("Failed to get timestamp")
-                                    .map(Box::new),
+                                    .expect("Failed to get timestamp"),
                             )
                         }
                         #[cfg(feature = "with-chrono")]
@@ -431,8 +427,7 @@ pub(crate) fn from_sqlx_sqlite_row_to_proxy_row(row: &sqlx::sqlite::SqliteRow) -
                             use chrono::NaiveDate;
                             Value::ChronoDate(
                                 row.try_get::<Option<NaiveDate>, _>(c.ordinal())
-                                    .expect("Failed to get date")
-                                    .map(Box::new),
+                                    .expect("Failed to get date"),
                             )
                         }
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
@@ -440,8 +435,7 @@ pub(crate) fn from_sqlx_sqlite_row_to_proxy_row(row: &sqlx::sqlite::SqliteRow) -
                             use time::Date;
                             Value::TimeDate(
                                 row.try_get::<Option<Date>, _>(c.ordinal())
-                                    .expect("Failed to get date")
-                                    .map(Box::new),
+                                    .expect("Failed to get date"),
                             )
                         }
 
@@ -450,8 +444,7 @@ pub(crate) fn from_sqlx_sqlite_row_to_proxy_row(row: &sqlx::sqlite::SqliteRow) -
                             use chrono::NaiveTime;
                             Value::ChronoTime(
                                 row.try_get::<Option<NaiveTime>, _>(c.ordinal())
-                                    .expect("Failed to get time")
-                                    .map(Box::new),
+                                    .expect("Failed to get time"),
                             )
                         }
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
@@ -459,8 +452,7 @@ pub(crate) fn from_sqlx_sqlite_row_to_proxy_row(row: &sqlx::sqlite::SqliteRow) -
                             use time::Time;
                             Value::TimeTime(
                                 row.try_get::<Option<Time>, _>(c.ordinal())
-                                    .expect("Failed to get time")
-                                    .map(Box::new),
+                                    .expect("Failed to get time"),
                             )
                         }
 

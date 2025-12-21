@@ -731,6 +731,8 @@ pub use error::*;
 pub use executor::*;
 pub use query::*;
 pub use schema::*;
+#[cfg(feature = "with-json")]
+pub use value::JsonField;
 
 #[cfg(feature = "macros")]
 pub use sea_orm_macros::{

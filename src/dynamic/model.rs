@@ -129,12 +129,13 @@ fn try_get(res: &QueryResult, pre: &str, col: &str, ty: &ArrayType) -> Result<Va
         ArrayType::Decimal => Value::Decimal(res.try_get(pre, col)?),
 
         #[cfg(feature = "with-bigdecimal")]
-        ArrayType::BigDecimal => {
-            Value::BigDecimal(res.try_get::<Option<_>>(pre, col)?.map(Box::new))
-        }
+        ArrayType::BigDecimal => Value::BigDecimal(res.try_get::<Option<_>>(pre, col)?),
 
         #[cfg(feature = "with-ipnetwork")]
         ArrayType::IpNetwork => Value::IpNetwork(res.try_get(pre, col)?),
+
+        // TODO: support enum
+        ArrayType::Enum(_) => return Err(DbErr::Type("Unsupported type: enum".into())),
     })
 }
 

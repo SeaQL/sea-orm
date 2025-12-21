@@ -28,12 +28,14 @@ impl<E: EntityTrait> DateLikeColumn<E> {
 
     /// `= ANY(..)` operator. Postgres only.
     #[cfg(feature = "postgres-array")]
-    pub fn eq_any<V, I>(&self, v: I) -> Expr
+    pub fn eq_any<V>(&self, v: impl IntoIterator<Item = V>) -> Expr
     where
-        V: Into<Value> + DateLikeValue + sea_query::ValueType + sea_query::with_array::NotU8,
-        I: IntoIterator<Item = V>,
+        V: DateLikeValue + sea_query::ValueType + sea_query::with_array::NotU8,
+        Vec<V>: Into<sea_query::value::Array>,
     {
-        self.0.eq_any(v)
+        use itertools::Itertools;
+
+        self.0.eq_any(v.into_iter().collect_vec())
     }
 
     bind_subquery_func!(pub in_subquery);
@@ -67,12 +69,13 @@ impl<E: EntityTrait> TimeLikeColumn<E> {
 
     /// `= ANY(..)` operator. Postgres only.
     #[cfg(feature = "postgres-array")]
-    pub fn eq_any<V, I>(&self, v: I) -> Expr
+    pub fn eq_any<V>(&self, v: impl IntoIterator<Item = V>) -> Expr
     where
-        V: Into<Value> + TimeLikeValue + sea_query::ValueType + sea_query::with_array::NotU8,
-        I: IntoIterator<Item = V>,
+        V: TimeLikeValue + sea_query::ValueType + sea_query::with_array::NotU8,
+        Vec<V>: Into<sea_query::value::Array>,
     {
-        self.0.eq_any(v)
+        let vec: Vec<V> = v.into_iter().collect();
+        self.0.eq_any(vec)
     }
 
     bind_subquery_func!(pub in_subquery);
@@ -106,12 +109,13 @@ impl<E: EntityTrait> DateTimeLikeColumn<E> {
 
     /// `= ANY(..)` operator. Postgres only.
     #[cfg(feature = "postgres-array")]
-    pub fn eq_any<V, I>(&self, v: I) -> Expr
+    pub fn eq_any<V>(&self, v: impl IntoIterator<Item = V>) -> Expr
     where
-        V: Into<Value> + DateTimeLikeValue + sea_query::ValueType + sea_query::with_array::NotU8,
-        I: IntoIterator<Item = V>,
+        V: DateTimeLikeValue + sea_query::ValueType + sea_query::with_array::NotU8,
+        Vec<V>: Into<sea_query::value::Array>,
     {
-        self.0.eq_any(v)
+        let vec: Vec<V> = v.into_iter().collect();
+        self.0.eq_any(vec)
     }
 
     bind_subquery_func!(pub in_subquery);

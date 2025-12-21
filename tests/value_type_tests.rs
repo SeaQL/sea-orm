@@ -149,16 +149,8 @@ pub fn type_test() {
 pub fn conversion_test() {
     let stringvec = StringVec(vec!["ab".to_string(), "cd".to_string()]);
     let string: Value = stringvec.into();
-    assert_eq!(
-        string,
-        Value::Array(
-            ArrayType::String,
-            Some(Box::new(vec![
-                "ab".to_string().into(),
-                "cd".to_string().into()
-            ]))
-        )
-    );
+    let expected: Value = vec!["ab".to_string(), "cd".to_string()].into();
+    assert_eq!(string, expected);
 
     let value_random_int = Value::Int(Some(523));
     let unwrap_int = MyInteger::unwrap(value_random_int.clone());

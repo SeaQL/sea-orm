@@ -61,15 +61,14 @@ pub(crate) mod macros {
         ($vis:vis $op:ident, $oper:ident) => {
             #[cfg(feature = "postgres-array")]
             /// Array operator. Postgres only.
-            $vis fn $op<V, I>(&self, v: I) -> Expr
+            $vis fn $op<A>(&self, arr: A) -> Expr
             where
-                V: Into<Value> + sea_query::ValueType + sea_query::with_array::NotU8,
-                I: IntoIterator<Item = V>,
+                A: Into<sea_query::value::Array>,
             {
                 use sea_query::extension::postgres::PgBinOper;
 
-                let vec: Vec<_> = v.into_iter().collect();
-                Expr::col(self.as_column_ref()).binary(PgBinOper::$oper, self.save_as(Expr::val(vec)))
+                let value = Value::Array(arr.into());
+                Expr::col(self.as_column_ref()).binary(PgBinOper::$oper, self.save_as(Expr::val(value)))
             }
         };
     }
@@ -389,19 +388,18 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///         .filter(cake::Column::Id.eq_any(vec![4, 5]))
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY [4,5])"#
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY[4,5])"#
     /// );
     /// ```
     #[cfg(feature = "postgres-array")]
-    fn eq_any<V, I>(&self, v: I) -> Expr
+    fn eq_any<A>(&self, arr: A) -> Expr
     where
-        V: Into<Value> + sea_query::ValueType + sea_query::with_array::NotU8,
-        I: IntoIterator<Item = V>,
+        A: Into<sea_query::value::Array>,
     {
         use sea_query::extension::postgres::PgFunc;
 
-        let vec: Vec<_> = v.into_iter().collect();
-        Expr::col(self.as_column_ref()).eq(PgFunc::any(vec))
+        let value = Value::Array(arr.into());
+        Expr::col(self.as_column_ref()).eq(PgFunc::any(Expr::val(value)))
     }
 
     bind_subquery_func!(in_subquery);
@@ -556,22 +554,18 @@ where
     match col_type {
         #[cfg(all(feature = "with-json", feature = "postgres-array"))]
         ColumnType::Json | ColumnType::JsonBinary => {
-            use sea_query::ArrayType;
+            use sea_query::value::{Array, ArrayType};
             use serde_json::Value as Json;
 
             match expr {
-                Expr::Value(Value::Array(ArrayType::Json, Some(json_vec))) => {
+                Expr::Value(Value::Array(Array::Json(json_vec))) => {
                     // flatten Array(Vec<Json>) into Json
-                    let json_vec: Vec<Json> = json_vec
-                        .into_iter()
-                        .filter_map(|val| match val {
-                            Value::Json(Some(json)) => Some(json),
-                            _ => None,
-                        })
-                        .collect();
+                    let json_vec: Vec<Json> = json_vec.into_vec().into_iter().flatten().collect();
                     Expr::Value(Value::Json(Some(json_vec.into())))
                 }
-                Expr::Value(Value::Array(ArrayType::Json, None)) => Expr::Value(Value::Json(None)),
+                Expr::Value(Value::Array(Array::Null(ArrayType::Json))) => {
+                    Expr::Value(Value::Json(None))
+                }
                 _ => expr,
             }
         }
