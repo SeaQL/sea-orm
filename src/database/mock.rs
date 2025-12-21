@@ -792,7 +792,7 @@ mod tests {
                 #[sea_orm(primary_key)]
                 pub id: i32,
                 pub integers: Vec<i32>,
-                pub integers_opt: Option<Vec<Option<i32>>>,
+                pub integers_opt: Option<Vec<i32>>,
             }
 
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -806,7 +806,7 @@ mod tests {
                 collection::Model {
                     id: 1,
                     integers: vec![1, 2, 3],
-                    integers_opt: Some(vec![1, 2, 3].into_iter().map(Some).collect()),
+                    integers_opt: Some(vec![1, 2, 3]),
                 },
                 collection::Model {
                     id: 2,
@@ -827,7 +827,7 @@ mod tests {
                 collection::Model {
                     id: 1,
                     integers: vec![1, 2, 3],
-                    integers_opt: Some(vec![Some(1), Some(2), Some(3)]),
+                    integers_opt: Some(vec![1, 2, 3]),
                 },
                 collection::Model {
                     id: 2,
