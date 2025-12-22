@@ -20,6 +20,8 @@ async fn main() -> Result<(), DbErr> {
 
 #[cfg(feature = "with-bigdecimal")]
 pub async fn create_and_update_pi(db: &DatabaseConnection) -> Result<(), DbErr> {
+    use pi::Entity as Pi;
+
     fn trunc_dec_scale(mut model: pi::Model) -> pi::Model {
         model.decimal = model.decimal.trunc_with_scale(3);
         model.big_decimal = model.big_decimal.with_scale(3);

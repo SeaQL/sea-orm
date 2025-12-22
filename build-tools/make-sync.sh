@@ -28,11 +28,13 @@ find src -type f -name '*.rs' -exec sed -i '' "/[a-zA-Z]+<Self>: Send,/d" {} +
 find src -type f -name '*.rs' -exec sed -i '' "s/: Send + Sync {/ {/" {} +
 find src -type f -name '*.rs' -exec sed -i '' "s/type Stream<'a>: Stream/type Stream<'a>: Iterator/" {} +
 find src -type f -name '*.rs' -exec sed -i '' "s/: Send {/ {/" {} +
+find src -type f -name '*.rs' -exec sed -i '' "s/>: Send$/>/" {} +
 find src -type f -name '*.rs' -exec sed -i '' "s/: Sync {/ {/" {} +
 find src -type f -name '*.rs' -exec sed -i '' "s/Send + Sync + //" {} +
 find src -type f -name '*.rs' -exec sed -i '' "s/ + Sync//" {} +
 find src -type f -name '*.rs' -exec sed -i '' "s/ + Send//" {} +
 find src -type f -name '*.rs' -exec sed -i '' "s/Send + //" {} +
+find src -type f -name '*.rs' -exec sed -i '' 's/Arc<dyn std::error::Error>/Arc<dyn std::error::Error + Send + Sync>/' {} +
 find src -type f -name '*.rs' -exec sed -i '' '/T: Send,/d' {} +
 find src -type f -name '*.rs' -exec sed -i '' '/R::Model: Send,/d' {} +
 find src -type f -name '*.rs' -exec sed -i '' '/S::Item: Send,/d' {} +
