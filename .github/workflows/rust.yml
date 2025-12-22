@@ -155,19 +155,19 @@ jobs:
             kind: build
           - label: tokio native-tls mysql
             kind: test
-            features: default,sqlx-mysql,runtime-tokio-native-tls
+            features: sqlx-mysql,runtime-tokio-native-tls
           - label: tokio rustls mysql
             kind: test
-            features: default,sqlx-mysql,runtime-tokio-rustls
+            features: sqlx-mysql,runtime-tokio-rustls
           - label: tokio native-tls postgres
             kind: test
-            features: default,sqlx-postgres,runtime-tokio-native-tls
+            features: sqlx-postgres,runtime-tokio-native-tls
           - label: tokio rustls postgres
             kind: test
-            features: default,sqlx-postgres,runtime-tokio-rustls
+            features: sqlx-postgres,runtime-tokio-rustls
           - label: tokio sqlite
             kind: test
-            features: default,sqlx-sqlite,runtime-tokio
+            features: sqlx-sqlite,runtime-tokio
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -185,7 +185,7 @@ jobs:
           cargo build --no-default-features --features seaography
           cargo build --features rbac,schema-sync
       - if: matrix.kind == 'test'
-        run: cargo test --test '*' --features ${{ matrix.features }} --no-run
+        run: cargo test --test '*' --features tests-features,${{ matrix.features }} --no-run
 
   test:
     name: Unit Test
