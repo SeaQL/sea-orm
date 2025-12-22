@@ -1,6 +1,8 @@
 use crate::{
     ColumnDef, ColumnType, DbBackend, EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable,
 };
+#[cfg(feature = "postgres-array")]
+use sea_query::ArrayElement;
 use sea_query::{
     BinOper, DynIden, Expr, ExprTrait, IntoIden, IntoLikeExpr, SeaRc, SelectStatement, Value,
 };
@@ -392,13 +394,13 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     #[cfg(feature = "postgres-array")]
-    fn eq_any<A>(&self, arr: A) -> Expr
+    fn eq_any<T>(&self, arr: impl IntoIterator<Item = T>) -> Expr
     where
-        A: Into<sea_query::value::Array>,
+        T: ArrayElement,
     {
         use sea_query::extension::postgres::PgFunc;
 
-        let value = Value::Array(arr.into());
+        let value = Value::Array(arr.into_iter().collect());
         Expr::col(self.as_column_ref()).eq(PgFunc::any(Expr::val(value)))
     }
 
