@@ -136,6 +136,7 @@ sqlx-postgres = []
 sqlx-sqlite = []
 sync = []
 tests-cfg = ["serde/derive"]
+tests-features = ["default", "rbac", "schema-sync", "with-bigdecimal"]
 with-bigdecimal = [
     "bigdecimal",
     "sea-query/with-bigdecimal",
