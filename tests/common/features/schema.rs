@@ -561,7 +561,7 @@ pub async fn create_pi_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(pi::Column::BigDecimalOpt).decimal_len(11, 10))
         .to_owned();
 
-    create_table(db, &stmt, Pi).await
+    create_table(db, &stmt, pi::Entity).await
 }
 
 pub async fn create_event_trigger_table(db: &DbConn) -> Result<ExecResult, DbErr> {
