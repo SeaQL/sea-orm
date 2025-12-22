@@ -8,6 +8,7 @@ use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 use std::str::FromStr;
 
 #[sea_orm_macros::test]
+#[cfg(feature = "with-bigdecimal")]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("pi_tests").await;
     create_tables(&ctx.db).await?;
@@ -17,6 +18,7 @@ async fn main() -> Result<(), DbErr> {
     Ok(())
 }
 
+#[cfg(feature = "with-bigdecimal")]
 pub async fn create_and_update_pi(db: &DatabaseConnection) -> Result<(), DbErr> {
     fn trunc_dec_scale(mut model: pi::Model) -> pi::Model {
         model.decimal = model.decimal.trunc_with_scale(3);

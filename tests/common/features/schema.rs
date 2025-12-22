@@ -48,7 +48,10 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_active_enum_table(db).await?;
     create_active_enum_child_table(db).await?;
     create_insert_default_table(db).await?;
-    create_pi_table(db).await?;
+    #[cfg(feature = "with-bigdecimal")]
+    {
+        create_pi_table(db).await?;
+    }
     create_uuid_fmt_table(db).await?;
     create_edit_log_table(db).await?;
     create_teas_table(db).await?;
@@ -533,6 +536,7 @@ pub async fn create_host_network_table(db: &DbConn) -> Result<ExecResult, DbErr>
     create_table(db, &stmt, HostNetwork).await
 }
 
+#[cfg(feature = "with-bigdecimal")]
 pub async fn create_pi_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = sea_query::Table::create()
         .table(pi::Entity)
