@@ -676,7 +676,7 @@ pub async fn create_categories_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 
 #[cfg(feature = "postgres-vector")]
 pub async fn create_embedding_table(db: &DbConn) -> Result<ExecResult, DbErr> {
-    db.execute(sea_orm::Statement::from_string(
+    db.execute_raw(sea_orm::Statement::from_string(
         db.get_database_backend(),
         "CREATE EXTENSION IF NOT EXISTS vector",
     ))
