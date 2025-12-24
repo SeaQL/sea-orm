@@ -2,6 +2,7 @@ use crate::{
     ConnectionTrait, DbBackend, DbErr, EntityTrait, FromQueryResult, QueryResult, Select,
     Statement, dynamic,
 };
+use itertools::Itertools;
 use sea_query::{DynIden, Expr, IntoIden, SelectStatement};
 use std::marker::PhantomData;
 
@@ -96,11 +97,10 @@ where
     where
         C: ConnectionTrait,
     {
-        let rows = db.query_all(&self.query).await?;
-        let mut models = Vec::new();
-        for row in rows.into_iter() {
-            models.push(self.selector.from_raw_query_result(row)?);
-        }
-        Ok(models)
+        db.query_all(&self.query)
+            .await?
+            .into_iter()
+            .map(|row| self.selector.from_raw_query_result(row))
+            .try_collect()
     }
 }

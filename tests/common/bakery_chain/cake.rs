@@ -120,3 +120,13 @@ impl ActiveModelBehavior for ActiveModel {
         }
     }
 }
+
+#[test]
+fn column_type_test() {
+    let _id: sea_orm::NumericColumn<Entity> = COLUMN.id;
+    let _name: sea_orm::StringColumn<Entity> = COLUMN.name;
+    let _price: sea_orm::NumericColumn<Entity> = COLUMN.price;
+    let _bakery_id: sea_orm::NumericColumnNullable<Entity> = COLUMN.bakery_id;
+    let _gluten_free: sea_orm::BoolColumn<Entity> = COLUMN.gluten_free;
+    let _serial: sea_orm::UuidColumn<Entity> = COLUMN.serial;
+}

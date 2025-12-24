@@ -8,10 +8,11 @@ pub use common::{
     bakery_dense::*,
     setup::*,
 };
-use sea_orm::{DbConn, DbErr, RuntimeErr, Set, prelude::*, query::*};
+use sea_orm::{DbConn, DbErr, EntityLoaderTrait, RuntimeErr, Set, prelude::*, query::*};
 
 #[sea_orm_macros::test]
 async fn cake_entity_loader() -> Result<(), DbErr> {
+    use common::bakery_dense::prelude::*;
     use sea_orm::compound::EntityLoaderTrait;
 
     let ctx = TestContext::new("test_cake_entity_loader").await;
@@ -35,7 +36,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     insert_cake_baker(db, baker_2.id, cake_2.id).await?;
     insert_cake_baker(db, baker_2.id, cake_3.id).await?;
 
-    let cakes = cake::Entity::load().all(db).await?;
+    let cakes = Cake::load().all(db).await?;
     assert_eq!(
         cakes,
         [
@@ -46,25 +47,25 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         ]
     );
 
-    let cakes = cake::Entity::load()
-        .filter(cake::Column::Name.like("Ch%"))
+    let cakes = Cake::load()
+        .filter(Cake::COLUMN.name.like("Ch%"))
         .all(db)
         .await?;
     assert_eq!(cakes, [cake_1.clone(), cake_3.clone()]);
     assert!(cakes[0].bakers.is_empty());
-    assert!(cakes[0].bakery.is_none());
+    assert!(cakes[0].bakery.is_unloaded());
 
     assert_eq!(
-        cake::Entity::load()
-            .filter(cake::Column::Name.like("Ch%"))
-            .order_by_desc(cake::Column::Name)
+        Cake::load()
+            .filter(Cake::COLUMN.name.like("Ch%"))
+            .order_by_desc(Cake::COLUMN.name)
             .one(db)
             .await?
             .unwrap(),
         cake_3
     );
 
-    let cakes = cake::Entity::load().with(bakery::Entity).all(db).await?;
+    let cakes = Cake::load().with(Bakery).all(db).await?;
     assert_eq!(
         cakes,
         [
@@ -74,16 +75,16 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             cake_4.clone(),
         ]
     );
-    assert_eq!(cakes[0].bakery.as_deref().unwrap(), &bakery_1);
-    assert_eq!(cakes[1].bakery.as_deref().unwrap(), &bakery_1);
-    assert_eq!(cakes[2].bakery.as_deref().unwrap(), &bakery_2);
+    assert_eq!(cakes[0].bakery.as_ref().unwrap(), &bakery_1);
+    assert_eq!(cakes[1].bakery.as_ref().unwrap(), &bakery_1);
+    assert_eq!(cakes[2].bakery.as_ref().unwrap(), &bakery_2);
     assert_eq!(cakes[3].bakery, None);
 
-    // alternative API
+    // low-level API
     assert_eq!(
         cakes,
         cake::EntityLoader::load(
-            cake::Entity::load().all(db).await?,
+            Cake::load().all(db).await?,
             &cake::EntityLoaderWith {
                 bakery: true,
                 lineitems: false,
@@ -95,35 +96,31 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
         .await?
     );
 
-    let cake_with_bakery = cake::Entity::load()
-        .filter(cake::Column::Name.eq("Cheesecake"))
-        .with(bakery::Entity)
+    let cake_with_bakery = Cake::load()
+        .filter(Cake::COLUMN.name.eq("Cheesecake"))
+        .with(Bakery)
         .one(db)
         .await?
         .unwrap();
     assert_eq!(cake_with_bakery, cake_1);
-    assert_eq!(*cake_with_bakery.bakery.unwrap(), bakery_1);
+    assert_eq!(cake_with_bakery.bakery.unwrap(), bakery_1);
     assert!(cake_with_bakery.bakers.is_empty());
 
     assert_eq!(
-        cake::Entity::load()
+        Cake::load()
             .filter_by_id(cake_2.id)
-            .with(bakery::Entity)
+            .with(Bakery)
             .one(db)
             .await?
             .unwrap(),
         {
             let mut cake_2 = cake_2.clone().into_ex();
-            cake_2.bakery = Some(bakery_1.clone().into_ex().into());
+            cake_2.bakery = HasOne::loaded(bakery_1.clone());
             cake_2
         }
     );
 
-    let cakes = cake::Entity::load()
-        .with(bakery::Entity)
-        .with(baker::Entity)
-        .all(db)
-        .await?;
+    let cakes = Cake::load().with(Bakery).with(Baker).all(db).await?;
     assert_eq!(
         cakes,
         [
@@ -133,24 +130,24 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             cake_4.clone()
         ]
     );
-    assert_eq!(cakes[0].bakery.as_deref().unwrap(), &bakery_1);
-    assert_eq!(cakes[1].bakery.as_deref().unwrap(), &bakery_1);
-    assert_eq!(cakes[2].bakery.as_deref().unwrap(), &bakery_2);
+    assert_eq!(cakes[0].bakery.as_ref().unwrap(), &bakery_1);
+    assert_eq!(cakes[1].bakery.as_ref().unwrap(), &bakery_1);
+    assert_eq!(cakes[2].bakery.as_ref().unwrap(), &bakery_2);
     assert_eq!(cakes[3].bakery, None);
     assert_eq!(cakes[0].bakers, [baker_1.clone()]);
     assert_eq!(cakes[1].bakers, [baker_1.clone(), baker_2.clone()]);
     assert_eq!(cakes[2].bakers, [baker_2.clone()]);
     assert!(cakes[3].bakers.is_empty());
 
-    let cake_with_bakery_baker = cake::Entity::load()
-        .filter(cake::Column::Name.eq("Chiffon"))
-        .with(bakery::Entity)
-        .with(baker::Entity)
+    let cake_with_bakery_baker = Cake::load()
+        .filter(Cake::COLUMN.name.eq("Chiffon"))
+        .with(Bakery)
+        .with(Baker)
         .one(db)
         .await?
         .unwrap();
     assert_eq!(cake_with_bakery_baker, cake_3);
-    assert_eq!(*cake_with_bakery_baker.bakery.unwrap(), bakery_2);
+    assert_eq!(cake_with_bakery_baker.bakery.unwrap(), bakery_2);
     assert_eq!(cake_with_bakery_baker.bakers, [baker_2.clone()]);
 
     // start again from baker
@@ -186,7 +183,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     //        -> cake
 
     let bakeries = bakery::Entity::load()
-        .with(baker::Entity)
+        .with(Baker)
         .with(cake::Entity)
         .order_by_asc(bakery::Column::Id)
         .all(db)
@@ -200,26 +197,20 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     // nested
     // cake -> bakery -> baker
 
-    let cakes = cake::Entity::load()
-        .with((bakery::Entity, baker::Entity))
-        .all(db)
-        .await?;
-    assert_eq!(cakes[0].bakery.as_deref().unwrap().name, bakery_1.name);
-    assert_eq!(cakes[1].bakery.as_deref().unwrap().name, bakery_1.name);
-    assert_eq!(cakes[2].bakery.as_deref().unwrap().name, bakery_2.name);
+    let cakes = Cake::load().with((Bakery, Baker)).all(db).await?;
+    assert_eq!(cakes[0].bakery.as_ref().unwrap().name, bakery_1.name);
+    assert_eq!(cakes[1].bakery.as_ref().unwrap().name, bakery_1.name);
+    assert_eq!(cakes[2].bakery.as_ref().unwrap().name, bakery_2.name);
     assert_eq!(cakes[3].bakery, None);
     assert_eq!(
-        cakes[0].bakery.as_deref().unwrap().bakers,
+        cakes[0].bakery.as_ref().unwrap().bakers,
         [baker_1.clone(), baker_2.clone()]
     );
     assert_eq!(
-        cakes[1].bakery.as_deref().unwrap().bakers,
+        cakes[1].bakery.as_ref().unwrap().bakers,
         [baker_1.clone(), baker_2.clone()]
     );
-    assert_eq!(
-        cakes[2].bakery.as_deref().unwrap().bakers,
-        [baker_3.clone()]
-    );
+    assert_eq!(cakes[2].bakery.as_ref().unwrap().bakers, [baker_3.clone()]);
 
     Ok(())
 }
@@ -261,10 +252,10 @@ async fn entity_loader_join_three() {
         .all(db)
         .await
         .unwrap();
-    assert_eq!(lineitems[0].order.as_deref().unwrap().id, 101);
-    assert_eq!(lineitems[0].order.as_deref().unwrap().total, 10.into());
-    assert_eq!(lineitems[1].order.as_deref().unwrap().id, 101);
-    assert_eq!(lineitems[1].order.as_deref().unwrap().total, 10.into());
+    assert_eq!(lineitems[0].order.as_ref().unwrap().id, 101);
+    assert_eq!(lineitems[0].order.as_ref().unwrap().total, 10.into());
+    assert_eq!(lineitems[1].order.as_ref().unwrap().id, 101);
+    assert_eq!(lineitems[1].order.as_ref().unwrap().total, 10.into());
 
     // lineitem join cake
     let lineitems = lineitem::Entity::load()
@@ -272,10 +263,10 @@ async fn entity_loader_join_three() {
         .all(db)
         .await
         .unwrap();
-    assert_eq!(lineitems[0].cake.as_deref().unwrap().id, 13);
-    assert_eq!(lineitems[0].cake.as_deref().unwrap().name, "Cheesecake");
-    assert_eq!(lineitems[1].cake.as_deref().unwrap().id, 15);
-    assert_eq!(lineitems[1].cake.as_deref().unwrap().name, "Chocolate");
+    assert_eq!(lineitems[0].cake.as_ref().unwrap().id, 13);
+    assert_eq!(lineitems[0].cake.as_ref().unwrap().name, "Cheesecake");
+    assert_eq!(lineitems[1].cake.as_ref().unwrap().id, 15);
+    assert_eq!(lineitems[1].cake.as_ref().unwrap().name, "Chocolate");
 
     // lineitem join order + cake
     let lineitems = lineitem::Entity::load()
@@ -284,14 +275,14 @@ async fn entity_loader_join_three() {
         .all(db)
         .await
         .unwrap();
-    assert_eq!(lineitems[0].order.as_deref().unwrap().id, 101);
-    assert_eq!(lineitems[0].order.as_deref().unwrap().total, 10.into());
-    assert_eq!(lineitems[1].order.as_deref().unwrap().id, 101);
-    assert_eq!(lineitems[1].order.as_deref().unwrap().total, 10.into());
-    assert_eq!(lineitems[0].cake.as_deref().unwrap().id, 13);
-    assert_eq!(lineitems[0].cake.as_deref().unwrap().name, "Cheesecake");
-    assert_eq!(lineitems[1].cake.as_deref().unwrap().id, 15);
-    assert_eq!(lineitems[1].cake.as_deref().unwrap().name, "Chocolate");
+    assert_eq!(lineitems[0].order.as_ref().unwrap().id, 101);
+    assert_eq!(lineitems[0].order.as_ref().unwrap().total, 10.into());
+    assert_eq!(lineitems[1].order.as_ref().unwrap().id, 101);
+    assert_eq!(lineitems[1].order.as_ref().unwrap().total, 10.into());
+    assert_eq!(lineitems[0].cake.as_ref().unwrap().id, 13);
+    assert_eq!(lineitems[0].cake.as_ref().unwrap().name, "Cheesecake");
+    assert_eq!(lineitems[1].cake.as_ref().unwrap().id, 15);
+    assert_eq!(lineitems[1].cake.as_ref().unwrap().name, "Chocolate");
 
     // 1 layer select
     let order = order::Entity::load()
@@ -310,17 +301,13 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: None,
-            customer: Some(
-                customer::ModelEx {
-                    id: 11,
-                    name: "Bob".to_owned(),
-                    notes: Some("Sweet tooth".into()),
-                    orders: vec![],
-                }
-                .into()
-            ),
-            lineitems: vec![],
+            bakery: HasOne::Unloaded,
+            customer: HasOne::loaded(customer::Model {
+                id: 11,
+                name: "Bob".to_owned(),
+                notes: Some("Sweet tooth".into()),
+            }),
+            lineitems: HasMany::Unloaded,
         }
     );
 
@@ -342,27 +329,18 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: Some(
-                bakery::ModelEx {
-                    id: 42,
-                    name: "cool little bakery".into(),
-                    profit_margin: 4.1,
-                    bakers: vec![],
-                    cakes: vec![],
-                    orders: vec![],
-                }
-                .into()
-            ),
-            customer: Some(
-                customer::ModelEx {
-                    id: 11,
-                    name: "Bob".to_owned(),
-                    notes: Some("Sweet tooth".into()),
-                    orders: vec![],
-                }
-                .into()
-            ),
-            lineitems: vec![],
+            bakery: HasOne::loaded(bakery::Model {
+                id: 42,
+                name: "cool little bakery".into(),
+                profit_margin: 4.1,
+            }),
+            customer: HasOne::loaded(customer::ModelEx {
+                id: 11,
+                name: "Bob".to_owned(),
+                notes: Some("Sweet tooth".into()),
+                orders: HasMany::Unloaded,
+            }),
+            lineitems: HasMany::Unloaded,
         }
     );
 
@@ -384,25 +362,22 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: None,
-            customer: Some(
-                customer::ModelEx {
-                    id: 11,
-                    name: "Bob".to_owned(),
-                    notes: Some("Sweet tooth".into()),
-                    orders: vec![],
-                }
-                .into()
-            ),
-            lineitems: vec![
+            bakery: HasOne::Unloaded,
+            customer: HasOne::loaded(customer::ModelEx {
+                id: 11,
+                name: "Bob".to_owned(),
+                notes: Some("Sweet tooth".into()),
+                orders: HasMany::Unloaded,
+            }),
+            lineitems: HasMany::Loaded(vec![
                 lineitem::ModelEx {
                     id: 1,
                     price: 2.into(),
                     quantity: 2,
                     order_id: 101,
                     cake_id: 13,
-                    order: None,
-                    cake: None,
+                    order: HasOne::Unloaded,
+                    cake: HasOne::Unloaded,
                 },
                 lineitem::ModelEx {
                     id: 2,
@@ -410,10 +385,10 @@ async fn entity_loader_join_three() {
                     quantity: 2,
                     order_id: 101,
                     cake_id: 15,
-                    order: None,
-                    cake: None,
+                    order: HasOne::Unloaded,
+                    cake: HasOne::Unloaded,
                 }
-            ],
+            ]),
         }
     );
 
@@ -435,25 +410,21 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: None,
-            customer: Some(
-                customer::ModelEx {
-                    id: 11,
-                    name: "Bob".to_owned(),
-                    notes: Some("Sweet tooth".into()),
-                    orders: vec![],
-                }
-                .into()
-            ),
-            lineitems: vec![
+            bakery: HasOne::Unloaded,
+            customer: HasOne::loaded(customer::Model {
+                id: 11,
+                name: "Bob".to_owned(),
+                notes: Some("Sweet tooth".into()),
+            }),
+            lineitems: HasMany::Loaded(vec![
                 lineitem::ModelEx {
                     id: 1,
                     price: 2.into(),
                     quantity: 2,
                     order_id: 101,
                     cake_id: 13,
-                    order: None,
-                    cake: Some(cake_13.into_ex().into()),
+                    order: HasOne::Unloaded,
+                    cake: HasOne::loaded(cake_13),
                 },
                 lineitem::ModelEx {
                     id: 2,
@@ -461,26 +432,425 @@ async fn entity_loader_join_three() {
                     quantity: 2,
                     order_id: 101,
                     cake_id: 15,
-                    order: None,
-                    cake: Some(cake_15.into_ex().into()),
+                    order: HasOne::Unloaded,
+                    cake: HasOne::loaded(cake_15),
                 }
-            ],
+            ]),
         }
     );
 }
 
 #[sea_orm_macros::test]
-async fn entity_loader_exp() -> Result<(), DbErr> {
-    let ctx = TestContext::new("entity_loader_exp").await;
-    create_tables(&ctx.db).await.unwrap();
-    seed_data::init_1(&ctx, true).await;
+async fn entity_loader_self_join() -> Result<(), DbErr> {
+    use common::film_store::{staff, staff_compact, staff_mono};
+
+    let ctx = TestContext::new("entity_loader_self_join").await;
     let db = &ctx.db;
 
-    let loader = lineitem::Entity::load()
-        .with(cake::Entity)
-        .with(order::Entity);
-    println!("{loader:?}");
-    loader.all(db).await?;
+    db.get_schema_builder()
+        .register(staff::Entity)
+        .apply(db)
+        .await?;
+
+    let alan = staff::ActiveModel {
+        name: Set("Alan".into()),
+        reports_to_id: Set(None),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    staff::ActiveModel {
+        name: Set("Ben".into()),
+        reports_to_id: Set(Some(alan.id)),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    staff::ActiveModel {
+        name: Set("Alice".into()),
+        reports_to_id: Set(Some(alan.id)),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    staff::ActiveModel {
+        name: Set("Elle".into()),
+        reports_to_id: Set(None),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    // load belongs_to
+
+    let staff = staff::Entity::load()
+        .with(staff::Relation::ReportsTo)
+        .all(db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].reports_to, None);
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(staff[2].reports_to.as_ref().unwrap().name, "Alan");
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(staff[3].reports_to, None);
+
+    // load belongs_to reverse
+
+    let staff = staff::Entity::load()
+        .with(staff::Relation::Manages)
+        .all(db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].manages[0].name, "Ben");
+    assert_eq!(staff[0].manages[1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert!(staff[1].manages.is_empty());
+
+    assert_eq!(staff[2].name, "Alice");
+    assert!(staff[2].manages.is_empty());
+
+    assert_eq!(staff[3].name, "Elle");
+    assert!(staff[3].manages.is_empty());
+
+    // load both sides
+
+    let staff = staff::Entity::load()
+        .with(staff::Relation::ReportsTo)
+        .with(staff::Relation::Manages)
+        .all(db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].reports_to, None);
+    assert_eq!(staff[0].manages[0].name, "Ben");
+    assert_eq!(staff[0].manages[1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[1].manages.is_empty());
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(staff[2].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[2].manages.is_empty());
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].manages.is_empty());
+
+    // test self_ref on model without reverse relation (not dual)
+
+    let staff = staff_mono::Entity::load()
+        .filter_by_id(2)
+        .with(staff_mono::Relation::ReportsTo)
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(staff.name, "Ben");
+    assert_eq!(
+        staff.reports_to.unwrap(),
+        staff_mono::Entity::find_by_id(alan.id)
+            .one(db)
+            .await?
+            .unwrap()
+    );
+
+    // test self_ref on compact_model
+
+    let staff = staff_compact::Entity::load()
+        .with(staff_compact::Relation::ReportsTo)
+        .with(staff_compact::Relation::Manages)
+        .all(db)
+        .await?;
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].reports_to, None);
+    assert_eq!(staff[0].manages[0].name, "Ben");
+    assert_eq!(staff[0].manages[1].name, "Alice");
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[1].manages.is_empty());
+
+    assert_eq!(staff[2].name, "Alice");
+    assert_eq!(staff[2].reports_to.as_ref().unwrap().name, "Alan");
+    assert!(staff[2].manages.is_empty());
+
+    assert_eq!(staff[3].name, "Elle");
+    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].manages.is_empty());
+
+    // test pagination on loader
+
+    let mut pager = staff::Entity::load()
+        .with(staff::Relation::ReportsTo)
+        .order_by_asc(staff::COLUMN.id)
+        .paginate(db, 2);
+
+    let staff = pager.fetch_and_next().await?.unwrap();
+
+    assert_eq!(staff[0].name, "Alan");
+    assert_eq!(staff[0].reports_to, None);
+
+    assert_eq!(staff[1].name, "Ben");
+    assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+
+    let staff = pager.fetch_and_next().await?.unwrap();
+
+    assert_eq!(staff[0].name, "Alice");
+    assert_eq!(staff[0].reports_to.as_ref().unwrap().name, "Alan");
+
+    assert_eq!(staff[1].name, "Elle");
+    assert_eq!(staff[1].reports_to, None);
+
+    assert!(pager.fetch_and_next().await?.is_none());
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+async fn entity_loader_self_join_via() -> Result<(), DbErr> {
+    use common::blogger::{profile, user, user_follower, user_mono};
+
+    let ctx = TestContext::new("test_entity_loader_self_join_via").await;
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(profile::Entity)
+        .register(user::Entity)
+        .register(user_follower::Entity)
+        .apply(db)
+        .await?;
+
+    let alice = user::ActiveModel::builder()
+        .set_name("Alice")
+        .set_email("@1")
+        .set_profile(profile::ActiveModel::builder().set_picture("Alice.jpg"))
+        .insert(db)
+        .await?;
+
+    let bob = user::ActiveModel::builder()
+        .set_name("Bob")
+        .set_email("@2")
+        .set_profile(profile::ActiveModel::builder().set_picture("Bob.jpg"))
+        .insert(db)
+        .await?;
+
+    let sam = user::ActiveModel::builder()
+        .set_name("Sam")
+        .set_email("@3")
+        .set_profile(profile::ActiveModel::builder().set_picture("Sam.jpg"))
+        .insert(db)
+        .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(alice.id),
+        follower_id: Set(bob.id),
+    }
+    .insert(db)
+    .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(alice.id),
+        follower_id: Set(sam.id),
+    }
+    .insert(db)
+    .await?;
+
+    user_follower::ActiveModel {
+        user_id: Set(bob.id),
+        follower_id: Set(sam.id),
+    }
+    .insert(db)
+    .await?;
+
+    // test user + follower
+
+    let users = user::Entity::load()
+        .with(user_follower::Entity)
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].name, alice.name);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0].name, bob.name);
+    assert_eq!(users[0].followers[1].name, sam.name);
+
+    assert_eq!(users[1].name, bob.name);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0].name, sam.name);
+
+    assert_eq!(users[2].name, sam.name);
+    assert!(users[2].followers.is_empty());
+
+    // test user + follower, but on an Entity without reverse relation (following)
+
+    let users = user_mono::Entity::load()
+        .with(user_follower::Entity)
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].name, alice.name);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0].name, bob.name);
+    assert_eq!(users[0].followers[1].name, sam.name);
+
+    assert_eq!(users[1].name, bob.name);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0].name, sam.name);
+
+    assert_eq!(users[2].name, sam.name);
+    assert!(users[2].followers.is_empty());
+
+    // test user + follower + following (both sides)
+
+    let users = user::Entity::load()
+        .with(user::Follower)
+        .with(user::Following)
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].name, alice.name);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0].name, bob.name);
+    assert_eq!(users[0].followers[1].name, sam.name);
+    assert!(users[0].following.is_empty());
+
+    assert_eq!(users[1].name, bob.name);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0].name, sam.name);
+    assert_eq!(users[1].following.len(), 1);
+    assert_eq!(users[1].following[0].name, alice.name);
+
+    assert_eq!(users[2].name, sam.name);
+    assert!(users[2].followers.is_empty());
+    assert_eq!(users[2].following.len(), 2);
+    assert_eq!(users[2].following[0].name, alice.name);
+    assert_eq!(users[2].following[1].name, bob.name);
+
+    // test user + profile
+
+    let users = user::Entity::load()
+        .with(profile::Entity)
+        .with(user_follower::Entity)
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].profile, alice.profile);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0].name, bob.name);
+    assert_eq!(users[0].followers[1].name, sam.name);
+
+    assert_eq!(users[1].profile, bob.profile);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0].name, sam.name);
+
+    assert_eq!(users[2].profile, sam.profile);
+    assert!(users[2].followers.is_empty());
+
+    // test user + profile with nested user + profile
+
+    let users = user::Entity::load()
+        .with(profile::Entity)
+        .with((user::Follower, profile::Entity))
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].profile, alice.profile);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0], bob);
+    assert_eq!(users[0].followers[1], sam);
+
+    assert_eq!(users[1].profile, bob.profile);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0], sam);
+
+    assert_eq!(users[2].profile, sam.profile);
+    assert!(users[2].followers.is_empty());
+
+    // test all: user profile + follower profile + following profile
+
+    let users = user::Entity::load()
+        .with(profile::Entity)
+        .with((user::Follower, profile::Entity))
+        .with((user::Following, profile::Entity))
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].profile, alice.profile);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0], bob);
+    assert_eq!(users[0].followers[1], sam);
+    assert!(users[0].following.is_empty());
+
+    assert_eq!(users[1].profile, bob.profile);
+    assert_eq!(users[1].followers.len(), 1);
+    assert_eq!(users[1].followers[0], sam);
+    assert_eq!(users[1].following.len(), 1);
+    assert_eq!(users[1].following[0], alice);
+
+    assert_eq!(users[2].profile, sam.profile);
+    assert!(users[2].followers.is_empty());
+    assert_eq!(users[2].following.len(), 2);
+    assert_eq!(users[2].following[0], alice);
+    assert_eq!(users[2].following[1], bob);
+
+    // test nested loading, but left right swapped
+
+    let alice_profile = profile::Entity::load()
+        .filter_by_id(alice.profile.as_ref().unwrap().id)
+        .with(sea_orm::compound::EntityLoaderWithSelf(
+            user::Entity,
+            user::Follower,
+        ))
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(
+        alice_profile.picture,
+        alice.profile.as_ref().unwrap().picture
+    );
+    assert_eq!(alice_profile.user.as_ref().unwrap().followers.len(), 2);
+    assert_eq!(
+        alice_profile.user.as_ref().unwrap().followers[0].name,
+        bob.name
+    );
+    assert_eq!(
+        alice_profile.user.as_ref().unwrap().followers[1].name,
+        sam.name
+    );
+
+    let sam_profile = profile::Entity::load()
+        .filter_by_id(sam.profile.as_ref().unwrap().id)
+        .with(sea_orm::compound::EntityLoaderWithSelfRev(
+            user::Entity,
+            user::Following,
+        ))
+        .one(db)
+        .await?
+        .unwrap();
+    assert_eq!(sam_profile.picture, sam.profile.as_ref().unwrap().picture);
+    assert_eq!(sam_profile.user.as_ref().unwrap().following.len(), 2);
+    assert_eq!(
+        sam_profile.user.as_ref().unwrap().following[0].name,
+        alice.name
+    );
+    assert_eq!(
+        sam_profile.user.as_ref().unwrap().following[1].name,
+        bob.name
+    );
 
     Ok(())
 }

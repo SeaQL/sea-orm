@@ -8,13 +8,14 @@ use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};
 use rocket::{Build, Request, Rocket};
 use rocket_dyn_templates::Template;
-use rocket_example_service::{Mutation, Query};
 use serde_json::json;
 
 use migration::MigratorTrait;
 use rocket_db_pools::{Connection, Database};
+use service::{Mutation, Query};
 
 mod pool;
+pub mod service;
 use pool::Db;
 
 pub use entity::post;

@@ -3,7 +3,7 @@ set -e
 
 # Bump `sea-orm-codegen` version
 cd sea-orm-codegen
-sed -i 's/^version.*$/version = "'$1'"/' Cargo.toml
+sed -i 's/^version.*$/version       = "'$1'"/' Cargo.toml
 cd ..
 
 # Bump `sea-orm-cli` version
@@ -14,18 +14,23 @@ cd ..
 
 # Bump `sea-orm-macros` version
 cd sea-orm-macros
-sed -i 's/^version.*$/version = "'$1'"/' Cargo.toml
+sed -i 's/^version.*$/version       = "'$1'"/' Cargo.toml
 cd ..
 
 # Bump `sea-orm` version
-sed -i 's/^version.*$/version = "'$1'"/' Cargo.toml
+sed -i 's/^version.*$/version       = "'$1'"/' Cargo.toml
 sed -i 's/^sea-orm-macros [^,]*,/sea-orm-macros = { version = "'~$1'",/' Cargo.toml
 
 # Bump `sea-orm-migration` version
 cd sea-orm-migration
-sed -i 's/^version.*$/version = "'$1'"/' Cargo.toml
+sed -i 's/^version.*$/version       = "'$1'"/' Cargo.toml
 sed -i 's/^sea-orm-cli [^,]*,/sea-orm-cli = { version = "'~$1'",/' Cargo.toml
 sed -i 's/^sea-orm [^,]*,/sea-orm = { version = "'~$1'",/' Cargo.toml
+cd ..
+
+# Bump `sea-orm-sync` version
+cd sea-orm-sync
+sed -i 's/^version.*$/version       = "'$1'"/' Cargo.toml
 cd ..
 
 git commit -am "$1"

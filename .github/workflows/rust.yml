@@ -5,17 +5,16 @@
 # Following jobs will always run
 #
 #   - `clippy`
+#   - `rustfmt`
+#   - `taplo`
 #   - `test`
 #   - `examples`
 #
 # Following jobs will be run when no keywords were found in commit message)
 #
-#   - `compile-sqlite`
 #   - `sqlite`
-#   - `compile-mysql`
 #   - `mysql`
 #   - `mariadb`
-#   - `compile-postgres`
 #   - `postgres`
 #
 # Following jobs will be run if keywords `[issues]` were found in commit message
@@ -31,20 +30,20 @@
 # Following jobs will be run if keywords `[sqlite]` were found in commit message
 #
 #   - Jobs that will always run
-#   - `compile-sqlite`
+#   - `compile`
 #   - `sqlite`
 #
 # Following jobs will be run if keywords `[mysql]` were found in commit message
 #
 #   - Jobs that will always run
-#   - `compile-mysql`
+#   - `compile`
 #   - `mysql`
 #   - `mariadb`
 #
 # Following jobs will be run if keywords `[postgres]` were found in commit message
 #
 #   - Jobs that will always run
-#   - `compile-postgres`
+#   - `compile`
 #   - `postgres`
 
 name: tests
@@ -109,13 +108,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml', 'sea-orm-cli/Cargo.toml', 'sea-orm-migration/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo clippy --all -- -D warnings
       - run: cargo clippy --all --features runtime-tokio-native-tls,sqlx-all -- -D warnings
@@ -134,85 +133,59 @@ jobs:
       - run: cargo fmt --manifest-path sea-orm-cli/Cargo.toml --all -- --check
       - run: cargo fmt --manifest-path sea-orm-migration/Cargo.toml --all -- --check
 
-  compile-sqlite:
-    name: Compile SQLite
-    needs: init
-    if: >-
-      ${{
-        needs.init.outputs.run-partial == 'false' ||
-        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-sqlite == 'true')
-      }}
+  taplo:
+    name: Taplo
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        runtime: [tokio]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-comp-sqlite-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }} --no-run
+      - run: cargo install --locked taplo-cli
+      - run: taplo fmt --check 
 
-  compile-mysql:
-    name: Compile MySQL
+  compile:
+    name: Compile (${{ matrix.label }})
     needs: init
-    if: >-
-      ${{
-        needs.init.outputs.run-partial == 'false' ||
-        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-mysql == 'true')
-      }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        runtime: [tokio]
-        tls: [native-tls, rustls]
+        include:
+          - label: build
+            kind: build
+          - label: tokio native-tls mysql
+            kind: test
+            features: sqlx-mysql,runtime-tokio-native-tls
+          - label: tokio rustls mysql
+            kind: test
+            features: sqlx-mysql,runtime-tokio-rustls
+          - label: tokio native-tls postgres
+            kind: test
+            features: sqlx-postgres,runtime-tokio-native-tls
+          - label: tokio rustls postgres
+            kind: test
+            features: sqlx-postgres,runtime-tokio-rustls
+          - label: tokio sqlite
+            kind: test
+            features: sqlx-sqlite,runtime-tokio
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-comp-mysql-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-compile-${{ matrix.label }}-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-
-  compile-postgres:
-    name: Compile PostgreSQL
-    needs: init
-    if: >-
-      ${{
-        needs.init.outputs.run-partial == 'false' ||
-        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-postgres == 'true')
-      }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        runtime: [tokio]
-        tls: [native-tls, rustls]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-comp-pg-${{ hashFiles('**/Cargo.toml') }}
-      - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - if: matrix.kind == 'build'
+        run: |
+          cargo build --no-default-features
+          cargo build --no-default-features --features seaography
+          cargo build --features rbac,schema-sync
+      - if: matrix.kind == 'test'
+        run: cargo test --test '*' --features tests-features,${{ matrix.features }} --no-run
 
   test:
     name: Unit Test
@@ -220,18 +193,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml', 'sea-orm-macros/Cargo.toml', 'sea-orm-codegen/Cargo.toml', 'sea-orm-cli/Cargo.toml', 'sea-orm-migration/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo test --workspace --no-run
       - run: cargo test --workspace
-      - run: cargo test --lib --features rbac --no-run
       - run: cargo test --lib --features rbac
+      - run: cargo test --lib --features entity-registry -- registry
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml --no-run
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml
 
@@ -278,20 +251,23 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-examples-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-examples-${{ matrix.path }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - working-directory: ./examples/
         run: |
           find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
           find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo update --manifest-path {}
           find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
-          ${{'! '}}${{ '[ -d "' }}${{ matrix.path }}${{ '/service" ]' }} || find ${{ matrix.path }}/service -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
+          ${{'! '}}${{ '[ -d "' }}${{ matrix.path }}${{ '/api" ]' }} || find ${{ matrix.path }}/api -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
+      - if: matrix.path == 'quickstart'
+        working-directory: ./examples/${{ matrix.path }}
+        run: cargo run
 
   issues-matrix:
     name: Issues Matrix
@@ -319,7 +295,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
@@ -334,7 +310,7 @@ jobs:
     name: SQLite
     needs:
       - init
-      - compile-sqlite
+      - compile
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -347,28 +323,56 @@ jobs:
       fail-fast: false
       matrix:
         runtime: [tokio]
-        tls: [native-tls, rustls]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-sqlite-tests-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-sqlite-tests-sqlite-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features tests-features,sqlx-sqlite,runtime-${{ matrix.runtime }} --no-run
+      - run: cargo test --test '*' --features tests-features,sqlx-sqlite,runtime-${{ matrix.runtime }}
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }} --no-run
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}
+
+  rusqlite:
+    name: rusqlite
+    needs:
+      - init
+      - compile
+    if: >-
+      ${{
+        needs.init.outputs.run-partial == 'false' ||
+        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-sqlite == 'true')
+      }}
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "sqlite::memory:"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-sqlite-tests-rusqlite-${{ hashFiles('**/Cargo.toml') }}
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - working-directory: ./sea-orm-sync
+        run: cargo test --test '*' --features tests-features,rusqlite
+      - working-directory: ./sea-orm-sync/examples/quickstart
+        run: cargo run
 
   mysql:
     name: MySQL
     needs:
       - init
-      - compile-mysql
+      - compile
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -402,7 +406,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
@@ -410,8 +414,8 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-mysql-tests-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
@@ -419,7 +423,7 @@ jobs:
     name: MariaDB
     needs:
       - init
-      - compile-mysql
+      - compile
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -455,22 +459,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-pg-tests-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-mariadb-tests-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   postgres:
     name: Postgres
     needs:
       - init
-      - compile-postgres
+      - compile
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -502,15 +506,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-postgres-tests-${{ matrix.runtime }}-${{ matrix.tls }}-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features default,rbac,schema-sync,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features tests-features,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - run: cargo test --test '*' --features tests-features,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}

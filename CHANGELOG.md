@@ -373,10 +373,96 @@ assert_eq!(
     .join(" ")
 );
 ```
+* Support self-referencing relations in loader
+```rust
+#[sea_orm::model]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[sea_orm(table_name = "staff")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    pub name: String,
+    pub reports_to_id: Option<i32>,
+    #[sea_orm(self_ref, relation_enum = "ReportsTo", from = "reports_to_id", to = "id")]
+    pub reports_to: HasOne<Entity>,
+}
+
+// Entity Loader
+let staff = staff::Entity::load()
+    .with(staff::Relation::ReportsTo)
+    .all(db)
+    .await?;
+
+assert_eq!(staff[0].name, "Alan");
+assert_eq!(staff[0].reports_to, None);
+
+assert_eq!(staff[1].name, "Ben");
+assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
+
+assert_eq!(staff[2].name, "Alice");
+assert_eq!(staff[2].reports_to.as_ref().unwrap().name, "Alan");
+
+// Model Loader
+let staff = staff::Entity::find().all(db).await?;
+
+let reports_to = staff
+    .load_self(staff::Entity, staff::Relation::ReportsTo, db)
+    .await?;
+
+assert_eq!(staff[0].name, "Alan");
+assert_eq!(reports_to[0], None);
+
+assert_eq!(staff[1].name, "Ben");
+assert_eq!(reports_to[1].unwrap().name, "Alan");
+
+assert_eq!(staff[2].name, "Alice");
+assert_eq!(reports_to[2].unwrap().name, "Alan");
+```
+* Strongly-typed column https://github.com/SeaQL/sea-orm/pull/2794
+```rust
+// old
+user::Entity::find().filter(user::Column::Name.contains("Bob"))
+
+// new
+user::Entity::find().filter(user::COLUMN.name.contains("Bob"))
+
+// compile error: the trait `From<{integer}>` is not implemented for `String`
+user::Entity::find().filter(user::COLUMN.name.like(2))
+```
+* Unix timestamp column type that will be mapped to big integer in database
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "access_log")]
+pub struct Model {
+    .. // with `chrono` crate
+    pub ts: ChronoUnixTimestamp,
+    pub ms: ChronoUnixTimestampMillis,
+    .. // with `time` crate
+    pub ts: TimeUnixTimestamp,
+    pub ms: TimeUnixTimestampMillis,
+}
+```
+* Nested ActiveModel (ActiveModelEx) and cascade operations https://github.com/SeaQL/sea-orm/pull/2818
+
+    The following operation saves a new set of user + profile + post + tag + post_tag into the database atomically:
+```rust
+let user = user::ActiveModel::builder()
+    .set_name("Bob")
+    .set_email("bob@sea-ql.org")
+    .set_profile(profile::ActiveModel::builder().set_picture("image.jpg"))
+    .add_post(
+        post::ActiveModel::builder()
+            .set_title("Nice weather")
+            .add_tag(tag::ActiveModel::builder().set_tag("sunny")),
+    )
+    .save(db)
+    .await?;
+```
 
 ### Enhancements
 
 * [sea-orm-cli] Added `--column-extra-derives` https://github.com/SeaQL/sea-orm/pull/2212
+* [sea-orm-cli] Added `--big-integer-type=i32` to use i32 for bigint (for SQLite)
 * Added `Model::try_set`
 * Added new error variant `BackendNotSupported`. Previously, it panics with e.g. "Database backend doesn't support RETURNING" https://github.com/SeaQL/sea-orm/pull/2630
 ```rust
@@ -462,6 +548,68 @@ let cake2: Cake2 = cake::Entity::find()
     .unwrap();
 ```
 * `RelationDef` now implements `Clone`. `on_condition` is changed to `Arc` but this is a minor breaking change.
+* Added `extra` on column attribute:
+```rust
+#[cfg(feature = "with-rust_decimal")]
+#[sea_orm(extra = "CHECK (price > 0)")]
+pub price: Decimal,
+
+// results in:
+ColumnDef::new("price")
+    .decimal()
+    .not_null()
+    .extra("CHECK (price > 0)"),
+```
+* Added `ColumnTrait::avg`, in addition to `sum`, `min`, `max` etc
+```rust
+let average: Decimal = order::Entity::find()
+    .select_only()
+    .column_as(order::Column::Total.avg(), "avg")
+    .into_tuple()
+    .one(&ctx.db)
+    .await?
+    .unwrap();
+```
+* `SchemaBuilder::sync` can now be used in migrations
+```rust
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        let db = manager.get_connection();
+
+        db.get_schema_builder()
+            .register(note::Entity)
+            .sync(db)
+            .await
+    }
+}
+```
+* Allowed None for `max_lifetime` and `idle_timeout` Parameters https://github.com/SeaQL/sea-orm/pull/2748
+* Try to parse `u32` in Postgres as `i32` https://github.com/SeaQL/sea-orm/pull/2753
+* `DeriveActiveEnum` now also impl `IntoActiveValue` https://github.com/SeaQL/sea-orm/issues/1972
+* `DeriveValueType` now also supports any structs that can be converted to / from string https://github.com/SeaQL/sea-orm/issues/2811
+```rust
+#[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(value_type = "String")]
+pub struct Tag3 {
+    pub i: i64,
+}
+
+impl std::fmt::Display for Tag3 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.i)
+    }
+}
+
+impl std::str::FromStr for Tag3 {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let i: i64 = s.parse()?;
+        Ok(Self { i })
+    }
+}
+```
 
 ### Breaking Changes
 
@@ -633,13 +781,32 @@ Update::one(active_model)
 ```
 * A number of methods has been removed from `SelectTwoMany`: `into_partial_model`, `into_json`, `stream`. These methods are same as those in `SelectTwo`.
 Please use `Cake::find().find_also_related(Fruit).into_json()` instead.
+* The `delete_by_id` method has changed to returning `DeleteOne` instead of `DeleteMany`. It doesn't change normal `exec` usage, but would change return type of `exec_with_returning` to `Option<Model>`
+```rust
+fn delete_by_id<T>(values: T) -> DeleteMany<Self>         // old
+
+fn delete_by_id<T>(values: T) -> ValidatedDeleteOne<Self> // new
+```
+* `DeriveActiveEnum` now also automatically impl `IntoActiveValue`, if you have a custom impl before, there would be a collision
+* `with-bigdecimal` is now removed from default features
 
 ### Upgrades
 
 * Upgraded Rust Edition to 2024 https://github.com/SeaQL/sea-orm/pull/2596
 * Upgraded `strum` to `0.27`
 
-## 1.1.17 - pending
+## 1.1.19 - 2025-11-11
+
+### Enhancements
+
+* Add `find_linked_recursive` method to ModelTrait https://github.com/SeaQL/sea-orm/pull/2480
+* Skip drop extension type in fresh https://github.com/SeaQL/sea-orm/pull/2716
+
+### Bug Fixes
+
+* Handle null values in `from_sqlx_*_row_to_proxy_row` functions https://github.com/SeaQL/sea-orm/pull/2744
+
+## 1.1.17 - 2025-10-09
 
 ### New Features
 
@@ -651,6 +818,7 @@ opt.map_sqlx_postgres_opts(|pg_opt: PgConnectOptions| {
 });
 ```
 * Added `mariadb-use-returning` to use returning syntax for MariaDB https://github.com/SeaQL/sea-orm/pull/2710
+* Released `sea-orm-rocket` 0.6 https://github.com/SeaQL/sea-orm/pull/2732
 
 ## 1.1.16 - 2025-09-11
 

@@ -10,6 +10,7 @@ pub mod derive_attr {
         pub model: Option<syn::Ident>,
         pub model_ex: Option<syn::Ident>,
         pub active_model: Option<syn::Ident>,
+        pub active_model_ex: Option<syn::Ident>,
         pub primary_key: Option<syn::Ident>,
         pub relation: Option<syn::Ident>,
         pub schema_name: Option<syn::LitStr>,
@@ -36,6 +37,7 @@ pub mod relation_attr {
         pub from: Option<syn::Lit>,
         pub to: Option<syn::Lit>,
         pub fk_name: Option<syn::Lit>,
+        pub skip_fk: Option<()>,
         pub condition_type: Option<syn::Lit>,
     }
 }
@@ -50,24 +52,30 @@ pub mod compound_attr {
         pub has_many: Option<()>,
         pub belongs_to: Option<()>,
         pub self_ref: Option<()>,
+        pub skip_fk: Option<()>,
         pub via: Option<syn::LitStr>,
         pub via_rel: Option<syn::LitStr>,
         pub from: Option<syn::LitStr>,
         pub to: Option<syn::LitStr>,
         pub relation_enum: Option<syn::LitStr>,
+        pub relation_reverse: Option<syn::LitStr>,
+        pub reverse: Option<()>,
         pub on_update: Option<syn::LitStr>,
         pub on_delete: Option<syn::LitStr>,
     }
 }
 
-pub mod column_attr {
+pub mod value_type_attr {
     use bae::FromAttributes;
 
     /// Attributes for compound model fields
     #[derive(Default, FromAttributes)]
     pub struct SeaOrm {
-        pub unique: Option<()>,
-        pub unique_key: Option<syn::LitStr>,
+        pub column_type: Option<syn::LitStr>,
+        pub array_type: Option<syn::LitStr>,
+        pub value_type: Option<syn::LitStr>,
+        pub from_str: Option<syn::LitStr>,
+        pub to_str: Option<syn::LitStr>,
     }
 }
 

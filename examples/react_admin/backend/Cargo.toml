@@ -1,62 +1,67 @@
 [workspace]
 
 [package]
-name = "loco_seaography"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "loco_seaography"
 rust-version = "1.85.0"
+version      = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 
-loco-rs = { version = "0.16" }
+loco-rs   = { version = "0.16" }
 migration = { path = "migration" }
 
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-eyre = "0.6"
-tokio = { version = "1.33.0", default-features = false }
-tokio-util = "0.7.11"
-async-trait = "0.1.74"
-tracing = "0.1.40"
-chrono = "0.4"
-validator = { version = "0.20" }
-axum = { version = "0.8", features = ["multipart"] }
-include_dir = "0.7"
-uuid = { version = "1.6.0", features = ["v4"] }
+async-trait        = "0.1.74"
+axum               = { version = "0.8", features = ["multipart"] }
+chrono             = "0.4"
+eyre               = "0.6"
+include_dir        = "0.7"
+serde              = { version = "1", features = ["derive"] }
+serde_json         = "1"
+tokio              = { version = "1.33.0", default-features = false }
+tokio-util         = "0.7.11"
+tracing            = "0.1.40"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
+uuid               = { version = "1.6.0", features = ["v4"] }
+validator          = { version = "0.20" }
 
-async-graphql = { version = "7.0.17", features = ["decimal", "chrono", "dataloader", "dynamic-schema"] }
+async-graphql = { version = "7.0.17", features = [
+    "decimal",
+    "chrono",
+    "dataloader",
+    "dynamic-schema",
+] }
 async-graphql-axum = { version = "7.0" }
 lazy_static = { version = "1.4" }
 tower-service = { version = "0.3" }
 
 [dependencies.sea-orm]
-version = "~2.0.0-rc.13" # sea-orm version
 features = [
-  "sqlx-sqlite",
-  "sqlx-postgres",
-  "runtime-tokio-rustls",
-  "macros",
+    "sqlx-sqlite",
+    "sqlx-postgres",
+    "runtime-tokio-rustls",
+    "macros",
 ]
+version = "~2.0.0-rc.22" # sea-orm version
 
 [dependencies.seaography]
-version = "~2.0.0-rc.1" # seaography version
-git = "https://github.com/SeaQL/seaography.git"
-branch = "main"
+branch   = "main"
 features = ["with-decimal", "with-chrono"]
+git      = "https://github.com/SeaQL/seaography.git"
+version  = "~2.0.0-rc.1"                             # seaography version
 
 [[bin]]
-name = "loco_seaography-cli"
-path = "src/bin/main.rs"
+name              = "loco_seaography-cli"
+path              = "src/bin/main.rs"
 required-features = []
 
 [dev-dependencies]
+insta       = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
+loco-rs     = { version = "0.16", features = ["testing"] }
+rstest      = "0.18.2"
 serial_test = "2.0.0"
-rstest = "0.18.2"
-loco-rs = { version = "0.16", features = ["testing"] }
-insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 
 [patch.crates-io]
 loco-rs = { git = "https://github.com/SeaQL/loco", branch = "master" }

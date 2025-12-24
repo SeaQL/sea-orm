@@ -437,6 +437,7 @@ fn render_file_with_spacing(file: syn::File) -> String {
         if !trimmed.is_empty() {
             out.push_str(trimmed);
             out.push('\n');
+            out.push('\n');
         }
     }
 

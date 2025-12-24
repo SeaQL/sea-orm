@@ -1,16 +1,32 @@
 [package]
-name = "poem-example-api"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "poem-example-api"
 rust-version = "1.85.0"
+version      = "0.1.0"
 
 [dependencies]
-poem-example-service = { path = "../service" }
-tokio = { version = "1.29.0", features = ["macros", "rt-multi-thread"] }
-poem = { version = "1.3.56", features = ["static-files"] }
+dotenvy            = "0.15"
+entity             = { path = "../entity" }
+migration          = { path = "../migration" }
+poem               = { version = "1.3.56", features = ["static-files"] }
+serde              = { version = "1", features = ["derive"] }
+tera               = "1.19.0"
+tokio              = { version = "1.29.0", features = ["macros", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
-serde = { version = "1", features = ["derive"] }
-tera = "1.19.0"
-dotenvy = "0.15"
-entity = { path = "../entity" }
-migration = { path = "../migration" }
+
+[dependencies.sea-orm]
+features = [
+    "debug-print",
+    "runtime-tokio-native-tls",
+    # "sqlx-postgres",
+    # "sqlx-mysql",
+    "sqlx-sqlite",
+]
+path = "../../../" # remove this line in your own project
+version = "~2.0.0-rc.22" # sea-orm version
+
+[dev-dependencies]
+poem-example-api = { path = ".", features = ["sqlite"] }
+
+[features]
+sqlite = ["sea-orm/sqlx-sqlite"]

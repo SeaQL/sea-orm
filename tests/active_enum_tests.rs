@@ -15,7 +15,7 @@ use sea_orm::{
 };
 
 #[sea_orm_macros::test]
-async fn main() -> Result<(), DbErr> {
+async fn active_enum_tests() -> Result<(), DbErr> {
     let ctx = TestContext::new("active_enum_tests").await;
     create_tables(&ctx.db).await?;
     insert_active_enum(&ctx.db).await?;
@@ -26,6 +26,37 @@ async fn main() -> Result<(), DbErr> {
 
     find_related_active_enum(&ctx.db).await?;
     find_linked_active_enum(&ctx.db).await?;
+
+    delete_active_enum(&ctx.db).await?;
+
+    ctx.delete().await;
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+async fn active_enum_schema_sync_test() -> Result<(), DbErr> {
+    let ctx = TestContext::new("active_enum_schema_sync_test").await;
+    let db = &ctx.db;
+
+    let mut schema_builder = db.get_schema_builder().register(active_enum::Entity);
+
+    #[cfg(feature = "sqlx-postgres")]
+    {
+        schema_builder = schema_builder
+            .register(active_enum_child::Entity)
+            .register(categories::Entity);
+    }
+
+    #[cfg(not(feature = "schema-sync"))]
+    schema_builder.apply(db).await?;
+
+    #[cfg(feature = "schema-sync")]
+    schema_builder.sync(db).await?;
+
+    insert_active_enum(&ctx.db).await?;
+    #[cfg(feature = "sqlx-postgres")]
+    insert_active_enum_vec(&ctx.db).await?;
 
     ctx.delete().await;
 
@@ -662,6 +693,26 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
     Ok(())
 }
 
+async fn delete_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
+    use active_enum_child::*;
+
+    if db.get_database_backend().support_returning() {
+        let model = Entity::find().one(db).await?.unwrap();
+
+        assert_eq!(model.id, 1);
+
+        assert_eq!(
+            model,
+            Entity::delete(model.clone().into_active_model())
+                .exec_with_returning(db)
+                .await?
+                .unwrap()
+        );
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1033,7 +1084,8 @@ mod tests {
                 .collect::<Vec<_>>(),
             [Statement::from_string(
                 db_postgres,
-                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea')"#.to_owned()
+                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea', 'AfternoonTea')"#
+                    .to_owned()
             ),]
         );
 
@@ -1041,7 +1093,8 @@ mod tests {
             db_postgres.build(&schema.create_enum_from_active_enum::<Tea>().unwrap()),
             Statement::from_string(
                 db_postgres,
-                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea')"#.to_owned()
+                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea', 'AfternoonTea')"#
+                    .to_owned()
             )
         );
     }

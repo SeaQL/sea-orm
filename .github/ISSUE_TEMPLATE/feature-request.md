@@ -9,12 +9,14 @@ type: Feature
 
 <!--
 
-Welcome! Thanks for suggesting features!
+Welcome! Thank you for suggesting features!
 
-Do you want to ask a question? Are you looking for support?
-Please ask us on
+First of all, please star our repo. Your support is vital to the continued maintenance of SeaORM.
+
+Want to ask a question? You can reach us via:
+
 - Discord: https://discord.com/invite/uCPdDXzbdv
-- GitHub Discussions: https://github.com/SeaQL/sea-query/discussions/new
+- GitHub Discussions: https://github.com/SeaQL/sea-orm/discussions/new
 
 Make sure you have a clear feature specification before open an issue. Alternatively, please start an "Idea" thread on GitHub Discussions and let's formulate the solution together.
 

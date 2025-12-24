@@ -761,10 +761,7 @@ mod tests {
         };
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_exec_results([MockExecResult {
-                last_insert_id: 1,
-                rows_affected: 1,
-            }])
+            .append_query_results([[model.clone()]])
             .into_connection();
 
         post::Entity::insert(model.into_active_model())

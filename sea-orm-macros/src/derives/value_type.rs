@@ -1,12 +1,13 @@
-use super::sql_type_match::{array_type_match, can_try_from_u64, column_type_match};
+use super::attributes::value_type_attr;
+use super::value_type_match::{array_type_expr, can_try_from_u64, column_type_expr};
 use proc_macro2::TokenStream;
-use quote::{quote, quote_spanned};
-use syn::{DataEnum, Lit, Type, spanned::Spanned};
+use quote::quote;
+use syn::{Field, Ident, Type, punctuated::Punctuated, spanned::Spanned, token::Comma};
 
 #[allow(clippy::large_enum_variant)]
 enum DeriveValueType {
-    Struct(DeriveValueTypeStruct),
-    Enum(DeriveValueTypeEnum),
+    TupleStruct(DeriveValueTypeStruct),
+    StringLike(DeriveValueTypeString),
 }
 
 struct DeriveValueTypeStruct {
@@ -17,95 +18,125 @@ struct DeriveValueTypeStruct {
     can_try_from_u64: bool,
 }
 
-struct DeriveValueTypeEnum {
+#[derive(Default)]
+struct DeriveValueTypeStructAttrs {
+    column_type: Option<TokenStream>,
+    array_type: Option<TokenStream>,
+}
+
+impl TryFrom<value_type_attr::SeaOrm> for DeriveValueTypeStructAttrs {
+    type Error = syn::Error;
+
+    fn try_from(attrs: value_type_attr::SeaOrm) -> syn::Result<Self> {
+        Ok(Self {
+            column_type: attrs.column_type.map(|s| s.parse()).transpose()?,
+            array_type: attrs.array_type.map(|s| s.parse()).transpose()?,
+        })
+    }
+}
+
+struct DeriveValueTypeString {
     name: syn::Ident,
     from_str: Option<TokenStream>,
     to_str: Option<TokenStream>,
+    column_type: Option<TokenStream>,
 }
 
-enum Error {
-    InputNotSupported,
-    NotTupleStruct,
-    InvalidValueType,
-    Syn(syn::Error),
+struct DeriveValueTypeStringAttrs {
+    from_str: Option<TokenStream>,
+    to_str: Option<TokenStream>,
+    column_type: Option<TokenStream>,
+}
+
+impl TryFrom<value_type_attr::SeaOrm> for DeriveValueTypeStringAttrs {
+    type Error = syn::Error;
+
+    fn try_from(attrs: value_type_attr::SeaOrm) -> syn::Result<Self> {
+        let value_type = attrs.value_type.map(|s| s.value());
+        assert_eq!(value_type.as_deref(), Some("String"));
+
+        Ok(Self {
+            from_str: attrs.from_str.map(|s| s.parse()).transpose()?,
+            to_str: attrs.to_str.map(|s| s.parse()).transpose()?,
+            column_type: attrs.column_type.map(|s| s.parse()).transpose()?,
+        })
+    }
 }
 
 impl DeriveValueType {
-    fn new(input: syn::DeriveInput) -> Result<Self, Error> {
-        match &input.data {
-            syn::Data::Struct(syn::DataStruct {
-                fields: syn::Fields::Unnamed(_),
-                ..
-            }) => DeriveValueTypeStruct::new(input).map(Self::Struct),
-            syn::Data::Enum(DataEnum { variants, .. }) => {
-                if variants.is_empty() {
-                    Err(Error::InputNotSupported)
-                } else {
-                    DeriveValueTypeEnum::new(input).map(Self::Enum)
+    fn new(input: syn::DeriveInput) -> syn::Result<Self> {
+        // Produce an error if the macro attributes are malformed
+        let value_type_attr = value_type_attr::SeaOrm::try_from_attributes(&input.attrs)?;
+
+        // If some attributes were set, inspect the optional `value_type`
+        let value_type = if let Some(ref value_type_attr) = value_type_attr {
+            value_type_attr.value_type.as_ref().map(|s| s.value())
+        } else {
+            None
+        };
+
+        // If either `value_type` is unset, or no attributes were passed, assume
+        // `DeriveValueTypeStruct`. If no attrs were set, use default values.
+        if value_type.is_none() || value_type_attr.is_none() {
+            let value_type_attr = if let Some(value_type_attr) = value_type_attr {
+                value_type_attr.try_into()?
+            } else {
+                DeriveValueTypeStructAttrs::default()
+            };
+
+            match input.data {
+                syn::Data::Struct(syn::DataStruct {
+                    fields: syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }),
+                    ..
+                }) => {
+                    return DeriveValueTypeStruct::new(input.ident, value_type_attr, unnamed)
+                        .map(Self::TupleStruct);
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        input,
+                        "You can only derive `DeriveValueType` on a struct with a single unnamed field, unless `value_type` is set.",
+                    ));
                 }
             }
-            _ => Err(Error::InputNotSupported),
+        }
+
+        let value_type_attr = value_type_attr.unwrap();
+        let value_type = value_type.unwrap();
+
+        match value_type.as_str() {
+            "String" => DeriveValueTypeString::new(input.ident, value_type_attr.try_into()?)
+                .map(Self::StringLike),
+            _ => Err(syn::Error::new_spanned(
+                input.ident,
+                r#"Please specify value_type = "String""#,
+            )),
         }
     }
 
     fn expand(&self) -> syn::Result<TokenStream> {
         Ok(match self {
-            Self::Struct(s) => s.impl_value_type(),
-            Self::Enum(s) => s.impl_value_type(),
+            Self::TupleStruct(s) => s.impl_value_type(),
+            Self::StringLike(s) => s.impl_value_type(),
         })
     }
 }
 
 impl DeriveValueTypeStruct {
-    fn new(input: syn::DeriveInput) -> Result<Self, Error> {
-        let fields = match input.data {
-            syn::Data::Struct(syn::DataStruct {
-                fields: syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }),
-                ..
-            }) => unnamed,
-            _ => return Err(Error::InputNotSupported),
-        };
-
+    fn new(
+        name: Ident,
+        attrs: DeriveValueTypeStructAttrs,
+        fields: Punctuated<Field, Comma>,
+    ) -> syn::Result<Self> {
         let Some(field) = fields.into_iter().next() else {
-            return Err(Error::NotTupleStruct);
+            return Err(syn::Error::new_spanned(
+                name,
+                "You can only derive `DeriveValueType` on tuple struct with 1 inner value",
+            ));
         };
 
-        let name = input.ident;
-        let mut col_type = None;
-        let mut arr_type = None;
-
-        for attr in input.attrs.iter() {
-            if !attr.path().is_ident("sea_orm") {
-                continue;
-            }
-
-            attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident("column_type") {
-                    let lit = meta.value()?.parse()?;
-                    if let Lit::Str(litstr) = lit {
-                        let ty: TokenStream = syn::parse_str(&litstr.value())?;
-                        col_type = Some(ty);
-                    } else {
-                        return Err(meta.error(format!("Invalid column_type {lit:?}")));
-                    }
-                } else if meta.path.is_ident("array_type") {
-                    let lit = meta.value()?.parse()?;
-                    if let Lit::Str(litstr) = lit {
-                        let ty: TokenStream = syn::parse_str(&litstr.value())?;
-                        arr_type = Some(ty);
-                    } else {
-                        return Err(meta.error(format!("Invalid array_type {lit:?}")));
-                    }
-                } else {
-                    return Err(meta.error(format!("Invalid attribute {:?}", meta.path)));
-                }
-
-                Ok(())
-            })
-            .map_err(Error::Syn)?;
-        }
-
-        let ty = field.clone().ty;
+        let field_span = field.span();
+        let ty = field.ty;
         let field_type = quote! { #ty }
             .to_string() //E.g.: "Option < String >"
             .replace(' ', ""); // Remove spaces
@@ -114,10 +145,9 @@ impl DeriveValueTypeStruct {
         } else {
             field_type.as_str()
         };
-        let field_span = field.span();
 
-        let column_type = column_type_match(col_type, field_type, field_span);
-        let array_type = array_type_match(arr_type, field_type, field_span);
+        let column_type = column_type_expr(attrs.column_type, field_type, field_span);
+        let array_type = array_type_expr(attrs.array_type, field_type, field_span);
         let can_try_from_u64 = can_try_from_u64(field_type);
 
         Ok(Self {
@@ -200,69 +230,13 @@ impl DeriveValueTypeStruct {
     }
 }
 
-impl DeriveValueTypeEnum {
-    fn new(input: syn::DeriveInput) -> Result<Self, Error> {
-        match input.data {
-            syn::Data::Enum(_) => (),
-            _ => return Err(Error::InputNotSupported),
-        }
-
-        let name = input.ident;
-        let mut from_str = None;
-        let mut to_str = None;
-        let mut value_type = None;
-
-        for attr in input.attrs.iter() {
-            if !attr.path().is_ident("sea_orm") {
-                continue;
-            }
-
-            attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident("from_str") {
-                    let lit = meta.value()?.parse()?;
-                    if let Lit::Str(litstr) = lit {
-                        let ty: TokenStream = syn::parse_str(&litstr.value())?;
-                        from_str = Some(ty);
-                    } else {
-                        return Err(meta.error(format!("Invalid from_str {lit:?}")));
-                    }
-                } else if meta.path.is_ident("to_str") {
-                    let lit = meta.value()?.parse()?;
-                    if let Lit::Str(litstr) = lit {
-                        let ty: TokenStream = syn::parse_str(&litstr.value())?;
-                        to_str = Some(ty);
-                    } else {
-                        return Err(meta.error(format!("Invalid to_str {lit:?}")));
-                    }
-                } else if meta.path.is_ident("value_type") {
-                    let lit = meta.value()?.parse()?;
-                    if let Lit::Str(litstr) = lit {
-                        value_type = Some(litstr.value());
-                    } else {
-                        return Err(meta.error(format!("Invalid value_type {lit:?}")));
-                    }
-                } else {
-                    return Err(meta.error(format!("Invalid attribute {:?}", meta.path)));
-                }
-
-                Ok(())
-            })
-            .map_err(Error::Syn)?;
-        }
-
-        match value_type {
-            Some(value_type) => {
-                if value_type != "String" {
-                    return Err(Error::InvalidValueType);
-                }
-            }
-            None => return Err(Error::InvalidValueType),
-        }
-
+impl DeriveValueTypeString {
+    fn new(name: Ident, attrs: DeriveValueTypeStringAttrs) -> syn::Result<Self> {
         Ok(Self {
             name,
-            from_str,
-            to_str,
+            from_str: attrs.from_str,
+            to_str: attrs.to_str,
+            column_type: attrs.column_type,
         })
     }
 
@@ -275,6 +249,10 @@ impl DeriveValueTypeEnum {
         let to_str = match &self.to_str {
             Some(to_str) => to_str,
             None => &quote!(std::string::ToString::to_string),
+        };
+        let column_type = match &self.column_type {
+            Some(column_type) => column_type,
+            None => &quote!(String(sea_orm::sea_query::StringLen::None)),
         };
 
         quote!(
@@ -290,7 +268,13 @@ impl DeriveValueTypeEnum {
                 fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, idx: I)
                     -> std::result::Result<Self, sea_orm::TryGetError> {
                     let string = String::try_get_by(res, idx)?;
-                    #from_str(&string).map_err(|err| sea_orm::TryGetError::DbErr(sea_orm::DbErr::Type(format!("{err:?}"))))
+                    #from_str(&string).map_err(|err| {
+                        sea_orm::TryGetError::DbErr(sea_orm::DbErr::TryIntoErr {
+                            from: "String",
+                            into: stringify!(#name),
+                            source: std::sync::Arc::new(err),
+                        })
+                    })
                 }
             }
 
@@ -310,7 +294,7 @@ impl DeriveValueTypeEnum {
                 }
 
                 fn column_type() -> sea_orm::sea_query::ColumnType {
-                    sea_orm::sea_query::ColumnType::String(sea_orm::sea_query::StringLen::None)
+                    sea_orm::sea_query::ColumnType::#column_type
                 }
             }
 
@@ -325,19 +309,5 @@ impl DeriveValueTypeEnum {
 }
 
 pub fn expand_derive_value_type(input: syn::DeriveInput) -> syn::Result<TokenStream> {
-    let input_span = input.span();
-
-    match DeriveValueType::new(input) {
-        Ok(model) => model.expand(),
-        Err(Error::InputNotSupported) => Ok(quote_spanned! {
-            input_span => compile_error!("you can only derive `DeriveValueType` on tuple struct or enum");
-        }),
-        Err(Error::NotTupleStruct) => Ok(quote_spanned! {
-            input_span => compile_error!("you can only derive `DeriveValueType` on tuple struct with one member. e.g. `MyType(pub i32)`");
-        }),
-        Err(Error::InvalidValueType) => Ok(quote_spanned! {
-            input_span => compile_error!(r#"you can only derive `DeriveValueType` with `value_type = "String"`"#);
-        }),
-        Err(Error::Syn(e)) => Err(e),
-    }
+    DeriveValueType::new(input)?.expand()
 }

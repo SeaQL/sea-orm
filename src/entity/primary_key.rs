@@ -3,7 +3,6 @@ use crate::{TryFromU64, TryGetableMany};
 use sea_query::{FromValueTuple, IntoValueTuple};
 use std::fmt::Debug;
 
-//LINT: composite primary key cannot auto increment
 /// A Trait for to be used to define a Primary Key.
 ///
 /// A primary key can be derived manually
@@ -53,7 +52,7 @@ pub trait PrimaryKeyTrait: IdenStatic + Iterable {
     fn auto_increment() -> bool;
 }
 
-/// How to map a Primary Key to a column
+/// Trait to map a Primary Key to a column
 pub trait PrimaryKeyToColumn {
     #[allow(missing_docs)]
     type Column: ColumnTrait;
@@ -103,6 +102,8 @@ impl_pk_arity!(12, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
 
 #[cfg(test)]
 mod tests {
+    use crate::{EntityTrait, Identity};
+
     #[test]
     #[cfg(feature = "macros")]
     fn test_composite_primary_key() {
@@ -292,5 +293,10 @@ mod tests {
 
             impl ActiveModelBehavior for ActiveModel {}
         }
+
+        assert_eq!(
+            primary_key_of_3::Entity::primary_key_identity(),
+            Identity::Ternary("id_1".into(), "id_2".into(), "id_3".into())
+        );
     }
 }

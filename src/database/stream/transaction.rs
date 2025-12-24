@@ -3,9 +3,11 @@
 use std::{ops::DerefMut, pin::Pin, task::Poll};
 use tracing::instrument;
 
+use futures_util::Stream;
 #[cfg(feature = "sqlx-dep")]
 use futures_util::TryStreamExt;
-use futures_util::{Stream, lock::MutexGuard};
+
+use futures_util::lock::MutexGuard;
 
 #[cfg(feature = "sqlx-dep")]
 use sqlx::Executor;
@@ -106,6 +108,7 @@ impl TransactionStream<'_> {
     }
 }
 
+#[cfg(not(feature = "sync"))]
 impl Stream for TransactionStream<'_> {
     type Item = Result<QueryResult, DbErr>;
 
@@ -115,5 +118,14 @@ impl Stream for TransactionStream<'_> {
     ) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
         this.with_stream_mut(|stream| Pin::new(stream).poll_next(cx))
+    }
+}
+
+#[cfg(feature = "sync")]
+impl Iterator for TransactionStream<'_> {
+    type Item = Result<QueryResult, DbErr>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.with_stream_mut(|stream| stream.next())
     }
 }

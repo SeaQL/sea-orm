@@ -1,20 +1,30 @@
 [package]
-name = "jsonrpsee-example-api"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "jsonrpsee-example-api"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [dependencies]
-jsonrpsee-example-service = { path = "../service" }
-jsonrpsee = { version = "0.18.2", features = ["full"] }
+anyhow         = "1.0.71"
+async-trait    = "0.1.71"
+dotenvy        = "0.15"
+entity         = { path = "../entity" }
+jsonrpsee      = { version = "0.18.2", features = ["full"] }
 jsonrpsee-core = "0.18.2"
-tokio = { version = "1.29.1", features = ["full"] }
-serde = { version = "1", features = ["derive"] }
-dotenvy = "0.15"
-entity = { path = "../entity" }
-migration = { path = "../migration" }
-anyhow = "1.0.71"
-async-trait = "0.1.71"
-log = { version = "0.4", features = ["std"] }
-simplelog = "0.12"
+log            = { version = "0.4", features = ["std"] }
+migration      = { path = "../migration" }
+serde          = { version = "1", features = ["derive"] }
+simplelog      = "0.12"
+tokio          = { version = "1.29.1", features = ["full"] }
+
+[dependencies.sea-orm]
+features = [
+    "debug-print",
+    "runtime-tokio-native-tls",
+    "sqlx-sqlite",
+    # "sqlx-postgres",
+    # "sqlx-mysql",
+]
+path = "../../../" # remove this line in your own project
+version = "~2.0.0-rc.22" # sea-orm version

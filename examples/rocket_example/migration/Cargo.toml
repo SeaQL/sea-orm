@@ -1,23 +1,23 @@
 [package]
-name = "migration"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "migration"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [lib]
 name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
-rocket = { version = "0.5" }
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+entity = { path = "../entity" }
+tokio  = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [dependencies.sea-orm-migration]
-path = "../../../sea-orm-migration" # remove this line in your own project
-version = "~2.0.0-rc.13" # sea-orm-migration version
 features = [
-  # Enable following runtime and db backend features if you want to run migration via CLI
-  # "runtime-tokio-native-tls",
-  # "sqlx-postgres",
+    # Enable following runtime and db backend features if you want to run migration via CLI
+    "runtime-tokio-native-tls",
+    "sqlx-postgres",
 ]
+path = "../../../sea-orm-migration" # remove this line in your own project
+version = "~2.0.0-rc.22" # sea-orm-migration version

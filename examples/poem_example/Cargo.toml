@@ -1,12 +1,12 @@
 [package]
-name = "sea-orm-poem-example"
-version = "0.1.0"
-edition = "2024"
+edition      = "2024"
+name         = "sea-orm-poem-example"
 rust-version = "1.85.0"
+version      = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
-members = [".", "api", "service", "entity", "migration"]
+members = [".", "api", "entity", "migration"]
 
 [dependencies]
 poem-example-api = { path = "api" }

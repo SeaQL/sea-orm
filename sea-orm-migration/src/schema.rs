@@ -51,7 +51,7 @@ enum GeneralIds {
     UpdatedAt,
 }
 
-/// Wrapping table schema creation.
+/// Create a table with `created_at` and `updated_at` added by default
 pub fn table_auto<T: IntoIden + 'static>(name: T) -> TableCreateStatement {
     timestamps(Table::create().table(name).if_not_exists().take())
 }

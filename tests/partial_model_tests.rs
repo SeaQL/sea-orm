@@ -177,26 +177,16 @@ async fn partial_model_left_join_exists() {
         format!("{cake2:?}").trim_start_matches("Cake2 ")
     );
 
-    ctx.delete().await;
-}
-
-#[sea_orm_macros::test]
-async fn partial_model_left_join_with_real_model() {
-    let ctx = TestContext::new("partial_model_left_join_with_real_model").await;
-    create_tables(&ctx.db).await.unwrap();
-
-    seed_data::init_1(&ctx, true).await;
-
     #[derive(DerivePartialModel)]
     #[sea_orm(entity = "cake::Entity")]
-    struct Cake {
+    struct Cake3 {
         id: i32,
         name: String,
         #[sea_orm(nested)]
         bakery: Option<bakery::Model>,
     }
 
-    let cake: Cake = cake::Entity::find()
+    let cake: Cake3 = cake::Entity::find()
         .left_join(bakery::Entity)
         .order_by_asc(cake::Column::Id)
         .into_partial_model()
@@ -215,6 +205,27 @@ async fn partial_model_left_join_with_real_model() {
             profit_margin: 4.1,
         }
     );
+
+    #[derive(DerivePartialModel)]
+    #[sea_orm(entity = "cake::Entity")]
+    struct Cake4 {
+        id: i32,
+        price: Decimal,
+        #[sea_orm(from_expr = "cake::COLUMN.price.add(\"0.2\".parse::<Decimal>().unwrap())")]
+        price_vat: Decimal,
+    }
+
+    let cake: Cake4 = cake::Entity::find()
+        .order_by_asc(cake::COLUMN.id)
+        .into_partial_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(cake.id, 13);
+    assert_eq!(cake.price, "2".parse().unwrap());
+    assert_eq!(cake.price_vat, "2.2".parse().unwrap());
 
     ctx.delete().await;
 }

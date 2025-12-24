@@ -1,13 +1,13 @@
 [package]
-name = "sea-orm-axum-example"
-version = "0.1.0"
-authors = ["Yoshiera Huang <huangjasper@126.com>"]
-edition = "2024"
+authors      = ["Yoshiera Huang <huangjasper@126.com>"]
+edition      = "2024"
+name         = "sea-orm-axum-example"
+publish      = false
 rust-version = "1.85.0"
-publish = false
+version      = "0.1.0"
 
 [workspace]
-members = [".", "api", "service", "entity", "migration", "seeder"]
+members = [".", "api", "entity", "migration"]
 
 [dependencies]
 axum-example-api = { path = "api" }

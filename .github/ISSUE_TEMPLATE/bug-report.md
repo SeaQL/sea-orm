@@ -27,7 +27,7 @@ or "the program crashes" - in either case, provide exact information.
 
 If you are certain there is a bug, please provide a reproducible example, which helps the investigator
 to pin-point the bug and the implementor to verify that a solution is satisfactory. Bug reports without
-reproducible example may be closed immediately or dangle forever.
+reproducible example may be closed or dangle forever.
 
 Finally, please search for existing issues and discussions before submission. Feel free to revive old
 threads if you have new information to add, but please don't ask for ETA or "+1".
@@ -59,10 +59,6 @@ threads if you have new information to add, but please don't ask for ETA or "+1"
 ### Workarounds
 
 <!-- What experiments have you done to understand / workaround the bug? -->
-
-## Reproducible Example
-
-<!-- Please add a minimal reproducible example under https://github.com/SeaQL/sea-orm/tree/master/issues, and open a PR subsequently. -->
 
 ## Versions
 

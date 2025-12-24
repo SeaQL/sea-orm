@@ -1,3 +1,5 @@
+pub mod service;
+
 use std::env;
 
 use entity::post;
@@ -8,11 +10,9 @@ use poem::http::StatusCode;
 use poem::listener::TcpListener;
 use poem::web::{Data, Form, Html, Path, Query};
 use poem::{EndpointExt, Error, IntoResponse, Result, Route, Server, get, handler, post};
-use poem_example_service::{
-    Mutation as MutationCore, Query as QueryCore,
-    sea_orm::{Database, DatabaseConnection},
-};
+use sea_orm::{Database, DatabaseConnection};
 use serde::Deserialize;
+use service::{Mutation, Query as QueryService};
 use tera::Tera;
 
 const DEFAULT_POSTS_PER_PAGE: u64 = 5;
@@ -34,7 +34,7 @@ async fn create(state: Data<&AppState>, form: Form<post::Model>) -> Result<impl 
     let form = form.0;
     let conn = &state.conn;
 
-    MutationCore::create_post(conn, form)
+    Mutation::create_post(conn, form)
         .await
         .map_err(InternalServerError)?;
 
@@ -47,7 +47,7 @@ async fn list(state: Data<&AppState>, Query(params): Query<Params>) -> Result<im
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.posts_per_page.unwrap_or(DEFAULT_POSTS_PER_PAGE);
 
-    let (posts, num_pages) = QueryCore::find_posts_in_page(conn, page, posts_per_page)
+    let (posts, num_pages) = QueryService::find_posts_in_page(conn, page, posts_per_page)
         .await
         .map_err(InternalServerError)?;
 
@@ -78,7 +78,7 @@ async fn new(state: Data<&AppState>) -> Result<impl IntoResponse> {
 async fn edit(state: Data<&AppState>, Path(id): Path<i32>) -> Result<impl IntoResponse> {
     let conn = &state.conn;
 
-    let post: post::Model = QueryCore::find_post_by_id(conn, id)
+    let post: post::Model = QueryService::find_post_by_id(conn, id)
         .await
         .map_err(InternalServerError)?
         .ok_or_else(|| Error::from_status(StatusCode::NOT_FOUND))?;
@@ -102,7 +102,7 @@ async fn update(
     let conn = &state.conn;
     let form = form.0;
 
-    MutationCore::update_post_by_id(conn, id, form)
+    Mutation::update_post_by_id(conn, id, form)
         .await
         .map_err(InternalServerError)?;
 
@@ -113,7 +113,7 @@ async fn update(
 async fn delete(state: Data<&AppState>, Path(id): Path<i32>) -> Result<impl IntoResponse> {
     let conn = &state.conn;
 
-    MutationCore::delete_post(conn, id)
+    Mutation::delete_post(conn, id)
         .await
         .map_err(InternalServerError)?;
 

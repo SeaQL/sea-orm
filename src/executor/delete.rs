@@ -1,10 +1,9 @@
 use super::{ReturningSelector, SelectModel};
 use crate::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, Iterable,
-    ValidatedDeleteOne, error::*,
+    ColumnTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, Iterable, ValidatedDeleteOne,
+    error::*,
 };
 use sea_query::{DeleteStatement, Query};
-use std::future::Future;
 
 /// Handles DELETE operations in a ActiveModel using [DeleteStatement]
 #[derive(Clone, Debug)]
@@ -19,9 +18,9 @@ pub struct DeleteResult {
     pub rows_affected: u64,
 }
 
-impl<A> ValidatedDeleteOne<A>
+impl<E> ValidatedDeleteOne<E>
 where
-    A: ActiveModelTrait,
+    E: EntityTrait,
 {
     /// Execute a DELETE operation on one ActiveModel
     pub async fn exec<C>(self, db: &C) -> Result<DeleteResult, DbErr>
@@ -32,20 +31,17 @@ where
     }
 
     /// Execute an delete operation and return the deleted model
-    pub async fn exec_with_returning<C>(
-        self,
-        db: &C,
-    ) -> Result<Option<<A::Entity as EntityTrait>::Model>, DbErr>
+    pub async fn exec_with_returning<C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
     where
         C: ConnectionTrait,
     {
-        exec_delete_with_returning_one::<A::Entity, _>(self.query, db).await
+        exec_delete_with_returning_one::<E, _>(self.query, db).await
     }
 }
 
-impl<A> DeleteOne<A>
+impl<E> DeleteOne<E>
 where
-    A: ActiveModelTrait,
+    E: EntityTrait,
 {
     /// Execute a DELETE operation on one ActiveModel
     pub async fn exec<C>(self, db: &C) -> Result<DeleteResult, DbErr>
@@ -56,10 +52,7 @@ where
     }
 
     /// Execute an delete operation and return the deleted model
-    pub async fn exec_with_returning<C>(
-        self,
-        db: &C,
-    ) -> Result<Option<<A::Entity as EntityTrait>::Model>, DbErr>
+    pub async fn exec_with_returning<C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -72,24 +65,20 @@ where
     E: EntityTrait,
 {
     /// Execute a DELETE operation on many ActiveModels
-    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + 'a
+    pub async fn exec<C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
         C: ConnectionTrait,
     {
-        // so that self is dropped before entering await
-        exec_delete_only(self.query, db)
+        exec_delete_only(self.query, db).await
     }
 
     /// Execute an delete operation and return the deleted model
-    pub fn exec_with_returning<C>(
-        self,
-        db: &C,
-    ) -> impl Future<Output = Result<Vec<E::Model>, DbErr>> + '_
+    pub async fn exec_with_returning<C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
     where
         E: EntityTrait,
         C: ConnectionTrait,
     {
-        exec_delete_with_returning_many::<E, _>(self.query, db)
+        exec_delete_with_returning_many::<E, _>(self.query, db).await
     }
 }
 
@@ -100,23 +89,32 @@ impl Deleter {
     }
 
     /// Execute a DELETE operation
-    pub fn exec<C>(self, db: &C) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_
+    pub async fn exec<C>(self, db: &C) -> Result<DeleteResult, DbErr>
     where
         C: ConnectionTrait,
     {
-        exec_delete(self.query, db)
+        exec_delete(self.query, db).await
     }
 
     /// Execute an delete operation and return the deleted model
-    pub fn exec_with_returning<E, C>(
-        self,
-        db: &C,
-    ) -> impl Future<Output = Result<Vec<E::Model>, DbErr>> + '_
+    pub async fn exec_with_returning<E, C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
     where
         E: EntityTrait,
         C: ConnectionTrait,
     {
-        exec_delete_with_returning_many::<E, _>(self.query, db)
+        exec_delete_with_returning_many::<E, _>(self.query, db).await
+    }
+}
+
+impl DeleteResult {
+    #[doc(hidden)]
+    pub fn empty() -> Self {
+        Self { rows_affected: 0 }
+    }
+
+    #[doc(hidden)]
+    pub fn merge(&mut self, other: DeleteResult) {
+        self.rows_affected += other.rows_affected;
     }
 }
 
@@ -148,7 +146,10 @@ where
     let db_backend = db.get_database_backend();
     match db.support_returning() {
         true => {
-            query.returning_all();
+            let returning = Query::returning().exprs(
+                E::Column::iter().map(|c| c.select_enum_as(c.into_returning_expr(db_backend))),
+            );
+            query.returning(returning);
             ReturningSelector::<SelectModel<<E>::Model>, _>::from_query(query)
                 .one(db)
                 .await

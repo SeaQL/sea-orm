@@ -22,3 +22,8 @@ cargo publish
 # publish `sea-orm-migration`
 cd sea-orm-migration
 cargo publish
+cd ..
+
+# publish `sea-orm-sync`
+cd sea-orm-sync
+cargo publish

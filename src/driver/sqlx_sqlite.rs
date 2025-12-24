@@ -90,6 +90,7 @@ impl SqlxSqliteConnector {
             sqlx_opts = f(sqlx_opts);
         }
 
+        let after_conn = options.after_connect.clone();
         let connect_lazy = options.connect_lazy;
         let sqlite_pool_opts_fn = options.sqlite_pool_opts_fn.clone();
         let mut pool_options = options.sqlx_pool_options();
@@ -115,10 +116,17 @@ impl SqlxSqliteConnector {
         #[cfg(feature = "sqlite-use-returning-for-3_35")]
         {
             let version = get_version(&pool).await?;
-            ensure_returning_version(&version)?;
+            super::sqlite::ensure_returning_version(&version)?;
         }
 
-        Ok(DatabaseConnectionType::SqlxSqlitePoolConnection(pool).into())
+        let conn: DatabaseConnection =
+            DatabaseConnectionType::SqlxSqlitePoolConnection(pool).into();
+
+        if let Some(cb) = after_conn {
+            cb(conn.clone()).await?;
+        }
+
+        Ok(conn)
     }
 }
 
@@ -224,7 +232,7 @@ impl SqlxSqlitePoolConnection {
         .await
     }
 
-    /// Create a MySQL transaction
+    /// Create a SQLite transaction
     #[instrument(level = "trace", skip(callback))]
     pub async fn transaction<F, T, E>(
         &self,
@@ -336,36 +344,6 @@ async fn get_version(conn: &SqlxSqlitePoolConnection) -> Result<String, DbErr> {
         .try_get_by(0)
 }
 
-#[cfg(feature = "sqlite-use-returning-for-3_35")]
-fn ensure_returning_version(version: &str) -> Result<(), DbErr> {
-    let mut parts = version.trim().split('.').map(|part| {
-        part.parse::<u32>().map_err(|_| {
-            DbErr::Conn(RuntimeErr::Internal(
-                "Error parsing SQLite version".to_string(),
-            ))
-        })
-    });
-
-    let mut extract_next = || {
-        parts.next().transpose().and_then(|part| {
-            part.ok_or_else(|| {
-                DbErr::Conn(RuntimeErr::Internal("SQLite version too short".to_string()))
-            })
-        })
-    };
-
-    let major = extract_next()?;
-    let minor = extract_next()?;
-
-    if major > 3 || (major == 3 && minor >= 35) {
-        Ok(())
-    } else {
-        Err(DbErr::Conn(RuntimeErr::Internal(
-            "SQLite version does not support returning".to_string(),
-        )))
-    }
-}
-
 impl
     From<(
         PoolConnection<sqlx::Sqlite>,
@@ -416,91 +394,87 @@ pub(crate) fn from_sqlx_sqlite_row_to_proxy_row(row: &sqlx::sqlite::SqliteRow) -
                 (
                     c.name().to_string(),
                     match c.type_info().name() {
-                        "BOOLEAN" => Value::Bool(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get boolean"),
-                        )),
+                        "BOOLEAN" => {
+                            Value::Bool(row.try_get(c.ordinal()).expect("Failed to get boolean"))
+                        }
 
-                        "INTEGER" => Value::Int(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get integer"),
-                        )),
+                        "INTEGER" => {
+                            Value::Int(row.try_get(c.ordinal()).expect("Failed to get integer"))
+                        }
 
-                        "BIGINT" | "INT8" => Value::BigInt(Some(
+                        "BIGINT" | "INT8" => Value::BigInt(
                             row.try_get(c.ordinal()).expect("Failed to get big integer"),
-                        )),
+                        ),
 
-                        "REAL" => Value::Double(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get double"),
-                        )),
+                        "REAL" => {
+                            Value::Double(row.try_get(c.ordinal()).expect("Failed to get double"))
+                        }
 
-                        "TEXT" => Value::String(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get string"),
-                        ))),
+                        "TEXT" => Value::String(
+                            row.try_get::<Option<String>, _>(c.ordinal())
+                                .expect("Failed to get string"),
+                        ),
 
-                        "BLOB" => Value::Bytes(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get bytes"),
-                        ))),
-
-                        #[cfg(feature = "with-chrono")]
-                        "DATETIME" => Value::ChronoDateTimeUtc(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timestamp"),
-                        ))),
-                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "DATETIME" => Value::TimeDateTimeWithTimeZone(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timestamp"),
-                        ))),
+                        "BLOB" => Value::Bytes(
+                            row.try_get::<Option<Vec<u8>>, _>(c.ordinal())
+                                .expect("Failed to get bytes"),
+                        ),
 
                         #[cfg(feature = "with-chrono")]
-                        "DATE" => Value::ChronoDate(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get date"),
-                        ))),
+                        "DATETIME" => {
+                            use chrono::{DateTime, Utc};
+
+                            Value::ChronoDateTimeUtc(
+                                row.try_get::<Option<DateTime<Utc>>, _>(c.ordinal())
+                                    .expect("Failed to get timestamp"),
+                            )
+                        }
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "DATE" => Value::TimeDate(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get date"),
-                        ))),
+                        "DATETIME" => {
+                            use time::OffsetDateTime;
+                            Value::TimeDateTimeWithTimeZone(
+                                row.try_get::<Option<OffsetDateTime>, _>(c.ordinal())
+                                    .expect("Failed to get timestamp"),
+                            )
+                        }
+                        #[cfg(feature = "with-chrono")]
+                        "DATE" => {
+                            use chrono::NaiveDate;
+                            Value::ChronoDate(
+                                row.try_get::<Option<NaiveDate>, _>(c.ordinal())
+                                    .expect("Failed to get date"),
+                            )
+                        }
+                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
+                        "DATE" => {
+                            use time::Date;
+                            Value::TimeDate(
+                                row.try_get::<Option<Date>, _>(c.ordinal())
+                                    .expect("Failed to get date"),
+                            )
+                        }
 
                         #[cfg(feature = "with-chrono")]
-                        "TIME" => Value::ChronoTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get time"),
-                        ))),
+                        "TIME" => {
+                            use chrono::NaiveTime;
+                            Value::ChronoTime(
+                                row.try_get::<Option<NaiveTime>, _>(c.ordinal())
+                                    .expect("Failed to get time"),
+                            )
+                        }
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIME" => Value::TimeTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get time"),
-                        ))),
+                        "TIME" => {
+                            use time::Time;
+                            Value::TimeTime(
+                                row.try_get::<Option<Time>, _>(c.ordinal())
+                                    .expect("Failed to get time"),
+                            )
+                        }
 
                         _ => unreachable!("Unknown column type: {}", c.type_info().name()),
                     },
                 )
             })
             .collect(),
-    }
-}
-
-#[cfg(all(test, feature = "sqlite-use-returning-for-3_35"))]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_ensure_returning_version() {
-        assert!(ensure_returning_version("").is_err());
-        assert!(ensure_returning_version(".").is_err());
-        assert!(ensure_returning_version(".a").is_err());
-        assert!(ensure_returning_version(".4.9").is_err());
-        assert!(ensure_returning_version("a").is_err());
-        assert!(ensure_returning_version("1.").is_err());
-        assert!(ensure_returning_version("1.a").is_err());
-
-        assert!(ensure_returning_version("1.1").is_err());
-        assert!(ensure_returning_version("1.0.").is_err());
-        assert!(ensure_returning_version("1.0.0").is_err());
-        assert!(ensure_returning_version("2.0.0").is_err());
-        assert!(ensure_returning_version("3.34.0").is_err());
-        assert!(ensure_returning_version("3.34.999").is_err());
-
-        // valid version
-        assert!(ensure_returning_version("3.35.0").is_ok());
-        assert!(ensure_returning_version("3.35.1").is_ok());
-        assert!(ensure_returning_version("3.36.0").is_ok());
-        assert!(ensure_returning_version("4.0.0").is_ok());
-        assert!(ensure_returning_version("99.0.0").is_ok());
     }
 }

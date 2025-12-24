@@ -4,14 +4,9 @@ use super::{
 };
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, quote_spanned};
+use quote::{format_ident, quote};
 use std::iter::FromIterator;
 use syn::{Attribute, Data, Expr, Ident, LitStr};
-
-pub(crate) enum DeriveModelError {
-    InputNotStruct,
-    Syn(syn::Error),
-}
 
 pub(crate) struct DeriveModel {
     column_idents: Vec<Ident>,
@@ -23,18 +18,21 @@ pub(crate) struct DeriveModel {
 }
 
 impl DeriveModel {
-    pub fn new(ident: &Ident, data: &Data, attrs: &[Attribute]) -> Result<Self, DeriveModelError> {
+    pub fn new(ident: &Ident, data: &Data, attrs: &[Attribute]) -> syn::Result<Self> {
         let fields = match data {
             syn::Data::Struct(syn::DataStruct {
                 fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
                 ..
             }) => named,
-            _ => return Err(DeriveModelError::InputNotStruct),
+            _ => {
+                return Err(syn::Error::new_spanned(
+                    ident,
+                    "You can only derive DeriveModel on structs",
+                ));
+            }
         };
 
-        let sea_attr = derive_attr::SeaOrm::try_from_attributes(attrs)
-            .map_err(DeriveModelError::Syn)?
-            .unwrap_or_default();
+        let sea_attr = derive_attr::SeaOrm::try_from_attributes(attrs)?.unwrap_or_default();
 
         let entity_ident = sea_attr.entity.unwrap_or_else(|| format_ident!("Entity"));
 
@@ -70,11 +68,11 @@ impl DeriveModel {
 
                             Ok(())
                         })
-                        .map_err(DeriveModelError::Syn)
                     })?;
+
                 Ok(ident)
             })
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<_, syn::Error>>()?;
 
         let ignore_attrs = fields
             .iter()
@@ -196,23 +194,10 @@ impl DeriveModel {
     }
 }
 
-impl DeriveModelError {
-    pub fn unwrap(self) -> syn::Error {
-        match self {
-            Self::InputNotStruct => panic!("you can only derive DeriveModel on structs"),
-            Self::Syn(err) => err,
-        }
-    }
-}
-
-/// Method to derive an ActiveModel
-pub fn expand_derive_model(input: syn::DeriveInput) -> syn::Result<TokenStream> {
-    let ident_span = input.ident.span();
-    match DeriveModel::new(&input.ident, &input.data, &input.attrs) {
-        Ok(model) => model.expand(),
-        Err(DeriveModelError::InputNotStruct) => Ok(quote_spanned! {
-            ident_span => compile_error!("you can only derive DeriveModel on structs");
-        }),
-        Err(DeriveModelError::Syn(err)) => Err(err),
-    }
+pub fn expand_derive_model(
+    ident: &Ident,
+    data: &Data,
+    attrs: &[Attribute],
+) -> syn::Result<TokenStream> {
+    DeriveModel::new(ident, data, attrs)?.expand()
 }

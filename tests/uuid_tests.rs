@@ -9,7 +9,7 @@ use serde_json::json;
 
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
-    let ctx = TestContext::new("bakery_chain_schema_uuid_tests").await;
+    let ctx = TestContext::new("bakery_chain_uuid_tests").await;
     create_tables(&ctx.db).await?;
     create_and_update_metadata(&ctx.db).await?;
     insert_metadata(&ctx.db).await?;
@@ -33,24 +33,47 @@ pub async fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     assert_eq!(result, metadata);
 
-    let json = metadata::Entity::find()
+    let mut json = metadata::Entity::find()
         .filter(metadata::Column::Uuid.eq(metadata.uuid))
         .into_json()
         .one(db)
         .await?;
 
-    assert_eq!(
-        json,
-        Some(json!({
-            "uuid": metadata.uuid,
-            "type": metadata.ty,
-            "key": metadata.key,
-            "value": metadata.value,
-            "bytes": metadata.bytes,
-            "date": metadata.date,
-            "time": metadata.time,
-        }))
-    );
+    #[cfg(feature = "rusqlite")]
+    {
+        json.as_mut()
+            .unwrap()
+            .as_object_mut()
+            .unwrap()
+            .remove("uuid");
+        // rusqlite current has no rich type info to properly deserialize a uuid
+        assert_eq!(
+            json,
+            Some(json!({
+                "type": metadata.ty,
+                "key": metadata.key,
+                "value": metadata.value,
+                "bytes": metadata.bytes,
+                "date": metadata.date,
+                "time": metadata.time,
+            }))
+        );
+    }
+    #[cfg(not(feature = "rusqlite"))]
+    {
+        assert_eq!(
+            json,
+            Some(json!({
+                "uuid": metadata.uuid,
+                "type": metadata.ty,
+                "key": metadata.key,
+                "value": metadata.value,
+                "bytes": metadata.bytes,
+                "date": metadata.date,
+                "time": metadata.time,
+            }))
+        );
+    }
 
     Ok(())
 }

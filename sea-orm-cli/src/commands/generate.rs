@@ -1,13 +1,13 @@
+use crate::{BannerVersion, BigIntegerType, DateTimeCrate, GenerateSubcommands};
 use core::time;
 use sea_orm_codegen::{
+    BannerVersion as CodegenBannerVersion, BigIntegerType as CodegenBigIntegerType,
     DateTimeCrate as CodegenDateTimeCrate, EntityFormat, EntityTransformer, EntityWriterContext,
     MergeReport, OutputFile, WithPrelude, WithSerde, merge_entity_files,
 };
 use std::{error::Error, fs, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{EnvFilter, prelude::*};
 use url::Url;
-
-use crate::{DateTimeCrate, GenerateSubcommands};
 
 pub async fn run_generate_command(
     command: GenerateSubcommands,
@@ -33,6 +33,7 @@ pub async fn run_generate_command(
             serde_skip_hidden_column,
             with_copy_enums,
             date_time_crate,
+            big_integer_type,
             lib,
             model_extra_derives,
             model_extra_attributes,
@@ -42,6 +43,7 @@ pub async fn run_generate_command(
             seaography,
             impl_active_model_behavior,
             preserve_user_modifications,
+            banner_version,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -234,6 +236,7 @@ pub async fn run_generate_command(
                 WithSerde::from_str(&with_serde).expect("Invalid serde derive option"),
                 with_copy_enums,
                 date_time_crate.into(),
+                big_integer_type.into(),
                 schema_name,
                 lib,
                 serde_skip_deserializing_primary_key,
@@ -245,6 +248,7 @@ pub async fn run_generate_command(
                 column_extra_derives,
                 seaography,
                 impl_active_model_behavior,
+                banner_version.into(),
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
@@ -346,6 +350,26 @@ impl From<DateTimeCrate> for CodegenDateTimeCrate {
         match date_time_crate {
             DateTimeCrate::Chrono => CodegenDateTimeCrate::Chrono,
             DateTimeCrate::Time => CodegenDateTimeCrate::Time,
+        }
+    }
+}
+
+impl From<BigIntegerType> for CodegenBigIntegerType {
+    fn from(date_time_crate: BigIntegerType) -> CodegenBigIntegerType {
+        match date_time_crate {
+            BigIntegerType::I64 => CodegenBigIntegerType::I64,
+            BigIntegerType::I32 => CodegenBigIntegerType::I32,
+        }
+    }
+}
+
+impl From<BannerVersion> for CodegenBannerVersion {
+    fn from(banner_version: BannerVersion) -> CodegenBannerVersion {
+        match banner_version {
+            BannerVersion::Off => CodegenBannerVersion::Off,
+            BannerVersion::Major => CodegenBannerVersion::Major,
+            BannerVersion::Minor => CodegenBannerVersion::Minor,
+            BannerVersion::Patch => CodegenBannerVersion::Patch,
         }
     }
 }

@@ -1,5 +1,5 @@
 use super::{Schema, TopologicalSort};
-use crate::{ConnectionTrait, DbBackend, DbConn, DbErr, EntityTrait};
+use crate::{ConnectionTrait, DbBackend, DbErr, EntityTrait, Statement};
 use sea_query::{
     ForeignKeyCreateStatement, IndexCreateStatement, TableAlterStatement, TableCreateStatement,
     TableName, TableRef, extension::postgres::TypeCreateStatement,
@@ -50,103 +50,131 @@ impl SchemaBuilder {
 
     /// Register an entity to this schema
     pub fn register<E: EntityTrait>(mut self, entity: E) -> Self {
-        self.entities
-            .push(EntitySchemaInfo::new(entity, &self.helper));
+        let entity = EntitySchemaInfo::new(entity, &self.helper);
+        if !self
+            .entities
+            .iter()
+            .any(|e| e.table.get_table_name() == entity.table.get_table_name())
+        {
+            self.entities.push(entity);
+        }
         self
     }
 
-    /// Synchronize the schema with database, will create missing tables, columns, indexes, foreign keys.
-    /// This operation is addition only, will not drop anything.
+    #[cfg(feature = "entity-registry")]
+    pub(crate) fn helper(&self) -> &Schema {
+        &self.helper
+    }
+
+    #[cfg(feature = "entity-registry")]
+    pub(crate) fn register_entity(&mut self, entity: EntitySchemaInfo) {
+        self.entities.push(entity);
+    }
+
+    /// Synchronize the schema with database, will create missing tables, columns, unique keys, and foreign keys.
+    /// This operation is addition only, will not drop any table / columns.
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
-    pub async fn sync(self, db: &DbConn) -> Result<(), DbErr> {
-        let _existing = match db.get_database_backend() {
-            #[cfg(feature = "sqlx-mysql")]
-            DbBackend::MySql => {
-                use sea_schema::{mysql::discovery::SchemaDiscovery, probe::SchemaProbe};
+    pub async fn sync<C>(self, db: &C) -> Result<(), DbErr>
+    where
+        C: ConnectionTrait + sea_schema::Connection,
+    {
+        let _existing =
+            match db.get_database_backend() {
+                #[cfg(feature = "sqlx-mysql")]
+                DbBackend::MySql => {
+                    use sea_schema::{mysql::discovery::SchemaDiscovery, probe::SchemaProbe};
 
-                let current_schema: String = db
-                    .query_one(
-                        sea_query::SelectStatement::new()
-                            .expr(sea_schema::mysql::MySql::get_current_schema()),
-                    )
-                    .await?
-                    .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
-                    .try_get_by_index(0)?;
-                let schema_discovery =
-                    SchemaDiscovery::new(db.get_mysql_connection_pool().clone(), &current_schema);
+                    let current_schema: String = db
+                        .query_one(
+                            sea_query::SelectStatement::new()
+                                .expr(sea_schema::mysql::MySql::get_current_schema()),
+                        )
+                        .await?
+                        .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
+                        .try_get_by_index(0)?;
+                    let schema_discovery = SchemaDiscovery::new_no_exec(&current_schema);
 
-                let schema = schema_discovery
-                    .discover()
-                    .await
-                    .map_err(|err| DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}"))))?;
+                    let schema = schema_discovery.discover_with(db).await.map_err(|err| {
+                        DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}")))
+                    })?;
 
-                DiscoveredSchema {
-                    tables: schema.tables.iter().map(|table| table.write()).collect(),
-                    enums: vec![],
+                    DiscoveredSchema {
+                        tables: schema.tables.iter().map(|table| table.write()).collect(),
+                        enums: vec![],
+                    }
                 }
-            }
-            #[cfg(feature = "sqlx-postgres")]
-            DbBackend::Postgres => {
-                use sea_schema::{postgres::discovery::SchemaDiscovery, probe::SchemaProbe};
+                #[cfg(feature = "sqlx-postgres")]
+                DbBackend::Postgres => {
+                    use sea_schema::{postgres::discovery::SchemaDiscovery, probe::SchemaProbe};
 
-                let current_schema: String = db
-                    .query_one(
-                        sea_query::SelectStatement::new()
-                            .expr(sea_schema::postgres::Postgres::get_current_schema()),
-                    )
-                    .await?
-                    .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
-                    .try_get_by_index(0)?;
-                let schema_discovery = SchemaDiscovery::new(
-                    db.get_postgres_connection_pool().clone(),
-                    &current_schema,
-                );
+                    let current_schema: String = db
+                        .query_one(
+                            sea_query::SelectStatement::new()
+                                .expr(sea_schema::postgres::Postgres::get_current_schema()),
+                        )
+                        .await?
+                        .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
+                        .try_get_by_index(0)?;
+                    let schema_discovery = SchemaDiscovery::new_no_exec(&current_schema);
 
-                let schema = schema_discovery
-                    .discover()
-                    .await
-                    .map_err(|err| DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}"))))?;
-                let enums = schema_discovery
-                    .discover_enums()
-                    .await
-                    .map_err(|err| DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}"))))?;
+                    let schema = schema_discovery.discover_with(db).await.map_err(|err| {
+                        DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}")))
+                    })?;
 
-                DiscoveredSchema {
-                    tables: schema.tables.iter().map(|table| table.write()).collect(),
-                    enums: enums.iter().map(|def| def.write()).collect(),
+                    DiscoveredSchema {
+                        tables: schema.tables.iter().map(|table| table.write()).collect(),
+                        enums: schema.enums.iter().map(|def| def.write()).collect(),
+                    }
                 }
-            }
-            #[cfg(feature = "sqlx-sqlite")]
-            DbBackend::Sqlite => {
-                use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
-                let schema_discovery =
-                    SchemaDiscovery::new(db.get_sqlite_connection_pool().clone());
-                let schema = schema_discovery
-                    .discover()
-                    .await
-                    .map_err(|err| {
-                        DbErr::Query(match err {
-                            SqliteDiscoveryError::SqlxError(err) => {
-                                crate::RuntimeErr::SqlxError(err.into())
-                            }
-                            _ => crate::RuntimeErr::Internal(format!("{err:?}")),
-                        })
-                    })?
-                    .merge_indexes_into_table();
-                DiscoveredSchema {
-                    tables: schema.tables.iter().map(|table| table.write()).collect(),
-                    enums: vec![],
+                #[cfg(feature = "sqlx-sqlite")]
+                DbBackend::Sqlite => {
+                    use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
+                    let schema = SchemaDiscovery::discover_with(db)
+                        .await
+                        .map_err(|err| {
+                            DbErr::Query(match err {
+                                SqliteDiscoveryError::SqlxError(err) => {
+                                    crate::RuntimeErr::SqlxError(err.into())
+                                }
+                                _ => crate::RuntimeErr::Internal(format!("{err:?}")),
+                            })
+                        })?
+                        .merge_indexes_into_table();
+                    DiscoveredSchema {
+                        tables: schema.tables.iter().map(|table| table.write()).collect(),
+                        enums: vec![],
+                    }
                 }
-            }
-            #[allow(unreachable_patterns)]
-            other => {
-                return Err(DbErr::BackendNotSupported {
-                    db: other.as_str(),
-                    ctx: "SchemaBuilder::sync",
-                });
-            }
-        };
+                #[cfg(feature = "rusqlite")]
+                DbBackend::Sqlite => {
+                    use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
+                    let schema = SchemaDiscovery::discover_with(db)
+                        .map_err(|err| {
+                            DbErr::Query(match err {
+                                SqliteDiscoveryError::RusqliteError(err) => {
+                                    crate::RuntimeErr::Rusqlite(err.into())
+                                }
+                                _ => crate::RuntimeErr::Internal(format!("{err:?}")),
+                            })
+                        })?
+                        .merge_indexes_into_table();
+                    DiscoveredSchema {
+                        tables: schema.tables.iter().map(|table| table.write()).collect(),
+                        enums: vec![],
+                    }
+                }
+                #[allow(unreachable_patterns)]
+                other => {
+                    return Err(DbErr::BackendNotSupported {
+                        db: other.as_str(),
+                        ctx: "SchemaBuilder::sync",
+                    });
+                }
+            };
+
+        #[allow(unreachable_code)]
+        let mut created_enums: Vec<Statement> = Default::default();
 
         #[allow(unreachable_code)]
         for table_name in self.sorted_tables() {
@@ -155,23 +183,25 @@ impl SchemaBuilder {
                 .iter()
                 .find(|entity| table_name == get_table_name(entity.table.get_table_name()))
             {
-                entity.sync(db, &_existing).await?;
+                entity.sync(db, &_existing, &mut created_enums).await?;
             }
         }
 
         Ok(())
     }
 
-    /// Apply this schema to a database, will create all registered tables, columns, indexes, foreign keys.
+    /// Apply this schema to a database, will create all registered tables, columns, unique keys, and foreign keys.
     /// Will fail if any table already exists. Use [`sync`] if you want an incremental version that can perform schema diff.
     pub async fn apply<C: ConnectionTrait>(self, db: &C) -> Result<(), DbErr> {
+        let mut created_enums: Vec<Statement> = Default::default();
+
         for table_name in self.sorted_tables() {
             if let Some(entity) = self
                 .entities
                 .iter()
                 .find(|entity| table_name == get_table_name(entity.table.get_table_name()))
             {
-                entity.apply(db).await?;
+                entity.apply(db, &mut created_enums).await?;
             }
         }
 
@@ -229,12 +259,20 @@ impl EntitySchemaInfo {
         }
     }
 
-    async fn apply<C: ConnectionTrait>(&self, db: &C) -> Result<(), DbErr> {
+    async fn apply<C: ConnectionTrait>(
+        &self,
+        db: &C,
+        created_enums: &mut Vec<Statement>,
+    ) -> Result<(), DbErr> {
+        for stmt in self.enums.iter() {
+            let new_stmt = db.get_database_backend().build(stmt);
+            if !created_enums.iter().any(|s| s == &new_stmt) {
+                db.execute(stmt).await?;
+                created_enums.push(new_stmt);
+            }
+        }
         db.execute(&self.table).await?;
         for stmt in self.indexes.iter() {
-            db.execute(stmt).await?;
-        }
-        for stmt in self.enums.iter() {
             db.execute(stmt).await?;
         }
         Ok(())
@@ -242,7 +280,30 @@ impl EntitySchemaInfo {
 
     // better to always compile this function
     #[allow(dead_code)]
-    async fn sync(&self, db: &DbConn, existing: &DiscoveredSchema) -> Result<(), DbErr> {
+    async fn sync<C: ConnectionTrait>(
+        &self,
+        db: &C,
+        existing: &DiscoveredSchema,
+        created_enums: &mut Vec<Statement>,
+    ) -> Result<(), DbErr> {
+        let db_backend = db.get_database_backend();
+
+        // create enum before creating table
+        for stmt in self.enums.iter() {
+            let mut has_enum = false;
+            let new_stmt = db_backend.build(stmt);
+            for exsiting_enum in &existing.enums {
+                if db_backend.build(exsiting_enum) == new_stmt {
+                    has_enum = true;
+                    // TODO add enum variants
+                    break;
+                }
+            }
+            if !has_enum && !created_enums.iter().any(|s| s == &new_stmt) {
+                db.execute(stmt).await?;
+                created_enums.push(new_stmt);
+            }
+        }
         let table_name = get_table_name(self.table.get_table_name());
         let mut existing_table = None;
         for tbl in &existing.tables {
@@ -261,12 +322,32 @@ impl EntitySchemaInfo {
                     }
                 }
                 if !column_exists {
-                    db.execute(
-                        TableAlterStatement::new()
-                            .table(self.table.get_table_name().expect("Checked above").clone())
-                            .add_column(column_def.to_owned()),
-                    )
-                    .await?;
+                    let mut renamed_from = "";
+                    if let Some(comment) = &column_def.get_column_spec().comment {
+                        if let Some((_, suffix)) = comment.rsplit_once("renamed_from \"") {
+                            if let Some((prefix, _)) = suffix.split_once('"') {
+                                renamed_from = prefix;
+                            }
+                        }
+                    }
+                    if renamed_from.is_empty() {
+                        db.execute(
+                            TableAlterStatement::new()
+                                .table(self.table.get_table_name().expect("Checked above").clone())
+                                .add_column(column_def.to_owned()),
+                        )
+                        .await?;
+                    } else {
+                        db.execute(
+                            TableAlterStatement::new()
+                                .table(self.table.get_table_name().expect("Checked above").clone())
+                                .rename_column(
+                                    renamed_from.to_owned(),
+                                    column_def.get_column_name(),
+                                ),
+                        )
+                        .await?;
+                    }
                 }
             }
             if db.get_database_backend() != DbBackend::Sqlite {
@@ -299,21 +380,33 @@ impl EntitySchemaInfo {
                 }
             }
             if !has_index {
-                db.execute(stmt).await?;
+                // shall we do alter table add constraint for unique index?
+                let mut stmt = stmt.clone();
+                stmt.if_not_exists();
+                db.execute(&stmt).await?;
             }
         }
-        for stmt in self.enums.iter() {
-            let mut has_enum = false;
-            for exsiting_enum in &existing.enums {
-                let db_backend = db.get_database_backend();
-                if db_backend.build(exsiting_enum) == db_backend.build(stmt) {
-                    has_enum = true;
-                    // TODO add enum variants
-                    break;
+        if let Some(existing_table) = existing_table {
+            // find all unique keys from existing table
+            // if it no longer exist in new schema, drop it
+            for exsiting_index in existing_table.get_indexes() {
+                if exsiting_index.is_unique_key() {
+                    let mut has_index = false;
+                    for stmt in self.indexes.iter() {
+                        if exsiting_index.get_index_spec().get_column_names()
+                            == stmt.get_index_spec().get_column_names()
+                        {
+                            has_index = true;
+                            break;
+                        }
+                    }
+                    if !has_index {
+                        if let Some(drop_existing) = exsiting_index.get_index_spec().get_name() {
+                            db.execute(sea_query::Index::drop().name(drop_existing))
+                                .await?;
+                        }
+                    }
                 }
-            }
-            if !has_enum {
-                db.execute(stmt).await?;
             }
         }
         Ok(())
@@ -358,7 +451,8 @@ fn compare_foreign_key(a: &ForeignKeyCreateStatement, b: &ForeignKeyCreateStatem
     let a = a.get_foreign_key();
     let b = b.get_foreign_key();
 
-    a.get_ref_table() == b.get_ref_table()
-        && a.get_columns() == b.get_columns()
-        && a.get_ref_columns() == b.get_ref_columns()
+    a.get_name() == b.get_name()
+        || (a.get_ref_table() == b.get_ref_table()
+            && a.get_columns() == b.get_columns()
+            && a.get_ref_columns() == b.get_ref_columns())
 }

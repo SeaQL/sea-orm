@@ -10,6 +10,9 @@ use url::Url;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::pool::PoolConnection;
 
+#[cfg(feature = "rusqlite")]
+use crate::driver::rusqlite::{RusqliteInnerConnection, RusqliteSharedConnection};
+
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use std::sync::Arc;
 
@@ -40,6 +43,10 @@ pub enum DatabaseConnectionType {
     /// SQLite database connection pool
     #[cfg(feature = "sqlx-sqlite")]
     SqlxSqlitePoolConnection(crate::SqlxSqlitePoolConnection),
+
+    /// SQLite database connection sharable across threads
+    #[cfg(feature = "rusqlite")]
+    RusqliteSharedConnection(RusqliteSharedConnection),
 
     /// Mock database connection useful for testing
     #[cfg(feature = "mock")]
@@ -96,6 +103,8 @@ pub(crate) enum InnerConnection {
     Postgres(PoolConnection<sqlx::Postgres>),
     #[cfg(feature = "sqlx-sqlite")]
     Sqlite(PoolConnection<sqlx::Sqlite>),
+    #[cfg(feature = "rusqlite")]
+    Rusqlite(RusqliteInnerConnection),
     #[cfg(feature = "mock")]
     Mock(Arc<crate::MockDatabaseConnection>),
     #[cfg(feature = "proxy")]
@@ -114,6 +123,8 @@ impl Debug for DatabaseConnectionType {
                 Self::SqlxPostgresPoolConnection(_) => "SqlxPostgresPoolConnection",
                 #[cfg(feature = "sqlx-sqlite")]
                 Self::SqlxSqlitePoolConnection(_) => "SqlxSqlitePoolConnection",
+                #[cfg(feature = "rusqlite")]
+                Self::RusqliteSharedConnection(_) => "RusqliteSharedConnection",
                 #[cfg(feature = "mock")]
                 Self::MockDatabaseConnection(_) => "MockDatabaseConnection",
                 #[cfg(feature = "proxy")]
@@ -140,6 +151,8 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.execute(stmt).await,
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.execute(stmt).await,
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.execute(stmt),
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => conn.execute(stmt),
             #[cfg(feature = "proxy")]
@@ -164,6 +177,8 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
                 conn.execute_unprepared(sql).await
             }
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.execute_unprepared(sql),
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => {
                 let db_backend = conn.get_database_backend();
@@ -190,6 +205,8 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.query_one(stmt).await,
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.query_one(stmt).await,
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.query_one(stmt),
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => conn.query_one(stmt),
             #[cfg(feature = "proxy")]
@@ -208,6 +225,8 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.query_all(stmt).await,
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.query_all(stmt).await,
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.query_all(stmt),
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => conn.query_all(stmt),
             #[cfg(feature = "proxy")]
@@ -250,6 +269,8 @@ impl StreamTrait for DatabaseConnection {
                 DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.stream(stmt).await,
                 #[cfg(feature = "sqlx-sqlite")]
                 DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.stream(stmt).await,
+                #[cfg(feature = "rusqlite")]
+                DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.stream(stmt),
                 #[cfg(feature = "mock")]
                 DatabaseConnectionType::MockDatabaseConnection(conn) => {
                     Ok(crate::QueryStream::from((Arc::clone(conn), stmt, None)))
@@ -279,6 +300,8 @@ impl TransactionTrait for DatabaseConnection {
             }
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.begin(None, None).await,
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.begin(None, None),
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => {
                 DatabaseTransaction::new_mock(Arc::clone(conn), None).await
@@ -309,6 +332,10 @@ impl TransactionTrait for DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
                 conn.begin(_isolation_level, _access_mode).await
+            }
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => {
+                conn.begin(_isolation_level, _access_mode)
             }
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => {
@@ -346,6 +373,10 @@ impl TransactionTrait for DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
                 conn.transaction(_callback, None, None).await
+            }
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => {
+                conn.transaction(_callback, None, None)
             }
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => {
@@ -397,6 +428,10 @@ impl TransactionTrait for DatabaseConnection {
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
                 conn.transaction(_callback, _isolation_level, _access_mode)
                     .await
+            }
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => {
+                conn.transaction(_callback, _isolation_level, _access_mode)
             }
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => {
@@ -512,6 +547,8 @@ impl DatabaseConnection {
             DatabaseConnectionType::SqlxPostgresPoolConnection(_) => DbBackend::Postgres,
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnectionType::SqlxSqlitePoolConnection(_) => DbBackend::Sqlite,
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(_) => DbBackend::Sqlite,
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => conn.get_database_backend(),
             #[cfg(feature = "proxy")]
@@ -523,6 +560,14 @@ impl DatabaseConnection {
     /// Creates a [`SchemaBuilder`] for this backend
     pub fn get_schema_builder(&self) -> SchemaBuilder {
         Schema::new(self.get_database_backend()).builder()
+    }
+
+    #[cfg(feature = "entity-registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "entity-registry")))]
+    /// Builds a schema for all the entites in the given module
+    pub fn get_schema_registry(&self, prefix: &str) -> SchemaBuilder {
+        let schema = Schema::new(self.get_database_backend());
+        crate::EntityRegistry::build_schema(schema, prefix)
     }
 
     /// Sets a callback to metric this connection
@@ -543,6 +588,10 @@ impl DatabaseConnection {
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
                 conn.set_metric_callback(_callback)
             }
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => {
+                conn.set_metric_callback(_callback)
+            }
             _ => {}
         }
     }
@@ -556,6 +605,8 @@ impl DatabaseConnection {
             DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.ping().await,
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.ping().await,
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.ping(),
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => conn.ping(),
             #[cfg(feature = "proxy")]
@@ -579,6 +630,8 @@ impl DatabaseConnection {
             DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.close_by_ref().await,
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.close_by_ref().await,
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.close_by_ref(),
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(_) => {
                 // Nothing to cleanup, we just consume the `DatabaseConnection`
@@ -692,6 +745,7 @@ impl DbBackend {
 mod tests {
     use crate::DatabaseConnection;
 
+    #[cfg(not(feature = "sync"))]
     #[test]
     fn assert_database_connection_traits() {
         fn assert_send_sync<T: Send + Sync>() {}

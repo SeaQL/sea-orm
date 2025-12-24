@@ -291,6 +291,14 @@ pub enum GenerateSubcommands {
 
         #[arg(
             long,
+            default_value_t,
+            value_enum,
+            help = "The primitive type to use for big integer."
+        )]
+        big_integer_type: BigIntegerType,
+
+        #[arg(
+            long,
             short = 'l',
             default_value = "false",
             help = "Generate index file as `lib.rs` instead of `mod.rs`."
@@ -365,6 +373,14 @@ pub enum GenerateSubcommands {
             }
         )]
         preserve_user_modifications: bool,
+
+        #[arg(
+            long,
+            default_value_t,
+            value_enum,
+            help = "Control how the codegen version is displayed in the top banner of the generated file."
+        )]
+        banner_version: BannerVersion,
     },
 }
 
@@ -373,6 +389,22 @@ pub enum DateTimeCrate {
     #[default]
     Chrono,
     Time,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Default)]
+pub enum BigIntegerType {
+    #[default]
+    I64,
+    I32,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Default)]
+pub enum BannerVersion {
+    Off,
+    Major,
+    #[default]
+    Minor,
+    Patch,
 }
 
 /// Use this to build a local, version-controlled `sea-orm-cli` in dependent projects

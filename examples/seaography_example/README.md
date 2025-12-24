@@ -89,6 +89,10 @@ cargo run
 `cd` into `migration` folder and follow instructions there, but basically:
 
 ```sh
+export DATABASE_URL="sqlite://../bakery.db?mode=rwc"
+```
+
+```sh
 cd migration
 cargo run
 ```
@@ -103,11 +107,9 @@ cargo install seaography-cli@^2.0.0-rc
 ### Generate GraphQL project
 
 ```sh
-export DATABASE_URL="sqlite://bakery.db"
-```
-
-```sh
 rm -rf graphql # this entire folder is generated
-sea-orm-cli generate entity --output-dir graphql/src/entities --seaography
-seaography-cli --framework axum graphql graphql/src/entities $DATABASE_URL sea-orm-seaography-example
+mkdir graphql
+cd graphql
+sea-orm-cli generate entity --output-dir ./src/entities --entity-format dense --seaography
+seaography-cli -o . -e ./src/entities --framework axum sea-orm-seaography-example
 ```

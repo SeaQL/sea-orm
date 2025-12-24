@@ -5,7 +5,7 @@ impl EntityWriter {
     pub fn gen_expanded_code_blocks(
         entity: &Entity,
         with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
+        column_option: &ColumnOption,
         schema_name: &Option<String>,
         serde_skip_deserializing_primary_key: bool,
         serde_skip_hidden_column: bool,
@@ -24,7 +24,7 @@ impl EntityWriter {
             Self::gen_expanded_model_struct(
                 entity,
                 with_serde,
-                date_time_crate,
+                column_option,
                 serde_skip_deserializing_primary_key,
                 serde_skip_hidden_column,
                 model_extra_derives,
@@ -32,7 +32,7 @@ impl EntityWriter {
             ),
             Self::gen_column_enum(entity, column_extra_derives),
             Self::gen_primary_key_enum(entity),
-            Self::gen_impl_primary_key(entity, date_time_crate),
+            Self::gen_impl_primary_key(entity, column_option),
             Self::gen_relation_enum(entity),
             Self::gen_impl_column_trait(entity),
             Self::gen_impl_relation_trait(entity),
@@ -51,14 +51,14 @@ impl EntityWriter {
     pub fn gen_expanded_model_struct(
         entity: &Entity,
         with_serde: &WithSerde,
-        date_time_crate: &DateTimeCrate,
+        column_option: &ColumnOption,
         serde_skip_deserializing_primary_key: bool,
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
     ) -> TokenStream {
         let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types(date_time_crate);
+        let column_rs_types = entity.get_column_rs_types(column_option);
         let if_eq_needed = entity.get_eq_needed();
         let serde_attributes = entity.get_column_serde_attributes(
             serde_skip_deserializing_primary_key,
