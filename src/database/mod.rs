@@ -78,7 +78,9 @@ type MapSqlitePoolOptsFn = Option<
 >;
 
 type AfterConnectCallback = Option<
-    Arc<dyn Fn(DatabaseConnection) -> BoxFuture<'static, Result<(), DbErr>> + Send + Sync + 'static>,
+    Arc<
+        dyn Fn(DatabaseConnection) -> BoxFuture<'static, Result<(), DbErr>> + Send + Sync + 'static,
+    >,
 >;
 
 /// Defines the configuration options of a database
