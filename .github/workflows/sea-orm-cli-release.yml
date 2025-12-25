@@ -1,0 +1,82 @@
+name: sea-orm-cli release
+
+on:
+  push:
+    tags:
+      - "sea-orm-cli@*"
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Build (${{ matrix.target }})
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: tgz
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            ext: tgz
+          - os: macos-13
+            target: x86_64-apple-darwin
+            ext: tgz
+          - os: macos-14
+            target: aarch64-apple-darwin
+            ext: tgz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: zip
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#sea-orm-cli@}" >> $GITHUB_ENV
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --manifest-path sea-orm-cli/Cargo.toml --target ${{ matrix.target }} --bin sea-orm-cli
+      - name: Package (unix)
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        run: |
+          package="sea-orm-cli-${{ matrix.target }}-v${VERSION}"
+          mkdir -p "$package"
+          bin_cli="sea-orm-cli/target/${{ matrix.target }}/release/sea-orm-cli"
+          cp "$bin_cli" "$package/sea-orm-cli"
+          cp "$bin_cli" "$package/sea"
+          tar -czf "${package}.tgz" "$package"
+      - name: Package (windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $package = "sea-orm-cli-${{ matrix.target }}-v$env:VERSION"
+          New-Item -ItemType Directory -Path $package | Out-Null
+          $bin_cli = "sea-orm-cli/target/${{ matrix.target }}/release/sea-orm-cli.exe"
+          Copy-Item $bin_cli "$package/sea-orm-cli.exe"
+          Copy-Item $bin_cli "$package/sea.exe"
+          Compress-Archive -Path "$package" -DestinationPath "$package.zip"
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: sea-orm-cli-${{ matrix.target }}-v${{ env.VERSION }}.${{ matrix.ext }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
