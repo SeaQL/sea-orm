@@ -107,6 +107,8 @@ pub mod compound;
 mod identity;
 mod link;
 mod model;
+mod never_active_model;
+mod never_primary_key;
 mod partial_model;
 /// Re-export common types from the entity
 pub mod prelude;
@@ -126,6 +128,8 @@ pub use compound::EntityLoaderTrait;
 pub use identity::*;
 pub use link::*;
 pub use model::*;
+pub use never_active_model::*;
+pub use never_primary_key::*;
 pub use partial_model::*;
 pub use primary_key::*;
 #[cfg(feature = "entity-registry")]
