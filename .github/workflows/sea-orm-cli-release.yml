@@ -8,17 +8,28 @@ on:
 permissions:
   contents: write
 
+env:
+  CARGO_TERM_COLOR: always
+  RUSTC_WRAPPER: sccache
+  SCCACHE_GHA_ENABLED: true
+
 jobs:
   create-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          generate_release_notes: true
+      - name: Create draft release (if missing)
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="${{ github.ref_name }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists"
+          else
+            gh release create "$tag" --draft --title "$tag" --generate-notes
+          fi
 
   build:
     name: Build (${{ matrix.target }})
@@ -51,6 +62,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-sea-orm-cli-release-${{ matrix.target }}-${{ hashFiles('**/Cargo.toml') }}
+      - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Build
         run: cargo build --release --manifest-path sea-orm-cli/Cargo.toml --target ${{ matrix.target }} --bin sea-orm-cli
       - name: Package (unix)
@@ -73,10 +92,29 @@ jobs:
           Copy-Item $bin_cli "$package/sea-orm-cli.exe"
           Copy-Item $bin_cli "$package/sea.exe"
           Compress-Archive -Path "$package" -DestinationPath "$package.zip"
-      - name: Upload release asset
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: sea-orm-cli-${{ matrix.target }}-v${{ env.VERSION }}.${{ matrix.ext }}
+      - name: Upload release asset (unix)
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "${{ github.ref_name }}" "sea-orm-cli-${{ matrix.target }}-v${VERSION}.${{ matrix.ext }}" --clobber
+      - name: Upload release asset (windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "${{ github.ref_name }}" "sea-orm-cli-${{ matrix.target }}-v$env:VERSION.${{ matrix.ext }}" --clobber
+
+  publish:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release edit "${{ github.ref_name }}" --draft=false
