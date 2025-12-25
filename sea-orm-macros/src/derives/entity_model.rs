@@ -1,20 +1,101 @@
 use super::case_style::{CaseStyle, CaseStyleHelpers};
 use super::util::{escape_rust_keyword, trim_starting_raw_identifier};
-use heck::{ToSnakeCase, ToUpperCamelCase};
+use heck::{
+    ToKebabCase, ToLowerCamelCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase, ToUpperCamelCase,
+};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
+use std::str::FromStr;
+use syn::meta::ParseNestedMeta;
 use syn::{
-    punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, Expr, Fields, Lit,
+    Attribute, Data, Fields, Lit, LitStr, punctuated::Punctuated, spanned::Spanned, token::Comma,
 };
 
+#[allow(dead_code)]
+fn convert_case(s: &str, case_style: CaseStyle) -> String {
+    match case_style {
+        CaseStyle::PascalCase => s.to_upper_camel_case(),
+        CaseStyle::KebabCase => s.to_kebab_case(),
+        CaseStyle::MixedCase => s.to_lower_camel_case(),
+        CaseStyle::ShoutySnakeCase => s.to_shouty_snake_case(),
+        CaseStyle::SnakeCase => s.to_snake_case(),
+        CaseStyle::TitleCase => s.to_title_case(),
+        CaseStyle::UpperCase => s.to_uppercase(),
+        CaseStyle::LowerCase => s.to_lowercase(),
+        CaseStyle::ScreamingKebabCase => s.to_kebab_case().to_uppercase(),
+        CaseStyle::CamelCase => {
+            let camel_case = s.to_upper_camel_case();
+            let mut result = String::with_capacity(camel_case.len());
+            let mut it = camel_case.chars();
+            if let Some(ch) = it.next() {
+                result.extend(ch.to_lowercase());
+            }
+            result.extend(it);
+            result
+        }
+    }
+}
+
+#[cfg(feature = "with-json")]
+fn serde_deserialize_name(
+    orig: &str,
+    serde_rename: Option<&str>,
+    serde_rename_all: Option<CaseStyle>,
+) -> String {
+    if let Some(rename) = serde_rename.as_ref() {
+        return rename.to_string();
+    }
+
+    if let Some(case_style) = serde_rename_all {
+        convert_case(orig, case_style)
+    } else {
+        orig.to_string()
+    }
+}
+
+fn consume_meta(meta: ParseNestedMeta<'_>) {
+    let _ = meta.value().and_then(|v| v.parse::<syn::Expr>());
+}
+
 /// Method to derive an Model
-pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
+pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Result<TokenStream> {
     // if #[sea_orm(table_name = "foo", schema_name = "bar")] specified, create Entity struct
     let mut table_name = None;
     let mut comment = quote! {None};
     let mut schema_name = quote! { None };
     let mut table_iden = false;
+    let mut model_ex = false;
     let mut rename_all: Option<CaseStyle> = None;
+    let mut serde_rename_all: Option<CaseStyle> = None;
+
+    // Parse #[serde(rename_all = "...")] at struct level
+    attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("serde"))
+        .try_for_each(|attr| {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("rename_all") {
+                    if let Ok(lit) = meta.value().and_then(|v| v.parse::<LitStr>()) {
+                        // #[serde(rename_all = "camelCase")]
+                        serde_rename_all = CaseStyle::from_str(&lit.value()).ok();
+                    } else {
+                        // #[serde(rename_all(serialize = "...", deserialize = "..."))]
+                        meta.parse_nested_meta(|nested| {
+                            if nested.path.is_ident("deserialize") {
+                                let lit: LitStr = nested.value()?.parse()?;
+                                serde_rename_all = CaseStyle::from_str(&lit.value()).ok();
+                            } else {
+                                consume_meta(nested);
+                            }
+                            Ok(())
+                        })?;
+                    }
+                } else {
+                    consume_meta(meta);
+                }
+                Ok(())
+            })
+        })?;
 
     attrs
         .iter()
@@ -25,19 +106,18 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let name: Lit = meta.value()?.parse()?;
                     comment = quote! { Some(#name) };
                 } else if meta.path.is_ident("table_name") {
-                    table_name = Some(meta.value()?.parse::<Lit>()?);
+                    table_name = Some(meta.value()?.parse::<LitStr>()?);
                 } else if meta.path.is_ident("schema_name") {
                     let name: Lit = meta.value()?.parse()?;
                     schema_name = quote! { Some(#name) };
                 } else if meta.path.is_ident("table_iden") {
                     table_iden = true;
+                } else if meta.path.is_ident("model_ex") {
+                    model_ex = true;
                 } else if meta.path.is_ident("rename_all") {
                     rename_all = Some((&meta).try_into()?);
                 } else {
-                    // Reads the value expression to advance the parse stream.
-                    // Some parameters, such as `primary_key`, do not have any value,
-                    // so ignoring an error occurred here.
-                    let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
+                    consume_meta(meta);
                 }
 
                 Ok(())
@@ -47,9 +127,15 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     let entity_def = table_name
         .as_ref()
         .map(|table_name| {
+            let entity_extra_attr = if model_ex {
+                quote!(#[sea_orm(model_ex = ModelEx, active_model_ex = ActiveModelEx)])
+            } else {
+                quote!()
+            };
             quote! {
                 #[doc = " Generated by sea-orm-macros"]
                 #[derive(Copy, Clone, Default, Debug, sea_orm::prelude::DeriveEntity)]
+                #entity_extra_attr
                 pub struct Entity;
 
                 #[automatically_derived]
@@ -58,7 +144,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         #schema_name
                     }
 
-                    fn table_name(&self) -> &str {
+                    fn table_name(&self) -> &'static str {
                         #table_name
                     }
 
@@ -79,8 +165,11 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     let mut primary_keys: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_key_types: Punctuated<_, Comma> = Punctuated::new();
     let mut auto_increment = true;
+    #[cfg(feature = "with-json")]
+    let mut columns_json_keys: Punctuated<_, Comma> = Punctuated::new();
+
     if table_iden {
-        if let Some(table_name) = table_name {
+        if let Some(table_name) = &table_name {
             let table_field_name = Ident::new("Table", Span::call_site());
             columns_enum.push(quote! {
                 #[doc = " Generated by sea-orm-macros"]
@@ -94,14 +183,12 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         }
     }
     if let Data::Struct(item_struct) = data {
-        if let Fields::Named(fields) = item_struct.fields {
-            for field in fields.named {
+        if let Fields::Named(fields) = &item_struct.fields {
+            for field in &fields.named {
                 if let Some(ident) = &field.ident {
                     let original_field_name = trim_starting_raw_identifier(ident);
-                    let mut field_name = Ident::new(
-                        &original_field_name.to_upper_camel_case(),
-                        Span::call_site(),
-                    );
+                    let mut field_name =
+                        Ident::new(&original_field_name.to_upper_camel_case(), ident.span());
 
                     let mut nullable = false;
                     let mut default_value = None;
@@ -109,10 +196,20 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut default_expr = None;
                     let mut select_as = None;
                     let mut save_as = None;
+                    let mut unique_key = None;
+                    let mut renamed_from = None;
                     let mut indexed = false;
                     let mut ignore = false;
                     let mut unique = false;
                     let mut sql_type = None;
+                    let mut enum_name = None;
+                    let mut is_primary_key = false;
+                    let mut is_auto_increment = false;
+                    let mut extra = None;
+                    let mut seaography_ignore = false;
+                    #[cfg(feature = "with-json")]
+                    let mut serde_rename: Option<String> = None;
+
                     let mut column_name = if let Some(case_style) = rename_all {
                         Some(field_name.convert_case(Some(case_style)))
                     } else if original_field_name
@@ -124,107 +221,171 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         None
                     };
 
-                    let mut enum_name = None;
-                    let mut is_primary_key = false;
                     // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(StringLen::N(255))", default_value = "new user", default_expr = "gen_random_uuid()", column_name = "name", enum_name = "Name", nullable, indexed, unique)]
                     for attr in field.attrs.iter() {
-                        if !attr.path().is_ident("sea_orm") {
-                            continue;
+                        if attr.path().is_ident("sea_orm") {
+                            // single param
+                            attr.parse_nested_meta(|meta| {
+                                if meta.path.is_ident("column_type") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        let ty: TokenStream = syn::parse_str(&litstr.value())?;
+                                        sql_type = Some(ty);
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid column_type {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("auto_increment") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Bool(litbool) = lit {
+                                        is_auto_increment = litbool.value();
+                                        auto_increment = litbool.value();
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid auto_increment = {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("comment") {
+                                    comment = Some(meta.value()?.parse::<Lit>()?);
+                                } else if meta.path.is_ident("default_value") {
+                                    default_value = Some(meta.value()?.parse::<Lit>()?);
+                                } else if meta.path.is_ident("default_expr") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        let value_expr: TokenStream =
+                                            syn::parse_str(&litstr.value())?;
+                                        default_expr = Some(value_expr);
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid column_type {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("column_name") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        column_name = Some(litstr.value());
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid column_name {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("enum_name") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        let ty: Ident = syn::parse_str(&litstr.value())?;
+                                        enum_name = Some(ty);
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid enum_name {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("select_as") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        select_as = Some(litstr.value());
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid select_as {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("save_as") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        save_as = Some(litstr.value());
+                                    } else {
+                                        return Err(meta.error(format!("Invalid save_as {lit:?}")));
+                                    }
+                                } else if meta.path.is_ident("ignore") {
+                                    ignore = true;
+                                } else if meta.path.is_ident("primary_key") {
+                                    is_primary_key = true;
+                                    primary_key_types.push(field.ty.clone());
+                                } else if meta.path.is_ident("nullable") {
+                                    nullable = true;
+                                } else if meta.path.is_ident("indexed") {
+                                    indexed = true;
+                                } else if meta.path.is_ident("unique") {
+                                    unique = true;
+                                } else if meta.path.is_ident("unique_key") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        unique_key = Some(litstr.value());
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid unique_key {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("renamed_from") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        renamed_from = Some(litstr.value());
+                                    } else {
+                                        return Err(
+                                            meta.error(format!("Invalid renamed_from {lit:?}"))
+                                        );
+                                    }
+                                } else if meta.path.is_ident("extra") {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        extra = Some(litstr.value());
+                                    } else {
+                                        return Err(meta.error(format!("Invalid extra {lit:?}")));
+                                    }
+                                } else {
+                                    consume_meta(meta);
+                                }
+
+                                Ok(())
+                            })?;
+                        } else if attr.path().is_ident("seaography") {
+                            attr.parse_nested_meta(|meta| {
+                                if meta.path.is_ident("ignore") {
+                                    seaography_ignore = true;
+                                }
+
+                                Ok(())
+                            })?;
+                        } else if cfg!(feature = "with-json") && attr.path().is_ident("serde") {
+                            #[cfg(feature = "with-json")]
+                            attr.parse_nested_meta(|meta| {
+                                if meta.path.is_ident("rename") {
+                                    if let Ok(lit) = meta.value().and_then(|v| v.parse::<LitStr>())
+                                    {
+                                        // #[serde(rename = "xxx")]
+                                        serde_rename = Some(lit.value());
+                                    } else {
+                                        // #[serde(rename(serialize = "...", deserialize = "..."))]
+                                        meta.parse_nested_meta(|nested| {
+                                            if nested.path.is_ident("deserialize") {
+                                                let lit: LitStr = nested.value()?.parse()?;
+                                                serde_rename = Some(lit.value());
+                                            } else {
+                                                consume_meta(nested);
+                                            }
+                                            Ok(())
+                                        })?;
+                                    }
+                                } else {
+                                    consume_meta(meta);
+                                }
+                                Ok(())
+                            })?;
                         }
-
-                        // single param
-                        attr.parse_nested_meta(|meta| {
-                            if meta.path.is_ident("column_type") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Str(litstr) = lit {
-                                    let ty: TokenStream = syn::parse_str(&litstr.value())?;
-                                    sql_type = Some(ty);
-                                } else {
-                                    return Err(
-                                        meta.error(format!("Invalid column_type {:?}", lit))
-                                    );
-                                }
-                            } else if meta.path.is_ident("auto_increment") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Bool(litbool) = lit {
-                                    auto_increment = litbool.value();
-                                } else {
-                                    return Err(
-                                        meta.error(format!("Invalid auto_increment = {:?}", lit))
-                                    );
-                                }
-                            } else if meta.path.is_ident("comment") {
-                                comment = Some(meta.value()?.parse::<Lit>()?);
-                            } else if meta.path.is_ident("default_value") {
-                                default_value = Some(meta.value()?.parse::<Lit>()?);
-                            } else if meta.path.is_ident("default_expr") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Str(litstr) = lit {
-                                    let value_expr: TokenStream = syn::parse_str(&litstr.value())?;
-                                    default_expr = Some(value_expr);
-                                } else {
-                                    return Err(
-                                        meta.error(format!("Invalid column_type {:?}", lit))
-                                    );
-                                }
-                            } else if meta.path.is_ident("column_name") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Str(litstr) = lit {
-                                    column_name = Some(litstr.value());
-                                } else {
-                                    return Err(
-                                        meta.error(format!("Invalid column_name {:?}", lit))
-                                    );
-                                }
-                            } else if meta.path.is_ident("enum_name") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Str(litstr) = lit {
-                                    let ty: Ident = syn::parse_str(&litstr.value())?;
-                                    enum_name = Some(ty);
-                                } else {
-                                    return Err(meta.error(format!("Invalid enum_name {:?}", lit)));
-                                }
-                            } else if meta.path.is_ident("select_as") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Str(litstr) = lit {
-                                    select_as = Some(litstr.value());
-                                } else {
-                                    return Err(meta.error(format!("Invalid select_as {:?}", lit)));
-                                }
-                            } else if meta.path.is_ident("save_as") {
-                                let lit = meta.value()?.parse()?;
-                                if let Lit::Str(litstr) = lit {
-                                    save_as = Some(litstr.value());
-                                } else {
-                                    return Err(meta.error(format!("Invalid save_as {:?}", lit)));
-                                }
-                            } else if meta.path.is_ident("ignore") {
-                                ignore = true;
-                            } else if meta.path.is_ident("primary_key") {
-                                is_primary_key = true;
-                                primary_key_types.push(field.ty.clone());
-                            } else if meta.path.is_ident("nullable") {
-                                nullable = true;
-                            } else if meta.path.is_ident("indexed") {
-                                indexed = true;
-                            } else if meta.path.is_ident("unique") {
-                                unique = true;
-                            } else {
-                                // Reads the value expression to advance the parse stream.
-                                // Some parameters, such as `primary_key`, do not have any value,
-                                // so ignoring an error occurred here.
-                                let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
-                            }
-
-                            Ok(())
-                        })?;
                     }
+
+                    #[cfg(feature = "with-json")]
+                    let json_key_name = serde_deserialize_name(
+                        &original_field_name,
+                        serde_rename.as_deref(),
+                        serde_rename_all,
+                    );
 
                     if let Some(enum_name) = enum_name {
                         field_name = enum_name;
                     }
 
-                    field_name = Ident::new(&escape_rust_keyword(field_name), Span::call_site());
+                    field_name = Ident::new(&escape_rust_keyword(field_name), ident.span());
 
                     let variant_attrs = match &column_name {
                         Some(column_name) => quote! {
@@ -236,12 +397,21 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         },
                     };
 
+                    let field_type = &field.ty;
+                    let field_type = quote! { #field_type }
+                        .to_string() // e.g.: "Option < String >"
+                        .replace(' ', ""); // Remove spaces
+
                     if ignore {
                         continue;
                     } else {
                         columns_enum.push(quote! {
                             #variant_attrs
                             #field_name
+                        });
+                        #[cfg(feature = "with-json")]
+                        columns_json_keys.push(quote! {
+                            Self::#field_name => #json_key_name
                         });
                     }
 
@@ -252,32 +422,41 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         });
                     }
 
+                    if !is_primary_key && is_auto_increment {
+                        return Err(syn::Error::new_spanned(
+                            ident,
+                            "auto_increment can only be used on primary_key",
+                        ));
+                    }
+
+                    if primary_key_types.len() > 1 && is_auto_increment {
+                        return Err(syn::Error::new_spanned(
+                            ident,
+                            "auto_increment cannot be used on composite primary_key",
+                        ));
+                    }
+
                     if let Some(select_as) = select_as {
                         columns_select_as.push(quote! {
-                            Self::#field_name => expr.cast_as(sea_orm::sea_query::Alias::new(#select_as))
+                            Self::#field_name => sea_orm::sea_query::ExprTrait::cast_as(expr, #select_as)
                         });
                     }
                     if let Some(save_as) = save_as {
                         columns_save_as.push(quote! {
-                            Self::#field_name => val.cast_as(sea_orm::sea_query::Alias::new(#save_as))
+                            Self::#field_name => sea_orm::sea_query::ExprTrait::cast_as(val, #save_as)
                         });
                     }
 
-                    let field_type = &field.ty;
-                    let field_type = quote! { #field_type }
-                        .to_string() //E.g.: "Option < String >"
-                        .replace(' ', ""); // Remove spaces
                     let field_type = if field_type.starts_with("Option<") {
                         nullable = true;
-                        &field_type[7..(field_type.len() - 1)] // Extract `T` out of `Option<T>`
+                        &field_type["Option<".len()..(field_type.len() - 1)] // Extract `T` out of `Option<T>`
                     } else {
                         field_type.as_str()
                     };
                     let field_span = field.span();
 
-                    let sea_query_col_type = crate::derives::sql_type_match::col_type_match(
-                        sql_type, field_type, field_span,
-                    );
+                    let sea_query_col_type =
+                        super::value_type_match::column_type_expr(sql_type, field_type, field_span);
 
                     let col_def =
                         quote! { sea_orm::prelude::ColumnTypeTrait::def(#sea_query_col_type) };
@@ -292,6 +471,15 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     if unique {
                         match_row = quote! { #match_row.unique() };
                     }
+                    if seaography_ignore {
+                        match_row = quote! { #match_row.seaography_ignore() };
+                    }
+                    if unique_key.is_some() {
+                        match_row = quote! { #match_row.unique_key(#unique_key) };
+                    }
+                    if renamed_from.is_some() {
+                        match_row = quote! { #match_row.renamed_from(#renamed_from) };
+                    }
                     if let Some(default_value) = default_value {
                         match_row = quote! { #match_row.default_value(#default_value) };
                     }
@@ -300,6 +488,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     }
                     if let Some(default_expr) = default_expr {
                         match_row = quote! { #match_row.default(#default_expr) };
+                    }
+                    if let Some(extra) = extra {
+                        match_row = quote! { #match_row.extra(#extra) };
                     }
                     // match_row = quote! { #match_row.comment() };
                     columns_trait.push(match_row);
@@ -352,7 +543,36 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         }
     };
 
+    let impl_model_ex = if model_ex {
+        quote!()
+    } else {
+        quote! {
+            impl Model {
+                #[doc = " Generated by sea-orm-macros"]
+                pub fn into_ex(self) -> Self {
+                    self
+                }
+            }
+        }
+    };
+
+    let with_json_impls = {
+        #[cfg(feature = "with-json")]
+        quote! {
+            fn json_key(&self) -> &'static str {
+                match self {
+                    #columns_json_keys
+                }
+            }
+        }
+
+        #[cfg(not(feature = "with-json"))]
+        quote! {}
+    };
+
     Ok(quote! {
+        #impl_model_ex
+
         #[doc = " Generated by sea-orm-macros"]
         #[derive(Copy, Clone, Debug, sea_orm::prelude::EnumIter, sea_orm::prelude::DeriveColumn)]
         pub enum Column {
@@ -388,6 +608,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     _ => sea_orm::prelude::ColumnTrait::save_enum_as(self, val),
                 }
             }
+
+            #with_json_impls
         }
 
         #entity_def

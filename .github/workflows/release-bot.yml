@@ -19,7 +19,6 @@ jobs:
           message: |
             ### :tada: Released In [${releaseTag}](${releaseUrl}) :tada:
             
-            Thank you everyone for the contribution!
-            This feature is now available in the latest release. Now is a good time to upgrade!
-            Your participation is what makes us unique; your adoption is what drives us forward.
-            You can support SeaQL 🌊 by starring our repos, sharing our libraries and becoming a sponsor ⭐.
+            Huge thanks for the contribution!
+            This feature has now been released, so it's a great time to upgrade.
+            Show some love with a ⭐ on our repo, every star counts!

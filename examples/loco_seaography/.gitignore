@@ -16,4 +16,8 @@ target/
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
+# Temporary upload directory
 uploads
+
+# Local SQLite databases
+*.db

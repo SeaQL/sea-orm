@@ -7,6 +7,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 ### Startups
 
 - [Caido](https://caido.io/) | A lightweight web security auditing toolkit
+- [FirstLook.gg](https://firstlook.gg/) | A platform to onboard, understand, and reward players | DB: Postgres
 - [Lapdev](https://lap.dev/) [![GitHub stars](https://img.shields.io/github/stars/lapce/lapdev.svg?style=social)](https://github.com/lapce/lapdev) | Self-hosted remote development enviroment | DB: Postgres
 - [OpenObserve](https://openobserve.ai/) [![GitHub stars](https://img.shields.io/github/stars/openobserve/openobserve.svg?style=social)](https://github.com/openobserve/openobserve) | Open-source observability platform | DB: MySQL, Postgres, SQLite
 - [My Data My Consent](https://mydatamyconsent.com/) | Online data sharing for people and businesses simplified
@@ -109,6 +110,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Loco.rs](https://github.com/loco-rs/loco) | A full stack Web and API productivity framework similar to Rails, based on SeaORM with db tooling and migrations code generation | DB: Postgres, SQLite
 - [tardis](https://github.com/ideal-world/tardis) | Elegant, Clean Rust development framework🛸 | DB: MySQL, Postgres, SQLite
 - [spring-rs](https://github.com/spring-rs/spring-rs) | A application framework written in rust inspired by java's spring-boot🍃 | DB: MySQL, Postgres, SQLite
+- [qiluo-admin](https://github.com/chelunfu/qiluo_admin) | Axum + SeaORM + JWT + Scheduled + Tasks + SnowId + Redis + Memory + VUE3 | DB: MySQL, Postgres, SQLite
 
 ### Scaffolding
 
@@ -123,6 +125,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [rust-juniper-playground](https://github.com/Yama-Tomo/rust-juniper-playground) | juniper with SeaORM example | DB: MySQL
 - [service_auth](https://github.com/shorii/service_auth) | A simple JWT authentication web-application | DB: Postgres
 - [Super Toolbox](https://github.com/atopx/toolbox) | micro-service best practices: use go-gin and rust-tonic | DB: mysql
+- [rsapi](https://github.com/atopx/rsapi) | A lightweight REST API template, Axum + SeaORM + JWT Middleware + Mini DockerFile | DB: Postgres
 
 ## Learning Resources
 

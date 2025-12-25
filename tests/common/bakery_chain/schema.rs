@@ -1,6 +1,8 @@
 use super::*;
-use crate::common::setup::create_table;
-use sea_orm::{error::*, sea_query, DatabaseConnection, DbConn, ExecResult};
+use crate::common::setup::{create_table, create_table_with_index};
+use sea_orm::{
+    ConnectionTrait, DatabaseConnection, DbConn, ExecResult, Schema, error::*, sea_query,
+};
 use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, Table};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
@@ -11,7 +13,6 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_cake_table(db).await?;
     create_cakes_bakers_table(db).await?;
     create_lineitem_table(db).await?;
-
     Ok(())
 }
 
@@ -106,7 +107,7 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(order::Column::PlacedAt)
-                .date_time()
+                .timestamp_with_time_zone()
                 .not_null(),
         )
         .foreign_key(
@@ -174,7 +175,22 @@ pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .to_owned();
 
-    create_table(db, &stmt, Lineitem).await
+    let backend = db.get_database_backend();
+    let stmts = Schema::new(backend).create_index_from_entity(lineitem::Entity);
+    assert_eq!(stmts.len(), 1);
+    assert_eq!(
+        backend.build(&stmts[0]),
+        backend.build(
+            Index::create()
+                .name("idx-lineitem-lineitem")
+                .table(lineitem::Entity)
+                .col(lineitem::Column::OrderId)
+                .col(lineitem::Column::CakeId)
+                .unique()
+        )
+    );
+
+    create_table_with_index(db, &stmt, Lineitem).await
 }
 
 pub async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, DbErr> {

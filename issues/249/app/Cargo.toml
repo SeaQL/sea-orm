@@ -1,9 +1,15 @@
 [package]
-name = "sea-orm-issues-249-app"
-version = "0.1.0"
-edition = "2021"
-publish = false
+edition      = "2024"
+name         = "sea-orm-issues-249-app"
+publish      = false
+rust-version = "1.85.0"
+version      = "0.1.0"
 
 [dependencies]
+sea-orm = { path = "../../../", default-features = false, features = [
+    "macros",
+    "tests-cfg",
+    "sqlx-sqlite",
+    "runtime-async-std-native-tls",
+] }
 service = { path = "../service" }
-sea-orm = { path = "../../../", default-features = false, features = ["macros", "tests-cfg", "sqlx-sqlite", "runtime-async-std-native-tls"] }

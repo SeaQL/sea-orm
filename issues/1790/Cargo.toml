@@ -2,17 +2,18 @@
 # A separate workspace
 
 [package]
-name = "sea-orm-issues-1790"
-version = "0.1.0"
-edition = "2023"
-publish = false
+edition      = "2024"
+name         = "sea-orm-issues-1790"
+publish      = false
+rust-version = "1.85.0"
+version      = "0.1.0"
 
 [dependencies]
 anyhow = "1"
-serde = "1"
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+serde  = "1"
+tokio  = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 
 [dependencies.sea-orm]
-path = "../../"
 default-features = false
-features = ["macros", "runtime-tokio-native-tls", "sqlx-sqlite"]
+features         = ["macros", "runtime-tokio-native-tls", "sqlx-sqlite"]
+path             = "../../"

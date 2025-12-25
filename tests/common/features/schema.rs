@@ -1,12 +1,14 @@
 use super::*;
-use crate::common::setup::{create_enum, create_table, create_table_without_asserts};
+use crate::common::setup::{
+    create_enum, create_table, create_table_from_entity, create_table_without_asserts,
+};
 use sea_orm::{
-    error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
-    ExecResult, Schema,
+    ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName, ExecResult, Schema,
+    error::*, sea_query,
 };
 use sea_query::{
-    extension::postgres::Type, Alias, ColumnDef, ColumnType, ForeignKeyCreateStatement, IntoIden,
-    StringLen,
+    Alias, ColumnDef, ColumnType, ForeignKeyCreateStatement, IntoIden, IntoTableRef, StringLen,
+    extension::postgres::Type,
 };
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
@@ -25,14 +27,20 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
         DbBackend::Postgres => {
             let schema = Schema::new(db_backend);
             let enum_create_stmt = Type::create()
-                .as_enum(Alias::new("tea"))
-                .values([Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
+                .as_enum("tea")
+                .values(["EverydayTea", "BreakfastTea", "AfternoonTea"])
                 .to_owned();
             assert_eq!(
                 db_backend.build(&enum_create_stmt),
-                db_backend.build(&schema.create_enum_from_active_enum::<Tea>())
+                db_backend.build(&schema.create_enum_from_active_enum::<Tea>().unwrap())
             );
             vec![enum_create_stmt]
+        }
+        db => {
+            return Err(DbErr::BackendNotSupported {
+                db: db.as_str(),
+                ctx: "create_byte_primary_key_table",
+            });
         }
     };
     create_enum(db, &create_enum_stmts, ActiveEnum).await?;
@@ -40,7 +48,10 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_active_enum_table(db).await?;
     create_active_enum_child_table(db).await?;
     create_insert_default_table(db).await?;
-    create_pi_table(db).await?;
+    #[cfg(feature = "with-bigdecimal")]
+    {
+        create_pi_table(db).await?;
+    }
     create_uuid_fmt_table(db).await?;
     create_edit_log_table(db).await?;
     create_teas_table(db).await?;
@@ -180,6 +191,12 @@ pub async fn create_byte_primary_key_table(db: &DbConn) -> Result<ExecResult, Db
     match db.get_database_backend() {
         DbBackend::MySql => primary_key_col.binary_len(3),
         DbBackend::Sqlite | DbBackend::Postgres => primary_key_col.binary(),
+        db => {
+            return Err(DbErr::BackendNotSupported {
+                db: db.as_str(),
+                ctx: "create_byte_primary_key_table",
+            });
+        }
     };
 
     let stmt = sea_query::Table::create()
@@ -207,10 +224,14 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
         )
         .col(ColumnDef::new(active_enum::Column::Category).string_len(1))
         .col(ColumnDef::new(active_enum::Column::Color).integer())
-        .col(
-            ColumnDef::new(active_enum::Column::Tea)
-                .enumeration(TeaEnum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea]),
-        )
+        .col(ColumnDef::new(active_enum::Column::Tea).enumeration(
+            TeaEnum,
+            [
+                TeaVariant::EverydayTea,
+                TeaVariant::BreakfastTea,
+                TeaVariant::AfternoonTea,
+            ],
+        ))
         .to_owned();
 
     create_table(db, &create_table_stmt, ActiveEnum).await
@@ -233,16 +254,24 @@ pub async fn create_active_enum_child_table(db: &DbConn) -> Result<ExecResult, D
         )
         .col(ColumnDef::new(active_enum_child::Column::Category).string_len(1))
         .col(ColumnDef::new(active_enum_child::Column::Color).integer())
-        .col(
-            ColumnDef::new(active_enum_child::Column::Tea)
-                .enumeration(TeaEnum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea]),
-        )
+        .col(ColumnDef::new(active_enum_child::Column::Tea).enumeration(
+            TeaEnum,
+            [
+                TeaVariant::EverydayTea,
+                TeaVariant::BreakfastTea,
+                TeaVariant::AfternoonTea,
+            ],
+        ))
         .foreign_key(
             ForeignKeyCreateStatement::new()
                 .name("fk-active_enum_child-active_enum")
                 .from_tbl(ActiveEnumChild)
                 .from_col(active_enum_child::Column::ParentId)
-                .to_tbl(ActiveEnum)
+                .to_tbl(if cfg!(feature = "sqlx-postgres") {
+                    ("public", ActiveEnum).into_table_ref()
+                } else {
+                    ActiveEnum.into_table_ref()
+                })
                 .to_col(active_enum::Column::Id),
         )
         .to_owned();
@@ -365,6 +394,7 @@ pub async fn create_json_struct_table(db: &DbConn) -> Result<ExecResult, DbErr> 
                 .not_null(),
         )
         .col(ColumnDef::new(json_struct::Column::JsonValueOpt).json())
+        .col(ColumnDef::new(json_struct::Column::JsonNonSerializable).json())
         .to_owned();
 
     create_table(db, &stmt, JsonStruct).await
@@ -407,7 +437,7 @@ pub async fn create_json_struct_vec_table(db: &DbConn) -> Result<ExecResult, DbE
 }
 
 pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
-    db.execute(sea_orm::Statement::from_string(
+    db.execute_raw(sea_orm::Statement::from_string(
         db.get_database_backend(),
         "CREATE EXTENSION IF NOT EXISTS citext",
     ))
@@ -424,7 +454,7 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(collection::Column::Name)
-                .custom(Alias::new("citext"))
+                .custom("citext")
                 .not_null(),
         )
         .col(
@@ -440,6 +470,7 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                     variants: vec![
                         TeaVariant::EverydayTea.into_iden(),
                         TeaVariant::BreakfastTea.into_iden(),
+                        TeaVariant::AfternoonTea.into_iden(),
                     ],
                 })
                 .not_null(),
@@ -450,6 +481,7 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 variants: vec![
                     TeaVariant::EverydayTea.into_iden(),
                     TeaVariant::BreakfastTea.into_iden(),
+                    TeaVariant::AfternoonTea.into_iden(),
                 ],
             }),
         )
@@ -504,6 +536,7 @@ pub async fn create_host_network_table(db: &DbConn) -> Result<ExecResult, DbErr>
     create_table(db, &stmt, HostNetwork).await
 }
 
+#[cfg(feature = "with-bigdecimal")]
 pub async fn create_pi_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = sea_query::Table::create()
         .table(pi::Entity)
@@ -528,7 +561,7 @@ pub async fn create_pi_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(pi::Column::BigDecimalOpt).decimal_len(11, 10))
         .to_owned();
 
-    create_table(db, &stmt, Pi).await
+    create_table(db, &stmt, pi::Entity).await
 }
 
 pub async fn create_event_trigger_table(db: &DbConn) -> Result<ExecResult, DbErr> {
@@ -605,7 +638,14 @@ pub async fn create_teas_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .table(teas::Entity.table_ref())
         .col(
             ColumnDef::new(teas::Column::Id)
-                .enumeration(TeaEnum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea])
+                .enumeration(
+                    TeaEnum,
+                    [
+                        TeaVariant::EverydayTea,
+                        TeaVariant::BreakfastTea,
+                        TeaVariant::AfternoonTea,
+                    ],
+                )
                 .not_null()
                 .primary_key(),
         )
@@ -696,34 +736,30 @@ pub async fn create_bits_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(
-            ColumnDef::new(bits::Column::Bit0)
-                .custom(Alias::new("BIT"))
-                .not_null(),
-        )
+        .col(ColumnDef::new(bits::Column::Bit0).custom("BIT").not_null())
         .col(
             ColumnDef::new(bits::Column::Bit1)
-                .custom(Alias::new("BIT(1)"))
+                .custom("BIT(1)")
                 .not_null(),
         )
         .col(
             ColumnDef::new(bits::Column::Bit8)
-                .custom(Alias::new("BIT(8)"))
+                .custom("BIT(8)")
                 .not_null(),
         )
         .col(
             ColumnDef::new(bits::Column::Bit16)
-                .custom(Alias::new("BIT(16)"))
+                .custom("BIT(16)")
                 .not_null(),
         )
         .col(
             ColumnDef::new(bits::Column::Bit32)
-                .custom(Alias::new("BIT(32)"))
+                .custom("BIT(32)")
                 .not_null(),
         )
         .col(
             ColumnDef::new(bits::Column::Bit64)
-                .custom(Alias::new("BIT(64)"))
+                .custom("BIT(64)")
                 .not_null(),
         )
         .to_owned();
@@ -732,16 +768,9 @@ pub async fn create_bits_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 }
 
 pub async fn create_dyn_table_name_lazy_static_table(db: &DbConn) -> Result<(), DbErr> {
-    use dyn_table_name_lazy_static::*;
+    use dyn_table_name::*;
 
-    let entities = [
-        Entity {
-            table_name: TableName::from_str_truncate("dyn_table_name_lazy_static_1"),
-        },
-        Entity {
-            table_name: TableName::from_str_truncate("dyn_table_name_lazy_static_2"),
-        },
-    ];
+    let entities = [Entity { table_name: 1 }, Entity { table_name: 2 }];
     for entity in entities {
         let create_table_stmt = sea_query::Table::create()
             .table(entity.table_ref())
@@ -783,12 +812,13 @@ pub async fn create_value_type_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(value_type::value_type_general::Column::Tag2)
-                .string()
+                .text()
                 .not_null(),
         )
         .to_owned();
 
-    create_table(db, &general_stmt, value_type::value_type_general::Entity).await
+    create_table(db, &general_stmt, value_type::value_type_general::Entity).await?;
+    create_table_from_entity(db, value_type::value_type_pk::Entity).await
 }
 
 pub async fn create_value_type_postgres_table(db: &DbConn) -> Result<ExecResult, DbErr> {

@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, ProxyDatabaseTrait,
-    QueryResult, Statement,
+    DatabaseConnection, DatabaseConnectionType, DbBackend, ExecResult, ProxyDatabaseTrait,
+    QueryResult, Statement, debug_print, error::*,
 };
 use std::{fmt::Debug, sync::Arc};
 use tracing::instrument;
@@ -31,9 +31,12 @@ impl ProxyDatabaseConnector {
         db_type: DbBackend,
         func: Arc<Box<dyn ProxyDatabaseTrait>>,
     ) -> Result<DatabaseConnection, DbErr> {
-        Ok(DatabaseConnection::ProxyDatabaseConnection(Arc::new(
-            ProxyDatabaseConnection::new(db_type, func),
-        )))
+        Ok(
+            DatabaseConnectionType::ProxyDatabaseConnection(Arc::new(
+                ProxyDatabaseConnection::new(db_type, func),
+            ))
+            .into(),
+        )
     }
 }
 
@@ -103,6 +106,12 @@ impl ProxyDatabaseConnection {
     #[instrument(level = "trace")]
     pub async fn rollback(&self) {
         self.proxy.rollback().await
+    }
+
+    /// Start rollback a transaction
+    #[instrument(level = "trace")]
+    pub fn start_rollback(&self) {
+        self.proxy.start_rollback()
     }
 
     /// Checks if a connection to the database is still valid.

@@ -2,7 +2,7 @@
 
 pub mod common;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, setup::*};
 use pretty_assertions::assert_eq;
 use sea_orm::prelude::*;
 
@@ -58,7 +58,7 @@ pub async fn connection_ping_closed_mysql() {
 }
 
 #[sea_orm_macros::test]
-#[cfg(feature = "sqlx-sqlite")]
+#[cfg(all(feature = "sqlx-sqlite", not(feature = "sync")))]
 pub async fn connection_ping_closed_sqlite() {
     let ctx = std::rc::Rc::new(Box::new(TestContext::new("connection_ping_closed").await));
     let ctx_ping = std::rc::Rc::clone(&ctx);

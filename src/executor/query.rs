@@ -1,9 +1,9 @@
 pub use crate::error::TryGetError;
 use crate::{
-    error::{json_err, type_err, DbErr},
     SelectGetableValue, SelectorRaw, Statement,
+    error::{DbErr, type_err},
 };
-use std::fmt;
+use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use crate::debug_print;
@@ -27,6 +27,8 @@ pub(crate) enum QueryResultRow {
     SqlxPostgres(sqlx::postgres::PgRow),
     #[cfg(feature = "sqlx-sqlite")]
     SqlxSqlite(sqlx::sqlite::SqliteRow),
+    #[cfg(feature = "rusqlite")]
+    Rusqlite(crate::driver::rusqlite::RusqliteRow),
     #[cfg(feature = "mock")]
     Mock(crate::MockRow),
     #[cfg(feature = "proxy")]
@@ -157,6 +159,8 @@ impl QueryResult {
             QueryResultRow::SqlxSqlite(row) => {
                 row.columns().iter().map(|c| c.name().to_string()).collect()
             }
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(row) => row.columns().iter().map(|c| c.to_string()).collect(),
             #[cfg(feature = "mock")]
             QueryResultRow::Mock(row) => row
                 .clone()
@@ -226,8 +230,8 @@ impl QueryResult {
 }
 
 #[allow(unused_variables)]
-impl fmt::Debug for QueryResultRow {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Debug for QueryResultRow {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             Self::SqlxMySql(row) => write!(f, "{row:?}"),
@@ -235,6 +239,8 @@ impl fmt::Debug for QueryResultRow {
             Self::SqlxPostgres(_) => write!(f, "QueryResultRow::SqlxPostgres cannot be inspected"),
             #[cfg(feature = "sqlx-sqlite")]
             Self::SqlxSqlite(_) => write!(f, "QueryResultRow::SqlxSqlite cannot be inspected"),
+            #[cfg(feature = "rusqlite")]
+            Self::Rusqlite(row) => write!(f, "{row:?}"),
             #[cfg(feature = "mock")]
             Self::Mock(row) => write!(f, "{row:?}"),
             #[cfg(feature = "proxy")]
@@ -253,16 +259,22 @@ impl<T: TryGetable> TryGetable for Option<T> {
             Ok(v) => Ok(Some(v)),
             Err(TryGetError::Null(_)) => Ok(None),
             #[cfg(feature = "sqlx-dep")]
-            Err(TryGetError::DbErr(DbErr::Query(crate::RuntimeErr::SqlxError(
-                sqlx::Error::ColumnNotFound(_),
-            )))) => Ok(None),
+            Err(TryGetError::DbErr(DbErr::Query(crate::RuntimeErr::SqlxError(err)))) => {
+                use std::ops::Deref;
+                match err.deref() {
+                    sqlx::Error::ColumnNotFound(_) => Ok(None),
+                    _ => Err(TryGetError::DbErr(DbErr::Query(
+                        crate::RuntimeErr::SqlxError(err),
+                    ))),
+                }
+            }
             Err(e) => Err(e),
         }
     }
 }
 
 /// Column Index, used by [`TryGetable`]. Implemented for `&str` and `usize`
-pub trait ColIdx: std::fmt::Debug + Copy {
+pub trait ColIdx: Debug + Copy {
     #[cfg(feature = "sqlx-mysql")]
     /// Type surrogate
     type SqlxMySqlIndex: sqlx::ColumnIndex<sqlx::mysql::MySqlRow>;
@@ -378,6 +390,10 @@ macro_rules! try_getable_all {
                         .try_get::<Option<$type>, _>(idx.as_sqlx_sqlite_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into())
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                    #[cfg(feature = "rusqlite")]
+                    QueryResultRow::Rusqlite(row) => row
+                        .try_get::<Option<$type>, _>(idx)
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
@@ -417,6 +433,10 @@ macro_rules! try_getable_unsigned {
                     QueryResultRow::SqlxSqlite(row) => row
                         .try_get::<Option<$type>, _>(idx.as_sqlx_sqlite_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                    #[cfg(feature = "rusqlite")]
+                    QueryResultRow::Rusqlite(row) => row
+                        .try_get::<Option<$type>, _>(idx)
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
@@ -459,6 +479,12 @@ macro_rules! try_getable_mysql {
                         stringify!($type)
                     ))
                     .into()),
+                    #[cfg(feature = "rusqlite")]
+                    QueryResultRow::Rusqlite(row) => Err(type_err(format!(
+                        "{} unsupported by rusqlite",
+                        stringify!($type)
+                    ))
+                    .into()),
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
@@ -498,6 +524,12 @@ macro_rules! try_getable_postgres {
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
                         "{} unsupported by sqlx-sqlite",
+                        stringify!($type)
+                    ))
+                    .into()),
+                    #[cfg(feature = "rusqlite")]
+                    QueryResultRow::Rusqlite(row) => Err(type_err(format!(
+                        "{} unsupported by rusqlite",
                         stringify!($type)
                     ))
                     .into()),
@@ -544,6 +576,13 @@ macro_rules! try_getable_date_time {
                         use chrono::{DateTime, Utc};
                         row.try_get::<Option<DateTime<Utc>>, _>(idx.as_sqlx_sqlite_index())
                             .map_err(|e| sqlx_error_to_query_err(e).into())
+                            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
+                            .map(|v| v.into())
+                    }
+                    #[cfg(feature = "rusqlite")]
+                    QueryResultRow::Rusqlite(row) => {
+                        use chrono::{DateTime, Utc};
+                        row.try_get::<Option<DateTime<Utc>>, _>(idx)
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                             .map(|v| v.into())
                     }
@@ -638,7 +677,22 @@ impl TryGetable for Decimal {
                         DbErr::TryIntoErr {
                             from: "f64",
                             into: "Decimal",
-                            source: Box::new(e),
+                            source: Arc::new(e),
+                        }
+                        .into()
+                    }),
+                    None => Err(err_null_idx_col(idx)),
+                }
+            }
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(row) => {
+                let val: Option<f64> = row.try_get(idx)?;
+                match val {
+                    Some(v) => Decimal::try_from(v).map_err(|e| {
+                        DbErr::TryIntoErr {
+                            from: "f64",
+                            into: "Decimal",
+                            source: Arc::new(e),
                         }
                         .into()
                     }),
@@ -691,7 +745,22 @@ impl TryGetable for BigDecimal {
                         DbErr::TryIntoErr {
                             from: "f64",
                             into: "BigDecimal",
-                            source: Box::new(e),
+                            source: Arc::new(e),
+                        }
+                        .into()
+                    }),
+                    None => Err(err_null_idx_col(idx)),
+                }
+            }
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(row) => {
+                let val: Option<f64> = row.try_get(idx)?;
+                match val {
+                    Some(v) => BigDecimal::try_from(v).map_err(|e| {
+                        DbErr::TryIntoErr {
+                            from: "f64",
+                            into: "BigDecimal",
+                            source: Arc::new(e),
                         }
                         .into()
                     }),
@@ -739,7 +808,7 @@ macro_rules! try_getable_uuid {
                                         DbErr::TryIntoErr {
                                             from: "Vec<u8>",
                                             into: "String",
-                                            source: Box::new(e),
+                                            source: Arc::new(e),
                                         }
                                         .into()
                                     })
@@ -749,7 +818,7 @@ macro_rules! try_getable_uuid {
                                         DbErr::TryIntoErr {
                                             from: "String",
                                             into: "uuid::Uuid",
-                                            source: Box::new(e),
+                                            source: Arc::new(e),
                                         }
                                         .into()
                                     })
@@ -764,6 +833,10 @@ macro_rules! try_getable_uuid {
                     QueryResultRow::SqlxSqlite(row) => row
                         .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_sqlite_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                    #[cfg(feature = "rusqlite")]
+                    QueryResultRow::Rusqlite(row) => row
+                        .try_get::<Option<uuid::Uuid>, _>(idx)
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
@@ -818,15 +891,33 @@ impl TryGetable for u32 {
                 use sqlx::postgres::types::Oid;
                 // Since 0.6.0, SQLx has dropped direct mapping from PostgreSQL's OID to Rust's `u32`;
                 // Instead, `u32` was wrapped by a `sqlx::Oid`.
-                row.try_get::<Option<Oid>, _>(idx.as_sqlx_postgres_index())
-                    .map_err(|e| sqlx_error_to_query_err(e).into())
-                    .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
-                    .map(|oid| oid.0)
+                match row.try_get::<Option<Oid>, _>(idx.as_sqlx_postgres_index()) {
+                    Ok(opt) => opt.ok_or_else(|| err_null_idx_col(idx)).map(|oid| oid.0),
+                    Err(_) => row
+                        // Integers are always signed in PostgreSQL, so we try to get an `i32` and convert it to `u32`.
+                        .try_get::<i32, _>(idx.as_sqlx_postgres_index())
+                        .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .map(|v| {
+                            v.try_into().map_err(|e| {
+                                DbErr::TryIntoErr {
+                                    from: "i32",
+                                    into: "u32",
+                                    source: Arc::new(e),
+                                }
+                                .into()
+                            })
+                        })
+                        .and_then(|r| r),
+                }
             }
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => row
                 .try_get::<Option<u32>, _>(idx.as_sqlx_sqlite_index())
                 .map_err(|e| sqlx_error_to_query_err(e).into())
+                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(row) => row
+                .try_get::<Option<u32>, _>(idx)
                 .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
             #[cfg(feature = "mock")]
             #[allow(unused_variables)]
@@ -860,7 +951,7 @@ impl TryGetable for String {
                         DbErr::TryIntoErr {
                             from: "Vec<u8>",
                             into: "String",
-                            source: Box::new(e),
+                            source: Arc::new(e),
                         }
                         .into()
                     })
@@ -874,6 +965,10 @@ impl TryGetable for String {
             QueryResultRow::SqlxSqlite(row) => row
                 .try_get::<Option<String>, _>(idx.as_sqlx_sqlite_index())
                 .map_err(|e| sqlx_error_to_query_err(e).into())
+                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(row) => row
+                .try_get::<Option<String>, _>(idx)
                 .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
             #[cfg(feature = "mock")]
             QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
@@ -904,7 +999,7 @@ mod postgres_array {
     macro_rules! try_getable_postgres_array {
         ( $type: ty ) => {
             #[allow(unused_variables)]
-            impl TryGetable for Vec<$type> {
+            impl TryGetable for Vec<Option<$type>> {
                 fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
                     match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
@@ -915,12 +1010,18 @@ mod postgres_array {
                         .into()),
                         #[cfg(feature = "sqlx-postgres")]
                         QueryResultRow::SqlxPostgres(row) => row
-                            .try_get::<Option<Vec<$type>>, _>(idx.as_sqlx_postgres_index())
+                            .try_get::<Option<Vec<Option<$type>>>, _>(idx.as_sqlx_postgres_index())
                             .map_err(|e| sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                         #[cfg(feature = "sqlx-sqlite")]
                         QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
                             "{} unsupported by sqlx-sqlite",
+                            stringify!($type)
+                        ))
+                        .into()),
+                        #[cfg(feature = "rusqlite")]
+                        QueryResultRow::Rusqlite(_) => Err(type_err(format!(
+                            "{} unsupported by rusqlite",
                             stringify!($type)
                         ))
                         .into()),
@@ -1000,9 +1101,9 @@ mod postgres_array {
     macro_rules! try_getable_postgres_array_uuid {
         ( $type: ty, $conversion_fn: expr ) => {
             #[allow(unused_variables, unreachable_code)]
-            impl TryGetable for Vec<$type> {
+            impl TryGetable for Vec<Option<$type>> {
                 fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
-                    let res: Result<Vec<uuid::Uuid>, TryGetError> = match &res.row {
+                    let res: Result<Vec<Option<uuid::Uuid>>, TryGetError> = match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
                         QueryResultRow::SqlxMySql(_) => Err(type_err(format!(
                             "{} unsupported by sqlx-mysql",
@@ -1011,7 +1112,9 @@ mod postgres_array {
                         .into()),
                         #[cfg(feature = "sqlx-postgres")]
                         QueryResultRow::SqlxPostgres(row) => row
-                            .try_get::<Option<Vec<uuid::Uuid>>, _>(idx.as_sqlx_postgres_index())
+                            .try_get::<Option<Vec<Option<uuid::Uuid>>>, _>(
+                                idx.as_sqlx_postgres_index(),
+                            )
                             .map_err(|e| sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                         #[cfg(feature = "sqlx-sqlite")]
@@ -1020,16 +1123,22 @@ mod postgres_array {
                             stringify!($type)
                         ))
                         .into()),
+                        #[cfg(feature = "rusqlite")]
+                        QueryResultRow::Rusqlite(_) => Err(type_err(format!(
+                            "{} unsupported by rusqlite",
+                            stringify!($type)
+                        ))
+                        .into()),
                         #[cfg(feature = "mock")]
                         QueryResultRow::Mock(row) => {
-                            row.try_get::<Vec<uuid::Uuid>, _>(idx).map_err(|e| {
+                            row.try_get::<Vec<Option<uuid::Uuid>>, _>(idx).map_err(|e| {
                                 debug_print!("{:#?}", e.to_string());
                                 err_null_idx_col(idx)
                             })
                         }
                         #[cfg(feature = "proxy")]
                         QueryResultRow::Proxy(row) => {
-                            row.try_get::<Vec<uuid::Uuid>, _>(idx).map_err(|e| {
+                            row.try_get::<Vec<Option<uuid::Uuid>>, _>(idx).map_err(|e| {
                                 debug_print!("{:#?}", e.to_string());
                                 err_null_idx_col(idx)
                             })
@@ -1037,7 +1146,7 @@ mod postgres_array {
                         #[allow(unreachable_patterns)]
                         _ => unreachable!(),
                     };
-                    res.map(|vec| vec.into_iter().map($conversion_fn).collect())
+                    res.map(|vec| vec.into_iter().map(|opt| opt.map($conversion_fn)).collect())
                 }
             }
         };
@@ -1058,7 +1167,7 @@ mod postgres_array {
     #[cfg(feature = "with-uuid")]
     try_getable_postgres_array_uuid!(uuid::fmt::Urn, uuid::Uuid::urn);
 
-    impl TryGetable for Vec<u32> {
+    impl TryGetable for Vec<Option<u32>> {
         #[allow(unused_variables)]
         fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
             match &res.row {
@@ -1071,10 +1180,10 @@ mod postgres_array {
                     use sqlx::postgres::types::Oid;
                     // Since 0.6.0, SQLx has dropped direct mapping from PostgreSQL's OID to Rust's `u32`;
                     // Instead, `u32` was wrapped by a `sqlx::Oid`.
-                    row.try_get::<Option<Vec<Oid>>, _>(idx.as_sqlx_postgres_index())
+                    row.try_get::<Option<Vec<Option<Oid>>>, _>(idx.as_sqlx_postgres_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into())
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
-                        .map(|oids| oids.into_iter().map(|oid| oid.0).collect())
+                        .map(|oids| oids.into_iter().map(|opt| opt.map(|oid| oid.0)).collect())
                 }
                 #[cfg(feature = "sqlx-sqlite")]
                 QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
@@ -1082,6 +1191,10 @@ mod postgres_array {
                     stringify!($type)
                 ))
                 .into()),
+                #[cfg(feature = "rusqlite")]
+                QueryResultRow::Rusqlite(_) => {
+                    Err(type_err(format!("{} unsupported by rusqlite", stringify!($type))).into())
+                }
                 #[cfg(feature = "mock")]
                 #[allow(unused_variables)]
                 QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
@@ -1099,6 +1212,83 @@ mod postgres_array {
             }
         }
     }
+
+    macro_rules! try_getable_postgres_non_null_array_from_opt {
+        ( $($type: ty),* $(,)?) => {
+            $(
+                impl TryGetable for Vec<$type> {
+                    fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+                        let vec_opt = <Vec<Option<$type>> as TryGetable>::try_get_by(res, idx)?;
+                        vec_opt
+                            .into_iter()
+                            .enumerate()
+                            .map(|(i, opt)| {
+                                opt.ok_or_else(|| {
+                                    TryGetError::DbErr(type_err(format!(
+                                        "NULL element at index {} in non-nullable array of {}",
+                                        i,
+                                        std::any::type_name::<$type>()
+                                    )))
+                                })
+                            })
+                            .collect()
+                    }
+                }
+            )*
+        };
+    }
+
+    try_getable_postgres_non_null_array_from_opt!(
+        bool,
+        i8,
+        i16,
+        i32,
+        i64,
+        f32,
+        f64,
+        String,
+        Vec<u8>,
+        u32
+    );
+
+    #[cfg(feature = "with-json")]
+    try_getable_postgres_non_null_array_from_opt!(serde_json::Value);
+
+    #[cfg(feature = "with-chrono")]
+    try_getable_postgres_non_null_array_from_opt!(
+        chrono::NaiveDate,
+        chrono::NaiveTime,
+        chrono::NaiveDateTime,
+        chrono::DateTime<chrono::FixedOffset>,
+        chrono::DateTime<chrono::Utc>,
+        chrono::DateTime<chrono::Local>,
+    );
+
+    #[cfg(feature = "with-time")]
+    try_getable_postgres_non_null_array_from_opt!(
+        time::Date,
+        time::Time,
+        time::PrimitiveDateTime,
+        time::OffsetDateTime,
+    );
+
+    #[cfg(feature = "with-rust_decimal")]
+    try_getable_postgres_non_null_array_from_opt!(rust_decimal::Decimal);
+
+    #[cfg(feature = "with-bigdecimal")]
+    try_getable_postgres_non_null_array_from_opt!(bigdecimal::BigDecimal);
+
+    #[cfg(feature = "with-ipnetwork")]
+    try_getable_postgres_non_null_array_from_opt!(ipnetwork::IpNetwork);
+
+    #[cfg(feature = "with-uuid")]
+    try_getable_postgres_non_null_array_from_opt!(
+        uuid::Uuid,
+        uuid::fmt::Braced,
+        uuid::fmt::Hyphenated,
+        uuid::fmt::Simple,
+        uuid::fmt::Urn,
+    );
 }
 
 #[cfg(feature = "postgres-vector")]
@@ -1119,6 +1309,8 @@ impl TryGetable for pgvector::Vector {
             QueryResultRow::SqlxSqlite(_) => {
                 Err(type_err("Vector unsupported by sqlx-sqlite").into())
             }
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(_) => Err(type_err("Vector unsupported by rusqlite").into()),
             #[cfg(feature = "mock")]
             QueryResultRow::Mock(row) => row.try_get::<pgvector::Vector, _>(idx).map_err(|e| {
                 debug_print!("{:#?}", e.to_string());
@@ -1165,7 +1357,7 @@ pub trait TryGetableMany: Sized {
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveIden, EnumIter, TryGetableMany};
+    /// use sea_orm::{DeriveIden, EnumIter, TryGetableMany, entity::*, query::*, tests_cfg::cake};
     ///
     /// #[derive(EnumIter, DeriveIden)]
     /// enum ResultCol {
@@ -1206,7 +1398,10 @@ pub trait TryGetableMany: Sized {
     where
         C: strum::IntoEnumIterator + sea_query::Iden,
     {
-        SelectorRaw::<SelectGetableValue<Self, C>>::with_columns(stmt)
+        SelectorRaw {
+            stmt,
+            selector: PhantomData,
+        }
     }
 }
 
@@ -1296,7 +1491,17 @@ fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), Try
 /// touch this trait.
 pub trait TryGetableArray: Sized {
     /// Just a delegate
-    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<Self>, TryGetError>;
+    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I)
+    -> Result<Vec<Option<Self>>, TryGetError>;
+}
+
+impl<T> TryGetable for Vec<Option<T>>
+where
+    T: TryGetableArray,
+{
+    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
+        T::try_get_by(res, index)
+    }
 }
 
 impl<T> TryGetable for Vec<T>
@@ -1304,7 +1509,20 @@ where
     T: TryGetableArray,
 {
     fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
-        T::try_get_by(res, index)
+        let vec_opt = T::try_get_by(res, index)?;
+        let ty = std::any::type_name::<T>();
+        vec_opt
+            .into_iter()
+            .enumerate()
+            .map(|(i, opt)| {
+                opt.ok_or_else(|| {
+                    TryGetError::DbErr(type_err(format!(
+                        "NULL element at index {} in non-nullable array of {}",
+                        i, ty
+                    )))
+                })
+            })
+            .collect()
     }
 }
 
@@ -1335,6 +1553,13 @@ where
                 .try_get::<Option<sqlx::types::Json<Self>>, _>(idx.as_sqlx_sqlite_index())
                 .map_err(|e| sqlx_error_to_query_err(e).into())
                 .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0)),
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(row) => row
+                .try_get::<Option<serde_json::Value>, _>(idx)?
+                .ok_or_else(|| err_null_idx_col(idx))
+                .and_then(|json| {
+                    serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
+                }),
             #[cfg(feature = "mock")]
             QueryResultRow::Mock(row) => row
                 .try_get::<serde_json::Value, I>(idx)
@@ -1342,7 +1567,9 @@ where
                     debug_print!("{:#?}", e.to_string());
                     err_null_idx_col(idx)
                 })
-                .and_then(|json| serde_json::from_value(json).map_err(|e| json_err(e).into())),
+                .and_then(|json| {
+                    serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
+                }),
             #[cfg(feature = "proxy")]
             QueryResultRow::Proxy(row) => row
                 .try_get::<serde_json::Value, I>(idx)
@@ -1350,7 +1577,9 @@ where
                     debug_print!("{:#?}", e.to_string());
                     err_null_idx_col(idx)
                 })
-                .and_then(|json| serde_json::from_value(json).map_err(|e| json_err(e).into())),
+                .and_then(|json| {
+                    serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
+                }),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -1362,7 +1591,29 @@ where
             serde_json::Value::Array(values) => {
                 let mut res = Vec::new();
                 for item in values {
-                    res.push(serde_json::from_value(item).map_err(json_err)?);
+                    res.push(serde_json::from_value(item).map_err(crate::error::json_err)?);
+                }
+                Ok(res)
+            }
+            _ => Err(TryGetError::DbErr(DbErr::Json(
+                "Value is not an Array".to_owned(),
+            ))),
+        }
+    }
+
+    /// Get a Vec<Option<Self>> from an Array of Json
+    fn from_json_vec_option(value: serde_json::Value) -> Result<Vec<Option<Self>>, TryGetError> {
+        match value {
+            serde_json::Value::Array(values) => {
+                let mut res = Vec::new();
+                for item in values {
+                    if item.is_null() {
+                        res.push(None);
+                    } else {
+                        res.push(Some(
+                            serde_json::from_value(item).map_err(crate::error::json_err)?,
+                        ));
+                    }
                 }
                 Ok(res)
             }
@@ -1388,8 +1639,8 @@ impl<T> TryGetableArray for T
 where
     T: TryGetableFromJson,
 {
-    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<T>, TryGetError> {
-        T::from_json_vec(serde_json::Value::try_get_by(res, index)?)
+    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<Option<T>>, TryGetError> {
+        T::from_json_vec_option(serde_json::Value::try_get_by(res, index)?)
     }
 }
 
@@ -1446,7 +1697,7 @@ macro_rules! try_from_u64_numeric {
                 n.try_into().map_err(|e| DbErr::TryIntoErr {
                     from: stringify!(u64),
                     into: stringify!($type),
-                    source: Box::new(e),
+                    source: Arc::new(e),
                 })
             }
         }
@@ -1548,27 +1799,29 @@ mod tests {
     #[test]
     fn build_with_query() {
         use sea_orm::{DbBackend, Statement};
-        use sea_query::*;
+        use sea_query::{
+            ColumnRef, CommonTableExpression, Cycle, Expr, ExprTrait, JoinType, SelectStatement,
+            UnionType, WithClause,
+        };
 
         let base_query = SelectStatement::new()
-            .column(Alias::new("id"))
+            .column("id")
             .expr(1i32)
-            .column(Alias::new("next"))
-            .column(Alias::new("value"))
-            .from(Alias::new("table"))
+            .column("next")
+            .column("value")
+            .from("table")
             .to_owned();
 
         let cte_referencing = SelectStatement::new()
-            .column(Alias::new("id"))
-            .expr(Expr::col(Alias::new("depth")).add(1i32))
-            .column(Alias::new("next"))
-            .column(Alias::new("value"))
-            .from(Alias::new("table"))
+            .column("id")
+            .expr(Expr::col("depth").add(1i32))
+            .column("next")
+            .column("value")
+            .from("table")
             .join(
                 JoinType::InnerJoin,
-                Alias::new("cte_traversal"),
-                Expr::col((Alias::new("cte_traversal"), Alias::new("next")))
-                    .equals((Alias::new("table"), Alias::new("id"))),
+                "cte_traversal",
+                Expr::col(("cte_traversal", "next")).equals(("table", "id")),
             )
             .to_owned();
 
@@ -1579,27 +1832,22 @@ mod tests {
                     .union(UnionType::All, cte_referencing)
                     .to_owned(),
             )
-            .columns([
-                Alias::new("id"),
-                Alias::new("depth"),
-                Alias::new("next"),
-                Alias::new("value"),
-            ])
-            .table_name(Alias::new("cte_traversal"))
+            .columns(["id", "depth", "next", "value"])
+            .table_name("cte_traversal")
             .to_owned();
 
         let select = SelectStatement::new()
-            .column(ColumnRef::Asterisk)
-            .from(Alias::new("cte_traversal"))
+            .column(ColumnRef::Asterisk(None))
+            .from("cte_traversal")
             .to_owned();
 
         let with_clause = WithClause::new()
             .recursive(true)
             .cte(common_table_expression)
             .cycle(Cycle::new_from_expr_set_using(
-                SimpleExpr::Column(ColumnRef::Column(Alias::new("id").into_iden())),
-                Alias::new("looped"),
-                Alias::new("traversal_path"),
+                Expr::column("id"),
+                "looped",
+                "traversal_path",
             ))
             .to_owned();
 
@@ -1619,10 +1867,7 @@ mod tests {
     fn column_names_from_query_result() {
         let mut values = BTreeMap::new();
         values.insert("id".to_string(), Value::Int(Some(1)));
-        values.insert(
-            "name".to_string(),
-            Value::String(Some(Box::new("Abc".to_owned()))),
-        );
+        values.insert("name".to_string(), Value::String(Some("Abc".to_owned())));
         let query_result = QueryResult {
             row: QueryResultRow::Mock(crate::MockRow { values }),
         };

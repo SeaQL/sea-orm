@@ -2,18 +2,18 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, Ident};
 
-use super::helpers::{non_enum_error, HasStrumVariantProperties, HasTypeProperties};
+use super::helpers::{HasStrumVariantProperties, HasTypeProperties, non_enum_error};
 
 pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
     let name = &ast.ident;
-    let gen = &ast.generics;
-    let (impl_generics, ty_generics, where_clause) = gen.split_for_impl();
+    let r#gen = &ast.generics;
+    let (impl_generics, ty_generics, where_clause) = r#gen.split_for_impl();
     let vis = &ast.vis;
     let type_properties = ast.get_type_properties()?;
     let strum_module_path = type_properties.crate_module_path();
-    let doc_comment = format!("An iterator over the variants of [{}]", name);
+    let doc_comment = format!("An iterator over the variants of [{name}]");
 
-    if gen.lifetimes().count() > 0 {
+    if r#gen.lifetimes().count() > 0 {
         return Err(syn::Error::new(
             Span::call_site(),
             "This macro doesn't support enums with lifetimes. \
@@ -21,8 +21,8 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
         ));
     }
 
-    let phantom_data = if gen.type_params().count() > 0 {
-        let g = gen.type_params().map(|param| &param.ident);
+    let phantom_data = if r#gen.type_params().count() > 0 {
+        let g = r#gen.type_params().map(|param| &param.ident);
         quote! { < ( #(#g),* ) > }
     } else {
         quote! { < () > }
@@ -44,8 +44,10 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
         let params = match &variant.fields {
             Fields::Unit => quote! {},
             Fields::Unnamed(fields) => {
-                let defaults = ::core::iter::repeat(quote!(::core::default::Default::default()))
-                    .take(fields.unnamed.len());
+                let defaults = ::core::iter::repeat_n(
+                    quote!(::core::default::Default::default()),
+                    fields.unnamed.len(),
+                );
                 quote! { (#(#defaults),*) }
             }
             Fields::Named(fields) => {
@@ -63,11 +65,11 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
 
     let variant_count = arms.len();
     arms.push(quote! { _ => ::core::option::Option::None });
-    let iter_name = syn::parse_str::<Ident>(&format!("{}Iter", name)).unwrap();
+    let iter_name = syn::parse_str::<Ident>(&format!("{name}Iter")).unwrap();
 
     // Create a string literal "MyEnumIter" to use in the debug impl.
     let iter_name_debug_struct =
-        syn::parse_str::<syn::LitStr>(&format!("\"{}\"", iter_name)).unwrap();
+        syn::parse_str::<syn::LitStr>(&format!("\"{iter_name}\"")).unwrap();
 
     Ok(quote! {
         #[doc = #doc_comment]

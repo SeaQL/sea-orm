@@ -3,7 +3,7 @@ use super::util::camel_case_with_escaped_non_uax31;
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse, Expr, Lit, LitInt, LitStr, UnOp};
+use syn::{Expr, Lit, LitInt, LitStr, UnOp, parse};
 
 struct ActiveEnum {
     ident: syn::Ident,
@@ -279,13 +279,13 @@ impl ActiveEnum {
                 }
 
                 #[automatically_derived]
-                impl sea_orm::sea_query::Iden for #enum_variant_iden {
-                    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-                        write!(s, "{}", match self {
+                impl sea_orm::Iden for #enum_variant_iden {
+                    fn unquoted(&self) -> &str {
+                        match self {
                             #(
                                 Self::#enum_variants => #str_variants,
                             )*
-                        }).unwrap();
+                        }
                     }
                 }
 
@@ -316,10 +316,38 @@ impl ActiveEnum {
             quote!(
                 #[automatically_derived]
                 impl sea_orm::TryGetableArray for #ident {
-                    fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, index: I) -> std::result::Result<Vec<Self>, sea_orm::TryGetError> {
+                    fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, index: I) -> std::result::Result<Vec<Option<Self>>, sea_orm::TryGetError> {
                         <<Self as sea_orm::ActiveEnum>::Value as sea_orm::ActiveEnumValue>::try_get_vec_by(res, index)?
                             .into_iter()
-                            .map(|value| <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(Into::into))
+                            .map(|opt_value| {
+                                opt_value
+                                    .map(|value| <Self as sea_orm::ActiveEnum>::try_from_value(&value))
+                                    .transpose()
+                                    .map_err(Into::into)
+                            })
+                            .collect()
+                    }
+                }
+
+                #[automatically_derived]
+                impl sea_orm::sea_query::value::ArrayElement for #ident {
+                    type ArrayValueType = <Self as sea_orm::ActiveEnum>::Value;
+
+                    fn into_array_value(self) -> Self::ArrayValueType {
+                        <Self as sea_orm::ActiveEnum>::into_value(self)
+                    }
+
+                    fn try_from_value(v: sea_orm::sea_query::Value) -> std::result::Result<Vec<Option<Self>>, sea_orm::sea_query::ValueTypeErr> {
+                        let vec_opt = <Vec<Option<<Self as sea_orm::ActiveEnum>::Value>> as sea_orm::sea_query::ValueType>::try_from(v)?;
+                        vec_opt
+                            .into_iter()
+                            .map(|opt| {
+                                opt.map(|value| {
+                                    <Self as sea_orm::ActiveEnum>::try_from_value(&value)
+                                        .map_err(|_| sea_orm::sea_query::ValueTypeErr)
+                                })
+                                .transpose()
+                            })
                             .collect()
                     }
                 }
@@ -334,9 +362,9 @@ impl ActiveEnum {
             pub struct #enum_name_iden;
 
             #[automatically_derived]
-            impl sea_orm::sea_query::Iden for #enum_name_iden {
-                fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-                    write!(s, "{}", #enum_name).unwrap();
+            impl sea_orm::Iden for #enum_name_iden {
+                fn unquoted(&self) -> &str {
+                    #enum_name
                 }
             }
 
@@ -424,6 +452,13 @@ impl ActiveEnum {
             impl sea_orm::sea_query::Nullable for #ident {
                 fn null() -> sea_orm::sea_query::Value {
                     <<Self as sea_orm::ActiveEnum>::Value as sea_orm::sea_query::Nullable>::null()
+                }
+            }
+
+            #[automatically_derived]
+            impl sea_orm::IntoActiveValue<#ident> for #ident {
+                fn into_active_value(self) -> sea_orm::ActiveValue<#ident> {
+                    sea_orm::ActiveValue::set(self)
                 }
             }
 

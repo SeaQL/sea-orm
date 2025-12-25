@@ -1,0 +1,14 @@
+[package]
+edition      = "2024"
+name         = "sea-orm-pi-spigot"
+publish      = false
+rust-version = "1.85.0"
+version      = "0.1.0"
+
+[dependencies]
+serde      = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
+
+[dependencies.sea-orm-sync]
+features = ["rusqlite", "with-json", "schema-sync"]
+path     = "../../"

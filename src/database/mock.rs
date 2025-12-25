@@ -1,7 +1,7 @@
 use crate::{
-    error::*, DatabaseConnection, DbBackend, EntityTrait, ExecResult, ExecResultHolder, Iden,
-    IdenStatic, Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult,
-    QueryResultRow, SelectA, SelectB, Statement,
+    DatabaseConnection, DatabaseConnectionType, DbBackend, EntityTrait, ExecResult,
+    ExecResultHolder, Iden, IdenStatic, Iterable, MockDatabaseConnection, MockDatabaseTrait,
+    ModelTrait, QueryResult, QueryResultRow, SelectA, SelectB, Statement, error::*,
 };
 use sea_query::{Value, ValueType, Values};
 use std::{collections::BTreeMap, sync::Arc};
@@ -68,7 +68,8 @@ impl MockDatabase {
 
     /// Create a database connection
     pub fn into_connection(self) -> DatabaseConnection {
-        DatabaseConnection::MockDatabaseConnection(Arc::new(MockDatabaseConnection::new(self)))
+        DatabaseConnectionType::MockDatabaseConnection(Arc::new(MockDatabaseConnection::new(self)))
+            .into()
     }
 
     /// Add some [MockExecResult]s to `exec_results`
@@ -425,10 +426,13 @@ impl OpenTransaction {
 #[cfg(test)]
 #[cfg(feature = "mock")]
 mod tests {
+    #[cfg(feature = "sync")]
+    use crate::util::StreamShim;
     use crate::{
-        entity::*, error::*, tests_cfg::*, DbBackend, DbErr, IntoMockRow, MockDatabase, Statement,
-        Transaction, TransactionError, TransactionTrait,
+        DbBackend, DbErr, IntoMockRow, MockDatabase, Statement, Transaction, TransactionError,
+        TransactionTrait, entity::*, error::*, tests_cfg::*,
     };
+    use futures_util::{TryStreamExt, stream::TryNext};
     use pretty_assertions::assert_eq;
 
     #[derive(Debug, PartialEq, Eq)]
@@ -628,8 +632,6 @@ mod tests {
 
     #[smol_potat::test]
     async fn test_stream_1() -> Result<(), DbErr> {
-        use futures_util::TryStreamExt;
-
         let apple = fruit::Model {
             id: 1,
             name: "Apple".to_owned(),
@@ -660,8 +662,6 @@ mod tests {
     #[smol_potat::test]
     async fn test_stream_2() -> Result<(), DbErr> {
         use fruit::Entity as Fruit;
-        use futures_util::TryStreamExt;
-
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([Vec::<fruit::Model>::new()])
             .into_connection();
@@ -677,8 +677,6 @@ mod tests {
 
     #[smol_potat::test]
     async fn test_stream_in_transaction() -> Result<(), DbErr> {
-        use futures_util::TryStreamExt;
-
         let apple = fruit::Model {
             id: 1,
             name: "Apple".to_owned(),

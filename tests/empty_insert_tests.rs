@@ -3,9 +3,9 @@
 pub mod common;
 mod crud;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, setup::*};
 pub use sea_orm::{
-    entity::*, error::DbErr, tests_cfg, DatabaseConnection, DbBackend, EntityName, ExecResult,
+    DatabaseConnection, DbBackend, EntityName, ExecResult, entity::*, error::DbErr, tests_cfg,
 };
 
 pub use crud::*;
@@ -38,6 +38,7 @@ pub async fn test(db: &DbConn) {
         name: Set("SeaSide Bakery".to_owned()),
         profit_margin: Set(10.4),
         id: Set(1),
+        ..Default::default()
     };
 
     let conflict_insert = Bakery::insert_many([double_seaside_bakery])

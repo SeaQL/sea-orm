@@ -1,6 +1,6 @@
-use crate::common::setup::rust_dec;
-use sea_orm::{entity::prelude::*, ConnectionTrait};
+use sea_orm::{ConnectionTrait, entity::prelude::*};
 
+#[sea_orm::compact_model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "cake")]
 pub struct Model {
@@ -50,6 +50,16 @@ impl Related<super::lineitem::Entity> for Entity {
     }
 }
 
+pub struct ToBakery;
+impl Linked for ToBakery {
+    type FromEntity = super::cake::Entity;
+    type ToEntity = super::bakery::Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![Relation::Bakery.def()]
+    }
+}
+
 #[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {
     fn new() -> Self {
@@ -64,7 +74,7 @@ impl ActiveModelBehavior for ActiveModel {
     where
         C: ConnectionTrait,
     {
-        if self.price.as_ref() == &rust_dec(0) {
+        if self.price.as_ref() == &Decimal::ZERO {
             Err(DbErr::Custom(format!(
                 "[before_save] Invalid Price, insert: {insert}"
             )))
@@ -77,7 +87,7 @@ impl ActiveModelBehavior for ActiveModel {
     where
         C: ConnectionTrait,
     {
-        if model.price < rust_dec(0) {
+        if model.price < Decimal::ZERO {
             Err(DbErr::Custom(format!(
                 "[after_save] Invalid Price, insert: {insert}"
             )))
@@ -109,4 +119,14 @@ impl ActiveModelBehavior for ActiveModel {
             Ok(self)
         }
     }
+}
+
+#[test]
+fn column_type_test() {
+    let _id: sea_orm::NumericColumn<Entity> = COLUMN.id;
+    let _name: sea_orm::StringColumn<Entity> = COLUMN.name;
+    let _price: sea_orm::NumericColumn<Entity> = COLUMN.price;
+    let _bakery_id: sea_orm::NumericColumnNullable<Entity> = COLUMN.bakery_id;
+    let _gluten_free: sea_orm::BoolColumn<Entity> = COLUMN.gluten_free;
+    let _serial: sea_orm::UuidColumn<Entity> = COLUMN.serial;
 }

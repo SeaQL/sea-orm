@@ -1,10 +1,10 @@
 #![allow(unused_imports, dead_code)]
 
 pub mod common;
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, setup::*};
 pub use sea_orm::{
-    entity::*, error::DbErr, error::SqlErr, tests_cfg, ConnectionTrait, DatabaseConnection,
-    DbBackend, EntityName, ExecResult,
+    ConnectionTrait, DatabaseConnection, DbBackend, EntityName, ExecResult, entity::*,
+    error::DbErr, error::SqlErr, tests_cfg,
 };
 use uuid::Uuid;
 

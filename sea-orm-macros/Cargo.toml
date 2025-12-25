@@ -1,38 +1,50 @@
 [package]
-name = "sea-orm-macros"
-version = "1.1.8"
-authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
-edition = "2021"
-description = "Derive macros for SeaORM"
-license = "MIT OR Apache-2.0"
-homepage = "https://www.sea-ql.org/SeaORM"
+authors       = ["Billy Chan <ccw.billy.123@gmail.com>"]
+categories    = ["database"]
+description   = "Derive macros for SeaORM"
 documentation = "https://docs.rs/sea-orm"
-repository = "https://github.com/SeaQL/sea-orm"
-categories = [ "database" ]
-keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
-rust-version = "1.65"
+edition       = "2024"
+homepage      = "https://www.sea-ql.org/SeaORM"
+keywords      = ["async", "orm", "mysql", "postgres", "sqlite"]
+license       = "MIT OR Apache-2.0"
+name          = "sea-orm-macros"
+repository    = "https://github.com/SeaQL/sea-orm"
+rust-version  = "1.85.0"
+version       = "2.0.0-rc.22"
 
 [lib]
-name = "sea_orm_macros"
-path = "src/lib.rs"
+name       = "sea_orm_macros"
+path       = "src/lib.rs"
 proc-macro = true
 
 [dependencies]
 bae = { version = "0.2", package = "sea-bae", default-features = false, optional = true }
-syn = { version = "2", default-features = false, features = ["parsing", "proc-macro", "derive", "printing"] }
-quote = { version = "1", default-features = false }
-heck = { version = "0.4", default-features = false }
-proc-macro2 = { version = "1", default-features = false }
+heck = { version = "0.5", default-features = false }
+pluralizer = { version = "0.5" }
 proc-macro-crate = { version = "3.2.0", optional = true }
+proc-macro2 = { version = "1", default-features = false }
+quote = { version = "1", default-features = false }
+syn = { version = "2", default-features = false, features = [
+    "parsing",
+    "proc-macro",
+    "derive",
+    "printing",
+] }
 unicode-ident = { version = "1" }
 
 [dev-dependencies]
-sea-orm = { path = "../", features = ["macros", "tests-cfg"] }
+sea-orm = { path = "../", default-features = false, features = [
+    "macros",
+    "tests-cfg",
+] }
 serde = { version = "1.0", features = ["derive"] }
 
 [features]
-default = ["derive"]
-postgres-array = []
-derive = ["bae"]
-strum = []
-seaography = ["proc-macro-crate"]
+async           = []
+default         = ["derive"]
+derive          = ["bae"]
+entity-registry = []
+postgres-array  = []
+seaography      = ["proc-macro-crate"]
+strum           = []
+with-json       = []

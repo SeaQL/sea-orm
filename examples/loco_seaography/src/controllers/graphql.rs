@@ -1,9 +1,10 @@
-use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
-use axum::{body::Body, extract::Request};
+use async_graphql::{
+    dynamic::Schema,
+    http::{GraphQLPlaygroundConfig, playground_source},
+};
+use async_graphql_axum::GraphQLRequest;
 use loco_rs::prelude::*;
-use tower_service::Service;
-
-use crate::graphql::query_root;
+use seaography::async_graphql;
 
 // GraphQL playground UI
 async fn graphql_playground() -> Result<Response> {
@@ -15,18 +16,17 @@ async fn graphql_playground() -> Result<Response> {
 }
 
 async fn graphql_handler(
-    _auth: auth::JWT,
+    // _auth: auth::JWT,
     State(ctx): State<AppContext>,
-    req: Request<Body>,
-) -> Result<Response> {
-    const DEPTH: usize = 10;
-    const COMPLEXITY: usize = 100;
-    // Construct the the GraphQL query root
-    let schema = query_root::schema(ctx.db.clone(), DEPTH, COMPLEXITY).unwrap();
-    // GraphQL handler
-    let mut graphql_handler = async_graphql_axum::GraphQL::new(schema);
-    // Execute GraphQL request and fetch the results
-    let res = graphql_handler.call(req).await.unwrap();
+    gql_req: GraphQLRequest,
+) -> Result<async_graphql_axum::GraphQLResponse, (axum::http::StatusCode, &'static str)> {
+    let gql_req = gql_req.into_inner();
+
+    let schema: Schema = ctx.shared_store.get().ok_or((
+        axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+        "GraphQL not setup",
+    ))?;
+    let res = schema.execute(gql_req).await.into();
 
     Ok(res)
 }

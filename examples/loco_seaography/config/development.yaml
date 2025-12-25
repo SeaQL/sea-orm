@@ -93,7 +93,7 @@ mailer:
 # Database Configuration
 database:
   # Database connection URI
-  uri: {{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_seaography_development") }}
+  uri: {{ get_env(name="DATABASE_URL", default="sqlite://loco_seaography.db?mode=rwc") }}
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.

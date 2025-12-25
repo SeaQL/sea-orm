@@ -1,4 +1,4 @@
-use crate::{error::*, FromQueryResult, QueryResult};
+use crate::{FromQueryResult, QueryResult, error::*};
 use serde_json::Map;
 pub use serde_json::Value as JsonValue;
 
@@ -83,7 +83,7 @@ impl FromQueryResult for JsonValue {
             #[cfg(feature = "sqlx-postgres")]
             crate::QueryResultRow::SqlxPostgres(row) => {
                 use serde_json::json;
-                use sqlx::{postgres::types::Oid, Column, Postgres, Row, Type};
+                use sqlx::{Column, Postgres, Row, Type, postgres::types::Oid};
 
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
@@ -99,7 +99,7 @@ impl FromQueryResult for JsonValue {
                                 #[cfg(feature = "postgres-array")]
                                 sqlx::postgres::PgTypeKind::Array(_) => {
                                     if <Vec<$type> as Type<Postgres>>::type_info().eq(col_type) {
-                                        try_get_type!(Vec<$type>, col);
+                                        try_get_type!(Vec<Option<$type>>, col);
                                     }
                                 }
                                 _ => {
@@ -147,20 +147,20 @@ impl FromQueryResult for JsonValue {
                     #[cfg(feature = "with-json")]
                     try_get_type!(serde_json::Value, col);
                     #[cfg(all(feature = "with-json", feature = "postgres-array"))]
-                    try_get_type!(Vec<serde_json::Value>, col);
+                    try_get_type!(Vec<Option<serde_json::Value>>, col);
                     try_get_type!(String, col);
                     #[cfg(feature = "postgres-array")]
-                    try_get_type!(Vec<String>, col);
+                    try_get_type!(Vec<Option<String>>, col);
                     #[cfg(feature = "postgres-vector")]
                     try_get_type!(pgvector::Vector, col);
                     #[cfg(feature = "with-uuid")]
                     try_get_type!(uuid::Uuid, col);
                     #[cfg(all(feature = "with-uuid", feature = "postgres-array"))]
-                    try_get_type!(Vec<uuid::Uuid>, col);
+                    try_get_type!(Vec<Option<uuid::Uuid>>, col);
                     #[cfg(feature = "with-ipnetwork")]
                     try_get_type!(ipnetwork::IpNetwork, col);
                     #[cfg(all(feature = "with-ipnetwork", feature = "postgres-array"))]
-                    try_get_type!(Vec<ipnetwork::IpNetwork>, col);
+                    try_get_type!(Vec<Option<ipnetwork::IpNetwork>>, col);
                     try_get_type!(Vec<u8>, col);
                 }
                 Ok(JsonValue::Object(map))
@@ -215,6 +215,30 @@ impl FromQueryResult for JsonValue {
                 }
                 Ok(JsonValue::Object(map))
             }
+            #[cfg(feature = "rusqlite")]
+            crate::QueryResultRow::Rusqlite(row) => {
+                use crate::driver::rusqlite::RusqliteOwnedValue;
+                use serde_json::json;
+
+                for (i, column) in row.columns.iter().enumerate() {
+                    let column = if !column.starts_with(pre) {
+                        continue;
+                    } else {
+                        column.replacen(pre, "", 1)
+                    };
+                    map.insert(
+                        column,
+                        match &row.values[i] {
+                            RusqliteOwnedValue::Integer(v) => json!(v),
+                            RusqliteOwnedValue::Real(v) => json!(v),
+                            RusqliteOwnedValue::Text(v) => json!(v),
+                            RusqliteOwnedValue::Blob(v) => json!(v),
+                            RusqliteOwnedValue::Null => json!(null),
+                        },
+                    );
+                }
+                Ok(JsonValue::Object(map))
+            }
             #[cfg(feature = "mock")]
             crate::QueryResultRow::Mock(row) => {
                 for (column, value) in row.clone().into_column_value_tuples() {
@@ -249,7 +273,7 @@ impl FromQueryResult for JsonValue {
 #[cfg(feature = "mock")]
 mod tests {
     use crate::tests_cfg::cake;
-    use crate::{entity::*, DbBackend, DbErr, MockDatabase};
+    use crate::{DbBackend, DbErr, MockDatabase, entity::*};
     use sea_query::Value;
 
     #[smol_potat::test]

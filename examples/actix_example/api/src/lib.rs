@@ -1,16 +1,16 @@
-use actix_example_service::{
-    sea_orm::{Database, DatabaseConnection},
-    Mutation, Query,
-};
+pub mod service;
+
 use actix_files::Files as Fs;
 use actix_web::{
-    error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result,
+    App, Error, HttpRequest, HttpResponse, HttpServer, Result, error, get, middleware, post, web,
 };
 
 use entity::post;
 use listenfd::ListenFd;
 use migration::{Migrator, MigratorTrait};
+use sea_orm::{Database, DatabaseConnection};
 use serde::{Deserialize, Serialize};
+use service::{Mutation, Query};
 use std::env;
 use tera::Tera;
 
@@ -166,7 +166,9 @@ async fn not_found(data: web::Data<AppState>, request: HttpRequest) -> Result<Ht
 
 #[actix_web::main]
 async fn start() -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG", "debug");
+    unsafe {
+        std::env::set_var("RUST_LOG", "debug");
+    }
     tracing_subscriber::fmt::init();
 
     // get env vars

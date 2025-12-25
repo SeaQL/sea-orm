@@ -8,33 +8,74 @@ pub mod derive_attr {
         pub column: Option<syn::Ident>,
         pub entity: Option<syn::Ident>,
         pub model: Option<syn::Ident>,
+        pub model_ex: Option<syn::Ident>,
         pub active_model: Option<syn::Ident>,
+        pub active_model_ex: Option<syn::Ident>,
         pub primary_key: Option<syn::Ident>,
         pub relation: Option<syn::Ident>,
-        pub schema_name: Option<syn::Lit>,
-        pub table_name: Option<syn::Lit>,
-        pub comment: Option<syn::Lit>,
+        pub schema_name: Option<syn::LitStr>,
+        pub table_name: Option<syn::LitStr>,
+        pub comment: Option<syn::LitStr>,
         pub table_iden: Option<()>,
-        pub rename_all: Option<syn::Lit>,
+        pub rename_all: Option<syn::LitStr>,
     }
 }
 
-pub mod field_attr {
+pub mod relation_attr {
     use bae::FromAttributes;
 
-    /// Operations for Models and ActiveModels
+    /// Attributes for Relation enum
     #[derive(Default, FromAttributes)]
     pub struct SeaOrm {
         pub belongs_to: Option<syn::Lit>,
         pub has_one: Option<syn::Lit>,
         pub has_many: Option<syn::Lit>,
+        pub via_rel: Option<syn::Lit>,
         pub on_update: Option<syn::Lit>,
         pub on_delete: Option<syn::Lit>,
         pub on_condition: Option<syn::Lit>,
         pub from: Option<syn::Lit>,
         pub to: Option<syn::Lit>,
         pub fk_name: Option<syn::Lit>,
+        pub skip_fk: Option<()>,
         pub condition_type: Option<syn::Lit>,
+    }
+}
+
+pub mod compound_attr {
+    use bae::FromAttributes;
+
+    /// Attributes for compound model fields
+    #[derive(Default, FromAttributes)]
+    pub struct SeaOrm {
+        pub has_one: Option<()>,
+        pub has_many: Option<()>,
+        pub belongs_to: Option<()>,
+        pub self_ref: Option<()>,
+        pub skip_fk: Option<()>,
+        pub via: Option<syn::LitStr>,
+        pub via_rel: Option<syn::LitStr>,
+        pub from: Option<syn::LitStr>,
+        pub to: Option<syn::LitStr>,
+        pub relation_enum: Option<syn::LitStr>,
+        pub relation_reverse: Option<syn::LitStr>,
+        pub reverse: Option<()>,
+        pub on_update: Option<syn::LitStr>,
+        pub on_delete: Option<syn::LitStr>,
+    }
+}
+
+pub mod value_type_attr {
+    use bae::FromAttributes;
+
+    /// Attributes for compound model fields
+    #[derive(Default, FromAttributes)]
+    pub struct SeaOrm {
+        pub column_type: Option<syn::LitStr>,
+        pub array_type: Option<syn::LitStr>,
+        pub value_type: Option<syn::LitStr>,
+        pub from_str: Option<syn::LitStr>,
+        pub to_str: Option<syn::LitStr>,
     }
 }
 
@@ -42,7 +83,7 @@ pub mod field_attr {
 pub mod related_attr {
     use bae::FromAttributes;
 
-    /// Operations for RelatedEntity enumeration
+    /// Attributes for RelatedEntity enum
     #[derive(Default, FromAttributes)]
     pub struct SeaOrm {
         ///

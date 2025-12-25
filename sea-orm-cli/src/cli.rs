@@ -16,8 +16,6 @@ use crate::{handle_error, run_generate_command, run_migrate_command};
 
 {all-args}{after-help}
 
-AUTHORS:
-    {author}
 "#,
     about = r#"
    ____                 ___   ____   __  __        /\
@@ -38,8 +36,8 @@ AUTHORS:
   Join our Discord server to chat with others in the SeaQL community!
     - Invitation: https://discord.com/invite/uCPdDXzbdv
 
-  SeaQL Community Survey 2024
-    - Link: https://sea-ql.org/community-survey
+  SeaQL Community Survey 2025
+    - Link: https://www.sea-ql.org/community-survey/
 
   If you like what we do, consider starring, sharing and contributing!
 "#
@@ -52,6 +50,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum Commands {
     #[command(
@@ -95,7 +94,8 @@ you should provide the directory of that submodule.",
             short = 'u',
             long,
             env = "DATABASE_URL",
-            help = "Database URL"
+            help = "Database URL",
+            hide_env_values = true
         )]
         database_url: Option<String>,
 
@@ -165,14 +165,20 @@ pub enum MigrateSubcommands {
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum GenerateSubcommands {
     #[command(about = "Generate entity")]
-    #[command(group(ArgGroup::new("formats").args(&["compact_format", "expanded_format"])))]
+    #[command(group(ArgGroup::new("formats").args(&["compact_format", "expanded_format", "frontend_format"])))]
     #[command(group(ArgGroup::new("group-tables").args(&["tables", "include_hidden_tables"])))]
     Entity {
+        #[arg(long, help = "Which format to generate entity files in")]
+        entity_format: Option<String>,
+
         #[arg(long, help = "Generate entity file of compact format")]
         compact_format: bool,
 
         #[arg(long, help = "Generate entity file of expanded format")]
         expanded_format: bool,
+
+        #[arg(long, help = "Generate entity file of frontend format")]
+        frontend_format: bool,
 
         #[arg(
             long,
@@ -228,7 +234,13 @@ pub enum GenerateSubcommands {
         )]
         database_schema: Option<String>,
 
-        #[arg(short = 'u', long, env = "DATABASE_URL", help = "Database URL")]
+        #[arg(
+            short = 'u',
+            long,
+            env = "DATABASE_URL",
+            help = "Database URL",
+            hide_env_values = true
+        )]
         database_url: String,
 
         #[arg(
@@ -279,6 +291,14 @@ pub enum GenerateSubcommands {
 
         #[arg(
             long,
+            default_value_t,
+            value_enum,
+            help = "The primitive type to use for big integer."
+        )]
+        big_integer_type: BigIntegerType,
+
+        #[arg(
+            long,
             short = 'l',
             default_value = "false",
             help = "Generate index file as `lib.rs` instead of `mod.rs`."
@@ -315,6 +335,13 @@ pub enum GenerateSubcommands {
 
         #[arg(
             long,
+            value_delimiter = ',',
+            help = "Add extra derive macros to generated column enum (comma separated), e.g. `--column-extra-derives 'async_graphql::Enum','CustomDerive'`"
+        )]
+        column_extra_derives: Vec<String>,
+
+        #[arg(
+            long,
             default_value = "false",
             long_help = "Generate helper Enumerations that are used by Seaography."
         )]
@@ -330,6 +357,30 @@ pub enum GenerateSubcommands {
             long_help = "Generate empty ActiveModelBehavior impls."
         )]
         impl_active_model_behavior: bool,
+
+        #[arg(
+            long,
+            default_value = "true",
+            default_missing_value = "true",
+            num_args = 0..=1,
+            require_equals = true,
+            action = ArgAction::Set,
+            long_help = indoc::indoc! { "
+                Preserve user modifications when regenerating entity files.
+                Only supports:
+                    - Extra derives and attributes of `Model` and `Relation`
+                    - Impl blocks of `ActiveModelBehavior`"
+            }
+        )]
+        preserve_user_modifications: bool,
+
+        #[arg(
+            long,
+            default_value_t,
+            value_enum,
+            help = "Control how the codegen version is displayed in the top banner of the generated file."
+        )]
+        banner_version: BannerVersion,
     },
 }
 
@@ -338,6 +389,22 @@ pub enum DateTimeCrate {
     #[default]
     Chrono,
     Time,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Default)]
+pub enum BigIntegerType {
+    #[default]
+    I64,
+    I32,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Default)]
+pub enum BannerVersion {
+    Off,
+    Major,
+    #[default]
+    Minor,
+    Patch,
 }
 
 /// Use this to build a local, version-controlled `sea-orm-cli` in dependent projects

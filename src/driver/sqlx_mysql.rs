@@ -4,17 +4,18 @@ use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
+    Connection, Executor, MySql, MySqlPool,
     mysql::{MySqlConnectOptions, MySqlQueryResult, MySqlRow},
     pool::PoolConnection,
-    Connection, Executor, MySql, MySqlPool,
 };
 
-use sea_query_binder::SqlxValues;
+use sea_query_sqlx::SqlxValues;
 use tracing::instrument;
 
 use crate::{
-    debug_print, error::*, executor::*, AccessMode, ConnectOptions, DatabaseConnection,
-    DatabaseTransaction, DbBackend, IsolationLevel, QueryStream, Statement, TransactionError,
+    AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
+    DbBackend, IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*,
+    executor::*,
 };
 
 use super::sqlx_common::*;
@@ -47,7 +48,7 @@ impl From<MySqlPool> for SqlxMySqlPoolConnection {
 
 impl From<MySqlPool> for DatabaseConnection {
     fn from(pool: MySqlPool) -> Self {
-        DatabaseConnection::SqlxMySqlPoolConnection(pool.into())
+        DatabaseConnectionType::SqlxMySqlPoolConnection(pool.into()).into()
     }
 }
 
@@ -60,47 +61,62 @@ impl SqlxMySqlConnector {
     /// Add configuration options for the MySQL database
     #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
-        let mut opt = options
+        let mut sqlx_opts = options
             .url
             .parse::<MySqlConnectOptions>()
             .map_err(sqlx_error_to_conn_err)?;
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
-            opt = opt.disable_statement_logging();
+            sqlx_opts = sqlx_opts.disable_statement_logging();
         } else {
-            opt = opt.log_statements(options.sqlx_logging_level);
+            sqlx_opts = sqlx_opts.log_statements(options.sqlx_logging_level);
             if options.sqlx_slow_statements_logging_level != LevelFilter::Off {
-                opt = opt.log_slow_statements(
+                sqlx_opts = sqlx_opts.log_slow_statements(
                     options.sqlx_slow_statements_logging_level,
                     options.sqlx_slow_statements_logging_threshold,
                 );
             }
         }
+
+        if let Some(f) = &options.mysql_opts_fn {
+            sqlx_opts = f(sqlx_opts);
+        }
+
+        let after_connect = options.after_connect.clone();
+
         let pool = if options.connect_lazy {
-            options.sqlx_pool_options().connect_lazy_with(opt)
+            options.sqlx_pool_options().connect_lazy_with(sqlx_opts)
         } else {
             options
                 .sqlx_pool_options()
-                .connect_with(opt)
+                .connect_with(sqlx_opts)
                 .await
                 .map_err(sqlx_error_to_conn_err)?
         };
-        Ok(DatabaseConnection::SqlxMySqlPoolConnection(
-            SqlxMySqlPoolConnection {
+
+        let conn: DatabaseConnection =
+            DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
                 pool,
                 metric_callback: None,
-            },
-        ))
+            })
+            .into();
+
+        if let Some(cb) = after_connect {
+            cb(conn.clone()).await?;
+        }
+
+        Ok(conn)
     }
 }
 
 impl SqlxMySqlConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_mysql_pool(pool: MySqlPool) -> DatabaseConnection {
-        DatabaseConnection::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
+        DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
             pool,
             metric_callback: None,
         })
+        .into()
     }
 }
 
@@ -209,7 +225,7 @@ impl SqlxMySqlPoolConnection {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
         let transaction = DatabaseTransaction::new_mysql(
@@ -353,123 +369,138 @@ pub(crate) fn from_sqlx_mysql_row_to_proxy_row(row: &sqlx::mysql::MySqlRow) -> c
                 (
                     c.name().to_string(),
                     match c.type_info().name() {
-                        "TINYINT(1)" | "BOOLEAN" => Value::Bool(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get boolean"),
-                        )),
-                        "TINYINT UNSIGNED" => Value::TinyUnsigned(Some(
+                        "TINYINT(1)" | "BOOLEAN" => {
+                            Value::Bool(row.try_get(c.ordinal()).expect("Failed to get boolean"))
+                        }
+                        "TINYINT UNSIGNED" => Value::TinyUnsigned(
                             row.try_get(c.ordinal())
                                 .expect("Failed to get unsigned tiny integer"),
-                        )),
-                        "SMALLINT UNSIGNED" => Value::SmallUnsigned(Some(
+                        ),
+                        "SMALLINT UNSIGNED" => Value::SmallUnsigned(
                             row.try_get(c.ordinal())
                                 .expect("Failed to get unsigned small integer"),
-                        )),
-                        "INT UNSIGNED" => Value::Unsigned(Some(
+                        ),
+                        "INT UNSIGNED" => Value::Unsigned(
                             row.try_get(c.ordinal())
                                 .expect("Failed to get unsigned integer"),
-                        )),
-                        "MEDIUMINT UNSIGNED" | "BIGINT UNSIGNED" => Value::BigUnsigned(Some(
+                        ),
+                        "MEDIUMINT UNSIGNED" | "BIGINT UNSIGNED" => Value::BigUnsigned(
                             row.try_get(c.ordinal())
                                 .expect("Failed to get unsigned big integer"),
-                        )),
-                        "TINYINT" => Value::TinyInt(Some(
+                        ),
+                        "TINYINT" => Value::TinyInt(
                             row.try_get(c.ordinal())
                                 .expect("Failed to get tiny integer"),
-                        )),
-                        "SMALLINT" => Value::SmallInt(Some(
+                        ),
+                        "SMALLINT" => Value::SmallInt(
                             row.try_get(c.ordinal())
                                 .expect("Failed to get small integer"),
-                        )),
-                        "INT" => Value::Int(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get integer"),
-                        )),
-                        "MEDIUMINT" | "BIGINT" => Value::BigInt(Some(
+                        ),
+                        "INT" => {
+                            Value::Int(row.try_get(c.ordinal()).expect("Failed to get integer"))
+                        }
+                        "MEDIUMINT" | "BIGINT" => Value::BigInt(
                             row.try_get(c.ordinal()).expect("Failed to get big integer"),
-                        )),
-                        "FLOAT" => Value::Float(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get float"),
-                        )),
-                        "DOUBLE" => Value::Double(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get double"),
-                        )),
+                        ),
+                        "FLOAT" => {
+                            Value::Float(row.try_get(c.ordinal()).expect("Failed to get float"))
+                        }
+                        "DOUBLE" => {
+                            Value::Double(row.try_get(c.ordinal()).expect("Failed to get double"))
+                        }
 
                         "BIT" | "BINARY" | "VARBINARY" | "TINYBLOB" | "BLOB" | "MEDIUMBLOB"
-                        | "LONGBLOB" => Value::Bytes(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get bytes"),
-                        ))),
+                        | "LONGBLOB" => Value::Bytes(
+                            row.try_get::<Option<Vec<u8>>, _>(c.ordinal())
+                                .expect("Failed to get bytes"),
+                        ),
 
                         "CHAR" | "VARCHAR" | "TINYTEXT" | "TEXT" | "MEDIUMTEXT" | "LONGTEXT" => {
-                            Value::String(Some(Box::new(
-                                row.try_get(c.ordinal()).expect("Failed to get string"),
-                            )))
+                            Value::String(
+                                row.try_get::<Option<String>, _>(c.ordinal())
+                                    .expect("Failed to get string"),
+                            )
                         }
 
                         #[cfg(feature = "with-chrono")]
-                        "TIMESTAMP" => Value::ChronoDateTimeUtc(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timestamp"),
-                        ))),
+                        "TIMESTAMP" => Value::ChronoDateTimeUtc(
+                            row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(c.ordinal())
+                                .expect("Failed to get timestamp"),
+                        ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIMESTAMP" => Value::TimeDateTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timestamp"),
-                        ))),
+                        "TIMESTAMP" => Value::TimeDateTime(
+                            row.try_get::<Option<time::PrimitiveDateTime>, _>(c.ordinal())
+                                .expect("Failed to get timestamp"),
+                        ),
 
                         #[cfg(feature = "with-chrono")]
-                        "DATE" => Value::ChronoDate(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get date"),
-                        ))),
+                        "DATE" => Value::ChronoDate(
+                            row.try_get::<Option<chrono::NaiveDate>, _>(c.ordinal())
+                                .expect("Failed to get date"),
+                        ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "DATE" => Value::TimeDate(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get date"),
-                        ))),
+                        "DATE" => Value::TimeDate(
+                            row.try_get::<Option<time::Date>, _>(c.ordinal())
+                                .expect("Failed to get date"),
+                        ),
 
                         #[cfg(feature = "with-chrono")]
-                        "TIME" => Value::ChronoTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get time"),
-                        ))),
+                        "TIME" => Value::ChronoTime(
+                            row.try_get::<Option<chrono::NaiveTime>, _>(c.ordinal())
+                                .expect("Failed to get time"),
+                        ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIME" => Value::TimeTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get time"),
-                        ))),
+                        "TIME" => Value::TimeTime(
+                            row.try_get::<Option<time::Time>, _>(c.ordinal())
+                                .expect("Failed to get time"),
+                        ),
 
                         #[cfg(feature = "with-chrono")]
-                        "DATETIME" => Value::ChronoDateTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get datetime"),
-                        ))),
+                        "DATETIME" => Value::ChronoDateTime(
+                            row.try_get::<Option<chrono::NaiveDateTime>, _>(c.ordinal())
+                                .expect("Failed to get datetime"),
+                        ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "DATETIME" => Value::TimeDateTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get datetime"),
-                        ))),
+                        "DATETIME" => Value::TimeDateTime(
+                            row.try_get::<Option<time::PrimitiveDateTime>, _>(c.ordinal())
+                                .expect("Failed to get datetime"),
+                        ),
 
                         #[cfg(feature = "with-chrono")]
-                        "YEAR" => Value::ChronoDate(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get year"),
-                        ))),
+                        "YEAR" => Value::ChronoDate(
+                            row.try_get::<Option<chrono::NaiveDate>, _>(c.ordinal())
+                                .expect("Failed to get year"),
+                        ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "YEAR" => Value::TimeDate(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get year"),
-                        ))),
+                        "YEAR" => Value::TimeDate(
+                            row.try_get::<Option<time::Date>, _>(c.ordinal())
+                                .expect("Failed to get year"),
+                        ),
 
-                        "ENUM" | "SET" | "GEOMETRY" => Value::String(Some(Box::new(
-                            row.try_get(c.ordinal())
+                        "ENUM" | "SET" | "GEOMETRY" => Value::String(
+                            row.try_get::<Option<String>, _>(c.ordinal())
                                 .expect("Failed to get serialized string"),
-                        ))),
+                        ),
 
                         #[cfg(feature = "with-bigdecimal")]
-                        "DECIMAL" => Value::BigDecimal(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get decimal"),
-                        ))),
+                        "DECIMAL" => Value::BigDecimal(
+                            row.try_get::<Option<bigdecimal::BigDecimal>, _>(c.ordinal())
+                                .expect("Failed to get decimal"),
+                        ),
                         #[cfg(all(
                             feature = "with-rust_decimal",
                             not(feature = "with-bigdecimal")
                         ))]
-                        "DECIMAL" => Value::Decimal(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get decimal"),
-                        ))),
+                        "DECIMAL" => Value::Decimal(
+                            row.try_get::<Option<rust_decimal::Decimal>, _>(c.ordinal())
+                                .expect("Failed to get decimal"),
+                        ),
 
                         #[cfg(feature = "with-json")]
-                        "JSON" => Value::Json(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get json"),
-                        ))),
+                        "JSON" => Value::Json(
+                            row.try_get::<Option<serde_json::Value>, _>(c.ordinal())
+                                .expect("Failed to get json"),
+                        ),
 
                         _ => unreachable!("Unknown column type: {}", c.type_info().name()),
                     },

@@ -1,9 +1,9 @@
 use super::util::GetMeta;
 use proc_macro2::{Ident, TokenStream};
-use quote::{format_ident, quote, quote_spanned, ToTokens};
+use quote::{ToTokens, format_ident, quote, quote_spanned};
 use syn::{
-    ext::IdentExt, punctuated::Punctuated, token::Comma, Data, DataStruct, DeriveInput, Fields,
-    Generics, Meta,
+    Data, DataStruct, DeriveInput, Fields, Generics, Meta, ext::IdentExt, punctuated::Punctuated,
+    token::Comma,
 };
 
 #[derive(Debug)]
@@ -136,8 +136,10 @@ impl DeriveFromQueryResult {
                             typ = ItemType::Skip;
                         } else if meta.exists("nested") {
                             typ = ItemType::Nested;
+                        } else if let Some(alias_) = meta.get_as_kv("from_alias") {
+                            alias = Some(alias_);
                         } else {
-                            alias = meta.get_as_kv("from_alias");
+                            alias = meta.get_as_kv("alias");
                         }
                     }
                 }

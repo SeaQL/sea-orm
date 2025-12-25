@@ -4,17 +4,18 @@ use sea_query::Values;
 use std::{fmt::Write, future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
+    Connection, Executor, PgPool, Postgres,
     pool::PoolConnection,
     postgres::{PgConnectOptions, PgQueryResult, PgRow},
-    Connection, Executor, PgPool, Postgres,
 };
 
-use sea_query_binder::SqlxValues;
+use sea_query_sqlx::SqlxValues;
 use tracing::instrument;
 
 use crate::{
-    debug_print, error::*, executor::*, AccessMode, ConnectOptions, DatabaseConnection,
-    DatabaseTransaction, DbBackend, IsolationLevel, QueryStream, Statement, TransactionError,
+    AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
+    DbBackend, IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*,
+    executor::*,
 };
 
 use super::sqlx_common::*;
@@ -47,7 +48,7 @@ impl From<PgPool> for SqlxPostgresPoolConnection {
 
 impl From<PgPool> for DatabaseConnection {
     fn from(pool: PgPool) -> Self {
-        DatabaseConnection::SqlxPostgresPoolConnection(pool.into())
+        DatabaseConnectionType::SqlxPostgresPoolConnection(pool.into()).into()
     }
 }
 
@@ -60,42 +61,50 @@ impl SqlxPostgresConnector {
     /// Add configuration options for the PostgreSQL database
     #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
-        let mut opt = options
+        let mut sqlx_opts = options
             .url
             .parse::<PgConnectOptions>()
             .map_err(sqlx_error_to_conn_err)?;
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
-            opt = opt.disable_statement_logging();
+            sqlx_opts = sqlx_opts.disable_statement_logging();
         } else {
-            opt = opt.log_statements(options.sqlx_logging_level);
+            sqlx_opts = sqlx_opts.log_statements(options.sqlx_logging_level);
             if options.sqlx_slow_statements_logging_level != LevelFilter::Off {
-                opt = opt.log_slow_statements(
+                sqlx_opts = sqlx_opts.log_slow_statements(
                     options.sqlx_slow_statements_logging_level,
                     options.sqlx_slow_statements_logging_threshold,
                 );
             }
         }
+
+        if let Some(f) = &options.pg_opts_fn {
+            sqlx_opts = f(sqlx_opts);
+        }
+
         let set_search_path_sql = options.schema_search_path.as_ref().map(|schema| {
             let mut string = "SET search_path = ".to_owned();
             if schema.starts_with('"') {
-                write!(&mut string, "{schema}").unwrap();
+                write!(&mut string, "{schema}").expect("Infallible");
             } else {
                 for (i, schema) in schema.split(',').enumerate() {
                     if i > 0 {
-                        write!(&mut string, ",").unwrap();
+                        write!(&mut string, ",").expect("Infallible");
                     }
                     if schema.starts_with('"') {
-                        write!(&mut string, "{schema}").unwrap();
+                        write!(&mut string, "{schema}").expect("Infallible");
                     } else {
-                        write!(&mut string, "\"{schema}\"").unwrap();
+                        write!(&mut string, "\"{schema}\"").expect("Infallible");
                     }
                 }
             }
             string
         });
+
         let lazy = options.connect_lazy;
+        let after_connect = options.after_connect.clone();
         let mut pool_options = options.sqlx_pool_options();
+
         if let Some(sql) = set_search_path_sql {
             pool_options = pool_options.after_connect(move |conn, _| {
                 let sql = sql.clone();
@@ -106,30 +115,39 @@ impl SqlxPostgresConnector {
                 })
             });
         }
+
         let pool = if lazy {
-            pool_options.connect_lazy_with(opt)
+            pool_options.connect_lazy_with(sqlx_opts)
         } else {
             pool_options
-                .connect_with(opt)
+                .connect_with(sqlx_opts)
                 .await
                 .map_err(sqlx_error_to_conn_err)?
         };
-        Ok(DatabaseConnection::SqlxPostgresPoolConnection(
-            SqlxPostgresPoolConnection {
+
+        let conn: DatabaseConnection =
+            DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
                 pool,
                 metric_callback: None,
-            },
-        ))
+            })
+            .into();
+
+        if let Some(cb) = after_connect {
+            cb(conn.clone()).await?;
+        }
+
+        Ok(conn)
     }
 }
 
 impl SqlxPostgresConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_postgres_pool(pool: PgPool) -> DatabaseConnection {
-        DatabaseConnection::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
+        DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
             pool,
             metric_callback: None,
         })
+        .into()
     }
 }
 
@@ -238,7 +256,7 @@ impl SqlxPostgresPoolConnection {
             ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
             + Send,
         T: Send,
-        E: std::error::Error + Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
         let transaction = DatabaseTransaction::new_postgres(
@@ -385,165 +403,118 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                 (
                     c.name().to_string(),
                     match c.type_info().name() {
-                        "BOOL" => Value::Bool(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get boolean"),
-                        )),
+                        "BOOL" => {
+                            Value::Bool(row.try_get(c.ordinal()).expect("Failed to get boolean"))
+                        }
                         #[cfg(feature = "postgres-array")]
                         "BOOL[]" => Value::Array(
-                            sea_query::ArrayType::Bool,
-                            Some(Box::new(
-                                row.try_get::<Vec<bool>, _>(c.ordinal())
-                                    .expect("Failed to get boolean array")
-                                    .iter()
-                                    .map(|val| Value::Bool(Some(*val)))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<bool>>, _>(c.ordinal())
+                                .expect("Failed to get boolean array")
+                                .map(sea_query::value::Array::from),
                         ),
 
-                        "\"CHAR\"" => Value::TinyInt(Some(
+                        "\"CHAR\"" => Value::TinyInt(
                             row.try_get(c.ordinal())
                                 .expect("Failed to get small integer"),
-                        )),
+                        ),
                         #[cfg(feature = "postgres-array")]
                         "\"CHAR\"[]" => Value::Array(
-                            sea_query::ArrayType::TinyInt,
-                            Some(Box::new(
-                                row.try_get::<Vec<i8>, _>(c.ordinal())
-                                    .expect("Failed to get small integer array")
-                                    .iter()
-                                    .map(|val| Value::TinyInt(Some(*val)))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<i8>>, _>(c.ordinal())
+                                .expect("Failed to get small integer array")
+                                .map(sea_query::value::Array::from),
                         ),
 
-                        "SMALLINT" | "SMALLSERIAL" | "INT2" => Value::SmallInt(Some(
+                        "SMALLINT" | "SMALLSERIAL" | "INT2" => Value::SmallInt(
                             row.try_get(c.ordinal())
                                 .expect("Failed to get small integer"),
-                        )),
+                        ),
                         #[cfg(feature = "postgres-array")]
                         "SMALLINT[]" | "SMALLSERIAL[]" | "INT2[]" => Value::Array(
-                            sea_query::ArrayType::SmallInt,
-                            Some(Box::new(
-                                row.try_get::<Vec<i16>, _>(c.ordinal())
-                                    .expect("Failed to get small integer array")
-                                    .iter()
-                                    .map(|val| Value::SmallInt(Some(*val)))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<i16>>, _>(c.ordinal())
+                                .expect("Failed to get small integer array")
+                                .map(sea_query::value::Array::from),
                         ),
 
-                        "INT" | "SERIAL" | "INT4" => Value::Int(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get integer"),
-                        )),
+                        "INT" | "SERIAL" | "INT4" => {
+                            Value::Int(row.try_get(c.ordinal()).expect("Failed to get integer"))
+                        }
                         #[cfg(feature = "postgres-array")]
                         "INT[]" | "SERIAL[]" | "INT4[]" => Value::Array(
-                            sea_query::ArrayType::Int,
-                            Some(Box::new(
-                                row.try_get::<Vec<i32>, _>(c.ordinal())
-                                    .expect("Failed to get integer array")
-                                    .iter()
-                                    .map(|val| Value::Int(Some(*val)))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<i32>>, _>(c.ordinal())
+                                .expect("Failed to get integer array")
+                                .map(sea_query::value::Array::from),
                         ),
 
-                        "BIGINT" | "BIGSERIAL" | "INT8" => Value::BigInt(Some(
+                        "BIGINT" | "BIGSERIAL" | "INT8" => Value::BigInt(
                             row.try_get(c.ordinal()).expect("Failed to get big integer"),
-                        )),
+                        ),
                         #[cfg(feature = "postgres-array")]
                         "BIGINT[]" | "BIGSERIAL[]" | "INT8[]" => Value::Array(
-                            sea_query::ArrayType::BigInt,
-                            Some(Box::new(
-                                row.try_get::<Vec<i64>, _>(c.ordinal())
-                                    .expect("Failed to get big integer array")
-                                    .iter()
-                                    .map(|val| Value::BigInt(Some(*val)))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<i64>>, _>(c.ordinal())
+                                .expect("Failed to get big integer array")
+                                .map(sea_query::value::Array::from),
                         ),
 
-                        "FLOAT4" | "REAL" => Value::Float(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get float"),
-                        )),
+                        "FLOAT4" | "REAL" => {
+                            Value::Float(row.try_get(c.ordinal()).expect("Failed to get float"))
+                        }
                         #[cfg(feature = "postgres-array")]
                         "FLOAT4[]" | "REAL[]" => Value::Array(
-                            sea_query::ArrayType::Float,
-                            Some(Box::new(
-                                row.try_get::<Vec<f32>, _>(c.ordinal())
-                                    .expect("Failed to get float array")
-                                    .iter()
-                                    .map(|val| Value::Float(Some(*val)))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<f32>>, _>(c.ordinal())
+                                .expect("Failed to get float array")
+                                .map(sea_query::value::Array::from),
                         ),
 
-                        "FLOAT8" | "DOUBLE PRECISION" => Value::Double(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get double"),
-                        )),
+                        "FLOAT8" | "DOUBLE PRECISION" => {
+                            Value::Double(row.try_get(c.ordinal()).expect("Failed to get double"))
+                        }
                         #[cfg(feature = "postgres-array")]
                         "FLOAT8[]" | "DOUBLE PRECISION[]" => Value::Array(
-                            sea_query::ArrayType::Double,
-                            Some(Box::new(
-                                row.try_get::<Vec<f64>, _>(c.ordinal())
-                                    .expect("Failed to get double array")
-                                    .iter()
-                                    .map(|val| Value::Double(Some(*val)))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<f64>>, _>(c.ordinal())
+                                .expect("Failed to get double array")
+                                .map(sea_query::value::Array::from),
                         ),
 
-                        "VARCHAR" | "CHAR" | "TEXT" | "NAME" => Value::String(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get string"),
-                        ))),
+                        "VARCHAR" | "CHAR" | "TEXT" | "NAME" => Value::String(
+                            row.try_get::<Option<String>, _>(c.ordinal())
+                                .expect("Failed to get string"),
+                        ),
                         #[cfg(feature = "postgres-array")]
                         "VARCHAR[]" | "CHAR[]" | "TEXT[]" | "NAME[]" => Value::Array(
-                            sea_query::ArrayType::String,
-                            Some(Box::new(
-                                row.try_get::<Vec<String>, _>(c.ordinal())
-                                    .expect("Failed to get string array")
-                                    .iter()
-                                    .map(|val| Value::String(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<String>>, _>(c.ordinal())
+                                .expect("Failed to get string array")
+                                .map(sea_query::value::Array::from),
                         ),
 
-                        "BYTEA" => Value::Bytes(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get bytes"),
-                        ))),
+                        "BYTEA" => Value::Bytes(
+                            row.try_get::<Option<Vec<u8>>, _>(c.ordinal())
+                                .expect("Failed to get bytes"),
+                        ),
                         #[cfg(feature = "postgres-array")]
                         "BYTEA[]" => Value::Array(
-                            sea_query::ArrayType::Bytes,
-                            Some(Box::new(
-                                row.try_get::<Vec<Vec<u8>>, _>(c.ordinal())
-                                    .expect("Failed to get bytes array")
-                                    .iter()
-                                    .map(|val| Value::Bytes(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<Vec<u8>>>, _>(c.ordinal())
+                                .expect("Failed to get bytes array")
+                                .map(sea_query::value::Array::from),
                         ),
 
                         #[cfg(feature = "with-bigdecimal")]
-                        "NUMERIC" => Value::BigDecimal(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get numeric"),
-                        ))),
+                        "NUMERIC" => Value::BigDecimal(
+                            row.try_get::<Option<bigdecimal::BigDecimal>, _>(c.ordinal())
+                                .expect("Failed to get numeric"),
+                        ),
                         #[cfg(all(
                             feature = "with-rust_decimal",
                             not(feature = "with-bigdecimal")
                         ))]
-                        "NUMERIC" => Value::Decimal(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get numeric"),
-                        ))),
+                        "NUMERIC" => {
+                            Value::Decimal(row.try_get(c.ordinal()).expect("Failed to get numeric"))
+                        }
 
                         #[cfg(all(feature = "with-bigdecimal", feature = "postgres-array"))]
                         "NUMERIC[]" => Value::Array(
-                            sea_query::ArrayType::BigDecimal,
-                            Some(Box::new(
-                                row.try_get::<Vec<bigdecimal::BigDecimal>, _>(c.ordinal())
-                                    .expect("Failed to get numeric array")
-                                    .iter()
-                                    .map(|val| Value::BigDecimal(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<bigdecimal::BigDecimal>>, _>(c.ordinal())
+                                .expect("Failed to get numeric array")
+                                .map(sea_query::value::Array::from),
                         ),
                         #[cfg(all(
                             feature = "with-rust_decimal",
@@ -551,97 +522,72 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                             feature = "postgres-array"
                         ))]
                         "NUMERIC[]" => Value::Array(
-                            sea_query::ArrayType::Decimal,
-                            Some(Box::new(
-                                row.try_get::<Vec<rust_decimal::Decimal>, _>(c.ordinal())
-                                    .expect("Failed to get numeric array")
-                                    .iter()
-                                    .map(|val| Value::Decimal(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<rust_decimal::Decimal>>, _>(c.ordinal())
+                                .expect("Failed to get numeric array")
+                                .map(sea_query::value::Array::from),
                         ),
 
-                        "OID" => Value::BigInt(Some(
-                            row.try_get(c.ordinal()).expect("Failed to get oid"),
-                        )),
+                        "OID" => {
+                            Value::BigInt(row.try_get(c.ordinal()).expect("Failed to get oid"))
+                        }
                         #[cfg(feature = "postgres-array")]
                         "OID[]" => Value::Array(
-                            sea_query::ArrayType::BigInt,
-                            Some(Box::new(
-                                row.try_get::<Vec<i64>, _>(c.ordinal())
-                                    .expect("Failed to get oid array")
-                                    .iter()
-                                    .map(|val| Value::BigInt(Some(*val)))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<i64>>, _>(c.ordinal())
+                                .expect("Failed to get oid array")
+                                .map(sea_query::value::Array::from),
                         ),
 
-                        "JSON" | "JSONB" => Value::Json(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get json"),
-                        ))),
+                        "JSON" | "JSONB" => Value::Json(
+                            row.try_get::<Option<serde_json::Value>, _>(c.ordinal())
+                                .expect("Failed to get json"),
+                        ),
                         #[cfg(any(feature = "json-array", feature = "postgres-array"))]
                         "JSON[]" | "JSONB[]" => Value::Array(
-                            sea_query::ArrayType::Json,
-                            Some(Box::new(
-                                row.try_get::<Vec<serde_json::Value>, _>(c.ordinal())
-                                    .expect("Failed to get json array")
-                                    .iter()
-                                    .map(|val| Value::Json(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<serde_json::Value>>, _>(c.ordinal())
+                                .expect("Failed to get json array")
+                                .map(sea_query::value::Array::from),
                         ),
 
                         #[cfg(feature = "with-ipnetwork")]
-                        "INET" | "CIDR" => Value::IpNetwork(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get ip address"),
-                        ))),
+                        "INET" | "CIDR" => Value::IpNetwork(
+                            row.try_get::<Option<ipnetwork::IpNetwork>, _>(c.ordinal())
+                                .expect("Failed to get ip address"),
+                        ),
                         #[cfg(feature = "with-ipnetwork")]
                         "INET[]" | "CIDR[]" => Value::Array(
-                            sea_query::ArrayType::IpNetwork,
-                            Some(Box::new(
-                                row.try_get::<Vec<ipnetwork::IpNetwork>, _>(c.ordinal())
-                                    .expect("Failed to get ip address array")
-                                    .iter()
-                                    .map(|val| Value::IpNetwork(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<ipnetwork::IpNetwork>>, _>(c.ordinal())
+                                .expect("Failed to get ip address array")
+                                .map(sea_query::value::Array::from),
                         ),
 
                         #[cfg(feature = "with-mac_address")]
-                        "MACADDR" | "MACADDR8" => Value::MacAddress(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get mac address"),
-                        ))),
+                        "MACADDR" | "MACADDR8" => Value::MacAddress(
+                            row.try_get::<Option<mac_address::MacAddress>, _>(c.ordinal())
+                                .expect("Failed to get mac address"),
+                        ),
                         #[cfg(all(feature = "with-mac_address", feature = "postgres-array"))]
                         "MACADDR[]" | "MACADDR8[]" => Value::Array(
-                            sea_query::ArrayType::MacAddress,
-                            Some(Box::new(
-                                row.try_get::<Vec<mac_address::MacAddress>, _>(c.ordinal())
-                                    .expect("Failed to get mac address array")
-                                    .iter()
-                                    .map(|val| Value::MacAddress(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<mac_address::MacAddress>>, _>(c.ordinal())
+                                .expect("Failed to get mac address array")
+                                .map(sea_query::value::Array::from),
                         ),
 
                         #[cfg(feature = "with-chrono")]
-                        "TIMESTAMP" => Value::ChronoDateTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timestamp"),
-                        ))),
+                        "TIMESTAMP" => Value::ChronoDateTime(
+                            row.try_get::<Option<chrono::NaiveDateTime>, _>(c.ordinal())
+                                .expect("Failed to get timestamp"),
+                        ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIMESTAMP" => Value::TimeDateTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timestamp"),
-                        ))),
+                        "TIMESTAMP" => Value::TimeDateTime(
+                            row.try_get::<Option<time::PrimitiveDateTime>, _>(c.ordinal())
+                                .expect("Failed to get timestamp"),
+                        ),
 
                         #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
                         "TIMESTAMP[]" => Value::Array(
-                            sea_query::ArrayType::ChronoDateTime,
-                            Some(Box::new(
-                                row.try_get::<Vec<chrono::NaiveDateTime>, _>(c.ordinal())
-                                    .expect("Failed to get timestamp array")
-                                    .iter()
-                                    .map(|val| Value::ChronoDateTime(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<chrono::NaiveDateTime>>, _>(c.ordinal())
+                                .expect("Failed to get timestamp array")
+                                .map(sea_query::value::Array::from),
                         ),
                         #[cfg(all(
                             feature = "with-time",
@@ -649,35 +595,27 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                             feature = "postgres-array"
                         ))]
                         "TIMESTAMP[]" => Value::Array(
-                            sea_query::ArrayType::TimeDateTime,
-                            Some(Box::new(
-                                row.try_get::<Vec<time::OffsetDateTime>, _>(c.ordinal())
-                                    .expect("Failed to get timestamp array")
-                                    .iter()
-                                    .map(|val| Value::TimeDateTime(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<time::PrimitiveDateTime>>, _>(c.ordinal())
+                                .expect("Failed to get timestamp array")
+                                .map(sea_query::value::Array::from),
                         ),
 
                         #[cfg(feature = "with-chrono")]
-                        "DATE" => Value::ChronoDate(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get date"),
-                        ))),
+                        "DATE" => Value::ChronoDate(
+                            row.try_get::<Option<chrono::NaiveDate>, _>(c.ordinal())
+                                .expect("Failed to get date"),
+                        ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "DATE" => Value::TimeDate(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get date"),
-                        ))),
+                        "DATE" => Value::TimeDate(
+                            row.try_get::<Option<time::Date>, _>(c.ordinal())
+                                .expect("Failed to get date"),
+                        ),
 
                         #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
                         "DATE[]" => Value::Array(
-                            sea_query::ArrayType::ChronoDate,
-                            Some(Box::new(
-                                row.try_get::<Vec<chrono::NaiveDate>, _>(c.ordinal())
-                                    .expect("Failed to get date array")
-                                    .iter()
-                                    .map(|val| Value::ChronoDate(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<chrono::NaiveDate>>, _>(c.ordinal())
+                                .expect("Failed to get date array")
+                                .map(sea_query::value::Array::from),
                         ),
                         #[cfg(all(
                             feature = "with-time",
@@ -685,35 +623,27 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                             feature = "postgres-array"
                         ))]
                         "DATE[]" => Value::Array(
-                            sea_query::ArrayType::TimeDate,
-                            Some(Box::new(
-                                row.try_get::<Vec<time::Date>, _>(c.ordinal())
-                                    .expect("Failed to get date array")
-                                    .iter()
-                                    .map(|val| Value::TimeDate(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<time::Date>>, _>(c.ordinal())
+                                .expect("Failed to get date array")
+                                .map(sea_query::value::Array::from),
                         ),
 
                         #[cfg(feature = "with-chrono")]
-                        "TIME" => Value::ChronoTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get time"),
-                        ))),
+                        "TIME" => Value::ChronoTime(
+                            row.try_get::<Option<chrono::NaiveTime>, _>(c.ordinal())
+                                .expect("Failed to get time"),
+                        ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIME" => Value::TimeTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get time"),
-                        ))),
+                        "TIME" => Value::TimeTime(
+                            row.try_get::<Option<time::Time>, _>(c.ordinal())
+                                .expect("Failed to get time"),
+                        ),
 
                         #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
                         "TIME[]" => Value::Array(
-                            sea_query::ArrayType::ChronoTime,
-                            Some(Box::new(
-                                row.try_get::<Vec<chrono::NaiveTime>, _>(c.ordinal())
-                                    .expect("Failed to get time array")
-                                    .iter()
-                                    .map(|val| Value::ChronoTime(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<chrono::NaiveTime>>, _>(c.ordinal())
+                                .expect("Failed to get time array")
+                                .map(sea_query::value::Array::from),
                         ),
                         #[cfg(all(
                             feature = "with-time",
@@ -721,37 +651,29 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                             feature = "postgres-array"
                         ))]
                         "TIME[]" => Value::Array(
-                            sea_query::ArrayType::TimeTime,
-                            Some(Box::new(
-                                row.try_get::<Vec<time::Time>, _>(c.ordinal())
-                                    .expect("Failed to get time array")
-                                    .iter()
-                                    .map(|val| Value::TimeTime(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<time::Time>>, _>(c.ordinal())
+                                .expect("Failed to get time array")
+                                .map(sea_query::value::Array::from),
                         ),
 
                         #[cfg(feature = "with-chrono")]
-                        "TIMESTAMPTZ" => Value::ChronoDateTimeUtc(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timestamptz"),
-                        ))),
+                        "TIMESTAMPTZ" => Value::ChronoDateTimeUtc(
+                            row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(c.ordinal())
+                                .expect("Failed to get timestamptz"),
+                        ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIMESTAMPTZ" => Value::TimeDateTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timestamptz"),
-                        ))),
+                        "TIMESTAMPTZ" => Value::TimeDateTime(
+                            row.try_get::<Option<time::PrimitiveDateTime>, _>(c.ordinal())
+                                .expect("Failed to get timestamptz"),
+                        ),
 
                         #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
                         "TIMESTAMPTZ[]" => Value::Array(
-                            sea_query::ArrayType::ChronoDateTimeUtc,
-                            Some(Box::new(
-                                row.try_get::<Vec<chrono::DateTime<chrono::Utc>>, _>(c.ordinal())
-                                    .expect("Failed to get timestamptz array")
-                                    .iter()
-                                    .map(|val| {
-                                        Value::ChronoDateTimeUtc(Some(Box::new(val.clone())))
-                                    })
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<chrono::DateTime<chrono::Utc>>>, _>(
+                                c.ordinal(),
+                            )
+                            .expect("Failed to get timestamptz array")
+                            .map(sea_query::value::Array::from),
                         ),
                         #[cfg(all(
                             feature = "with-time",
@@ -759,35 +681,26 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                             feature = "postgres-array"
                         ))]
                         "TIMESTAMPTZ[]" => Value::Array(
-                            sea_query::ArrayType::TimeDateTime,
-                            Some(Box::new(
-                                row.try_get::<Vec<time::OffsetDateTime>, _>(c.ordinal())
-                                    .expect("Failed to get timestamptz array")
-                                    .iter()
-                                    .map(|val| Value::TimeDateTime(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<time::PrimitiveDateTime>>, _>(c.ordinal())
+                                .expect("Failed to get timestamptz array")
+                                .map(sea_query::value::Array::from),
                         ),
 
                         #[cfg(feature = "with-chrono")]
-                        "TIMETZ" => Value::ChronoTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timetz"),
-                        ))),
+                        "TIMETZ" => Value::ChronoTime(
+                            row.try_get::<Option<chrono::NaiveTime>, _>(c.ordinal())
+                                .expect("Failed to get timetz"),
+                        ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIMETZ" => Value::TimeTime(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get timetz"),
-                        ))),
+                        "TIMETZ" => {
+                            Value::TimeTime(row.try_get(c.ordinal()).expect("Failed to get timetz"))
+                        }
 
                         #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
                         "TIMETZ[]" => Value::Array(
-                            sea_query::ArrayType::ChronoTime,
-                            Some(Box::new(
-                                row.try_get::<Vec<chrono::NaiveTime>, _>(c.ordinal())
-                                    .expect("Failed to get timetz array")
-                                    .iter()
-                                    .map(|val| Value::ChronoTime(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<chrono::NaiveTime>>, _>(c.ordinal())
+                                .expect("Failed to get timetz array")
+                                .map(sea_query::value::Array::from),
                         ),
                         #[cfg(all(
                             feature = "with-time",
@@ -795,31 +708,22 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                             feature = "postgres-array"
                         ))]
                         "TIMETZ[]" => Value::Array(
-                            sea_query::ArrayType::TimeTime,
-                            Some(Box::new(
-                                row.try_get::<Vec<time::Time>, _>(c.ordinal())
-                                    .expect("Failed to get timetz array")
-                                    .iter()
-                                    .map(|val| Value::TimeTime(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<time::Time>>, _>(c.ordinal())
+                                .expect("Failed to get timetz array")
+                                .map(sea_query::value::Array::from),
                         ),
 
                         #[cfg(feature = "with-uuid")]
-                        "UUID" => Value::Uuid(Some(Box::new(
-                            row.try_get(c.ordinal()).expect("Failed to get uuid"),
-                        ))),
+                        "UUID" => Value::Uuid(
+                            row.try_get::<Option<uuid::Uuid>, _>(c.ordinal())
+                                .expect("Failed to get uuid"),
+                        ),
 
                         #[cfg(all(feature = "with-uuid", feature = "postgres-array"))]
                         "UUID[]" => Value::Array(
-                            sea_query::ArrayType::Uuid,
-                            Some(Box::new(
-                                row.try_get::<Vec<uuid::Uuid>, _>(c.ordinal())
-                                    .expect("Failed to get uuid array")
-                                    .iter()
-                                    .map(|val| Value::Uuid(Some(Box::new(val.clone()))))
-                                    .collect(),
-                            )),
+                            row.try_get::<Option<Vec<uuid::Uuid>>, _>(c.ordinal())
+                                .expect("Failed to get uuid array")
+                                .map(sea_query::value::Array::from),
                         ),
 
                         _ => unreachable!("Unknown column type: {}", c.type_info().name()),

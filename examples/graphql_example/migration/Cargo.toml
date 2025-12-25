@@ -1,22 +1,23 @@
 [package]
-name = "migration"
-version = "0.1.0"
-edition = "2021"
-publish = false
+edition      = "2024"
+name         = "migration"
+publish      = false
+rust-version = "1.85.0"
+version      = "0.1.0"
 
 [lib]
 name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
-dotenvy = "0.15.0"
-async-std = { version = "1", features = ["attributes", "tokio1"] }
+entity = { path = "../entity" }
+tokio  = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [dependencies.sea-orm-migration]
-path = "../../../sea-orm-migration" # remove this line in your own project
-version = "~1.1.8" # sea-orm-migration version
 features = [
-  # Enable following runtime and db backend features if you want to run migration via CLI
-  # "runtime-tokio-native-tls",
-  # "sqlx-sqlite",
+    # Enable following runtime and db backend features if you want to run migration via CLI
+    "runtime-tokio-native-tls",
+    "sqlx-sqlite",
 ]
+path = "../../../sea-orm-migration" # remove this line in your own project
+version = "~2.0.0-rc.22" # sea-orm-migration version

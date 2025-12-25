@@ -1,29 +1,47 @@
 [package]
-name = "sea-orm-codegen"
-version = "1.1.8"
-authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
-edition = "2021"
-description = "Code Generator for SeaORM"
-license = "MIT OR Apache-2.0"
-homepage = "https://www.sea-ql.org/SeaORM"
+authors       = ["Billy Chan <ccw.billy.123@gmail.com>"]
+categories    = ["database"]
+description   = "Code Generator for SeaORM"
 documentation = "https://docs.rs/sea-orm"
-repository = "https://github.com/SeaQL/sea-orm"
-categories = ["database"]
-keywords = ["sql", "mysql", "postgres", "sqlite"]
-rust-version = "1.65"
+edition       = "2024"
+homepage      = "https://www.sea-ql.org/SeaORM"
+keywords      = ["sql", "mysql", "postgres", "sqlite"]
+license       = "MIT OR Apache-2.0"
+name          = "sea-orm-codegen"
+repository    = "https://github.com/SeaQL/sea-orm"
+rust-version  = "1.85.0"
+version       = "2.0.0-rc.22"
 
 [lib]
 name = "sea_orm_codegen"
 path = "src/lib.rs"
 
 [dependencies]
-sea-query = { version = "0.32.0", default-features = false, features = ["thread-safe"] }
-syn = { version = "2", default-features = false, features = ["parsing", "proc-macro", "derive", "printing"] }
-quote = { version = "1", default-features = false }
-heck = { version = "0.4", default-features = false }
+heck = { version = "0.5", default-features = false }
+pluralizer = { version = "0.5" }
+prettyplease = { version = "0.2", default-features = false, features = [
+    "verbatim",
+] }
 proc-macro2 = { version = "1", default-features = false }
+quote = { version = "1", default-features = false }
+sea-query = { version = "1.0.0-rc.1", default-features = false, features = [
+    "thread-safe",
+] }
+syn = { version = "2", default-features = false, features = [
+    "parsing",
+    "proc-macro",
+    "derive",
+    "printing",
+    "clone-impls",
+    "extra-traits",
+    "full",
+    "visit",
+    "visit-mut",
+    "fold",
+] }
 tracing = { version = "0.1", default-features = false, features = ["log"] }
 
 [dev-dependencies]
+indoc             = "2.0.6"
 pretty_assertions = { version = "0.7" }
-sea-orm = { path = "../", default-features = false, features = ["macros"] }
+sea-orm           = { path = "../", default-features = false, features = ["macros"] }

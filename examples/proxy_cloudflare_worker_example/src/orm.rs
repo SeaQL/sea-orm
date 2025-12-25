@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use std::{collections::BTreeMap, sync::Arc};
 use wasm_bindgen::JsValue;
 
@@ -6,7 +6,7 @@ use sea_orm::{
     ConnectionTrait, Database, DatabaseConnection, DbBackend, DbErr, ProxyDatabaseTrait,
     ProxyExecResult, ProxyRow, RuntimeErr, Schema, Statement, Value, Values,
 };
-use worker::{console_log, Env};
+use worker::{Env, console_log};
 
 struct ProxyDb {
     env: Arc<Env>,

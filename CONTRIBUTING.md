@@ -104,3 +104,13 @@ Or, you install `sea-orm-cli` from GitHub:
 ```sh
 cargo install sea-orm-cli --force --git https://github.com/SeaQL/sea-orm --branch <GIT_BRANCH>
 ```
+
+### TOML formatting 
+
+We use `taplo` to format and lint TOML files across the repository.
+
+```sh
+cargo install --locked taplo-cli
+taplo fmt --check 
+```
+

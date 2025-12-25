@@ -9,16 +9,16 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Baker::Table)
-                    .col(pk_auto(Baker::Id))
-                    .col(string(Baker::Name))
-                    .col(string(Baker::Contact))
-                    .col(integer_null(Baker::BakeryId))
+                    .table("baker")
+                    .col(pk_auto("id"))
+                    .col(string("name"))
+                    .col(string("contact"))
+                    .col(integer_null("bakery_id"))
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-baker-bakery_id")
-                            .from(Baker::Table, Baker::BakeryId)
-                            .to(Bakery::Table, Bakery::Id)
+                            .from("baker", "bakery_id")
+                            .to("bakery", "id")
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )
@@ -29,22 +29,7 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Baker::Table).to_owned())
+            .drop_table(Table::drop().table("baker").to_owned())
             .await
     }
-}
-
-#[derive(DeriveIden)]
-enum Baker {
-    Table,
-    Id,
-    Name,
-    Contact,
-    BakeryId,
-}
-
-#[derive(DeriveIden)]
-enum Bakery {
-    Table,
-    Id,
 }

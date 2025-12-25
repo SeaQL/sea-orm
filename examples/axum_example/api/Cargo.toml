@@ -1,22 +1,39 @@
 [package]
-name = "axum-example-api"
-version = "0.1.0"
-authors = ["Yoshiera Huang <huangjasper@126.com>"]
-edition = "2021"
-publish = false
+authors      = ["Yoshiera Huang <huangjasper@126.com>"]
+edition      = "2024"
+name         = "axum-example-api"
+publish      = false
+rust-version = "1.85.0"
+version      = "0.1.0"
 
 [dependencies]
-axum-example-service = { path = "../service" }
-tokio = { version = "1.34.0", features = ["full"] }
-axum = "0.8"
-tower = "0.5"
-tower-http = { version = "0.6", features = ["fs"] }
-tower-cookies = "0.11"
-anyhow = "1.0.75"
-dotenvy = "0.15.7"
-serde = "1.0.193"
-serde_json = "1.0.108"
-tera = "1.19.1"
+anyhow             = "1.0.75"
+axum               = "0.8"
+dotenvy            = "0.15.7"
+entity             = { path = "../entity" }
+migration          = { path = "../migration" }
+serde              = "1.0.193"
+serde_json         = "1.0.108"
+tera               = "1.19.1"
+tokio              = { version = "1.34.0", features = ["full"] }
+tower              = "0.5"
+tower-cookies      = "0.11"
+tower-http         = { version = "0.6", features = ["fs"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-entity = { path = "../entity" }
-migration = { path = "../migration" }
+
+[dependencies.sea-orm]
+features = [
+    "debug-print",
+    "runtime-tokio-native-tls",
+    "sqlx-postgres",
+    # "sqlx-mysql",
+    # "sqlx-sqlite",
+]
+path = "../../../" # remove this line in your own project
+version = "~2.0.0-rc.22" # sea-orm version
+
+[dev-dependencies]
+axum-example-api = { path = ".", features = ["sqlite"] }
+
+[features]
+sqlite = ["sea-orm/sqlx-sqlite"]

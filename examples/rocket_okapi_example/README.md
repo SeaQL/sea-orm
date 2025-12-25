@@ -2,7 +2,7 @@
 
 1. Modify the `url` var in `api/Rocket.toml` to point to your chosen database (or leave it as-is to use in-memory SQLite)
 
-1. If not using the SQLite DB: turn on the appropriate database feature for your chosen db in `service/Cargo.toml` (the `"sqlx-postgres",` line)
+1. If not using the SQLite DB: turn on the appropriate database feature for your chosen db in `api/Cargo.toml` (the `"sqlx-postgres",` line)
 
 1. Execute `cargo run` to start the server
 

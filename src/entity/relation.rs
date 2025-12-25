@@ -1,13 +1,15 @@
-use crate::{unpack_table_ref, EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select};
+use crate::{
+    EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select, join_tbl_on_condition,
+};
 use core::marker::PhantomData;
 use sea_query::{
-    Alias, Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoIden, JoinType, SeaRc,
+    Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoIden, JoinType,
     TableForeignKey, TableRef,
 };
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Arc};
 
 /// Defines the type of relationship
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum RelationType {
     /// An Entity has one relationship
     HasOne,
@@ -21,19 +23,24 @@ pub type ForeignKeyAction = sea_query::ForeignKeyAction;
 
 /// Defines the relations of an Entity
 pub trait RelationTrait: Iterable + Debug + 'static {
-    /// The method to call
+    /// Creates a [`RelationDef`]
     fn def(&self) -> RelationDef;
+
+    /// Name of the relation enum
+    fn name(&self) -> String {
+        format!("{self:?}")
+    }
 }
 
-/// Checks if Entities are related
+/// A trait to relate two Entities for them to be joined in queries
 pub trait Related<R>
 where
     R: EntityTrait,
 {
-    /// Check if an entity is related to another entity
+    /// The RelationDef to the related Entity
     fn to() -> RelationDef;
 
-    /// Check if an entity is related through another entity
+    /// The RelationDef to the junction table, if any
     fn via() -> Option<RelationDef> {
         None
     }
@@ -44,13 +51,31 @@ where
     }
 }
 
+/// A trait to relate an Entity to itself through a junction table
+pub trait RelatedSelfVia<R>
+where
+    R: EntityTrait,
+{
+    /// The RelationDef to the related Entity
+    fn to() -> RelationDef;
+
+    /// The RelationDef to the junction table
+    fn via() -> RelationDef;
+
+    /// Find related Entities
+    fn find_related() -> Select<R> {
+        Select::<R>::new().join_join_rev(JoinType::InnerJoin, Self::to(), Some(Self::via()))
+    }
+}
+
 /// Defines a relationship
+#[derive(derive_more::Debug, Clone)]
 pub struct RelationDef {
     /// The type of relationship defined in [RelationType]
     pub rel_type: RelationType,
     /// Reference from another Entity
     pub from_tbl: TableRef,
-    /// Reference to another ENtity
+    /// Reference to another Entity
     pub to_tbl: TableRef,
     /// Reference to from a Column
     pub from_col: Identity,
@@ -58,6 +83,8 @@ pub struct RelationDef {
     pub to_col: Identity,
     /// Defines the owner of the Relation
     pub is_owner: bool,
+    /// Specifies if the foreign key should be skipped
+    pub skip_fk: bool,
     /// Defines an operation to be performed on a Foreign Key when a
     /// `DELETE` Operation is performed
     pub on_delete: Option<ForeignKeyAction>,
@@ -65,50 +92,77 @@ pub struct RelationDef {
     /// `UPDATE` Operation is performed
     pub on_update: Option<ForeignKeyAction>,
     /// Custom join ON condition
-    pub on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
+    #[debug("{}", on_condition.is_some())]
+    pub on_condition: Option<Arc<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
     /// The name of foreign key constraint
     pub fk_name: Option<String>,
     /// Condition type of join on expression
     pub condition_type: ConditionType,
 }
 
-impl std::fmt::Debug for RelationDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut d = f.debug_struct("RelationDef");
-        d.field("rel_type", &self.rel_type)
-            .field("from_tbl", &self.from_tbl)
-            .field("to_tbl", &self.to_tbl)
-            .field("from_col", &self.from_col)
-            .field("to_col", &self.to_col)
-            .field("is_owner", &self.is_owner)
-            .field("on_delete", &self.on_delete)
-            .field("on_update", &self.on_update);
-        debug_on_condition(&mut d, &self.on_condition);
-        d.field("fk_name", &self.fk_name).finish()
-    }
-}
+/// Idiomatically generate the join condition.
+///
+/// This allows using [RelationDef] directly where [`sea_query`] expects an [`IntoCondition`].
+///
+/// ## Examples
+///
+/// ```
+/// use sea_orm::tests_cfg::{cake, fruit};
+/// use sea_orm::{entity::*, sea_query::*};
+///
+/// let query = Query::select()
+///     .from(fruit::Entity)
+///     .inner_join(cake::Entity, fruit::Relation::Cake.def())
+///     .to_owned();
+///
+/// assert_eq!(
+///     query.to_string(MysqlQueryBuilder),
+///     r#"SELECT  FROM `fruit` INNER JOIN `cake` ON `fruit`.`cake_id` = `cake`.`id`"#
+/// );
+/// assert_eq!(
+///     query.to_string(PostgresQueryBuilder),
+///     r#"SELECT  FROM "fruit" INNER JOIN "cake" ON "fruit"."cake_id" = "cake"."id""#
+/// );
+/// assert_eq!(
+///     query.to_string(SqliteQueryBuilder),
+///     r#"SELECT  FROM "fruit" INNER JOIN "cake" ON "fruit"."cake_id" = "cake"."id""#
+/// );
+/// ```
+impl From<RelationDef> for Condition {
+    fn from(mut rel: RelationDef) -> Condition {
+        // Use table alias (if any) to construct the join condition
+        let from_tbl = match rel.from_tbl.sea_orm_table_alias() {
+            Some(alias) => alias,
+            None => rel.from_tbl.sea_orm_table(),
+        };
+        let to_tbl = match rel.to_tbl.sea_orm_table_alias() {
+            Some(alias) => alias,
+            None => rel.to_tbl.sea_orm_table(),
+        };
+        let owner_keys = rel.from_col;
+        let foreign_keys = rel.to_col;
 
-fn debug_on_condition(
-    d: &mut core::fmt::DebugStruct<'_, '_>,
-    on_condition: &Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
-) {
-    match on_condition {
-        Some(func) => {
-            d.field(
-                "on_condition",
-                &func(
-                    SeaRc::new(Alias::new("left")),
-                    SeaRc::new(Alias::new("right")),
-                ),
-            );
+        let mut condition = match rel.condition_type {
+            ConditionType::All => Condition::all(),
+            ConditionType::Any => Condition::any(),
+        };
+
+        condition = condition.add(join_tbl_on_condition(
+            from_tbl.clone(),
+            to_tbl.clone(),
+            owner_keys,
+            foreign_keys,
+        ));
+        if let Some(f) = rel.on_condition.take() {
+            condition = condition.add(f(from_tbl.clone(), to_tbl.clone()));
         }
-        None => {
-            d.field("on_condition", &Option::<Condition>::None);
-        }
+
+        condition
     }
 }
 
 /// Defines a helper to build a relation
+#[derive(derive_more::Debug)]
 pub struct RelationBuilder<E, R>
 where
     E: EntityTrait,
@@ -121,32 +175,13 @@ where
     from_col: Option<Identity>,
     to_col: Option<Identity>,
     is_owner: bool,
+    skip_fk: bool,
     on_delete: Option<ForeignKeyAction>,
     on_update: Option<ForeignKeyAction>,
-    on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
+    #[debug("{}", on_condition.is_some())]
+    on_condition: Option<Arc<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
     fk_name: Option<String>,
     condition_type: ConditionType,
-}
-
-impl<E, R> std::fmt::Debug for RelationBuilder<E, R>
-where
-    E: EntityTrait,
-    R: EntityTrait,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut d = f.debug_struct("RelationBuilder");
-        d.field("entities", &self.entities)
-            .field("rel_type", &self.rel_type)
-            .field("from_tbl", &self.from_tbl)
-            .field("to_tbl", &self.to_tbl)
-            .field("from_col", &self.from_col)
-            .field("to_col", &self.to_col)
-            .field("is_owner", &self.is_owner)
-            .field("on_delete", &self.on_delete)
-            .field("on_update", &self.on_update);
-        debug_on_condition(&mut d, &self.on_condition);
-        d.field("fk_name", &self.fk_name).finish()
-    }
 }
 
 impl RelationDef {
@@ -159,6 +194,7 @@ impl RelationDef {
             from_col: self.to_col,
             to_col: self.from_col,
             is_owner: !self.is_owner,
+            skip_fk: self.skip_fk,
             on_delete: self.on_delete,
             on_update: self.on_update,
             on_condition: self.on_condition,
@@ -179,14 +215,14 @@ impl RelationDef {
     ///
     /// ```
     /// use sea_orm::{
+    ///     DbBackend,
     ///     entity::*,
     ///     query::*,
     ///     tests_cfg::{cake, cake_filling},
-    ///     DbBackend,
     /// };
     /// use sea_query::Alias;
     ///
-    /// let cf = Alias::new("cf");
+    /// let cf = "cf";
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -228,7 +264,7 @@ impl RelationDef {
     ///
     /// ```
     /// use sea_orm::{entity::*, query::*, DbBackend, tests_cfg::{cake, cake_filling}};
-    /// use sea_query::{Expr, IntoCondition};
+    /// use sea_query::{Expr, ExprTrait, IntoCondition};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -256,7 +292,7 @@ impl RelationDef {
     where
         F: Fn(DynIden, DynIden) -> Condition + 'static + Send + Sync,
     {
-        self.on_condition = Some(Box::new(f));
+        self.on_condition = Some(Arc::new(f));
         self
     }
 
@@ -266,7 +302,7 @@ impl RelationDef {
     ///
     /// ```
     /// use sea_orm::{entity::*, query::*, DbBackend, tests_cfg::{cake, cake_filling}};
-    /// use sea_query::{Expr, IntoCondition, ConditionType};
+    /// use sea_query::{Expr, ExprTrait, IntoCondition, ConditionType};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -311,6 +347,7 @@ where
             from_col: None,
             to_col: None,
             is_owner,
+            skip_fk: false,
             on_delete: None,
             on_update: None,
             on_condition: None,
@@ -328,6 +365,7 @@ where
             from_col: Some(rel.from_col),
             to_col: Some(rel.to_col),
             is_owner,
+            skip_fk: false,
             on_delete: None,
             on_update: None,
             on_condition: None,
@@ -354,6 +392,12 @@ where
         self
     }
 
+    /// Force the foreign key to not be created
+    pub fn skip_fk(mut self) -> Self {
+        self.skip_fk = true;
+        self
+    }
+
     /// An operation to perform on a foreign key when a delete operation occurs
     pub fn on_delete(mut self, action: ForeignKeyAction) -> Self {
         self.on_delete = Some(action);
@@ -374,7 +418,7 @@ where
     where
         F: Fn(DynIden, DynIden) -> Condition + 'static + Send + Sync,
     {
-        self.on_condition = Some(Box::new(f));
+        self.on_condition = Some(Arc::new(f));
         self
     }
 
@@ -404,6 +448,7 @@ where
             from_col: b.from_col.expect("Reference column is not set"),
             to_col: b.to_col.expect("Owner column is not set"),
             is_owner: b.is_owner,
+            skip_fk: b.skip_fk,
             on_delete: b.on_delete,
             on_update: b.on_update,
             on_condition: b.on_condition,
@@ -436,7 +481,7 @@ macro_rules! set_foreign_key_stmt {
         let name = if let Some(name) = $relation.fk_name {
             name
         } else {
-            let from_tbl = unpack_table_ref(&$relation.from_tbl);
+            let from_tbl = &$relation.from_tbl.sea_orm_table().clone();
             format!("fk-{}-{}", from_tbl.to_string(), from_cols.join("-"))
         };
         $foreign_key.name(&name);
@@ -448,33 +493,34 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
         let mut foreign_key_stmt = Self::new();
         set_foreign_key_stmt!(relation, foreign_key_stmt);
         foreign_key_stmt
-            .from_tbl(unpack_table_ref(&relation.from_tbl))
-            .to_tbl(unpack_table_ref(&relation.to_tbl))
+            .from_tbl(relation.from_tbl)
+            .to_tbl(relation.to_tbl)
             .take()
     }
 }
 
 /// Creates a column definition for example to update a table.
 /// ```
-/// use sea_query::{Alias, IntoIden, MysqlQueryBuilder, TableAlterStatement, TableRef, ConditionType};
+/// use sea_query::{Alias, IntoIden, MysqlQueryBuilder, TableAlterStatement, IntoTableRef, ConditionType};
 /// use sea_orm::{EnumIter, Iden, Identity, PrimaryKeyTrait, RelationDef, RelationTrait, RelationType};
 ///
 /// let relation = RelationDef {
 ///     rel_type: RelationType::HasOne,
-///     from_tbl: TableRef::Table(Alias::new("foo").into_iden()),
-///     to_tbl: TableRef::Table(Alias::new("bar").into_iden()),
-///     from_col: Identity::Unary(Alias::new("bar_id").into_iden()),
-///     to_col: Identity::Unary(Alias::new("bar_id").into_iden()),
+///     from_tbl: "foo".into_table_ref(),
+///     to_tbl: "bar".into_table_ref(),
+///     from_col: Identity::Unary("bar_id".into_iden()),
+///     to_col: Identity::Unary("bar_id".into_iden()),
 ///     is_owner: false,
 ///     on_delete: None,
 ///     on_update: None,
 ///     on_condition: None,
 ///     fk_name: Some("foo-bar".to_string()),
+///     skip_fk: false,
 ///     condition_type: ConditionType::All,
 /// };
 ///
 /// let mut alter_table = TableAlterStatement::new()
-///     .table(TableRef::Table(Alias::new("foo").into_iden()))
+///     .table("foo")
 ///     .add_foreign_key(&mut relation.into()).take();
 /// assert_eq!(
 ///     alter_table.to_string(MysqlQueryBuilder::default()),
@@ -486,19 +532,44 @@ impl From<RelationDef> for TableForeignKey {
         let mut foreign_key = Self::new();
         set_foreign_key_stmt!(relation, foreign_key);
         foreign_key
-            .from_tbl(unpack_table_ref(&relation.from_tbl))
-            .to_tbl(unpack_table_ref(&relation.to_tbl))
+            .from_tbl(relation.from_tbl.sea_orm_table().clone())
+            .to_tbl(relation.to_tbl.sea_orm_table().clone())
             .take()
     }
 }
 
+impl std::hash::Hash for RelationDef {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.rel_type.hash(state);
+        self.from_tbl.sea_orm_table().hash(state);
+        self.to_tbl.sea_orm_table().hash(state);
+        self.from_col.hash(state);
+        self.to_col.hash(state);
+        self.is_owner.hash(state);
+    }
+}
+
+impl PartialEq for RelationDef {
+    fn eq(&self, other: &Self) -> bool {
+        self.rel_type.eq(&other.rel_type)
+            && self.from_tbl.eq(&other.from_tbl)
+            && self.to_tbl.eq(&other.to_tbl)
+            && itertools::equal(self.from_col.iter(), other.from_col.iter())
+            && itertools::equal(self.to_col.iter(), other.to_col.iter())
+            && self.is_owner.eq(&other.is_owner)
+    }
+}
+
+impl Eq for RelationDef {}
+
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests_cfg::{cake, fruit},
         RelationBuilder, RelationDef,
+        tests_cfg::{cake, fruit},
     };
 
+    #[cfg(not(feature = "sync"))]
     #[test]
     fn assert_relation_traits() {
         fn assert_send_sync<T: Send + Sync>() {}

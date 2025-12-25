@@ -2,9 +2,9 @@
 
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
@@ -68,6 +68,15 @@ pub async fn insert_json_string_vec_derive(db: &DatabaseConnection) -> Result<()
         .await?;
 
     assert_eq!(model, Some(json_vec));
+
+    let result = json_vec_derive::json_string_vec::ActiveModel {
+        id: NotSet,
+        str_vec: Set(None),
+    }
+    .insert(db)
+    .await?;
+
+    assert_eq!(result.str_vec, None);
 
     Ok(())
 }

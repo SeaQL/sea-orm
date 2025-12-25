@@ -14,7 +14,7 @@ struct DatabaseAttribute {
 }
 
 pub fn derive_database(input: TokenStream) -> TokenStream {
-    DeriveGenerator::build_for(input, quote!(impl sea_orm_rocket::Database))
+    DeriveGenerator::build_for(input, quote!(impl rocket_db_pools::Database))
         .support(Support::TupleStruct)
         .validator(ValidatorBuild::new().struct_validate(|_, s| {
             if s.fields.len() == 1 {
@@ -31,7 +31,7 @@ pub fn derive_database(input: TokenStream) -> TokenStream {
 
             let decorated_type = &s.ident;
             let db_ty = quote_spanned!(decorated_type.span() =>
-                <#decorated_type as sea_orm_rocket::Database>
+                <#decorated_type as rocket_db_pools::Database>
             );
 
             quote_spanned! { decorated_type.span() =>
@@ -95,8 +95,8 @@ pub fn derive_database(input: TokenStream) -> TokenStream {
 
                 const NAME: &'static str = #db_name;
 
-                fn init() -> sea_orm_rocket::Initializer<Self> {
-                    sea_orm_rocket::Initializer::with_name(#fairing_name)
+                fn init() -> rocket_db_pools::Initializer<Self> {
+                    rocket_db_pools::Initializer::with_name(#fairing_name)
                 }
             })
         }))

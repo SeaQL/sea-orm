@@ -1,13 +1,11 @@
-use std::env;
+pub mod service;
 
 use entity::post;
 use migration::{Migrator, MigratorTrait};
 use salvo::affix;
 use salvo::prelude::*;
-use salvo_example_service::{
-    sea_orm::{Database, DatabaseConnection},
-    Mutation, Query,
-};
+use sea_orm::{Database, DatabaseConnection};
+use service::{Mutation, Query};
 use tera::Tera;
 
 const DEFAULT_POSTS_PER_PAGE: u64 = 5;
@@ -142,14 +140,13 @@ async fn delete(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
 
 #[tokio::main]
 pub async fn main() {
-    std::env::set_var("RUST_LOG", "debug");
     tracing_subscriber::fmt::init();
 
     // get env vars
     dotenvy::dotenv().ok();
-    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
-    let host = env::var("HOST").expect("HOST is not set in .env file");
-    let port = env::var("PORT").expect("PORT is not set in .env file");
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
+    let host = std::env::var("HOST").expect("HOST is not set in .env file");
+    let port = std::env::var("PORT").expect("PORT is not set in .env file");
     let server_url = format!("{host}:{port}");
 
     // create post table if not exists

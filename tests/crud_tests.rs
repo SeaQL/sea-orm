@@ -3,14 +3,15 @@
 pub mod common;
 mod crud;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, setup::*};
 pub use crud::*;
 use sea_orm::DatabaseConnection;
 
 // Run the test locally:
-// DATABASE_URL="sqlite::memory:" cargo test --features sqlx-sqlite,runtime-async-std-native-tls --test crud_tests
-// DATABASE_URL="mysql://root:root@localhost" cargo test --features sqlx-mysql,runtime-async-std-native-tls --test crud_tests
-// DATABASE_URL="postgres://root:root@localhost" cargo test --features sqlx-postgres,runtime-async-std-native-tls --test crud_tests
+// DATABASE_URL="sqlite::memory:" cargo test --features rusqlite --test crud_tests
+// DATABASE_URL="sqlite::memory:" cargo test --features sqlx-sqlite,runtime-tokio --test crud_tests
+// DATABASE_URL="mysql://root:root@localhost" cargo test --features sqlx-mysql,runtime-tokio-native-tls --test crud_tests
+// DATABASE_URL="postgres://sea:sea@localhost" cargo test --features sqlx-postgres,runtime-tokio-native-tls --test crud_tests
 #[sea_orm_macros::test]
 async fn main() {
     let ctx = TestContext::new("bakery_chain_schema_crud_tests").await;

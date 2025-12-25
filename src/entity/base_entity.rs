@@ -1,16 +1,17 @@
 use crate::{
     ActiveModelBehavior, ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne,
-    FromQueryResult, Insert, ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related,
-    RelationBuilder, RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
+    FromQueryResult, Identity, Insert, InsertMany, ModelTrait, PrimaryKeyArity, PrimaryKeyToColumn,
+    PrimaryKeyTrait, QueryFilter, Related, RelationBuilder, RelationTrait, RelationType, Select,
+    Update, UpdateMany, UpdateOne, ValidatedDeleteOne,
 };
-use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
+use sea_query::{Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 use std::fmt::Debug;
 pub use strum::IntoEnumIterator as Iterable;
 
 /// Ensure the identifier for an Entity can be converted to a static str
-pub trait IdenStatic: Iden + Copy + Debug + 'static {
+pub trait IdenStatic: Iden + Copy + Debug + Send + Sync + 'static {
     /// Method to call to get the static string identity
-    fn as_str(&self) -> &str;
+    fn as_str(&self) -> &'static str;
 }
 
 /// A Trait for mapping an Entity to a database table
@@ -26,17 +27,12 @@ pub trait EntityName: IdenStatic + Default {
     }
 
     /// Get the name of the table
-    fn table_name(&self) -> &str;
-
-    /// Get the name of the module from the invoking `self.table_name()`
-    fn module_name(&self) -> &str {
-        self.table_name()
-    }
+    fn table_name(&self) -> &'static str;
 
     /// Get the [TableRef] from invoking the `self.schema_name()`
     fn table_ref(&self) -> TableRef {
         match self.schema_name() {
-            Some(schema) => (Alias::new(schema).into_iden(), self.into_iden()).into_table_ref(),
+            Some(schema) => (schema.to_owned(), self.into_iden()).into_table_ref(),
             None => self.into_table_ref(),
         }
     }
@@ -59,7 +55,13 @@ pub trait EntityTrait: EntityName {
     type Model: ModelTrait<Entity = Self> + FromQueryResult;
 
     #[allow(missing_docs)]
+    type ModelEx: ModelTrait<Entity = Self>;
+
+    #[allow(missing_docs)]
     type ActiveModel: ActiveModelBehavior<Entity = Self>;
+
+    #[allow(missing_docs)]
+    type ActiveModelEx: ActiveModelTrait<Entity = Self>;
 
     #[allow(missing_docs)]
     type Column: ColumnTrait;
@@ -70,7 +72,8 @@ pub trait EntityTrait: EntityName {
     #[allow(missing_docs)]
     type PrimaryKey: PrimaryKeyTrait + PrimaryKeyToColumn<Column = Self::Column>;
 
-    /// Construct a belongs to relation
+    /// Construct a belongs to relation, where this table has a foreign key to
+    /// another table.
     fn belongs_to<R>(related: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait,
@@ -92,6 +95,16 @@ pub trait EntityTrait: EntityName {
         R: EntityTrait + Related<Self>,
     {
         RelationBuilder::from_rel(RelationType::HasMany, R::to().rev(), true)
+    }
+
+    /// Construct a has many relation, with the Relation provided.
+    /// This is for the case where `Related<Self>` is not possible.
+    fn has_many_via<R, T>(_: R, rel: T) -> RelationBuilder<Self, R>
+    where
+        R: EntityTrait,
+        T: RelationTrait,
+    {
+        RelationBuilder::from_rel(RelationType::HasMany, rel.def().rev(), true)
     }
 
     /// Construct select statement to find one / all models
@@ -175,6 +188,18 @@ pub trait EntityTrait: EntityName {
     /// ```
     fn find() -> Select<Self> {
         Select::new()
+    }
+
+    /// Same as `find_related`, but using the other Entity's relation definition.
+    /// Not stable.
+    #[doc(hidden)]
+    fn find_related_rev<R>() -> Select<R>
+    where
+        R: EntityTrait,
+        R: Related<Self>,
+    {
+        use crate::{JoinType, QuerySelect};
+        Select::<R>::new().join_join(JoinType::InnerJoin, R::to(), R::via())
     }
 
     /// Find a model by primary key
@@ -264,10 +289,6 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// Panics if arity of input values don't match arity of primary key
     fn find_by_id<T>(values: T) -> Select<Self>
     where
         T: Into<<Self::PrimaryKey as PrimaryKeyTrait>::ValueType>,
@@ -279,13 +300,49 @@ pub trait EntityTrait: EntityName {
                 let col = key.into_column();
                 select = select.filter(col.eq(v));
             } else {
-                panic!("primary key arity mismatch");
+                unreachable!("primary key arity mismatch");
             }
         }
-        if keys.next().is_some() {
-            panic!("primary key arity mismatch");
-        }
         select
+    }
+
+    /// Get primary key as Identity
+    fn primary_key_identity() -> Identity {
+        let mut cols = Self::PrimaryKey::iter();
+        macro_rules! next {
+            () => {
+                cols.next()
+                    .expect("Already checked arity")
+                    .into_column()
+                    .as_column_ref()
+                    .1
+            };
+        }
+        match <<Self::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY {
+            1 => {
+                let s1 = next!();
+                Identity::Unary(s1)
+            }
+            2 => {
+                let s1 = next!();
+                let s2 = next!();
+                Identity::Binary(s1, s2)
+            }
+            3 => {
+                let s1 = next!();
+                let s2 = next!();
+                let s3 = next!();
+                Identity::Ternary(s1, s2, s3)
+            }
+            len => {
+                let mut vec = Vec::with_capacity(len);
+                for _ in 0..len {
+                    let s = next!();
+                    vec.push(s);
+                }
+                Identity::Many(vec)
+            }
+        }
     }
 
     /// Insert a model into database
@@ -447,9 +504,15 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
+    /// let insert_result = cake::Entity::insert_many::<cake::ActiveModel, _>([])
+    ///     .exec(&db)
+    ///     .await?;
+    ///
+    /// assert_eq!(insert_result.last_insert_id, None);
+    ///
     /// let insert_result = cake::Entity::insert_many([apple, orange]).exec(&db).await?;
     ///
-    /// assert_eq!(insert_result.last_insert_id, 28);
+    /// assert_eq!(insert_result.last_insert_id, Some(28));
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -495,7 +558,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// let insert_result = cake::Entity::insert_many([apple, orange]).exec(&db).await?;
     ///
-    /// assert_eq!(insert_result.last_insert_id, 28);
+    /// assert_eq!(insert_result.last_insert_id, Some(28));
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -516,10 +579,10 @@ pub trait EntityTrait: EntityName {
     ///
     /// ```
     /// use sea_orm::{
+    ///     DbBackend,
     ///     entity::*,
     ///     query::*,
     ///     tests_cfg::{cake, cake_filling},
-    ///     DbBackend,
     /// };
     ///
     /// assert_eq!(
@@ -589,7 +652,7 @@ pub trait EntityTrait: EntityName {
     ///             name: Set("Choco Pie".to_owned()),
     ///         },
     ///     ])
-    ///     .exec_with_returning_many(&db)
+    ///     .exec_with_returning(&db)
     ///     .await?,
     ///     [
     ///         cake::Model {
@@ -611,12 +674,12 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
-    fn insert_many<A, I>(models: I) -> Insert<A>
+    fn insert_many<A, I>(models: I) -> InsertMany<A>
     where
         A: ActiveModelTrait<Entity = Self>,
         I: IntoIterator<Item = A>,
     {
-        Insert::many(models)
+        InsertMany::many(models)
     }
 
     /// Update a model in database
@@ -652,6 +715,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     fruit::Entity::update(orange.clone())
+    ///         .validate()?
     ///         .filter(fruit::Column::Name.contains("orange"))
     ///         .exec(&db)
     ///         .await?,
@@ -709,6 +773,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     fruit::Entity::update(orange.clone())
+    ///         .validate()?
     ///         .filter(fruit::Column::Name.contains("orange"))
     ///         .exec(&db)
     ///         .await?,
@@ -841,7 +906,7 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
-    fn delete<A>(model: A) -> DeleteOne<A>
+    fn delete<A>(model: A) -> DeleteOne<Self>
     where
         A: ActiveModelTrait<Entity = Self>,
     {
@@ -974,28 +1039,21 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// Panics if arity of input values don't match arity of primary key
-    fn delete_by_id<T>(values: T) -> DeleteMany<Self>
+    fn delete_by_id<T>(values: T) -> ValidatedDeleteOne<Self>
     where
         T: Into<<Self::PrimaryKey as PrimaryKeyTrait>::ValueType>,
     {
-        let mut delete = Self::delete_many();
+        let mut am = Self::ActiveModel::default();
         let mut keys = Self::PrimaryKey::iter();
         for v in values.into().into_value_tuple() {
             if let Some(key) = keys.next() {
                 let col = key.into_column();
-                delete = delete.filter(col.eq(v));
+                am.set(col, v);
             } else {
-                panic!("primary key arity mismatch");
+                unreachable!("primary key arity mismatch");
             }
         }
-        if keys.next().is_some() {
-            panic!("primary key arity mismatch");
-        }
-        delete
+        Delete::one(am).validate().expect("Must be valid")
     }
 }
 
@@ -1004,7 +1062,7 @@ mod tests {
     #[test]
     fn test_delete_by_id_1() {
         use crate::tests_cfg::cake;
-        use crate::{entity::*, query::*, DbBackend};
+        use crate::{DbBackend, entity::*, query::*};
         assert_eq!(
             cake::Entity::delete_by_id(1)
                 .build(DbBackend::Sqlite)
@@ -1016,7 +1074,7 @@ mod tests {
     #[test]
     fn test_delete_by_id_2() {
         use crate::tests_cfg::cake_filling_price;
-        use crate::{entity::*, query::*, DbBackend};
+        use crate::{DbBackend, entity::*, query::*};
         assert_eq!(
             cake_filling_price::Entity::delete_by_id((1, 2))
                 .build(DbBackend::Sqlite)
@@ -1080,7 +1138,7 @@ mod tests {
     #[test]
     #[cfg(feature = "macros")]
     fn entity_model_3() {
-        use crate::{entity::*, query::*, DbBackend};
+        use crate::{DbBackend, entity::*, query::*};
         use std::borrow::Cow;
 
         mod hello {
@@ -1115,5 +1173,87 @@ mod tests {
         delete_by_id("UUID".to_string());
         delete_by_id("UUID");
         delete_by_id(Cow::from("UUID"));
+    }
+
+    #[smol_potat::test]
+    async fn test_find_by_id() {
+        use crate::tests_cfg::{cake, cake_filling};
+        use crate::{DbBackend, EntityTrait, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::MySql).into_connection();
+
+        cake::Entity::find_by_id(1).all(&db).await.ok();
+        cake_filling::Entity::find_by_id((2, 3)).all(&db).await.ok();
+
+        // below does not compile:
+
+        // cake::Entity::find_by_id((1, 2)).all(&db).await.ok();
+        // cake_filling::Entity::find_by_id(1).all(&db).await.ok();
+        // cake_filling::Entity::find_by_id((1, 2, 3))
+        //     .all(&db)
+        //     .await
+        //     .ok();
+    }
+
+    #[test]
+    fn test_triangle() {
+        mod triangle {
+            use crate as sea_orm;
+            use sea_orm::entity::prelude::*;
+            use serde::{Deserialize, Serialize};
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "triangle")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub p1: Point,
+                pub p2: Point,
+                pub p3: Point,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+
+            #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
+            pub struct Point {
+                pub x: f64,
+                pub y: f64,
+            }
+        }
+        use triangle::{Model as Triangle, Point};
+
+        impl Triangle {
+            fn area(&self) -> f64 {
+                let a = self.p1.distance_to(&self.p2);
+                let b = self.p2.distance_to(&self.p3);
+                let c = self.p3.distance_to(&self.p1);
+                let s = (a + b + c) / 2.0;
+                (s * (s - a) * (s - b) * (s - c)).sqrt()
+            }
+        }
+
+        impl Point {
+            fn distance_to(&self, p: &Point) -> f64 {
+                let dx = self.x - p.x;
+                let dy = self.y - p.y;
+                (dx * dx + dy * dy).sqrt()
+            }
+        }
+
+        assert!(
+            (Triangle {
+                id: 1,
+                p1: Point { x: 0., y: 0. },
+                p2: Point { x: 2., y: 0. },
+                p3: Point { x: 0., y: 2. },
+            }
+            .area()
+                - 2.)
+                .abs()
+                < 0.00000001
+        );
     }
 }
