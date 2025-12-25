@@ -106,7 +106,13 @@ pub async fn create_applog(db: &DatabaseConnection) -> Result<(), DbErr> {
         .await?;
 
     assert_eq!(log.id, res.last_insert_id);
-    assert_eq!(Applog::find().one(db).await?, Some(log.clone()));
+    let read_back = Applog::find().one(db).await?;
+    assert_eq!(read_back, Some(log.clone()));
+    #[cfg(all(not(feature = "sync"), feature = "sqlx-sqlite"))]
+    {
+        let read_back = read_back.unwrap();
+        assert_eq!(read_back.created_at.offset().local_minus_utc(), 8 * 60 * 60);
+    }
 
     #[cfg(all(not(feature = "sync"), feature = "sqlx-sqlite"))]
     assert_eq!(
