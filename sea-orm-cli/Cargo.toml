@@ -136,6 +136,9 @@ runtime-tokio-rustls = [
 
 [profile.release]
 codegen-units = 1
+lto           = true
+opt-level     = "s"
+panic         = "abort"
 strip         = true
 
 # This allows us to develop using an overridden version of sea-query
