@@ -52,7 +52,8 @@ impl EntityWriter {
         _impl_active_model_behavior: bool,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import_serde(with_serde);
-        imports.extend(Self::gen_import_active_enum(entity));
+        let active_enums = Self::gen_import_active_enum(entity);
+        imports.extend(active_enums.imports);
         imports.extend(Self::gen_import_frontend(entity, column_option));
         let code_blocks = vec![
             imports,
@@ -65,6 +66,7 @@ impl EntityWriter {
                 serde_skip_hidden_column,
                 model_extra_derives,
                 model_extra_attributes,
+                &active_enums.type_idents,
             ),
         ];
         code_blocks
@@ -80,9 +82,14 @@ impl EntityWriter {
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
+        active_enum_type_idents: &ActiveEnumTypeIdents,
     ) -> TokenStream {
         let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types(column_option);
+        let column_rs_types = Self::get_column_rs_types_with_enum_idents(
+            entity,
+            column_option,
+            active_enum_type_idents,
+        );
         let if_eq_needed = entity.get_eq_needed();
         let primary_keys: Vec<String> = entity
             .primary_keys
