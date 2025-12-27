@@ -715,6 +715,9 @@ pub mod query;
 pub mod rbac;
 /// Types that defines the schemas of an Entity
 pub mod schema;
+// Internal module for tracing spans
+#[cfg(feature = "tracing-spans")]
+pub(crate) mod tracing_spans;
 /// Helpers for working with Value
 pub mod value;
 

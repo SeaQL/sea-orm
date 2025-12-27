@@ -10,6 +10,8 @@ use futures_util::lock::Mutex;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::TransactionManager;
 use std::{future::Future, pin::Pin, sync::Arc};
+#[cfg(feature = "tracing-spans")]
+use tracing::Instrument;
 use tracing::instrument;
 
 /// Defines a database transaction, whether it is an open transaction and the type of
@@ -38,13 +40,17 @@ impl DatabaseTransaction {
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
     ) -> Result<DatabaseTransaction, DbErr> {
+        #[cfg(feature = "tracing-spans")]
+        let span = crate::db_span!("sea_orm.begin", backend, "BEGIN");
+
         let res = DatabaseTransaction {
             conn,
             backend,
             open: true,
             metric_callback,
         };
-        {
+
+        let begin_fut = async {
             #[cfg(not(feature = "sync"))]
             let conn = &mut *res.conn.lock().await;
             #[cfg(feature = "sync")]
@@ -104,9 +110,18 @@ impl DatabaseTransaction {
                 }
                 #[allow(unreachable_patterns)]
                 _ => Err(conn_err("Disconnected")),
-            }?
+            }
         };
 
+        #[cfg(feature = "tracing-spans")]
+        let begin_result = begin_fut.instrument(span.clone()).await;
+        #[cfg(not(feature = "tracing-spans"))]
+        let begin_result = begin_fut.await;
+
+        #[cfg(feature = "tracing-spans")]
+        crate::tracing_spans::record_query_result(&span, &begin_result);
+
+        begin_result?;
         Ok(res)
     }
 
@@ -137,45 +152,60 @@ impl DatabaseTransaction {
     #[instrument(level = "trace")]
     #[allow(unreachable_code, unused_mut)]
     pub async fn commit(mut self) -> Result<(), DbErr> {
-        #[cfg(not(feature = "sync"))]
-        let conn = &mut *self.conn.lock().await;
-        #[cfg(feature = "sync")]
-        let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+        #[cfg(feature = "tracing-spans")]
+        let span = crate::db_span!("sea_orm.commit", self.backend, "COMMIT");
 
-        match conn {
-            #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(c) => {
-                <sqlx::MySql as sqlx::Database>::TransactionManager::commit(c)
-                    .await
-                    .map_err(sqlx_error_to_query_err)
+        let commit_fut = async {
+            #[cfg(not(feature = "sync"))]
+            let conn = &mut *self.conn.lock().await;
+            #[cfg(feature = "sync")]
+            let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+
+            match conn {
+                #[cfg(feature = "sqlx-mysql")]
+                InnerConnection::MySql(c) => {
+                    <sqlx::MySql as sqlx::Database>::TransactionManager::commit(c)
+                        .await
+                        .map_err(sqlx_error_to_query_err)
+                }
+                #[cfg(feature = "sqlx-postgres")]
+                InnerConnection::Postgres(c) => {
+                    <sqlx::Postgres as sqlx::Database>::TransactionManager::commit(c)
+                        .await
+                        .map_err(sqlx_error_to_query_err)
+                }
+                #[cfg(feature = "sqlx-sqlite")]
+                InnerConnection::Sqlite(c) => {
+                    <sqlx::Sqlite as sqlx::Database>::TransactionManager::commit(c)
+                        .await
+                        .map_err(sqlx_error_to_query_err)
+                }
+                #[cfg(feature = "rusqlite")]
+                InnerConnection::Rusqlite(c) => c.commit(),
+                #[cfg(feature = "mock")]
+                InnerConnection::Mock(c) => {
+                    c.commit();
+                    Ok(())
+                }
+                #[cfg(feature = "proxy")]
+                InnerConnection::Proxy(c) => {
+                    c.commit().await;
+                    Ok(())
+                }
+                #[allow(unreachable_patterns)]
+                _ => Err(conn_err("Disconnected")),
             }
-            #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(c) => {
-                <sqlx::Postgres as sqlx::Database>::TransactionManager::commit(c)
-                    .await
-                    .map_err(sqlx_error_to_query_err)
-            }
-            #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(c) => {
-                <sqlx::Sqlite as sqlx::Database>::TransactionManager::commit(c)
-                    .await
-                    .map_err(sqlx_error_to_query_err)
-            }
-            #[cfg(feature = "rusqlite")]
-            InnerConnection::Rusqlite(c) => c.commit(),
-            #[cfg(feature = "mock")]
-            InnerConnection::Mock(c) => {
-                c.commit();
-                Ok(())
-            }
-            #[cfg(feature = "proxy")]
-            InnerConnection::Proxy(c) => {
-                c.commit().await;
-                Ok(())
-            }
-            #[allow(unreachable_patterns)]
-            _ => Err(conn_err("Disconnected")),
-        }?;
+        };
+
+        #[cfg(feature = "tracing-spans")]
+        let result = commit_fut.instrument(span.clone()).await;
+        #[cfg(not(feature = "tracing-spans"))]
+        let result = commit_fut.await;
+
+        #[cfg(feature = "tracing-spans")]
+        crate::tracing_spans::record_query_result(&span, &result);
+
+        result?;
         self.open = false; // read by start_rollback
         Ok(())
     }
@@ -184,45 +214,60 @@ impl DatabaseTransaction {
     #[instrument(level = "trace")]
     #[allow(unreachable_code, unused_mut)]
     pub async fn rollback(mut self) -> Result<(), DbErr> {
-        #[cfg(not(feature = "sync"))]
-        let conn = &mut *self.conn.lock().await;
-        #[cfg(feature = "sync")]
-        let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+        #[cfg(feature = "tracing-spans")]
+        let span = crate::db_span!("sea_orm.rollback", self.backend, "ROLLBACK");
 
-        match conn {
-            #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(c) => {
-                <sqlx::MySql as sqlx::Database>::TransactionManager::rollback(c)
-                    .await
-                    .map_err(sqlx_error_to_query_err)
+        let rollback_fut = async {
+            #[cfg(not(feature = "sync"))]
+            let conn = &mut *self.conn.lock().await;
+            #[cfg(feature = "sync")]
+            let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+
+            match conn {
+                #[cfg(feature = "sqlx-mysql")]
+                InnerConnection::MySql(c) => {
+                    <sqlx::MySql as sqlx::Database>::TransactionManager::rollback(c)
+                        .await
+                        .map_err(sqlx_error_to_query_err)
+                }
+                #[cfg(feature = "sqlx-postgres")]
+                InnerConnection::Postgres(c) => {
+                    <sqlx::Postgres as sqlx::Database>::TransactionManager::rollback(c)
+                        .await
+                        .map_err(sqlx_error_to_query_err)
+                }
+                #[cfg(feature = "sqlx-sqlite")]
+                InnerConnection::Sqlite(c) => {
+                    <sqlx::Sqlite as sqlx::Database>::TransactionManager::rollback(c)
+                        .await
+                        .map_err(sqlx_error_to_query_err)
+                }
+                #[cfg(feature = "rusqlite")]
+                InnerConnection::Rusqlite(c) => c.rollback(),
+                #[cfg(feature = "mock")]
+                InnerConnection::Mock(c) => {
+                    c.rollback();
+                    Ok(())
+                }
+                #[cfg(feature = "proxy")]
+                InnerConnection::Proxy(c) => {
+                    c.rollback().await;
+                    Ok(())
+                }
+                #[allow(unreachable_patterns)]
+                _ => Err(conn_err("Disconnected")),
             }
-            #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(c) => {
-                <sqlx::Postgres as sqlx::Database>::TransactionManager::rollback(c)
-                    .await
-                    .map_err(sqlx_error_to_query_err)
-            }
-            #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(c) => {
-                <sqlx::Sqlite as sqlx::Database>::TransactionManager::rollback(c)
-                    .await
-                    .map_err(sqlx_error_to_query_err)
-            }
-            #[cfg(feature = "rusqlite")]
-            InnerConnection::Rusqlite(c) => c.rollback(),
-            #[cfg(feature = "mock")]
-            InnerConnection::Mock(c) => {
-                c.rollback();
-                Ok(())
-            }
-            #[cfg(feature = "proxy")]
-            InnerConnection::Proxy(c) => {
-                c.rollback().await;
-                Ok(())
-            }
-            #[allow(unreachable_patterns)]
-            _ => Err(conn_err("Disconnected")),
-        }?;
+        };
+
+        #[cfg(feature = "tracing-spans")]
+        let result = rollback_fut.instrument(span.clone()).await;
+        #[cfg(not(feature = "tracing-spans"))]
+        let result = rollback_fut.await;
+
+        #[cfg(feature = "tracing-spans")]
+        crate::tracing_spans::record_query_result(&span, &result);
+
+        result?;
         self.open = false; // read by start_rollback
         Ok(())
     }
@@ -298,48 +343,65 @@ impl ConnectionTrait for DatabaseTransaction {
     async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
-        #[cfg(not(feature = "sync"))]
-        let conn = &mut *self.conn.lock().await;
-        #[cfg(feature = "sync")]
-        let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+        #[cfg(feature = "tracing-spans")]
+        let span = crate::db_span!("sea_orm.execute", self.backend, &stmt.sql);
+        #[cfg(feature = "tracing-spans")]
+        span.record("db.statement", stmt.sql.as_str());
 
-        match conn {
-            #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(conn) => {
-                let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
-                let conn: &mut sqlx::MySqlConnection = &mut *conn;
-                crate::metric::metric!(self.metric_callback, &stmt, {
-                    query.execute(conn).await.map(Into::into)
-                })
-                .map_err(sqlx_error_to_exec_err)
+        let fut = async {
+            #[cfg(not(feature = "sync"))]
+            let conn = &mut *self.conn.lock().await;
+            #[cfg(feature = "sync")]
+            let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+
+            match conn {
+                #[cfg(feature = "sqlx-mysql")]
+                InnerConnection::MySql(conn) => {
+                    let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
+                    let conn: &mut sqlx::MySqlConnection = &mut *conn;
+                    crate::metric::metric!(self.metric_callback, &stmt, {
+                        query.execute(conn).await.map(Into::into)
+                    })
+                    .map_err(sqlx_error_to_exec_err)
+                }
+                #[cfg(feature = "sqlx-postgres")]
+                InnerConnection::Postgres(conn) => {
+                    let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
+                    let conn: &mut sqlx::PgConnection = &mut *conn;
+                    crate::metric::metric!(self.metric_callback, &stmt, {
+                        query.execute(conn).await.map(Into::into)
+                    })
+                    .map_err(sqlx_error_to_exec_err)
+                }
+                #[cfg(feature = "sqlx-sqlite")]
+                InnerConnection::Sqlite(conn) => {
+                    let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
+                    let conn: &mut sqlx::SqliteConnection = &mut *conn;
+                    crate::metric::metric!(self.metric_callback, &stmt, {
+                        query.execute(conn).await.map(Into::into)
+                    })
+                    .map_err(sqlx_error_to_exec_err)
+                }
+                #[cfg(feature = "rusqlite")]
+                InnerConnection::Rusqlite(conn) => conn.execute(stmt, &self.metric_callback),
+                #[cfg(feature = "mock")]
+                InnerConnection::Mock(conn) => conn.execute(stmt),
+                #[cfg(feature = "proxy")]
+                InnerConnection::Proxy(conn) => conn.execute(stmt).await,
+                #[allow(unreachable_patterns)]
+                _ => Err(conn_err("Disconnected")),
             }
-            #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(conn) => {
-                let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
-                let conn: &mut sqlx::PgConnection = &mut *conn;
-                crate::metric::metric!(self.metric_callback, &stmt, {
-                    query.execute(conn).await.map(Into::into)
-                })
-                .map_err(sqlx_error_to_exec_err)
-            }
-            #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(conn) => {
-                let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
-                let conn: &mut sqlx::SqliteConnection = &mut *conn;
-                crate::metric::metric!(self.metric_callback, &stmt, {
-                    query.execute(conn).await.map(Into::into)
-                })
-                .map_err(sqlx_error_to_exec_err)
-            }
-            #[cfg(feature = "rusqlite")]
-            InnerConnection::Rusqlite(conn) => conn.execute(stmt, &self.metric_callback),
-            #[cfg(feature = "mock")]
-            InnerConnection::Mock(conn) => return conn.execute(stmt),
-            #[cfg(feature = "proxy")]
-            InnerConnection::Proxy(conn) => return conn.execute(stmt).await,
-            #[allow(unreachable_patterns)]
-            _ => Err(conn_err("Disconnected")),
-        }
+        };
+
+        #[cfg(feature = "tracing-spans")]
+        let result = fut.instrument(span.clone()).await;
+        #[cfg(not(feature = "tracing-spans"))]
+        let result = fut.await;
+
+        #[cfg(feature = "tracing-spans")]
+        crate::tracing_spans::record_query_result(&span, &result);
+
+        result
     }
 
     #[instrument(level = "trace")]
@@ -347,53 +409,69 @@ impl ConnectionTrait for DatabaseTransaction {
     async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug_print!("{}", sql);
 
-        #[cfg(not(feature = "sync"))]
-        let conn = &mut *self.conn.lock().await;
-        #[cfg(feature = "sync")]
-        let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+        // SQL passed for db.operation parsing, but db.statement not recorded (non-parameterized)
+        #[cfg(feature = "tracing-spans")]
+        let span = crate::db_span!("sea_orm.execute_unprepared", self.backend, sql);
 
-        match conn {
-            #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(conn) => {
-                let conn: &mut sqlx::MySqlConnection = &mut *conn;
-                sqlx::Executor::execute(conn, sql)
-                    .await
-                    .map(Into::into)
-                    .map_err(sqlx_error_to_exec_err)
+        let fut = async {
+            #[cfg(not(feature = "sync"))]
+            let conn = &mut *self.conn.lock().await;
+            #[cfg(feature = "sync")]
+            let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+
+            match conn {
+                #[cfg(feature = "sqlx-mysql")]
+                InnerConnection::MySql(conn) => {
+                    let conn: &mut sqlx::MySqlConnection = &mut *conn;
+                    sqlx::Executor::execute(conn, sql)
+                        .await
+                        .map(Into::into)
+                        .map_err(sqlx_error_to_exec_err)
+                }
+                #[cfg(feature = "sqlx-postgres")]
+                InnerConnection::Postgres(conn) => {
+                    let conn: &mut sqlx::PgConnection = &mut *conn;
+                    sqlx::Executor::execute(conn, sql)
+                        .await
+                        .map(Into::into)
+                        .map_err(sqlx_error_to_exec_err)
+                }
+                #[cfg(feature = "sqlx-sqlite")]
+                InnerConnection::Sqlite(conn) => {
+                    let conn: &mut sqlx::SqliteConnection = &mut *conn;
+                    sqlx::Executor::execute(conn, sql)
+                        .await
+                        .map(Into::into)
+                        .map_err(sqlx_error_to_exec_err)
+                }
+                #[cfg(feature = "rusqlite")]
+                InnerConnection::Rusqlite(conn) => conn.execute_unprepared(sql),
+                #[cfg(feature = "mock")]
+                InnerConnection::Mock(conn) => {
+                    let db_backend = conn.get_database_backend();
+                    let stmt = Statement::from_string(db_backend, sql);
+                    conn.execute(stmt)
+                }
+                #[cfg(feature = "proxy")]
+                InnerConnection::Proxy(conn) => {
+                    let db_backend = conn.get_database_backend();
+                    let stmt = Statement::from_string(db_backend, sql);
+                    conn.execute(stmt).await
+                }
+                #[allow(unreachable_patterns)]
+                _ => Err(conn_err("Disconnected")),
             }
-            #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(conn) => {
-                let conn: &mut sqlx::PgConnection = &mut *conn;
-                sqlx::Executor::execute(conn, sql)
-                    .await
-                    .map(Into::into)
-                    .map_err(sqlx_error_to_exec_err)
-            }
-            #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(conn) => {
-                let conn: &mut sqlx::SqliteConnection = &mut *conn;
-                sqlx::Executor::execute(conn, sql)
-                    .await
-                    .map(Into::into)
-                    .map_err(sqlx_error_to_exec_err)
-            }
-            #[cfg(feature = "rusqlite")]
-            InnerConnection::Rusqlite(conn) => conn.execute_unprepared(sql),
-            #[cfg(feature = "mock")]
-            InnerConnection::Mock(conn) => {
-                let db_backend = conn.get_database_backend();
-                let stmt = Statement::from_string(db_backend, sql);
-                conn.execute(stmt)
-            }
-            #[cfg(feature = "proxy")]
-            InnerConnection::Proxy(conn) => {
-                let db_backend = conn.get_database_backend();
-                let stmt = Statement::from_string(db_backend, sql);
-                conn.execute(stmt).await
-            }
-            #[allow(unreachable_patterns)]
-            _ => Err(conn_err("Disconnected")),
-        }
+        };
+
+        #[cfg(feature = "tracing-spans")]
+        let result = fut.instrument(span.clone()).await;
+        #[cfg(not(feature = "tracing-spans"))]
+        let result = fut.await;
+
+        #[cfg(feature = "tracing-spans")]
+        crate::tracing_spans::record_query_result(&span, &result);
+
+        result
     }
 
     #[instrument(level = "trace")]
@@ -401,51 +479,68 @@ impl ConnectionTrait for DatabaseTransaction {
     async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
-        #[cfg(not(feature = "sync"))]
-        let conn = &mut *self.conn.lock().await;
-        #[cfg(feature = "sync")]
-        let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+        #[cfg(feature = "tracing-spans")]
+        let span = crate::db_span!("sea_orm.query_one", self.backend, &stmt.sql);
+        #[cfg(feature = "tracing-spans")]
+        span.record("db.statement", stmt.sql.as_str());
 
-        match conn {
-            #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(conn) => {
-                let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
-                let conn: &mut sqlx::MySqlConnection = &mut *conn;
-                crate::metric::metric!(self.metric_callback, &stmt, {
-                    crate::sqlx_map_err_ignore_not_found(
-                        query.fetch_one(conn).await.map(|row| Some(row.into())),
-                    )
-                })
+        let fut = async {
+            #[cfg(not(feature = "sync"))]
+            let conn = &mut *self.conn.lock().await;
+            #[cfg(feature = "sync")]
+            let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+
+            match conn {
+                #[cfg(feature = "sqlx-mysql")]
+                InnerConnection::MySql(conn) => {
+                    let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
+                    let conn: &mut sqlx::MySqlConnection = &mut *conn;
+                    crate::metric::metric!(self.metric_callback, &stmt, {
+                        crate::sqlx_map_err_ignore_not_found(
+                            query.fetch_one(conn).await.map(|row| Some(row.into())),
+                        )
+                    })
+                }
+                #[cfg(feature = "sqlx-postgres")]
+                InnerConnection::Postgres(conn) => {
+                    let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
+                    let conn: &mut sqlx::PgConnection = &mut *conn;
+                    crate::metric::metric!(self.metric_callback, &stmt, {
+                        crate::sqlx_map_err_ignore_not_found(
+                            query.fetch_one(conn).await.map(|row| Some(row.into())),
+                        )
+                    })
+                }
+                #[cfg(feature = "sqlx-sqlite")]
+                InnerConnection::Sqlite(conn) => {
+                    let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
+                    let conn: &mut sqlx::SqliteConnection = &mut *conn;
+                    crate::metric::metric!(self.metric_callback, &stmt, {
+                        crate::sqlx_map_err_ignore_not_found(
+                            query.fetch_one(conn).await.map(|row| Some(row.into())),
+                        )
+                    })
+                }
+                #[cfg(feature = "rusqlite")]
+                InnerConnection::Rusqlite(conn) => conn.query_one(stmt, &self.metric_callback),
+                #[cfg(feature = "mock")]
+                InnerConnection::Mock(conn) => conn.query_one(stmt),
+                #[cfg(feature = "proxy")]
+                InnerConnection::Proxy(conn) => conn.query_one(stmt).await,
+                #[allow(unreachable_patterns)]
+                _ => Err(conn_err("Disconnected")),
             }
-            #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(conn) => {
-                let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
-                let conn: &mut sqlx::PgConnection = &mut *conn;
-                crate::metric::metric!(self.metric_callback, &stmt, {
-                    crate::sqlx_map_err_ignore_not_found(
-                        query.fetch_one(conn).await.map(|row| Some(row.into())),
-                    )
-                })
-            }
-            #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(conn) => {
-                let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
-                let conn: &mut sqlx::SqliteConnection = &mut *conn;
-                crate::metric::metric!(self.metric_callback, &stmt, {
-                    crate::sqlx_map_err_ignore_not_found(
-                        query.fetch_one(conn).await.map(|row| Some(row.into())),
-                    )
-                })
-            }
-            #[cfg(feature = "rusqlite")]
-            InnerConnection::Rusqlite(conn) => conn.query_one(stmt, &self.metric_callback),
-            #[cfg(feature = "mock")]
-            InnerConnection::Mock(conn) => return conn.query_one(stmt),
-            #[cfg(feature = "proxy")]
-            InnerConnection::Proxy(conn) => return conn.query_one(stmt).await,
-            #[allow(unreachable_patterns)]
-            _ => Err(conn_err("Disconnected")),
-        }
+        };
+
+        #[cfg(feature = "tracing-spans")]
+        let result = fut.instrument(span.clone()).await;
+        #[cfg(not(feature = "tracing-spans"))]
+        let result = fut.await;
+
+        #[cfg(feature = "tracing-spans")]
+        crate::tracing_spans::record_query_result(&span, &result);
+
+        result
     }
 
     #[instrument(level = "trace")]
@@ -453,57 +548,74 @@ impl ConnectionTrait for DatabaseTransaction {
     async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
-        #[cfg(not(feature = "sync"))]
-        let conn = &mut *self.conn.lock().await;
-        #[cfg(feature = "sync")]
-        let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+        #[cfg(feature = "tracing-spans")]
+        let span = crate::db_span!("sea_orm.query_all", self.backend, &stmt.sql);
+        #[cfg(feature = "tracing-spans")]
+        span.record("db.statement", stmt.sql.as_str());
 
-        match conn {
-            #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(conn) => {
-                let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
-                let conn: &mut sqlx::MySqlConnection = &mut *conn;
-                crate::metric::metric!(self.metric_callback, &stmt, {
-                    query
-                        .fetch_all(conn)
-                        .await
-                        .map(|rows| rows.into_iter().map(|r| r.into()).collect())
-                        .map_err(sqlx_error_to_query_err)
-                })
+        let fut = async {
+            #[cfg(not(feature = "sync"))]
+            let conn = &mut *self.conn.lock().await;
+            #[cfg(feature = "sync")]
+            let conn = &mut *self.conn.lock().map_err(|_| DbErr::MutexPoisonError)?;
+
+            match conn {
+                #[cfg(feature = "sqlx-mysql")]
+                InnerConnection::MySql(conn) => {
+                    let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
+                    let conn: &mut sqlx::MySqlConnection = &mut *conn;
+                    crate::metric::metric!(self.metric_callback, &stmt, {
+                        query
+                            .fetch_all(conn)
+                            .await
+                            .map(|rows| rows.into_iter().map(|r| r.into()).collect())
+                            .map_err(sqlx_error_to_query_err)
+                    })
+                }
+                #[cfg(feature = "sqlx-postgres")]
+                InnerConnection::Postgres(conn) => {
+                    let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
+                    let conn: &mut sqlx::PgConnection = &mut *conn;
+                    crate::metric::metric!(self.metric_callback, &stmt, {
+                        query
+                            .fetch_all(conn)
+                            .await
+                            .map(|rows| rows.into_iter().map(|r| r.into()).collect())
+                            .map_err(sqlx_error_to_query_err)
+                    })
+                }
+                #[cfg(feature = "sqlx-sqlite")]
+                InnerConnection::Sqlite(conn) => {
+                    let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
+                    let conn: &mut sqlx::SqliteConnection = &mut *conn;
+                    crate::metric::metric!(self.metric_callback, &stmt, {
+                        query
+                            .fetch_all(conn)
+                            .await
+                            .map(|rows| rows.into_iter().map(|r| r.into()).collect())
+                            .map_err(sqlx_error_to_query_err)
+                    })
+                }
+                #[cfg(feature = "rusqlite")]
+                InnerConnection::Rusqlite(conn) => conn.query_all(stmt, &self.metric_callback),
+                #[cfg(feature = "mock")]
+                InnerConnection::Mock(conn) => conn.query_all(stmt),
+                #[cfg(feature = "proxy")]
+                InnerConnection::Proxy(conn) => conn.query_all(stmt).await,
+                #[allow(unreachable_patterns)]
+                _ => Err(conn_err("Disconnected")),
             }
-            #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(conn) => {
-                let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
-                let conn: &mut sqlx::PgConnection = &mut *conn;
-                crate::metric::metric!(self.metric_callback, &stmt, {
-                    query
-                        .fetch_all(conn)
-                        .await
-                        .map(|rows| rows.into_iter().map(|r| r.into()).collect())
-                        .map_err(sqlx_error_to_query_err)
-                })
-            }
-            #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(conn) => {
-                let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
-                let conn: &mut sqlx::SqliteConnection = &mut *conn;
-                crate::metric::metric!(self.metric_callback, &stmt, {
-                    query
-                        .fetch_all(conn)
-                        .await
-                        .map(|rows| rows.into_iter().map(|r| r.into()).collect())
-                        .map_err(sqlx_error_to_query_err)
-                })
-            }
-            #[cfg(feature = "rusqlite")]
-            InnerConnection::Rusqlite(conn) => conn.query_all(stmt, &self.metric_callback),
-            #[cfg(feature = "mock")]
-            InnerConnection::Mock(conn) => return conn.query_all(stmt),
-            #[cfg(feature = "proxy")]
-            InnerConnection::Proxy(conn) => return conn.query_all(stmt).await,
-            #[allow(unreachable_patterns)]
-            _ => Err(conn_err("Disconnected")),
-        }
+        };
+
+        #[cfg(feature = "tracing-spans")]
+        let result = fut.instrument(span.clone()).await;
+        #[cfg(not(feature = "tracing-spans"))]
+        let result = fut.await;
+
+        #[cfg(feature = "tracing-spans")]
+        crate::tracing_spans::record_query_result(&span, &result);
+
+        result
     }
 }
 
