@@ -21,9 +21,9 @@ impl ActiveEnum {
         extra_attributes: &TokenStream,
         entity_format: EntityFormat,
     ) -> TokenStream {
-        let enum_name = &self.enum_name.to_string();
+        let enum_name = self.enum_name.as_str();
         let enum_iden = format_ident!("{}", enum_name.to_upper_camel_case());
-        let values: Vec<String> = self.values.iter().map(|v| v.to_string()).collect();
+        let values: Vec<_> = self.values.iter().map(|v| v.as_str()).collect();
         let variants = values.iter().map(|v| v.trim()).map(|v| {
             if v.chars().next().map(char::is_numeric).unwrap_or(false) {
                 format_ident!("_{}", v)
