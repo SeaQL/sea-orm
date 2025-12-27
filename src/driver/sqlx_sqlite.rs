@@ -91,12 +91,18 @@ impl SqlxSqliteConnector {
         }
 
         let after_conn = options.after_connect.clone();
+        let connect_lazy = options.connect_lazy;
+        let sqlite_pool_opts_fn = options.sqlite_pool_opts_fn.clone();
+        let mut pool_options = options.sqlx_pool_options();
 
-        let pool = if options.connect_lazy {
-            options.sqlx_pool_options().connect_lazy_with(sqlx_opts)
+        if let Some(f) = &sqlite_pool_opts_fn {
+            pool_options = f(pool_options);
+        }
+
+        let pool = if connect_lazy {
+            pool_options.connect_lazy_with(sqlx_opts)
         } else {
-            options
-                .sqlx_pool_options()
+            pool_options
                 .connect_with(sqlx_opts)
                 .await
                 .map_err(sqlx_error_to_conn_err)?
