@@ -665,6 +665,7 @@ error[E0277]: the trait bound `sea_orm::Condition: From<bool>` is not satisfied
 * Enabled `sqlite-use-returning-for-3_35` by default. SQLite `3.35` was released in 2021, it should be the default by now.
 * Now implemented `impl<T: ModelTrait + FromQueryResult> PartialModelTrait for T`, there may be a potential conflict https://github.com/SeaQL/sea-orm/pull/2642
 * Now `DeriveValueType` will also `TryFromU64` if applicable, there may be a potential conflict https://github.com/SeaQL/sea-orm/pull/2643
+* Now `DeriveValueType` also impl `IntoActiveValue`, there may be a potential conflict
 * Added `TryIntoModel` and `Serialize` to trait bounds of `ActiveModel::from_json`. There should be no impact if your models are derived with `DeriveEntityModel` https://github.com/SeaQL/sea-orm/pull/2599
 ```rust
 fn from_json(mut json: serde_json::Value) -> Result<Self, DbErr>
