@@ -28,9 +28,14 @@ where
     pub(crate) model: PhantomData<A>,
 }
 
-/// Performs INSERT operations on one or more ActiveModels, will do nothing if input is empty.
+/// Wrapper of [`Insert`] / [`InsertMany`], treats "no row inserted/id returned" as a normal outcome.
 ///
-/// All interfaces works the same as `Insert<A>`.
+/// Its `exec*` methods return [`crate::TryInsertResult`].
+/// Mapping empty input to [`crate::TryInsertResult::Empty`] (no SQL executed) and
+/// `DbErr::RecordNotInserted` to [`crate::TryInsertResult::Conflicted`].
+///
+/// Useful for idempotent inserts such as `ON CONFLICT ... DO NOTHING` (Postgres / SQLite) or the
+/// MySQL polyfill (`ON DUPLICATE KEY UPDATE pk = pk`).
 #[derive(Debug)]
 pub struct TryInsert<A>
 where
@@ -206,7 +211,23 @@ where
         self
     }
 
-    /// Allow insert statement to return without error if nothing's been inserted
+    /// Set ON CONFLICT do nothing, but with MySQL specific polyfill.
+    pub fn on_conflict_do_nothing_on<I>(mut self, columns: I) -> TryInsert<A>
+    where
+        I: IntoIterator<Item = <A::Entity as EntityTrait>::Column>,
+    {
+        let primary_keys = <A::Entity as EntityTrait>::PrimaryKey::iter();
+        let mut on_conflict = OnConflict::columns(columns);
+        on_conflict.do_nothing_on(primary_keys);
+        self.query.on_conflict(on_conflict);
+        TryInsert::from_one(self)
+    }
+
+    /// Allow insert statement to return without error if nothing's been inserted.
+    #[deprecated(
+        since = "2.0.0",
+        note = "Please use [`TryInsert::one`] or `on_conflict_do_nothing*` methods that return [`TryInsert`]"
+    )]
     pub fn do_nothing(self) -> TryInsert<A>
     where
         A: ActiveModelTrait,
@@ -214,7 +235,11 @@ where
         TryInsert::from_one(self)
     }
 
-    /// Alias to `do_nothing`
+    /// Alias to [`Insert::do_nothing`].
+    #[deprecated(
+        since = "2.0.0",
+        note = "Please use [`TryInsert::one`] or `on_conflict_do_nothing*` methods that return [`TryInsert`]"
+    )]
     pub fn on_empty_do_nothing(self) -> TryInsert<A>
     where
         A: ActiveModelTrait,
@@ -348,7 +373,23 @@ where
         self
     }
 
-    /// Allow insert statement to return without error if nothing's been inserted
+    /// Set ON CONFLICT do nothing, but with MySQL specific polyfill.
+    pub fn on_conflict_do_nothing_on<I>(mut self, columns: I) -> TryInsert<A>
+    where
+        I: IntoIterator<Item = <A::Entity as EntityTrait>::Column>,
+    {
+        let primary_keys = <A::Entity as EntityTrait>::PrimaryKey::iter();
+        let mut on_conflict = OnConflict::columns(columns);
+        on_conflict.do_nothing_on(primary_keys);
+        self.query.on_conflict(on_conflict);
+        TryInsert::from_many(self)
+    }
+
+    /// Allow insert statement to return without error if nothing's been inserted.
+    #[deprecated(
+        since = "2.0.0",
+        note = "Please use [`TryInsert::many`] or `on_conflict_do_nothing*` methods that return [`TryInsert`]"
+    )]
     pub fn do_nothing(self) -> TryInsert<A>
     where
         A: ActiveModelTrait,
@@ -356,7 +397,11 @@ where
         TryInsert::from_many(self)
     }
 
-    /// Alias to `do_nothing`
+    /// Alias to [`InsertMany::do_nothing`].
+    #[deprecated(
+        since = "2.0.0",
+        note = "Empty input is already handled by [`InsertMany::exec`] (no SQL executed). For conflict handling, use [`InsertMany::on_conflict_do_nothing`] or [`InsertMany::on_conflict_do_nothing_on`]."
+    )]
     pub fn on_empty_do_nothing(self) -> TryInsert<A>
     where
         A: ActiveModelTrait,
@@ -490,6 +535,18 @@ where
             .query
             .on_conflict(on_conflict_primary_key::<A>());
 
+        self
+    }
+
+    /// Set ON CONFLICT do nothing, but with MySQL specific polyfill.
+    pub fn on_conflict_do_nothing_on<I>(mut self, columns: I) -> Self
+    where
+        I: IntoIterator<Item = <A::Entity as EntityTrait>::Column>,
+    {
+        let primary_keys = <A::Entity as EntityTrait>::PrimaryKey::iter();
+        let mut on_conflict = OnConflict::columns(columns);
+        on_conflict.do_nothing_on(primary_keys);
+        self.insert_struct.query.on_conflict(on_conflict);
         self
     }
 }
@@ -662,6 +719,29 @@ mod tests {
                 .build(DbBackend::Postgres)
                 .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO UPDATE SET "name" = "excluded"."name""#,
+        );
+    }
+
+    #[test]
+    fn test_on_conflict_do_nothing_on() {
+        let orange = cake::ActiveModel {
+            id: ActiveValue::set(2),
+            name: ActiveValue::set("Orange".to_owned()),
+        };
+
+        assert_eq!(
+            cake::Entity::insert(orange.clone())
+                .on_conflict_do_nothing_on([cake::Column::Name])
+                .build(DbBackend::Postgres)
+                .to_string(),
+            r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO NOTHING"#,
+        );
+        assert_eq!(
+            cake::Entity::insert(orange)
+                .on_conflict_do_nothing_on([cake::Column::Name])
+                .build(DbBackend::MySql)
+                .to_string(),
+            r#"INSERT INTO `cake` (`id`, `name`) VALUES (2, 'Orange') ON DUPLICATE KEY UPDATE `id` = `id`"#,
         );
     }
 
