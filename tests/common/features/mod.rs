@@ -20,6 +20,7 @@ pub mod json_struct;
 pub mod json_vec;
 pub mod json_vec_derive;
 pub mod metadata;
+#[cfg(feature = "with-bigdecimal")]
 pub mod pi;
 pub mod repository;
 pub mod satellite;
@@ -53,7 +54,6 @@ pub use json_vec::Entity as JsonVec;
 pub use json_vec_derive::json_string_vec::Entity as JsonStringVec;
 pub use json_vec_derive::json_struct_vec::Entity as JsonStructVec;
 pub use metadata::Entity as Metadata;
-pub use pi::Entity as Pi;
 pub use repository::Entity as Repository;
 pub use satellite::Entity as Satellite;
 pub use schema::*;

@@ -4,7 +4,7 @@ pub mod common;
 
 pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
+use sea_orm::{DatabaseConnection, TryInsertResult, entity::prelude::*, entity::*};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -43,7 +43,7 @@ pub async fn insert_and_delete_repository(db: &DatabaseConnection) -> Result<(),
     {
         use sea_orm::sea_query::OnConflict;
 
-        let err = Repository::insert(repository)
+        let err = Repository::insert(repository.clone())
             // MySQL does not support DO NOTHING, we might workaround that later
             .on_conflict(OnConflict::new().do_nothing().to_owned())
             .exec(db)
@@ -99,6 +99,37 @@ pub async fn insert_and_delete_repository(db: &DatabaseConnection) -> Result<(),
             },
         ]
     );
+
+    #[cfg(any(feature = "sqlx-sqlite", feature = "sqlx-postgres"))]
+    {
+        let result = Repository::insert_many([
+            repository::Model {
+                id: "unique-id-002".to_owned(), // conflict
+                owner: "GC".to_owned(),
+                name: "G.C.".to_owned(),
+                description: None,
+            }
+            .into_active_model(),
+            repository::Model {
+                id: "unique-id-003".to_owned(), // insert succeed
+                owner: "GC".to_owned(),
+                name: "G.C.".to_owned(),
+                description: None,
+            }
+            .into_active_model(),
+        ])
+        .on_conflict_do_nothing()
+        .exec_with_returning_many(db)
+        .await?;
+
+        match result {
+            TryInsertResult::Inserted(inserted) => {
+                assert_eq!(inserted.len(), 1);
+                assert_eq!(inserted[0].id, "unique-id-003");
+            }
+            _ => panic!("{result:?}"),
+        }
+    }
 
     Ok(())
 }

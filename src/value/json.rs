@@ -1,5 +1,8 @@
 use crate::sea_query::{ArrayType, ColumnType, Nullable, ValueType, ValueTypeErr};
-use crate::{ColIdx, QueryResult, TryGetError, TryGetable, Value, error::json_err};
+use crate::{
+    ActiveValue, ColIdx, IntoActiveValue, QueryResult, TryGetError, TryGetable, Value,
+    error::json_err,
+};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -80,6 +83,15 @@ where
 impl<T> Nullable for JsonField<T> {
     fn null() -> Value {
         Value::Json(None)
+    }
+}
+
+impl<T> IntoActiveValue<JsonField<T>> for JsonField<T>
+where
+    T: Serialize,
+{
+    fn into_active_value(self) -> ActiveValue<JsonField<T>> {
+        ActiveValue::Set(self)
     }
 }
 

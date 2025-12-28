@@ -225,6 +225,13 @@ impl DeriveValueTypeStruct {
                 }
             }
 
+            #[automatically_derived]
+            impl sea_orm::IntoActiveValue<#name> for #name {
+                fn into_active_value(self) -> sea_orm::ActiveValue<#name> {
+                    sea_orm::ActiveValue::Set(self)
+                }
+            }
+
             #try_from_u64_impl
         )
     }
@@ -302,6 +309,13 @@ impl DeriveValueTypeString {
             impl sea_orm::sea_query::Nullable for #name {
                 fn null() -> sea_orm::Value {
                     sea_orm::Value::String(None)
+                }
+            }
+
+            #[automatically_derived]
+            impl sea_orm::IntoActiveValue<#name> for #name {
+                fn into_active_value(self) -> sea_orm::ActiveValue<#name> {
+                    sea_orm::ActiveValue::Set(self)
                 }
             }
         )

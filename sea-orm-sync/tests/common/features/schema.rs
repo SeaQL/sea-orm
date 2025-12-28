@@ -48,7 +48,10 @@ pub fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_active_enum_table(db)?;
     create_active_enum_child_table(db)?;
     create_insert_default_table(db)?;
-    create_pi_table(db)?;
+    #[cfg(feature = "with-bigdecimal")]
+    {
+        create_pi_table(db)?;
+    }
     create_uuid_fmt_table(db)?;
     create_edit_log_table(db)?;
     create_teas_table(db)?;
@@ -532,6 +535,7 @@ pub fn create_host_network_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     create_table(db, &stmt, HostNetwork)
 }
 
+#[cfg(feature = "with-bigdecimal")]
 pub fn create_pi_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = sea_query::Table::create()
         .table(pi::Entity)
@@ -556,7 +560,7 @@ pub fn create_pi_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(pi::Column::BigDecimalOpt).decimal_len(11, 10))
         .to_owned();
 
-    create_table(db, &stmt, Pi)
+    create_table(db, &stmt, pi::Entity)
 }
 
 pub fn create_event_trigger_table(db: &DbConn) -> Result<ExecResult, DbErr> {
