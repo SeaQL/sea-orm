@@ -58,7 +58,7 @@ sea-orm-macros = { version = "~2.0.0-rc.25", path = "sea-orm-macros", default-fe
     "async",
     "strum",
 ] }
-sea-query = { version = "=1.0.0-rc.28", default-features = false, features = [
+sea-query = { version = "=1.0.0-rc.29", default-features = false, features = [
     "thread-safe",
     "hashable-value",
     "backend-mysql",
@@ -151,6 +151,7 @@ sea-orm-internal = []
 seaography = ["sea-orm-macros/seaography"]
 sqlite-no-row-value-before-3_15 = []
 sqlite-use-returning-for-3_35 = []
+postgres-use-serial-pk = ["sea-query/option-postgres-use-serial"]
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-dep = ["sqlx"]
 sqlx-mysql = [
