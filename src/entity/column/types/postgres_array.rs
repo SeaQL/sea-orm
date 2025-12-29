@@ -4,40 +4,44 @@ use crate::ExprTrait;
 macro_rules! bind_array_oper {
     ($vis:vis $op:ident) => {
         /// Postgres only.
-        $vis fn $op<A>(&self, arr: A) -> Expr
+        $vis fn $op<V, I>(&self, v: I) -> Expr
         where
-            A: Into<sea_query::value::Array>,
+            V: Into<Value> + sea_query::ValueType + sea_query::with_array::NotU8,
+            I: IntoIterator<Item = V>,
         {
-            let value = Value::Array(arr.into());
-            Expr::col(self.as_column_ref()).$op(self.0.save_as(Expr::val(value)))
+            let vec: Vec<_> = v.into_iter().collect();
+            Expr::col(self.as_column_ref()).$op(self.0.save_as(Expr::val(vec)))
         }
     };
     ($vis:vis $op:ident, trait $value_ty:ident) => {
         /// Postgres only.
-        $vis fn $op<A>(&self, arr: A) -> Expr
+        $vis fn $op<V, I>(&self, v: I) -> Expr
         where
-            A: Into<sea_query::value::Array>,
+            V: Into<Value> + $value_ty + sea_query::ValueType + sea_query::with_array::NotU8,
+            I: IntoIterator<Item = V>,
         {
-            let value = Value::Array(arr.into());
-            Expr::col(self.as_column_ref()).$op(self.0.save_as(Expr::val(value)))
+            let vec: Vec<_> = v.into_iter().collect();
+            Expr::col(self.as_column_ref()).$op(self.0.save_as(Expr::val(vec)))
         }
     };
     ($vis:vis $op:ident, $func:ident) => {
         /// Postgres only.
-        $vis fn $op<A>(&self, arr: A) -> Expr
+        $vis fn $op<V, I>(&self, v: I) -> Expr
         where
-            A: Into<sea_query::value::Array>,
+            V: Into<Value> + sea_query::ValueType + sea_query::with_array::NotU8,
+            I: IntoIterator<Item = V>,
         {
-            self.0.$func(arr)
+            self.0.$func(v)
         }
     };
     ($vis:vis $op:ident, $func:ident, trait $value_ty:ident) => {
         /// Postgres only.
-        $vis fn $op<A>(&self, arr: A) -> Expr
+        $vis fn $op<V, I>(&self, v: I) -> Expr
         where
-            A: Into<sea_query::value::Array>,
+            V: Into<Value> + $value_ty + sea_query::ValueType + sea_query::with_array::NotU8,
+            I: IntoIterator<Item = V>,
         {
-            self.0.$func(arr)
+            self.0.$func(v)
         }
     };
 }

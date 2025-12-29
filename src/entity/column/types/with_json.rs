@@ -18,14 +18,12 @@ impl<E: EntityTrait> JsonColumn<E> {
 
     /// `= ANY(..)` operator. Postgres only.
     #[cfg(feature = "postgres-array")]
-    pub fn eq_any<V>(&self, v: impl IntoIterator<Item = V>) -> Expr
+    pub fn eq_any<V, I>(&self, v: I) -> Expr
     where
-        V: Into<Json>,
+        V: Into<Value> + Into<Json> + sea_query::ValueType + sea_query::with_array::NotU8,
+        I: IntoIterator<Item = V>,
     {
-        use itertools::Itertools;
-
-        let vec = v.into_iter().map(Into::into).collect_vec();
-        self.0.eq_any(vec)
+        self.0.eq_any(v)
     }
 
     bind_subquery_func!(pub in_subquery);

@@ -303,42 +303,23 @@ impl ActiveEnum {
             quote!()
         };
 
+        let impl_not_u8 = if cfg!(feature = "postgres-array") {
+            quote!(
+                #[automatically_derived]
+                impl sea_orm::sea_query::value::with_array::NotU8 for #ident {}
+            )
+        } else {
+            quote!()
+        };
+
         let impl_try_getable_array = if cfg!(feature = "postgres-array") {
             quote!(
                 #[automatically_derived]
                 impl sea_orm::TryGetableArray for #ident {
-                    fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, index: I) -> std::result::Result<Vec<Option<Self>>, sea_orm::TryGetError> {
+                    fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, index: I) -> std::result::Result<Vec<Self>, sea_orm::TryGetError> {
                         <<Self as sea_orm::ActiveEnum>::Value as sea_orm::ActiveEnumValue>::try_get_vec_by(res, index)?
                             .into_iter()
-                            .map(|opt_value| {
-                                opt_value
-                                    .map(|value| <Self as sea_orm::ActiveEnum>::try_from_value(&value))
-                                    .transpose()
-                                    .map_err(Into::into)
-                            })
-                            .collect()
-                    }
-                }
-
-                #[automatically_derived]
-                impl sea_orm::sea_query::value::ArrayElement for #ident {
-                    type ArrayValueType = <Self as sea_orm::ActiveEnum>::Value;
-
-                    fn into_array_value(self) -> Self::ArrayValueType {
-                        <Self as sea_orm::ActiveEnum>::into_value(self)
-                    }
-
-                    fn try_from_value(v: sea_orm::sea_query::Value) -> std::result::Result<Vec<Option<Self>>, sea_orm::sea_query::ValueTypeErr> {
-                        let vec_opt = <Vec<Option<<Self as sea_orm::ActiveEnum>::Value>> as sea_orm::sea_query::ValueType>::try_from(v)?;
-                        vec_opt
-                            .into_iter()
-                            .map(|opt| {
-                                opt.map(|value| {
-                                    <Self as sea_orm::ActiveEnum>::try_from_value(&value)
-                                        .map_err(|_| sea_orm::sea_query::ValueTypeErr)
-                                })
-                                .transpose()
-                            })
+                            .map(|value| <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(Into::into))
                             .collect()
                     }
                 }
@@ -452,6 +433,8 @@ impl ActiveEnum {
                     sea_orm::ActiveValue::set(self)
                 }
             }
+
+            #impl_not_u8
         )
     }
 }
