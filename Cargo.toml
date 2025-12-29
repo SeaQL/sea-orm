@@ -58,7 +58,7 @@ sea-orm-macros = { version = "~2.0.0-rc.24", path = "sea-orm-macros", default-fe
     "async",
     "strum",
 ] }
-sea-query = { version = "=1.0.0-rc.27", default-features = false, features = [
+sea-query = { version = "=1.0.0-rc.28", default-features = false, features = [
     "thread-safe",
     "hashable-value",
     "backend-mysql",
@@ -210,5 +210,4 @@ with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-sqlx?/with-uuid"]
 # This allows us to develop using a local version of sea-query
 [patch.crates-io]
 # sea-query = { path = "../sea-query" }
-sea-query      = { git = "https://github.com/SeaQL/sea-query", branch = "master" }
-sea-query-sqlx = { git = "https://github.com/SeaQL/sea-query", branch = "master" }
+# sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }

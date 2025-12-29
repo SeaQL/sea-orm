@@ -50,7 +50,7 @@ rust_decimal = { version = "1", default-features = false, features = [
 sea-orm-macros = { version = "~2.0.0-rc.20", path = "../sea-orm-macros", default-features = false, features = [
     "strum",
 ] }
-sea-query = { version = "=1.0.0-rc.27", default-features = false, features = [
+sea-query = { version = "=1.0.0-rc.28", default-features = false, features = [
     "thread-safe",
     "hashable-value",
     "backend-mysql",
@@ -173,5 +173,3 @@ with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-rusqlite?/with-uuid"]
 
 [patch.crates-io]
 # sea-query = { path = "../sea-query" }
-sea-query          = { git = "https://github.com/SeaQL/sea-query", branch = "master" }
-sea-query-rusqlite = { git = "https://github.com/SeaQL/sea-query", branch = "master" }
