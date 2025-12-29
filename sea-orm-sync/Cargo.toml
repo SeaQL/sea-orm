@@ -170,3 +170,8 @@ with-rust_decimal = [
 ]
 with-time = ["time", "sea-query/with-time", "sea-query-rusqlite?/with-time"]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-rusqlite?/with-uuid"]
+
+[patch.crates-io]
+# sea-query = { path = "../sea-query" }
+sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }
+sea-query-rusqlite = { git = "https://github.com/SeaQL/sea-query", branch = "master" }

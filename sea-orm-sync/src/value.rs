@@ -4,11 +4,6 @@ use crate::{ActiveValue, Value};
 mod timestamp;
 use timestamp::*;
 
-#[cfg(feature = "with-json")]
-mod json;
-#[cfg(feature = "with-json")]
-pub use json::JsonField;
-
 #[cfg(feature = "with-chrono")]
 mod with_chrono;
 #[cfg(feature = "with-chrono")]
