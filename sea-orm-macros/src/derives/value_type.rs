@@ -186,7 +186,7 @@ impl DeriveValueTypeStruct {
         let impl_not_u8 = if cfg!(feature = "postgres-array") {
             quote!(
                 #[automatically_derived]
-                impl sea_orm::sea_query::value::with_array::NotU8 for #ident {}
+                impl sea_orm::sea_query::value::with_array::NotU8 for #name {}
             )
         } else {
             quote!()
@@ -276,7 +276,7 @@ impl DeriveValueTypeString {
         let impl_not_u8 = if cfg!(feature = "postgres-array") {
             quote!(
                 #[automatically_derived]
-                impl sea_orm::sea_query::value::with_array::NotU8 for #ident {}
+                impl sea_orm::sea_query::value::with_array::NotU8 for #name {}
             )
         } else {
             quote!()
