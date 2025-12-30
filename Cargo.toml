@@ -126,6 +126,7 @@ postgres-array = [
     "sea-orm-macros/postgres-array",
     "sea-query-sqlx?/postgres-array",
 ]
+postgres-use-serial-pk = ["sea-query/option-postgres-use-serial"]
 postgres-vector = [
     "pgvector",
     "sea-query/postgres-vector",
@@ -151,7 +152,6 @@ sea-orm-internal = []
 seaography = ["sea-orm-macros/seaography"]
 sqlite-no-row-value-before-3_15 = []
 sqlite-use-returning-for-3_35 = []
-postgres-use-serial-pk = ["sea-query/option-postgres-use-serial"]
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-dep = ["sqlx"]
 sqlx-mysql = [
