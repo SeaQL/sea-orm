@@ -13,7 +13,7 @@ license       = "MIT OR Apache-2.0"
 name          = "sea-orm-migration"
 repository    = "https://github.com/SeaQL/sea-orm"
 rust-version  = "1.85.0"
-version       = "2.0.0-rc.26"
+version       = "2.0.0-rc.27"
 
 [lib]
 name = "sea_orm_migration"
@@ -23,10 +23,10 @@ path = "src/lib.rs"
 async-trait = { version = "0.1", default-features = false }
 clap = { version = "4.3", features = ["env", "derive"], optional = true }
 dotenvy = { version = "0.15", default-features = false, optional = true }
-sea-orm = { version = "~2.0.0-rc.26", path = "../", features = [
+sea-orm = { version = "~2.0.0-rc.27", path = "../", features = [
     "schema-sync",
 ] }
-sea-orm-cli = { version = "~2.0.0-rc.26", path = "../sea-orm-cli", default-features = false, optional = true }
+sea-orm-cli = { version = "~2.0.0-rc.27", path = "../sea-orm-cli", default-features = false, optional = true }
 sea-schema = { version = "0.17.0-rc", default-features = false, features = [
     "discovery",
     "writer",
