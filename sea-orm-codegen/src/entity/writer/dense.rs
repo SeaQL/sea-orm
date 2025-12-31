@@ -18,7 +18,8 @@ impl EntityWriter {
         impl_active_model_behavior: bool,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
-        imports.extend(Self::gen_import_active_enum(entity));
+        let active_enums = Self::gen_import_active_enum(entity);
+        imports.extend(active_enums.imports);
         let mut code_blocks = vec![
             imports,
             Self::gen_dense_model_struct(
@@ -30,6 +31,7 @@ impl EntityWriter {
                 serde_skip_hidden_column,
                 model_extra_derives,
                 model_extra_attributes,
+                &active_enums.type_idents,
             ),
         ];
         if impl_active_model_behavior {
@@ -48,10 +50,15 @@ impl EntityWriter {
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
+        active_enum_type_idents: &ActiveEnumTypeIdents,
     ) -> TokenStream {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types(column_option);
+        let column_rs_types = Self::get_column_rs_types_with_enum_idents(
+            entity,
+            column_option,
+            active_enum_type_idents,
+        );
         let if_eq_needed = entity.get_eq_needed();
         let primary_keys: Vec<String> = entity
             .primary_keys
@@ -270,7 +277,7 @@ impl EntityWriter {
         let related_attrs = entity.get_related_entity_attrs();
         let related_enum_names = entity.get_related_entity_enum_name();
 
-        let items = related_modules
+        let items: Vec<_> = related_modules
             .into_iter()
             .zip(related_attrs)
             .zip(related_enum_names)
@@ -282,7 +289,7 @@ impl EntityWriter {
                     None
                 }
             })
-            .collect::<Vec<_>>();
+            .collect();
 
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
