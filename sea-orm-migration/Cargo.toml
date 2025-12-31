@@ -76,6 +76,7 @@ runtime-tokio-rustls = [
     "sea-orm-cli?/runtime-tokio-rustls",
 ]
 sqlite-use-returning-for-3_35 = ["sea-orm/sqlite-use-returning-for-3_35"]
+sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-dep = []
 sqlx-mysql = ["sqlx-dep", "sea-orm/sqlx-mysql", "sea-orm-cli?/sqlx-mysql"]
 sqlx-postgres = [
