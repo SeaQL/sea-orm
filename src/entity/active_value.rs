@@ -358,11 +358,11 @@ where
     /// # use sea_orm::ActiveValue;
     /// #
     /// let mut value = ActiveValue::Set(Some("old"));
-    /// 
+    ///
     /// // since Option::is_some(None) == false, we leave the existing set value alone
     /// value.set_if_not_equals_and(None, Option::is_some);
     /// assert_eq!(value, ActiveValue::Set(Some("old")));
-    /// 
+    ///
     /// // since Option::is_some(Some("new")) == true, we replace the set value
     /// value.set_if_not_equals_and(Some("new"), Option::is_some);
     /// assert_eq!(value, ActiveValue::Set(Some("new")));
