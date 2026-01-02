@@ -73,7 +73,7 @@ pub async fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr>
 
     let res = Entity::insert_many([ActiveModel { id: Set(3) }, ActiveModel { id: Set(4) }])
         .on_conflict(on_conflict)
-        .do_nothing()
+        .try_insert()
         .exec(db)
         .await;
 

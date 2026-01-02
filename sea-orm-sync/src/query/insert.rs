@@ -348,7 +348,8 @@ where
         self
     }
 
-    /// Allow insert statement to return without error if nothing's been inserted
+    /// Convert self into `TryInsert`, which can handle conflicted inserts.
+    #[deprecated(since = "2.0.0", note = "Please use [`InsertMany::try_insert`]")]
     pub fn do_nothing(self) -> TryInsert<A>
     where
         A: ActiveModelTrait,
@@ -356,7 +357,16 @@ where
         TryInsert::from_many(self)
     }
 
-    /// Alias to `do_nothing`
+    /// Convert self into `TryInsert`, which can handle conflicted inserts.
+    pub fn try_insert(self) -> TryInsert<A>
+    where
+        A: ActiveModelTrait,
+    {
+        TryInsert::from_many(self)
+    }
+
+    /// Alias to `try_insert`. Since 2.0 you don't need this anymore, because
+    /// `InsertManyResult` would return `last_insert_id` as `None`.
     pub fn on_empty_do_nothing(self) -> TryInsert<A>
     where
         A: ActiveModelTrait,
