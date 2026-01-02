@@ -12,7 +12,7 @@ version      = "0.1.0"
 async-std    = { version = "1.12", features = ["attributes", "tokio1"] }
 async-stream = { version = "0.3" }
 async-trait  = { version = "0.1" }
-bigdecimal   = { version = "0.4.9" }
+bigdecimal   = { version = "=0.4.9" }
 futures      = { version = "0.3" }
 futures-util = { version = "0.3" }
 serde        = { version = "1" }
