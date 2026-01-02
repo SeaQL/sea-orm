@@ -67,8 +67,7 @@ pub fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert!(matches!(res, Err(DbErr::RecordNotInserted)));
 
     let res = Entity::insert_many([ActiveModel { id: Set(3) }, ActiveModel { id: Set(4) }])
-        .on_conflict(on_conflict)
-        .do_nothing()
+        .on_conflict_do_nothing_on([Column::Id])
         .exec(db);
 
     assert!(matches!(res, Ok(TryInsertResult::Conflicted)));

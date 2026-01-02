@@ -374,6 +374,27 @@ where
     }
 
     /// Set ON CONFLICT do nothing, but with MySQL specific polyfill.
+    /// ```
+    /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
+    /// let orange = cake::ActiveModel {
+    ///     id: ActiveValue::set(2),
+    ///     name: ActiveValue::set("Orange".to_owned()),
+    /// };
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange.clone())
+    ///         .on_conflict_do_nothing_on([cake::Column::Name])
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO NOTHING"#,
+    /// );
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange)
+    ///         .on_conflict_do_nothing_on([cake::Column::Name])
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     r#"INSERT INTO `cake` (`id`, `name`) VALUES (2, 'Orange') ON DUPLICATE KEY UPDATE `id` = `id`"#,
+    /// );
+    /// ```
     pub fn on_conflict_do_nothing_on<I>(mut self, columns: I) -> TryInsert<A>
     where
         I: IntoIterator<Item = <A::Entity as EntityTrait>::Column>,
