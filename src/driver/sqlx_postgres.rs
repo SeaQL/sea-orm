@@ -328,23 +328,22 @@ pub(crate) async fn set_transaction_config(
     isolation_level: Option<IsolationLevel>,
     access_mode: Option<AccessMode>,
 ) -> Result<(), DbErr> {
+    let mut settings = Vec::new();
+
     if let Some(isolation_level) = isolation_level {
-        let stmt = Statement {
-            sql: format!("SET TRANSACTION ISOLATION LEVEL {isolation_level}"),
-            values: None,
-            db_backend: DbBackend::Postgres,
-        };
-        let query = sqlx_query(&stmt);
-        conn.execute(query).await.map_err(sqlx_error_to_exec_err)?;
+        settings.push(format!("ISOLATION LEVEL {isolation_level}"));
     }
+
     if let Some(access_mode) = access_mode {
-        let stmt = Statement {
-            sql: format!("SET TRANSACTION {access_mode}"),
-            values: None,
-            db_backend: DbBackend::Postgres,
-        };
-        let query = sqlx_query(&stmt);
-        conn.execute(query).await.map_err(sqlx_error_to_exec_err)?;
+        settings.push(access_mode.to_string());
+    }
+
+    if !settings.is_empty() {
+        let sql = format!("SET TRANSACTION {}", settings.join(", "));
+        sqlx::query(&sql)
+            .execute(&mut **conn)
+            .await
+            .map_err(sqlx_error_to_exec_err)?;
     }
     Ok(())
 }
