@@ -10,7 +10,7 @@ use sea_orm::DatabaseConnection;
 // Run the test locally:
 // DATABASE_URL="sqlite::memory:" cargo test --features rusqlite --test crud_tests
 // DATABASE_URL="sqlite::memory:" cargo test --features sqlx-sqlite,runtime-tokio --test crud_tests
-// DATABASE_URL="mysql://root:root@localhost" cargo test --features sqlx-mysql,runtime-tokio-native-tls --test crud_tests
+// DATABASE_URL="mysql://sea:sea@localhost" cargo test --features sqlx-mysql,runtime-tokio-native-tls --test crud_tests
 // DATABASE_URL="postgres://sea:sea@localhost" cargo test --features sqlx-postgres,runtime-tokio-native-tls --test crud_tests
 #[sea_orm_macros::test]
 async fn main() {
