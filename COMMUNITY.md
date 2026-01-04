@@ -53,6 +53,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Fikabot](https://github.com/sousandrei/fikabot) | A slack bot to schedule coffee breaks (Fika in swedish) in slack channels | DB: MySQL
 - [remindee-bot](https://github.com/magnickolas/remindee-bot) | Telegram bot for managing reminders | DB: SQLite
 - [SophyCore](https://github.com/FarDragi/SophyCore) | Main system that centralizes all rules, to be used by both the discord bot and the future site | DB: Postgres
+- [Rustify](https://github.com/vtvz/rustify) | Telegram bot for Spotify with multi-source lyrics, AI analysis, real-time profanity detection and auto-skip | DB: Postgres
 
 #### Crypto
 - [MoonRamp](https://github.com/MoonRamp/MoonRamp) | A free and open source crypto payment gateway | DB: MySQL, Postgres, SQLite
