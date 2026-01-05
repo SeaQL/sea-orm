@@ -14,8 +14,7 @@ use tracing::instrument;
 
 use crate::{
     AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
-    DbBackend, IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*,
-    executor::*,
+    IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
 };
 
 use super::sqlx_common::*;
