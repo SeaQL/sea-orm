@@ -1,4 +1,5 @@
 use crate::{EntitySchemaInfo, Schema, SchemaBuilder};
+use tracing::debug;
 
 #[derive(derive_more::Debug)]
 /// The data structure submitted by your Entity to the Entity Registry.
