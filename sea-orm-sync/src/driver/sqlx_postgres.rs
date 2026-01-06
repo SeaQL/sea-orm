@@ -328,7 +328,7 @@ pub(crate) fn set_transaction_config(
     }
 
     if !settings.is_empty() {
-        let sql = format!("SET TRANSACTION {}", settings.join(", "));
+        let sql = format!("SET TRANSACTION {}", settings.join(" "));
         sqlx::query(&sql)
             .execute(&mut **conn)
             .map_err(sqlx_error_to_exec_err)?;
