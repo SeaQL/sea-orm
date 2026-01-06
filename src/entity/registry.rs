@@ -36,6 +36,8 @@ impl EntityRegistry {
         for entity in inventory::iter::<crate::EntityRegistry>() {
             if entity.module_path.starts_with(prefix) {
                 schema.register_entity((entity.schema_info)(schema.helper()));
+            } else {
+                println!("Entity module {} does not start with {}",entity.module_path, prefix);
             }
         }
         schema
