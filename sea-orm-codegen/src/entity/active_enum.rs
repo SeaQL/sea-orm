@@ -25,29 +25,32 @@ impl ActiveEnum {
         let enum_iden = format_ident!("{}", enum_name.to_upper_camel_case());
         let values: Vec<String> = self.values.iter().map(|v| v.to_string()).collect();
         let variants = values.iter().map(|v| v.trim()).map(|v| {
-            if v.chars().next().map(char::is_numeric).unwrap_or(false) {
-                format_ident!("_{}", v)
-            } else {
-                let variant_name = if v.is_empty() {
-                    println!("Warning: item in the enumeration '{enum_name}' is an empty string, it will be converted to `__EmptyString`. You can modify it later as needed.");
-                    "__EmptyString".to_string()
+            let variant_name = if v.is_empty() {
+                println!("Warning: item in the enumeration '{enum_name}' is an empty string, it will be converted to `__EmptyString`. You can modify it later as needed.");
+                "__EmptyString".to_string()
+            } else if v.chars().next().map(char::is_numeric).unwrap_or_default() {
+                if v.chars().any(|c| !c.is_numeric() && !c.is_alphabetic() && c != '_' && c != '-' && c != ' ') {
+                    "".to_string()
                 } else {
-                    v.to_upper_camel_case()
-                };
-                if variant_name.is_empty() {
-                    println!("Warning: item '{v}' in the enumeration '{enum_name}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.");
-                    let mut ss = String::new();
-                    for c in v.chars() {
-                        if c.len_utf8() > 1 {
-                            write!(&mut ss, "{c}").unwrap();
-                        } else {
-                            write!(&mut ss, "U{:04X}", c as u32).unwrap();
-                        }
-                    }
-                    format_ident!("{}", ss)
-                } else {
-                    format_ident!("{}", variant_name)
+                    format!("_{}", v.replace("-", "").replace(" ", ""))
                 }
+            } else {
+                v.to_upper_camel_case()
+            };
+
+            if variant_name.is_empty() {
+                println!("Warning: item '{v}' in the enumeration '{enum_name}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.");
+                let mut ss = String::new();
+                for c in v.chars() {
+                    if c.len_utf8() > 1 {
+                        write!(&mut ss, "{c}").unwrap();
+                    } else {
+                        write!(&mut ss, "U{:04X}", c as u32).unwrap();
+                    }
+                }
+                format_ident!("{}", ss)
+            } else {
+                format_ident!("{}", variant_name)
             }
         });
 
@@ -108,6 +111,7 @@ mod tests {
                     "EXECUTABLE",
                     "ARCHIVE",
                     "3D",
+                    "2-D"
                 ]
                 .into_iter()
                 .map(|variant| Alias::new(variant).into_iden())
@@ -147,6 +151,8 @@ mod tests {
                     Archive,
                     #[sea_orm(string_value = "3D")]
                     _3D,
+                    #[sea_orm(string_value = "2-D")]
+                    _2D,
                 }
             )
             .to_string()
@@ -275,6 +281,10 @@ mod tests {
                     "//",
                     "A-B-C",
                     "你好",
+                    "0/",
+                    "0//",
+                    "0A-B-C",
+                    "0你好",
                 ]
                 .into_iter()
                 .map(|variant| Alias::new(variant).into_iden())
@@ -308,6 +318,14 @@ mod tests {
                     ABC,
                     #[sea_orm(string_value = "你好")]
                     你好,
+                    #[sea_orm(string_value = "0/")]
+                    U0030U002F,
+                    #[sea_orm(string_value = "0//")]
+                    U0030U002FU002F,
+                    #[sea_orm(string_value = "0A-B-C")]
+                    _0ABC,
+                    #[sea_orm(string_value = "0你好")]
+                    _0你好,
                 }
             )
             .to_string()
