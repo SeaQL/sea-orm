@@ -93,16 +93,20 @@ pub async fn run_generate_command(
                 // Throwing an error if there is no database name since it might be
                 // accepted by the database without it, while we're looking to dump
                 // information from a particular database
-                let database_name = url
-                    .path_segments()
-                    .unwrap_or_else(|| {
-                        panic!(
-                            "There is no database name as part of the url path: {}",
-                            url.as_str()
-                        )
-                    })
-                    .next()
-                    .unwrap();
+                let database_name = match url.path_segments() {
+                    None => {
+                        let paths: Vec<&str> = url.path().split('/').collect();
+                        if paths.len() == 0 {
+                            panic!(
+                                "There is no database name as part of the url path: {}",
+                                url.as_str()
+                            )
+                        } else {
+                            paths[0]
+                        }
+                    }
+                    Some(mut path_segments) => path_segments.next().unwrap_or_else(|| return ""),
+                };
 
                 // An empty string as the database name is also an error
                 if database_name.is_empty() {
