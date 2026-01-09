@@ -2,7 +2,6 @@ use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use sea_query::DynIden;
-use std::fmt::Write;
 
 use crate::{EntityFormat, WithSerde};
 
@@ -31,24 +30,35 @@ impl ActiveEnum {
                 return format_ident!("__EmptyString");
             }
 
-            if v
-                .chars()
-                .any(|c| !c.is_alphanumeric() && !matches!(c, '_' | '-' | ' ')) {
+            let is_leading_digit = v.chars().next().is_some_and(char::is_numeric);
+            let is_valid_char = |c: char| c.is_ascii_alphanumeric() || c == '_';
+            let is_passthrough = |c: char| matches!(c, '-' | ' ');
+
+            if v.chars().any(|c| !is_valid_char(c) && !is_passthrough(c)) {
                 println!("Warning: item '{v}' in the enumeration '{enum_name}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.");
 
-                let mut ss = String::new();
+                let mut buf = String::new();
+
+                if is_leading_digit {
+                    buf.push('_');
+                }
+
                 for c in v.chars() {
-                    if c.len_utf8() > 1 {
-                        write!(&mut ss, "{c}").unwrap();
+                    if is_passthrough(c) {
+                        continue;
+                    } else if is_valid_char(c) || c.len_utf8() > 1 {
+                        buf.push(c);
                     } else {
-                        write!(&mut ss, "U{:04X}", c as u32).unwrap();
+                        buf.push_str(&format!("U{:04X}", c as u32));
                     }
                 }
-                return format_ident!("{}", ss);
+
+                return format_ident!("{buf}");
             }
 
-            if v.chars().next().is_some_and(char::is_numeric) {
-                return format_ident!("_{}", v.replace(['-', ' '], ""));
+            if is_leading_digit {
+                let sanitized = v.chars().filter(|&c| is_valid_char(c)).collect::<String>();
+                return format_ident!("_{sanitized}");
             }
 
             format_ident!("{}", v.to_upper_camel_case())
@@ -319,9 +329,9 @@ mod tests {
                     #[sea_orm(string_value = "你好")]
                     你好,
                     #[sea_orm(string_value = "0/")]
-                    U0030U002F,
+                    _0U002F,
                     #[sea_orm(string_value = "0//")]
-                    U0030U002FU002F,
+                    _0U002FU002F,
                     #[sea_orm(string_value = "0A-B-C")]
                     _0ABC,
                     #[sea_orm(string_value = "0你好")]
