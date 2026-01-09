@@ -1,3 +1,6 @@
+[workspace]
+# A separate workspace
+
 [package]
 edition      = "2024"
 name         = "sea-orm-quickstart"

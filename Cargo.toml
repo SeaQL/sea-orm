@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "sea-orm-macros", "sea-orm-codegen", "examples/quickstart"]
+members = [".", "sea-orm-macros", "sea-orm-codegen"]
 
 [package]
 authors       = ["Chris Tsang <chris.2y3@outlook.com>"]
