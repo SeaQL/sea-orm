@@ -33,7 +33,7 @@ impl ActiveEnum {
 
             if v
                 .chars()
-                .any(|c| !c.is_alphanumeric() && c != '_' && c != '-' && c != ' ') {
+                .any(|c| !c.is_alphanumeric() && !matches!(c, '_' | '-' | ' ')) {
                 println!("Warning: item '{v}' in the enumeration '{enum_name}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.");
 
                 let mut ss = String::new();
