@@ -25,7 +25,7 @@ impl ActiveEnum {
         let values: Vec<String> = self.values.iter().map(|v| v.to_string()).collect();
 
         let variants = values.iter().map(|v| v.trim()).map(|v| {
-            if v.is_empty() && !v.to_upper_camel_case().is_empty() {
+            if v.is_empty() {
                 println!("Warning: item in the enumeration '{enum_name}' is an empty string, it will be converted to `__EmptyString`. You can modify it later as needed.");
                 return format_ident!("__EmptyString");
             }
@@ -104,6 +104,36 @@ mod tests {
     use crate::entity::writer::{bonus_attributes, bonus_derive};
     use pretty_assertions::assert_eq;
     use sea_query::{Alias, IntoIden};
+
+    #[test]
+    fn test_enum_variant_starts_with_empty_string() {
+        assert_eq!(
+            ActiveEnum {
+                enum_name: Alias::new("media_type").into_iden(),
+                values: vec![""]
+                    .into_iter()
+                    .map(|variant| Alias::new(variant).into_iden())
+                    .collect(),
+            }
+            .impl_active_enum(
+                &WithSerde::None,
+                true,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                EntityFormat::Compact,
+            )
+            .to_string(),
+            quote!(
+                #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
+                #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "media_type")]
+                pub enum MediaType {
+                    #[sea_orm(string_value = "")]
+                    __EmptyString,
+                }
+            )
+            .to_string()
+        )
+    }
 
     #[test]
     fn test_enum_variant_starts_with_number() {
