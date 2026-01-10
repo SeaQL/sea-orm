@@ -30,11 +30,12 @@ impl ActiveEnum {
                 return format_ident!("__EmptyString");
             }
 
-            let is_leading_digit = v.chars().next().is_some_and(char::is_numeric);
+            let is_leading_digit = v.chars().next().is_some_and(|c| c.is_ascii_digit());
             let is_valid_char = |c: char| c.is_ascii_alphanumeric() || c == '_';
             let is_passthrough = |c: char| matches!(c, '-' | ' ');
+            let needs_utf8_escape = |c: char| !is_valid_char(c) && !is_passthrough(c);
 
-            if v.chars().any(|c| !is_valid_char(c) && !is_passthrough(c)) {
+            if v.chars().any(needs_utf8_escape) {
                 println!("Warning: item '{v}' in the enumeration '{enum_name}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.");
 
                 let mut buf = String::new();
@@ -58,10 +59,10 @@ impl ActiveEnum {
 
             if is_leading_digit {
                 let sanitized = v.chars().filter(|&c| is_valid_char(c)).collect::<String>();
-                return format_ident!("_{sanitized}");
+                format_ident!("_{sanitized}")
+            } else {
+                format_ident!("{}", v.to_upper_camel_case())
             }
-
-            format_ident!("{}", v.to_upper_camel_case())
         });
 
         let serde_derive = with_serde.extra_derive();
