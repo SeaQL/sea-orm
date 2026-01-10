@@ -718,6 +718,38 @@ pub mod schema;
 // Internal module for tracing spans
 #[cfg(feature = "tracing-spans")]
 pub(crate) mod tracing_spans;
+
+/// Execute a future and wrap it in a tracing span when `tracing-spans` is enabled.
+///
+/// When the feature is disabled, this macro simply awaits the future with zero overhead.
+///
+/// # Arguments
+/// - `$name`: span name (e.g., "sea_orm.execute")
+/// - `$backend`: DbBackend
+/// - `$sql`: &str used for db.operation parsing
+/// - `record_stmt`: whether to record `db.statement`
+/// - `$fut`: the future to execute
+#[doc(hidden)]
+#[macro_export]
+macro_rules! with_db_span {
+    ($name:expr, $backend:expr, $sql:expr, record_stmt = $record_stmt:expr, $fut:expr) => {{
+        #[cfg(feature = "tracing-spans")]
+        {
+            let span = $crate::db_span!($name, $backend, $sql);
+            if $record_stmt {
+                span.record("db.statement", $sql);
+            }
+            let result = ::tracing::Instrument::instrument($fut, span.clone()).await;
+            $crate::tracing_spans::record_query_result(&span, &result);
+            result
+        }
+        #[cfg(not(feature = "tracing-spans"))]
+        {
+            $fut.await
+        }
+    }};
+}
+
 /// Helpers for working with Value
 pub mod value;
 
