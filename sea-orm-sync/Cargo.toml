@@ -13,7 +13,7 @@ license       = "MIT OR Apache-2.0"
 name          = "sea-orm-sync"
 repository    = "https://github.com/SeaQL/sea-orm"
 rust-version  = "1.85.0"
-version       = "2.0.0-rc.22"
+version       = "2.0.0-rc.27"
 
 [package.metadata.docs.rs]
 features = [
@@ -50,7 +50,7 @@ rust_decimal = { version = "1", default-features = false, features = [
 sea-orm-macros = { version = "~2.0.0-rc.20", path = "../sea-orm-macros", default-features = false, features = [
     "strum",
 ] }
-sea-query = { version = "=1.0.0-rc.23", default-features = false, features = [
+sea-query = { version = "=1.0.0-rc.28", default-features = false, features = [
     "thread-safe",
     "hashable-value",
     "backend-mysql",
@@ -170,3 +170,6 @@ with-rust_decimal = [
 ]
 with-time = ["time", "sea-query/with-time", "sea-query-rusqlite?/with-time"]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-rusqlite?/with-uuid"]
+
+[patch.crates-io]
+# sea-query = { path = "../sea-query" }

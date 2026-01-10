@@ -253,13 +253,12 @@ macro_rules! impl_numeric_column {
 
         /// `= ANY(..)` operator. Postgres only.
         #[cfg(feature = "postgres-array")]
-        pub fn eq_any<V>(&self, v: impl IntoIterator<Item = V>) -> Expr
+        pub fn eq_any<V, I>(&self, v: I) -> Expr
         where
-            V: $trait + sea_query::ValueType + sea_query::with_array::NotU8,
-            Vec<V>: Into<sea_query::value::Array>,
+            V: Into<Value> + $trait + sea_query::ValueType + sea_query::with_array::NotU8,
+            I: IntoIterator<Item = V>,
         {
-            let vec: Vec<V> = v.into_iter().collect();
-            self.0.eq_any(vec)
+            self.0.eq_any(v)
         }
 
         bind_subquery_func!(pub in_subquery);
@@ -303,13 +302,12 @@ macro_rules! impl_string_column {
 
         /// `= ANY(..)` operator. Postgres only.
         #[cfg(feature = "postgres-array")]
-        pub fn eq_any<V>(&self, v: impl IntoIterator<Item = V>) -> Expr
+        pub fn eq_any<V, I>(&self, v: I) -> Expr
         where
-            V: Into<String> + sea_query::ValueType + sea_query::with_array::NotU8,
-            Vec<V>: Into<sea_query::value::Array>,
+            V: Into<Value> + Into<String> + sea_query::ValueType + sea_query::with_array::NotU8,
+            I: IntoIterator<Item = V>,
         {
-            let vec: Vec<V> = v.into_iter().collect();
-            self.0.eq_any(vec)
+            self.0.eq_any(v)
         }
 
         bind_subquery_func!(pub in_subquery);

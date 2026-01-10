@@ -67,35 +67,35 @@ docker stop "mysql-5.7"
 
 docker run \
     --name "postgres-vector-14" \
-    --env POSTGRES_USER="root" \
-    --env POSTGRES_PASSWORD="root" \
+    --env POSTGRES_USER="sea" \
+    --env POSTGRES_PASSWORD="sea" \
     -d -p 5432:5432 pgvector/pgvector:pg14
 docker stop "postgres-vector-14"
 
 docker run \
     --name "postgres-14" \
-    --env POSTGRES_USER="root" \
-    --env POSTGRES_PASSWORD="root" \
+    --env POSTGRES_USER="sea" \
+    --env POSTGRES_PASSWORD="sea" \
     -d -p 5432:5432 postgres:14
 docker stop "postgres-14"
 
 docker run \
     --name "postgres-13" \
-    --env POSTGRES_USER="root" \
-    --env POSTGRES_PASSWORD="root" \
+    --env POSTGRES_USER="sea" \
+    --env POSTGRES_PASSWORD="sea" \
     -d -p 5432:5432 postgres:13
 docker stop "postgres-13"
 
 docker run \
     --name "postgres-12" \
-    --env POSTGRES_USER="root" \
-    --env POSTGRES_PASSWORD="root" \
+    --env POSTGRES_USER="sea" \
+    --env POSTGRES_PASSWORD="sea" \
     -d -p 5432:5432 postgres:12
 docker stop "postgres-12"
 
 docker run \
     --name "postgres-11" \
-    --env POSTGRES_USER="root" \
-    --env POSTGRES_PASSWORD="root" \
+    --env POSTGRES_USER="sea" \
+    --env POSTGRES_PASSWORD="sea" \
     -d -p 5432:5432 postgres:11
 docker stop "postgres-11"

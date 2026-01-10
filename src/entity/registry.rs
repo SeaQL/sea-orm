@@ -1,4 +1,5 @@
 use crate::{EntitySchemaInfo, Schema, SchemaBuilder};
+use tracing::debug;
 
 #[derive(derive_more::Debug)]
 /// The data structure submitted by your Entity to the Entity Registry.
@@ -33,9 +34,13 @@ impl EntityRegistry {
                 prefix = &string;
             }
         }
+        debug!("Registering entities with prefix `{prefix}`");
         for entity in inventory::iter::<crate::EntityRegistry>() {
             if entity.module_path.starts_with(prefix) {
                 schema.register_entity((entity.schema_info)(schema.helper()));
+                debug!("Registered {}", entity.module_path);
+            } else {
+                debug!("Skipped {}", entity.module_path);
             }
         }
         schema

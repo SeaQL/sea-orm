@@ -11,42 +11,6 @@ pub fn expand_derive_from_json_query_result(ident: Ident) -> syn::Result<TokenSt
         quote!()
     };
 
-    let impl_array_element = if cfg!(feature = "postgres-array") {
-        quote!(
-            #[automatically_derived]
-            impl sea_orm::sea_query::value::ArrayElement for #ident {
-                type ArrayValueType = serde_json::Value;
-
-                fn into_array_value(self) -> Self::ArrayValueType {
-                    serde_json::to_value(&self)
-                        .expect(concat!("Failed to serialize '", stringify!(#ident), "'"))
-                }
-
-                fn try_from_value(v: sea_orm::Value) -> Result<Vec<Option<Self>>, sea_orm::sea_query::ValueTypeErr> {
-                    match v {
-                        sea_orm::Value::Array(sea_orm::sea_query::Array::Json(inner)) => {
-                            inner.into_vec()
-                                .into_iter()
-                                .map(|opt| match opt {
-                                    Some(json) => serde_json::from_value(json)
-                                        .map(Some)
-                                        .map_err(|_| sea_orm::sea_query::ValueTypeErr),
-                                    None => Ok(None),
-                                })
-                                .collect()
-                        }
-                        sea_orm::Value::Array(sea_orm::sea_query::Array::Null(
-                            sea_orm::sea_query::ArrayType::Json,
-                        )) => Ok(vec![]),
-                        _ => Err(sea_orm::sea_query::ValueTypeErr),
-                    }
-                }
-            }
-        )
-    } else {
-        quote!()
-    };
-
     Ok(quote!(
         #[automatically_derived]
         impl sea_orm::TryGetableFromJson for #ident {}
@@ -55,10 +19,10 @@ pub fn expand_derive_from_json_query_result(ident: Ident) -> syn::Result<TokenSt
         impl std::convert::From<#ident> for sea_orm::Value {
             fn from(source: #ident) -> Self {
                 sea_orm::Value::Json(
-                    Some(
+                    Some(std::boxed::Box::new(
                         serde_json::to_value(&source)
                             .expect(concat!("Failed to serialize '", stringify!(#ident), "'"))
-                    )
+                    ))
                 )
             }
         }
@@ -68,7 +32,7 @@ pub fn expand_derive_from_json_query_result(ident: Ident) -> syn::Result<TokenSt
             fn try_from(v: sea_orm::Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
                 match v {
                     sea_orm::Value::Json(Some(json)) => Ok(
-                        serde_json::from_value(json).map_err(|_| sea_orm::sea_query::ValueTypeErr)?,
+                        serde_json::from_value(*json).map_err(|_| sea_orm::sea_query::ValueTypeErr)?,
                     ),
                     _ => Err(sea_orm::sea_query::ValueTypeErr),
                 }
@@ -94,8 +58,13 @@ pub fn expand_derive_from_json_query_result(ident: Ident) -> syn::Result<TokenSt
             }
         }
 
-        #impl_not_u8
+        #[automatically_derived]
+        impl sea_orm::IntoActiveValue<#ident> for #ident {
+            fn into_active_value(self) -> sea_orm::ActiveValue<#ident> {
+                sea_orm::ActiveValue::set(self)
+            }
+        }
 
-        #impl_array_element
+        #impl_not_u8
     ))
 }
