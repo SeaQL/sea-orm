@@ -30,7 +30,7 @@ features = [
     # "sqlx-sqlite",
 ]
 path = "../../../" # remove this line in your own project
-version = "~2.0.0-rc.21" # sea-orm version
+version = "~2.0.0-rc.27" # sea-orm version
 
 [dev-dependencies]
 axum-example-api = { path = ".", features = ["sqlite"] }

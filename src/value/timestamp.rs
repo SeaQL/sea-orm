@@ -51,6 +51,12 @@ macro_rules! impl_timestamp {
             }
         }
 
+        impl sea_orm::IntoActiveValue<$ty> for $ty {
+            fn into_active_value(self) -> sea_orm::ActiveValue<$ty> {
+                sea_orm::ActiveValue::Set(self)
+            }
+        }
+
         impl Deref for $ty {
             type Target = $inner;
 

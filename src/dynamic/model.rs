@@ -86,7 +86,7 @@ fn try_get(res: &QueryResult, pre: &str, col: &str, ty: &ArrayType) -> Result<Va
         ArrayType::Bytes => Value::Bytes(res.try_get(pre, col)?),
 
         #[cfg(feature = "with-json")]
-        ArrayType::Json => Value::Json(res.try_get(pre, col)?),
+        ArrayType::Json => Value::Json(res.try_get::<Option<_>>(pre, col)?.map(Box::new)),
 
         #[cfg(feature = "with-chrono")]
         ArrayType::ChronoDate => Value::ChronoDate(res.try_get(pre, col)?),

@@ -565,11 +565,11 @@ where
                     let json_vec: Vec<Json> = json_vec
                         .into_iter()
                         .filter_map(|val| match val {
-                            Value::Json(Some(json)) => Some(json),
+                            Value::Json(Some(json)) => Some(*json),
                             _ => None,
                         })
                         .collect();
-                    Expr::Value(Value::Json(Some(json_vec.into())))
+                    Expr::Value(Value::Json(Some(Box::new(json_vec.into()))))
                 }
                 Expr::Value(Value::Array(ArrayType::Json, None)) => Expr::Value(Value::Json(None)),
                 _ => expr,

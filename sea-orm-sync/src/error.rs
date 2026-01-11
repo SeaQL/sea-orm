@@ -27,7 +27,7 @@ pub enum DbErr {
         /// Into type
         into: &'static str,
         /// TryError
-        source: Arc<dyn std::error::Error>,
+        source: Arc<dyn std::error::Error + Send + Sync>,
     },
     /// There was a problem with the database connection
     #[error("Connection Error: {0}")]

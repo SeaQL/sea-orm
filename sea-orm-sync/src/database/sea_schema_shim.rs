@@ -33,6 +33,30 @@ impl sea_schema::Connection for DatabaseTransaction {
     }
 }
 
+impl sea_schema::Connection for crate::DatabaseExecutor<'_> {
+    fn query_all(&self, select: SelectStatement) -> Result<Vec<SqlxRow>, SqlxError> {
+        match self {
+            crate::DatabaseExecutor::Connection(conn) => {
+                <DatabaseConnection as sea_schema::Connection>::query_all(conn, select)
+            }
+            crate::DatabaseExecutor::Transaction(txn) => {
+                <DatabaseTransaction as sea_schema::Connection>::query_all(txn, select)
+            }
+        }
+    }
+
+    fn query_all_raw(&self, sql: String) -> Result<Vec<SqlxRow>, SqlxError> {
+        match self {
+            crate::DatabaseExecutor::Connection(conn) => {
+                <DatabaseConnection as sea_schema::Connection>::query_all_raw(conn, sql)
+            }
+            crate::DatabaseExecutor::Transaction(txn) => {
+                <DatabaseTransaction as sea_schema::Connection>::query_all_raw(txn, sql)
+            }
+        }
+    }
+}
+
 fn map_result(result: Result<Vec<QueryResult>, DbErr>) -> Result<Vec<SqlxRow>, SqlxError> {
     match result {
         Ok(rows) => Ok(rows

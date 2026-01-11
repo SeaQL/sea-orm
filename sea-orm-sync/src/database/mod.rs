@@ -9,6 +9,7 @@ use sqlx::sqlite::SqliteConnectOptions;
 
 mod connection;
 mod db_connection;
+mod executor;
 #[cfg(feature = "mock")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 mod mock;
@@ -27,6 +28,7 @@ mod transaction;
 
 pub use connection::*;
 pub use db_connection::*;
+pub use executor::*;
 #[cfg(feature = "mock")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 pub use mock::*;

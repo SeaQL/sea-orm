@@ -13,7 +13,7 @@ license       = "MIT OR Apache-2.0"
 name          = "sea-orm-sync"
 repository    = "https://github.com/SeaQL/sea-orm"
 rust-version  = "1.85.0"
-version       = "2.0.0-rc.21"
+version       = "2.0.0-rc.27"
 
 [package.metadata.docs.rs]
 features = [
@@ -50,7 +50,7 @@ rust_decimal = { version = "1", default-features = false, features = [
 sea-orm-macros = { version = "~2.0.0-rc.20", path = "../sea-orm-macros", default-features = false, features = [
     "strum",
 ] }
-sea-query = { version = "1.0.0-rc.22", default-features = false, features = [
+sea-query = { version = "=1.0.0-rc.28", default-features = false, features = [
     "thread-safe",
     "hashable-value",
     "backend-mysql",
@@ -58,7 +58,7 @@ sea-query = { version = "1.0.0-rc.22", default-features = false, features = [
     "backend-sqlite",
     "sea-orm",
 ] }
-sea-query-rusqlite = { version = "0.8.0-rc.11", optional = true }
+sea-query-rusqlite = { version = "0.8.0-rc.14", optional = true }
 sea-schema-sync = { version = "0.17.0-rc.15", default-features = false, features = [
     "sync",
     "discovery",
@@ -100,7 +100,6 @@ default = [
     "with-json",
     "with-chrono",
     "with-rust_decimal",
-    "with-bigdecimal",
     "with-uuid",
     "with-time",
     "sqlite-use-returning-for-3_35",
@@ -136,6 +135,7 @@ sqlx-postgres = []
 sqlx-sqlite = []
 sync = []
 tests-cfg = ["serde/derive"]
+tests-features = ["default", "rbac", "schema-sync", "with-bigdecimal"]
 with-bigdecimal = [
     "bigdecimal",
     "sea-query/with-bigdecimal",
@@ -170,3 +170,6 @@ with-rust_decimal = [
 ]
 with-time = ["time", "sea-query/with-time", "sea-query-rusqlite?/with-time"]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-rusqlite?/with-uuid"]
+
+[patch.crates-io]
+# sea-query = { path = "../sea-query" }

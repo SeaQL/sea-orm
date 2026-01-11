@@ -26,15 +26,8 @@ pub struct Events(pub Vec<Event>);
 impl From<Events> for Value {
     fn from(events: Events) -> Self {
         let Events(events) = events;
-        Value::Array(
-            ArrayType::String,
-            Some(Box::new(
-                events
-                    .into_iter()
-                    .map(|Event(s)| Value::String(Some(s)))
-                    .collect(),
-            )),
-        )
+        let vec: Vec<String> = events.into_iter().map(|Event(s)| s).collect();
+        vec.into()
     }
 }
 
