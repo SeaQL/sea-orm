@@ -319,7 +319,7 @@ where
 
     /// Alias to [`InsertMany::exec_with_returning`].
     #[deprecated(
-        since = "1.2.0",
+        since = "2.0.0",
         note = "Please use [`InsertMany::exec_with_returning`]"
     )]
     pub async fn exec_with_returning_many<C>(
