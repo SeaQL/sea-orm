@@ -599,6 +599,7 @@
 //! + [SeaORM 2.0: Nested ActiveModel](https://www.sea-ql.org/blog/2025-11-25-sea-orm-2.0/)
 //! + [A walk-through of SeaORM 2.0](https://www.sea-ql.org/blog/2025-12-05-sea-orm-2.0/)
 //! + [How we made SeaORM synchronous](https://www.sea-ql.org/blog/2025-12-12-sea-orm-2.0/)
+//! + [SeaORM 2.0 Migration Guide](https://www.sea-ql.org/blog/2026-01-12-sea-orm-2.0/)
 //!
 //! If you make extensive use of SeaQuery, we recommend checking out our blog post on SeaQuery 1.0 release:
 //!
