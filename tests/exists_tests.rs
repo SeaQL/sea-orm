@@ -4,7 +4,7 @@ pub mod common;
 
 pub use common::{TestContext, bakery_chain::*, setup::*};
 pub use sea_orm::entity::*;
-pub use sea_orm::{ConnectionTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
+pub use sea_orm::{ConnectionTrait, QueryFilter, QueryOrder, QuerySelect, SelectExt};
 
 #[sea_orm_macros::test]
 pub async fn exists_with_no_result() {

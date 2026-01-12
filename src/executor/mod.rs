@@ -7,6 +7,7 @@ mod paginator;
 mod query;
 mod returning;
 mod select;
+mod select_ext;
 mod update;
 
 use consolidate::*;
@@ -18,4 +19,5 @@ pub use paginator::*;
 pub use query::*;
 use returning::*;
 pub use select::*;
+pub use select_ext::*;
 pub use update::*;
