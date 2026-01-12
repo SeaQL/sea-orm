@@ -83,7 +83,7 @@ impl Column {
                     "Vec<u8>".to_owned()
                 }
                 ColumnType::Boolean => "bool".to_owned(),
-                ColumnType::Enum { name, .. } => name.to_string().to_upper_camel_case(),
+                ColumnType::Enum { name, .. } => name.as_str().to_upper_camel_case(),
                 ColumnType::Array(column_type) => {
                     format!("Vec<{}>", write_rs_type(column_type, opt))
                 }
@@ -130,8 +130,8 @@ impl Column {
         col_type.map(|ty| quote! { column_type = #ty })
     }
 
-    pub fn get_def(&self) -> TokenStream {
-        fn write_col_def(col_type: &ColumnType) -> TokenStream {
+    fn get_def_inner(&self, enum_type_ident: Option<&Ident>) -> TokenStream {
+        fn write_col_def(col_type: &ColumnType, enum_type_ident: Option<&Ident>) -> TokenStream {
             match col_type {
                 ColumnType::Char(s) => match s {
                     Some(s) => quote! { ColumnType::Char(Some(#s)) },
@@ -188,7 +188,9 @@ impl Column {
                     quote! { ColumnType::custom(#s) }
                 }
                 ColumnType::Enum { name, .. } => {
-                    let enum_ident = format_ident!("{}", name.to_string().to_upper_camel_case());
+                    let enum_ident = enum_type_ident.cloned().unwrap_or_else(|| {
+                        format_ident!("{}", name.as_str().to_upper_camel_case())
+                    });
                     quote! {
                         #enum_ident::db_type()
                             .get_column_type()
@@ -196,7 +198,7 @@ impl Column {
                     }
                 }
                 ColumnType::Array(column_type) => {
-                    let column_type = write_col_def(column_type);
+                    let column_type = write_col_def(column_type, enum_type_ident);
                     quote! { ColumnType::Array(RcOrArc::new(#column_type)) }
                 }
                 ColumnType::Vector(size) => match size {
@@ -207,7 +209,7 @@ impl Column {
                 _ => unimplemented!(),
             }
         }
-        let mut col_def = write_col_def(&self.col_type);
+        let mut col_def = write_col_def(&self.col_type, enum_type_ident);
         col_def.extend(quote! {
             .def()
         });
@@ -222,6 +224,14 @@ impl Column {
             });
         }
         col_def
+    }
+
+    pub fn get_def(&self) -> TokenStream {
+        self.get_def_inner(None)
+    }
+
+    pub fn get_def_with_enum_type_ident(&self, enum_type_ident: &Ident) -> TokenStream {
+        self.get_def_inner(Some(enum_type_ident))
     }
 
     pub fn get_info(&self, opt: &ColumnOption) -> String {
