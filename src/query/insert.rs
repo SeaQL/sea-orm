@@ -226,9 +226,17 @@ where
     /// Allow insert statement to return without error if nothing's been inserted.
     #[deprecated(
         since = "2.0.0",
-        note = "Please use [`TryInsert::one`] or `on_conflict_do_nothing*` methods that return [`TryInsert`]"
+        note = "Please use [`TryInsert::one`] or `on_conflict_do_nothing*` methods that return [`TryInsert`], or [`Insert::try_insert`]."
     )]
     pub fn do_nothing(self) -> TryInsert<A>
+    where
+        A: ActiveModelTrait,
+    {
+        TryInsert::from_one(self)
+    }
+
+    /// Convert self into a `TryInsert`. It is just a wrapper for converting `DbErr::RecordNotInserted` -> `TryInsertResult::Conflicted`.
+    pub fn try_insert(self) -> TryInsert<A>
     where
         A: ActiveModelTrait,
     {
@@ -409,13 +417,21 @@ where
     /// Allow insert statement to return without error if nothing's been inserted.
     #[deprecated(
         since = "2.0.0",
-        note = "Please use [`TryInsert::many`] or `on_conflict_do_nothing*` methods that return [`TryInsert`]"
+        note = "Please use [`TryInsert::many`] or `on_conflict_do_nothing*` methods that return [`TryInsert`], or [`InsertMany::try_insert`]"
     )]
     pub fn do_nothing(self) -> TryInsert<A>
     where
         A: ActiveModelTrait,
     {
         TryInsert::from_many(self)
+    }
+
+    /// Convert self into a `TryInsert`. It is just a wrapper for converting `DbErr::RecordNotInserted` -> `TryInsertResult::Conflicted`.
+    pub fn try_insert(self) -> TryInsert<A>
+    where
+        A: ActiveModelTrait,
+    {
+        TryInsert::from_one(self)
     }
 
     /// Alias to [`InsertMany::do_nothing`].
