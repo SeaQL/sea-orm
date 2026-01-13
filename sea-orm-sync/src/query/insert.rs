@@ -238,9 +238,17 @@ where
     /// Alias to [`Insert::do_nothing`].
     #[deprecated(
         since = "2.0.0",
-        note = "Please use [`TryInsert::one`] or `on_conflict_do_nothing*` methods that return [`TryInsert`]"
+        note = "Please use [`TryInsert::one`] or `on_conflict_do_nothing*` methods that return [`TryInsert`], or [`Insert::try_insert`]"
     )]
     pub fn on_empty_do_nothing(self) -> TryInsert<A>
+    where
+        A: ActiveModelTrait,
+    {
+        TryInsert::from_one(self)
+    }
+
+    /// Convert self into a `TryInsert`. It is just a wrapper for converting `DbErr::RecordNotInserted` -> `TryInsertResult::Conflicted`.
+    pub fn try_insert(self) -> TryInsert<A>
     where
         A: ActiveModelTrait,
     {
