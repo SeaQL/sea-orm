@@ -431,7 +431,7 @@ where
     where
         A: ActiveModelTrait,
     {
-        TryInsert::from_one(self)
+        TryInsert::from_many(self)
     }
 
     /// Alias to [`InsertMany::do_nothing`].
