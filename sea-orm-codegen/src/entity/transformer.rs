@@ -3,7 +3,7 @@ use crate::{
     RelationType,
 };
 use sea_query::TableCreateStatement;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 #[derive(Clone, Debug)]
 pub struct EntityTransformer;
@@ -195,6 +195,17 @@ impl EntityTransformer {
                 }
             }
         }
+
+        // When codegen is fed with a subset of tables (e.g. via `sea-orm-cli generate entity --tables`),
+        // we must not generate relations that point to entities outside this set, otherwise it will
+        // produce invalid paths like `super::<missing_table>::Entity`.
+        let table_names: HashSet<String> = entities.keys().cloned().collect();
+        for entity in entities.values_mut() {
+            entity
+                .relations
+                .retain(|rel| rel.self_referencing || table_names.contains(&rel.ref_table));
+        }
+
         for table_name in entities.clone().keys() {
             let relations = match entities.get(table_name) {
                 Some(entity) => {
@@ -267,6 +278,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
     use sea_orm::{DbBackend, Schema};
+    use sea_query::{ColumnDef, ForeignKey, Table};
     use std::{
         error::Error,
         io::{self, BufRead, BufReader},
@@ -398,6 +410,143 @@ mod tests {
             ],
             vec![("indexes", include_str!("../tests_cfg/dense/indexes.rs"))],
         )?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn filter_relations_to_missing_entities() -> Result<(), Box<dyn Error>> {
+        let parent_stmt = || {
+            Table::create()
+                .table("parent")
+                .col(
+                    ColumnDef::new("id")
+                        .integer()
+                        .not_null()
+                        .auto_increment()
+                        .primary_key(),
+                )
+                .to_owned()
+        };
+
+        let child_stmt = || {
+            Table::create()
+                .table("child")
+                .col(
+                    ColumnDef::new("id")
+                        .integer()
+                        .not_null()
+                        .auto_increment()
+                        .primary_key(),
+                )
+                .col(ColumnDef::new("parent_id").integer().not_null())
+                .foreign_key(
+                    ForeignKey::create()
+                        .name("fk-child-parent_id")
+                        .from("child", "parent_id")
+                        .to("parent", "id"),
+                )
+                .to_owned()
+        };
+
+        let entities: HashMap<_, _> =
+            EntityTransformer::transform(vec![parent_stmt(), child_stmt()])?
+                .entities
+                .into_iter()
+                .map(|entity| (entity.table_name.clone(), entity))
+                .collect();
+
+        let child = entities.get("child").expect("missing entity `child`");
+        assert_eq!(child.relations.len(), 1);
+        assert_eq!(child.relations[0].ref_table, "parent");
+
+        let entities: HashMap<_, _> = EntityTransformer::transform(vec![child_stmt()])?
+            .entities
+            .into_iter()
+            .map(|entity| (entity.table_name.clone(), entity))
+            .collect();
+
+        let child = entities.get("child").expect("missing entity `child`");
+        assert!(child.relations.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn filter_conjunct_relations_to_missing_entities() -> Result<(), Box<dyn Error>> {
+        let user_stmt = || {
+            Table::create()
+                .table("user")
+                .col(
+                    ColumnDef::new("id")
+                        .integer()
+                        .not_null()
+                        .auto_increment()
+                        .primary_key(),
+                )
+                .to_owned()
+        };
+
+        let role_stmt = || {
+            Table::create()
+                .table("role")
+                .col(
+                    ColumnDef::new("id")
+                        .integer()
+                        .not_null()
+                        .auto_increment()
+                        .primary_key(),
+                )
+                .to_owned()
+        };
+
+        let user_role_stmt = || {
+            Table::create()
+                .table("user_role")
+                .col(ColumnDef::new("user_id").integer().not_null().primary_key())
+                .col(ColumnDef::new("role_id").integer().not_null().primary_key())
+                .foreign_key(
+                    ForeignKey::create()
+                        .name("fk-user_role-user_id")
+                        .from("user_role", "user_id")
+                        .to("user", "id"),
+                )
+                .foreign_key(
+                    ForeignKey::create()
+                        .name("fk-user_role-role_id")
+                        .from("user_role", "role_id")
+                        .to("role", "id"),
+                )
+                .to_owned()
+        };
+
+        let entities: HashMap<_, _> =
+            EntityTransformer::transform(vec![user_stmt(), role_stmt(), user_role_stmt()])?
+                .entities
+                .into_iter()
+                .map(|entity| (entity.table_name.clone(), entity))
+                .collect();
+
+        let user = entities.get("user").expect("missing entity `user`");
+        assert!(user.conjunct_relations.iter().any(|conjunct_relation| {
+            conjunct_relation.via == "user_role" && conjunct_relation.to == "role"
+        }));
+
+        let entities: HashMap<_, _> =
+            EntityTransformer::transform(vec![user_stmt(), user_role_stmt()])?
+                .entities
+                .into_iter()
+                .map(|entity| (entity.table_name.clone(), entity))
+                .collect();
+
+        let user = entities.get("user").expect("missing entity `user`");
+        assert!(user.conjunct_relations.is_empty());
+
+        let user_role = entities
+            .get("user_role")
+            .expect("missing entity `user_role`");
+        assert_eq!(user_role.relations.len(), 1);
+        assert_eq!(user_role.relations[0].ref_table, "user");
 
         Ok(())
     }
