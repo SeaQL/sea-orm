@@ -147,16 +147,19 @@ where
     T: Into<String>,
     I: IntoIterator<Item = T>,
 {
-    attributes.into_iter().map(Into::<String>::into).fold(
-        TokenStream::default(),
-        |acc, attribute| {
-            let tokens: TokenStream = attribute.parse().unwrap();
+    attributes
+        .into_iter()
+        .map(Into::<String>::into)
+        .map(|attr| {
+            let wrapped = format!("#[{}]", attr);
+            wrapped.parse::<TokenStream>().unwrap()
+        })
+        .fold(TokenStream::default(), |acc, tokens| {
             quote! {
                 #acc
-                #[#tokens]
+                #tokens
             }
-        },
-    )
+        })
 }
 
 impl FromStr for WithPrelude {
