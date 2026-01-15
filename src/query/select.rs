@@ -4,7 +4,7 @@ use crate::{
 };
 use core::fmt::Debug;
 use core::marker::PhantomData;
-use sea_query::{IntoColumnRef, SelectStatement, SimpleExpr};
+use sea_query::{FunctionCall, IntoColumnRef, SelectStatement, SimpleExpr};
 
 /// Defines a structure to perform select operations
 #[derive(Clone, Debug)]
@@ -207,6 +207,12 @@ where
 impl IntoSimpleExpr for SimpleExpr {
     fn into_simple_expr(self) -> SimpleExpr {
         self
+    }
+}
+
+impl IntoSimpleExpr for FunctionCall {
+    fn into_simple_expr(self) -> SimpleExpr {
+        SimpleExpr::FunctionCall(self)
     }
 }
 
