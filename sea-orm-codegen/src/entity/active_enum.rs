@@ -237,7 +237,10 @@ mod tests {
                 &WithSerde::None,
                 true,
                 &TokenStream::new(),
-                &bonus_attributes([r#"serde(rename_all = "camelCase")"#, r#"ts(export, export_to = "path")"#]),
+                &bonus_attributes([
+                    r#"serde(rename_all = "camelCase")"#,
+                    r#"ts(export, export_to = "path")"#
+                ]),
                 EntityFormat::Compact,
             )
             .to_string(),
