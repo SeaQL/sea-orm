@@ -96,6 +96,8 @@ pub use rust_decimal::Decimal;
 pub use bigdecimal::BigDecimal;
 
 #[cfg(feature = "with-uuid")]
+pub use crate::value::TextUuid;
+#[cfg(feature = "with-uuid")]
 pub use uuid::Uuid;
 
 #[cfg(feature = "postgres-vector")]

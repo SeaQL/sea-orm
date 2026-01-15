@@ -14,6 +14,11 @@ mod with_time;
 #[cfg(feature = "with-time")]
 pub use with_time::*;
 
+#[cfg(feature = "with-uuid")]
+mod text_uuid;
+#[cfg(feature = "with-uuid")]
+pub use text_uuid::*;
+
 /// Default value for T
 pub trait DefaultActiveValue {
     /// `Default::default()` if implemented, dummy value otherwise
