@@ -2,7 +2,6 @@ use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use sea_query::DynIden;
-use std::fmt::Write;
 
 use crate::{EntityFormat, WithSerde};
 
@@ -24,30 +23,45 @@ impl ActiveEnum {
         let enum_name = &self.enum_name.to_string();
         let enum_iden = format_ident!("{}", enum_name.to_upper_camel_case());
         let values: Vec<String> = self.values.iter().map(|v| v.to_string()).collect();
+
         let variants = values.iter().map(|v| v.trim()).map(|v| {
-            if v.chars().next().map(char::is_numeric).unwrap_or(false) {
-                format_ident!("_{}", v)
-            } else {
-                let variant_name = if v.is_empty() {
-                    println!("Warning: item in the enumeration '{enum_name}' is an empty string, it will be converted to `__EmptyString`. You can modify it later as needed.");
-                    "__EmptyString".to_string()
-                } else {
-                    v.to_upper_camel_case()
-                };
-                if variant_name.is_empty() {
-                    println!("Warning: item '{v}' in the enumeration '{enum_name}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.");
-                    let mut ss = String::new();
-                    for c in v.chars() {
-                        if c.len_utf8() > 1 {
-                            write!(&mut ss, "{c}").unwrap();
-                        } else {
-                            write!(&mut ss, "U{:04X}", c as u32).unwrap();
-                        }
-                    }
-                    format_ident!("{}", ss)
-                } else {
-                    format_ident!("{}", variant_name)
+            if v.is_empty() {
+                println!("Warning: item in the enumeration '{enum_name}' is an empty string, it will be converted to `__EmptyString`. You can modify it later as needed.");
+                return format_ident!("__EmptyString");
+            }
+
+            let is_leading_digit = v.chars().next().is_some_and(|c| c.is_ascii_digit());
+            let is_valid_char = |c: char| c.is_ascii_alphanumeric() || c == '_';
+            let is_passthrough = |c: char| matches!(c, '-' | ' ');
+            let needs_utf8_escape = |c: char| !is_valid_char(c) && !is_passthrough(c);
+
+            if v.chars().any(needs_utf8_escape) {
+                println!("Warning: item '{v}' in the enumeration '{enum_name}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.");
+
+                let mut buf = String::new();
+
+                if is_leading_digit {
+                    buf.push('_');
                 }
+
+                for c in v.chars() {
+                    if is_passthrough(c) {
+                        continue;
+                    } else if is_valid_char(c) || c.len_utf8() > 1 {
+                        buf.push(c);
+                    } else {
+                        buf.push_str(&format!("U{:04X}", c as u32));
+                    }
+                }
+
+                return format_ident!("{buf}");
+            }
+
+            if is_leading_digit {
+                let sanitized = v.chars().filter(|&c| is_valid_char(c)).collect::<String>();
+                format_ident!("_{sanitized}")
+            } else {
+                format_ident!("{}", v.to_upper_camel_case())
             }
         });
 
@@ -92,6 +106,36 @@ mod tests {
     use sea_query::{Alias, IntoIden};
 
     #[test]
+    fn test_enum_variant_starts_with_empty_string() {
+        assert_eq!(
+            ActiveEnum {
+                enum_name: Alias::new("media_type").into_iden(),
+                values: vec![""]
+                    .into_iter()
+                    .map(|variant| Alias::new(variant).into_iden())
+                    .collect(),
+            }
+            .impl_active_enum(
+                &WithSerde::None,
+                true,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                EntityFormat::Compact,
+            )
+            .to_string(),
+            quote!(
+                #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
+                #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "media_type")]
+                pub enum MediaType {
+                    #[sea_orm(string_value = "")]
+                    __EmptyString,
+                }
+            )
+            .to_string()
+        )
+    }
+
+    #[test]
     fn test_enum_variant_starts_with_number() {
         assert_eq!(
             ActiveEnum {
@@ -108,6 +152,7 @@ mod tests {
                     "EXECUTABLE",
                     "ARCHIVE",
                     "3D",
+                    "2-D"
                 ]
                 .into_iter()
                 .map(|variant| Alias::new(variant).into_iden())
@@ -147,6 +192,8 @@ mod tests {
                     Archive,
                     #[sea_orm(string_value = "3D")]
                     _3D,
+                    #[sea_orm(string_value = "2-D")]
+                    _2D,
                 }
             )
             .to_string()
@@ -278,6 +325,10 @@ mod tests {
                     "//",
                     "A-B-C",
                     "你好",
+                    "0/",
+                    "0//",
+                    "0A-B-C",
+                    "0你好",
                 ]
                 .into_iter()
                 .map(|variant| Alias::new(variant).into_iden())
@@ -311,6 +362,14 @@ mod tests {
                     ABC,
                     #[sea_orm(string_value = "你好")]
                     你好,
+                    #[sea_orm(string_value = "0/")]
+                    _0U002F,
+                    #[sea_orm(string_value = "0//")]
+                    _0U002FU002F,
+                    #[sea_orm(string_value = "0A-B-C")]
+                    _0ABC,
+                    #[sea_orm(string_value = "0你好")]
+                    _0你好,
                 }
             )
             .to_string()
