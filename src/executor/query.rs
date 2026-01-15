@@ -999,7 +999,7 @@ mod postgres_array {
     macro_rules! try_getable_postgres_array {
         ( $type: ty ) => {
             #[allow(unused_variables)]
-            impl TryGetable for Vec<Option<$type>> {
+            impl TryGetable for Vec<$type> {
                 fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
                     match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
@@ -1010,7 +1010,7 @@ mod postgres_array {
                         .into()),
                         #[cfg(feature = "sqlx-postgres")]
                         QueryResultRow::SqlxPostgres(row) => row
-                            .try_get::<Option<Vec<Option<$type>>>, _>(idx.as_sqlx_postgres_index())
+                            .try_get::<Option<Vec<$type>>, _>(idx.as_sqlx_postgres_index())
                             .map_err(|e| sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                         #[cfg(feature = "sqlx-sqlite")]
@@ -1101,9 +1101,9 @@ mod postgres_array {
     macro_rules! try_getable_postgres_array_uuid {
         ( $type: ty, $conversion_fn: expr ) => {
             #[allow(unused_variables, unreachable_code)]
-            impl TryGetable for Vec<Option<$type>> {
+            impl TryGetable for Vec<$type> {
                 fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
-                    let res: Result<Vec<Option<uuid::Uuid>>, TryGetError> = match &res.row {
+                    let res: Result<Vec<uuid::Uuid>, TryGetError> = match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
                         QueryResultRow::SqlxMySql(_) => Err(type_err(format!(
                             "{} unsupported by sqlx-mysql",
@@ -1112,9 +1112,7 @@ mod postgres_array {
                         .into()),
                         #[cfg(feature = "sqlx-postgres")]
                         QueryResultRow::SqlxPostgres(row) => row
-                            .try_get::<Option<Vec<Option<uuid::Uuid>>>, _>(
-                                idx.as_sqlx_postgres_index(),
-                            )
+                            .try_get::<Option<Vec<uuid::Uuid>>, _>(idx.as_sqlx_postgres_index())
                             .map_err(|e| sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                         #[cfg(feature = "sqlx-sqlite")]
@@ -1131,14 +1129,14 @@ mod postgres_array {
                         .into()),
                         #[cfg(feature = "mock")]
                         QueryResultRow::Mock(row) => {
-                            row.try_get::<Vec<Option<uuid::Uuid>>, _>(idx).map_err(|e| {
+                            row.try_get::<Vec<uuid::Uuid>, _>(idx).map_err(|e| {
                                 debug_print!("{:#?}", e.to_string());
                                 err_null_idx_col(idx)
                             })
                         }
                         #[cfg(feature = "proxy")]
                         QueryResultRow::Proxy(row) => {
-                            row.try_get::<Vec<Option<uuid::Uuid>>, _>(idx).map_err(|e| {
+                            row.try_get::<Vec<uuid::Uuid>, _>(idx).map_err(|e| {
                                 debug_print!("{:#?}", e.to_string());
                                 err_null_idx_col(idx)
                             })
@@ -1146,7 +1144,7 @@ mod postgres_array {
                         #[allow(unreachable_patterns)]
                         _ => unreachable!(),
                     };
-                    res.map(|vec| vec.into_iter().map(|opt| opt.map($conversion_fn)).collect())
+                    res.map(|vec| vec.into_iter().map($conversion_fn).collect())
                 }
             }
         };
@@ -1167,7 +1165,7 @@ mod postgres_array {
     #[cfg(feature = "with-uuid")]
     try_getable_postgres_array_uuid!(uuid::fmt::Urn, uuid::Uuid::urn);
 
-    impl TryGetable for Vec<Option<u32>> {
+    impl TryGetable for Vec<u32> {
         #[allow(unused_variables)]
         fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
             match &res.row {
@@ -1180,10 +1178,10 @@ mod postgres_array {
                     use sqlx::postgres::types::Oid;
                     // Since 0.6.0, SQLx has dropped direct mapping from PostgreSQL's OID to Rust's `u32`;
                     // Instead, `u32` was wrapped by a `sqlx::Oid`.
-                    row.try_get::<Option<Vec<Option<Oid>>>, _>(idx.as_sqlx_postgres_index())
+                    row.try_get::<Option<Vec<Oid>>, _>(idx.as_sqlx_postgres_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into())
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
-                        .map(|oids| oids.into_iter().map(|opt| opt.map(|oid| oid.0)).collect())
+                        .map(|oids| oids.into_iter().map(|oid| oid.0).collect())
                 }
                 #[cfg(feature = "sqlx-sqlite")]
                 QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
@@ -1212,83 +1210,6 @@ mod postgres_array {
             }
         }
     }
-
-    macro_rules! try_getable_postgres_non_null_array_from_opt {
-        ( $($type: ty),* $(,)?) => {
-            $(
-                impl TryGetable for Vec<$type> {
-                    fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
-                        let vec_opt = <Vec<Option<$type>> as TryGetable>::try_get_by(res, idx)?;
-                        vec_opt
-                            .into_iter()
-                            .enumerate()
-                            .map(|(i, opt)| {
-                                opt.ok_or_else(|| {
-                                    TryGetError::DbErr(type_err(format!(
-                                        "NULL element at index {} in non-nullable array of {}",
-                                        i,
-                                        std::any::type_name::<$type>()
-                                    )))
-                                })
-                            })
-                            .collect()
-                    }
-                }
-            )*
-        };
-    }
-
-    try_getable_postgres_non_null_array_from_opt!(
-        bool,
-        i8,
-        i16,
-        i32,
-        i64,
-        f32,
-        f64,
-        String,
-        Vec<u8>,
-        u32
-    );
-
-    #[cfg(feature = "with-json")]
-    try_getable_postgres_non_null_array_from_opt!(serde_json::Value);
-
-    #[cfg(feature = "with-chrono")]
-    try_getable_postgres_non_null_array_from_opt!(
-        chrono::NaiveDate,
-        chrono::NaiveTime,
-        chrono::NaiveDateTime,
-        chrono::DateTime<chrono::FixedOffset>,
-        chrono::DateTime<chrono::Utc>,
-        chrono::DateTime<chrono::Local>,
-    );
-
-    #[cfg(feature = "with-time")]
-    try_getable_postgres_non_null_array_from_opt!(
-        time::Date,
-        time::Time,
-        time::PrimitiveDateTime,
-        time::OffsetDateTime,
-    );
-
-    #[cfg(feature = "with-rust_decimal")]
-    try_getable_postgres_non_null_array_from_opt!(rust_decimal::Decimal);
-
-    #[cfg(feature = "with-bigdecimal")]
-    try_getable_postgres_non_null_array_from_opt!(bigdecimal::BigDecimal);
-
-    #[cfg(feature = "with-ipnetwork")]
-    try_getable_postgres_non_null_array_from_opt!(ipnetwork::IpNetwork);
-
-    #[cfg(feature = "with-uuid")]
-    try_getable_postgres_non_null_array_from_opt!(
-        uuid::Uuid,
-        uuid::fmt::Braced,
-        uuid::fmt::Hyphenated,
-        uuid::fmt::Simple,
-        uuid::fmt::Urn,
-    );
 }
 
 #[cfg(feature = "postgres-vector")]
@@ -1491,17 +1412,7 @@ fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), Try
 /// touch this trait.
 pub trait TryGetableArray: Sized {
     /// Just a delegate
-    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I)
-    -> Result<Vec<Option<Self>>, TryGetError>;
-}
-
-impl<T> TryGetable for Vec<Option<T>>
-where
-    T: TryGetableArray,
-{
-    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
-        T::try_get_by(res, index)
-    }
+    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<Self>, TryGetError>;
 }
 
 impl<T> TryGetable for Vec<T>
@@ -1509,20 +1420,7 @@ where
     T: TryGetableArray,
 {
     fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
-        let vec_opt = T::try_get_by(res, index)?;
-        let ty = std::any::type_name::<T>();
-        vec_opt
-            .into_iter()
-            .enumerate()
-            .map(|(i, opt)| {
-                opt.ok_or_else(|| {
-                    TryGetError::DbErr(type_err(format!(
-                        "NULL element at index {} in non-nullable array of {}",
-                        i, ty
-                    )))
-                })
-            })
-            .collect()
+        T::try_get_by(res, index)
     }
 }
 
@@ -1600,28 +1498,6 @@ where
             ))),
         }
     }
-
-    /// Get a Vec<Option<Self>> from an Array of Json
-    fn from_json_vec_option(value: serde_json::Value) -> Result<Vec<Option<Self>>, TryGetError> {
-        match value {
-            serde_json::Value::Array(values) => {
-                let mut res = Vec::new();
-                for item in values {
-                    if item.is_null() {
-                        res.push(None);
-                    } else {
-                        res.push(Some(
-                            serde_json::from_value(item).map_err(crate::error::json_err)?,
-                        ));
-                    }
-                }
-                Ok(res)
-            }
-            _ => Err(TryGetError::DbErr(DbErr::Json(
-                "Value is not an Array".to_owned(),
-            ))),
-        }
-    }
 }
 
 #[cfg(feature = "with-json")]
@@ -1639,8 +1515,8 @@ impl<T> TryGetableArray for T
 where
     T: TryGetableFromJson,
 {
-    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<Option<T>>, TryGetError> {
-        T::from_json_vec_option(serde_json::Value::try_get_by(res, index)?)
+    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<T>, TryGetError> {
+        T::from_json_vec(serde_json::Value::try_get_by(res, index)?)
     }
 }
 

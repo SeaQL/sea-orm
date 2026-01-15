@@ -258,7 +258,7 @@ impl RbacContext {
                 .update_column(user_override::Column::Grant)
                 .to_owned(),
             )
-            .do_nothing()
+            .try_insert()
             .exec(&txn)
             .await?;
         }
@@ -312,7 +312,7 @@ impl RbacContext {
                     .update_column(user_role::Column::RoleId)
                     .to_owned(),
             )
-            .do_nothing()
+            .try_insert()
             .exec(&txn)
             .await?;
         }

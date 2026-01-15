@@ -105,32 +105,33 @@ pub fn expand_derive_active_model_ex(
                                         && compound_attrs.via.is_none()
                                     {
                                         has_many_fields.push(ident.clone());
-                                    } else if compound_attrs.has_many.is_some() {
-                                        if let Some(via) = &compound_attrs.via {
-                                            has_many_via_fields.push((ident.clone(), via.value()));
-                                        }
+                                    } else if compound_attrs.has_many.is_some()
+                                        && compound_attrs.via.is_some()
+                                    {
+                                        has_many_via_fields.push((
+                                            ident.clone(),
+                                            compound_attrs.via.as_ref().unwrap().value(),
+                                        ));
                                     }
                                 }
                                 if compound_attrs.self_ref.is_some()
+                                    && compound_attrs.via.is_some()
                                     && compound_attrs.reverse.is_none()
                                 {
-                                    if let Some(via) = &compound_attrs.via {
-                                        has_many_via_self_fields.push((
-                                            ident.clone(),
-                                            via.value(),
-                                            false,
-                                        ));
-                                    }
+                                    has_many_via_self_fields.push((
+                                        ident.clone(),
+                                        compound_attrs.via.as_ref().unwrap().value(),
+                                        false,
+                                    ));
                                 } else if compound_attrs.self_ref.is_some()
+                                    && compound_attrs.via.is_some()
                                     && compound_attrs.reverse.is_some()
                                 {
-                                    if let Some(via) = &compound_attrs.via {
-                                        has_many_via_self_fields.push((
-                                            ident.clone(),
-                                            via.value(),
-                                            true,
-                                        ));
-                                    }
+                                    has_many_via_self_fields.push((
+                                        ident.clone(),
+                                        compound_attrs.via.as_ref().unwrap().value(),
+                                        true,
+                                    ));
                                 }
                             }
 

@@ -42,12 +42,26 @@ where
     pub last_insert_id: Option<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>,
 }
 
-/// The types of results for an INSERT operation
+/// The result of executing a [`crate::TryInsert`].
+///
+/// This enum represents no‑op inserts (e.g. conflict `DO NOTHING`) without treating
+/// them as errors.
 #[derive(Debug)]
 pub enum TryInsertResult<T> {
-    /// The INSERT statement did not have any value to insert
+    /// There was nothing to insert, so no SQL was executed.
+    ///
+    /// This typically happens when creating a [`crate::TryInsert`] from an empty iterator or None.
     Empty,
-    /// The INSERT operation did not insert any valid value
+    /// The statement was executed, but SeaORM could not get the inserted row / insert id.
+    ///
+    /// This is commonly caused by `ON CONFLICT ... DO NOTHING` (Postgres / SQLite) or the MySQL
+    /// polyfill (`ON DUPLICATE KEY UPDATE pk = pk`).
+    ///
+    /// Note that this variant maps from `DbErr::RecordNotInserted`, so it can also represent other
+    /// situations where the backend/driver reports no inserted row (e.g. an empty `RETURNING`
+    /// result set or a "no-op" update in MySQL where `last_insert_id` is reported as `0`). In rare
+    /// cases, this can be a false negative where a row was inserted but the backend did not report
+    /// it.
     Conflicted,
     /// Successfully inserted
     Inserted(T),
@@ -57,7 +71,11 @@ impl<A> TryInsertResult<InsertResult<A>>
 where
     A: ActiveModelTrait,
 {
-    /// Empty: `Ok(None)`. Inserted: `Ok(Some(last_insert_id))`. Conflicted: `Err(DbErr::RecordNotInserted)`.
+    /// Extract the last inserted id.
+    ///
+    /// - [`TryInsertResult::Empty`] => `Ok(None)`
+    /// - [`TryInsertResult::Inserted`] => `Ok(Some(last_insert_id))`
+    /// - [`TryInsertResult::Conflicted`] => `Err(DbErr::RecordNotInserted)`
     pub fn last_insert_id(
         self,
     ) -> Result<Option<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr> {
@@ -301,7 +319,7 @@ where
 
     /// Alias to [`InsertMany::exec_with_returning`].
     #[deprecated(
-        since = "1.2.0",
+        since = "2.0.0",
         note = "Please use [`InsertMany::exec_with_returning`]"
     )]
     pub async fn exec_with_returning_many<C>(

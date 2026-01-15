@@ -343,6 +343,41 @@ where
         }
     }
 
+    /// `Set(value)`, except when [`self.is_unchanged()`][ActiveValue#method.is_unchanged],
+    /// `value` equals the current [Unchanged][ActiveValue::Unchanged] value, and `value`
+    /// does not match a given predicate.
+    ///
+    /// This is useful in the same situations as [ActiveValue#method.set_if_not_equals] as
+    /// well as when you want to leave an existing [Set][ActiveValue::Set] value alone
+    /// depending on a condition, such as ensuring a `None` value never replaced an
+    /// existing `Some` value. This can come up when trying to merge two [ActiveValue]s.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// # use sea_orm::ActiveValue;
+    /// #
+    /// let mut value = ActiveValue::Set(Some("old"));
+    ///
+    /// // since Option::is_some(None) == false, we leave the existing set value alone
+    /// value.set_if_not_equals_and(None, Option::is_some);
+    /// assert_eq!(value, ActiveValue::Set(Some("old")));
+    ///
+    /// // since Option::is_some(Some("new")) == true, we replace the set value
+    /// value.set_if_not_equals_and(Some("new"), Option::is_some);
+    /// assert_eq!(value, ActiveValue::Set(Some("new")));
+    /// ```
+    pub fn set_if_not_equals_and(&mut self, value: V, f: impl FnOnce(&V) -> bool)
+    where
+        V: PartialEq,
+    {
+        match self {
+            ActiveValue::Unchanged(current) if &value == current => {}
+            ActiveValue::Set(_) if !f(&value) => {}
+            _ => *self = ActiveValue::Set(value),
+        }
+    }
+
     /// Get the inner value, unless `self` is [NotSet][ActiveValue::NotSet].
     ///
     /// There's also a panicking version: [ActiveValue::as_ref].
