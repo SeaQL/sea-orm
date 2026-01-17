@@ -106,7 +106,6 @@ uuid = { version = "1", features = ["v4"] }
 
 [features]
 debug-print = []
-tracing-spans = []
 default = [
     "macros",
     "with-json",
@@ -175,6 +174,7 @@ sqlx-sqlite = [
 sync = []
 tests-cfg = ["serde/derive"]
 tests-features = ["default", "rbac", "schema-sync", "with-bigdecimal"]
+tracing-spans = []
 with-bigdecimal = [
     "bigdecimal",
     "sea-query/with-bigdecimal",
