@@ -213,6 +213,11 @@ impl DerivePartialModel {
                         }
                         .to_owned(),
                         alias: None,
+                        field_type: match col_as {
+                            ColumnAs::Nested { typ, .. } => typ.clone(),
+                            _ => syn::parse_quote!(()),
+                        },
+                        prefix: false,
                     })
                     .collect(),
             }
