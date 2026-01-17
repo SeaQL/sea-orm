@@ -144,7 +144,7 @@ impl ConnectionTrait for DatabaseConnection {
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
     async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
-        crate::with_db_span!(
+        super::tracing_spans::with_db_span!(
             "sea_orm.execute",
             self.get_database_backend(),
             stmt.sql.as_str(),
@@ -180,7 +180,7 @@ impl ConnectionTrait for DatabaseConnection {
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
     async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
-        crate::with_db_span!(
+        super::tracing_spans::with_db_span!(
             "sea_orm.execute_unprepared",
             self.get_database_backend(),
             sql,
@@ -224,7 +224,7 @@ impl ConnectionTrait for DatabaseConnection {
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
     async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
-        crate::with_db_span!(
+        super::tracing_spans::with_db_span!(
             "sea_orm.query_one",
             self.get_database_backend(),
             stmt.sql.as_str(),
@@ -260,7 +260,7 @@ impl ConnectionTrait for DatabaseConnection {
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
     async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
-        crate::with_db_span!(
+        super::tracing_spans::with_db_span!(
             "sea_orm.query_all",
             self.get_database_backend(),
             stmt.sql.as_str(),

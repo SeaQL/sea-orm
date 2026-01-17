@@ -3,7 +3,7 @@ pub use crate::{
     ColumnTypeTrait, ConnectionTrait, CursorTrait, DatabaseConnection, DbConn, EntityName,
     EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked, LoaderTrait, ModelTrait,
     PaginatorTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryResult,
-    Related, RelatedSelfVia, RelationDef, RelationTrait, Select, Value,
+    Related, RelatedSelfVia, RelationDef, RelationTrait, Select, SelectExt, Value,
     error::*,
     sea_query::{DynIden, Expr, RcOrArc, SeaRc, StringLen},
 };
@@ -95,6 +95,8 @@ pub use rust_decimal::Decimal;
 #[cfg(feature = "with-bigdecimal")]
 pub use bigdecimal::BigDecimal;
 
+#[cfg(feature = "with-uuid")]
+pub use crate::value::TextUuid;
 #[cfg(feature = "with-uuid")]
 pub use uuid::Uuid;
 

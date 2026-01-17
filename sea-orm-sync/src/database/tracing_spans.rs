@@ -20,8 +20,8 @@
 //!     .init();
 //!
 //! // All database operations will now generate tracing spans
-//! let db = Database::connect("sqlite::memory:").await?;
-//! let cakes = Cake::find().all(&db).await?;  // Generates a span
+//! let db = Database::connect("sqlite::memory:")?;
+//! let cakes = Cake::find().all(&db)?;  // Generates a span
 //! ```
 
 use crate::DbBackend;
@@ -107,15 +107,14 @@ pub(crate) fn record_query_result<T, E: std::fmt::Display>(
 ///
 /// Note: `db.statement` is set to Empty. Call `span.record("db.statement", sql)`
 /// separately if the query is parameterized (safe to log).
-#[doc(hidden)]
-#[macro_export]
+#[cfg(feature = "tracing-spans")]
 macro_rules! db_span {
     ($name:expr, $backend:expr, $sql:expr) => {{
         let sql: &str = $sql;
-        let op = $crate::tracing_spans::DbOperation::from_sql(sql);
+        let op = $crate::database::tracing_spans::DbOperation::from_sql(sql);
         ::tracing::info_span!(
             $name,
-            db.system = $crate::tracing_spans::db_system_name($backend),
+            db.system = $crate::database::tracing_spans::db_system_name($backend),
             db.operation = %op,
             db.statement = ::tracing::field::Empty,
             otel.status_code = ::tracing::field::Empty,
@@ -123,6 +122,48 @@ macro_rules! db_span {
         )
     }};
 }
+
+#[cfg(feature = "tracing-spans")]
+pub(crate) use db_span;
+
+/// Execute a future and wrap it in a tracing span when `tracing-spans` is enabled.
+///
+/// When the feature is disabled, this macro simply awaits the future with zero overhead.
+///
+/// # Arguments
+/// - `$name`: span name (e.g., "sea_orm.execute")
+/// - `$backend`: DbBackend
+/// - `$sql`: &str used for db.operation parsing
+/// - `record_stmt`: whether to record `db.statement`
+/// - `$fut`: the future to execute
+macro_rules! with_db_span {
+    ($name:expr, $backend:expr, $sql:expr, record_stmt = $record_stmt:expr, $fut:expr) => {{
+        #[cfg(all(feature = "tracing-spans", not(feature = "sync")))]
+        {
+            let span = $crate::database::tracing_spans::db_span!($name, $backend, $sql);
+            if $record_stmt {
+                span.record("db.statement", $sql);
+            }
+            let result = ::tracing::Instrument::instrument($fut, span.clone());
+            $crate::database::tracing_spans::record_query_result(&span, &result);
+            result
+        }
+        #[cfg(all(feature = "tracing-spans", feature = "sync"))]
+        {
+            let span = $crate::database::tracing_spans::db_span!($name, $backend, $sql);
+            if $record_stmt {
+                span.record("db.statement", $sql);
+            }
+            span.in_scope($fut)
+        }
+        #[cfg(not(feature = "tracing-spans"))]
+        {
+            $fut
+        }
+    }};
+}
+
+pub(crate) use with_db_span;
 
 #[cfg(test)]
 mod tests {

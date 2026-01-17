@@ -45,7 +45,7 @@ impl DatabaseTransaction {
             metric_callback,
         };
 
-        let begin_result: Result<(), DbErr> = crate::with_db_span!(
+        let begin_result: Result<(), DbErr> = super::tracing_spans::with_db_span!(
             "sea_orm.begin",
             backend,
             "BEGIN",
@@ -145,7 +145,7 @@ impl DatabaseTransaction {
     #[instrument(level = "trace")]
     #[allow(unreachable_code, unused_mut)]
     pub async fn commit(mut self) -> Result<(), DbErr> {
-        let result: Result<(), DbErr> = crate::with_db_span!(
+        let result: Result<(), DbErr> = super::tracing_spans::with_db_span!(
             "sea_orm.commit",
             self.backend,
             "COMMIT",
@@ -202,7 +202,7 @@ impl DatabaseTransaction {
     #[instrument(level = "trace")]
     #[allow(unreachable_code, unused_mut)]
     pub async fn rollback(mut self) -> Result<(), DbErr> {
-        let result: Result<(), DbErr> = crate::with_db_span!(
+        let result: Result<(), DbErr> = super::tracing_spans::with_db_span!(
             "sea_orm.rollback",
             self.backend,
             "ROLLBACK",
@@ -326,7 +326,7 @@ impl ConnectionTrait for DatabaseTransaction {
     async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
-        crate::with_db_span!(
+        super::tracing_spans::with_db_span!(
             "sea_orm.execute",
             self.backend,
             stmt.sql.as_str(),
@@ -383,7 +383,7 @@ impl ConnectionTrait for DatabaseTransaction {
     async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug_print!("{}", sql);
 
-        crate::with_db_span!(
+        super::tracing_spans::with_db_span!(
             "sea_orm.execute_unprepared",
             self.backend,
             sql,
@@ -445,7 +445,7 @@ impl ConnectionTrait for DatabaseTransaction {
     async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
-        crate::with_db_span!(
+        super::tracing_spans::with_db_span!(
             "sea_orm.query_one",
             self.backend,
             stmt.sql.as_str(),
@@ -505,7 +505,7 @@ impl ConnectionTrait for DatabaseTransaction {
     async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
-        crate::with_db_span!(
+        super::tracing_spans::with_db_span!(
             "sea_orm.query_all",
             self.backend,
             stmt.sql.as_str(),

@@ -24,6 +24,7 @@ mod sea_schema_rusqlite;
 mod sea_schema_shim;
 mod statement;
 mod stream;
+mod tracing_spans;
 mod transaction;
 
 pub use connection::*;

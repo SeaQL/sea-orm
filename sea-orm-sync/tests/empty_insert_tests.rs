@@ -27,11 +27,9 @@ pub fn test(db: &DbConn) {
         ..Default::default()
     };
 
-    let res = Bakery::insert(seaside_bakery)
-        .on_empty_do_nothing()
-        .exec(db);
+    let res = Bakery::insert(seaside_bakery).exec(db);
 
-    assert!(matches!(res, Ok(TryInsertResult::Inserted(_))));
+    assert!(res.is_ok());
 
     let double_seaside_bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -47,8 +45,8 @@ pub fn test(db: &DbConn) {
     assert!(matches!(conflict_insert, Ok(TryInsertResult::Conflicted)));
 
     let empty_insert = Bakery::insert_many(std::iter::empty::<bakery::ActiveModel>())
-        .on_empty_do_nothing()
-        .exec(db);
+        .exec(db)
+        .unwrap();
 
-    assert!(matches!(empty_insert, Ok(TryInsertResult::Empty)));
+    assert!(empty_insert.last_insert_id.is_none());
 }
