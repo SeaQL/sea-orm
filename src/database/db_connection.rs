@@ -144,95 +144,153 @@ impl ConnectionTrait for DatabaseConnection {
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
     async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
-        match &self.inner {
-            #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => conn.execute(stmt).await,
-            #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.execute(stmt).await,
-            #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.execute(stmt).await,
-            #[cfg(feature = "rusqlite")]
-            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.execute(stmt),
-            #[cfg(feature = "mock")]
-            DatabaseConnectionType::MockDatabaseConnection(conn) => conn.execute(stmt),
-            #[cfg(feature = "proxy")]
-            DatabaseConnectionType::ProxyDatabaseConnection(conn) => conn.execute(stmt).await,
-            DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
-        }
+        crate::with_db_span!(
+            "sea_orm.execute",
+            self.get_database_backend(),
+            stmt.sql.as_str(),
+            record_stmt = true,
+            async {
+                match &self.inner {
+                    #[cfg(feature = "sqlx-mysql")]
+                    DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => {
+                        conn.execute(stmt).await
+                    }
+                    #[cfg(feature = "sqlx-postgres")]
+                    DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => {
+                        conn.execute(stmt).await
+                    }
+                    #[cfg(feature = "sqlx-sqlite")]
+                    DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
+                        conn.execute(stmt).await
+                    }
+                    #[cfg(feature = "rusqlite")]
+                    DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.execute(stmt),
+                    #[cfg(feature = "mock")]
+                    DatabaseConnectionType::MockDatabaseConnection(conn) => conn.execute(stmt),
+                    #[cfg(feature = "proxy")]
+                    DatabaseConnectionType::ProxyDatabaseConnection(conn) => {
+                        conn.execute(stmt).await
+                    }
+                    DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
+                }
+            }
+        )
     }
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
     async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
-        match &self.inner {
-            #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => {
-                conn.execute_unprepared(sql).await
+        crate::with_db_span!(
+            "sea_orm.execute_unprepared",
+            self.get_database_backend(),
+            sql,
+            record_stmt = false,
+            async {
+                match &self.inner {
+                    #[cfg(feature = "sqlx-mysql")]
+                    DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => {
+                        conn.execute_unprepared(sql).await
+                    }
+                    #[cfg(feature = "sqlx-postgres")]
+                    DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => {
+                        conn.execute_unprepared(sql).await
+                    }
+                    #[cfg(feature = "sqlx-sqlite")]
+                    DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
+                        conn.execute_unprepared(sql).await
+                    }
+                    #[cfg(feature = "rusqlite")]
+                    DatabaseConnectionType::RusqliteSharedConnection(conn) => {
+                        conn.execute_unprepared(sql)
+                    }
+                    #[cfg(feature = "mock")]
+                    DatabaseConnectionType::MockDatabaseConnection(conn) => {
+                        let db_backend = conn.get_database_backend();
+                        let stmt = Statement::from_string(db_backend, sql);
+                        conn.execute(stmt)
+                    }
+                    #[cfg(feature = "proxy")]
+                    DatabaseConnectionType::ProxyDatabaseConnection(conn) => {
+                        let db_backend = conn.get_database_backend();
+                        let stmt = Statement::from_string(db_backend, sql);
+                        conn.execute(stmt).await
+                    }
+                    DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
+                }
             }
-            #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => {
-                conn.execute_unprepared(sql).await
-            }
-            #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
-                conn.execute_unprepared(sql).await
-            }
-            #[cfg(feature = "rusqlite")]
-            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.execute_unprepared(sql),
-            #[cfg(feature = "mock")]
-            DatabaseConnectionType::MockDatabaseConnection(conn) => {
-                let db_backend = conn.get_database_backend();
-                let stmt = Statement::from_string(db_backend, sql);
-                conn.execute(stmt)
-            }
-            #[cfg(feature = "proxy")]
-            DatabaseConnectionType::ProxyDatabaseConnection(conn) => {
-                let db_backend = conn.get_database_backend();
-                let stmt = Statement::from_string(db_backend, sql);
-                conn.execute(stmt).await
-            }
-            DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
-        }
+        )
     }
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
     async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
-        match &self.inner {
-            #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => conn.query_one(stmt).await,
-            #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.query_one(stmt).await,
-            #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.query_one(stmt).await,
-            #[cfg(feature = "rusqlite")]
-            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.query_one(stmt),
-            #[cfg(feature = "mock")]
-            DatabaseConnectionType::MockDatabaseConnection(conn) => conn.query_one(stmt),
-            #[cfg(feature = "proxy")]
-            DatabaseConnectionType::ProxyDatabaseConnection(conn) => conn.query_one(stmt).await,
-            DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
-        }
+        crate::with_db_span!(
+            "sea_orm.query_one",
+            self.get_database_backend(),
+            stmt.sql.as_str(),
+            record_stmt = true,
+            async {
+                match &self.inner {
+                    #[cfg(feature = "sqlx-mysql")]
+                    DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => {
+                        conn.query_one(stmt).await
+                    }
+                    #[cfg(feature = "sqlx-postgres")]
+                    DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => {
+                        conn.query_one(stmt).await
+                    }
+                    #[cfg(feature = "sqlx-sqlite")]
+                    DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
+                        conn.query_one(stmt).await
+                    }
+                    #[cfg(feature = "rusqlite")]
+                    DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.query_one(stmt),
+                    #[cfg(feature = "mock")]
+                    DatabaseConnectionType::MockDatabaseConnection(conn) => conn.query_one(stmt),
+                    #[cfg(feature = "proxy")]
+                    DatabaseConnectionType::ProxyDatabaseConnection(conn) => {
+                        conn.query_one(stmt).await
+                    }
+                    DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
+                }
+            }
+        )
     }
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
     async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
-        match &self.inner {
-            #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => conn.query_all(stmt).await,
-            #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.query_all(stmt).await,
-            #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.query_all(stmt).await,
-            #[cfg(feature = "rusqlite")]
-            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.query_all(stmt),
-            #[cfg(feature = "mock")]
-            DatabaseConnectionType::MockDatabaseConnection(conn) => conn.query_all(stmt),
-            #[cfg(feature = "proxy")]
-            DatabaseConnectionType::ProxyDatabaseConnection(conn) => conn.query_all(stmt).await,
-            DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
-        }
+        crate::with_db_span!(
+            "sea_orm.query_all",
+            self.get_database_backend(),
+            stmt.sql.as_str(),
+            record_stmt = true,
+            async {
+                match &self.inner {
+                    #[cfg(feature = "sqlx-mysql")]
+                    DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => {
+                        conn.query_all(stmt).await
+                    }
+                    #[cfg(feature = "sqlx-postgres")]
+                    DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => {
+                        conn.query_all(stmt).await
+                    }
+                    #[cfg(feature = "sqlx-sqlite")]
+                    DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
+                        conn.query_all(stmt).await
+                    }
+                    #[cfg(feature = "rusqlite")]
+                    DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.query_all(stmt),
+                    #[cfg(feature = "mock")]
+                    DatabaseConnectionType::MockDatabaseConnection(conn) => conn.query_all(stmt),
+                    #[cfg(feature = "proxy")]
+                    DatabaseConnectionType::ProxyDatabaseConnection(conn) => {
+                        conn.query_all(stmt).await
+                    }
+                    DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
+                }
+            }
+        )
     }
 
     #[cfg(feature = "mock")]

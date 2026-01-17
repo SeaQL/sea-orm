@@ -23,6 +23,7 @@ features = [
     "proxy",
     "rbac",
     "schema-sync",
+    "tracing-spans",
     "runtime-tokio-native-tls",
     "postgres-array",
     "postgres-vector",
@@ -105,6 +106,7 @@ uuid = { version = "1", features = ["v4"] }
 
 [features]
 debug-print = []
+tracing-spans = []
 default = [
     "macros",
     "with-json",
