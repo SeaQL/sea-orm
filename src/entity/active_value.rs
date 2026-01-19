@@ -107,13 +107,13 @@ where
     fn into_active_value(self) -> ActiveValue<V>;
 }
 
-impl<V> IntoActiveValue<Option<V>> for Option<V>
+impl<V> IntoActiveValue<V> for Option<V>
 where
     V: IntoActiveValue<V> + Into<Value> + Nullable,
 {
-    fn into_active_value(self) -> ActiveValue<Option<V>> {
+    fn into_active_value(self) -> ActiveValue<V> {
         match self {
-            Some(value) => Set(Some(value)),
+            Some(value) => Set(value),
             None => NotSet,
         }
     }
