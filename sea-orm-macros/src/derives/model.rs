@@ -3,6 +3,7 @@ use super::{
     util::{escape_rust_keyword, field_not_ignored, trim_starting_raw_identifier},
 };
 use heck::ToUpperCamelCase;
+use itertools::izip;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use std::iter::FromIterator;
@@ -106,60 +107,70 @@ impl DeriveModel {
         let field_types = &self.field_types;
         let ignore_attrs = &self.ignore_attrs;
 
-        let (field_readers, field_values): (Vec<TokenStream>, Vec<TokenStream>) = field_idents
-            .iter()
-            .zip(column_idents)
-            .zip(field_types)
-            .zip(ignore_attrs)
-            .map(|(((field_ident, column_ident), field_type), &ignore)| {
-                if ignore {
-                    let reader = quote! {
-                        let #field_ident: Option<()> = None;
-                    };
-                    let unwrapper = quote! {
-                        #field_ident: Default::default()
-                    };
-                    (reader, unwrapper)
-                } else {
-                    let reader = quote! {
-                        let #field_ident =
-                            row.try_get_nullable::<Option<#field_type>>(
-                                pre,
-                                sea_orm::IdenStatic::as_str(
-                                    &<<Self as sea_orm::ModelTrait>::Entity
-                                        as sea_orm::entity::EntityTrait>::Column::#column_ident
-                                ).into()
-                            )?;
-                    };
-                    let unwrapper = quote! {
-                        #field_ident: #field_ident.ok_or_else(|| sea_orm::DbErr::Type(
-                            format!(
-                                "Missing value for column '{}'",
-                                sea_orm::IdenStatic::as_str(
-                                    &<<Self as sea_orm::ModelTrait>::Entity
-                                        as sea_orm::entity::EntityTrait>::Column::#column_ident
-                                )
+        let (field_readers, field_values): (Vec<TokenStream>, Vec<TokenStream>) = izip!(
+            field_idents.iter(),
+            column_idents,
+            field_types,
+            ignore_attrs,
+        )
+        .map(|(field_ident, column_ident, field_type, &ignore)| {
+            if ignore {
+                let reader = quote! {
+                    let #field_ident: Option<()> = None;
+                };
+                let unwrapper = quote! {
+                    #field_ident: Default::default()
+                };
+                (reader, unwrapper)
+            } else {
+                let reader = quote! {
+                    let #field_ident =
+                        row.try_get_nullable::<Option<#field_type>>(
+                            pre,
+                            sea_orm::IdenStatic::as_str(
+                                &<<Self as sea_orm::ModelTrait>::Entity
+                                    as sea_orm::entity::EntityTrait>::Column::#column_ident
+                            ).into()
+                        )?;
+                };
+                let unwrapper = quote! {
+                    #field_ident: #field_ident.ok_or_else(|| sea_orm::DbErr::Type(
+                        format!(
+                            "Missing value for column '{}'",
+                            sea_orm::IdenStatic::as_str(
+                                &<<Self as sea_orm::ModelTrait>::Entity
+                                    as sea_orm::entity::EntityTrait>::Column::#column_ident
                             )
-                        ))?
-                    };
-                    (reader, unwrapper)
-                }
-            })
-            .unzip();
+                        )
+                    ))?
+                };
+                (reader, unwrapper)
+            }
+        })
+        .unzip();
 
-        let all_null_check = field_idents
-            .iter()
-            .zip(ignore_attrs.iter().cloned())
-            .filter(|(_, ignore)| !ignore)
-            .fold(quote! { true }, |acc, (field_ident, _)| {
-                quote! { #acc && #field_ident.is_none() }
-            });
+        // When a nested model is loaded via LEFT JOIN, all its fields may be NULL.
+        // In that case we interpret it as "no nested row" (i.e., Option::None).
+        // This check detects that condition by testing if all non-ignored fields are NULL.
+        let all_null_check = {
+            let checks: Vec<_> = izip!(field_idents, ignore_attrs)
+                .filter_map(|(field_ident, &ignore)| {
+                    if ignore {
+                        None
+                    } else {
+                        Some(quote! { #field_ident.is_none() })
+                    }
+                })
+                .collect();
+
+            quote! { true #( && #checks )* }
+        };
 
         quote!(
             #[automatically_derived]
             impl sea_orm::FromQueryResult for #ident {
                 fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
-                    Self::from_query_result_nullable(row, pre).map_err(|e| e.into())
+                    Self::from_query_result_nullable(row, pre).map_err(Into::into)
                 }
 
                 fn from_query_result_nullable(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::TryGetError> {
