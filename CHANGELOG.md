@@ -790,6 +790,11 @@ fn delete_by_id<T>(values: T) -> ValidatedDeleteOne<Self> // new
 ```
 * `DeriveActiveEnum` now also automatically impl `IntoActiveValue`, if you have a custom impl before, there would be a collision
 * `with-bigdecimal` is now removed from default features
+* `RuntimeErr::SqlxError` is now held in `Arc` to make `DbErr` clonable and smaller:
+```rust
+pub enum RuntimeErr {
+    SqlxError(Arc<sqlx::error::Error>),
+```
 
 ### Upgrades
 
