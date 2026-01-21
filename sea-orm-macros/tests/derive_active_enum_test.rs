@@ -37,6 +37,17 @@ enum TestEnum {
 #[derive(Debug, EnumIter, DeriveActiveEnum, Eq, PartialEq)]
 #[sea_orm(
     rs_type = "String",
+    db_type = "Enum",
+    enum_name = "test_enum",
+    rename_all = "camelCase"
+)]
+enum TestRenameAllWithoutCasesEnum {
+    HelloWorld,
+}
+
+#[derive(Debug, EnumIter, DeriveActiveEnum, Eq, PartialEq)]
+#[sea_orm(
+    rs_type = "String",
     db_type = "String(StringLen::None)",
     rename_all = "snake_case"
 )]
@@ -136,4 +147,8 @@ fn derive_active_enum_value_2() {
     assert_eq!(TestEnum2::HelloWorldTwo.to_value(), "helloWorldTwo");
 
     assert_eq!(TestEnum3::HelloWorld.to_value(), "hello_world");
+    assert_eq!(
+        TestRenameAllWithoutCasesEnum::HelloWorld.to_value(),
+        "helloWorld"
+    );
 }

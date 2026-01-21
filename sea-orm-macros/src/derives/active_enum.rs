@@ -254,6 +254,7 @@ impl ActiveEnum {
                     .or(variant
                         .rename
                         .map(|rename| variant.ident.convert_case(Some(rename))))
+                    .or_else(|| rename_all.map(|rule| variant.ident.convert_case(Some(rule))))
             })
             .collect();
 
