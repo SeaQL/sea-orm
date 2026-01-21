@@ -115,6 +115,40 @@ default = [
     "with-time",
     "sqlite-use-returning-for-3_35",
 ]
+# Backends
+rusqlite = []
+sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
+sqlx-dep = ["sqlx"]
+sqlx-mysql = [
+    "sqlx-dep",
+    "sea-query-sqlx/sqlx-mysql",
+    "sea-schema/sqlx-mysql",
+]
+sqlx-postgres = [
+    "sqlx-dep",
+    "sea-query-sqlx/sqlx-postgres",
+    "postgres-array",
+    "sea-schema/sqlx-postgres",
+]
+sqlx-sqlite = [
+    "sqlx-dep",
+    "sea-query-sqlx/sqlx-sqlite",
+    "sea-schema/sqlx-sqlite",
+]
+# Runtimes
+runtime-async-std = ["sqlx?/runtime-async-std"]
+runtime-async-std-native-tls = [
+    "sqlx?/runtime-async-std-native-tls",
+    "runtime-async-std",
+]
+runtime-async-std-rustls = [
+    "sqlx?/runtime-async-std-rustls",
+    "runtime-async-std",
+]
+runtime-tokio = ["sqlx?/runtime-tokio"]
+runtime-tokio-native-tls = ["sqlx?/runtime-tokio-native-tls", "runtime-tokio"]
+runtime-tokio-rustls = ["sqlx?/runtime-tokio-rustls", "runtime-tokio"]
+
 entity-registry = ["inventory", "sea-orm-macros/entity-registry"]
 json-array = [
     "postgres-array",
@@ -135,42 +169,11 @@ postgres-vector = [
 ]
 proxy = ["serde_json", "serde/derive"]
 rbac = ["sea-query/audit", "macros"]
-runtime-async-std = ["sqlx?/runtime-async-std"]
-runtime-async-std-native-tls = [
-    "sqlx?/runtime-async-std-native-tls",
-    "runtime-async-std",
-]
-runtime-async-std-rustls = [
-    "sqlx?/runtime-async-std-rustls",
-    "runtime-async-std",
-]
-runtime-tokio = ["sqlx?/runtime-tokio"]
-runtime-tokio-native-tls = ["sqlx?/runtime-tokio-native-tls", "runtime-tokio"]
-runtime-tokio-rustls = ["sqlx?/runtime-tokio-rustls", "runtime-tokio"]
-rusqlite = []
 schema-sync = ["sea-schema"]
 sea-orm-internal = []
 seaography = ["sea-orm-macros/seaography"]
 sqlite-no-row-value-before-3_15 = []
 sqlite-use-returning-for-3_35 = []
-sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
-sqlx-dep = ["sqlx"]
-sqlx-mysql = [
-    "sqlx-dep",
-    "sea-query-sqlx/sqlx-mysql",
-    "sea-schema/sqlx-mysql",
-]
-sqlx-postgres = [
-    "sqlx-dep",
-    "sea-query-sqlx/sqlx-postgres",
-    "postgres-array",
-    "sea-schema/sqlx-postgres",
-]
-sqlx-sqlite = [
-    "sqlx-dep",
-    "sea-query-sqlx/sqlx-sqlite",
-    "sea-schema/sqlx-sqlite",
-]
 sync = []
 tests-cfg = ["serde/derive"]
 tests-features = ["default", "rbac", "schema-sync", "with-bigdecimal"]
@@ -209,7 +212,29 @@ with-rust_decimal = [
 ]
 with-time = ["time", "sea-query/with-time", "sea-query-sqlx?/with-time"]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-sqlx?/with-uuid"]
-
+# For testing
+__all-types = [
+    "postgres-array",
+    "postgres-vector",
+    "with-ipnetwork",
+    "with-json",
+    "with-uuid",
+]
+all-extra-features = [
+    "mock",
+    "proxy",
+    "rbac",
+]
+all-types-1 = [
+    "__all-types",
+    "with-chrono",
+    "with-rust_decimal",
+]
+all-types-2 = [
+    "__all-types",
+    "with-bigdecimal",
+    "with-time",
+]
 # This allows us to develop using a local version of sea-query
 [patch.crates-io]
 # sea-query = { path = "../sea-query" }
