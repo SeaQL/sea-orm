@@ -2,6 +2,7 @@ mod queries;
 use queries::*;
 
 use std::collections::HashSet;
+use std::env;
 use std::fmt::Display;
 use std::future::Future;
 use std::pin::Pin;
@@ -293,10 +294,16 @@ where
 
     match db.get_database_backend() {
         DbBackend::Postgres => {
-            let transaction = db.begin().await?;
-            let manager = SchemaManager::new(&transaction);
-            f(&manager).await?;
-            transaction.commit().await
+            let non_atomic = env::var("SEA_ORM_NON_ATOMIC_PG_MIGRATIONS").unwrap_or(String::from("false"));
+            match non_atomic.as_str() {
+                "true" => f(&SchemaManager::new(db)).await,
+                _ =>{
+                    let transaction = db.begin().await?;
+                    let manager = SchemaManager::new(&transaction);
+                    f(&manager).await?;
+                    transaction.commit().await
+                }
+            }
         }
         DbBackend::MySql | DbBackend::Sqlite => {
             let manager = SchemaManager::new(db);
