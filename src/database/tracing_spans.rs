@@ -102,7 +102,7 @@ mod inner {
 }
 
 #[cfg(feature = "tracing-spans")]
-use inner::*;
+pub(crate) use inner::*;
 
 /// Create a tracing span for database operations.
 ///
