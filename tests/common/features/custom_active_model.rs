@@ -11,6 +11,7 @@ pub struct Model {
     pub age: i32,
     pub weight: Option<f32>,
     pub amount: Option<i32>,
+    pub tea: Tea,
     pub category: Option<Category>,
     pub color: Option<Color>,
 }
@@ -25,6 +26,7 @@ pub struct CustomActiveModel {
     pub age: Option<i32>,
     pub weight: Option<f32>,
     pub amount: Option<Option<i32>>,
+    pub tea: Option<Tea>,
     pub category: Option<Category>,
     pub color: Option<Option<Color>>,
 }
