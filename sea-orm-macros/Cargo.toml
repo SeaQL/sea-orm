@@ -20,6 +20,7 @@ proc-macro = true
 [dependencies]
 bae = { version = "0.2", package = "sea-bae", default-features = false, optional = true }
 heck = { version = "0.5", default-features = false }
+itertools = "0.14"
 pluralizer = { version = "0.5" }
 proc-macro-crate = { version = "3.2.0", optional = true }
 proc-macro2 = { version = "1", default-features = false }

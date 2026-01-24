@@ -3,6 +3,7 @@ use super::{
     util::{escape_rust_keyword, field_not_ignored, trim_starting_raw_identifier},
 };
 use heck::ToUpperCamelCase;
+use itertools::izip;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use std::iter::FromIterator;
@@ -103,28 +104,84 @@ impl DeriveModel {
         let ident = &self.ident;
         let field_idents = &self.field_idents;
         let column_idents = &self.column_idents;
-        let field_values: Vec<TokenStream> = column_idents
-            .iter()
-            .zip(&self.ignore_attrs)
-            .map(|(column_ident, ignore)| {
-                if *ignore {
-                    quote! {
-                        Default::default()
+        let field_types = &self.field_types;
+        let ignore_attrs = &self.ignore_attrs;
+
+        let (field_readers, field_values): (Vec<TokenStream>, Vec<TokenStream>) = izip!(
+            field_idents.iter(),
+            column_idents,
+            field_types,
+            ignore_attrs,
+        )
+        .map(|(field_ident, column_ident, field_type, &ignore)| {
+            if ignore {
+                let reader = quote! {
+                    let #field_ident: Option<()> = None;
+                };
+                let unwrapper = quote! {
+                    #field_ident: Default::default()
+                };
+                (reader, unwrapper)
+            } else {
+                let reader = quote! {
+                    let #field_ident =
+                        row.try_get_nullable::<Option<#field_type>>(
+                            pre,
+                            sea_orm::IdenStatic::as_str(
+                                &<<Self as sea_orm::ModelTrait>::Entity
+                                    as sea_orm::entity::EntityTrait>::Column::#column_ident
+                            ).into()
+                        )?;
+                };
+                let unwrapper = quote! {
+                    #field_ident: #field_ident.ok_or_else(|| sea_orm::DbErr::Type(
+                        format!(
+                            "Missing value for column '{}'",
+                            sea_orm::IdenStatic::as_str(
+                                &<<Self as sea_orm::ModelTrait>::Entity
+                                    as sea_orm::entity::EntityTrait>::Column::#column_ident
+                            )
+                        )
+                    ))?
+                };
+                (reader, unwrapper)
+            }
+        })
+        .unzip();
+
+        // When a nested model is loaded via LEFT JOIN, all its fields may be NULL.
+        // In that case we interpret it as "no nested row" (i.e., Option::None).
+        // This check detects that condition by testing if all non-ignored fields are NULL.
+        let all_null_check = {
+            let checks: Vec<_> = izip!(field_idents, ignore_attrs)
+                .filter_map(|(field_ident, &ignore)| {
+                    if ignore {
+                        None
+                    } else {
+                        Some(quote! { #field_ident.is_none() })
                     }
-                } else {
-                    quote! {
-                        row.try_get(pre, sea_orm::IdenStatic::as_str(&<<Self as sea_orm::ModelTrait>::Entity as sea_orm::entity::EntityTrait>::Column::#column_ident).into())?
-                    }
-                }
-            })
-            .collect();
+                })
+                .collect();
+
+            quote! { true #( && #checks )* }
+        };
 
         quote!(
             #[automatically_derived]
             impl sea_orm::FromQueryResult for #ident {
                 fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
+                    Self::from_query_result_nullable(row, pre).map_err(Into::into)
+                }
+
+                fn from_query_result_nullable(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::TryGetError> {
+                    #(#field_readers)*
+
+                    if #all_null_check {
+                        return Err(sea_orm::TryGetError::Null("All fields of nested model are null".into()));
+                    }
+
                     Ok(Self {
-                        #(#field_idents: #field_values),*
+                        #(#field_values),*
                     })
                 }
             }
