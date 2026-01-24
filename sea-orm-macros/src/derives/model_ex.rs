@@ -448,6 +448,8 @@ fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<Token
         && ty.starts_with("HasMany<")
     {
         let has_many = Ident::new("has_many", Span::call_site());
+
+        #[allow(clippy::unnecessary_unwrap)]
         let via_rel = format!(
             "Relation::{}",
             attr.relation_reverse.as_ref().unwrap().value()

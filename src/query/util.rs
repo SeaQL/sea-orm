@@ -144,7 +144,8 @@ where
     Ok(true)
 }
 
-/// construct a WHERE col IN (..) condition
+/// Constructs a `WHERE (c1, c2, ...) IN ((v11, v12, ...), (v21, v22, ...), ...)` expression.
+/// Degenerates to `WHERE col IN (v1, v2, ...)` when arity = 1.
 pub fn column_tuple_in_condition(
     table: &TableRef,
     to: &Identity,

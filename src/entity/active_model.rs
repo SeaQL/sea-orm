@@ -757,6 +757,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self::Entity::find_related().belongs_to_active_model(self)
     }
 
+    /// Like find_related, but infer type from `AM`
     #[doc(hidden)]
     fn find_related_of<AM>(&self, _: &[AM]) -> crate::query::Select<AM::Entity>
     where
@@ -790,6 +791,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         establish_links::<_, J, _, C>(self, related_models, left, right, delete_leftover, db).await
     }
 
+    /// Establish links for self-referencing many-to-many relation
     #[doc(hidden)]
     async fn establish_links_self<J, RM, C>(
         &self,
@@ -812,6 +814,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         establish_links::<_, J, _, C>(self, related_models, left, right, delete_leftover, db).await
     }
 
+    /// Establish links for self-referencing many-to-many relation, but left-right reversed
     #[doc(hidden)]
     async fn establish_links_self_rev<J, RM, C>(
         &self,
@@ -834,6 +837,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         establish_links::<_, J, _, C>(self, related_models, left, right, delete_leftover, db).await
     }
 
+    /// Inverse of establish link, break links between two many-to-many models
     #[doc(hidden)]
     async fn delete_links<J, C>(&self, _: J, db: &C) -> Result<DeleteResult, DbErr>
     where
@@ -857,6 +861,7 @@ pub trait ActiveModelTrait: Clone + Debug {
             .await
     }
 
+    /// Like `delete_links` but for self-referencing relations
     #[doc(hidden)]
     async fn delete_links_self<J, C>(&self, _: J, db: &C) -> Result<DeleteResult, DbErr>
     where

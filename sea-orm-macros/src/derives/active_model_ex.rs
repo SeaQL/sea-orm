@@ -97,6 +97,7 @@ pub fn expand_derive_active_model_ex(
                                             .push((ident.clone(), relation_enum.clone()));
                                     }
                                 } else if *entity_count.get(entity_path).unwrap() == 1 {
+                                    // can only Related to another Entity once
                                     if compound_attrs.belongs_to.is_some() {
                                         belongs_to_fields.push(ident.clone());
                                     } else if compound_attrs.has_one.is_some() {
@@ -118,6 +119,7 @@ pub fn expand_derive_active_model_ex(
                                     && compound_attrs.via.is_some()
                                     && compound_attrs.reverse.is_none()
                                 {
+                                    #[allow(clippy::unnecessary_unwrap)]
                                     has_many_via_self_fields.push((
                                         ident.clone(),
                                         compound_attrs.via.as_ref().unwrap().value(),
@@ -127,6 +129,7 @@ pub fn expand_derive_active_model_ex(
                                     && compound_attrs.via.is_some()
                                     && compound_attrs.reverse.is_some()
                                 {
+                                    #[allow(clippy::unnecessary_unwrap)]
                                     has_many_via_self_fields.push((
                                         ident.clone(),
                                         compound_attrs.via.as_ref().unwrap().value(),
@@ -381,6 +384,7 @@ fn expand_active_model_action(
         let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
         let relation_enum = quote!(Relation::#relation_enum);
 
+        // belongs to is the exception where action is performed before self
         belongs_to_action.extend(quote! {
             let #field = if let Some(model) = self.#field.take() {
                 if model.is_update() {
