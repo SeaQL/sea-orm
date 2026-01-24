@@ -26,7 +26,7 @@ pub fn it_impl_try_from_u64<T: TryFromU64>() {}
 macro_rules! it_impl_traits {
     ( $ty: ty ) => {
         it_impl_into_active_value::<$ty, $ty>();
-        it_impl_into_active_value::<Option<$ty>, Option<$ty>>();
+        it_impl_into_active_value::<Option<$ty>, $ty>();
         it_impl_into_active_value::<Option<Option<$ty>>, Option<$ty>>();
 
         it_impl_try_getable::<$ty>();
