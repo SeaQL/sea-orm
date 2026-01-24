@@ -24,79 +24,85 @@
 //! let cakes = Cake::find().all(&db)?;  // Generates a span
 //! ```
 
-use crate::DbBackend;
+#[cfg(feature = "tracing-spans")]
+mod inner {
+    use crate::DbBackend;
 
-/// Database operation type, following OpenTelemetry conventions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum DbOperation {
-    /// SELECT query
-    Select,
-    /// INSERT statement
-    Insert,
-    /// UPDATE statement
-    Update,
-    /// DELETE statement
-    Delete,
-    /// Other/unknown SQL execution
-    Execute,
-}
+    /// Database operation type, following OpenTelemetry conventions.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) enum DbOperation {
+        /// SELECT query
+        Select,
+        /// INSERT statement
+        Insert,
+        /// UPDATE statement
+        Update,
+        /// DELETE statement
+        Delete,
+        /// Other/unknown SQL execution
+        Execute,
+    }
 
-impl DbOperation {
-    /// Parse the operation type from an SQL query string.
-    ///
-    /// This function is allocation-free and uses case-insensitive comparison.
-    pub fn from_sql(sql: &str) -> Self {
-        let first_word = sql.trim_start().split_whitespace().next().unwrap_or("");
-        if first_word.eq_ignore_ascii_case("SELECT") {
-            DbOperation::Select
-        } else if first_word.eq_ignore_ascii_case("INSERT") {
-            DbOperation::Insert
-        } else if first_word.eq_ignore_ascii_case("UPDATE") {
-            DbOperation::Update
-        } else if first_word.eq_ignore_ascii_case("DELETE") {
-            DbOperation::Delete
-        } else {
-            DbOperation::Execute
+    impl DbOperation {
+        /// Parse the operation type from an SQL query string.
+        ///
+        /// This function is allocation-free and uses case-insensitive comparison.
+        pub fn from_sql(sql: &str) -> Self {
+            let first_word = sql.trim_start().split_whitespace().next().unwrap_or("");
+            if first_word.eq_ignore_ascii_case("SELECT") {
+                DbOperation::Select
+            } else if first_word.eq_ignore_ascii_case("INSERT") {
+                DbOperation::Insert
+            } else if first_word.eq_ignore_ascii_case("UPDATE") {
+                DbOperation::Update
+            } else if first_word.eq_ignore_ascii_case("DELETE") {
+                DbOperation::Delete
+            } else {
+                DbOperation::Execute
+            }
+        }
+    }
+
+    impl std::fmt::Display for DbOperation {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                DbOperation::Select => write!(f, "SELECT"),
+                DbOperation::Insert => write!(f, "INSERT"),
+                DbOperation::Update => write!(f, "UPDATE"),
+                DbOperation::Delete => write!(f, "DELETE"),
+                DbOperation::Execute => write!(f, "EXECUTE"),
+            }
+        }
+    }
+
+    /// Get the OpenTelemetry system name from DbBackend.
+    pub(crate) fn db_system_name(backend: DbBackend) -> &'static str {
+        match backend {
+            DbBackend::Postgres => "postgresql",
+            DbBackend::MySql => "mysql",
+            DbBackend::Sqlite => "sqlite",
+        }
+    }
+
+    /// Record query result on a span (success/failure status and error message).
+    pub(crate) fn record_query_result<T, E: std::fmt::Display>(
+        span: &tracing::Span,
+        result: &Result<T, E>,
+    ) {
+        match result {
+            Ok(_) => {
+                span.record("otel.status_code", "OK");
+            }
+            Err(e) => {
+                span.record("otel.status_code", "ERROR");
+                span.record("exception.message", tracing::field::display(e));
+            }
         }
     }
 }
 
-impl std::fmt::Display for DbOperation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DbOperation::Select => write!(f, "SELECT"),
-            DbOperation::Insert => write!(f, "INSERT"),
-            DbOperation::Update => write!(f, "UPDATE"),
-            DbOperation::Delete => write!(f, "DELETE"),
-            DbOperation::Execute => write!(f, "EXECUTE"),
-        }
-    }
-}
-
-/// Get the OpenTelemetry system name from DbBackend.
-pub(crate) fn db_system_name(backend: DbBackend) -> &'static str {
-    match backend {
-        DbBackend::Postgres => "postgresql",
-        DbBackend::MySql => "mysql",
-        DbBackend::Sqlite => "sqlite",
-    }
-}
-
-/// Record query result on a span (success/failure status and error message).
-pub(crate) fn record_query_result<T, E: std::fmt::Display>(
-    span: &tracing::Span,
-    result: &Result<T, E>,
-) {
-    match result {
-        Ok(_) => {
-            span.record("otel.status_code", "OK");
-        }
-        Err(e) => {
-            span.record("otel.status_code", "ERROR");
-            span.record("exception.message", tracing::field::display(e));
-        }
-    }
-}
+#[cfg(feature = "tracing-spans")]
+pub(crate) use inner::*;
 
 /// Create a tracing span for database operations.
 ///
@@ -165,6 +171,7 @@ macro_rules! with_db_span {
 
 pub(crate) use with_db_span;
 
+#[cfg(feature = "tracing-spans")]
 #[cfg(test)]
 mod tests {
     use super::*;

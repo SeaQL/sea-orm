@@ -739,6 +739,13 @@ pub trait QueryFilter: Sized {
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
     /// );
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(Condition::all())
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE TRUE"
+    /// );
     /// ```
     ///
     /// Add a runtime-built condition tree, functional-way.
