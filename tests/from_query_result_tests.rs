@@ -144,6 +144,27 @@ async fn from_query_result_left_join_exists() {
     assert_eq!(bakery.id, 42);
     assert_eq!(bakery.title, "cool little bakery");
 
+    let cake: CakeWithOptionalBakeryModel = cake::Entity::find()
+        .select_only()
+        .column_as(cake::Column::Id, "cake_id")
+        .column_as(cake::Column::Name, "cake_name")
+        .column(bakery::Column::Id)
+        .column(bakery::Column::Name)
+        .column(bakery::Column::ProfitMargin)
+        .left_join(bakery::Entity)
+        .order_by_asc(cake::Column::Id)
+        .into_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(cake.id, 13);
+    assert_eq!(cake.name, "Cheesecake");
+    let bakery = cake.bakery.unwrap();
+    assert_eq!(bakery.id, 42);
+    assert_eq!(bakery.name, "cool little bakery");
+
     ctx.delete().await;
 }
 
