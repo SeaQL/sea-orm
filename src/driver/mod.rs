@@ -14,6 +14,8 @@ pub(crate) mod sqlx_mysql;
 pub(crate) mod sqlx_postgres;
 #[cfg(feature = "sqlx-sqlite")]
 pub(crate) mod sqlx_sqlite;
+#[cfg(feature = "d1")]
+pub(crate) mod d1;
 
 #[cfg(feature = "mock")]
 pub use mock::*;
@@ -27,3 +29,5 @@ pub use sqlx_mysql::*;
 pub use sqlx_postgres::*;
 #[cfg(feature = "sqlx-sqlite")]
 pub use sqlx_sqlite::*;
+#[cfg(feature = "d1")]
+pub use d1::*;

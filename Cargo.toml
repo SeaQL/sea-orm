@@ -28,6 +28,7 @@ features = [
     "postgres-array",
     "postgres-vector",
     "sea-orm-internal",
+    "d1",
 ]
 rustdoc-args = ["--cfg", "docsrs"]
 
@@ -85,6 +86,7 @@ tracing = { version = "0.1", default-features = false, features = [
 ] }
 url = { version = "2.2", default-features = false }
 uuid = { version = "1", default-features = false, optional = true }
+worker = { version = "0.7", default-features = false, optional = true }
 
 [dev-dependencies]
 dotenv = "0.15"
@@ -148,6 +150,7 @@ runtime-tokio = ["sqlx?/runtime-tokio"]
 runtime-tokio-native-tls = ["sqlx?/runtime-tokio-native-tls", "runtime-tokio"]
 runtime-tokio-rustls = ["sqlx?/runtime-tokio-rustls", "runtime-tokio"]
 rusqlite = []
+d1 = ["worker/d1", "mock"]
 schema-sync = ["sea-schema"]
 sea-orm-internal = []
 seaography = ["sea-orm-macros/seaography"]

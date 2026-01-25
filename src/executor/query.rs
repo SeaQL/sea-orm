@@ -33,6 +33,8 @@ pub(crate) enum QueryResultRow {
     Mock(crate::MockRow),
     #[cfg(feature = "proxy")]
     Proxy(crate::ProxyRow),
+    #[cfg(feature = "d1")]
+    D1(crate::driver::d1::D1Row),
 }
 
 /// An interface to get a value from the query result
@@ -173,6 +175,14 @@ impl QueryResult {
                 .into_column_value_tuples()
                 .map(|(c, _)| c.to_string())
                 .collect(),
+            #[cfg(feature = "d1")]
+            QueryResultRow::D1(row) => {
+                if let Some(obj) = row.row.as_object() {
+                    obj.keys().cloned().collect()
+                } else {
+                    Vec::new()
+                }
+            }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -227,6 +237,16 @@ impl QueryResult {
             _ => None,
         }
     }
+
+    /// Access the underlying `D1Row` if we use D1.
+    #[cfg(feature = "d1")]
+    pub fn try_as_d1_row(&self) -> Option<&crate::driver::d1::D1Row> {
+        match &self.row {
+            QueryResultRow::D1(d1_row) => Some(d1_row),
+            #[allow(unreachable_patterns)]
+            _ => None,
+        }
+    }
 }
 
 #[allow(unused_variables)]
@@ -245,6 +265,8 @@ impl Debug for QueryResultRow {
             Self::Mock(row) => write!(f, "{row:?}"),
             #[cfg(feature = "proxy")]
             Self::Proxy(row) => write!(f, "{row:?}"),
+            #[cfg(feature = "d1")]
+            Self::D1(row) => write!(f, "{row:?}"),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -404,6 +426,21 @@ macro_rules! try_getable_all {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
+                    #[cfg(feature = "d1")]
+                    QueryResultRow::D1(row) => {
+                        let val = row.try_get_by(idx)?;
+                        // Convert Value to the target type
+                        <$type>::try_get_by(&QueryResult {
+                            row: QueryResultRow::Mock(crate::MockRow {
+                                values: std::collections::BTreeMap::from([(
+                                    idx.as_str()
+                                        .ok_or_else(|| err_null_idx_col(idx))?
+                                        .to_string(),
+                                    val,
+                                )]),
+                            }),
+                        }, idx)
+                    }
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
                 }
@@ -448,6 +485,20 @@ macro_rules! try_getable_unsigned {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
+                    #[cfg(feature = "d1")]
+                    QueryResultRow::D1(row) => {
+                        let val = row.try_get_by(idx)?;
+                        <$type>::try_get_by(&QueryResult {
+                            row: QueryResultRow::Mock(crate::MockRow {
+                                values: std::collections::BTreeMap::from([(
+                                    idx.as_str()
+                                        .ok_or_else(|| err_null_idx_col(idx))?
+                                        .to_string(),
+                                    val,
+                                )]),
+                            }),
+                        }, idx)
+                    }
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
                 }
@@ -495,6 +546,20 @@ macro_rules! try_getable_mysql {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
+                    #[cfg(feature = "d1")]
+                    QueryResultRow::D1(row) => {
+                        let val = row.try_get_by(idx)?;
+                        <$type>::try_get_by(&QueryResult {
+                            row: QueryResultRow::Mock(crate::MockRow {
+                                values: std::collections::BTreeMap::from([(
+                                    idx.as_str()
+                                        .ok_or_else(|| err_null_idx_col(idx))?
+                                        .to_string(),
+                                    val,
+                                )]),
+                            }),
+                        }, idx)
+                    }
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
                 }
@@ -596,6 +661,20 @@ macro_rules! try_getable_date_time {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
+                    #[cfg(feature = "d1")]
+                    QueryResultRow::D1(row) => {
+                        // D1 returns datetime as string, parse it
+                        use chrono::DateTime;
+                        let val: crate::sea_query::Value = row.try_get_by(idx)?;
+                        let s: String = val.unwrap();
+                        let dt = DateTime::parse_from_rfc3339(&s).map_err(|e| {
+                            crate::error::type_err(format!(
+                                "Failed to parse datetime from D1: {}",
+                                e
+                            ))
+                        })?;
+                        Ok(dt.into())
+                    }
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
                 }
@@ -711,6 +790,21 @@ impl TryGetable for Decimal {
                 debug_print!("{:#?}", e.to_string());
                 err_null_idx_col(idx)
             }),
+            #[cfg(feature = "d1")]
+            QueryResultRow::D1(row) => {
+                // D1 returns numbers as JSON, parse from string representation
+                let val: crate::sea_query::Value = row.try_get_by(idx)?;
+                // Get as f64 then convert to Decimal
+                let f: f64 = val.unwrap();
+                Decimal::try_from(f).map_err(|e| {
+                    DbErr::TryIntoErr {
+                        from: "f64",
+                        into: "Decimal",
+                        source: Arc::new(e),
+                    }
+                    .into()
+                })
+            }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -779,6 +873,21 @@ impl TryGetable for BigDecimal {
                 debug_print!("{:#?}", e.to_string());
                 err_null_idx_col(idx)
             }),
+            #[cfg(feature = "d1")]
+            QueryResultRow::D1(row) => {
+                // D1 returns numbers as JSON, parse from string representation
+                let val: crate::sea_query::Value = row.try_get_by(idx)?;
+                // Get as f64 then convert to BigDecimal
+                let f: f64 = val.unwrap();
+                BigDecimal::try_from(f).map_err(|e| {
+                    DbErr::TryIntoErr {
+                        from: "f64",
+                        into: "BigDecimal",
+                        source: Arc::new(e),
+                    }
+                    .into()
+                })
+            }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -850,6 +959,15 @@ macro_rules! try_getable_uuid {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
+                    #[cfg(feature = "d1")]
+                    QueryResultRow::D1(row) => {
+                        // D1 stores UUIDs as strings
+                        let val: crate::sea_query::Value = row.try_get_by(idx)?;
+                        let s: String = val.unwrap();
+                        uuid::Uuid::parse_str(&s).map_err(|_| {
+                            TryGetError::DbErr(crate::error::type_err("Invalid UUID".to_owned()))
+                        })
+                    }
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
                 };
@@ -875,7 +993,59 @@ try_getable_uuid!(uuid::fmt::Simple, uuid::Uuid::simple);
 try_getable_uuid!(uuid::fmt::Urn, uuid::Uuid::urn);
 
 #[cfg(feature = "with-ipnetwork")]
-try_getable_postgres!(ipnetwork::IpNetwork);
+impl TryGetable for ipnetwork::IpNetwork {
+    #[allow(unused_variables)]
+    fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        match &res.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(_) => Err(type_err(
+                "ipnetwork unsupported by sqlx-mysql",
+            )
+            .into()),
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => row
+                .try_get::<Option<ipnetwork::IpNetwork>, _>(idx.as_sqlx_postgres_index())
+                .map_err(|e| sqlx_error_to_query_err(e).into())
+                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(_) => Err(type_err(
+                "ipnetwork unsupported by sqlx-sqlite",
+            )
+            .into()),
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(_) => Err(type_err(
+                "ipnetwork unsupported by rusqlite",
+            )
+            .into()),
+            #[cfg(feature = "mock")]
+            #[allow(unused_variables)]
+            QueryResultRow::Mock(row) => row.try_get::<ipnetwork::IpNetwork, _>(idx).map_err(|e| {
+                debug_print!("{:#?}", e.to_string());
+                err_null_idx_col(idx)
+            }),
+            #[cfg(feature = "proxy")]
+            #[allow(unused_variables)]
+            QueryResultRow::Proxy(row) => row.try_get::<ipnetwork::IpNetwork, _>(idx).map_err(|e| {
+                debug_print!("{:#?}", e.to_string());
+                err_null_idx_col(idx)
+            }),
+            #[cfg(feature = "d1")]
+            QueryResultRow::D1(row) => {
+                // D1 stores IP networks as strings
+                let val: crate::sea_query::Value = row.try_get_by(idx)?;
+                let s: String = val.unwrap();
+                use std::str::FromStr;
+                ipnetwork::IpNetwork::from_str(&s).map_err(|_| {
+                    TryGetError::DbErr(DbErr::Type(
+                        "Invalid IP network format in D1".to_owned(),
+                    ))
+                })
+            }
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        }
+    }
+}
 
 impl TryGetable for u32 {
     #[allow(unused_variables)]
@@ -931,6 +1101,20 @@ impl TryGetable for u32 {
                 debug_print!("{:#?}", e.to_string());
                 err_null_idx_col(idx)
             }),
+            #[cfg(feature = "d1")]
+            QueryResultRow::D1(row) => {
+                let val = row.try_get_by(idx)?;
+                <u32>::try_get_by(&QueryResult {
+                    row: QueryResultRow::Mock(crate::MockRow {
+                        values: std::collections::BTreeMap::from([(
+                            idx.as_str()
+                                .ok_or_else(|| err_null_idx_col(idx))?
+                                .to_string(),
+                            val,
+                        )]),
+                    }),
+                }, idx)
+            }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -980,6 +1164,20 @@ impl TryGetable for String {
                 debug_print!("{:#?}", e.to_string());
                 err_null_idx_col(idx)
             }),
+            #[cfg(feature = "d1")]
+            QueryResultRow::D1(row) => {
+                let val = row.try_get_by(idx)?;
+                <String>::try_get_by(&QueryResult {
+                    row: QueryResultRow::Mock(crate::MockRow {
+                        values: std::collections::BTreeMap::from([(
+                            idx.as_str()
+                                .ok_or_else(|| err_null_idx_col(idx))?
+                                .to_string(),
+                            val,
+                        )]),
+                    }),
+                }, idx)
+            }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -1037,6 +1235,12 @@ mod postgres_array {
                             debug_print!("{:#?}", e.to_string());
                             err_null_idx_col(idx)
                         }),
+                        #[cfg(feature = "d1")]
+                        QueryResultRow::D1(_) => Err(type_err(format!(
+                            "{} unsupported by d1 (postgres arrays not supported)",
+                            stringify!($type)
+                        ))
+                        .into()),
                         #[allow(unreachable_patterns)]
                         _ => unreachable!(),
                     }
@@ -1141,6 +1345,12 @@ mod postgres_array {
                                 err_null_idx_col(idx)
                             })
                         }
+                        #[cfg(feature = "d1")]
+                        QueryResultRow::D1(_) => Err(type_err(format!(
+                            "{} unsupported by d1 (postgres arrays not supported)",
+                            stringify!($type)
+                        ))
+                        .into()),
                         #[allow(unreachable_patterns)]
                         _ => unreachable!(),
                     };
@@ -1205,6 +1415,12 @@ mod postgres_array {
                     debug_print!("{:#?}", e.to_string());
                     err_null_idx_col(idx)
                 }),
+                #[cfg(feature = "d1")]
+                QueryResultRow::D1(_) => Err(type_err(format!(
+                    "{} unsupported by d1 (postgres arrays not supported)",
+                    stringify!($type)
+                ))
+                .into()),
                 #[allow(unreachable_patterns)]
                 _ => unreachable!(),
             }
@@ -1242,6 +1458,8 @@ impl TryGetable for pgvector::Vector {
                 debug_print!("{:#?}", e.to_string());
                 err_null_idx_col(idx)
             }),
+            #[cfg(feature = "d1")]
+            QueryResultRow::D1(_) => Err(type_err("Vector unsupported by d1").into()),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -1478,6 +1696,22 @@ where
                 .and_then(|json| {
                     serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
                 }),
+            #[cfg(feature = "d1")]
+            QueryResultRow::D1(row) => {
+                // D1 returns JSON as sea_query::Value, convert to serde_json::Value
+                let val: crate::sea_query::Value = row.try_get_by(idx)?;
+                // Extract the inner serde_json::Value from the sea_query::Value
+                let json = match val {
+                    crate::sea_query::Value::Json(Some(box_val)) => *box_val,
+                    crate::sea_query::Value::Bool(Some(b)) => serde_json::Value::Bool(b),
+                    crate::sea_query::Value::BigInt(Some(i)) => serde_json::Value::from(i),
+                    crate::sea_query::Value::BigUnsigned(Some(u)) => serde_json::Value::from(u),
+                    crate::sea_query::Value::Double(Some(f)) => serde_json::Value::from(f),
+                    crate::sea_query::Value::String(Some(s)) => serde_json::Value::String(s),
+                    _ => serde_json::Value::Null,
+                };
+                serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
+            }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
