@@ -2,6 +2,8 @@ use crate::DbBackend;
 #[cfg(feature = "rbac")]
 pub use sea_query::audit::{AuditTrait, Error as AuditError, QueryAccessAudit};
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, SqliteQueryBuilder, inject_parameters};
+#[cfg(feature = "cockroachdb")]
+use sea_query::CockroachQueryBuilder;
 pub use sea_query::{Value, Values};
 use std::fmt;
 
@@ -71,6 +73,10 @@ impl fmt::Display for Statement {
                     DbBackend::Postgres => {
                         inject_parameters(&self.sql, &values.0, &PostgresQueryBuilder)
                     }
+                    #[cfg(feature = "cockroachdb")]
+                    DbBackend::Cockroach => {
+                        inject_parameters(&self.sql, &values.0, &CockroachQueryBuilder)
+                    }
                     DbBackend::Sqlite => {
                         inject_parameters(&self.sql, &values.0, &SqliteQueryBuilder)
                     }
@@ -89,6 +95,8 @@ macro_rules! build_any_stmt {
         match $db_backend {
             DbBackend::MySql => $stmt.build(MysqlQueryBuilder),
             DbBackend::Postgres => $stmt.build(PostgresQueryBuilder),
+            #[cfg(feature = "cockroachdb")]
+            DbBackend::Cockroach => $stmt.build(CockroachQueryBuilder),
             DbBackend::Sqlite => $stmt.build(SqliteQueryBuilder),
         }
     };
@@ -98,6 +106,8 @@ macro_rules! build_postgres_stmt {
     ($stmt: expr, $db_backend: expr) => {
         match $db_backend {
             DbBackend::Postgres => $stmt.to_string(PostgresQueryBuilder),
+            #[cfg(feature = "cockroachdb")]
+            DbBackend::Cockroach => $stmt.to_string(CockroachQueryBuilder),
             DbBackend::MySql | DbBackend::Sqlite => unimplemented!(),
         }
     };

@@ -148,6 +148,11 @@ runtime-tokio = ["sqlx?/runtime-tokio"]
 runtime-tokio-native-tls = ["sqlx?/runtime-tokio-native-tls", "runtime-tokio"]
 runtime-tokio-rustls = ["sqlx?/runtime-tokio-rustls", "runtime-tokio"]
 rusqlite = []
+cockroachdb = [
+    "sqlx-postgres",
+    "sea-query/backend-cockroach",
+]
+cockroachdb-use-identity-pk = ["sea-query/option-cockroachdb-use-identity"]
 schema-sync = ["sea-schema"]
 sea-orm-internal = []
 seaography = ["sea-orm-macros/seaography"]
@@ -212,5 +217,5 @@ with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-sqlx?/with-uuid"]
 
 # This allows us to develop using a local version of sea-query
 [patch.crates-io]
-# sea-query = { path = "../sea-query" }
+sea-query = { path = "../sea-query" }
 # sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }

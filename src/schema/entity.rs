@@ -229,7 +229,7 @@ where
                 let variants: Vec<String> = variants.iter().map(|v| v.to_string()).collect();
                 ColumnType::custom(format!("ENUM('{}')", variants.join("', '")))
             }
-            DbBackend::Postgres => ColumnType::Custom(name.clone()),
+            DbBackend::Postgres | DbBackend::Cockroach => ColumnType::Custom(name.clone()),
             DbBackend::Sqlite => orm_column_def.col_type,
         },
         _ => orm_column_def.col_type,
