@@ -1,0 +1,120 @@
+name: sea-orm-cli release
+
+on:
+  push:
+    tags:
+      - "sea-orm-cli@*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTC_WRAPPER: sccache
+  SCCACHE_GHA_ENABLED: true
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create draft release (if missing)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="${{ github.ref_name }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists"
+          else
+            gh release create "$tag" --draft --title "$tag" --verify-tag --notes-from-tag --fail-on-no-commits
+          fi
+
+  build:
+    name: Build (${{ matrix.target }})
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: tgz
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            ext: tgz
+          - os: macos-13
+            target: x86_64-apple-darwin
+            ext: tgz
+          - os: macos-14
+            target: aarch64-apple-darwin
+            ext: tgz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: zip
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#sea-orm-cli@}" >> $GITHUB_ENV
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-sea-orm-cli-release-${{ matrix.target }}-${{ hashFiles('**/Cargo.toml') }}
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Build
+        run: cargo build --release --manifest-path sea-orm-cli/Cargo.toml --target ${{ matrix.target }} --bin sea-orm-cli
+      - name: Package (unix)
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        run: |
+          package="sea-orm-cli-${{ matrix.target }}-v${VERSION}"
+          mkdir -p "$package"
+          bin_cli="sea-orm-cli/target/${{ matrix.target }}/release/sea-orm-cli"
+          cp "$bin_cli" "$package/sea-orm-cli"
+          cp "$bin_cli" "$package/sea"
+          tar -czf "${package}.tgz" "$package"
+      - name: Package (windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $package = "sea-orm-cli-${{ matrix.target }}-v$env:VERSION"
+          New-Item -ItemType Directory -Path $package | Out-Null
+          $bin_cli = "sea-orm-cli/target/${{ matrix.target }}/release/sea-orm-cli.exe"
+          Copy-Item $bin_cli "$package/sea-orm-cli.exe"
+          Copy-Item $bin_cli "$package/sea.exe"
+          Compress-Archive -Path "$package" -DestinationPath "$package.zip"
+      - name: Upload release asset (unix)
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "${{ github.ref_name }}" "sea-orm-cli-${{ matrix.target }}-v${VERSION}.${{ matrix.ext }}" --clobber
+      - name: Upload release asset (windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "${{ github.ref_name }}" "sea-orm-cli-${{ matrix.target }}-v$env:VERSION.${{ matrix.ext }}" --clobber
+
+  publish:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release edit "${{ github.ref_name }}" --draft=false
