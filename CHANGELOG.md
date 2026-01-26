@@ -463,6 +463,7 @@ let user = user::ActiveModel::builder()
 
 * [sea-orm-cli] Added `--column-extra-derives` https://github.com/SeaQL/sea-orm/pull/2212
 * [sea-orm-cli] Added `--big-integer-type=i32` to use i32 for bigint (for SQLite)
+* [sea-orm-cli] Fix codegen to not generate relations to filtered entities https://github.com/SeaQL/sea-orm/pull/2913
 * Added `Model::try_set`
 * Added new error variant `BackendNotSupported`. Previously, it panics with e.g. "Database backend doesn't support RETURNING" https://github.com/SeaQL/sea-orm/pull/2630
 ```rust
@@ -608,6 +609,45 @@ impl std::str::FromStr for Tag3 {
         let i: i64 = s.parse()?;
         Ok(Self { i })
     }
+}
+```
+* Fix `DeriveIntoActiveModel` on `Option<T>` fields https://github.com/SeaQL/sea-orm/pull/2926
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "fruit")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    pub name: String,
+    pub cake_id: Option<i32>,
+}
+
+#[derive(DeriveIntoActiveModel)]
+#[sea_orm(active_model = "<fruit::Entity as EntityTrait>::ActiveModel")]
+struct PartialFruit {
+    cake_id: Option<i32>,
+}
+
+assert_eq!(
+    PartialFruit { cake_id: Some(1) }.into_active_model(),
+    fruit::ActiveModel { id: NotSet, name: NotSet, cake_id: Set(Some(1)) }
+);
+
+assert_eq!(
+    PartialFruit { cake_id: None }.into_active_model(),
+    fruit::ActiveModel { id: NotSet, name: NotSet, cake_id: NotSet }
+);
+```
+* `FromQueryResult` now supports nullable nested model https://github.com/SeaQL/sea-orm/pull/2845
+```rust
+#[derive(FromQueryResult)]
+struct CakeWithOptionalBakeryModel {
+    #[sea_orm(alias = "cake_id")]
+    id: i32,
+    #[sea_orm(alias = "cake_name")]
+    name: String,
+    #[sea_orm(nested)]
+    bakery: Option<bakery::Model>, // can be null
 }
 ```
 
