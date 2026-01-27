@@ -1,8 +1,10 @@
+use std::{future::Future, pin::Pin};
+
+use futures_util::Stream;
+
 use crate::{
     DbBackend, DbErr, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError,
 };
-use futures_util::Stream;
-use std::{future::Future, pin::Pin};
 
 /// The generic API for a database connection that can perform query or execute statements.
 /// It abstracts database connection and transaction
@@ -123,6 +125,45 @@ impl std::fmt::Display for AccessMode {
             AccessMode::ReadWrite => write!(f, "READ WRITE"),
         }
     }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+/// Which kind of transaction to start. Only supported by SQLite.
+/// <https://www.sqlite.org/lang_transaction.html>
+#[cfg(feature = "sqlx-sqlite")]
+pub enum SqliteTransactionMode {
+    /// The default. Transaction starts when the next statement is executed, and
+    /// will be a read or write transaction depending on that statement.
+    Deferred,
+    /// Start a write transaction as soon as the BEGIN statement is received.
+    Immediate,
+    /// Start a write transaction as soon as the BEGIN statement is received.
+    /// When in non-WAL mode, also block all other transactions from reading the
+    /// database.
+    Exclusive,
+}
+
+#[cfg(feature = "sqlx-sqlite")]
+impl SqliteTransactionMode {
+    /// The keyword used to start a transaction in this mode (the word coming after "BEGIN").
+    pub fn sqlite_keyword(&self) -> &'static str {
+        match self {
+            SqliteTransactionMode::Deferred => "DEFERRED",
+            SqliteTransactionMode::Immediate => "IMMEDIATE",
+            SqliteTransactionMode::Exclusive => "EXCLUSIVE",
+        }
+    }
+}
+
+/// Configuration for starting a transaction
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub struct TransactionConfig {
+    #[cfg(any(feature = "sqlx-postgres", feature = "sqlx-mysql"))]
+    pub isolation_level: Option<IsolationLevel>,
+    #[cfg(any(feature = "sqlx-postgres", feature = "sqlx-mysql"))]
+    pub access_mode: Option<AccessMode>,
+    #[cfg(feature = "sqlx-sqlite")]
+    pub sqlite_transaction_mode: Option<SqliteTransactionMode>,
 }
 
 /// Spawn database transaction

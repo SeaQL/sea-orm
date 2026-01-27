@@ -1,16 +1,20 @@
 #![allow(unused_assignments)]
-use crate::{
-    AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
-    QueryResult, Statement, StreamTrait, TransactionSession, TransactionStream, TransactionTrait,
-    debug_print, error::*,
-};
-#[cfg(feature = "sqlx-dep")]
-use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
+use std::{future::Future, pin::Pin, sync::Arc};
+
 use futures_util::lock::Mutex;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::TransactionManager;
-use std::{future::Future, pin::Pin, sync::Arc};
 use tracing::instrument;
+
+#[cfg(feature = "sqlx-sqlite")]
+use crate::SqliteTransactionMode;
+use crate::{
+    AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
+    QueryResult, SqliteTransactionMode, Statement, StreamTrait, TransactionSession,
+    TransactionStream, TransactionTrait, debug_print, error::*,
+};
+#[cfg(feature = "sqlx-dep")]
+use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 
 /// Defines a database transaction, whether it is an open transaction and the type of
 /// backend to use.
@@ -92,9 +96,20 @@ impl DatabaseTransaction {
                             access_mode,
                         )
                         .await?;
-                        <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, None)
-                            .await
-                            .map_err(sqlx_error_to_query_err)
+                        // TODO using this for beginning a nested transaction currently causes an error. Should we make it a warning instead?
+                        let statement = match config.sqlite_transaction_mode {
+                            Some(mode) => Some(std::borrow::Cow::from(format!(
+                                "BEGIN {}",
+                                mode.sqlite_keyword()
+                            ))),
+                            None => None,
+                        };
+                        <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(
+                            c,
+                            statement.into(),
+                        )
+                        .await
+                        .map_err(sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "rusqlite")]
                     InnerConnection::Rusqlite(c) => c.begin(),
