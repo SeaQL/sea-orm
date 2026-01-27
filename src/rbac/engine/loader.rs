@@ -4,16 +4,22 @@ use super::super::entity::{
     user_override::Entity as UserOverride, user_role::Entity as UserRole,
 };
 use super::{RbacEngine, RbacSnapshot};
-use crate::{AccessMode, DbConn, DbErr, EntityTrait, IsolationLevel, TransactionTrait};
+use crate::{
+    AccessMode, DbConn, DbErr, EntityTrait, IsolationLevel, TransactionConfig, TransactionTrait,
+};
 
 impl RbacEngine {
     pub async fn load_from(db: &DbConn) -> Result<Self, DbErr> {
         // ensure snapshot is consistent across all tables
         let txn = &db
-            .begin_with_config(
-                Some(IsolationLevel::ReadCommitted),
-                Some(AccessMode::ReadOnly),
-            )
+            .begin_with_config(TransactionConfig {
+                #[cfg(any(feature = "sqlx-postgres", feature = "sqlx-mysql"))]
+                isolation_level: Some(IsolationLevel::ReadCommitted),
+                #[cfg(any(feature = "sqlx-postgres", feature = "sqlx-mysql"))]
+                access_mode: Some(AccessMode::ReadOnly),
+                #[cfg(feature = "sqlx-sqlite")]
+                sqlite_transaction_mode: None,
+            })
             .await?;
 
         let resources = Resource::find().all(txn).await?;

@@ -1,10 +1,11 @@
-use crate::{
-    AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
-    ExecResult, IsolationLevel, QueryResult, Statement, TransactionError, TransactionTrait,
-};
-use crate::{Schema, SchemaBuilder};
 use std::future::Future;
 use std::pin::Pin;
+
+use crate::{
+    ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr, ExecResult,
+    QueryResult, Statement, TransactionConfig, TransactionError, TransactionTrait,
+};
+use crate::{Schema, SchemaBuilder};
 
 /// A wrapper that holds either a reference to a [`DatabaseConnection`] or [`DatabaseTransaction`].
 #[derive(Debug)]
@@ -78,16 +79,11 @@ impl TransactionTrait for DatabaseExecutor<'_> {
 
     async fn begin_with_config(
         &self,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<DatabaseTransaction, DbErr> {
         match self {
-            DatabaseExecutor::Connection(conn) => {
-                conn.begin_with_config(isolation_level, access_mode).await
-            }
-            DatabaseExecutor::Transaction(trans) => {
-                trans.begin_with_config(isolation_level, access_mode).await
-            }
+            DatabaseExecutor::Connection(conn) => conn.begin_with_config(config).await,
+            DatabaseExecutor::Transaction(trans) => trans.begin_with_config(config).await,
         }
     }
 
@@ -109,8 +105,7 @@ impl TransactionTrait for DatabaseExecutor<'_> {
     async fn transaction_with_config<F, T, E>(
         &self,
         callback: F,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
@@ -122,13 +117,10 @@ impl TransactionTrait for DatabaseExecutor<'_> {
     {
         match self {
             DatabaseExecutor::Connection(conn) => {
-                conn.transaction_with_config(callback, isolation_level, access_mode)
-                    .await
+                conn.transaction_with_config(callback, config).await
             }
             DatabaseExecutor::Transaction(trans) => {
-                trans
-                    .transaction_with_config(callback, isolation_level, access_mode)
-                    .await
+                trans.transaction_with_config(callback, config).await
             }
         }
     }

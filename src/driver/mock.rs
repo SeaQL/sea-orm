@@ -1,8 +1,3 @@
-use crate::{
-    DatabaseConnection, DatabaseConnectionType, DbBackend, ExecResult, MockDatabase, QueryResult,
-    Statement, Transaction, debug_print, error::*,
-};
-use futures_util::Stream;
 use std::{
     fmt::Debug,
     pin::Pin,
@@ -11,7 +6,14 @@ use std::{
         atomic::{AtomicUsize, Ordering},
     },
 };
+
+use futures_util::Stream;
 use tracing::instrument;
+
+use crate::{
+    DatabaseConnection, DatabaseConnectionType, DbBackend, ExecResult, MockDatabase, QueryResult,
+    Statement, Transaction, TransactionConfig, debug_print, error::*,
+};
 
 #[cfg(not(feature = "sync"))]
 type PinBoxStream = Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send>>;
@@ -271,8 +273,7 @@ impl crate::DatabaseTransaction {
             Arc::new(Mutex::new(crate::InnerConnection::Mock(inner))),
             backend,
             metric_callback,
-            None,
-            None,
+            TransactionConfig::default(),
         )
         .await
     }

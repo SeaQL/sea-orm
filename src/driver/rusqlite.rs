@@ -3,7 +3,6 @@ use std::{
     sync::{Arc, Mutex, MutexGuard, TryLockError},
     time::{Duration, Instant},
 };
-use tracing::{debug, instrument, warn};
 
 pub use OwnedRow as RusqliteRow;
 use rusqlite::{
@@ -14,11 +13,12 @@ pub use rusqlite::{
     Connection as RusqliteConnection, Error as RusqliteError, types::Value as RusqliteOwnedValue,
 };
 use sea_query_rusqlite::{RusqliteValue, RusqliteValues, rusqlite};
+use tracing::{debug, instrument, warn};
 
 use crate::{
-    AccessMode, ColIdx, ConnectOptions, DatabaseConnection, DatabaseConnectionType,
-    DatabaseTransaction, InnerConnection, IsolationLevel, QueryStream, Statement, TransactionError,
-    error::*, executor::*,
+    ColIdx, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
+    InnerConnection, QueryStream, Statement, TransactionConfig, TransactionError, error::*,
+    executor::*,
 };
 
 /// A helper class to connect to Rusqlite
@@ -329,18 +329,13 @@ impl RusqliteSharedConnection {
 
     /// Bundle a set of SQL statements that execute together.
     #[instrument(level = "trace")]
-    pub fn begin(
-        &self,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
-    ) -> Result<DatabaseTransaction, DbErr> {
+    pub fn begin(&self, config: TransactionConfig) -> Result<DatabaseTransaction, DbErr> {
         let conn = self.loan()?;
         DatabaseTransaction::begin(
             Arc::new(Mutex::new(InnerConnection::Rusqlite(conn))),
             crate::DbBackend::Sqlite,
             self.metric_callback.clone(),
-            isolation_level,
-            access_mode,
+            config,
         )
     }
 
@@ -349,14 +344,13 @@ impl RusqliteSharedConnection {
     pub fn transaction<F, T, E>(
         &self,
         callback: F,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'b> FnOnce(&'b DatabaseTransaction) -> Result<T, E>,
         E: std::fmt::Display + std::fmt::Debug,
     {
-        self.begin(isolation_level, access_mode)
+        self.begin(config)
             .map_err(|e| TransactionError::Connection(e))?
             .run(callback)
     }

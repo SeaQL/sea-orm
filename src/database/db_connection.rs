@@ -1,20 +1,19 @@
-use crate::{
-    AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel, QueryResult,
-    Schema, SchemaBuilder, Statement, StatementBuilder, StreamTrait, TransactionError,
-    TransactionTrait, error::*,
-};
+#[cfg(any(feature = "mock", feature = "proxy"))]
+use std::sync::Arc;
 use std::{fmt::Debug, future::Future, pin::Pin};
-use tracing::instrument;
-use url::Url;
 
 #[cfg(feature = "sqlx-dep")]
 use sqlx::pool::PoolConnection;
+use tracing::instrument;
+use url::Url;
 
 #[cfg(feature = "rusqlite")]
 use crate::driver::rusqlite::{RusqliteInnerConnection, RusqliteSharedConnection};
-
-#[cfg(any(feature = "mock", feature = "proxy"))]
-use std::sync::Arc;
+use crate::{
+    ConnectionTrait, DatabaseTransaction, ExecResult, QueryResult, Schema, SchemaBuilder,
+    Statement, StatementBuilder, StreamTrait, TransactionConfig, TransactionError,
+    TransactionTrait, error::*,
+};
 
 /// Handle a database connection depending on the backend enabled by the feature
 /// flags. This creates a connection pool internally (for SQLx connections),
@@ -351,15 +350,21 @@ impl TransactionTrait for DatabaseConnection {
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         match &self.inner {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => conn.begin(None, None).await,
+            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => {
+                conn.begin(TransactionConfig::default()).await
+            }
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => {
-                conn.begin(None, None).await
+                conn.begin(TransactionConfig::default()).await
             }
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.begin(None, None).await,
+            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
+                conn.begin(TransactionConfig::default()).await
+            }
             #[cfg(feature = "rusqlite")]
-            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.begin(None, None),
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => {
+                conn.begin(TransactionConfig::default())
+            }
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => {
                 DatabaseTransaction::new_mock(Arc::clone(conn), None).await
@@ -375,26 +380,17 @@ impl TransactionTrait for DatabaseConnection {
     #[instrument(level = "trace")]
     async fn begin_with_config(
         &self,
-        _isolation_level: Option<IsolationLevel>,
-        _access_mode: Option<AccessMode>,
+        _config: TransactionConfig,
     ) -> Result<DatabaseTransaction, DbErr> {
         match &self.inner {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => {
-                conn.begin(_isolation_level, _access_mode).await
-            }
+            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => conn.begin(_config).await,
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => {
-                conn.begin(_isolation_level, _access_mode).await
-            }
+            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.begin(_config).await,
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
-                conn.begin(_isolation_level, _access_mode).await
-            }
+            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.begin(_config).await,
             #[cfg(feature = "rusqlite")]
-            DatabaseConnectionType::RusqliteSharedConnection(conn) => {
-                conn.begin(_isolation_level, _access_mode)
-            }
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.begin(_config),
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => {
                 DatabaseTransaction::new_mock(Arc::clone(conn), None).await
@@ -408,7 +404,8 @@ impl TransactionTrait for DatabaseConnection {
     }
 
     /// Execute the function inside a transaction.
-    /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// If it does not return an error, the transaction will be committed.
     #[instrument(level = "trace", skip(_callback))]
     async fn transaction<F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>
     where
@@ -422,19 +419,22 @@ impl TransactionTrait for DatabaseConnection {
         match &self.inner {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => {
-                conn.transaction(_callback, None, None).await
+                conn.transaction(_callback, TransactionConfig::default())
+                    .await
             }
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => {
-                conn.transaction(_callback, None, None).await
+                conn.transaction(_callback, TransactionConfig::default())
+                    .await
             }
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
-                conn.transaction(_callback, None, None).await
+                conn.transaction(_callback, TransactionConfig::default())
+                    .await
             }
             #[cfg(feature = "rusqlite")]
             DatabaseConnectionType::RusqliteSharedConnection(conn) => {
-                conn.transaction(_callback, None, None)
+                conn.transaction(_callback, TransactionConfig::default())
             }
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => {
@@ -455,13 +455,13 @@ impl TransactionTrait for DatabaseConnection {
     }
 
     /// Execute the function inside a transaction.
-    /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// If it does not return an error, the transaction will be committed.
     #[instrument(level = "trace", skip(_callback))]
     async fn transaction_with_config<F, T, E>(
         &self,
         _callback: F,
-        _isolation_level: Option<IsolationLevel>,
-        _access_mode: Option<AccessMode>,
+        _config: TransactionConfig,
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
@@ -474,22 +474,19 @@ impl TransactionTrait for DatabaseConnection {
         match &self.inner {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => {
-                conn.transaction(_callback, _isolation_level, _access_mode)
-                    .await
+                conn.transaction(_callback, _config).await
             }
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => {
-                conn.transaction(_callback, _isolation_level, _access_mode)
-                    .await
+                conn.transaction(_callback, _config).await
             }
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
-                conn.transaction(_callback, _isolation_level, _access_mode)
-                    .await
+                conn.transaction(_callback, _config).await
             }
             #[cfg(feature = "rusqlite")]
             DatabaseConnectionType::RusqliteSharedConnection(conn) => {
-                conn.transaction(_callback, _isolation_level, _access_mode)
+                conn.transaction(_callback, _config)
             }
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => {
@@ -556,8 +553,8 @@ impl DatabaseConnection {
 
 #[cfg(feature = "rbac")]
 impl DatabaseConnection {
-    /// Load RBAC data from the same database as this connection and setup RBAC engine.
-    /// If the RBAC engine already exists, it will be replaced.
+    /// Load RBAC data from the same database as this connection and setup RBAC
+    /// engine. If the RBAC engine already exists, it will be replaced.
     pub async fn load_rbac(&self) -> Result<(), DbErr> {
         self.load_rbac_from(self).await
     }
@@ -575,7 +572,8 @@ impl DatabaseConnection {
         self.rbac.replace(engine);
     }
 
-    /// Create a restricted connection with access control specific for the user.
+    /// Create a restricted connection with access control specific for the
+    /// user.
     pub fn restricted_for(
         &self,
         user_id: crate::rbac::RbacUserId,
