@@ -17,16 +17,16 @@ wasm-opt = false
 
 [lib]
 crate-type = ["cdylib"]
-path = "src/lib.rs"
+path       = "src/lib.rs"
 
 [dependencies]
-serde       = { version = "1", features = ["derive"] }
-serde_json  = "1"
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
 
-worker        = { version = "0.7", features = ["d1"] }
+worker = { version = "0.7", features = ["d1"] }
 
 sea-orm = { path = "../../", default-features = false, features = [
     "d1",
     "with-json",
     "macros",
-]}
+] }

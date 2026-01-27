@@ -95,8 +95,7 @@ use worker::wasm_bindgen::JsValue;
 use crate::{
     AccessMode, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction, DbErr, ExecResult,
     FromQueryResult, IsolationLevel, QueryResult, Statement, TransactionError, Value, debug_print,
-    error::*,
-    executor::*,
+    error::*, executor::*,
 };
 
 /// D1 Connector for Sea-ORM
@@ -173,7 +172,11 @@ impl D1Connection {
         debug_print!("{}", stmt);
 
         let sql = stmt.sql.clone();
-        let values = stmt.values.as_ref().cloned().unwrap_or_else(|| Values(Vec::new()));
+        let values = stmt
+            .values
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(|| Values(Vec::new()));
 
         crate::metric::metric!(self.metric_callback, &stmt, {
             match self.execute_inner(&sql, &values, false).await {
@@ -202,7 +205,11 @@ impl D1Connection {
         debug_print!("{}", stmt);
 
         let sql = stmt.sql.clone();
-        let values = stmt.values.as_ref().cloned().unwrap_or_else(|| Values(Vec::new()));
+        let values = stmt
+            .values
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(|| Values(Vec::new()));
 
         crate::metric::metric!(self.metric_callback, &stmt, {
             match self.query_inner(&sql, &values).await {
@@ -218,7 +225,11 @@ impl D1Connection {
         debug_print!("{}", stmt);
 
         let sql = stmt.sql.clone();
-        let values = stmt.values.as_ref().cloned().unwrap_or_else(|| Values(Vec::new()));
+        let values = stmt
+            .values
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(|| Values(Vec::new()));
 
         crate::metric::metric!(self.metric_callback, &stmt, {
             match self.query_inner(&sql, &values).await {
@@ -245,8 +256,7 @@ impl D1Connection {
         // D1 doesn't support explicit transactions in the traditional sense.
         // We'll use a no-op transaction that just commits/rollbacks immediately.
         // This is a limitation of D1's current API.
-        DatabaseTransaction::new_d1(self.d1.clone(), self.metric_callback.clone())
-            .await
+        DatabaseTransaction::new_d1(self.d1.clone(), self.metric_callback.clone()).await
     }
 
     /// Execute a function inside a transaction
@@ -265,9 +275,10 @@ impl D1Connection {
         T: Send,
         E: std::fmt::Display + std::fmt::Debug + Send,
     {
-        let transaction = DatabaseTransaction::new_d1(self.d1.clone(), self.metric_callback.clone())
-            .await
-            .map_err(|e| TransactionError::Connection(e))?;
+        let transaction =
+            DatabaseTransaction::new_d1(self.d1.clone(), self.metric_callback.clone())
+                .await
+                .map_err(|e| TransactionError::Connection(e))?;
         transaction.run(callback).await
     }
 
@@ -302,7 +313,10 @@ impl D1Connection {
             .bind(&js_values)
             .map_err(|e| D1Error::Prepare(e.into()))?;
 
-        let result = prepared.run().await.map_err(|e| D1Error::Execute(e.into()))?;
+        let result = prepared
+            .run()
+            .await
+            .map_err(|e| D1Error::Execute(e.into()))?;
         let meta = result.meta().map_err(|e| D1Error::Meta(e.into()))?;
 
         let (last_insert_id, rows_affected) = match meta {
@@ -320,11 +334,7 @@ impl D1Connection {
     }
 
     /// Internal method to query and get rows
-    async fn query_inner(
-        &self,
-        sql: &str,
-        values: &Values,
-    ) -> Result<Vec<D1Row>, D1Error> {
+    async fn query_inner(&self, sql: &str, values: &Values) -> Result<Vec<D1Row>, D1Error> {
         let js_values = values_to_js_values(values)?;
 
         let prepared = self
@@ -339,12 +349,10 @@ impl D1Connection {
             return Err(D1Error::Response(error.to_string()));
         }
 
-        let results: Vec<serde_json::Value> = result.results().map_err(|e| D1Error::Results(e.into()))?;
+        let results: Vec<serde_json::Value> =
+            result.results().map_err(|e| D1Error::Results(e.into()))?;
 
-        let rows: Vec<D1Row> = results
-            .into_iter()
-            .map(|row| D1Row { row })
-            .collect();
+        let rows: Vec<D1Row> = results.into_iter().map(|row| D1Row { row }).collect();
 
         Ok(rows)
     }
@@ -416,10 +424,7 @@ fn value_to_js_value(val: &Value) -> Result<JsValue, D1Error> {
         Value::Char(Some(v)) => Ok(JsValue::from(v.to_string())),
         Value::Bytes(Some(v)) => {
             // Convert bytes to hex string for D1
-            let hex: String = v
-                .iter()
-                .map(|byte| format!("{:02x}", byte))
-                .collect();
+            let hex: String = v.iter().map(|byte| format!("{:02x}", byte)).collect();
             Ok(JsValue::from(format!("X'{}'", hex)))
         }
         Value::Json(Some(v)) => Ok(JsValue::from(v.to_string())),
@@ -467,7 +472,10 @@ fn d1_error_to_query_err(err: D1Error) -> DbErr {
 
 /// Convert D1 error to DbErr for connection
 fn d1_error_to_conn_err(err: D1Error) -> DbErr {
-    DbErr::Conn(RuntimeErr::Internal(format!("D1 connection error: {}", err)))
+    DbErr::Conn(RuntimeErr::Internal(format!(
+        "D1 connection error: {}",
+        err
+    )))
 }
 
 /// Convert D1 JSON row to Sea-ORM values
@@ -765,7 +773,10 @@ mod tests {
         assert_eq!(id_value, Value::BigInt(Some(1)));
 
         let name_value = values.iter().find(|(k, _)| k == "name").unwrap().1.clone();
-        assert_eq!(name_value, Value::String(Some("Chocolate Cake".to_string())));
+        assert_eq!(
+            name_value,
+            Value::String(Some("Chocolate Cake".to_string()))
+        );
     }
 
     /// Test D1Row try_get_by with valid column

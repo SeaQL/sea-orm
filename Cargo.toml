@@ -107,6 +107,7 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 uuid = { version = "1", features = ["v4"] }
 
 [features]
+d1 = ["worker/d1", "mock"]
 debug-print = []
 default = [
     "macros",
@@ -150,7 +151,6 @@ runtime-tokio = ["sqlx?/runtime-tokio"]
 runtime-tokio-native-tls = ["sqlx?/runtime-tokio-native-tls", "runtime-tokio"]
 runtime-tokio-rustls = ["sqlx?/runtime-tokio-rustls", "runtime-tokio"]
 rusqlite = []
-d1 = ["worker/d1", "mock"]
 schema-sync = ["sea-schema"]
 sea-orm-internal = []
 seaography = ["sea-orm-macros/seaography"]

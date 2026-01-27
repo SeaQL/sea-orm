@@ -203,9 +203,9 @@ impl ConnectionTrait for DatabaseConnection {
                         conn.execute(stmt).await
                     }
                     #[cfg(feature = "d1")]
-                    DatabaseConnectionType::D1Connection(_) => {
-                        Err(conn_err("D1 connections require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details."))
-                    }
+                    DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                        "D1 connections require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+                    )),
                     DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
                 }
             }
@@ -252,9 +252,9 @@ impl ConnectionTrait for DatabaseConnection {
                     }
                     // D1 connections must use as_d1_connection() directly
                     #[cfg(feature = "d1")]
-                    DatabaseConnectionType::D1Connection(_) => {
-                        Err(conn_err("D1 connections require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details."))
-                    }
+                    DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                        "D1 connections require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+                    )),
                     DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
                 }
             }
@@ -293,9 +293,9 @@ impl ConnectionTrait for DatabaseConnection {
                     }
                     // D1 connections must use as_d1_connection() directly
                     #[cfg(feature = "d1")]
-                    DatabaseConnectionType::D1Connection(_) => {
-                        Err(conn_err("D1 connections require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details."))
-                    }
+                    DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                        "D1 connections require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+                    )),
                     DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
                 }
             }
@@ -334,9 +334,9 @@ impl ConnectionTrait for DatabaseConnection {
                     }
                     // D1 connections must use as_d1_connection() directly
                     #[cfg(feature = "d1")]
-                    DatabaseConnectionType::D1Connection(_) => {
-                        Err(conn_err("D1 connections require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details."))
-                    }
+                    DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                        "D1 connections require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+                    )),
                     DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
                 }
             }
@@ -389,9 +389,9 @@ impl StreamTrait for DatabaseConnection {
                 }
                 // D1 connections must use as_d1_connection() directly
                 #[cfg(feature = "d1")]
-                DatabaseConnectionType::D1Connection(_) => {
-                    Err(conn_err("D1 streaming is not supported. Use query_all() instead. See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details."))
-                }
+                DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                    "D1 streaming is not supported. Use query_all() instead. See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+                )),
                 DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
             }
         })
@@ -424,9 +424,9 @@ impl TransactionTrait for DatabaseConnection {
             }
             // D1 connections must use as_d1_connection() directly
             #[cfg(feature = "d1")]
-            DatabaseConnectionType::D1Connection(_) => {
-                Err(conn_err("D1 transactions require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details."))
-            }
+            DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                "D1 transactions require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+            )),
             DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -463,9 +463,9 @@ impl TransactionTrait for DatabaseConnection {
             }
             // D1 connections must use as_d1_connection() directly
             #[cfg(feature = "d1")]
-            DatabaseConnectionType::D1Connection(_) => {
-                Err(conn_err("D1 transactions require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details."))
-            }
+            DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                "D1 transactions require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+            )),
             DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -766,9 +766,7 @@ impl DatabaseConnection {
                 conn.set_metric_callback(_callback)
             }
             #[cfg(feature = "d1")]
-            DatabaseConnectionType::D1Connection(conn) => {
-                conn.set_metric_callback(_callback)
-            }
+            DatabaseConnectionType::D1Connection(conn) => conn.set_metric_callback(_callback),
             _ => {}
         }
     }
