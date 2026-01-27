@@ -92,9 +92,16 @@ impl DatabaseTransaction {
                             access_mode,
                         )
                         .await?;
-                        <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, None)
-                            .await
-                            .map_err(sqlx_error_to_query_err)
+                        // TODO using this for beginning a nested transaction currently causes an error. Should we make it a warning instead?
+                        let statement = config.sqlite_transaction_mode.map(|mode| {
+                            std::borrow::Cow::from(format!("BEGIN {}", mode.sqlite_keyword()))
+                        });
+                        <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(
+                            c,
+                            statement.into(),
+                        )
+                        .await
+                        .map_err(sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "rusqlite")]
                     InnerConnection::Rusqlite(c) => c.begin(),
