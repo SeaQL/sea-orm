@@ -175,8 +175,7 @@ pub trait TransactionTrait {
     /// Returns a Transaction that can be committed or rolled back
     async fn begin_with_config(
         &self,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<Self::Transaction, DbErr>;
 
     /// Execute the function inside a transaction.
@@ -195,8 +194,7 @@ pub trait TransactionTrait {
     async fn transaction_with_config<F, T, E>(
         &self,
         callback: F,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(

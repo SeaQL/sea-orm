@@ -1,7 +1,7 @@
 #![allow(unused_assignments)]
 use crate::{
-    AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
-    QueryResult, Statement, StreamTrait, TransactionSession, TransactionStream, TransactionTrait,
+    ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, QueryResult, Statement,
+    StreamTrait, TransactionConfig, TransactionSession, TransactionStream, TransactionTrait,
     debug_print, error::*,
 };
 #[cfg(feature = "sqlx-dep")]
@@ -35,9 +35,13 @@ impl DatabaseTransaction {
         conn: Arc<Mutex<InnerConnection>>,
         backend: DbBackend,
         metric_callback: Option<crate::metric::Callback>,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<DatabaseTransaction, DbErr> {
+        let TransactionConfig {
+            isolation_level,
+            access_mode,
+            sqlite_transaction_mode,
+        } = config;
         let res = DatabaseTransaction {
             conn,
             backend,
@@ -610,8 +614,7 @@ impl TransactionTrait for DatabaseTransaction {
             Arc::clone(&self.conn),
             self.backend,
             self.metric_callback.clone(),
-            None,
-            None,
+            TransactionConfig::default(),
         )
         .await
     }
@@ -619,15 +622,13 @@ impl TransactionTrait for DatabaseTransaction {
     #[instrument(level = "trace")]
     async fn begin_with_config(
         &self,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<DatabaseTransaction, DbErr> {
         DatabaseTransaction::begin(
             Arc::clone(&self.conn),
             self.backend,
             self.metric_callback.clone(),
-            isolation_level,
-            access_mode,
+            config,
         )
         .await
     }
@@ -656,8 +657,7 @@ impl TransactionTrait for DatabaseTransaction {
     async fn transaction_with_config<F, T, E>(
         &self,
         _callback: F,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
@@ -668,7 +668,7 @@ impl TransactionTrait for DatabaseTransaction {
         E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let transaction = self
-            .begin_with_config(isolation_level, access_mode)
+            .begin_with_config(config)
             .await
             .map_err(TransactionError::Connection)?;
         transaction.run(_callback).await

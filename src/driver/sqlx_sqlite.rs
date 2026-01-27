@@ -1,24 +1,22 @@
+use std::{future::Future, pin::Pin, sync::Arc};
+
 use futures_util::lock::Mutex;
 use log::LevelFilter;
 use sea_query::Values;
-use std::{future::Future, pin::Pin, sync::Arc};
-
+use sea_query_sqlx::SqlxValues;
 use sqlx::{
     Connection, Executor, Sqlite, SqlitePool,
     pool::PoolConnection,
     sqlite::{SqliteConnectOptions, SqliteQueryResult, SqliteRow},
 };
-
-use sea_query_sqlx::SqlxValues;
 use tracing::{instrument, warn};
 
+use super::sqlx_common::*;
 use crate::{
     AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
-    IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
-    sqlx_error_to_exec_err,
+    IsolationLevel, QueryStream, Statement, TransactionConfig, TransactionError, debug_print,
+    error::*, executor::*, sqlx_error_to_exec_err,
 };
-
-use super::sqlx_common::*;
 
 /// Defines the [sqlx::sqlite] connector
 #[derive(Debug)]
@@ -163,7 +161,8 @@ impl SqlxSqlitePoolConnection {
         }
     }
 
-    /// Get one result from a SQL query. Returns [Option::None] if no match was found
+    /// Get one result from a SQL query. Returns [Option::None] if no match was
+    /// found
     #[instrument(level = "trace")]
     pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
@@ -211,19 +210,9 @@ impl SqlxSqlitePoolConnection {
 
     /// Bundle a set of SQL statements that execute together.
     #[instrument(level = "trace")]
-    pub async fn begin(
-        &self,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
-    ) -> Result<DatabaseTransaction, DbErr> {
+    pub async fn begin(&self, config: TransactionConfig) -> Result<DatabaseTransaction, DbErr> {
         let conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
-        DatabaseTransaction::new_sqlite(
-            conn,
-            self.metric_callback.clone(),
-            isolation_level,
-            access_mode,
-        )
-        .await
+        DatabaseTransaction::new_sqlite(conn, self.metric_callback.clone(), config).await
     }
 
     /// Create a SQLite transaction
@@ -231,8 +220,7 @@ impl SqlxSqlitePoolConnection {
     pub async fn transaction<F, T, E>(
         &self,
         callback: F,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'b> FnOnce(
@@ -243,14 +231,10 @@ impl SqlxSqlitePoolConnection {
         E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
-        let transaction = DatabaseTransaction::new_sqlite(
-            conn,
-            self.metric_callback.clone(),
-            isolation_level,
-            access_mode,
-        )
-        .await
-        .map_err(|e| TransactionError::Connection(e))?;
+        let transaction =
+            DatabaseTransaction::new_sqlite(conn, self.metric_callback.clone(), config)
+                .await
+                .map_err(|e| TransactionError::Connection(e))?;
         transaction.run(callback).await
     }
 
@@ -360,15 +344,13 @@ impl crate::DatabaseTransaction {
     pub(crate) async fn new_sqlite(
         inner: PoolConnection<sqlx::Sqlite>,
         metric_callback: Option<crate::metric::Callback>,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<crate::DatabaseTransaction, DbErr> {
         Self::begin(
             Arc::new(Mutex::new(crate::InnerConnection::Sqlite(inner))),
             crate::DbBackend::Sqlite,
             metric_callback,
-            isolation_level,
-            access_mode,
+            config,
         )
         .await
     }
