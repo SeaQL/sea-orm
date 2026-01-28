@@ -944,6 +944,7 @@ pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
                 feature = "sqlx-mysql",
                 feature = "sqlx-sqlite",
                 feature = "sqlx-postgres",
+                feature = "cockroachdb",
             ))]
             #(#attrs)*
             fn #name() #ret {

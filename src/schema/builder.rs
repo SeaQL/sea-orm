@@ -105,7 +105,7 @@ impl SchemaBuilder {
                     }
                 }
                 #[cfg(feature = "sqlx-postgres")]
-                DbBackend::Postgres => {
+                DbBackend::Postgres | DbBackend::Cockroach => {
                     use sea_schema::{postgres::discovery::SchemaDiscovery, probe::SchemaProbe};
 
                     let current_schema: String = db
