@@ -179,7 +179,7 @@ impl D1Connection {
             .unwrap_or_else(|| Values(Vec::new()));
 
         crate::metric::metric!(self.metric_callback, &stmt, {
-            match self.execute_inner(&sql, &values, false).await {
+            match self.execute_inner(&sql, &values).await {
                 Ok(result) => Ok(result.into()),
                 Err(err) => Err(d1_error_to_exec_err(err)),
             }
@@ -193,7 +193,7 @@ impl D1Connection {
 
         let values = Values(Vec::new());
 
-        match self.execute_inner(sql, &values, false).await {
+        match self.execute_inner(sql, &values).await {
             Ok(result) => Ok(result.into()),
             Err(err) => Err(d1_error_to_exec_err(err)),
         }
@@ -240,6 +240,31 @@ impl D1Connection {
     }
 
     /// Begin a transaction
+    ///
+    /// # D1 Transaction Limitations
+    ///
+    /// **Important:** D1 has limited transaction support compared to traditional databases:
+    /// - **No ACID guarantees**: D1 does not provide full ACID transaction semantics
+    /// - **No isolation levels**: Isolation levels are not supported and will be ignored
+    /// - **No access mode control**: Read-only vs read-write modes are not enforced
+    /// - **Best-effort only**: Each statement is executed independently; if one fails,
+    ///   previous statements are not automatically rolled back
+    /// - **No savepoints**: Nested transactions are not supported
+    ///
+    /// For production use cases requiring strong transactional guarantees, consider
+    /// using a different database backend or implementing application-level compensation logic.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let tx = d1_conn.begin(None, None).await?;
+    ///
+    /// // Execute operations...
+    /// let result = d1_conn.execute(stmt1).await;
+    ///
+    /// // Commit or rollback
+    /// tx.commit().await?;
+    /// ```
     #[instrument(level = "trace")]
     pub async fn begin(
         &self,
@@ -254,12 +279,34 @@ impl D1Connection {
         }
 
         // D1 doesn't support explicit transactions in the traditional sense.
-        // We'll use a no-op transaction that just commits/rollbacks immediately.
-        // This is a limitation of D1's current API.
+        // Each statement is executed independently.
         DatabaseTransaction::new_d1(self.d1.clone(), self.metric_callback.clone()).await
     }
 
     /// Execute a function inside a transaction
+    ///
+    /// # D1 Transaction Limitations
+    ///
+    /// **Important:** This method provides a transaction-like interface, but due to D1's
+    /// limitations, it cannot provide full ACID guarantees:
+    ///
+    /// - **Partial failure risk**: If the callback fails partway through, earlier statements
+    ///   may have already been committed by D1 and cannot be rolled back
+    /// - **No atomicity**: Operations are not executed atomically
+    /// - **No consistency guarantees**: Database constraints may be violated between statements
+    /// - **Isolation and access mode**: These parameters are ignored
+    ///
+    /// For production use requiring strong guarantees, consider implementing
+    /// idempotent operations or application-level compensation logic.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// d1_conn.transaction(|tx| Box::pin(async move {
+    ///     // Your operations here...
+    ///     Ok(result)
+    /// }), None, None).await?;
+    /// ```
     #[instrument(level = "trace", skip(callback))]
     pub async fn transaction<F, T, E>(
         &self,
@@ -299,11 +346,12 @@ impl D1Connection {
     }
 
     /// Internal method to execute SQL and get execution result
+    ///
+    /// Note: D1 always uses prepared statements, so there's no unprepared execution path.
     async fn execute_inner(
         &self,
         sql: &str,
         values: &Values,
-        _unprepared: bool,
     ) -> Result<D1ExecResult, D1Error> {
         let js_values = values_to_js_values(values)?;
 
@@ -448,12 +496,43 @@ fn value_to_js_value(val: &Value) -> Result<JsValue, D1Error> {
         Value::TimeDateTime(Some(v)) => Ok(JsValue::from(v.to_string())),
         #[cfg(feature = "with-time")]
         Value::TimeDateTimeWithTimeZone(Some(v)) => Ok(JsValue::from(v.to_string())),
-        // Unsupported types - log warning and return NULL
+        // Null values and unsupported types
+        Value::Bool(None)
+        | Value::Int(None)
+        | Value::BigInt(None)
+        | Value::SmallInt(None)
+        | Value::TinyInt(None)
+        | Value::Unsigned(None)
+        | Value::BigUnsigned(None)
+        | Value::SmallUnsigned(None)
+        | Value::TinyUnsigned(None)
+        | Value::Float(None)
+        | Value::Double(None)
+        | Value::String(None)
+        | Value::Char(None)
+        | Value::Bytes(None)
+        | Value::Json(None) => Ok(JsValue::NULL),
+        #[cfg(feature = "with-chrono")]
+        Value::ChronoDate(None)
+        | Value::ChronoTime(None)
+        | Value::ChronoDateTime(None)
+        | Value::ChronoDateTimeUtc(None)
+        | Value::ChronoDateTimeLocal(None)
+        | Value::ChronoDateTimeWithTimeZone(None) => Ok(JsValue::NULL),
+        #[cfg(feature = "with-time")]
+        Value::TimeDate(None)
+        | Value::TimeTime(None)
+        | Value::TimeDateTime(None)
+        | Value::TimeDateTimeWithTimeZone(None) => Ok(JsValue::NULL),
+        // Unsupported types - log error and return NULL
+        // Note: In strict mode, this should return an error instead
+        #[allow(unreachable_patterns)]
         val => {
-            tracing::warn!(
-                "D1 does not support value type {:?} - converting to NULL. \
-                Consider using a supported type (i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, String, Vec<u8>, serde_json::Value)",
-                val
+            tracing::error!(
+                "D1 does not support value type {:?} - data will be lost (converting to NULL). \
+                Use a supported type (bool, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, String, Vec<u8>, serde_json::Value, chrono types, time types). \
+                Consider enabling strict mode to catch these errors at development time.",
+                std::mem::discriminant(val)
             );
             Ok(JsValue::NULL)
         }
@@ -476,6 +555,38 @@ fn d1_error_to_conn_err(err: D1Error) -> DbErr {
         "D1 connection error: {}",
         err
     )))
+}
+
+/// Internal helper for converting D1 values to target types
+///
+/// This provides a MockRow-like interface for value conversion without
+/// requiring the mock feature to be enabled.
+#[derive(Debug, Clone)]
+pub(crate) struct D1ValueWrapper {
+    values: std::collections::BTreeMap<String, Value>,
+}
+
+impl D1ValueWrapper {
+    /// Create a new wrapper with a single value
+    pub(crate) fn with_value(key: String, value: Value) -> Self {
+        let mut values = std::collections::BTreeMap::new();
+        values.insert(key, value);
+        Self { values }
+    }
+
+    /// Get a value from the wrapper
+    pub(crate) fn try_get<T>(&self, index: &str) -> Result<T, DbErr>
+    where
+        T: sea_query::ValueType,
+    {
+        T::try_from(
+            self.values
+                .get(index)
+                .ok_or_else(|| query_err(format!("No column for index {index:?}")))?
+                .clone(),
+        )
+        .map_err(type_err)
+    }
 }
 
 /// Convert D1 JSON row to Sea-ORM values

@@ -13,7 +13,7 @@ use sqlx::pool::PoolConnection;
 #[cfg(feature = "rusqlite")]
 use crate::driver::rusqlite::{RusqliteInnerConnection, RusqliteSharedConnection};
 
-#[cfg(any(feature = "mock", feature = "proxy", feature = "d1"))]
+#[cfg(any(feature = "mock", feature = "proxy"))]
 use std::sync::Arc;
 
 /// Handle a database connection depending on the backend enabled by the feature

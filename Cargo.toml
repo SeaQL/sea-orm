@@ -107,7 +107,7 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 uuid = { version = "1", features = ["v4"] }
 
 [features]
-d1 = ["worker/d1", "mock"]
+d1 = ["worker/d1"]
 debug-print = []
 default = [
     "macros",

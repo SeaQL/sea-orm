@@ -429,20 +429,15 @@ macro_rules! try_getable_all {
                     #[cfg(feature = "d1")]
                     QueryResultRow::D1(row) => {
                         let val = row.try_get_by(idx)?;
-                        // Convert Value to the target type
-                        <$type>::try_get_by(
-                            &QueryResult {
-                                row: QueryResultRow::Mock(crate::MockRow {
-                                    values: std::collections::BTreeMap::from([(
-                                        idx.as_str()
-                                            .ok_or_else(|| err_null_idx_col(idx))?
-                                            .to_string(),
-                                        val,
-                                    )]),
-                                }),
-                            },
-                            idx,
-                        )
+                        // Convert Value to the target type using D1ValueWrapper
+                        let col_name = idx.as_str()
+                            .ok_or_else(|| err_null_idx_col(idx))?
+                            .to_string();
+                        let wrapper = crate::driver::d1::D1ValueWrapper::with_value(
+                            col_name.clone(),
+                            val,
+                        );
+                        wrapper.try_get(&col_name).map_err(|e| e.into())
                     }
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
@@ -491,19 +486,15 @@ macro_rules! try_getable_unsigned {
                     #[cfg(feature = "d1")]
                     QueryResultRow::D1(row) => {
                         let val = row.try_get_by(idx)?;
-                        <$type>::try_get_by(
-                            &QueryResult {
-                                row: QueryResultRow::Mock(crate::MockRow {
-                                    values: std::collections::BTreeMap::from([(
-                                        idx.as_str()
-                                            .ok_or_else(|| err_null_idx_col(idx))?
-                                            .to_string(),
-                                        val,
-                                    )]),
-                                }),
-                            },
-                            idx,
-                        )
+                        // Convert Value to the target type using D1ValueWrapper
+                        let col_name = idx.as_str()
+                            .ok_or_else(|| err_null_idx_col(idx))?
+                            .to_string();
+                        let wrapper = crate::driver::d1::D1ValueWrapper::with_value(
+                            col_name.clone(),
+                            val,
+                        );
+                        wrapper.try_get(&col_name).map_err(|e| e.into())
                     }
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
@@ -555,19 +546,15 @@ macro_rules! try_getable_mysql {
                     #[cfg(feature = "d1")]
                     QueryResultRow::D1(row) => {
                         let val = row.try_get_by(idx)?;
-                        <$type>::try_get_by(
-                            &QueryResult {
-                                row: QueryResultRow::Mock(crate::MockRow {
-                                    values: std::collections::BTreeMap::from([(
-                                        idx.as_str()
-                                            .ok_or_else(|| err_null_idx_col(idx))?
-                                            .to_string(),
-                                        val,
-                                    )]),
-                                }),
-                            },
-                            idx,
-                        )
+                        // Convert Value to the target type using D1ValueWrapper
+                        let col_name = idx.as_str()
+                            .ok_or_else(|| err_null_idx_col(idx))?
+                            .to_string();
+                        let wrapper = crate::driver::d1::D1ValueWrapper::with_value(
+                            col_name.clone(),
+                            val,
+                        );
+                        wrapper.try_get(&col_name).map_err(|e| e.into())
                     }
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
@@ -675,14 +662,20 @@ macro_rules! try_getable_date_time {
                         // D1 returns datetime as string, parse it
                         use chrono::DateTime;
                         let val: crate::sea_query::Value = row.try_get_by(idx)?;
-                        let s: String = val.unwrap();
-                        let dt = DateTime::parse_from_rfc3339(&s).map_err(|e| {
-                            crate::error::type_err(format!(
-                                "Failed to parse datetime from D1: {}",
-                                e
-                            ))
-                        })?;
-                        Ok(dt.into())
+                        match val {
+                            crate::sea_query::Value::String(Some(s)) => {
+                                let dt = DateTime::parse_from_rfc3339(&s).map_err(|e| {
+                                    crate::error::type_err(format!(
+                                        "Failed to parse datetime from D1: {}",
+                                        e
+                                    ))
+                                })?;
+                                Ok(dt.into())
+                            }
+                            _ => Err(TryGetError::DbErr(
+                                crate::error::type_err("D1: Expected RFC3339 datetime string, got NULL or non-string value".to_string())
+                            )),
+                        }
                     }
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
@@ -804,15 +797,21 @@ impl TryGetable for Decimal {
                 // D1 returns numbers as JSON, parse from string representation
                 let val: crate::sea_query::Value = row.try_get_by(idx)?;
                 // Get as f64 then convert to Decimal
-                let f: f64 = val.unwrap();
-                Decimal::try_from(f).map_err(|e| {
-                    DbErr::TryIntoErr {
-                        from: "f64",
-                        into: "Decimal",
-                        source: Arc::new(e),
+                match val {
+                    crate::sea_query::Value::Double(Some(f)) => {
+                        Decimal::try_from(f).map_err(|e| {
+                            DbErr::TryIntoErr {
+                                from: "f64",
+                                into: "Decimal",
+                                source: Arc::new(e),
+                            }
+                            .into()
+                        })
                     }
-                    .into()
-                })
+                    _ => Err(TryGetError::DbErr(
+                        crate::error::type_err("D1: Expected Decimal as f64, got NULL or non-numeric value".to_string())
+                    )),
+                }
             }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
@@ -887,15 +886,21 @@ impl TryGetable for BigDecimal {
                 // D1 returns numbers as JSON, parse from string representation
                 let val: crate::sea_query::Value = row.try_get_by(idx)?;
                 // Get as f64 then convert to BigDecimal
-                let f: f64 = val.unwrap();
-                BigDecimal::try_from(f).map_err(|e| {
-                    DbErr::TryIntoErr {
-                        from: "f64",
-                        into: "BigDecimal",
-                        source: Arc::new(e),
+                match val {
+                    crate::sea_query::Value::Double(Some(f)) => {
+                        BigDecimal::try_from(f).map_err(|e| {
+                            DbErr::TryIntoErr {
+                                from: "f64",
+                                into: "BigDecimal",
+                                source: Arc::new(e),
+                            }
+                            .into()
+                        })
                     }
-                    .into()
-                })
+                    _ => Err(TryGetError::DbErr(
+                        crate::error::type_err("D1: Expected BigDecimal as f64, got NULL or non-numeric value".to_string())
+                    )),
+                }
             }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
@@ -972,10 +977,16 @@ macro_rules! try_getable_uuid {
                     QueryResultRow::D1(row) => {
                         // D1 stores UUIDs as strings
                         let val: crate::sea_query::Value = row.try_get_by(idx)?;
-                        let s: String = val.unwrap();
-                        uuid::Uuid::parse_str(&s).map_err(|_| {
-                            TryGetError::DbErr(crate::error::type_err("Invalid UUID".to_owned()))
-                        })
+                        match val {
+                            crate::sea_query::Value::String(Some(s)) => {
+                                uuid::Uuid::parse_str(&s).map_err(|_| {
+                                    TryGetError::DbErr(crate::error::type_err("Invalid UUID".to_owned()))
+                                })
+                            }
+                            _ => Err(TryGetError::DbErr(
+                                crate::error::type_err("D1: Expected UUID string, got NULL or non-string value".to_string())
+                            )),
+                        }
                     }
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
@@ -1041,11 +1052,17 @@ impl TryGetable for ipnetwork::IpNetwork {
             QueryResultRow::D1(row) => {
                 // D1 stores IP networks as strings
                 let val: crate::sea_query::Value = row.try_get_by(idx)?;
-                let s: String = val.unwrap();
-                use std::str::FromStr;
-                ipnetwork::IpNetwork::from_str(&s).map_err(|_| {
-                    TryGetError::DbErr(DbErr::Type("Invalid IP network format in D1".to_owned()))
-                })
+                match val {
+                    crate::sea_query::Value::String(Some(s)) => {
+                        use std::str::FromStr;
+                        ipnetwork::IpNetwork::from_str(&s).map_err(|_| {
+                            TryGetError::DbErr(DbErr::Type("Invalid IP network format in D1".to_owned()))
+                        })
+                    }
+                    _ => Err(TryGetError::DbErr(
+                        crate::error::type_err("D1: Expected IP network string, got NULL or non-string value".to_string())
+                    )),
+                }
             }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
@@ -1110,19 +1127,15 @@ impl TryGetable for u32 {
             #[cfg(feature = "d1")]
             QueryResultRow::D1(row) => {
                 let val = row.try_get_by(idx)?;
-                <u32>::try_get_by(
-                    &QueryResult {
-                        row: QueryResultRow::Mock(crate::MockRow {
-                            values: std::collections::BTreeMap::from([(
-                                idx.as_str()
-                                    .ok_or_else(|| err_null_idx_col(idx))?
-                                    .to_string(),
-                                val,
-                            )]),
-                        }),
-                    },
-                    idx,
-                )
+                // Convert Value to the target type using D1ValueWrapper
+                let col_name = idx.as_str()
+                    .ok_or_else(|| err_null_idx_col(idx))?
+                    .to_string();
+                let wrapper = crate::driver::d1::D1ValueWrapper::with_value(
+                    col_name.clone(),
+                    val,
+                );
+                wrapper.try_get(&col_name).map_err(|e| e.into())
             }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
@@ -1176,19 +1189,15 @@ impl TryGetable for String {
             #[cfg(feature = "d1")]
             QueryResultRow::D1(row) => {
                 let val = row.try_get_by(idx)?;
-                <String>::try_get_by(
-                    &QueryResult {
-                        row: QueryResultRow::Mock(crate::MockRow {
-                            values: std::collections::BTreeMap::from([(
-                                idx.as_str()
-                                    .ok_or_else(|| err_null_idx_col(idx))?
-                                    .to_string(),
-                                val,
-                            )]),
-                        }),
-                    },
-                    idx,
-                )
+                // Convert Value to the target type using D1ValueWrapper
+                let col_name = idx.as_str()
+                    .ok_or_else(|| err_null_idx_col(idx))?
+                    .to_string();
+                let wrapper = crate::driver::d1::D1ValueWrapper::with_value(
+                    col_name.clone(),
+                    val,
+                );
+                wrapper.try_get(&col_name).map_err(|e| e.into())
             }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),

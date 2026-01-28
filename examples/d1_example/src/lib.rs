@@ -65,18 +65,16 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let url = req.url()?;
     let path = url.path();
 
-    match path {
-        "/" => Response::ok("Welcome to Sea-ORM D1 Example! Try /cakes, /cakes-entity, /cakes-filtered, or /cakes-search"),
-        "/cakes" => handle_list_cakes(d1_conn).await,
-        "/cakes-entity" => handle_list_cakes_entity(d1_conn).await,
-        "/cakes-filtered" => handle_filtered_cakes(d1_conn).await,
-        path if path.starts_with("/cakes-search") => handle_search_cakes(d1_conn, req).await,
-        path if path == "/cakes" && req.method() == Method::Post => {
-            handle_create_cake(d1_conn, req).await
-        }
-        path if path.starts_with("/cakes/") => {
+    match (req.method(), path) {
+        (Method::Get, "/") => Response::ok("Welcome to Sea-ORM D1 Example! Try /cakes, /cakes-entity, /cakes-filtered, or /cakes-search"),
+        (Method::Get, "/cakes") => handle_list_cakes(d1_conn).await,
+        (Method::Post, "/cakes") => handle_create_cake(d1_conn, req).await,
+        (Method::Get, "/cakes-entity") => handle_list_cakes_entity(d1_conn).await,
+        (Method::Get, "/cakes-filtered") => handle_filtered_cakes(d1_conn).await,
+        (Method::Get, path) if path.starts_with("/cakes-search") => handle_search_cakes(d1_conn, req).await,
+        (method, path) if path.starts_with("/cakes/") => {
             let id = path.trim_start_matches("/cakes/");
-            match req.method() {
+            match method {
                 Method::Get => handle_get_cake(d1_conn, id).await,
                 Method::Delete => handle_delete_cake(d1_conn, id).await,
                 _ => Response::error("Method not allowed", 405),
@@ -135,6 +133,14 @@ async fn handle_filtered_cakes(d1_conn: &D1Connection) -> Result<Response> {
     Response::from_json(&results)
 }
 
+/// Escape SQL wildcards in a search term to prevent unexpected behavior
+fn escape_like_pattern(s: &str) -> String {
+    s.replace('%', "\\%")
+        .replace('_', "\\_")
+        .replace('[', "\\[")
+        .replace(']', "\\]")
+}
+
 /// Search cakes by name using query parameter
 async fn handle_search_cakes(d1_conn: &D1Connection, req: Request) -> Result<Response> {
     let url = req.url()?;
@@ -145,11 +151,14 @@ async fn handle_search_cakes(d1_conn: &D1Connection, req: Request) -> Result<Res
         return Response::error("Missing 'q' query parameter", 400);
     }
 
+    // Escape SQL wildcards to prevent them from being interpreted as wildcards
+    let escaped_term = escape_like_pattern(&search_term);
+
     // Use Entity::find() with LIKE filter (case-sensitive in SQLite)
     let cakes: Vec<cake::Model> = match d1_conn
         .find_all(
             cake::Entity::find()
-                .filter(cake::Column::Name.like(&format!("%{}%", search_term)))
+                .filter(cake::Column::Name.like(&format!("%{}%", escaped_term)))
                 .order_by_asc(cake::Column::Name),
         )
         .await
