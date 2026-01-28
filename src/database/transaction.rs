@@ -1,16 +1,20 @@
 #![allow(unused_assignments)]
+use std::{future::Future, pin::Pin, sync::Arc};
+
+use futures_util::lock::Mutex;
+#[cfg(feature = "sqlx-dep")]
+use sqlx::TransactionManager;
+use tracing::instrument;
+
+#[cfg(feature = "sqlx-sqlite")]
+use crate::SqliteTransactionMode;
 use crate::{
-    AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
-    QueryResult, Statement, StreamTrait, TransactionSession, TransactionStream, TransactionTrait,
+    ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, QueryResult, Statement,
+    StreamTrait, TransactionConfig, TransactionSession, TransactionStream, TransactionTrait,
     debug_print, error::*,
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
-use futures_util::lock::Mutex;
-#[cfg(feature = "sqlx-dep")]
-use sqlx::TransactionManager;
-use std::{future::Future, pin::Pin, sync::Arc};
-use tracing::instrument;
 
 /// Defines a database transaction, whether it is an open transaction and the type of
 /// backend to use.
@@ -35,9 +39,16 @@ impl DatabaseTransaction {
         conn: Arc<Mutex<InnerConnection>>,
         backend: DbBackend,
         metric_callback: Option<crate::metric::Callback>,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<DatabaseTransaction, DbErr> {
+        let TransactionConfig {
+            #[cfg(any(feature = "sqlx-postgres", feature = "sqlx-mysql"))]
+            isolation_level,
+            #[cfg(any(feature = "sqlx-postgres", feature = "sqlx-mysql"))]
+            access_mode,
+            #[cfg(feature = "sqlx-sqlite")]
+            sqlite_transaction_mode,
+        } = config;
         let res = DatabaseTransaction {
             conn,
             backend,
@@ -86,15 +97,27 @@ impl DatabaseTransaction {
                     #[cfg(feature = "sqlx-sqlite")]
                     InnerConnection::Sqlite(c) => {
                         // in SQLite isolation level and access mode are global settings
+                        #[cfg(any(feature = "sqlx-postgres", feature = "sqlx-mysql"))]
                         crate::driver::sqlx_sqlite::set_transaction_config(
                             c,
                             isolation_level,
                             access_mode,
                         )
                         .await?;
-                        <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, None)
-                            .await
-                            .map_err(sqlx_error_to_query_err)
+                        // TODO using this for beginning a nested transaction currently causes an error. Should we make it a warning instead?
+                        let statement = match config.sqlite_transaction_mode {
+                            Some(mode) => Some(std::borrow::Cow::from(format!(
+                                "BEGIN {}",
+                                mode.sqlite_keyword()
+                            ))),
+                            None => None,
+                        };
+                        <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(
+                            c,
+                            statement.into(),
+                        )
+                        .await
+                        .map_err(sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "rusqlite")]
                     InnerConnection::Rusqlite(c) => c.begin(),
@@ -603,8 +626,7 @@ impl TransactionTrait for DatabaseTransaction {
             Arc::clone(&self.conn),
             self.backend,
             self.metric_callback.clone(),
-            None,
-            None,
+            TransactionConfig::default(),
         )
         .await
     }
@@ -612,15 +634,13 @@ impl TransactionTrait for DatabaseTransaction {
     #[instrument(level = "trace")]
     async fn begin_with_config(
         &self,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<DatabaseTransaction, DbErr> {
         DatabaseTransaction::begin(
             Arc::clone(&self.conn),
             self.backend,
             self.metric_callback.clone(),
-            isolation_level,
-            access_mode,
+            config,
         )
         .await
     }
@@ -649,8 +669,7 @@ impl TransactionTrait for DatabaseTransaction {
     async fn transaction_with_config<F, T, E>(
         &self,
         _callback: F,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
@@ -661,7 +680,7 @@ impl TransactionTrait for DatabaseTransaction {
         E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let transaction = self
-            .begin_with_config(isolation_level, access_mode)
+            .begin_with_config(config)
             .await
             .map_err(TransactionError::Connection)?;
         transaction.run(_callback).await

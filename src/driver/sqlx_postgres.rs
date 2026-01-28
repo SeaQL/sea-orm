@@ -1,23 +1,22 @@
+use std::{fmt::Write, future::Future, pin::Pin, sync::Arc};
+
 use futures_util::lock::Mutex;
 use log::LevelFilter;
 use sea_query::Values;
-use std::{fmt::Write, future::Future, pin::Pin, sync::Arc};
-
+use sea_query_sqlx::SqlxValues;
 use sqlx::{
     Connection, Executor, PgPool, Postgres,
     pool::PoolConnection,
     postgres::{PgConnectOptions, PgQueryResult, PgRow},
 };
-
-use sea_query_sqlx::SqlxValues;
 use tracing::instrument;
 
+use super::sqlx_common::*;
 use crate::{
     AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
-    IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
+    IsolationLevel, QueryStream, Statement, TransactionConfig, TransactionError, debug_print,
+    error::*, executor::*,
 };
-
-use super::sqlx_common::*;
 
 /// Defines the [sqlx::postgres] connector
 #[derive(Debug)]
@@ -226,19 +225,9 @@ impl SqlxPostgresPoolConnection {
 
     /// Bundle a set of SQL statements that execute together.
     #[instrument(level = "trace")]
-    pub async fn begin(
-        &self,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
-    ) -> Result<DatabaseTransaction, DbErr> {
+    pub async fn begin(&self, config: TransactionConfig) -> Result<DatabaseTransaction, DbErr> {
         let conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
-        DatabaseTransaction::new_postgres(
-            conn,
-            self.metric_callback.clone(),
-            isolation_level,
-            access_mode,
-        )
-        .await
+        DatabaseTransaction::new_postgres(conn, self.metric_callback.clone(), config).await
     }
 
     /// Create a PostgreSQL transaction
@@ -246,8 +235,7 @@ impl SqlxPostgresPoolConnection {
     pub async fn transaction<F, T, E>(
         &self,
         callback: F,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'b> FnOnce(
@@ -258,14 +246,10 @@ impl SqlxPostgresPoolConnection {
         E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
-        let transaction = DatabaseTransaction::new_postgres(
-            conn,
-            self.metric_callback.clone(),
-            isolation_level,
-            access_mode,
-        )
-        .await
-        .map_err(|e| TransactionError::Connection(e))?;
+        let transaction =
+            DatabaseTransaction::new_postgres(conn, self.metric_callback.clone(), config)
+                .await
+                .map_err(|e| TransactionError::Connection(e))?;
         transaction.run(callback).await
     }
 
@@ -373,15 +357,13 @@ impl crate::DatabaseTransaction {
     pub(crate) async fn new_postgres(
         inner: PoolConnection<sqlx::Postgres>,
         metric_callback: Option<crate::metric::Callback>,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<crate::DatabaseTransaction, DbErr> {
         Self::begin(
             Arc::new(Mutex::new(crate::InnerConnection::Postgres(inner))),
             crate::DbBackend::Postgres,
             metric_callback,
-            isolation_level,
-            access_mode,
+            config,
         )
         .await
     }

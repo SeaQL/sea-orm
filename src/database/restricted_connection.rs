@@ -1,19 +1,24 @@
-use crate::rbac::{
-    PermissionRequest, RbacEngine, RbacError, RbacPermissionsByResources,
-    RbacResourcesAndPermissions, RbacRoleHierarchyList, RbacRolesAndRanks, RbacUserRolePermissions,
-    ResourceRequest,
-    entity::{role::RoleId, user::UserId},
+use std::{
+    pin::Pin,
+    sync::{Arc, RwLock},
 };
+
+use tracing::instrument;
+
 use crate::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
     ExecResult, IsolationLevel, QueryResult, Statement, StatementBuilder, TransactionError,
     TransactionSession, TransactionTrait,
 };
-use std::{
-    pin::Pin,
-    sync::{Arc, RwLock},
+use crate::{
+    TransactionConfig,
+    rbac::{
+        PermissionRequest, RbacEngine, RbacError, RbacPermissionsByResources,
+        RbacResourcesAndPermissions, RbacRoleHierarchyList, RbacRolesAndRanks,
+        RbacUserRolePermissions, ResourceRequest,
+        entity::{role::RoleId, user::UserId},
+    },
 };
-use tracing::instrument;
 
 /// Wrapper of [`DatabaseConnection`] that performs authorization on all executed
 /// queries for the current user. Note that raw SQL [`Statement`] is not allowed
@@ -223,15 +228,11 @@ impl TransactionTrait for RestrictedConnection {
     #[instrument(level = "trace")]
     async fn begin_with_config(
         &self,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<RestrictedTransaction, DbErr> {
         Ok(RestrictedTransaction {
             user_id: self.user_id,
-            conn: self
-                .conn
-                .begin_with_config(isolation_level, access_mode)
-                .await?,
+            conn: self.conn.begin_with_config(config).await?,
             rbac: self.conn.rbac.clone(),
         })
     }
@@ -258,8 +259,7 @@ impl TransactionTrait for RestrictedConnection {
     async fn transaction_with_config<F, T, E>(
         &self,
         callback: F,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
@@ -270,7 +270,7 @@ impl TransactionTrait for RestrictedConnection {
         E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let transaction = self
-            .begin_with_config(isolation_level, access_mode)
+            .begin_with_config(config)
             .await
             .map_err(TransactionError::Connection)?;
         transaction.run(callback).await
@@ -293,15 +293,11 @@ impl TransactionTrait for RestrictedTransaction {
     #[instrument(level = "trace")]
     async fn begin_with_config(
         &self,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<RestrictedTransaction, DbErr> {
         Ok(RestrictedTransaction {
             user_id: self.user_id,
-            conn: self
-                .conn
-                .begin_with_config(isolation_level, access_mode)
-                .await?,
+            conn: self.conn.begin_with_config(config).await?,
             rbac: self.rbac.clone(),
         })
     }
@@ -328,8 +324,7 @@ impl TransactionTrait for RestrictedTransaction {
     async fn transaction_with_config<F, T, E>(
         &self,
         callback: F,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
@@ -340,7 +335,7 @@ impl TransactionTrait for RestrictedTransaction {
         E: std::fmt::Display + std::fmt::Debug + Send,
     {
         let transaction = self
-            .begin_with_config(isolation_level, access_mode)
+            .begin_with_config(config)
             .await
             .map_err(TransactionError::Connection)?;
         transaction.run(callback).await
