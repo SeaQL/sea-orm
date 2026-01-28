@@ -56,8 +56,26 @@ pub enum DatabaseConnectionType {
     #[cfg(feature = "proxy")]
     ProxyDatabaseConnection(Arc<crate::ProxyDatabaseConnection>),
 
+    /// Cloudflare D1 database connection
+    #[cfg(feature = "d1")]
+    D1Connection(crate::D1Connection),
+
     /// The connection has never been established
     Disconnected,
+}
+
+#[cfg(feature = "d1")]
+impl From<crate::D1Connection> for DatabaseConnectionType {
+    fn from(conn: crate::D1Connection) -> Self {
+        Self::D1Connection(conn)
+    }
+}
+
+#[cfg(feature = "d1")]
+impl From<crate::D1Connection> for DatabaseConnection {
+    fn from(conn: crate::D1Connection) -> Self {
+        DatabaseConnectionType::from(conn).into()
+    }
 }
 
 /// The same as a [DatabaseConnection]
@@ -79,6 +97,14 @@ impl From<DatabaseConnectionType> for DatabaseConnection {
     }
 }
 
+#[cfg(feature = "d1")]
+impl From<worker::d1::D1Database> for DatabaseConnection {
+    fn from(d1: worker::d1::D1Database) -> Self {
+        let conn = crate::D1Connection::from(d1);
+        DatabaseConnectionType::D1Connection(conn).into()
+    }
+}
+
 /// The type of database backend for real world databases.
 /// This is enabled by feature flags as specified in the crate documentation
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -96,6 +122,7 @@ pub enum DatabaseBackend {
 pub type DbBackend = DatabaseBackend;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub(crate) enum InnerConnection {
     #[cfg(feature = "sqlx-mysql")]
     MySql(PoolConnection<sqlx::MySql>),
@@ -109,6 +136,8 @@ pub(crate) enum InnerConnection {
     Mock(Arc<crate::MockDatabaseConnection>),
     #[cfg(feature = "proxy")]
     Proxy(Arc<crate::ProxyDatabaseConnection>),
+    #[cfg(feature = "d1")]
+    D1(std::sync::Arc<worker::d1::D1Database>),
 }
 
 impl Debug for DatabaseConnectionType {
@@ -129,6 +158,8 @@ impl Debug for DatabaseConnectionType {
                 Self::MockDatabaseConnection(_) => "MockDatabaseConnection",
                 #[cfg(feature = "proxy")]
                 Self::ProxyDatabaseConnection(_) => "ProxyDatabaseConnection",
+                #[cfg(feature = "d1")]
+                Self::D1Connection(_) => "D1Connection",
                 Self::Disconnected => "Disconnected",
             }
         )
@@ -171,6 +202,10 @@ impl ConnectionTrait for DatabaseConnection {
                     DatabaseConnectionType::ProxyDatabaseConnection(conn) => {
                         conn.execute(stmt).await
                     }
+                    #[cfg(feature = "d1")]
+                    DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                        "D1 connections require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+                    )),
                     DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
                 }
             }
@@ -215,6 +250,11 @@ impl ConnectionTrait for DatabaseConnection {
                         let stmt = Statement::from_string(db_backend, sql);
                         conn.execute(stmt).await
                     }
+                    // D1 connections must use as_d1_connection() directly
+                    #[cfg(feature = "d1")]
+                    DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                        "D1 connections require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+                    )),
                     DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
                 }
             }
@@ -251,6 +291,11 @@ impl ConnectionTrait for DatabaseConnection {
                     DatabaseConnectionType::ProxyDatabaseConnection(conn) => {
                         conn.query_one(stmt).await
                     }
+                    // D1 connections must use as_d1_connection() directly
+                    #[cfg(feature = "d1")]
+                    DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                        "D1 connections require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+                    )),
                     DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
                 }
             }
@@ -287,6 +332,11 @@ impl ConnectionTrait for DatabaseConnection {
                     DatabaseConnectionType::ProxyDatabaseConnection(conn) => {
                         conn.query_all(stmt).await
                     }
+                    // D1 connections must use as_d1_connection() directly
+                    #[cfg(feature = "d1")]
+                    DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                        "D1 connections require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+                    )),
                     DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
                 }
             }
@@ -337,6 +387,11 @@ impl StreamTrait for DatabaseConnection {
                 DatabaseConnectionType::ProxyDatabaseConnection(conn) => {
                     Ok(crate::QueryStream::from((Arc::clone(conn), stmt, None)))
                 }
+                // D1 connections must use as_d1_connection() directly
+                #[cfg(feature = "d1")]
+                DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                    "D1 streaming is not supported. Use query_all() instead. See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+                )),
                 DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
             }
         })
@@ -347,7 +402,6 @@ impl StreamTrait for DatabaseConnection {
 impl TransactionTrait for DatabaseConnection {
     type Transaction = DatabaseTransaction;
 
-    #[instrument(level = "trace")]
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         match &self.inner {
             #[cfg(feature = "sqlx-mysql")]
@@ -368,11 +422,15 @@ impl TransactionTrait for DatabaseConnection {
             DatabaseConnectionType::ProxyDatabaseConnection(conn) => {
                 DatabaseTransaction::new_proxy(conn.clone(), None).await
             }
+            // D1 connections must use as_d1_connection() directly
+            #[cfg(feature = "d1")]
+            DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                "D1 transactions require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+            )),
             DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
-    #[instrument(level = "trace")]
     async fn begin_with_config(
         &self,
         _isolation_level: Option<IsolationLevel>,
@@ -403,13 +461,17 @@ impl TransactionTrait for DatabaseConnection {
             DatabaseConnectionType::ProxyDatabaseConnection(conn) => {
                 DatabaseTransaction::new_proxy(conn.clone(), None).await
             }
+            // D1 connections must use as_d1_connection() directly
+            #[cfg(feature = "d1")]
+            DatabaseConnectionType::D1Connection(_) => Err(conn_err(
+                "D1 transactions require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.",
+            )),
             DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
     /// Execute the function inside a transaction.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
-    #[instrument(level = "trace", skip(_callback))]
     async fn transaction<F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
@@ -450,13 +512,17 @@ impl TransactionTrait for DatabaseConnection {
                     .map_err(TransactionError::Connection)?;
                 transaction.run(_callback).await
             }
+            // D1 connections must use as_d1_connection() directly
+            #[cfg(feature = "d1")]
+            DatabaseConnectionType::D1Connection(_) => {
+                Err(conn_err("D1 transactions require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.").into())
+            }
             DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected").into()),
         }
     }
 
     /// Execute the function inside a transaction.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
-    #[instrument(level = "trace", skip(_callback))]
     async fn transaction_with_config<F, T, E>(
         &self,
         _callback: F,
@@ -505,6 +571,11 @@ impl TransactionTrait for DatabaseConnection {
                     .map_err(TransactionError::Connection)?;
                 transaction.run(_callback).await
             }
+            // D1 connections must use as_d1_connection() directly
+            #[cfg(feature = "d1")]
+            DatabaseConnectionType::D1Connection(_) => {
+                Err(conn_err("D1 transactions require direct access via as_d1_connection(). See https://docs.sea-ql.org/sea-orm/master/feature-flags.html#d1 for details.").into())
+            }
             DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected").into()),
         }
     }
@@ -551,6 +622,48 @@ impl DatabaseConnection {
             DatabaseConnectionType::ProxyDatabaseConnection(proxy_conn) => proxy_conn,
             _ => panic!("Not proxy connection"),
         }
+    }
+}
+
+/// D1-specific helper methods
+///
+/// D1 uses `wasm-bindgen` futures which are not `Send`, so `ConnectionTrait`
+/// and `TransactionTrait` cannot be implemented. Use these methods to access
+/// the `D1Connection` directly for all operations.
+#[cfg(feature = "d1")]
+#[cfg_attr(docsrs, doc(cfg(feature = "d1")))]
+impl DatabaseConnection {
+    /// Get a reference to the D1 connection for direct operations
+    ///
+    /// D1 connections require direct access to `D1Connection` because
+    /// `wasm-bindgen` futures are not `Send`.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let d1 = env.d1("DB")?;
+    /// let db = sea_orm::Database::connect_d1(d1).await?;
+    ///
+    /// // Use as_d1_connection() for D1 operations
+    /// let d1_conn = db.as_d1_connection();
+    /// let users = d1_conn.query_all(stmt).await?;
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if this is not a D1 connection.
+    pub fn as_d1_connection(&self) -> &crate::D1Connection {
+        match &self.inner {
+            DatabaseConnectionType::D1Connection(conn) => conn,
+            _ => panic!("Not D1 connection"),
+        }
+    }
+
+    /// Check if this is a D1 connection
+    ///
+    /// Returns `true` if the connection was created with [`Database::connect_d1`].
+    pub fn is_d1_connection(&self) -> bool {
+        matches!(self.inner, DatabaseConnectionType::D1Connection(_))
     }
 }
 
@@ -611,6 +724,8 @@ impl DatabaseConnection {
             DatabaseConnectionType::MockDatabaseConnection(conn) => conn.get_database_backend(),
             #[cfg(feature = "proxy")]
             DatabaseConnectionType::ProxyDatabaseConnection(conn) => conn.get_database_backend(),
+            #[cfg(feature = "d1")]
+            DatabaseConnectionType::D1Connection(_) => DbBackend::Sqlite, // D1 is SQLite-compatible
             DatabaseConnectionType::Disconnected => panic!("Disconnected"),
         }
     }
@@ -650,6 +765,8 @@ impl DatabaseConnection {
             DatabaseConnectionType::RusqliteSharedConnection(conn) => {
                 conn.set_metric_callback(_callback)
             }
+            #[cfg(feature = "d1")]
+            DatabaseConnectionType::D1Connection(conn) => conn.set_metric_callback(_callback),
             _ => {}
         }
     }
@@ -669,6 +786,8 @@ impl DatabaseConnection {
             DatabaseConnectionType::MockDatabaseConnection(conn) => conn.ping(),
             #[cfg(feature = "proxy")]
             DatabaseConnectionType::ProxyDatabaseConnection(conn) => conn.ping().await,
+            #[cfg(feature = "d1")]
+            DatabaseConnectionType::D1Connection(conn) => conn.ping().await,
             DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -700,6 +819,8 @@ impl DatabaseConnection {
                 // Nothing to cleanup, we just consume the `DatabaseConnection`
                 Ok(())
             }
+            #[cfg(feature = "d1")]
+            DatabaseConnectionType::D1Connection(conn) => conn.close_by_ref().await,
             DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
         }
     }

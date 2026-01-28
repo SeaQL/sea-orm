@@ -108,6 +108,13 @@ impl DatabaseTransaction {
                         c.begin().await;
                         Ok(())
                     }
+                    #[cfg(feature = "d1")]
+                    InnerConnection::D1(_) => {
+                        // D1 doesn't support explicit transactions - statements auto-commit
+                        // We return Ok to allow transaction-like code to run, but each
+                        // statement is committed independently
+                        Ok(())
+                    }
                     #[allow(unreachable_patterns)]
                     _ => Err(conn_err("Disconnected")),
                 }
@@ -187,6 +194,11 @@ impl DatabaseTransaction {
                         c.commit().await;
                         Ok(())
                     }
+                    #[cfg(feature = "d1")]
+                    InnerConnection::D1(_) => {
+                        // D1 auto-commits each statement, so commit is a no-op
+                        Ok(())
+                    }
                     #[allow(unreachable_patterns)]
                     _ => Err(conn_err("Disconnected")),
                 }
@@ -244,6 +256,14 @@ impl DatabaseTransaction {
                         c.rollback().await;
                         Ok(())
                     }
+                    #[cfg(feature = "d1")]
+                    InnerConnection::D1(_) => {
+                        // D1 doesn't support rollback - each statement auto-commits
+                        // We return Ok since there's nothing to rollback, but warn that
+                        // transactional behavior is not guaranteed
+                        tracing::warn!("D1 doesn't support rollback - statements were auto-committed");
+                        Ok(())
+                    }
                     #[allow(unreachable_patterns)]
                     _ => Err(conn_err("Disconnected")),
                 }
@@ -284,6 +304,10 @@ impl DatabaseTransaction {
                     #[cfg(feature = "proxy")]
                     InnerConnection::Proxy(c) => {
                         c.start_rollback();
+                    }
+                    #[cfg(feature = "d1")]
+                    InnerConnection::D1(_) => {
+                        // D1 doesn't support rollback - nothing to do
                     }
                     #[allow(unreachable_patterns)]
                     _ => return Err(conn_err("Disconnected")),
@@ -371,6 +395,12 @@ impl ConnectionTrait for DatabaseTransaction {
                     InnerConnection::Mock(conn) => conn.execute(stmt),
                     #[cfg(feature = "proxy")]
                     InnerConnection::Proxy(conn) => conn.execute(stmt).await,
+                    #[cfg(feature = "d1")]
+                    InnerConnection::D1(conn) => {
+                        // D1 doesn't support transactions in the traditional sense,
+                        // but we need to support execute within transaction context
+                        Err(conn_err("D1 transactions do not support execute_raw. Use D1Connection directly."))
+                    }
                     #[allow(unreachable_patterns)]
                     _ => Err(conn_err("Disconnected")),
                 }
@@ -433,6 +463,10 @@ impl ConnectionTrait for DatabaseTransaction {
                         let stmt = Statement::from_string(db_backend, sql);
                         conn.execute(stmt).await
                     }
+                    #[cfg(feature = "d1")]
+                    InnerConnection::D1(conn) => {
+                        Err(conn_err("D1 transactions do not support execute_unprepared. Use D1Connection directly."))
+                    }
                     #[allow(unreachable_patterns)]
                     _ => Err(conn_err("Disconnected")),
                 }
@@ -493,6 +527,10 @@ impl ConnectionTrait for DatabaseTransaction {
                     InnerConnection::Mock(conn) => conn.query_one(stmt),
                     #[cfg(feature = "proxy")]
                     InnerConnection::Proxy(conn) => conn.query_one(stmt).await,
+                    #[cfg(feature = "d1")]
+                    InnerConnection::D1(conn) => {
+                        Err(conn_err("D1 transactions do not support query_one_raw. Use D1Connection directly."))
+                    }
                     #[allow(unreachable_patterns)]
                     _ => Err(conn_err("Disconnected")),
                 }
@@ -559,6 +597,10 @@ impl ConnectionTrait for DatabaseTransaction {
                     InnerConnection::Mock(conn) => conn.query_all(stmt),
                     #[cfg(feature = "proxy")]
                     InnerConnection::Proxy(conn) => conn.query_all(stmt).await,
+                    #[cfg(feature = "d1")]
+                    InnerConnection::D1(conn) => {
+                        Err(conn_err("D1 transactions do not support query_all_raw. Use D1Connection directly."))
+                    }
                     #[allow(unreachable_patterns)]
                     _ => Err(conn_err("Disconnected")),
                 }

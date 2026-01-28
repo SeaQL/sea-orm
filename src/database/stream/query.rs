@@ -108,6 +108,12 @@ impl QueryStream {
                     let elapsed = start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
+                // D1 doesn't support streaming due to Send bound requirements
+                // See db_connection.rs for stream_raw implementation
+                #[cfg(feature = "d1")]
+                InnerConnection::D1(_) => {
+                    unreachable!("D1 streaming is not supported. Use query_all() instead.")
+                }
                 #[allow(unreachable_patterns)]
                 _ => unreachable!(),
             },
