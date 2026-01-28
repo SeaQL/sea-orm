@@ -152,7 +152,6 @@ cockroachdb = [
     "sqlx-postgres",
     "sea-query/backend-cockroach",
 ]
-cockroachdb-use-identity-pk = ["sea-query/option-cockroachdb-use-identity"]
 schema-sync = ["sea-schema"]
 sea-orm-internal = []
 seaography = ["sea-orm-macros/seaography"]
