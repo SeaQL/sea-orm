@@ -77,6 +77,10 @@ impl fmt::Display for Statement {
                     DbBackend::Cockroach => {
                         inject_parameters(&self.sql, &values.0, &CockroachQueryBuilder)
                     }
+                    #[cfg(not(feature = "cockroachdb"))]
+                    DbBackend::Cockroach => {
+                        panic!("CockroachDB feature not enabled")
+                    }
                     DbBackend::Sqlite => {
                         inject_parameters(&self.sql, &values.0, &SqliteQueryBuilder)
                     }
@@ -97,6 +101,8 @@ macro_rules! build_any_stmt {
             DbBackend::Postgres => $stmt.build(PostgresQueryBuilder),
             #[cfg(feature = "cockroachdb")]
             DbBackend::Cockroach => $stmt.build(CockroachQueryBuilder),
+            #[cfg(not(feature = "cockroachdb"))]
+            DbBackend::Cockroach => panic!("CockroachDB feature not enabled"),
             DbBackend::Sqlite => $stmt.build(SqliteQueryBuilder),
         }
     };
@@ -108,6 +114,8 @@ macro_rules! build_postgres_stmt {
             DbBackend::Postgres => $stmt.to_string(PostgresQueryBuilder),
             #[cfg(feature = "cockroachdb")]
             DbBackend::Cockroach => $stmt.to_string(CockroachQueryBuilder),
+            #[cfg(not(feature = "cockroachdb"))]
+            DbBackend::Cockroach => panic!("CockroachDB feature not enabled"),
             DbBackend::MySql | DbBackend::Sqlite => unimplemented!(),
         }
     };
