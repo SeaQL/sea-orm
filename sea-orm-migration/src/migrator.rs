@@ -5,7 +5,10 @@ use std::collections::HashSet;
 use std::fmt::Display;
 use std::future::Future;
 use std::pin::Pin;
+#[cfg(not(feature = "time"))]
 use std::time::SystemTime;
+#[cfg(feature = "time")]
+use time::OffsetDateTime;
 use tracing::info;
 
 use sea_orm::sea_query::{
@@ -468,12 +471,16 @@ async fn exec_up_with(
         info!("Applying migration '{}'", migration.name());
         migration.up(manager).await?;
         info!("Migration '{}' has been applied", migration.name());
-        let now = SystemTime::now()
+        #[cfg(not(feature = "time"))]
+        let applied_at = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("SystemTime before UNIX EPOCH!");
+            .expect("SystemTime before UNIX EPOCH!")
+            .as_secs() as i64;
+        #[cfg(feature = "time")]
+        let applied_at = OffsetDateTime::now_utc().unix_timestamp();
         seaql_migrations::Entity::insert(seaql_migrations::ActiveModel {
             version: ActiveValue::Set(migration.name().to_owned()),
-            applied_at: ActiveValue::Set(now.as_secs() as i64),
+            applied_at: ActiveValue::Set(applied_at),
         })
         .table_name(migration_table_name.clone())
         .exec(db)
