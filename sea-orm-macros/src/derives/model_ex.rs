@@ -13,12 +13,40 @@ use syn::{
 
 pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<TokenStream> {
     let model = input.ident;
-    let model_attrs = input.attrs;
     let vis = input.vis;
     let mut all_fields = input.fields;
 
+    let mut model_attrs: Vec<Attribute> = Vec::new();
+    let mut model_ex_attrs: Vec<Attribute> = Vec::new();
+
+    for attr in input.attrs {
+        let is_model = attr.path().is_ident("sea_orm_model");
+        let is_model_ex = attr.path().is_ident("sea_orm_model_ex");
+        if is_model || is_model_ex {
+            attr.parse_nested_meta(|meta| {
+                let path = &meta.path;
+                let new_attr: Attribute = if meta.input.peek(syn::token::Paren) {
+                    let content;
+                    syn::parenthesized!(content in meta.input);
+                    let inner: TokenStream = content.parse()?;
+                    parse_quote!( #[#path(#inner)] )
+                } else {
+                    parse_quote!( #[#path] )
+                };
+                if is_model {
+                    model_attrs.push(new_attr);
+                } else {
+                    model_ex_attrs.push(new_attr);
+                }
+                Ok(())
+            })?;
+        } else {
+            model_attrs.push(attr.clone());
+            model_ex_attrs.push(attr);
+        }
+    }
+
     let model_ex = Ident::new(&format!("{model}Ex"), model.span());
-    let mut model_ex_attrs = model_attrs.clone();
     for attr in &mut model_ex_attrs {
         if attr.path().is_ident("derive") {
             if let Meta::List(list) = &mut attr.meta {
