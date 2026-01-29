@@ -20,27 +20,50 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
     let mut model_ex_attrs: Vec<Attribute> = Vec::new();
 
     for attr in input.attrs {
-        let is_model = attr.path().is_ident("sea_orm_model");
-        let is_model_ex = attr.path().is_ident("sea_orm_model_ex");
-        if is_model || is_model_ex {
-            attr.parse_nested_meta(|meta| {
+        if !attr.path().is_ident("sea_orm") {
+            model_attrs.push(attr.clone());
+            model_ex_attrs.push(attr);
+            continue;
+        }
+
+        let mut other_attrs = Punctuated::<Meta, Comma>::new();
+
+        attr.parse_nested_meta(|meta| {
+            let is_model = meta.path.is_ident("model_attrs");
+            let is_model_ex = meta.path.is_ident("model_ex_attrs");
+
+            if is_model || is_model_ex {
+                let content;
+                syn::parenthesized!(content in meta.input);
+                use syn::parse::Parse;
+                let nested_metas = content.parse_terminated(Meta::parse, Comma)?;
+                for m in nested_metas {
+                    let new_attr: Attribute = parse_quote!( #[#m] );
+                    if is_model {
+                        model_attrs.push(new_attr);
+                    } else {
+                        model_ex_attrs.push(new_attr);
+                    }
+                }
+            } else {
                 let path = &meta.path;
-                let new_attr: Attribute = if meta.input.peek(syn::token::Paren) {
+                if meta.input.peek(syn::Token![=]) {
+                    let value: Expr = meta.value()?.parse()?;
+                    other_attrs.push(parse_quote!( #path = #value ));
+                } else if meta.input.is_empty() || meta.input.peek(Comma) {
+                    other_attrs.push(parse_quote!( #path ));
+                } else {
                     let content;
                     syn::parenthesized!(content in meta.input);
-                    let inner: TokenStream = content.parse()?;
-                    parse_quote!( #[#path(#inner)] )
-                } else {
-                    parse_quote!( #[#path] )
-                };
-                if is_model {
-                    model_attrs.push(new_attr);
-                } else {
-                    model_ex_attrs.push(new_attr);
+                    let tokens: TokenStream = content.parse()?;
+                    other_attrs.push(parse_quote!( #path(#tokens) ));
                 }
-                Ok(())
-            })?;
-        } else {
+            }
+            Ok(())
+        })?;
+
+        if !other_attrs.is_empty() {
+            let attr: Attribute = parse_quote!( #[sea_orm(#other_attrs)] );
             model_attrs.push(attr.clone());
             model_ex_attrs.push(attr);
         }
