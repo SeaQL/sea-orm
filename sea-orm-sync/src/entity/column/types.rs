@@ -58,6 +58,10 @@ pub struct UuidColumn<E: EntityTrait>(pub E::Column);
 impl_expr_traits!(UuidColumn);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct TextUuidColumn<E: EntityTrait>(pub E::Column);
+impl_expr_traits!(TextUuidColumn);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct IpNetworkColumn<E: EntityTrait>(pub E::Column);
 impl_expr_traits!(IpNetworkColumn);
 
@@ -121,6 +125,14 @@ mod macros {
                 self.0.$bind_op(v)
             }
         };
+        ($vis:vis $op:ident, $bind_op:ident, type $value_ty:path) => {
+            $vis fn $op<V>(&self, v: V) -> Expr
+            where
+                V: Into<$value_ty>,
+            {
+                self.0.$bind_op(v.into())
+            }
+        };
     }
 
     macro_rules! bind_expr_oper {
@@ -143,6 +155,14 @@ mod macros {
                 self.0.$bind_op(v1, v2)
             }
         };
+        ($vis:vis $op:ident, $bind_op:ident, type $value_ty:path) => {
+            $vis fn $op<V>(&self, v1: V, v2: V) -> Expr
+            where
+                V: Into<$value_ty>,
+            {
+                self.0.$bind_op(v1.into(), v2.into())
+            }
+        };
     }
 
     macro_rules! bind_vec_func {
@@ -154,6 +174,16 @@ mod macros {
                 I: IntoIterator<Item = V>,
             {
                 self.0.$bind_op(v)
+            }
+        };
+        ($vis:vis $op:ident, $bind_op:ident, type $value_ty:path) => {
+            #[allow(clippy::wrong_self_convention)]
+            $vis fn $op<V, I>(&self, v: I) -> Expr
+            where
+                V: Into<$value_ty>,
+                I: IntoIterator<Item = V>,
+            {
+                self.0.$bind_op(v.into_iter().map(|v| v.into()))
             }
         };
     }

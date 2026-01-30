@@ -80,6 +80,7 @@ pub fn column_type_wrapper(
         "Uuid" => Some("UuidColumn"),
         "IpNetwork" => Some("IpNetworkColumn"),
         "Json" | "serde_json::Value" => Some("JsonColumn"),
+        "TextUuid" => Some("TextUuidColumn"),
         field_type => {
             if is_numeric_column(field_type) || field_type.contains("UnixTimestamp") {
                 if nullable {
