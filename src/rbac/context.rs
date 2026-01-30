@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::{
     AccessType, RbacError, RbacUserId,
     entity::{
@@ -11,10 +13,9 @@ use super::{
     },
 };
 use crate::{
-    AccessMode, EntityTrait, IsolationLevel, Set, TransactionSession, TransactionTrait,
-    error::DbErr, sea_query::OnConflict,
+    AccessMode, EntityTrait, IsolationLevel, Set, TransactionConfig, TransactionSession,
+    TransactionTrait, error::DbErr, sea_query::OnConflict,
 };
-use std::collections::HashMap;
 
 /// Helper class for manipulation of RBAC tables
 #[derive(Debug)]
@@ -43,10 +44,11 @@ impl RbacContext {
     pub async fn load<C: TransactionTrait>(db: &C) -> Result<Self, DbErr> {
         // ensure snapshot is consistent across all tables
         let txn = &db
-            .begin_with_config(
-                Some(IsolationLevel::ReadCommitted),
-                Some(AccessMode::ReadOnly),
-            )
+            .begin_with_config(TransactionConfig {
+                isolation_level: Some(IsolationLevel::ReadCommitted),
+                access_mode: Some(AccessMode::ReadOnly),
+                sqlite_transaction_mode: None,
+            })
             .await?;
 
         let tables = resource::Entity::find()

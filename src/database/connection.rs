@@ -1,8 +1,10 @@
+use std::{future::Future, pin::Pin};
+
+use futures_util::Stream;
+
 use crate::{
     DbBackend, DbErr, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError,
 };
-use futures_util::Stream;
-use std::{future::Future, pin::Pin};
 
 /// The generic API for a database connection that can perform query or execute statements.
 /// It abstracts database connection and transaction
@@ -125,6 +127,40 @@ impl std::fmt::Display for AccessMode {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+/// Which kind of transaction to start. Only supported by SQLite.
+/// <https://www.sqlite.org/lang_transaction.html>
+pub enum SqliteTransactionMode {
+    /// The default. Transaction starts when the next statement is executed, and
+    /// will be a read or write transaction depending on that statement.
+    Deferred,
+    /// Start a write transaction as soon as the BEGIN statement is received.
+    Immediate,
+    /// Start a write transaction as soon as the BEGIN statement is received.
+    /// When in non-WAL mode, also block all other transactions from reading the
+    /// database.
+    Exclusive,
+}
+
+impl SqliteTransactionMode {
+    /// The keyword used to start a transaction in this mode (the word coming after "BEGIN").
+    pub fn sqlite_keyword(&self) -> &'static str {
+        match self {
+            SqliteTransactionMode::Deferred => "DEFERRED",
+            SqliteTransactionMode::Immediate => "IMMEDIATE",
+            SqliteTransactionMode::Exclusive => "EXCLUSIVE",
+        }
+    }
+}
+
+/// Configuration for starting a transaction
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub struct TransactionConfig {
+    pub isolation_level: Option<IsolationLevel>,
+    pub access_mode: Option<AccessMode>,
+    pub sqlite_transaction_mode: Option<SqliteTransactionMode>,
+}
+
 /// Spawn database transaction
 #[async_trait::async_trait]
 pub trait TransactionTrait {
@@ -139,8 +175,7 @@ pub trait TransactionTrait {
     /// Returns a Transaction that can be committed or rolled back
     async fn begin_with_config(
         &self,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<Self::Transaction, DbErr>;
 
     /// Execute the function inside a transaction.
@@ -159,8 +194,7 @@ pub trait TransactionTrait {
     async fn transaction_with_config<F, T, E>(
         &self,
         callback: F,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        config: TransactionConfig,
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
