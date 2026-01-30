@@ -102,6 +102,7 @@ impl SqlxPostgresConnector {
 
         let lazy = options.connect_lazy;
         let after_connect = options.after_connect.clone();
+        let pg_pool_opts_fn = options.pg_pool_opts_fn.clone();
         let mut pool_options = options.sqlx_pool_options();
 
         if let Some(sql) = set_search_path_sql {
@@ -114,7 +115,9 @@ impl SqlxPostgresConnector {
                 })
             });
         }
-
+        if let Some(f) = &pg_pool_opts_fn {
+            pool_options = f(pool_options);
+        }
         let pool = if lazy {
             pool_options.connect_lazy_with(sqlx_opts)
         } else {
