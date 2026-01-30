@@ -143,6 +143,7 @@ smart_user
 Persist an entire object graph: user, profile (1-1), posts (1-N), and tags (M-N)
 in a single operation using a fluent builder API. SeaORM automatically determines
 the dependencies and inserts or deletes objects in the correct order.
+This requires the SeaORM 2.0 dense entity format.
 
 ```rust
 // this creates the nested object as shown above:
