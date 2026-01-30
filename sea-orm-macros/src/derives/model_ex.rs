@@ -13,12 +13,63 @@ use syn::{
 
 pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<TokenStream> {
     let model = input.ident;
-    let model_attrs = input.attrs;
     let vis = input.vis;
     let mut all_fields = input.fields;
 
+    let mut model_attrs: Vec<Attribute> = Vec::new();
+    let mut model_ex_attrs: Vec<Attribute> = Vec::new();
+
+    for attr in input.attrs {
+        if !attr.path().is_ident("sea_orm") {
+            model_attrs.push(attr.clone());
+            model_ex_attrs.push(attr);
+            continue;
+        }
+
+        let mut other_attrs = Punctuated::<Meta, Comma>::new();
+
+        attr.parse_nested_meta(|meta| {
+            let is_model = meta.path.is_ident("model_attrs");
+            let is_model_ex = meta.path.is_ident("model_ex_attrs");
+
+            if is_model || is_model_ex {
+                let content;
+                syn::parenthesized!(content in meta.input);
+                use syn::parse::Parse;
+                let nested_metas = content.parse_terminated(Meta::parse, Comma)?;
+                for m in nested_metas {
+                    let new_attr: Attribute = parse_quote!( #[#m] );
+                    if is_model {
+                        model_attrs.push(new_attr);
+                    } else {
+                        model_ex_attrs.push(new_attr);
+                    }
+                }
+            } else {
+                let path = &meta.path;
+                if meta.input.peek(syn::Token![=]) {
+                    let value: Expr = meta.value()?.parse()?;
+                    other_attrs.push(parse_quote!( #path = #value ));
+                } else if meta.input.is_empty() || meta.input.peek(Comma) {
+                    other_attrs.push(parse_quote!( #path ));
+                } else {
+                    let content;
+                    syn::parenthesized!(content in meta.input);
+                    let tokens: TokenStream = content.parse()?;
+                    other_attrs.push(parse_quote!( #path(#tokens) ));
+                }
+            }
+            Ok(())
+        })?;
+
+        if !other_attrs.is_empty() {
+            let attr: Attribute = parse_quote!( #[sea_orm(#other_attrs)] );
+            model_attrs.push(attr.clone());
+            model_ex_attrs.push(attr);
+        }
+    }
+
     let model_ex = Ident::new(&format!("{model}Ex"), model.span());
-    let mut model_ex_attrs = model_attrs.clone();
     for attr in &mut model_ex_attrs {
         if attr.path().is_ident("derive") {
             if let Meta::List(list) = &mut attr.meta {
