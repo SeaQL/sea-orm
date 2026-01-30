@@ -65,16 +65,6 @@ impl<E: EntityTrait> TextUuidColumn<E> {
     bind_vec_func!(pub is_in, is_in, type TextUuid);
     bind_vec_func!(pub is_not_in, is_not_in, type TextUuid);
 
-    /// `= ANY(..)` operator. Postgres only.
-    #[cfg(feature = "postgres-array")]
-    pub fn eq_any<V, I>(&self, v: I) -> Expr
-    where
-        V: Into<Value> + Into<TextUuid> + sea_query::ValueType + sea_query::with_array::NotU8,
-        I: IntoIterator<Item = V>,
-    {
-        self.0.eq_any(v)
-    }
-
     bind_subquery_func!(pub in_subquery);
     bind_subquery_func!(pub not_in_subquery);
 }
