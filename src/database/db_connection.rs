@@ -88,6 +88,8 @@ pub enum DatabaseBackend {
     MySql,
     /// A PostgreSQL backend
     Postgres,
+    /// A CockroachDB backend
+    Cockroach,
     /// A SQLite backend
     Sqlite,
 }
@@ -759,6 +761,11 @@ impl DbBackend {
             Self::Postgres => {
                 base_url_parsed.scheme() == "postgres" || base_url_parsed.scheme() == "postgresql"
             }
+            Self::Cockroach => {
+                base_url_parsed.scheme() == "cockroachdb"
+                    || base_url_parsed.scheme() == "postgres"
+                    || base_url_parsed.scheme() == "postgresql"
+            }
             Self::MySql => base_url_parsed.scheme() == "mysql",
             Self::Sqlite => base_url_parsed.scheme() == "sqlite",
         }
@@ -776,6 +783,7 @@ impl DbBackend {
     pub fn support_returning(&self) -> bool {
         match self {
             Self::Postgres => true,
+            Self::Cockroach => true,
             Self::Sqlite if cfg!(feature = "sqlite-use-returning-for-3_35") => true,
             Self::MySql if cfg!(feature = "mariadb-use-returning") => true,
             _ => false,
@@ -785,7 +793,7 @@ impl DbBackend {
     /// A getter for database dependent boolean value
     pub fn boolean_value(&self, boolean: bool) -> sea_query::Value {
         match self {
-            Self::MySql | Self::Postgres | Self::Sqlite => boolean.into(),
+            Self::MySql | Self::Postgres | Self::Cockroach | Self::Sqlite => boolean.into(),
         }
     }
 
@@ -794,6 +802,7 @@ impl DbBackend {
         match self {
             DatabaseBackend::MySql => "MySql",
             DatabaseBackend::Postgres => "Postgres",
+            DatabaseBackend::Cockroach => "Cockroach",
             DatabaseBackend::Sqlite => "Sqlite",
         }
     }
