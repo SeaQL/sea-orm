@@ -115,6 +115,7 @@ macro_rules! db_span {
         let op = $crate::tracing_spans::DbOperation::from_sql(sql);
         ::tracing::info_span!(
             $name,
+            otel.kind = "client",
             db.system = $crate::tracing_spans::db_system_name($backend),
             db.operation = %op,
             db.statement = ::tracing::field::Empty,
