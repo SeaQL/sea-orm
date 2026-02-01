@@ -522,8 +522,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
 
                         "VARCHAR" | "CHAR" | "TEXT" | "NAME" => Value::String(
                             row.try_get::<Option<String>, _>(c.ordinal())
-                                .expect("Failed to get string")
-                                ,
+                                .expect("Failed to get string"),
                         ),
                         #[cfg(feature = "postgres-array")]
                         "VARCHAR[]" | "CHAR[]" | "TEXT[]" | "NAME[]" => Value::Array(
@@ -541,8 +540,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
 
                         "BYTEA" => Value::Bytes(
                             row.try_get::<Option<Vec<u8>>, _>(c.ordinal())
-                                .expect("Failed to get bytes")
-                                ,
+                                .expect("Failed to get bytes"),
                         ),
                         #[cfg(feature = "postgres-array")]
                         "BYTEA[]" => Value::Array(
@@ -561,18 +559,15 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                         #[cfg(feature = "with-bigdecimal")]
                         "NUMERIC" => Value::BigDecimal(
                             row.try_get::<Option<bigdecimal::BigDecimal>, _>(c.ordinal())
-                                .expect("Failed to get numeric")
-                                ,
+                                .expect("Failed to get numeric"),
                         ),
                         #[cfg(all(
                             feature = "with-rust_decimal",
                             not(feature = "with-bigdecimal")
                         ))]
-                        "NUMERIC" => Value::Decimal(
-                            row.try_get(c.ordinal())
-                                .expect("Failed to get numeric")
-                                ,
-                        ),
+                        "NUMERIC" => {
+                            Value::Decimal(row.try_get(c.ordinal()).expect("Failed to get numeric"))
+                        }
 
                         #[cfg(all(feature = "with-bigdecimal", feature = "postgres-array"))]
                         "NUMERIC[]" => Value::Array(
@@ -625,8 +620,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                         "JSON" | "JSONB" => Value::Json(
                             row.try_get::<Option<serde_json::Value>, _>(c.ordinal())
                                 .expect("Failed to get json")
-                                .map(Box::new)
-                                ,
+                                .map(Box::new),
                         ),
                         #[cfg(any(feature = "json-array", feature = "postgres-array"))]
                         "JSON[]" | "JSONB[]" => Value::Array(
@@ -645,8 +639,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                         #[cfg(feature = "with-ipnetwork")]
                         "INET" | "CIDR" => Value::IpNetwork(
                             row.try_get::<Option<ipnetwork::IpNetwork>, _>(c.ordinal())
-                                .expect("Failed to get ip address")
-                                ,
+                                .expect("Failed to get ip address"),
                         ),
                         #[cfg(feature = "with-ipnetwork")]
                         "INET[]" | "CIDR[]" => Value::Array(
@@ -665,8 +658,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                         #[cfg(feature = "with-mac_address")]
                         "MACADDR" | "MACADDR8" => Value::MacAddress(
                             row.try_get::<Option<mac_address::MacAddress>, _>(c.ordinal())
-                                .expect("Failed to get mac address")
-                                ,
+                                .expect("Failed to get mac address"),
                         ),
                         #[cfg(all(feature = "with-mac_address", feature = "postgres-array"))]
                         "MACADDR[]" | "MACADDR8[]" => Value::Array(
@@ -685,14 +677,12 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                         #[cfg(feature = "with-chrono")]
                         "TIMESTAMP" => Value::ChronoDateTime(
                             row.try_get::<Option<chrono::NaiveDateTime>, _>(c.ordinal())
-                                .expect("Failed to get timestamp")
-                                ,
+                                .expect("Failed to get timestamp"),
                         ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "TIMESTAMP" => Value::TimeDateTime(
                             row.try_get::<Option<time::PrimitiveDateTime>, _>(c.ordinal())
-                                .expect("Failed to get timestamp")
-                                ,
+                                .expect("Failed to get timestamp"),
                         ),
 
                         #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
@@ -729,14 +719,12 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                         #[cfg(feature = "with-chrono")]
                         "DATE" => Value::ChronoDate(
                             row.try_get::<Option<chrono::NaiveDate>, _>(c.ordinal())
-                                .expect("Failed to get date")
-                                ,
+                                .expect("Failed to get date"),
                         ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "DATE" => Value::TimeDate(
                             row.try_get::<Option<time::Date>, _>(c.ordinal())
-                                .expect("Failed to get date")
-                                ,
+                                .expect("Failed to get date"),
                         ),
 
                         #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
@@ -773,14 +761,12 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                         #[cfg(feature = "with-chrono")]
                         "TIME" => Value::ChronoTime(
                             row.try_get::<Option<chrono::NaiveTime>, _>(c.ordinal())
-                                .expect("Failed to get time")
-                                ,
+                                .expect("Failed to get time"),
                         ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "TIME" => Value::TimeTime(
                             row.try_get::<Option<time::Time>, _>(c.ordinal())
-                                .expect("Failed to get time")
-                                ,
+                                .expect("Failed to get time"),
                         ),
 
                         #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
@@ -817,14 +803,12 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                         #[cfg(feature = "with-chrono")]
                         "TIMESTAMPTZ" => Value::ChronoDateTimeUtc(
                             row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(c.ordinal())
-                                .expect("Failed to get timestamptz")
-                                ,
+                                .expect("Failed to get timestamptz"),
                         ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "TIMESTAMPTZ" => Value::TimeDateTime(
                             row.try_get::<Option<time::PrimitiveDateTime>, _>(c.ordinal())
-                                .expect("Failed to get timestamptz")
-                                ,
+                                .expect("Failed to get timestamptz"),
                         ),
 
                         #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
@@ -863,15 +847,12 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                         #[cfg(feature = "with-chrono")]
                         "TIMETZ" => Value::ChronoTime(
                             row.try_get::<Option<chrono::NaiveTime>, _>(c.ordinal())
-                                .expect("Failed to get timetz")
-                                ,
+                                .expect("Failed to get timetz"),
                         ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIMETZ" => Value::TimeTime(
-                            row.try_get(c.ordinal())
-                                .expect("Failed to get timetz")
-                                ,
-                        ),
+                        "TIMETZ" => {
+                            Value::TimeTime(row.try_get(c.ordinal()).expect("Failed to get timetz"))
+                        }
 
                         #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
                         "TIMETZ[]" => Value::Array(
@@ -907,8 +888,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                         #[cfg(feature = "with-uuid")]
                         "UUID" => Value::Uuid(
                             row.try_get::<Option<uuid::Uuid>, _>(c.ordinal())
-                                .expect("Failed to get uuid")
-                                ,
+                                .expect("Failed to get uuid"),
                         ),
 
                         #[cfg(all(feature = "with-uuid", feature = "postgres-array"))]
