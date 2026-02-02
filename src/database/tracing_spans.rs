@@ -79,6 +79,7 @@ mod inner {
     pub(crate) fn db_system_name(backend: DbBackend) -> &'static str {
         match backend {
             DbBackend::Postgres => "postgresql",
+            DbBackend::Cockroach => "cockroachdb",
             DbBackend::MySql => "mysql",
             DbBackend::Sqlite => "sqlite",
         }

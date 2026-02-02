@@ -83,7 +83,9 @@ where
             None => return Ok(0),
         };
         let num_items = match db_backend {
-            DbBackend::Postgres => result.try_get::<i64>("", "num_items")? as u64,
+            DbBackend::Postgres | DbBackend::Cockroach => {
+                result.try_get::<i64>("", "num_items")? as u64
+            }
             _ => result.try_get::<i32>("", "num_items")? as u64,
         };
         Ok(num_items)

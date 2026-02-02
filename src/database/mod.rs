@@ -176,6 +176,12 @@ impl Database {
                     proxy_func_arc.to_owned(),
                 );
             }
+            DbBackend::Cockroach => {
+                return crate::ProxyDatabaseConnector::connect(
+                    DbBackend::Cockroach,
+                    proxy_func_arc.to_owned(),
+                );
+            }
             DbBackend::Sqlite => {
                 return crate::ProxyDatabaseConnector::connect(
                     DbBackend::Sqlite,
