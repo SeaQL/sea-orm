@@ -1,6 +1,6 @@
 use crate::{
-    ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel, SelectTwo,
-    SelectTwoModel, Selector, SelectorRaw, SelectorTrait, error::*,
+    error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel,
+    SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait,
 };
 use sea_query::{Expr, SelectStatement};
 use std::marker::PhantomData;
@@ -63,7 +63,6 @@ where
 
     /// Get the total number of items
     pub fn num_items(&self) -> Result<u64, DbErr> {
-        let db_backend = self.db.get_database_backend();
         let query = SelectStatement::new()
             .expr(Expr::cust("COUNT(*) AS num_items"))
             .from_subquery(
@@ -80,10 +79,7 @@ where
             Some(res) => res,
             None => return Ok(0),
         };
-        let num_items = match db_backend {
-            DbBackend::Postgres => result.try_get::<i64>("", "num_items")? as u64,
-            _ => result.try_get::<i32>("", "num_items")? as u64,
-        };
+        let num_items = result.try_get::<i64>("", "num_items")? as u64;
         Ok(num_items)
     }
 
@@ -367,9 +363,9 @@ mod tests {
     use crate::entity::prelude::*;
     #[cfg(feature = "sync")]
     use crate::util::StreamShim;
+    use crate::{tests_cfg::*, Statement};
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
     use crate::{QueryOrder, QuerySelect};
-    use crate::{Statement, tests_cfg::*};
     use pretty_assertions::assert_eq;
     use sea_query::{Expr, SelectStatement, Value};
     use std::sync::LazyLock;

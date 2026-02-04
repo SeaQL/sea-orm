@@ -65,7 +65,6 @@ where
 
     /// Get the total number of items
     pub async fn num_items(&self) -> Result<u64, DbErr> {
-        let db_backend = self.db.get_database_backend();
         let query = SelectStatement::new()
             .expr(Expr::cust("COUNT(*) AS num_items"))
             .from_subquery(
@@ -82,10 +81,7 @@ where
             Some(res) => res,
             None => return Ok(0),
         };
-        let num_items = match db_backend {
-            DbBackend::Postgres => result.try_get::<i64>("", "num_items")? as u64,
-            _ => result.try_get::<i32>("", "num_items")? as u64,
-        };
+        let num_items = result.try_get::<i64>("", "num_items")? as u64;
         Ok(num_items)
     }
 
