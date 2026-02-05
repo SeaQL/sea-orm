@@ -1,6 +1,6 @@
 use crate::{
-    error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel,
-    SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait,
+    ConnectionTrait, EntityTrait, FromQueryResult, Select, SelectModel, SelectTwo, SelectTwoModel,
+    Selector, SelectorRaw, SelectorTrait, error::*,
 };
 use sea_query::{Expr, SelectStatement};
 use std::marker::PhantomData;
@@ -363,9 +363,9 @@ mod tests {
     use crate::entity::prelude::*;
     #[cfg(feature = "sync")]
     use crate::util::StreamShim;
-    use crate::{tests_cfg::*, Statement};
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
     use crate::{QueryOrder, QuerySelect};
+    use crate::{Statement, tests_cfg::*};
     use pretty_assertions::assert_eq;
     use sea_query::{Expr, SelectStatement, Value};
     use std::sync::LazyLock;

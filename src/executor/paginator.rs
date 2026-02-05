@@ -1,6 +1,6 @@
 use crate::{
-    ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel, SelectTwo,
-    SelectTwoModel, Selector, SelectorRaw, SelectorTrait, error::*,
+    ConnectionTrait, EntityTrait, FromQueryResult, Select, SelectModel, SelectTwo, SelectTwoModel,
+    Selector, SelectorRaw, SelectorTrait, error::*,
 };
 use async_stream::stream;
 use futures_util::Stream;
