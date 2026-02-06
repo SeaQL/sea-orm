@@ -3,13 +3,29 @@ use std::collections::{HashMap, HashSet};
 use prettyplease::unparse;
 use syn::fold::{self, Fold};
 use syn::{
-    Attribute, Fields, Ident, Item, ItemImpl, Path, parse::Parser, parse_file,
+    Attribute, Fields, Ident, Item, ItemImpl, Path, UseTree, parse::Parser, parse_file,
     punctuated::Punctuated,
 };
 use syn::{ItemUse, Meta};
 
 mod extract;
 use extract::*;
+
+/// Normalize a use statement into canonical import paths for deduplication.
+/// Flattens grouped imports like `use foo::{A, B}` into `["foo::A", "foo::B"]`.
+fn normalize_use_paths(use_item: &ItemUse) -> Vec<String> {
+    fn collect(prefix: &str, tree: &UseTree) -> Vec<String> {
+        match tree {
+            UseTree::Path(p) => collect(&format!("{}::{}", prefix, p.ident), &p.tree),
+            UseTree::Name(n) => vec![format!("{}::{}", prefix, n.ident)],
+            UseTree::Rename(r) => vec![format!("{}::{} as {}", prefix, r.ident, r.rename)],
+            UseTree::Glob(_) => vec![format!("{}::*", prefix)],
+            UseTree::Group(g) => g.items.iter().flat_map(|item| collect(prefix, item)).collect(),
+        }
+    }
+
+    collect("", &use_item.tree)
+}
 
 #[derive(Default)]
 struct OldIndex<'a> {
@@ -49,7 +65,7 @@ impl<'a> OldIndex<'a> {
 
 struct Merger<'a> {
     old: OldIndex<'a>,
-    seen_use: HashSet<ItemUse>,
+    seen_paths: HashSet<String>,
     extra_uses: Vec<&'a syn::ItemUse>,
     old_behaviors: Vec<&'a syn::ItemImpl>,
 }
@@ -62,7 +78,7 @@ impl<'a> Merger<'a> {
     ) -> Self {
         Self {
             old,
-            seen_use: HashSet::new(),
+            seen_paths: HashSet::new(),
             extra_uses,
             old_behaviors,
         }
@@ -108,7 +124,10 @@ impl<'a> Fold for Merger<'a> {
             match item {
                 Item::Use(u) => {
                     let u = fold::fold_item_use(self, u);
-                    if self.seen_use.insert(u.clone()) {
+                    let paths = normalize_use_paths(&u);
+                    // Only include this use statement if it has at least one new path
+                    if paths.iter().any(|p| !self.seen_paths.contains(p)) {
+                        self.seen_paths.extend(paths);
                         uses.push(Item::Use(u));
                     }
                 }
@@ -127,7 +146,9 @@ impl<'a> Fold for Merger<'a> {
         }
 
         for &u in &self.extra_uses {
-            if self.seen_use.insert(u.clone()) {
+            let paths = normalize_use_paths(u);
+            if paths.iter().any(|p| !self.seen_paths.contains(p)) {
+                self.seen_paths.extend(paths);
                 uses.push(Item::Use(u.clone()));
             }
         }
@@ -793,12 +814,7 @@ mod tests {
         assert_eq!(merged, expected);
     }
 
-    /// Bug: When merging files with grouped imports vs individual imports,
-    /// duplicates are created because structural equality is used instead of
-    /// semantic comparison of the actual import paths.
-    /// This test should pass once the bug is fixed.
     #[test]
-    #[should_panic(expected = "assertion `left == right` failed")]
     fn duplicate_enum_imports_grouped_vs_individual() {
         let old_src = indoc! {r#"
             use sea_orm::entity::prelude::*;
