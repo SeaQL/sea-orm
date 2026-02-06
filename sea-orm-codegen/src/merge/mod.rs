@@ -792,4 +792,60 @@ mod tests {
 
         assert_eq!(merged, expected);
     }
+
+    /// Bug: When merging files with grouped imports vs individual imports,
+    /// duplicates are created because structural equality is used instead of
+    /// semantic comparison of the actual import paths.
+    /// This test should pass once the bug is fixed.
+    #[test]
+    #[should_panic(expected = "assertion `left == right` failed")]
+    fn duplicate_enum_imports_grouped_vs_individual() {
+        let old_src = indoc! {r#"
+            use sea_orm::entity::prelude::*;
+            use super::sea_orm_active_enums::{Status, Category};
+
+            #[derive(DeriveEntityModel)]
+            pub struct Model {
+                pub id: i32,
+                pub status: Status,
+                pub category: Category,
+            }
+
+            impl ActiveModelBehavior for ActiveModel {}
+        "#};
+
+        let new_src = indoc! {r#"
+            use sea_orm::entity::prelude::*;
+            use super::sea_orm_active_enums::Status;
+            use super::sea_orm_active_enums::Category;
+
+            #[derive(DeriveEntityModel)]
+            pub struct Model {
+                pub id: i32,
+                pub status: Status,
+                pub category: Category,
+            }
+
+            impl ActiveModelBehavior for ActiveModel {}
+        "#};
+
+        let merged = merge_entity_files(old_src, new_src).expect("merge should succeed");
+
+        let expected = indoc! {r#"
+            use sea_orm::entity::prelude::*;
+            use super::sea_orm_active_enums::Status;
+            use super::sea_orm_active_enums::Category;
+
+            #[derive(DeriveEntityModel)]
+            pub struct Model {
+                pub id: i32,
+                pub status: Status,
+                pub category: Category,
+            }
+
+            impl ActiveModelBehavior for ActiveModel {}
+        "#};
+
+        assert_eq!(merged, expected);
+    }
 }
