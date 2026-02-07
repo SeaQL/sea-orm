@@ -114,12 +114,13 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-clippy-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo clippy --all -- -D warnings
-      - run: cargo clippy --all --features runtime-tokio-native-tls,sqlx-all -- -D warnings
-      - run: cargo clippy --manifest-path sea-orm-cli/Cargo.toml -- -D warnings
-      - run: cargo clippy --manifest-path sea-orm-migration/Cargo.toml -- -D warnings
+      - run: cargo clippy --all-targets --features runtime-tokio-native-tls,all-extra-features,all-types-1 -- -D warnings
+      - run: cargo clippy --all-targets --features runtime-tokio-native-tls,all-extra-features,all-types-2 -- -D warnings
+      - run: cargo clippy --all-targets --workspace --exclude sea-orm --features runtime-tokio-native-tls,sqlx-all -- -D warnings
+      - run: cargo clippy --all-targets --manifest-path sea-orm-cli/Cargo.toml -- -D warnings
+      - run: cargo clippy --all-targets --manifest-path sea-orm-migration/Cargo.toml -- -D warnings
 
   rustfmt:
     name: Rustfmt
@@ -185,7 +186,7 @@ jobs:
           cargo build --no-default-features --features seaography
           cargo build --features rbac,schema-sync
       - if: matrix.kind == 'test'
-        run: cargo test --test '*' --features tests-features,${{ matrix.features }} --no-run
+        run: cargo test --features tests-features,${{ matrix.features }} --no-run
 
   test:
     name: Unit Test
@@ -207,6 +208,27 @@ jobs:
       - run: cargo test --lib --features entity-registry -- registry
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml --no-run
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml
+
+  test-features:
+    name: Unit Test with features
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features: ["all-types-1", "all-types-2"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-test-features-${{ hashFiles('**/Cargo.toml') }}
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - run: cargo test --features all-extra-features,${{ matrix.features }} --no-run
+      - run: cargo test --features all-extra-features,${{ matrix.features }}
 
   cli:
     name: CLI
