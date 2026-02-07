@@ -404,6 +404,30 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         Expr::col(self.as_column_ref()).eq(PgFunc::any(vec))
     }
 
+    /// Postgres only. Opposite of `eq_any` (equivalent to `is_not_in`).
+    /// ```
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.ne_all(vec![4, 5]))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" <> ALL(ARRAY [4,5])"#
+    /// );
+    /// ```
+    #[cfg(feature = "postgres-array")]
+    fn ne_all<V, I>(&self, v: I) -> Expr
+    where
+        V: Into<Value> + sea_query::ValueType + sea_query::with_array::NotU8,
+        I: IntoIterator<Item = V>,
+    {
+        use sea_query::extension::postgres::PgFunc;
+
+        let vec: Vec<_> = v.into_iter().collect();
+        Expr::col(self.as_column_ref()).ne(PgFunc::all(vec))
+    }
+
     bind_subquery_func!(in_subquery);
     bind_subquery_func!(not_in_subquery);
 
