@@ -13,7 +13,7 @@ license       = "MIT OR Apache-2.0"
 name          = "sea-orm-sync"
 repository    = "https://github.com/SeaQL/sea-orm"
 rust-version  = "1.85.0"
-version       = "2.0.0-rc.30"
+version       = "2.0.0-rc.31"
 
 [package.metadata.docs.rs]
 features = [

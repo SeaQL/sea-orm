@@ -13,7 +13,7 @@ license       = "MIT OR Apache-2.0"
 name          = "sea-orm"
 repository    = "https://github.com/SeaQL/sea-orm"
 rust-version  = "1.85.0"
-version       = "2.0.0-rc.30"
+version       = "2.0.0-rc.31"
 
 [package.metadata.docs.rs]
 features = [
@@ -55,7 +55,7 @@ pgvector = { version = "~0.4", default-features = false, optional = true }
 rust_decimal = { version = "1", default-features = false, features = [
     "std",
 ], optional = true }
-sea-orm-macros = { version = "~2.0.0-rc.30", path = "sea-orm-macros", default-features = false, features = [
+sea-orm-macros = { version = "~2.0.0-rc.31", path = "sea-orm-macros", default-features = false, features = [
     "async",
     "strum",
 ] }
