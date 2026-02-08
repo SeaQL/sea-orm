@@ -63,7 +63,7 @@ pub(crate) mod macros {
             /// Array operator. Postgres only.
             $vis fn $op<V, I>(&self, v: I) -> Expr
             where
-                V: Into<Value> + sea_query::ValueType + sea_query::with_array::NotU8,
+                V: Into<Value> + sea_query::ValueType + sea_query::postgres_array::NotU8,
                 I: IntoIterator<Item = V>,
             {
                 use sea_query::extension::postgres::PgBinOper;
@@ -384,6 +384,29 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// ```
     /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
+    /// // Compare with MySQL
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.is_in(std::iter::empty::<i32>()))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE 1 = 2"
+    /// );
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.is_in(vec![4, 5]))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` IN (4, 5)"
+    /// );
+    /// // Postgres Array
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.eq_any(std::iter::empty::<i32>()))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE 1 = 2"#
+    /// );
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Id.eq_any(vec![4, 5]))
@@ -391,23 +414,45 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///         .to_string(),
     ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY [4,5])"#
     /// );
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Name.eq_any(&["Apple".to_owned(), "Chocolate".to_owned()]))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."name" = ANY(ARRAY ['Apple','Chocolate'])"#
+    /// );
     /// ```
     #[cfg(feature = "postgres-array")]
     fn eq_any<V, I>(&self, v: I) -> Expr
     where
-        V: Into<Value> + sea_query::ValueType + sea_query::with_array::NotU8,
+        V: Into<Value> + sea_query::postgres_array::NotU8,
         I: IntoIterator<Item = V>,
     {
         use sea_query::extension::postgres::PgFunc;
 
-        let vec: Vec<_> = v.into_iter().collect();
-        Expr::col(self.as_column_ref()).eq(PgFunc::any(vec))
+        let values: Vec<Value> = v.into_iter().map(|v| v.into()).collect();
+
+        if let Some(first) = values.first() {
+            Expr::col(self.as_column_ref()).eq(PgFunc::any(Value::Array(
+                first.array_type(),
+                Some(Box::new(values)),
+            )))
+        } else {
+            Expr::col(self.as_column_ref()).is_in(std::iter::empty::<V>())
+        }
     }
 
     /// Postgres only. Opposite of `eq_any` (equivalent to `is_not_in`).
     /// ```
     /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
     ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.ne_all(std::iter::empty::<i32>()))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE 1 = 1"#
+    /// );
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Id.ne_all(vec![4, 5]))
@@ -419,13 +464,21 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     #[cfg(feature = "postgres-array")]
     fn ne_all<V, I>(&self, v: I) -> Expr
     where
-        V: Into<Value> + sea_query::ValueType + sea_query::with_array::NotU8,
+        V: Into<Value> + sea_query::postgres_array::NotU8,
         I: IntoIterator<Item = V>,
     {
         use sea_query::extension::postgres::PgFunc;
 
-        let vec: Vec<_> = v.into_iter().collect();
-        Expr::col(self.as_column_ref()).ne(PgFunc::all(vec))
+        let values: Vec<Value> = v.into_iter().map(|v| v.into()).collect();
+
+        if let Some(first) = values.first() {
+            Expr::col(self.as_column_ref()).ne(PgFunc::all(Value::Array(
+                first.array_type(),
+                Some(Box::new(values)),
+            )))
+        } else {
+            Expr::col(self.as_column_ref()).is_not_in(std::iter::empty::<V>())
+        }
     }
 
     bind_subquery_func!(in_subquery);

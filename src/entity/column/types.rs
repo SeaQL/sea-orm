@@ -285,7 +285,7 @@ macro_rules! impl_numeric_column {
         #[cfg(feature = "postgres-array")]
         pub fn eq_any<V, I>(&self, v: I) -> Expr
         where
-            V: Into<Value> + $trait + sea_query::ValueType + sea_query::with_array::NotU8,
+            V: Into<Value> + $trait + sea_query::postgres_array::NotU8,
             I: IntoIterator<Item = V>,
         {
             self.0.eq_any(v)
@@ -334,7 +334,7 @@ macro_rules! impl_string_column {
         #[cfg(feature = "postgres-array")]
         pub fn eq_any<V, I>(&self, v: I) -> Expr
         where
-            V: Into<Value> + Into<String> + sea_query::ValueType + sea_query::with_array::NotU8,
+            V: Into<Value> + Into<String> + sea_query::postgres_array::NotU8,
             I: IntoIterator<Item = V>,
         {
             self.0.eq_any(v)
