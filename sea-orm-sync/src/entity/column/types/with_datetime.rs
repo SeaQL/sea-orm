@@ -30,7 +30,7 @@ impl<E: EntityTrait> DateLikeColumn<E> {
     #[cfg(feature = "postgres-array")]
     pub fn eq_any<V, I>(&self, v: I) -> Expr
     where
-        V: Into<Value> + DateLikeValue + sea_query::ValueType + sea_query::with_array::NotU8,
+        V: Into<Value> + DateLikeValue + sea_query::ValueType + sea_query::postgres_array::NotU8,
         I: IntoIterator<Item = V>,
     {
         self.0.eq_any(v)
@@ -69,7 +69,7 @@ impl<E: EntityTrait> TimeLikeColumn<E> {
     #[cfg(feature = "postgres-array")]
     pub fn eq_any<V, I>(&self, v: I) -> Expr
     where
-        V: Into<Value> + TimeLikeValue + sea_query::ValueType + sea_query::with_array::NotU8,
+        V: Into<Value> + TimeLikeValue + sea_query::ValueType + sea_query::postgres_array::NotU8,
         I: IntoIterator<Item = V>,
     {
         self.0.eq_any(v)
@@ -108,7 +108,7 @@ impl<E: EntityTrait> DateTimeLikeColumn<E> {
     #[cfg(feature = "postgres-array")]
     pub fn eq_any<V, I>(&self, v: I) -> Expr
     where
-        V: Into<Value> + DateTimeLikeValue + sea_query::ValueType + sea_query::with_array::NotU8,
+        V: Into<Value> + DateTimeLikeValue + sea_query::postgres_array::NotU8,
         I: IntoIterator<Item = V>,
     {
         self.0.eq_any(v)

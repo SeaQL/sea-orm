@@ -6,7 +6,7 @@ macro_rules! bind_array_oper {
         /// Postgres only.
         $vis fn $op<V, I>(&self, v: I) -> Expr
         where
-            V: Into<Value> + sea_query::ValueType + sea_query::with_array::NotU8,
+            V: Into<Value> + sea_query::ValueType + sea_query::postgres_array::NotU8,
             I: IntoIterator<Item = V>,
         {
             let vec: Vec<_> = v.into_iter().collect();
@@ -17,7 +17,7 @@ macro_rules! bind_array_oper {
         /// Postgres only.
         $vis fn $op<V, I>(&self, v: I) -> Expr
         where
-            V: Into<Value> + $value_ty + sea_query::ValueType + sea_query::with_array::NotU8,
+            V: Into<Value> + $value_ty + sea_query::ValueType + sea_query::postgres_array::NotU8,
             I: IntoIterator<Item = V>,
         {
             let vec: Vec<_> = v.into_iter().collect();
@@ -28,7 +28,7 @@ macro_rules! bind_array_oper {
         /// Postgres only.
         $vis fn $op<V, I>(&self, v: I) -> Expr
         where
-            V: Into<Value> + sea_query::ValueType + sea_query::with_array::NotU8,
+            V: Into<Value> + sea_query::ValueType + sea_query::postgres_array::NotU8,
             I: IntoIterator<Item = V>,
         {
             self.0.$func(v)
@@ -38,7 +38,7 @@ macro_rules! bind_array_oper {
         /// Postgres only.
         $vis fn $op<V, I>(&self, v: I) -> Expr
         where
-            V: Into<Value> + $value_ty + sea_query::ValueType + sea_query::with_array::NotU8,
+            V: Into<Value> + $value_ty + sea_query::ValueType + sea_query::postgres_array::NotU8,
             I: IntoIterator<Item = V>,
         {
             self.0.$func(v)

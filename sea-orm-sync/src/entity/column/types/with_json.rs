@@ -20,7 +20,7 @@ impl<E: EntityTrait> JsonColumn<E> {
     #[cfg(feature = "postgres-array")]
     pub fn eq_any<V, I>(&self, v: I) -> Expr
     where
-        V: Into<Value> + Into<Json> + sea_query::ValueType + sea_query::with_array::NotU8,
+        V: Into<Value> + Into<Json> + sea_query::postgres_array::NotU8,
         I: IntoIterator<Item = V>,
     {
         self.0.eq_any(v)
