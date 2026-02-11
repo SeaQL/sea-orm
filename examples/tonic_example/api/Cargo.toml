@@ -22,7 +22,7 @@ features = [
     "sqlx-sqlite",
 ]
 path = "../../../" # remove this line in your own project
-version = "~2.0.0-rc.31" # sea-orm version
+version = "~2.0.0-rc.32" # sea-orm version
 
 [build-dependencies]
 tonic-build = "0.9.2"
