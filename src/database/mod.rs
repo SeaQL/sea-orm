@@ -90,6 +90,8 @@ pub struct ConnectOptions {
     pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
     /// Schema search path (PostgreSQL only)
     pub(crate) schema_search_path: Option<String>,
+    /// Application name (PostgreSQL only)
+    pub(crate) application_name: Option<String>,
     pub(crate) test_before_acquire: bool,
     /// Only establish connections to the DB as needed. If set to `true`, the db connection will
     /// be created using SQLx's [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy)
@@ -215,6 +217,7 @@ impl ConnectOptions {
             sqlx_slow_statements_logging_threshold: Duration::from_secs(1),
             sqlcipher_key: None,
             schema_search_path: None,
+            application_name: None,
             test_before_acquire: true,
             connect_lazy: false,
             after_connect: None,
@@ -362,6 +365,15 @@ impl ConnectOptions {
         T: Into<String>,
     {
         self.schema_search_path = Some(schema_search_path.into());
+        self
+    }
+
+    /// Set application name (PostgreSQL only)
+    pub fn set_application_name<T>(&mut self, application_name: T) -> &mut Self
+    where
+        T: Into<String>,
+    {
+        self.application_name = Some(application_name.into());
         self
     }
 
