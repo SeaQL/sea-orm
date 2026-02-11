@@ -622,10 +622,18 @@ impl DatabaseConnection {
 
     #[cfg(feature = "entity-registry")]
     #[cfg_attr(docsrs, doc(cfg(feature = "entity-registry")))]
-    /// Builds a schema for all the entites in the given module
+    /// Builds a schema for all the entities in the given module
     pub fn get_schema_registry(&self, prefix: &str) -> SchemaBuilder {
         let schema = Schema::new(self.get_database_backend());
-        crate::EntityRegistry::build_schema(schema, prefix)
+        crate::EntityRegistry::build_schema(schema, prefix, None)
+    }
+
+    #[cfg(feature = "entity-registry")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "entity-registry")))]
+    /// Builds a schema for all the entities in the given module and crate version
+    pub fn get_schema_registry_version(&self, prefix: &str, version_spec: &str) -> SchemaBuilder {
+        let schema = Schema::new(self.get_database_backend());
+        crate::EntityRegistry::build_schema(schema, prefix, Some(version_spec))
     }
 
     /// Sets a callback to metric this connection
