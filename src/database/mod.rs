@@ -186,6 +186,33 @@ impl Database {
             }
         }
     }
+
+    /// Method to create a [DatabaseConnection] on a Cloudflare D1 database
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use worker::Env;
+    ///
+    /// async fn fetch(req: HttpRequest, env: Env, ctx: Context) -> Result<Response> {
+    ///     // Get D1 binding from environment
+    ///     let d1 = env.d1("DB")?;
+    ///
+    ///     // Connect to Sea-ORM
+    ///     let db = sea_orm::Database::connect_d1(d1).await?;
+    ///
+    ///     // Use db as normal - all Sea-ORM operations work!
+    ///     let users = user::Entity::find().all(&db).await?;
+    ///
+    ///     Ok(Response::ok(...)?
+    /// }
+    /// ```
+    #[cfg(feature = "d1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "d1")))]
+    #[instrument(level = "trace")]
+    pub async fn connect_d1(d1: worker::d1::D1Database) -> Result<DatabaseConnection, DbErr> {
+        crate::D1Connector::connect(d1).await
+    }
 }
 
 impl<T> From<T> for ConnectOptions
