@@ -1,5 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
+#[cfg(not(feature = "sync"))]
 use futures_util::future::BoxFuture;
 #[cfg(feature = "sqlx-mysql")]
 use sqlx::mysql::MySqlConnectOptions;
@@ -54,6 +55,29 @@ pub struct Database;
 #[cfg(feature = "sync")]
 type BoxFuture<'a, T> = T;
 
+#[cfg(feature = "sqlx-mysql")]
+type MapMySqlPoolOptsFn = Arc<
+    dyn Fn(sqlx::pool::PoolOptions<sqlx::MySql>) -> sqlx::pool::PoolOptions<sqlx::MySql>
+        + Send
+        + Sync,
+>;
+
+#[cfg(feature = "sqlx-postgres")]
+type MapPgPoolOptsFn = Arc<
+    dyn Fn(sqlx::pool::PoolOptions<sqlx::Postgres>) -> sqlx::pool::PoolOptions<sqlx::Postgres>
+        + Send
+        + Sync,
+>;
+
+#[cfg(feature = "sqlx-sqlite")]
+type MapSqlitePoolOptsFn = Option<
+    Arc<
+        dyn Fn(sqlx::pool::PoolOptions<sqlx::Sqlite>) -> sqlx::pool::PoolOptions<sqlx::Sqlite>
+            + Send
+            + Sync,
+    >,
+>;
+
 type AfterConnectCallback = Option<
     Arc<
         dyn Fn(DatabaseConnection) -> BoxFuture<'static, Result<(), DbErr>> + Send + Sync + 'static,
@@ -101,6 +125,15 @@ pub struct ConnectOptions {
     #[debug(skip)]
     pub(crate) after_connect: AfterConnectCallback,
 
+    #[cfg(feature = "sqlx-mysql")]
+    #[debug(skip)]
+    pub(crate) mysql_pool_opts_fn: Option<MapMySqlPoolOptsFn>,
+    #[cfg(feature = "sqlx-postgres")]
+    #[debug(skip)]
+    pub(crate) pg_pool_opts_fn: Option<MapPgPoolOptsFn>,
+    #[cfg(feature = "sqlx-sqlite")]
+    #[debug(skip)]
+    pub(crate) sqlite_pool_opts_fn: MapSqlitePoolOptsFn,
     #[cfg(feature = "sqlx-mysql")]
     #[debug(skip)]
     pub(crate) mysql_opts_fn:
@@ -221,6 +254,12 @@ impl ConnectOptions {
             test_before_acquire: true,
             connect_lazy: false,
             after_connect: None,
+            #[cfg(feature = "sqlx-mysql")]
+            mysql_pool_opts_fn: None,
+            #[cfg(feature = "sqlx-postgres")]
+            pg_pool_opts_fn: None,
+            #[cfg(feature = "sqlx-sqlite")]
+            sqlite_pool_opts_fn: None,
             #[cfg(feature = "sqlx-mysql")]
             mysql_opts_fn: None,
             #[cfg(feature = "sqlx-postgres")]
@@ -417,6 +456,21 @@ impl ConnectOptions {
         self
     }
 
+    #[cfg(feature = "sqlx-mysql")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "sqlx-mysql")))]
+    /// Apply a function to modify the underlying [`sqlx::pool::PoolOptions<sqlx::MySql>`]
+    /// before creating the connection pool.
+    pub fn map_sqlx_mysql_pool_opts<F>(&mut self, f: F) -> &mut Self
+    where
+        F: Fn(sqlx::pool::PoolOptions<sqlx::MySql>) -> sqlx::pool::PoolOptions<sqlx::MySql>
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.mysql_pool_opts_fn = Some(Arc::new(f));
+        self
+    }
+
     #[cfg(feature = "sqlx-postgres")]
     #[cfg_attr(docsrs, doc(cfg(feature = "sqlx-postgres")))]
     /// Apply a function to modify the underlying [`PgConnectOptions`] before
@@ -429,6 +483,21 @@ impl ConnectOptions {
         self
     }
 
+    #[cfg(feature = "sqlx-postgres")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "sqlx-postgres")))]
+    /// Apply a function to modify the underlying [`sqlx::pool::PoolOptions<sqlx::Postgres>`]
+    /// before creating the connection pool.
+    pub fn map_sqlx_postgres_pool_opts<F>(&mut self, f: F) -> &mut Self
+    where
+        F: Fn(sqlx::pool::PoolOptions<sqlx::Postgres>) -> sqlx::pool::PoolOptions<sqlx::Postgres>
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.pg_pool_opts_fn = Some(Arc::new(f));
+        self
+    }
+
     #[cfg(feature = "sqlx-sqlite")]
     #[cfg_attr(docsrs, doc(cfg(feature = "sqlx-sqlite")))]
     /// Apply a function to modify the underlying [`SqliteConnectOptions`] before
@@ -438,6 +507,21 @@ impl ConnectOptions {
         F: Fn(SqliteConnectOptions) -> SqliteConnectOptions + Send + Sync + 'static,
     {
         self.sqlite_opts_fn = Some(Arc::new(f));
+        self
+    }
+
+    #[cfg(feature = "sqlx-sqlite")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "sqlx-sqlite")))]
+    /// Apply a function to modify the underlying [`sqlx::pool::PoolOptions<sqlx::Sqlite>`]
+    /// before creating the connection pool.
+    pub fn map_sqlx_sqlite_pool_opts<F>(&mut self, f: F) -> &mut Self
+    where
+        F: Fn(sqlx::pool::PoolOptions<sqlx::Sqlite>) -> sqlx::pool::PoolOptions<sqlx::Sqlite>
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.sqlite_pool_opts_fn = Some(Arc::new(f));
         self
     }
 }
