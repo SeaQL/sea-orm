@@ -6,3 +6,6 @@ contact_links:
   - name: SeaQL Discord Server
     url: https://discord.com/invite/uCPdDXzbdv
     about: Join our Discord server to chat with others in the SeaQL community!
+  - name: Professional Support
+    url: https://github.com/sponsors/SeaQL
+    about: Startup and Enterprise-tier sponsors enjoy direct communication with the SeaQL team and professional support for SeaORM usage, data engineering, and Rust development.
