@@ -700,6 +700,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     fn find_belongs_to_self(
         &self,
         rel: <Self::Entity as EntityTrait>::Relation,
+        db_backend: DbBackend,
     ) -> Result<crate::query::Select<Self::Entity>, DbErr> {
         let rel_def = rel.def();
 
@@ -716,7 +717,7 @@ pub trait ActiveModelTrait: Clone + Debug {
                 &<Self::Entity as Default>::default().table_ref(),
                 &rel_def.to_col,
                 &[id],
-                DbBackend::Sqlite,
+                db_backend,
             )
             .expect(""),
         ))
@@ -726,6 +727,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     fn find_belongs_to_model<AM>(
         rel_def: &RelationDef,
         belongs_to: &AM,
+        db_backend: DbBackend,
     ) -> Result<crate::query::Select<Self::Entity>, DbErr>
     where
         AM: ActiveModelTrait,
@@ -738,13 +740,8 @@ pub trait ActiveModelTrait: Clone + Debug {
 
         let id = get_key_from_active_model(&rel_def.to_col, belongs_to)?;
         Ok(<Self::Entity as EntityTrait>::find().filter(
-            column_tuple_in_condition(
-                &rel_def.from_tbl,
-                &rel_def.from_col,
-                &[id],
-                DbBackend::Sqlite,
-            )
-            .expect(""),
+            column_tuple_in_condition(&rel_def.from_tbl, &rel_def.from_col, &[id], db_backend)
+                .expect(""),
         ))
     }
 
@@ -853,7 +850,7 @@ pub trait ActiveModelTrait: Clone + Debug {
                     &rel_def.from_tbl,
                     &rel_def.from_col,
                     &[id],
-                    DbBackend::Sqlite,
+                    db.get_database_backend(),
                 )
                 .expect(""),
             )
@@ -886,7 +883,7 @@ pub trait ActiveModelTrait: Clone + Debug {
                             &left.from_tbl,
                             &left.from_col,
                             std::slice::from_ref(&id),
-                            DbBackend::Sqlite,
+                            db.get_database_backend(),
                         )
                         .expect(""),
                     )
@@ -895,7 +892,7 @@ pub trait ActiveModelTrait: Clone + Debug {
                             &right.from_tbl,
                             &right.from_col,
                             std::slice::from_ref(&id),
-                            DbBackend::Sqlite,
+                            db.get_database_backend(),
                         )
                         .expect(""),
                     ),
@@ -1041,9 +1038,13 @@ where
 
     let mut leftover = Vec::new();
     if delete_leftover || require_leftover {
-        for item in <J::ActiveModel as ActiveModelTrait>::find_belongs_to_model(&left, model)?
-            .all(db)
-            .await?
+        for item in <J::ActiveModel as ActiveModelTrait>::find_belongs_to_model(
+            &left,
+            model,
+            db.get_database_backend(),
+        )?
+        .all(db)
+        .await?
         {
             let item = item.into_active_model();
             let key = get_key_from_active_model(&right.from_col, &item)?;
@@ -1082,7 +1083,7 @@ where
         }
         if !to_delete.is_empty() {
             J::delete_many()
-                .filter_by_value_tuples(&to_delete)
+                .filter_by_value_tuples(&to_delete, db.get_database_backend())
                 .exec(db)
                 .await?;
         }

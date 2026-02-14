@@ -497,7 +497,7 @@ fn expand_active_model_action(
 
         has_many_action.extend(quote! {
             if #field.is_replace() {
-                for item in model.find_belongs_to_self(#relation_enum)?.all(db)#await_? {
+                for item in model.find_belongs_to_self(#relation_enum, db.get_database_backend())?.all(db)#await_? {
                     if !#field.find(&item) {
                         #delete_associated_model
                     }
@@ -515,7 +515,7 @@ fn expand_active_model_action(
         });
 
         has_many_delete.extend(quote! {
-            for item in self.find_belongs_to_self(#relation_enum)?.all(db)#await_? {
+            for item in self.find_belongs_to_self(#relation_enum, db.get_database_backend())?.all(db)#await_? {
                 #delete_associated_model
             }
         });

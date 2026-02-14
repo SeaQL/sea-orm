@@ -172,8 +172,8 @@ pub fn column_tuple_in_condition(
         .is_in(values);
 
         Ok(expr.into())
-    } else if cfg!(feature = "sqlite-no-row-value-before-3_15")
-        && matches!(backend, DbBackend::Sqlite)
+    } else if (cfg!(feature = "sqlite-no-row-value-before-3_15")
+        && matches!(backend, DbBackend::Sqlite))
     {
         // SQLite supports row value expressions since 3.15.0
         // https://www.sqlite.org/releaselog/3_15_0.html
