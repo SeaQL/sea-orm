@@ -36,7 +36,7 @@ impl EntityTransformer {
                     col_def.into()
                 })
                 .map(|mut col: Column| {
-                    col.unique = table_create
+                    col.unique |= table_create
                         .get_indexes()
                         .iter()
                         .filter(|index| index.is_unique_key())
