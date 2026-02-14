@@ -81,7 +81,10 @@ where
             Some(res) => res,
             None => return Ok(0),
         };
-        let num_items = result.try_get::<i64>("", "num_items")? as u64;
+        #[allow(clippy::match_single_binding)]
+        let num_items = match self.db.get_database_backend() {
+            _ => result.try_get::<i64>("", "num_items")? as u64,
+        };
         Ok(num_items)
     }
 
