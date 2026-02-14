@@ -158,18 +158,18 @@ sqlx-dep = ["sqlx"]
 sqlx-mysql = [
     "sqlx-dep",
     "sea-query-sqlx/sqlx-mysql",
-    "sea-schema/sqlx-mysql",
+    "sea-schema?/sqlx-mysql",
 ]
 sqlx-postgres = [
     "sqlx-dep",
     "sea-query-sqlx/sqlx-postgres",
     "postgres-array",
-    "sea-schema/sqlx-postgres",
+    "sea-schema?/sqlx-postgres",
 ]
 sqlx-sqlite = [
     "sqlx-dep",
     "sea-query-sqlx/sqlx-sqlite",
-    "sea-schema/sqlx-sqlite",
+    "sea-schema?/sqlx-sqlite",
 ]
 sync = []
 tests-cfg = ["serde/derive"]
