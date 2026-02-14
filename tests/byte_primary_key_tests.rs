@@ -9,7 +9,7 @@ use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("byte_primary_key_tests").await;
-    create_tables(&ctx.db).await?;
+    create_byte_primary_key_table(&ctx.db).await?;
     create_and_update(&ctx.db).await?;
     ctx.delete().await;
 

@@ -31,7 +31,7 @@ fn top_bakery() -> bakery::ActiveModel {
 #[sea_orm_macros::test]
 pub async fn transaction() {
     let ctx = TestContext::new("transaction_test").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_bakery_table(&ctx.db).await.unwrap();
 
     ctx.db
         .transaction::<_, _, DbErr>(|txn| {
@@ -61,7 +61,7 @@ pub async fn rbac_transaction() {
     use sea_orm::rbac::{RbacEngine, RbacSnapshot, RbacUserId};
 
     let ctx = TestContext::new("rbac_transaction_test").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_bakery_table(&ctx.db).await.unwrap();
 
     ctx.db.replace_rbac(RbacEngine::from_snapshot(
         RbacSnapshot::danger_unrestricted(),
@@ -92,7 +92,7 @@ pub async fn rbac_transaction() {
 #[sea_orm_macros::test]
 pub async fn transaction_with_reference() {
     let ctx = TestContext::new("transaction_with_reference_test").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_bakery_table(&ctx.db).await.unwrap();
 
     let name1 = "SeaSide Bakery";
     let name2 = "Top Bakery";
@@ -142,7 +142,7 @@ fn _transaction_with_reference<'a>(
 #[sea_orm_macros::test]
 pub async fn transaction_begin_out_of_scope() -> Result<(), DbErr> {
     let ctx = TestContext::new("transaction_begin_out_of_scope_test").await;
-    create_tables(&ctx.db).await?;
+    create_bakery_table(&ctx.db).await?;
 
     assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
 
@@ -173,7 +173,7 @@ pub async fn rbac_transaction_begin_out_of_scope() -> Result<(), DbErr> {
     use sea_orm::rbac::{RbacEngine, RbacSnapshot, RbacUserId};
 
     let ctx = TestContext::new("rbac_transaction_begin_out_of_scope_test").await;
-    create_tables(&ctx.db).await?;
+    create_bakery_table(&ctx.db).await?;
 
     ctx.db.replace_rbac(RbacEngine::from_snapshot(
         RbacSnapshot::danger_unrestricted(),
@@ -206,7 +206,7 @@ pub async fn rbac_transaction_begin_out_of_scope() -> Result<(), DbErr> {
 #[sea_orm_macros::test]
 pub async fn transaction_begin_commit() -> Result<(), DbErr> {
     let ctx = TestContext::new("transaction_begin_commit_test").await;
-    create_tables(&ctx.db).await?;
+    create_bakery_table(&ctx.db).await?;
 
     assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
 
@@ -238,7 +238,7 @@ pub async fn rbac_transaction_begin_commit() -> Result<(), DbErr> {
     use sea_orm::rbac::{RbacEngine, RbacSnapshot, RbacUserId};
 
     let ctx = TestContext::new("rbac_transaction_begin_commit_test").await;
-    create_tables(&ctx.db).await?;
+    create_bakery_table(&ctx.db).await?;
 
     ctx.db.replace_rbac(RbacEngine::from_snapshot(
         RbacSnapshot::danger_unrestricted(),
@@ -272,7 +272,7 @@ pub async fn rbac_transaction_begin_commit() -> Result<(), DbErr> {
 #[sea_orm_macros::test]
 pub async fn transaction_begin_rollback() -> Result<(), DbErr> {
     let ctx = TestContext::new("transaction_begin_rollback_test").await;
-    create_tables(&ctx.db).await?;
+    create_bakery_table(&ctx.db).await?;
 
     assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
 
@@ -301,7 +301,7 @@ pub async fn transaction_begin_rollback() -> Result<(), DbErr> {
 #[sea_orm_macros::test]
 pub async fn transaction_closure_commit() -> Result<(), DbErr> {
     let ctx = TestContext::new("transaction_closure_commit_test").await;
-    create_tables(&ctx.db).await?;
+    create_bakery_table(&ctx.db).await?;
 
     assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
 
@@ -333,7 +333,7 @@ pub async fn transaction_closure_commit() -> Result<(), DbErr> {
 #[sea_orm_macros::test]
 pub async fn transaction_closure_rollback() -> Result<(), DbErr> {
     let ctx = TestContext::new("transaction_closure_rollback_test").await;
-    create_tables(&ctx.db).await?;
+    create_bakery_table(&ctx.db).await?;
 
     assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
 
@@ -377,7 +377,8 @@ pub async fn transaction_closure_rollback() -> Result<(), DbErr> {
 #[sea_orm_macros::test]
 pub async fn transaction_with_active_model_behaviour() -> Result<(), DbErr> {
     let ctx = TestContext::new("transaction_with_active_model_behaviour_test").await;
-    create_tables(&ctx.db).await?;
+    create_bakery_table(&ctx.db).await?;
+    create_cake_table(&ctx.db).await?;
 
     if let Ok(txn) = ctx.db.begin().await {
         assert_eq!(
@@ -460,7 +461,7 @@ pub async fn transaction_with_active_model_behaviour() -> Result<(), DbErr> {
 #[sea_orm_macros::test]
 pub async fn transaction_nested() {
     let ctx = TestContext::new("transaction_nested_test").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_bakery_table(&ctx.db).await.unwrap();
 
     ctx.db
         .transaction::<_, _, DbErr>(|txn| {
@@ -695,7 +696,7 @@ pub async fn transaction_nested() {
 #[sea_orm_macros::test]
 pub async fn transaction_manager_nested() -> Result<(), sea_orm::DbErr> {
     let ctx = TestContext::new("transaction_manager_nested").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_bakery_table(&ctx.db).await.unwrap();
 
     let txn = ctx.db.begin().await?;
     let _ = seaside_bakery().save(&txn).await?;
@@ -842,7 +843,7 @@ pub async fn rbac_transaction_nested() {
     use sea_orm::rbac::{RbacEngine, RbacSnapshot, RbacUserId};
 
     let ctx = TestContext::new("rbac_transaction_nested_test").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_bakery_table(&ctx.db).await.unwrap();
 
     ctx.db.replace_rbac(RbacEngine::from_snapshot(
         RbacSnapshot::danger_unrestricted(),
@@ -937,7 +938,7 @@ pub async fn rbac_transaction_nested() {
 #[sea_orm_macros::test]
 pub async fn transaction_with_config() {
     let ctx = TestContext::new("transaction_with_config").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_bakery_table(&ctx.db).await.unwrap();
 
     for (i, (isolation_level, access_mode)) in [
         (IsolationLevel::RepeatableRead, None),

@@ -34,7 +34,7 @@ async fn main() -> Result<(), DbErr> {
     let returning =
         Query::returning().exprs(columns.into_iter().map(|c| c.into_returning_expr(builder)));
 
-    bakery_chain::create_tables(db).await?;
+    bakery_chain::create_bakery_table(db).await?;
 
     if db.support_returning() {
         insert.returning(returning.clone());
@@ -81,7 +81,7 @@ async fn insert_many() {
     let ctx = TestContext::new("returning_tests_insert_many").await;
     let db = &ctx.db;
 
-    create_tables(db).await.unwrap();
+    create_edit_log_table(db).await.unwrap();
 
     Entity::insert(ActiveModel {
         id: NotSet,
@@ -182,7 +182,10 @@ async fn insert_many_composite_key() {
     let ctx = TestContext::new("returning_tests_insert_many_composite_key").await;
     let db = &ctx.db;
 
-    bakery_chain::create_tables(db).await.unwrap();
+    bakery_chain::create_bakery_table(db).await.unwrap();
+    bakery_chain::create_baker_table(db).await.unwrap();
+    bakery_chain::create_cake_table(db).await.unwrap();
+    bakery_chain::create_cakes_bakers_table(db).await.unwrap();
 
     baker::Entity::insert_many([
         baker::ActiveModel {
@@ -252,7 +255,7 @@ async fn update_many() -> Result<(), DbErr> {
     let ctx = TestContext::new("returning_tests_update_many").await;
     let db = &ctx.db;
 
-    create_tables(db).await?;
+    create_edit_log_table(db).await?;
 
     Entity::insert(
         Model {
@@ -363,7 +366,7 @@ async fn delete_many() -> Result<(), DbErr> {
     let ctx = TestContext::new("returning_tests_delete_many").await;
     let db = &ctx.db;
 
-    create_tables(db).await?;
+    create_edit_log_table(db).await?;
 
     let inserted_models = [
         Model {

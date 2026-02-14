@@ -9,7 +9,7 @@ use sea_orm::{DatabaseExecutor, IntoDatabaseExecutor, Set, TransactionTrait, pre
 #[sea_orm_macros::test]
 pub async fn connection_or_transaction_from_connection() {
     let ctx = TestContext::new("connection_or_transaction_from_connection").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_bakery_table(&ctx.db).await.unwrap();
 
     let cot = DatabaseExecutor::from(&ctx.db);
 
@@ -31,7 +31,7 @@ pub async fn connection_or_transaction_from_connection() {
 #[sea_orm_macros::test]
 pub async fn connection_or_transaction_from_transaction() {
     let ctx = TestContext::new("connection_or_transaction_from_transaction").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_bakery_table(&ctx.db).await.unwrap();
 
     let txn = ctx.db.begin().await.unwrap();
     let cot = DatabaseExecutor::from(&txn);
@@ -59,7 +59,7 @@ pub async fn connection_or_transaction_from_transaction() {
 #[sea_orm_macros::test]
 pub async fn connection_or_transaction_begin() {
     let ctx = TestContext::new("connection_or_transaction_begin").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_bakery_table(&ctx.db).await.unwrap();
 
     let cot = DatabaseExecutor::from(&ctx.db);
     let txn = cot.begin().await.unwrap();
@@ -87,7 +87,7 @@ pub async fn connection_or_transaction_begin() {
 #[sea_orm_macros::test]
 pub async fn connection_or_transaction_nested() {
     let ctx = TestContext::new("connection_or_transaction_nested").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_bakery_table(&ctx.db).await.unwrap();
 
     let txn = ctx.db.begin().await.unwrap();
     let cot = DatabaseExecutor::from(&txn);
@@ -128,7 +128,7 @@ pub async fn connection_or_transaction_nested() {
 #[sea_orm_macros::test]
 pub async fn connection_or_transaction_rollback() {
     let ctx = TestContext::new("connection_or_transaction_rollback").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_bakery_table(&ctx.db).await.unwrap();
 
     {
         let txn = ctx.db.begin().await.unwrap();
@@ -158,7 +158,7 @@ pub async fn connection_or_transaction_rollback() {
 #[sea_orm_macros::test]
 pub async fn into_database_executor_trait() {
     let ctx = TestContext::new("into_database_executor_trait").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_bakery_table(&ctx.db).await.unwrap();
 
     async fn save_bakery<'c, C>(db: C, name: &str) -> Result<(), DbErr>
     where

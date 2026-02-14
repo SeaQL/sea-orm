@@ -13,7 +13,7 @@ use sea_query::{Expr, ExprTrait, Query};
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("dyn_table_name_tests").await;
-    create_tables(&ctx.db).await?;
+    create_dyn_table_name_lazy_static_table(&ctx.db).await?;
     dyn_table_name(&ctx.db).await?;
     ctx.delete().await;
 

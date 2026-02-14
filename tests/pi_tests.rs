@@ -11,7 +11,7 @@ use std::str::FromStr;
 #[cfg(feature = "with-bigdecimal")]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("pi_tests").await;
-    create_tables(&ctx.db).await?;
+    create_pi_table(&ctx.db).await?;
     create_and_update_pi(&ctx.db).await?;
     ctx.delete().await;
 

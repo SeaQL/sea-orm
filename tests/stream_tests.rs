@@ -11,7 +11,7 @@ pub async fn stream() -> Result<(), DbErr> {
     use futures_util::StreamExt;
 
     let ctx = TestContext::new("stream").await;
-    create_tables(&ctx.db).await?;
+    create_bakery_table(&ctx.db).await?;
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),

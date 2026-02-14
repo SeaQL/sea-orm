@@ -11,17 +11,8 @@ use sea_query::{
     extension::postgres::Type,
 };
 
-pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
+pub async fn create_tea_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     let db_backend = db.get_database_backend();
-
-    create_log_table(db).await?;
-    create_metadata_table(db).await?;
-    create_repository_table(db).await?;
-    create_self_join_table(db).await?;
-    create_byte_primary_key_table(db).await?;
-    create_satellites_table(db).await?;
-    create_transaction_log_table(db).await?;
-
     let create_enum_stmts = match db_backend {
         DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
         DbBackend::Postgres => {
@@ -39,44 +30,11 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
         db => {
             return Err(DbErr::BackendNotSupported {
                 db: db.as_str(),
-                ctx: "create_byte_primary_key_table",
+                ctx: "create_tea_enum",
             });
         }
     };
     create_enum(db, &create_enum_stmts, ActiveEnum).await?;
-
-    create_active_enum_table(db).await?;
-    create_active_enum_child_table(db).await?;
-    create_insert_default_table(db).await?;
-    #[cfg(feature = "with-bigdecimal")]
-    {
-        create_pi_table(db).await?;
-    }
-    create_uuid_fmt_table(db).await?;
-    create_edit_log_table(db).await?;
-    create_teas_table(db).await?;
-    create_binary_table(db).await?;
-    if matches!(db_backend, DbBackend::Postgres) {
-        create_bits_table(db).await?;
-    }
-    create_dyn_table_name_lazy_static_table(db).await?;
-    create_value_type_table(db).await?;
-
-    create_json_vec_table(db).await?;
-    create_json_struct_table(db).await?;
-    create_json_string_vec_table(db).await?;
-    create_json_struct_vec_table(db).await?;
-
-    if DbBackend::Postgres == db_backend {
-        create_value_type_postgres_table(db).await?;
-        create_collection_table(db).await?;
-        create_event_trigger_table(db).await?;
-        create_categories_table(db).await?;
-        #[cfg(feature = "postgres-vector")]
-        create_embedding_table(db).await?;
-        create_host_network_table(db).await?;
-    }
-
     Ok(())
 }
 

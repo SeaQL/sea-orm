@@ -10,7 +10,7 @@ use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 #[cfg(feature = "sqlx-postgres")]
 async fn main() -> Result<(), DbErr> {
     let ctx = common::TestContext::new("bits_tests").await;
-    create_tables(&ctx.db).await?;
+    create_bits_table(&ctx.db).await?;
     create_and_update(&ctx.db).await?;
     ctx.delete().await;
 

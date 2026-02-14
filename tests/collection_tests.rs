@@ -11,7 +11,8 @@ use serde_json::json;
 #[cfg(all(feature = "sqlx-postgres", feature = "postgres-array"))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("collection_tests").await;
-    create_tables(&ctx.db).await?;
+    create_tea_enum(&ctx.db).await?;
+    create_collection_table(&ctx.db).await?;
     insert_collection(&ctx.db).await?;
     update_collection(&ctx.db).await?;
     select_collection(&ctx.db).await?;

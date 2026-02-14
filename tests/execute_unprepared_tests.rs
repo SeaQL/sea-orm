@@ -9,7 +9,7 @@ use sea_orm::{ConnectionTrait, DatabaseConnection, entity::prelude::*};
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("execute_unprepared_tests").await;
-    create_tables(&ctx.db).await?;
+    create_insert_default_table(&ctx.db).await?;
     execute_unprepared(&ctx.db).await?;
     ctx.delete().await;
 

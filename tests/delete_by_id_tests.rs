@@ -7,7 +7,7 @@ use sea_orm::{DatabaseConnection, IntoActiveModel, entity::prelude::*};
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("delete_by_id_tests").await;
-    create_tables(&ctx.db).await?;
+    create_log_table(&ctx.db).await?;
     create_and_delete_applog(&ctx.db).await?;
 
     ctx.delete().await;

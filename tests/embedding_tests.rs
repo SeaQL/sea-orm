@@ -13,7 +13,7 @@ mod test {
     #[sea_orm_macros::test]
     async fn main() -> Result<(), DbErr> {
         let ctx = TestContext::new("embedding_tests").await;
-        create_tables(&ctx.db).await?;
+        create_embedding_table(&ctx.db).await?;
         insert_embedding(&ctx.db).await?;
         update_embedding(&ctx.db).await?;
         select_embedding(&ctx.db).await?;

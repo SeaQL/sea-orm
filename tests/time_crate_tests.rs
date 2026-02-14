@@ -10,7 +10,7 @@ use time::macros::{date, time};
 #[sea_orm_macros::test]
 async fn main() {
     let ctx = TestContext::new("time_crate_tests").await;
-    create_tables(&ctx.db).await.unwrap();
+    create_transaction_log_table(&ctx.db).await.unwrap();
     create_transaction_log(&ctx.db).await.unwrap();
 
     ctx.delete().await;
