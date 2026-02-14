@@ -77,6 +77,10 @@ impl SqlxPostgresConnector {
             }
         }
 
+        if let Some(application_name) = &options.application_name {
+            sqlx_opts = sqlx_opts.application_name(application_name);
+        }
+
         if let Some(f) = &options.pg_opts_fn {
             sqlx_opts = f(sqlx_opts);
         }

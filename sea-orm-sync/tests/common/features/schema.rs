@@ -11,17 +11,8 @@ use sea_query::{
     extension::postgres::Type,
 };
 
-pub fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
+pub fn create_tea_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     let db_backend = db.get_database_backend();
-
-    create_log_table(db)?;
-    create_metadata_table(db)?;
-    create_repository_table(db)?;
-    create_self_join_table(db)?;
-    create_byte_primary_key_table(db)?;
-    create_satellites_table(db)?;
-    create_transaction_log_table(db)?;
-
     let create_enum_stmts = match db_backend {
         DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
         DbBackend::Postgres => {
@@ -39,44 +30,11 @@ pub fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
         db => {
             return Err(DbErr::BackendNotSupported {
                 db: db.as_str(),
-                ctx: "create_byte_primary_key_table",
+                ctx: "create_tea_enum",
             });
         }
     };
     create_enum(db, &create_enum_stmts, ActiveEnum)?;
-
-    create_active_enum_table(db)?;
-    create_active_enum_child_table(db)?;
-    create_insert_default_table(db)?;
-    #[cfg(feature = "with-bigdecimal")]
-    {
-        create_pi_table(db)?;
-    }
-    create_uuid_fmt_table(db)?;
-    create_edit_log_table(db)?;
-    create_teas_table(db)?;
-    create_binary_table(db)?;
-    if matches!(db_backend, DbBackend::Postgres) {
-        create_bits_table(db)?;
-    }
-    create_dyn_table_name_lazy_static_table(db)?;
-    create_value_type_table(db)?;
-
-    create_json_vec_table(db)?;
-    create_json_struct_table(db)?;
-    create_json_string_vec_table(db)?;
-    create_json_struct_vec_table(db)?;
-
-    if DbBackend::Postgres == db_backend {
-        create_value_type_postgres_table(db)?;
-        create_collection_table(db)?;
-        create_event_trigger_table(db)?;
-        create_categories_table(db)?;
-        #[cfg(feature = "postgres-vector")]
-        create_embedding_table(db)?;
-        create_host_network_table(db)?;
-    }
-
     Ok(())
 }
 

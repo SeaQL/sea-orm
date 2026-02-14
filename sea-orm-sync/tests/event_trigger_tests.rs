@@ -17,7 +17,7 @@ use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 #[cfg(all(feature = "sqlx-postgres", feature = "postgres-array"))]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("event_trigger_tests");
-    create_tables(&ctx.db)?;
+    create_event_trigger_table(&ctx.db)?;
     insert_event_trigger(&ctx.db)?;
     ctx.delete();
 

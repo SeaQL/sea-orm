@@ -9,7 +9,7 @@ use sea_orm::{DatabaseExecutor, IntoDatabaseExecutor, Set, TransactionTrait, pre
 #[sea_orm_macros::test]
 pub fn connection_or_transaction_from_connection() {
     let ctx = TestContext::new("connection_or_transaction_from_connection");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let cot = DatabaseExecutor::from(&ctx.db);
 
@@ -30,7 +30,7 @@ pub fn connection_or_transaction_from_connection() {
 #[sea_orm_macros::test]
 pub fn connection_or_transaction_from_transaction() {
     let ctx = TestContext::new("connection_or_transaction_from_transaction");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let txn = ctx.db.begin().unwrap();
     let cot = DatabaseExecutor::from(&txn);
@@ -57,7 +57,7 @@ pub fn connection_or_transaction_from_transaction() {
 #[sea_orm_macros::test]
 pub fn connection_or_transaction_begin() {
     let ctx = TestContext::new("connection_or_transaction_begin");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let cot = DatabaseExecutor::from(&ctx.db);
     let txn = cot.begin().unwrap();
@@ -84,7 +84,7 @@ pub fn connection_or_transaction_begin() {
 #[sea_orm_macros::test]
 pub fn connection_or_transaction_nested() {
     let ctx = TestContext::new("connection_or_transaction_nested");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let txn = ctx.db.begin().unwrap();
     let cot = DatabaseExecutor::from(&txn);
@@ -123,7 +123,7 @@ pub fn connection_or_transaction_nested() {
 #[sea_orm_macros::test]
 pub fn connection_or_transaction_rollback() {
     let ctx = TestContext::new("connection_or_transaction_rollback");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     {
         let txn = ctx.db.begin().unwrap();
@@ -152,7 +152,7 @@ pub fn connection_or_transaction_rollback() {
 #[sea_orm_macros::test]
 pub fn into_database_executor_trait() {
     let ctx = TestContext::new("into_database_executor_trait");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     fn save_bakery<'c, C>(db: C, name: &str) -> Result<(), DbErr>
     where

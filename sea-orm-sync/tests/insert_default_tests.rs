@@ -9,7 +9,7 @@ use sea_orm::entity::prelude::*;
 #[sea_orm_macros::test]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("insert_default_tests");
-    create_tables(&ctx.db)?;
+    create_insert_default_table(&ctx.db)?;
     create_insert_default(&ctx.db)?;
     ctx.delete();
 

@@ -11,7 +11,7 @@ pub use sea_orm::{ConnectionTrait, QueryFilter, QuerySelect};
 #[sea_orm_macros::test]
 pub fn find_one_with_no_result() {
     let ctx = TestContext::new("find_one_with_no_result");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let bakery = Bakery::find().one(&ctx.db).unwrap();
     assert_eq!(bakery, None);
@@ -22,7 +22,7 @@ pub fn find_one_with_no_result() {
 #[sea_orm_macros::test]
 pub fn find_one_with_result() {
     let ctx = TestContext::new("find_one_with_result");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -42,7 +42,7 @@ pub fn find_one_with_result() {
 #[sea_orm_macros::test]
 pub fn find_by_id_with_no_result() {
     let ctx = TestContext::new("find_by_id_with_no_result");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let bakery = Bakery::find_by_id(999).one(&ctx.db).unwrap();
     assert_eq!(bakery, None);
@@ -53,7 +53,7 @@ pub fn find_by_id_with_no_result() {
 #[sea_orm_macros::test]
 pub fn find_by_id_with_result() {
     let ctx = TestContext::new("find_by_id_with_result");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -76,7 +76,7 @@ pub fn find_by_id_with_result() {
 #[sea_orm_macros::test]
 pub fn find_all_with_no_result() {
     let ctx = TestContext::new("find_all_with_no_result");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let bakeries = Bakery::find().all(&ctx.db).unwrap();
     assert_eq!(bakeries.len(), 0);
@@ -87,7 +87,7 @@ pub fn find_all_with_no_result() {
 #[sea_orm_macros::test]
 pub fn find_all_with_result() {
     let ctx = TestContext::new("find_all_with_result");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let _ = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -115,7 +115,7 @@ pub fn find_all_with_result() {
 #[sea_orm_macros::test]
 pub fn find_all_filter_no_result() {
     let ctx = TestContext::new("find_all_filter_no_result");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let _ = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -146,7 +146,7 @@ pub fn find_all_filter_no_result() {
 #[sea_orm_macros::test]
 pub fn find_all_filter_with_results() {
     let ctx = TestContext::new("find_all_filter_with_results");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let _ = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -177,7 +177,7 @@ pub fn find_all_filter_with_results() {
 #[sea_orm_macros::test]
 pub fn select_only_exclude_option_fields() {
     let ctx = TestContext::new("select_only_exclude_option_fields");
-    create_tables(&ctx.db).unwrap();
+    create_customer_table(&ctx.db).unwrap();
 
     let _ = customer::ActiveModel {
         name: Set("Alice".to_owned()),

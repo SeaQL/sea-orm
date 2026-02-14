@@ -15,7 +15,7 @@ use sea_orm::{DbConn, TryInsertResult};
 #[sea_orm_macros::test]
 fn main() {
     let ctx = TestContext::new("bakery_chain_empty_insert_tests");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
     test(&ctx.db);
     ctx.delete();
 }

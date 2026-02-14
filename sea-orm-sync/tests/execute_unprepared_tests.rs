@@ -9,7 +9,7 @@ use sea_orm::{ConnectionTrait, DatabaseConnection, entity::prelude::*};
 #[sea_orm_macros::test]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("execute_unprepared_tests");
-    create_tables(&ctx.db)?;
+    create_insert_default_table(&ctx.db)?;
     execute_unprepared(&ctx.db)?;
     ctx.delete();
 

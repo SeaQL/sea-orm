@@ -15,7 +15,8 @@ use sea_query::ExprTrait;
 #[sea_orm_macros::test]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("enum_primary_key_tests");
-    create_tables(&ctx.db)?;
+    create_tea_enum(&ctx.db)?;
+    create_teas_table(&ctx.db)?;
     insert_teas(&ctx.db)?;
     ctx.delete();
 

@@ -11,7 +11,7 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 #[cfg(feature = "sqlx-postgres")]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("host_network_tests");
-    create_tables(&ctx.db)?;
+    create_host_network_table(&ctx.db)?;
     create_and_update_host_network(&ctx.db)?;
     ctx.delete();
 

@@ -11,7 +11,7 @@ use sea_orm::{Set, sea_query::OnConflict};
 #[sea_orm_macros::test]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("upsert_tests");
-    create_tables(&ctx.db)?;
+    create_insert_default_table(&ctx.db)?;
     create_insert_default(&ctx.db)?;
     ctx.delete();
 

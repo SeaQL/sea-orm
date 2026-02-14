@@ -10,7 +10,7 @@ use sea_orm::{DatabaseConnection, IntoActiveModel, Set, entity::prelude::*};
 #[cfg(not(feature = "sync"))]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("features_parallel_tests");
-    create_tables(&ctx.db)?;
+    create_metadata_table(&ctx.db)?;
     crud_in_parallel(&ctx.db)?;
     ctx.delete();
 

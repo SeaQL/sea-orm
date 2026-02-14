@@ -7,7 +7,7 @@ use sea_orm::{DatabaseConnection, IntoActiveModel, entity::prelude::*};
 #[sea_orm_macros::test]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("delete_by_id_tests");
-    create_tables(&ctx.db)?;
+    create_log_table(&ctx.db)?;
     create_and_delete_applog(&ctx.db)?;
 
     ctx.delete();

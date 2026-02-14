@@ -9,7 +9,7 @@ pub use sea_orm::{ConnectionTrait, DbErr, QueryFilter};
 #[sea_orm_macros::test]
 pub fn stream() -> Result<(), DbErr> {
     let ctx = TestContext::new("stream");
-    create_tables(&ctx.db)?;
+    create_bakery_table(&ctx.db)?;
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),

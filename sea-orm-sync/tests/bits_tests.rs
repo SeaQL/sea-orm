@@ -10,7 +10,7 @@ use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 #[cfg(feature = "sqlx-postgres")]
 fn main() -> Result<(), DbErr> {
     let ctx = common::TestContext::new("bits_tests");
-    create_tables(&ctx.db)?;
+    create_bits_table(&ctx.db)?;
     create_and_update(&ctx.db)?;
     ctx.delete();
 

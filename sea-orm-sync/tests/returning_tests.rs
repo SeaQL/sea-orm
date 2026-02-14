@@ -34,7 +34,7 @@ fn main() -> Result<(), DbErr> {
     let returning =
         Query::returning().exprs(columns.into_iter().map(|c| c.into_returning_expr(builder)));
 
-    bakery_chain::create_tables(db)?;
+    bakery_chain::create_bakery_table(db)?;
 
     if db.support_returning() {
         insert.returning(returning.clone());
@@ -77,7 +77,7 @@ fn insert_many() {
     let ctx = TestContext::new("returning_tests_insert_many");
     let db = &ctx.db;
 
-    create_tables(db).unwrap();
+    create_edit_log_table(db).unwrap();
 
     Entity::insert(ActiveModel {
         id: NotSet,
@@ -173,7 +173,10 @@ fn insert_many_composite_key() {
     let ctx = TestContext::new("returning_tests_insert_many_composite_key");
     let db = &ctx.db;
 
-    bakery_chain::create_tables(db).unwrap();
+    bakery_chain::create_bakery_table(db).unwrap();
+    bakery_chain::create_baker_table(db).unwrap();
+    bakery_chain::create_cake_table(db).unwrap();
+    bakery_chain::create_cakes_bakers_table(db).unwrap();
 
     baker::Entity::insert_many([
         baker::ActiveModel {
@@ -240,7 +243,7 @@ fn update_many() -> Result<(), DbErr> {
     let ctx = TestContext::new("returning_tests_update_many");
     let db = &ctx.db;
 
-    create_tables(db)?;
+    create_edit_log_table(db)?;
 
     Entity::insert(
         Model {
@@ -346,7 +349,7 @@ fn delete_many() -> Result<(), DbErr> {
     let ctx = TestContext::new("returning_tests_delete_many");
     let db = &ctx.db;
 
-    create_tables(db)?;
+    create_edit_log_table(db)?;
 
     let inserted_models = [
         Model {

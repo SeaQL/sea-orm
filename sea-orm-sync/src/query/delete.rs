@@ -213,13 +213,13 @@ where
     /// # Panics
     ///
     /// Panic if `ValueTuple` arity does not match primary key
-    pub fn filter_by_value_tuples(mut self, values: &[ValueTuple]) -> Self {
+    pub fn filter_by_value_tuples(mut self, values: &[ValueTuple], db_backend: DbBackend) -> Self {
         self.query.cond_where(
             column_tuple_in_condition(
                 &E::default().table_ref(),
                 &E::primary_key_identity(),
                 values,
-                DbBackend::Sqlite,
+                db_backend,
             )
             .expect(""),
         );

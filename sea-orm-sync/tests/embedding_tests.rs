@@ -13,7 +13,7 @@ mod test {
     #[sea_orm_macros::test]
     fn main() -> Result<(), DbErr> {
         let ctx = TestContext::new("embedding_tests");
-        create_tables(&ctx.db)?;
+        create_embedding_table(&ctx.db)?;
         insert_embedding(&ctx.db)?;
         update_embedding(&ctx.db)?;
         select_embedding(&ctx.db)?;

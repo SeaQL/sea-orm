@@ -10,7 +10,7 @@ use serde_json::json;
 #[sea_orm_macros::test]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("bakery_chain_uuid_tests");
-    create_tables(&ctx.db)?;
+    create_metadata_table(&ctx.db)?;
     create_and_update_metadata(&ctx.db)?;
     insert_metadata(&ctx.db)?;
     ctx.delete();

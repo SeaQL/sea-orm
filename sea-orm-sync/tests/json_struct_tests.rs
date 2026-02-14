@@ -31,7 +31,7 @@ mod json_compact {
 #[sea_orm_macros::test]
 fn json_struct_tests() -> Result<(), DbErr> {
     let ctx = TestContext::new("json_struct_tests");
-    create_tables(&ctx.db)?;
+    create_json_struct_table(&ctx.db)?;
     insert_json_struct_1(&ctx.db)?;
     insert_json_struct_2(&ctx.db)?;
     insert_json_struct_3(&ctx.db)?;

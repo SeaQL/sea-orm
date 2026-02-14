@@ -8,7 +8,8 @@ use sea_orm::{DatabaseConnection, IntoActiveModel, NotSet, Set, entity::prelude:
 #[sea_orm_macros::test]
 fn bakery_chain_schema_timestamp_tests() -> Result<(), DbErr> {
     let ctx = TestContext::new("bakery_chain_schema_timestamp_tests");
-    create_tables(&ctx.db)?;
+    create_log_table(&ctx.db)?;
+    create_satellites_table(&ctx.db)?;
     create_applog(&ctx.db)?;
     create_satellites_log(&ctx.db)?;
 

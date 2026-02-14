@@ -9,7 +9,7 @@ use sea_orm::{DbBackend, IntoActiveModel, QueryOrder, entity::prelude::*, query:
 #[sea_orm_macros::test]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("self_join_tests");
-    create_tables(&ctx.db)?;
+    create_self_join_table(&ctx.db)?;
     create_metadata(&ctx.db)?;
     ctx.delete();
     find_linked_001();

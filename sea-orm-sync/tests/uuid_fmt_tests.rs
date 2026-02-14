@@ -9,7 +9,7 @@ use sea_orm::{DatabaseConnection, FromQueryResult, entity::prelude::*, entity::*
 #[sea_orm_macros::test]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("uuid_fmt_tests");
-    create_tables(&ctx.db)?;
+    create_uuid_fmt_table(&ctx.db)?;
     insert_uuid_fmt(&ctx.db)?;
     test_text_uuid(&ctx.db)?;
     ctx.delete();

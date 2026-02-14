@@ -17,7 +17,12 @@ use sea_orm::{
 #[sea_orm_macros::test]
 fn active_enum_tests() -> Result<(), DbErr> {
     let ctx = TestContext::new("active_enum_tests");
-    create_tables(&ctx.db)?;
+    create_tea_enum(&ctx.db)?;
+    create_active_enum_table(&ctx.db)?;
+    create_active_enum_child_table(&ctx.db)?;
+    #[cfg(feature = "sqlx-postgres")]
+    create_categories_table(&ctx.db)?;
+
     insert_active_enum(&ctx.db)?;
     insert_active_enum_child(&ctx.db)?;
 

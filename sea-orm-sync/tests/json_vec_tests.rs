@@ -9,7 +9,9 @@ use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 #[sea_orm_macros::test]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("json_vec_tests");
-    create_tables(&ctx.db)?;
+    create_json_vec_table(&ctx.db)?;
+    create_json_string_vec_table(&ctx.db)?;
+    create_json_struct_vec_table(&ctx.db)?;
     insert_json_vec(&ctx.db)?;
     insert_json_string_vec_derive(&ctx.db)?;
     insert_json_struct_vec_derive(&ctx.db)?;

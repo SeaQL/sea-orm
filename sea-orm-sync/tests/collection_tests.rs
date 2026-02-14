@@ -11,7 +11,8 @@ use serde_json::json;
 #[cfg(all(feature = "sqlx-postgres", feature = "postgres-array"))]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("collection_tests");
-    create_tables(&ctx.db)?;
+    create_tea_enum(&ctx.db)?;
+    create_collection_table(&ctx.db)?;
     insert_collection(&ctx.db)?;
     update_collection(&ctx.db)?;
     select_collection(&ctx.db)?;

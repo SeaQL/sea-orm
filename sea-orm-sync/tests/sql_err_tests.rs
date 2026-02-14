@@ -11,7 +11,8 @@ use uuid::Uuid;
 #[sea_orm_macros::test]
 fn main() {
     let ctx = TestContext::new("bakery_chain_sql_err_tests");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
+    create_cake_table(&ctx.db).unwrap();
     test_error(&ctx.db);
     ctx.delete();
 }

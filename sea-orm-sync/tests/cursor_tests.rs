@@ -11,10 +11,13 @@ use serde_json::json;
 #[sea_orm_macros::test]
 fn cursor_tests() -> Result<(), DbErr> {
     let ctx = TestContext::new("cursor_tests");
-    create_tables(&ctx.db)?;
+    create_insert_default_table(&ctx.db)?;
     create_insert_default(&ctx.db)?;
     cursor_pagination(&ctx.db)?;
-    bakery_chain_schema::create_tables(&ctx.db)?;
+    bakery_chain_schema::create_bakery_table(&ctx.db)?;
+    bakery_chain_schema::create_baker_table(&ctx.db)?;
+    bakery_chain_schema::create_cake_table(&ctx.db)?;
+    bakery_chain_schema::create_cakes_bakers_table(&ctx.db)?;
     create_baker_cake(&ctx.db)?;
     cursor_related_pagination(&ctx.db)?;
     ctx.delete();

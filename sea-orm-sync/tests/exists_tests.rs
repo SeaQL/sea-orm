@@ -9,7 +9,7 @@ pub use sea_orm::{ConnectionTrait, QueryFilter, QueryOrder, QuerySelect, SelectE
 #[sea_orm_macros::test]
 pub fn exists_with_no_result() {
     let ctx = TestContext::new("exists_with_no_result");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let exists = Bakery::find().exists(&ctx.db).unwrap();
     assert_eq!(exists, false);
@@ -20,7 +20,7 @@ pub fn exists_with_no_result() {
 #[sea_orm_macros::test]
 pub fn exists_with_result() {
     let ctx = TestContext::new("exists_with_result");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let _bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -39,7 +39,7 @@ pub fn exists_with_result() {
 #[sea_orm_macros::test]
 pub fn exists_with_filter_no_result() {
     let ctx = TestContext::new("exists_with_filter_no_result");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let _bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -61,7 +61,7 @@ pub fn exists_with_filter_no_result() {
 #[sea_orm_macros::test]
 pub fn exists_with_filter_has_result() {
     let ctx = TestContext::new("exists_with_filter_has_result");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let _bakery1 = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -91,7 +91,7 @@ pub fn exists_with_filter_has_result() {
 #[sea_orm_macros::test]
 pub fn exists_with_complex_query() {
     let ctx = TestContext::new("exists_with_complex_query");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let _bakery1 = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -137,7 +137,8 @@ pub fn exists_with_complex_query() {
 #[sea_orm_macros::test]
 pub fn exists_with_joins() {
     let ctx = TestContext::new("exists_with_joins");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
+    create_cake_table(&ctx.db).unwrap();
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -180,7 +181,7 @@ pub fn exists_with_joins() {
 #[sea_orm_macros::test]
 pub fn exists_with_ordering() {
     let ctx = TestContext::new("exists_with_ordering");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     let _bakery1 = bakery::ActiveModel {
         name: Set("A Bakery".to_owned()),
@@ -211,7 +212,7 @@ pub fn exists_with_ordering() {
 #[sea_orm_macros::test]
 pub fn exists_with_limit_offset() {
     let ctx = TestContext::new("exists_with_limit_offset");
-    create_tables(&ctx.db).unwrap();
+    create_bakery_table(&ctx.db).unwrap();
 
     // Insert multiple bakeries
     for i in 1..=5 {

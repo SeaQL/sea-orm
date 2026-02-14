@@ -9,7 +9,7 @@ use sea_orm::{PaginatorTrait, QueryOrder, Set, entity::prelude::*};
 #[sea_orm_macros::test]
 fn paginator_tests() -> Result<(), DbErr> {
     let ctx = TestContext::new("paginator_tests");
-    create_tables(&ctx.db)?;
+    create_insert_default_table(&ctx.db)?;
     create_insert_default(&ctx.db)?;
     paginator_num_items(&ctx.db)?;
     paginator_num_pages(&ctx.db)?;

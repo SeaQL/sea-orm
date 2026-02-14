@@ -10,7 +10,8 @@ use serde_json::json;
 #[sea_orm_macros::test]
 fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("features_schema_string_primary_key_tests");
-    create_tables(&ctx.db)?;
+    create_repository_table(&ctx.db)?;
+    create_edit_log_table(&ctx.db)?;
     create_and_update_repository(&ctx.db)?;
     insert_and_delete_repository(&ctx.db)?;
     ctx.delete();
