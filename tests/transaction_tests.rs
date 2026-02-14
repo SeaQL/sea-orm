@@ -4,7 +4,10 @@ pub mod common;
 
 pub use common::{TestContext, bakery_chain::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{AccessMode, DatabaseTransaction, IsolationLevel, Set, TransactionTrait, prelude::*};
+use sea_orm::{
+    AccessMode, DatabaseTransaction, IsolationLevel, Set, SqliteTransactionMode,
+    TransactionOptions, TransactionTrait, prelude::*,
+};
 
 #[cfg(not(feature = "sync"))]
 type FutureResult<'a> =
@@ -1016,4 +1019,39 @@ fn _transaction_with_config<'a>(
 
         Ok(())
     })
+}
+
+#[sea_orm_macros::test]
+pub async fn transaction_begin_with_options() -> Result<(), DbErr> {
+    let ctx = TestContext::new("transaction_begin_with_options_test").await;
+    create_tables(&ctx.db).await?;
+
+    assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
+
+    {
+        // Transaction begin in this scope
+        let txn = ctx
+            .db
+            .begin_with_options(TransactionOptions {
+                sqlite_transaction_mode: Some(SqliteTransactionMode::Immediate),
+                ..Default::default()
+            })
+            .await?;
+
+        seaside_bakery().save(&txn).await?;
+
+        assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 1);
+
+        top_bakery().save(&txn).await?;
+
+        assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 2);
+
+        // Commit changes before the end of scope
+        txn.commit().await?;
+    }
+
+    assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 2);
+
+    ctx.delete().await;
+    Ok(())
 }
