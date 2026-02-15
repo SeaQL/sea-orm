@@ -27,7 +27,8 @@ features = [
     "runtime-tokio-native-tls",
     "postgres-array",
     "postgres-vector",
-    "sea-orm-internal",
+    "with-ipnetwork",
+    "with-arrow",
 ]
 rustdoc-args = ["--cfg", "docsrs"]
 
@@ -36,6 +37,7 @@ name = "sea_orm"
 path = "src/lib.rs"
 
 [dependencies]
+arrow = { version = "54", default-features = false, optional = true }
 async-stream = { version = "0.3", default-features = false }
 async-trait = { version = "0.1", default-features = false }
 bigdecimal = { version = "0.4", default-features = false, features = [
@@ -90,12 +92,10 @@ uuid = { version = "1", default-features = false, optional = true }
 dotenv = "0.15"
 maplit = { version = "1" }
 pretty_assertions = { version = "0.7" }
-sea-orm = { path = ".", features = [
+sea-orm = { path = ".", default-features = false, features = [
     "mock",
     "debug-print",
     "tests-cfg",
-    "postgres-array",
-    "with-ipnetwork",
 ] }
 smol = { version = "1.2" }
 smol-potat = { version = "1.1" }
@@ -173,8 +173,17 @@ sqlx-sqlite = [
 ]
 sync = []
 tests-cfg = ["serde/derive"]
-tests-features = ["default", "rbac", "schema-sync", "with-bigdecimal"]
+tests-features = [
+    "default",
+    "postgres-array",
+    "rbac",
+    "schema-sync",
+    "with-arrow",
+    "with-bigdecimal",
+    "with-ipnetwork",
+]
 tracing-spans = []
+with-arrow = ["arrow"]
 with-bigdecimal = [
     "bigdecimal",
     "sea-query/with-bigdecimal",
