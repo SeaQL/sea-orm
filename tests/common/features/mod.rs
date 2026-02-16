@@ -14,6 +14,7 @@ pub mod edit_log;
 #[cfg(feature = "postgres-vector")]
 pub mod embedding;
 pub mod event_trigger;
+#[cfg(feature = "with-ipnetwork")]
 pub mod host_network;
 pub mod insert_default;
 pub mod json_struct;
@@ -47,7 +48,6 @@ pub use edit_log::Entity as EditLog;
 #[cfg(feature = "postgres-vector")]
 pub use embedding::Entity as Embedding;
 pub use event_trigger::Entity as EventTrigger;
-pub use host_network::Entity as HostNetwork;
 pub use insert_default::Entity as InsertDefault;
 pub use json_struct::Entity as JsonStruct;
 pub use json_vec::Entity as JsonVec;

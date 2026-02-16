@@ -65,5 +65,6 @@ fn main() {
     it_impl_traits!(time::OffsetDateTime);
     it_impl_traits!(rust_decimal::Decimal);
     it_impl_traits!(uuid::Uuid);
+    #[cfg(feature = "with-ipnetwork")]
     it_impl_traits!(ipnetwork::IpNetwork);
 }

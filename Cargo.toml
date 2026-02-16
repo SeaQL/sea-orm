@@ -93,8 +93,9 @@ dotenv = "0.15"
 maplit = { version = "1" }
 pretty_assertions = { version = "0.7" }
 sea-orm = { path = ".", default-features = false, features = [
-    "mock",
     "debug-print",
+    "mock",
+    "postgres-array",
     "tests-cfg",
 ] }
 smol = { version = "1.2" }

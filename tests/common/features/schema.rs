@@ -464,6 +464,7 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     create_table(db, &stmt, Collection).await
 }
 
+#[cfg(feature = "with-ipnetwork")]
 pub async fn create_host_network_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = sea_query::Table::create()
         .table(host_network::Entity)

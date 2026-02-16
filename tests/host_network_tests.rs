@@ -1,4 +1,5 @@
 #![allow(unused_imports, dead_code)]
+#![cfg(feature = "with-ipnetwork")]
 
 pub mod common;
 
