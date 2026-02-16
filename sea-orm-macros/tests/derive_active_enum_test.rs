@@ -1,3 +1,4 @@
+use sea_orm::sea_query::{ArrayType, Value, ValueType};
 use sea_orm::{ActiveEnum, entity::prelude::StringLen};
 use sea_orm_macros::{DeriveActiveEnum, EnumIter};
 
@@ -35,14 +36,20 @@ enum TestEnum {
 }
 
 #[derive(Debug, EnumIter, DeriveActiveEnum, Eq, PartialEq)]
+#[sea_orm(db_type = "Enum", enum_name = "test_enum", rename_all = "camelCase")]
+enum TestRenameAllWithoutCasesEnum {
+    HelloWorld,
+}
+
+#[derive(Debug, EnumIter, DeriveActiveEnum, Eq, PartialEq)]
 #[sea_orm(
-    rs_type = "String",
+    rs_type = "Enum",
     db_type = "Enum",
     enum_name = "test_enum",
     rename_all = "camelCase"
 )]
-enum TestRenameAllWithoutCasesEnum {
-    HelloWorld,
+enum TestEnumWithEnumValue {
+    DefaultVariant,
 }
 
 #[derive(Debug, EnumIter, DeriveActiveEnum, Eq, PartialEq)]
@@ -148,7 +155,67 @@ fn derive_active_enum_value_2() {
 
     assert_eq!(TestEnum3::HelloWorld.to_value(), "hello_world");
     assert_eq!(
-        TestRenameAllWithoutCasesEnum::HelloWorld.to_value(),
+        TestRenameAllWithoutCasesEnum::HelloWorld
+            .to_value()
+            .value
+            .as_ref(),
         "helloWorld"
     );
+}
+
+#[test]
+fn derive_database_enum_value_type() {
+    assert_eq!(TestEnum::enum_type_name(), Some("test_enum"));
+    assert_eq!(TestEnum::array_type(), ArrayType::String);
+    assert_eq!(
+        Value::from(TestEnum::DefaultVariant),
+        Value::String(Some(String::from("defaultVariant")))
+    );
+    assert_eq!(
+        <TestEnum as ValueType>::try_from(Value::String(Some(String::from("defaultVariant"))))
+            .unwrap(),
+        TestEnum::DefaultVariant
+    );
+}
+
+#[test]
+fn derive_database_enum_rs_type_enum() {
+    let value = TestEnumWithEnumValue::DefaultVariant.to_value();
+    assert_eq!(value.value.as_ref(), "defaultVariant");
+    assert_eq!(
+        <TestEnumWithEnumValue as ActiveEnum>::try_from_value(&value),
+        Ok(TestEnumWithEnumValue::DefaultVariant)
+    );
+    let value: Value = value.into();
+    assert_eq!(
+        value,
+        Value::Enum(sea_orm::sea_query::OptionEnum::Some(Box::new(
+            sea_orm::sea_query::Enum {
+                type_name: String::from("test_enum").into(),
+                value: "defaultVariant".into(),
+            },
+        )))
+    );
+}
+
+#[test]
+fn derive_database_enum_default_rs_type_enum() {
+    let value = TestRenameAllWithoutCasesEnum::HelloWorld.to_value();
+    assert_eq!(value.value.as_ref(), "helloWorld");
+    let value: Value = value.into();
+    assert_eq!(
+        value,
+        Value::Enum(sea_orm::sea_query::OptionEnum::Some(Box::new(
+            sea_orm::sea_query::Enum {
+                type_name: String::from("test_enum").into(),
+                value: "helloWorld".into(),
+            },
+        )))
+    );
+}
+
+#[test]
+fn derive_non_database_enum_value_type() {
+    assert_eq!(TestEnum2::enum_type_name(), None);
+    assert_eq!(TestEnum2::array_type(), ArrayType::String);
 }

@@ -12,6 +12,14 @@ mod strum;
 
 mod raw_sql;
 
+#[proc_macro]
+pub fn raw_sql(input: TokenStream) -> TokenStream {
+    match raw_sql::expand(input) {
+        Ok(token_stream) => token_stream.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
 /// Create an Entity
 ///
 /// ### Usage
@@ -549,15 +557,18 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 /// All macro attributes listed below have to be annotated in the form of `#[sea_orm(attr = value)]`.
 ///
 /// - For enum
-///     - `rs_type`: Define `ActiveEnum::Value`
+///     - `rs_type`: Define `ActiveEnum::Value` for non-native enums (`db_type != "Enum"`)
 ///         - Possible values: `String`, `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`
 ///         - Note that value has to be passed as string, i.e. `rs_type = "i8"`
 ///     - `db_type`: Define `ColumnType` returned by `ActiveEnum::db_type()`
-///         - Possible values: all available enum variants of `ColumnType`, e.g. `String(StringLen::None)`, `String(StringLen::N(1))`, `Integer`
+///         - Possible values: all available enum variants of `ColumnType`, e.g. `Enum`, `String(StringLen::None)`, `String(StringLen::N(1))`, `Integer`
 ///         - Note that value has to be passed as string, i.e. `db_type = "Integer"`
 ///     - `enum_name`: Define `String` returned by `ActiveEnum::name()`
 ///         - This attribute is optional with default value being the name of enum in camel-case
 ///         - Note that value has to be passed as string, i.e. `enum_name = "MyEnum"`
+///     - Constraints for native enums (`db_type = "Enum"`):
+///         - `rs_type` is optional; it defaults to `Enum`. If specified it must be `String` or `Enum`.
+///         - `num_value` and numeric discriminants are not allowed.
 ///
 /// - For enum variant
 ///     - `string_value` or `num_value`:
@@ -1176,14 +1187,6 @@ pub fn derive_arrow_schema(input: TokenStream) -> TokenStream {
         derive_input.data,
         derive_input.attrs,
     ) {
-        Ok(token_stream) => token_stream.into(),
-        Err(e) => e.to_compile_error().into(),
-    }
-}
-
-#[proc_macro]
-pub fn raw_sql(input: TokenStream) -> TokenStream {
-    match raw_sql::expand(input) {
         Ok(token_stream) => token_stream.into(),
         Err(e) => e.to_compile_error().into(),
     }
