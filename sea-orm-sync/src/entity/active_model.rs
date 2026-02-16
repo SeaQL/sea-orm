@@ -520,6 +520,73 @@ pub trait ActiveModelTrait: Clone + Debug {
         Ok(am)
     }
 
+    /// Create a Vec of ActiveModels from an Arrow RecordBatch.
+    ///
+    /// Each row in the RecordBatch becomes one ActiveModel.
+    /// Columns are matched by name (using [`ColumnTrait::as_str`](crate::ColumnTrait::as_str)).
+    /// Columns present in the RecordBatch are marked as `Set`;
+    /// columns absent from the RecordBatch are marked as `NotSet`.
+    ///
+    /// Supported column types: integers (i8–i64, u8–u64), floats (f32, f64),
+    /// `String`/`Text`, `Boolean`, and date/time types (with `with-chrono` or `with-time`).
+    /// Null values in nullable columns are handled.
+    ///
+    /// When both `with-chrono` and `with-time` features are enabled, chrono values
+    /// are attempted first. If the model uses time-crate types, the conversion
+    /// automatically falls back to the time-crate representation.
+    #[cfg(feature = "with-arrow")]
+    fn from_arrow(batch: &arrow::array::RecordBatch) -> Result<Vec<Self>, DbErr> {
+        use crate::{IdenStatic, Iterable, with_arrow::arrow_array_to_value};
+
+        let num_rows = batch.num_rows();
+        let mut results = Vec::with_capacity(num_rows);
+
+        for row in 0..num_rows {
+            let mut am = Self::default();
+
+            for col in <<Self::Entity as EntityTrait>::Column>::iter() {
+                let col_name = col.as_str();
+
+                if let Some(arrow_col) = batch.column_by_name(col_name) {
+                    let col_def = col.def();
+                    let col_type = col_def.get_column_type();
+                    let value = arrow_array_to_value(arrow_col.as_ref(), col_type, row)?;
+
+                    // When both chrono and time features are enabled, the primary
+                    // conversion produces chrono Values for date/time columns.
+                    // If the model's field uses time-crate types, try_set will fail;
+                    // retry with the time-crate alternative.
+                    #[cfg(all(feature = "with-chrono", feature = "with-time"))]
+                    {
+                        use crate::with_arrow::{arrow_array_to_value_alt, is_datetime_column};
+                        match am.try_set(col, value) {
+                            Ok(()) => {}
+                            Err(first_err) if is_datetime_column(col_type) => {
+                                if let Some(alt_value) =
+                                    arrow_array_to_value_alt(arrow_col.as_ref(), col_type, row)?
+                                {
+                                    am.try_set(col, alt_value)?;
+                                } else {
+                                    return Err(first_err);
+                                }
+                            }
+                            Err(e) => return Err(e),
+                        }
+                    }
+
+                    #[cfg(not(all(feature = "with-chrono", feature = "with-time")))]
+                    am.try_set(col, value)?;
+                } else {
+                    am.not_set(col);
+                }
+            }
+
+            results.push(am);
+        }
+
+        Ok(results)
+    }
+
     /// Return `true` if any attribute of `ActiveModel` is `Set`
     fn is_changed(&self) -> bool {
         <Self::Entity as EntityTrait>::Column::iter()

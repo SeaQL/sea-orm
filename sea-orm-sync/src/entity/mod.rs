@@ -114,6 +114,8 @@ mod primary_key;
 #[cfg(feature = "entity-registry")]
 mod registry;
 mod relation;
+#[cfg(feature = "with-arrow")]
+pub(crate) mod with_arrow;
 
 pub use active_enum::*;
 pub use active_model::*;
