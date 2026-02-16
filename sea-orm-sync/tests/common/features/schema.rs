@@ -491,7 +491,7 @@ pub fn create_host_network_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .to_owned();
 
-    create_table(db, &stmt, HostNetwork)
+    create_table(db, &stmt, host_network::Entity)
 }
 
 #[cfg(feature = "with-bigdecimal")]

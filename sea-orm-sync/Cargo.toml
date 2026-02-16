@@ -24,7 +24,7 @@ features = [
     "schema-sync",
     "postgres-array",
     "postgres-vector",
-    "sea-orm-internal",
+    "with-arrow",
 ]
 rustdoc-args = ["--cfg", "docsrs"]
 
@@ -33,6 +33,7 @@ name = "sea_orm"
 path = "src/lib.rs"
 
 [dependencies]
+arrow = { version = "54", default-features = false, optional = true }
 bigdecimal = { version = "0.4", default-features = false, features = [
     "std",
 ], optional = true }
@@ -82,11 +83,10 @@ dotenv = "0.15"
 maplit = { version = "1" }
 pretty_assertions = { version = "0.7" }
 sea-orm-sync = { path = ".", features = [
-    "mock",
     "debug-print",
-    "tests-cfg",
+    "mock",
     "postgres-array",
-    "with-ipnetwork",
+    "tests-cfg",
 ] }
 time = { version = "0.3.36", features = ["macros"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
@@ -135,7 +135,14 @@ sqlx-postgres = []
 sqlx-sqlite = []
 sync = []
 tests-cfg = ["serde/derive"]
-tests-features = ["default", "rbac", "schema-sync", "with-bigdecimal"]
+tests-features = [
+    "default",
+    "rbac",
+    "schema-sync",
+    "with-arrow",
+    "with-bigdecimal",
+]
+with-arrow = ["arrow"]
 with-bigdecimal = [
     "bigdecimal",
     "sea-query/with-bigdecimal",

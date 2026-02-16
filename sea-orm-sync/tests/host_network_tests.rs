@@ -31,7 +31,7 @@ fn create_and_update_host_network(db: &DatabaseConnection) -> Result<(), DbErr> 
     };
     let res = host.clone().into_active_model().insert(db)?;
 
-    let model = HostNetwork::find().one(db)?.unwrap();
+    let model = host_network::Entity::find().one(db)?.unwrap();
     assert_eq!(model, res);
     assert_eq!(model, host.clone());
 
