@@ -31,7 +31,7 @@ async fn create_and_update_host_network(db: &DatabaseConnection) -> Result<(), D
     };
     let res = host.clone().into_active_model().insert(db).await?;
 
-    let model = HostNetwork::find().one(db).await?.unwrap();
+    let model = host_network::Entity::find().one(db).await?.unwrap();
     assert_eq!(model, res);
     assert_eq!(model, host.clone());
 
