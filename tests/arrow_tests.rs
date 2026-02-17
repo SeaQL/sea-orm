@@ -715,3 +715,197 @@ mod time_tests {
         assert_eq!(am.nullable_ts, Set(None));
     }
 }
+
+/// Decimal type tests
+#[cfg(any(feature = "with-rust_decimal", feature = "with-bigdecimal"))]
+mod decimal_tests {
+    use super::*;
+
+    mod decimal_entity {
+        use sea_orm::entity::prelude::*;
+
+        #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+        #[sea_orm(table_name = "test_decimal")]
+        pub struct Entity;
+
+        #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+        pub struct Model {
+            pub id: i32,
+            #[cfg(feature = "with-rust_decimal")]
+            pub price: Decimal,
+            #[cfg(feature = "with-rust_decimal")]
+            pub amount: Decimal,
+            #[cfg(feature = "with-rust_decimal")]
+            pub nullable_decimal: Option<Decimal>,
+            #[cfg(all(feature = "with-bigdecimal", not(feature = "with-rust_decimal")))]
+            pub price: BigDecimal,
+            #[cfg(all(feature = "with-bigdecimal", not(feature = "with-rust_decimal")))]
+            pub amount: BigDecimal,
+            #[cfg(all(feature = "with-bigdecimal", not(feature = "with-rust_decimal")))]
+            pub nullable_decimal: Option<BigDecimal>,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+        pub enum Column {
+            Id,
+            Price,
+            Amount,
+            NullableDecimal,
+        }
+
+        impl ColumnTrait for Column {
+            type EntityName = Entity;
+
+            fn def(&self) -> ColumnDef {
+                match self {
+                    Column::Id => ColumnType::Integer.def(),
+                    Column::Price => ColumnType::Decimal(Some((10, 2))).def(),
+                    Column::Amount => ColumnType::Decimal(Some((20, 4))).def(),
+                    Column::NullableDecimal => ColumnType::Decimal(Some((10, 2))).def().nullable(),
+                }
+            }
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+        pub enum PrimaryKey {
+            Id,
+        }
+
+        impl PrimaryKeyTrait for PrimaryKey {
+            type ValueType = i32;
+
+            fn auto_increment() -> bool {
+                true
+            }
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    #[test]
+    #[cfg(feature = "with-rust_decimal")]
+    fn test_from_arrow_decimal128_rust_decimal() {
+        use rust_decimal::Decimal;
+
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("id", DataType::Int32, false),
+            Field::new("price", DataType::Decimal128(10, 2), false),
+            Field::new("amount", DataType::Decimal128(20, 4), false),
+            Field::new("nullable_decimal", DataType::Decimal128(10, 2), true),
+        ]));
+
+        // Create test data: price=12345.67, amount=9876543.2109
+        let price_scaled = 1234567i128; // 12345.67 with scale 2
+        let amount_scaled = 98765432109i128; // 9876543.2109 with scale 4
+
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![
+                Arc::new(Int32Array::from(vec![1, 2])),
+                Arc::new(
+                    Decimal128Array::from(vec![price_scaled, price_scaled])
+                        .with_precision_and_scale(10, 2)
+                        .expect("valid precision/scale"),
+                ),
+                Arc::new(
+                    Decimal128Array::from(vec![amount_scaled, amount_scaled])
+                        .with_precision_and_scale(20, 4)
+                        .expect("valid precision/scale"),
+                ),
+                Arc::new(
+                    Decimal128Array::from(vec![Some(price_scaled), None])
+                        .with_precision_and_scale(10, 2)
+                        .expect("valid precision/scale"),
+                ),
+            ],
+        )
+        .expect("Failed to create RecordBatch");
+
+        let ams = decimal_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+        assert_eq!(ams.len(), 2);
+
+        let am = &ams[0];
+        assert_eq!(am.id, Set(1));
+        assert_eq!(
+            am.price,
+            Set(Decimal::from_i128_with_scale(price_scaled, 2))
+        );
+        assert_eq!(
+            am.amount,
+            Set(Decimal::from_i128_with_scale(amount_scaled, 4))
+        );
+        assert_eq!(
+            am.nullable_decimal,
+            Set(Some(Decimal::from_i128_with_scale(price_scaled, 2)))
+        );
+
+        // Second row: nullable_decimal should be None
+        let am = &ams[1];
+        assert_eq!(am.nullable_decimal, Set(None));
+    }
+
+    #[test]
+    #[cfg(feature = "with-rust_decimal")]
+    fn test_from_arrow_decimal128_edge_cases() {
+        use rust_decimal::Decimal;
+
+        // Test zero, negative, and large values
+        let zero = Decimal::from_i128_with_scale(0, 2);
+        let negative = Decimal::from_i128_with_scale(-123456, 2);
+        let large = Decimal::from_i128_with_scale(123456789012345678i128, 10);
+
+        assert_eq!(zero.to_string(), "0.00");
+        assert_eq!(negative.to_string(), "-1234.56");
+        assert!(large.to_string().contains("12345678.9012345678"));
+    }
+
+    #[test]
+    #[cfg(feature = "with-bigdecimal")]
+    fn test_from_arrow_decimal256_bigdecimal() {
+        use arrow::datatypes::i256;
+
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("id", DataType::Int32, false),
+            Field::new("large_value", DataType::Decimal256(76, 20), false),
+            Field::new("nullable_large", DataType::Decimal256(76, 20), true),
+        ]));
+
+        // Create a large i256 value
+        let large_val = i256::from_i128(123456789012345678i128);
+
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![
+                Arc::new(Int32Array::from(vec![1, 2])),
+                Arc::new(
+                    Decimal256Array::from(vec![large_val, large_val])
+                        .with_precision_and_scale(76, 20)
+                        .expect("valid precision/scale"),
+                ),
+                Arc::new(
+                    Decimal256Array::from(vec![Some(large_val), None])
+                        .with_precision_and_scale(76, 20)
+                        .expect("valid precision/scale"),
+                ),
+            ],
+        )
+        .expect("Failed to create RecordBatch");
+
+        // Test the batch was created correctly
+        assert_eq!(batch.num_rows(), 2);
+        assert_eq!(batch.num_columns(), 3);
+
+        // Test that we can read the decimal values
+        let arr = batch
+            .column(1)
+            .as_any()
+            .downcast_ref::<Decimal256Array>()
+            .expect("Expected Decimal256Array");
+        assert_eq!(arr.value(0), large_val);
+        assert_eq!(arr.precision(), 76);
+        assert_eq!(arr.scale(), 20);
+    }
+}

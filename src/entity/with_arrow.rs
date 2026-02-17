@@ -1,5 +1,6 @@
 use crate::{ColumnType, DbErr};
 use arrow::array::*;
+use arrow::datatypes::i256;
 use sea_query::Value;
 
 /// Extract a [`Value`] from an Arrow array at the given row index,
@@ -107,6 +108,8 @@ pub(crate) fn arrow_array_to_value(
                 .ok_or_else(|| type_err("BooleanArray", "Boolean", array))?;
             Ok(Value::Bool(Some(arr.value(row))))
         }
+        // Decimal types
+        ColumnType::Decimal(_) | ColumnType::Money(_) => arrow_to_decimal(array, row),
         // Date/time types: delegate to feature-gated helpers.
         // Prefer chrono when available; fall back to time crate.
         #[cfg(feature = "with-chrono")]
@@ -154,6 +157,122 @@ pub(crate) fn arrow_array_to_value_alt(
         ColumnType::TimestampWithTimeZone => arrow_to_time_datetime_tz(array, row).map(Some),
         _ => Ok(None),
     }
+}
+
+/// Convert Arrow Decimal128Array or Decimal256Array to a decimal Value.
+/// Prefers rust_decimal when available and precision fits, otherwise bigdecimal.
+fn arrow_to_decimal(array: &dyn Array, row: usize) -> Result<Value, DbErr> {
+    // Try Decimal128Array first
+    if let Some(arr) = array.as_any().downcast_ref::<Decimal128Array>() {
+        let value = arr.value(row);
+        let precision = arr.precision();
+        let scale = arr.scale();
+        return decimal128_to_value(value, precision, scale);
+    }
+
+    // Try Decimal256Array
+    if let Some(arr) = array.as_any().downcast_ref::<Decimal256Array>() {
+        let value = arr.value(row);
+        let precision = arr.precision();
+        let scale = arr.scale();
+        return decimal256_to_value(value, precision, scale);
+    }
+
+    Err(type_err(
+        "Decimal128Array or Decimal256Array",
+        "Decimal",
+        array,
+    ))
+}
+
+#[cfg(feature = "with-rust_decimal")]
+fn decimal128_to_value(value: i128, precision: u8, scale: i8) -> Result<Value, DbErr> {
+    use rust_decimal::Decimal;
+
+    // rust_decimal supports up to 28 digits precision and 28 scale
+    if precision > 28 || scale > 28 || scale < 0 {
+        // If rust_decimal can't handle it, try bigdecimal as fallback
+        #[cfg(feature = "with-bigdecimal")]
+        return decimal128_to_bigdecimal(value, scale);
+
+        #[cfg(not(feature = "with-bigdecimal"))]
+        return Err(DbErr::Type(format!(
+            "Decimal128 with precision={precision}, scale={scale} exceeds rust_decimal limits (max precision=28, scale=0-28). Enable 'with-bigdecimal' feature for arbitrary precision."
+        )));
+    }
+
+    let decimal = Decimal::from_i128_with_scale(value, scale as u32);
+    Ok(Value::Decimal(Some(decimal)))
+}
+
+#[cfg(not(feature = "with-rust_decimal"))]
+fn decimal128_to_value(value: i128, _precision: u8, scale: i8) -> Result<Value, DbErr> {
+    #[cfg(feature = "with-bigdecimal")]
+    return decimal128_to_bigdecimal(value, scale);
+
+    #[cfg(not(feature = "with-bigdecimal"))]
+    Err(DbErr::Type(
+        "Decimal128Array requires 'with-rust_decimal' or 'with-bigdecimal' feature".into(),
+    ))
+}
+
+#[cfg(feature = "with-bigdecimal")]
+fn decimal128_to_bigdecimal(value: i128, scale: i8) -> Result<Value, DbErr> {
+    use bigdecimal::{num_bigint::BigInt, BigDecimal};
+
+    let bigint = BigInt::from(value);
+    let decimal = BigDecimal::new(bigint, scale as i64);
+    Ok(Value::BigDecimal(Some(Box::new(decimal))))
+}
+
+fn decimal256_to_value(_value: i256, _precision: u8, _scale: i8) -> Result<Value, DbErr> {
+    #[cfg(feature = "with-bigdecimal")]
+    {
+        use bigdecimal::{
+            num_bigint::{BigInt, Sign},
+            BigDecimal,
+        };
+
+        // Convert i256 to BigInt via byte representation
+        let bytes = _value.to_be_bytes();
+
+        // Determine sign and magnitude
+        let (sign, magnitude) = if _value.is_negative() {
+            // For negative numbers, we need to compute two's complement
+            let mut abs_bytes = [0u8; 32];
+            let mut carry = true;
+
+            // Invert bits and add 1 (two's complement)
+            for i in (0..32).rev() {
+                abs_bytes[i] = !bytes[i];
+                if carry {
+                    if abs_bytes[i] == 255 {
+                        abs_bytes[i] = 0;
+                    } else {
+                        abs_bytes[i] += 1;
+                        carry = false;
+                    }
+                }
+            }
+
+            (Sign::Minus, abs_bytes.to_vec())
+        } else if _value == i256::ZERO {
+            (Sign::NoSign, vec![0])
+        } else {
+            // Positive: strip leading zeros
+            let first_nonzero = bytes.iter().position(|&b| b != 0).unwrap_or(31);
+            (Sign::Plus, bytes[first_nonzero..].to_vec())
+        };
+
+        let bigint = BigInt::from_bytes_be(sign, &magnitude);
+        let decimal = BigDecimal::new(bigint, _scale as i64);
+        Ok(Value::BigDecimal(Some(Box::new(decimal))))
+    }
+
+    #[cfg(not(feature = "with-bigdecimal"))]
+    Err(DbErr::Type(
+        "Decimal256Array requires 'with-bigdecimal' feature for arbitrary precision support".into()
+    ))
 }
 
 #[cfg(feature = "with-chrono")]
@@ -386,6 +505,10 @@ fn null_value_for_type(col_type: &ColumnType) -> Value {
         ColumnType::Double => Value::Double(None),
         ColumnType::String(_) | ColumnType::Text | ColumnType::Char(_) => Value::String(None),
         ColumnType::Boolean => Value::Bool(None),
+        #[cfg(feature = "with-rust_decimal")]
+        ColumnType::Decimal(_) | ColumnType::Money(_) => Value::Decimal(None),
+        #[cfg(all(feature = "with-bigdecimal", not(feature = "with-rust_decimal")))]
+        ColumnType::Decimal(_) | ColumnType::Money(_) => Value::BigDecimal(None),
         #[cfg(feature = "with-chrono")]
         ColumnType::Date => Value::ChronoDate(None),
         #[cfg(feature = "with-chrono")]
