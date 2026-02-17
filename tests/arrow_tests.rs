@@ -1,8 +1,6 @@
 #![cfg(feature = "with-arrow")]
-//! cargo t --test arrow_tests
-//! cargo t --test arrow_tests --no-default-features --features=macros
-//! cargo t --test arrow_tests --no-default-features --features=macros,with-chrono
-//! cargo t --test arrow_tests --no-default-features --features=macros,with-time
+//! cargo t --test arrow_tests --features=with-arrow
+//! cargo t --test arrow_tests --features=with-arrow,with-bigdecimal
 use arrow::array::*;
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use sea_orm::entity::prelude::*;

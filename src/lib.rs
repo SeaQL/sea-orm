@@ -737,8 +737,9 @@ pub use schema::*;
 pub use sea_orm_macros::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveActiveModelEx,
     DeriveColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIden,
-    DeriveIntoActiveModel, DeriveMigrationName, DeriveModel, DeriveModelEx, DerivePartialModel,
-    DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, DeriveValueType, FromJsonQueryResult,
+    DeriveArrowSchema, DeriveIntoActiveModel, DeriveMigrationName, DeriveModel, DeriveModelEx,
+    DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, DeriveValueType,
+    FromJsonQueryResult,
     FromQueryResult, raw_sql, sea_orm_compact_model as compact_model, sea_orm_model as model,
 };
 

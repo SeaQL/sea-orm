@@ -18,6 +18,7 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
 
     let mut model_attrs: Vec<Attribute> = Vec::new();
     let mut model_ex_attrs: Vec<Attribute> = Vec::new();
+    let mut has_arrow_schema = false;
 
     for attr in input.attrs {
         if !attr.path().is_ident("sea_orm") {
@@ -45,6 +46,8 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
                         model_ex_attrs.push(new_attr);
                     }
                 }
+            } else if meta.path.is_ident("arrow_schema") {
+                has_arrow_schema = true;
             } else {
                 let path = &meta.path;
                 if meta.input.peek(syn::Token![=]) {
@@ -67,6 +70,10 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
             model_attrs.push(attr.clone());
             model_ex_attrs.push(attr);
         }
+    }
+
+    if has_arrow_schema {
+        model_attrs.push(parse_quote!(#[derive(DeriveArrowSchema)]));
     }
 
     let model_ex = Ident::new(&format!("{model}Ex"), model.span());

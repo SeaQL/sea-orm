@@ -184,7 +184,7 @@ tests-features = [
     "with-ipnetwork",
 ]
 tracing-spans = []
-with-arrow = ["arrow"]
+with-arrow = ["arrow", "sea-orm-macros/with-arrow"]
 with-bigdecimal = [
     "bigdecimal",
     "sea-query/with-bigdecimal",
