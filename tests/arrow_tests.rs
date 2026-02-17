@@ -13,12 +13,11 @@ use std::sync::Arc;
 mod primitive_entity {
     use sea_orm::entity::prelude::*;
 
-    #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
     #[sea_orm(table_name = "test_arrow")]
-    pub struct Entity;
-
-    #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
     pub struct Model {
+        #[sea_orm(primary_key)]
         pub id: i32,
         pub tiny: i8,
         pub small: i16,
@@ -34,63 +33,6 @@ mod primitive_entity {
         pub nullable_int: Option<i32>,
         pub nullable_name: Option<String>,
     }
-
-    #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
-    pub enum Column {
-        Id,
-        Tiny,
-        Small,
-        Big,
-        TinyU,
-        SmallU,
-        Uint,
-        BigU,
-        FloatVal,
-        DoubleVal,
-        Name,
-        Flag,
-        NullableInt,
-        NullableName,
-    }
-
-    impl ColumnTrait for Column {
-        type EntityName = Entity;
-
-        fn def(&self) -> ColumnDef {
-            match self {
-                Column::Id => ColumnType::Integer.def(),
-                Column::Tiny => ColumnType::TinyInteger.def(),
-                Column::Small => ColumnType::SmallInteger.def(),
-                Column::Big => ColumnType::BigInteger.def(),
-                Column::TinyU => ColumnType::TinyUnsigned.def(),
-                Column::SmallU => ColumnType::SmallUnsigned.def(),
-                Column::Uint => ColumnType::Unsigned.def(),
-                Column::BigU => ColumnType::BigUnsigned.def(),
-                Column::FloatVal => ColumnType::Float.def(),
-                Column::DoubleVal => ColumnType::Double.def(),
-                Column::Name => ColumnType::String(StringLen::None).def(),
-                Column::Flag => ColumnType::Boolean.def(),
-                Column::NullableInt => ColumnType::Integer.def().nullable(),
-                Column::NullableName => ColumnType::String(StringLen::None).def().nullable(),
-            }
-        }
-    }
-
-    #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
-    pub enum PrimaryKey {
-        Id,
-    }
-
-    impl PrimaryKeyTrait for PrimaryKey {
-        type ValueType = i32;
-
-        fn auto_increment() -> bool {
-            true
-        }
-    }
-
-    #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-    pub enum Relation {}
 
     impl ActiveModelBehavior for ActiveModel {}
 }
@@ -234,12 +176,11 @@ mod chrono_tests {
     mod chrono_entity {
         use sea_orm::entity::prelude::*;
 
-        #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+        #[sea_orm::model]
+        #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
         #[sea_orm(table_name = "test_chrono")]
-        pub struct Entity;
-
-        #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
         pub struct Model {
+            #[sea_orm(primary_key)]
             pub id: i32,
             pub created_date: ChronoDate,
             pub created_time: ChronoTime,
@@ -247,47 +188,6 @@ mod chrono_tests {
             pub updated_at: ChronoDateTimeUtc,
             pub nullable_ts: Option<ChronoDateTimeUtc>,
         }
-
-        #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
-        pub enum Column {
-            Id,
-            CreatedDate,
-            CreatedTime,
-            CreatedAt,
-            UpdatedAt,
-            NullableTs,
-        }
-
-        impl ColumnTrait for Column {
-            type EntityName = Entity;
-
-            fn def(&self) -> ColumnDef {
-                match self {
-                    Column::Id => ColumnType::Integer.def(),
-                    Column::CreatedDate => ColumnType::Date.def(),
-                    Column::CreatedTime => ColumnType::Time.def(),
-                    Column::CreatedAt => ColumnType::DateTime.def(),
-                    Column::UpdatedAt => ColumnType::TimestampWithTimeZone.def(),
-                    Column::NullableTs => ColumnType::TimestampWithTimeZone.def().nullable(),
-                }
-            }
-        }
-
-        #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
-        pub enum PrimaryKey {
-            Id,
-        }
-
-        impl PrimaryKeyTrait for PrimaryKey {
-            type ValueType = i32;
-
-            fn auto_increment() -> bool {
-                true
-            }
-        }
-
-        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-        pub enum Relation {}
 
         impl ActiveModelBehavior for ActiveModel {}
     }
@@ -512,12 +412,11 @@ mod time_tests {
     mod time_entity {
         use sea_orm::entity::prelude::*;
 
-        #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+        #[sea_orm::model]
+        #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
         #[sea_orm(table_name = "test_time")]
-        pub struct Entity;
-
-        #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
         pub struct Model {
+            #[sea_orm(primary_key)]
             pub id: i32,
             pub created_date: TimeDate,
             pub created_time: TimeTime,
@@ -525,47 +424,6 @@ mod time_tests {
             pub updated_at: TimeDateTimeWithTimeZone,
             pub nullable_ts: Option<TimeDateTimeWithTimeZone>,
         }
-
-        #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
-        pub enum Column {
-            Id,
-            CreatedDate,
-            CreatedTime,
-            CreatedAt,
-            UpdatedAt,
-            NullableTs,
-        }
-
-        impl ColumnTrait for Column {
-            type EntityName = Entity;
-
-            fn def(&self) -> ColumnDef {
-                match self {
-                    Column::Id => ColumnType::Integer.def(),
-                    Column::CreatedDate => ColumnType::Date.def(),
-                    Column::CreatedTime => ColumnType::Time.def(),
-                    Column::CreatedAt => ColumnType::DateTime.def(),
-                    Column::UpdatedAt => ColumnType::TimestampWithTimeZone.def(),
-                    Column::NullableTs => ColumnType::TimestampWithTimeZone.def().nullable(),
-                }
-            }
-        }
-
-        #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
-        pub enum PrimaryKey {
-            Id,
-        }
-
-        impl PrimaryKeyTrait for PrimaryKey {
-            type ValueType = i32;
-
-            fn auto_increment() -> bool {
-                true
-            }
-        }
-
-        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-        pub enum Relation {}
 
         impl ActiveModelBehavior for ActiveModel {}
     }
@@ -716,77 +574,32 @@ mod time_tests {
     }
 }
 
-/// Decimal type tests
-#[cfg(any(feature = "with-rust_decimal", feature = "with-bigdecimal"))]
-mod decimal_tests {
+/// rust_decimal type tests
+#[cfg(feature = "with-rust_decimal")]
+mod rust_decimal_tests {
     use super::*;
 
     mod decimal_entity {
         use sea_orm::entity::prelude::*;
 
-        #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-        #[sea_orm(table_name = "test_decimal")]
-        pub struct Entity;
-
-        #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+        #[sea_orm::model]
+        #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+        #[sea_orm(table_name = "test_rust_decimal")]
         pub struct Model {
+            #[sea_orm(primary_key)]
             pub id: i32,
-            #[cfg(feature = "with-rust_decimal")]
+            #[sea_orm(column_type = "Decimal(Some((10, 2)))")]
             pub price: Decimal,
-            #[cfg(feature = "with-rust_decimal")]
+            #[sea_orm(column_type = "Decimal(Some((20, 4)))")]
             pub amount: Decimal,
-            #[cfg(feature = "with-rust_decimal")]
+            #[sea_orm(column_type = "Decimal(Some((10, 2)))")]
             pub nullable_decimal: Option<Decimal>,
-            #[cfg(all(feature = "with-bigdecimal", not(feature = "with-rust_decimal")))]
-            pub price: BigDecimal,
-            #[cfg(all(feature = "with-bigdecimal", not(feature = "with-rust_decimal")))]
-            pub amount: BigDecimal,
-            #[cfg(all(feature = "with-bigdecimal", not(feature = "with-rust_decimal")))]
-            pub nullable_decimal: Option<BigDecimal>,
         }
-
-        #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
-        pub enum Column {
-            Id,
-            Price,
-            Amount,
-            NullableDecimal,
-        }
-
-        impl ColumnTrait for Column {
-            type EntityName = Entity;
-
-            fn def(&self) -> ColumnDef {
-                match self {
-                    Column::Id => ColumnType::Integer.def(),
-                    Column::Price => ColumnType::Decimal(Some((10, 2))).def(),
-                    Column::Amount => ColumnType::Decimal(Some((20, 4))).def(),
-                    Column::NullableDecimal => ColumnType::Decimal(Some((10, 2))).def().nullable(),
-                }
-            }
-        }
-
-        #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
-        pub enum PrimaryKey {
-            Id,
-        }
-
-        impl PrimaryKeyTrait for PrimaryKey {
-            type ValueType = i32;
-
-            fn auto_increment() -> bool {
-                true
-            }
-        }
-
-        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-        pub enum Relation {}
 
         impl ActiveModelBehavior for ActiveModel {}
     }
 
     #[test]
-    #[cfg(feature = "with-rust_decimal")]
     fn test_from_arrow_decimal128_rust_decimal() {
         use rust_decimal::Decimal;
 
@@ -848,7 +661,6 @@ mod decimal_tests {
     }
 
     #[test]
-    #[cfg(feature = "with-rust_decimal")]
     fn test_from_arrow_decimal128_edge_cases() {
         use rust_decimal::Decimal;
 
@@ -861,9 +673,96 @@ mod decimal_tests {
         assert_eq!(negative.to_string(), "-1234.56");
         assert!(large.to_string().contains("12345678.9012345678"));
     }
+}
+
+/// bigdecimal type tests
+#[cfg(feature = "with-bigdecimal")]
+mod bigdecimal_tests {
+    use super::*;
+
+    mod decimal_entity {
+        use sea_orm::entity::prelude::*;
+
+        #[sea_orm::model]
+        #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+        #[sea_orm(table_name = "test_bigdecimal")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            #[sea_orm(column_type = "Decimal(Some((10, 2)))")]
+            pub price: BigDecimal,
+            #[sea_orm(column_type = "Decimal(Some((20, 4)))")]
+            pub amount: BigDecimal,
+            #[sea_orm(column_type = "Decimal(Some((10, 2)))")]
+            pub nullable_decimal: Option<BigDecimal>,
+        }
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
 
     #[test]
-    #[cfg(feature = "with-bigdecimal")]
+    #[cfg(not(feature = "with-rust_decimal"))]
+    fn test_from_arrow_decimal128_bigdecimal() {
+        use bigdecimal::{num_bigint::BigInt, BigDecimal};
+
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("id", DataType::Int32, false),
+            Field::new("price", DataType::Decimal128(10, 2), false),
+            Field::new("amount", DataType::Decimal128(20, 4), false),
+            Field::new("nullable_decimal", DataType::Decimal128(10, 2), true),
+        ]));
+
+        // Create test data: price=12345.67, amount=9876543.2109
+        let price_scaled = 1234567i128; // 12345.67 with scale 2
+        let amount_scaled = 98765432109i128; // 9876543.2109 with scale 4
+
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![
+                Arc::new(Int32Array::from(vec![1, 2])),
+                Arc::new(
+                    Decimal128Array::from(vec![price_scaled, price_scaled])
+                        .with_precision_and_scale(10, 2)
+                        .expect("valid precision/scale"),
+                ),
+                Arc::new(
+                    Decimal128Array::from(vec![amount_scaled, amount_scaled])
+                        .with_precision_and_scale(20, 4)
+                        .expect("valid precision/scale"),
+                ),
+                Arc::new(
+                    Decimal128Array::from(vec![Some(price_scaled), None])
+                        .with_precision_and_scale(10, 2)
+                        .expect("valid precision/scale"),
+                ),
+            ],
+        )
+        .expect("Failed to create RecordBatch");
+
+        let ams = decimal_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+        assert_eq!(ams.len(), 2);
+
+        let am = &ams[0];
+        assert_eq!(am.id, Set(1));
+        assert_eq!(
+            am.price,
+            Set(BigDecimal::new(BigInt::from(price_scaled), 2))
+        );
+        assert_eq!(
+            am.amount,
+            Set(BigDecimal::new(BigInt::from(amount_scaled), 4))
+        );
+        assert_eq!(
+            am.nullable_decimal,
+            Set(Some(BigDecimal::new(BigInt::from(price_scaled), 2)))
+        );
+
+        // Second row: nullable_decimal should be None
+        let am = &ams[1];
+        assert_eq!(am.nullable_decimal, Set(None));
+    }
+
+    #[test]
     fn test_from_arrow_decimal256_bigdecimal() {
         use arrow::datatypes::i256;
 
