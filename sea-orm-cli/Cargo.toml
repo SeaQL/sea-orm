@@ -19,6 +19,14 @@ repository = "https://github.com/SeaQL/sea-orm"
 rust-version = "1.85.0"
 version = "2.0.0-rc.32"
 
+[package.metadata.binstall]
+bin-dir = "{ name }-{ target }-v{ version }/{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+pkg-url = "{ repo }/releases/download/sea-orm-cli@{ version }/{ name }-{ target }-v{ version }{ archive-suffix }"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+
 [lib]
 name = "sea_orm_cli"
 path = "src/lib.rs"
@@ -125,6 +133,13 @@ runtime-tokio-rustls = [
     "sqlx?/runtime-tokio-rustls",
     "sea-schema?/runtime-tokio-rustls",
 ]
+
+[profile.release]
+codegen-units = 1
+lto           = true
+opt-level     = "s"
+panic         = "abort"
+strip         = true
 
 # This allows us to develop using an overridden version of sea-query
 [patch.crates-io]
