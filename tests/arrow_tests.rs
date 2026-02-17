@@ -421,6 +421,87 @@ mod chrono_tests {
         let expected_utc: DateTime<Utc> = DateTime::from_timestamp(epoch_s, 0).expect("valid");
         assert_eq!(ams[0].updated_at, Set(expected_utc));
     }
+
+    #[test]
+    fn test_from_arrow_chrono_timestamp_nanos() {
+        use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
+
+        // 2024-06-15 10:30:00.123456789 UTC as nanoseconds
+        let epoch_ns: i64 = 1_718_447_400_123_456_789;
+        // Date: days since 1970-01-01 for 2024-06-15
+        let epoch_days: i32 = 19889;
+        // Time: 10:30:00.123456789 as nanoseconds since midnight
+        let time_ns: i64 = 10 * 3_600_000_000_000 + 30 * 60_000_000_000 + 123_456_789;
+
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("id", DataType::Int32, false),
+            Field::new("created_date", DataType::Date32, false),
+            Field::new(
+                "created_time",
+                DataType::Time64(TimeUnit::Nanosecond),
+                false,
+            ),
+            Field::new(
+                "created_at",
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
+                false,
+            ),
+            Field::new(
+                "updated_at",
+                DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
+                false,
+            ),
+            Field::new(
+                "nullable_ts",
+                DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
+                true,
+            ),
+        ]));
+
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![
+                Arc::new(Int32Array::from(vec![1, 2])),
+                Arc::new(Date32Array::from(vec![epoch_days, epoch_days])),
+                Arc::new(Time64NanosecondArray::from(vec![time_ns, time_ns])),
+                Arc::new(TimestampNanosecondArray::from(vec![epoch_ns, epoch_ns])),
+                Arc::new(
+                    TimestampNanosecondArray::from(vec![epoch_ns, epoch_ns]).with_timezone("UTC"),
+                ),
+                Arc::new(
+                    TimestampNanosecondArray::from(vec![Some(epoch_ns), None])
+                        .with_timezone("UTC"),
+                ),
+            ],
+        )
+        .expect("Failed to create RecordBatch");
+
+        let ams = chrono_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+        assert_eq!(ams.len(), 2);
+
+        let am = &ams[0];
+        assert_eq!(am.id, Set(1));
+        assert_eq!(
+            am.created_date,
+            Set(NaiveDate::from_ymd_opt(2024, 6, 15).expect("valid"))
+        );
+        assert_eq!(
+            am.created_time,
+            Set(NaiveTime::from_hms_nano_opt(10, 30, 0, 123_456_789).expect("valid"))
+        );
+        let expected_naive = NaiveDateTime::new(
+            NaiveDate::from_ymd_opt(2024, 6, 15).expect("valid"),
+            NaiveTime::from_hms_nano_opt(10, 30, 0, 123_456_789).expect("valid"),
+        );
+        assert_eq!(am.created_at, Set(expected_naive));
+        let expected_utc: DateTime<Utc> = DateTime::from_timestamp_nanos(epoch_ns);
+        assert_eq!(am.updated_at, Set(expected_utc));
+        assert_eq!(am.nullable_ts, Set(Some(expected_utc)));
+
+        // Second row: nullable_ts should be None
+        let am = &ams[1];
+        assert_eq!(am.nullable_ts, Set(None));
+    }
 }
 
 /// time crate datetime tests
@@ -556,5 +637,81 @@ mod time_tests {
                 .expect("valid");
         assert_eq!(am.updated_at, Set(expected_odt));
         assert_eq!(am.nullable_ts, Set(Some(expected_odt)));
+    }
+
+    #[test]
+    fn test_from_arrow_time_crate_nanos() {
+        // 2024-06-15 10:30:00.123456789 UTC
+        let epoch_ns: i64 = 1_718_447_400_123_456_789;
+        let epoch_days: i32 = 19889;
+        let time_ns: i64 = 10 * 3_600_000_000_000 + 30 * 60_000_000_000 + 123_456_789;
+
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("id", DataType::Int32, false),
+            Field::new("created_date", DataType::Date32, false),
+            Field::new(
+                "created_time",
+                DataType::Time64(TimeUnit::Nanosecond),
+                false,
+            ),
+            Field::new(
+                "created_at",
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
+                false,
+            ),
+            Field::new(
+                "updated_at",
+                DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
+                false,
+            ),
+            Field::new(
+                "nullable_ts",
+                DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
+                true,
+            ),
+        ]));
+
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![
+                Arc::new(Int32Array::from(vec![1, 2])),
+                Arc::new(Date32Array::from(vec![epoch_days, epoch_days])),
+                Arc::new(Time64NanosecondArray::from(vec![time_ns, time_ns])),
+                Arc::new(TimestampNanosecondArray::from(vec![epoch_ns, epoch_ns])),
+                Arc::new(
+                    TimestampNanosecondArray::from(vec![epoch_ns, epoch_ns]).with_timezone("UTC"),
+                ),
+                Arc::new(
+                    TimestampNanosecondArray::from(vec![Some(epoch_ns), None])
+                        .with_timezone("UTC"),
+                ),
+            ],
+        )
+        .expect("Failed to create RecordBatch");
+
+        let ams = time_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+        assert_eq!(ams.len(), 2);
+
+        let am = &ams[0];
+
+        let expected_date =
+            time::Date::from_calendar_date(2024, time::Month::June, 15).expect("valid");
+        assert_eq!(am.created_date, Set(expected_date));
+
+        let expected_time =
+            time::Time::from_hms_nano(10, 30, 0, 123_456_789).expect("valid");
+        assert_eq!(am.created_time, Set(expected_time));
+
+        let expected_pdt = time::PrimitiveDateTime::new(expected_date, expected_time);
+        assert_eq!(am.created_at, Set(expected_pdt));
+
+        let expected_odt =
+            time::OffsetDateTime::from_unix_timestamp_nanos(epoch_ns as i128).expect("valid");
+        assert_eq!(am.updated_at, Set(expected_odt));
+        assert_eq!(am.nullable_ts, Set(Some(expected_odt)));
+
+        // Second row: nullable_ts should be None
+        let am = &ams[1];
+        assert_eq!(am.nullable_ts, Set(None));
     }
 }
