@@ -288,8 +288,8 @@ impl EntitySchemaInfo {
         for stmt in self.enums.iter() {
             let mut has_enum = false;
             let new_stmt = db_backend.build(stmt);
-            for exsiting_enum in &existing.enums {
-                if db_backend.build(exsiting_enum) == new_stmt {
+            for existing_enum in &existing.enums {
+                if db_backend.build(existing_enum) == new_stmt {
                     has_enum = true;
                     // TODO add enum variants
                     break;
@@ -364,8 +364,8 @@ impl EntitySchemaInfo {
         for stmt in self.indexes.iter() {
             let mut has_index = false;
             if let Some(existing_table) = existing_table {
-                for exsiting_index in existing_table.get_indexes() {
-                    if exsiting_index.get_index_spec().get_column_names()
+                for existing_index in existing_table.get_indexes() {
+                    if existing_index.get_index_spec().get_column_names()
                         == stmt.get_index_spec().get_column_names()
                     {
                         has_index = true;
@@ -383,11 +383,11 @@ impl EntitySchemaInfo {
         if let Some(existing_table) = existing_table {
             // find all unique keys from existing table
             // if it no longer exist in new schema, drop it
-            for exsiting_index in existing_table.get_indexes() {
-                if exsiting_index.is_unique_key() {
+            for existing_index in existing_table.get_indexes() {
+                if existing_index.is_unique_key() {
                     let mut has_index = false;
                     for stmt in self.indexes.iter() {
-                        if exsiting_index.get_index_spec().get_column_names()
+                        if existing_index.get_index_spec().get_column_names()
                             == stmt.get_index_spec().get_column_names()
                         {
                             has_index = true;
@@ -395,7 +395,7 @@ impl EntitySchemaInfo {
                         }
                     }
                     if !has_index {
-                        if let Some(drop_existing) = exsiting_index.get_index_spec().get_name() {
+                        if let Some(drop_existing) = existing_index.get_index_spec().get_name() {
                             db.execute(sea_query::Index::drop().name(drop_existing))?;
                         }
                     }
