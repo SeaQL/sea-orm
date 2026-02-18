@@ -191,3 +191,10 @@ impl std::str::FromStr for Tag5 {
         Ok(Self(std::path::PathBuf::from(s)))
     }
 }
+
+// Test for try_from_u64 attribute with type alias
+type UserId = i32;
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(try_from_u64)]
+pub struct MyUserId(pub UserId);

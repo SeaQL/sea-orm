@@ -22,6 +22,7 @@ struct DeriveValueTypeStruct {
 struct DeriveValueTypeStructAttrs {
     column_type: Option<TokenStream>,
     array_type: Option<TokenStream>,
+    try_from_u64: bool,
 }
 
 impl TryFrom<value_type_attr::SeaOrm> for DeriveValueTypeStructAttrs {
@@ -31,6 +32,7 @@ impl TryFrom<value_type_attr::SeaOrm> for DeriveValueTypeStructAttrs {
         Ok(Self {
             column_type: attrs.column_type.map(|s| s.parse()).transpose()?,
             array_type: attrs.array_type.map(|s| s.parse()).transpose()?,
+            try_from_u64: attrs.try_from_u64.is_some(),
         })
     }
 }
@@ -148,7 +150,7 @@ impl DeriveValueTypeStruct {
 
         let column_type = column_type_expr(attrs.column_type, field_type, field_span);
         let array_type = array_type_expr(attrs.array_type, field_type, field_span);
-        let can_try_from_u64 = can_try_from_u64(field_type);
+        let can_try_from_u64 = attrs.try_from_u64 || can_try_from_u64(field_type);
 
         Ok(Self {
             name,
