@@ -104,8 +104,8 @@ pub fn expand_derive_arrow_schema(
     Ok(quote! {
         #[automatically_derived]
         impl sea_orm::ArrowSchema for #entity_name {
-            fn arrow_schema() -> arrow::datatypes::Schema {
-                use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+            fn arrow_schema() -> sea_orm::arrow::datatypes::Schema {
+                use sea_orm::arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 
                 Schema::new(vec![
                     #(#field_definitions),*
@@ -135,7 +135,7 @@ struct ArrowFieldInfo {
 
 fn generate_field_definition(info: &ArrowFieldInfo) -> TokenStream {
     let field_name = &info.name;
-    let nullable = info.nullable;
+    let nullable = info.nullable ||true; // we use ActiveModel, where fields can be NotSet.
 
     // Generate DataType based on column_type or field type
     let data_type = if let Some(col_type_str) = &info.column_type_str {
