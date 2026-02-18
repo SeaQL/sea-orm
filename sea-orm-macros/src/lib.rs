@@ -995,6 +995,10 @@ pub fn enum_iter(input: TokenStream) -> TokenStream {
 /// This procedure macro implements `From<T> for Value`, `sea_orm::TryGetTable`, and
 /// `sea_query::ValueType` for the wrapper type `T`.
 ///
+/// It also implements `sea_query::postgres_array::NotU8`.
+/// It implements `TryFromU64` if the wrapped types are recognized primitives, i.e.
+/// `"i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64"`.
+///
 /// The wrapped type must be `sea_orm::Value` compatible.
 ///
 /// ## Usage
