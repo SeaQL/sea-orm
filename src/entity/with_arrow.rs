@@ -739,11 +739,7 @@ pub(crate) fn values_to_arrow_array(
             let arr: Arc<dyn Array> = match unit {
                 TimeUnit::Second => Arc::new(Time32SecondArray::from(vals)),
                 TimeUnit::Millisecond => Arc::new(Time32MillisecondArray::from(vals)),
-                _ => {
-                    return Err(DbErr::Type(format!(
-                        "Unsupported Time32 unit: {unit:?}"
-                    )))
-                }
+                _ => return Err(DbErr::Type(format!("Unsupported Time32 unit: {unit:?}"))),
             };
             Ok(arr)
         }
@@ -752,11 +748,7 @@ pub(crate) fn values_to_arrow_array(
             let arr: Arc<dyn Array> = match unit {
                 TimeUnit::Microsecond => Arc::new(Time64MicrosecondArray::from(vals)),
                 TimeUnit::Nanosecond => Arc::new(Time64NanosecondArray::from(vals)),
-                _ => {
-                    return Err(DbErr::Type(format!(
-                        "Unsupported Time64 unit: {unit:?}"
-                    )))
-                }
+                _ => return Err(DbErr::Type(format!("Unsupported Time64 unit: {unit:?}"))),
             };
             Ok(arr)
         }

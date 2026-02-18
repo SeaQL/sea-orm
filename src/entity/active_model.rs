@@ -622,8 +622,8 @@ pub trait ActiveModelTrait: Clone + Debug {
             let field_name = field.name();
 
             // Find the entity column whose name matches this schema field
-            let entity_col = <<Self::Entity as EntityTrait>::Column>::iter()
-                .find(|c| c.as_str() == field_name);
+            let entity_col =
+                <<Self::Entity as EntityTrait>::Column>::iter().find(|c| c.as_str() == field_name);
 
             if let Some(col) = entity_col {
                 let values: Vec<Option<Value>> = models

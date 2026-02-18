@@ -35,6 +35,27 @@ mod primitive_entity {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+/// Test entity with column_name overrides
+mod column_name_entity {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+    #[sea_orm(table_name = "test_col_names", arrow_schema)]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        #[sea_orm(column_name = "user_name")]
+        pub name: String,
+        #[sea_orm(column_name = "is_active")]
+        pub active: bool,
+        #[sea_orm(column_name = "score_value")]
+        pub score: Option<f64>,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 fn make_batch() -> RecordBatch {
     let schema = Arc::new(Schema::new(vec![
         Field::new("id", DataType::Int32, false),
@@ -211,8 +232,7 @@ fn test_to_arrow_basic_primitives() {
         },
     ];
 
-    let batch =
-        primitive_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
+    let batch = primitive_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
 
     assert_eq!(batch.num_rows(), 2);
     assert_eq!(batch.num_columns(), 14);
@@ -322,8 +342,7 @@ fn test_to_arrow_not_set_becomes_null() {
         ..Default::default()
     }];
 
-    let batch =
-        primitive_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
+    let batch = primitive_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
     assert_eq!(batch.num_rows(), 1);
 
     // id and name should be present
@@ -356,10 +375,163 @@ fn test_to_arrow_not_set_becomes_null() {
 #[test]
 fn test_to_arrow_empty_slice() {
     let schema = primitive_entity::Entity::arrow_schema();
-    let batch =
-        primitive_entity::ActiveModel::to_arrow(&[], &schema).expect("to_arrow failed");
+    let batch = primitive_entity::ActiveModel::to_arrow(&[], &schema).expect("to_arrow failed");
     assert_eq!(batch.num_rows(), 0);
     assert_eq!(batch.num_columns(), 14);
+}
+
+// ===========================================================================
+// column_name attribute tests
+// ===========================================================================
+
+#[test]
+fn test_column_name_schema_uses_db_names() {
+    // DeriveArrowSchema should use the column_name attribute values, not the Rust field names
+    let schema = column_name_entity::Entity::arrow_schema();
+    let field_names: Vec<&str> = schema.fields().iter().map(|f| f.name().as_str()).collect();
+
+    assert_eq!(
+        field_names,
+        vec!["id", "user_name", "is_active", "score_value"]
+    );
+}
+
+#[test]
+fn test_column_name_to_arrow_uses_db_names() {
+    let schema = column_name_entity::Entity::arrow_schema();
+
+    let models = vec![column_name_entity::ActiveModel {
+        id: Set(1),
+        name: Set("Alice".to_owned()),
+        active: Set(true),
+        score: Set(Some(95.5)),
+    }];
+
+    let batch =
+        column_name_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
+
+    // Columns should be accessible by their column_name (db name), not the Rust field name
+    assert!(batch.column_by_name("user_name").is_some());
+    assert!(batch.column_by_name("is_active").is_some());
+    assert!(batch.column_by_name("score_value").is_some());
+
+    // Rust field names should NOT appear in the batch
+    assert!(batch.column_by_name("name").is_none());
+    assert!(batch.column_by_name("active").is_none());
+    assert!(batch.column_by_name("score").is_none());
+
+    // Verify values
+    let name_arr = batch
+        .column_by_name("user_name")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<StringArray>()
+        .unwrap();
+    assert_eq!(name_arr.value(0), "Alice");
+
+    let active_arr = batch
+        .column_by_name("is_active")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<BooleanArray>()
+        .unwrap();
+    assert!(active_arr.value(0));
+
+    let score_arr = batch
+        .column_by_name("score_value")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<Float64Array>()
+        .unwrap();
+    assert_eq!(score_arr.value(0), 95.5);
+}
+
+#[test]
+fn test_column_name_from_arrow_uses_db_names() {
+    // Build a RecordBatch with column_name (db) names
+    let schema = Arc::new(column_name_entity::Entity::arrow_schema());
+
+    let batch = RecordBatch::try_new(
+        schema,
+        vec![
+            Arc::new(Int32Array::from(vec![1])),
+            Arc::new(StringArray::from(vec!["Bob"])),
+            Arc::new(BooleanArray::from(vec![false])),
+            Arc::new(Float64Array::from(vec![Some(88.0)])),
+        ],
+    )
+    .expect("Failed to create RecordBatch");
+
+    let ams = column_name_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+    assert_eq!(ams.len(), 1);
+
+    // Values should be set on the Rust fields correctly
+    assert_eq!(ams[0].id, Set(1));
+    assert_eq!(ams[0].name, Set("Bob".to_owned()));
+    assert_eq!(ams[0].active, Set(false));
+    assert_eq!(ams[0].score, Set(Some(88.0)));
+}
+
+#[test]
+fn test_column_name_roundtrip() {
+    let schema = column_name_entity::Entity::arrow_schema();
+
+    let original = vec![
+        column_name_entity::ActiveModel {
+            id: Set(1),
+            name: Set("Alice".to_owned()),
+            active: Set(true),
+            score: Set(Some(95.5)),
+        },
+        column_name_entity::ActiveModel {
+            id: Set(2),
+            name: Set("Bob".to_owned()),
+            active: Set(false),
+            score: Set(None),
+        },
+    ];
+
+    let batch =
+        column_name_entity::ActiveModel::to_arrow(&original, &schema).expect("to_arrow failed");
+    let roundtripped =
+        column_name_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+
+    assert_eq!(roundtripped, original);
+}
+
+#[test]
+fn test_column_name_from_arrow_ignores_rust_field_names() {
+    // Build a RecordBatch using the Rust field names instead of column_name values.
+    // from_arrow should NOT find these columns (they don't match col.as_str()).
+    let schema = Arc::new(Schema::new(vec![
+        Field::new("id", DataType::Int32, false),
+        Field::new("name", DataType::Utf8, false), // Rust field name, not "user_name"
+        Field::new("active", DataType::Boolean, false), // Rust field name, not "is_active"
+        Field::new("score", DataType::Float64, true), // Rust field name, not "score_value"
+    ]));
+
+    let batch = RecordBatch::try_new(
+        schema,
+        vec![
+            Arc::new(Int32Array::from(vec![1])),
+            Arc::new(StringArray::from(vec!["Alice"])),
+            Arc::new(BooleanArray::from(vec![true])),
+            Arc::new(Float64Array::from(vec![Some(95.5)])),
+        ],
+    )
+    .expect("Failed to create RecordBatch");
+
+    let ams = column_name_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+    assert_eq!(ams.len(), 1);
+
+    // id should be found (same name in both)
+    assert_eq!(ams[0].id, Set(1));
+
+    // The other fields should be NotSet because "name"/"active"/"score"
+    // don't match "user_name"/"is_active"/"score_value"
+    assert_eq!(ams[0].name, NotSet);
+    assert_eq!(ams[0].active, NotSet);
+    assert_eq!(ams[0].score, NotSet);
 }
 
 #[test]
@@ -410,24 +582,7 @@ fn test_to_arrow_roundtrip_primitives() {
     assert_eq!(roundtripped.len(), 2);
 
     // First row
-    assert_eq!(roundtripped[0].id, Set(1));
-    assert_eq!(roundtripped[0].tiny, Set(10));
-    assert_eq!(roundtripped[0].small, Set(100));
-    assert_eq!(roundtripped[0].big, Set(1000));
-    assert_eq!(roundtripped[0].tiny_u, Set(5));
-    assert_eq!(roundtripped[0].small_u, Set(50));
-    assert_eq!(roundtripped[0].uint, Set(500));
-    assert_eq!(roundtripped[0].big_u, Set(5000));
-    assert_eq!(roundtripped[0].float_val, Set(1.5));
-    assert_eq!(roundtripped[0].double_val, Set(10.5));
-    assert_eq!(roundtripped[0].name, Set("Alice".to_owned()));
-    assert_eq!(roundtripped[0].flag, Set(true));
-    assert_eq!(roundtripped[0].nullable_int, Set(Some(42)));
-    assert_eq!(roundtripped[0].nullable_name, Set(Some("hello".to_owned())));
-
-    // Second row: nullable fields are None
-    assert_eq!(roundtripped[1].nullable_int, Set(None));
-    assert_eq!(roundtripped[1].nullable_name, Set(None));
+    assert_eq!(roundtripped, original);
 }
 
 /// Chrono datetime tests
@@ -481,7 +636,7 @@ mod chrono_tests {
                 created_time: Set(time),
                 created_at: Set(naive_dt),
                 updated_at: Set(utc_dt),
-                nullable_ts: Set(None),
+                nullable_ts: NotSet,
             },
         ];
 
@@ -602,8 +757,7 @@ mod chrono_tests {
             .as_any()
             .downcast_ref::<Time64NanosecondArray>()
             .unwrap();
-        let expected_time_ns: i64 =
-            10 * 3_600_000_000_000 + 30 * 60_000_000_000 + 123_456_789;
+        let expected_time_ns: i64 = 10 * 3_600_000_000_000 + 30 * 60_000_000_000 + 123_456_789;
         assert_eq!(time_arr.value(0), expected_time_ns);
 
         let ts_arr = batch
@@ -999,13 +1153,11 @@ mod time_tests {
 
         let schema = time_entity::Entity::arrow_schema();
 
-        let date =
-            time::Date::from_calendar_date(2024, time::Month::June, 15).expect("valid");
+        let date = time::Date::from_calendar_date(2024, time::Month::June, 15).expect("valid");
         let time_val = time::Time::from_hms(10, 30, 0).expect("valid");
         let pdt = time::PrimitiveDateTime::new(date, time_val);
-        let odt =
-            time::OffsetDateTime::from_unix_timestamp_nanos(1_718_447_400_000_000_000)
-                .expect("valid");
+        let odt = time::OffsetDateTime::from_unix_timestamp_nanos(1_718_447_400_000_000_000)
+            .expect("valid");
 
         let models = vec![
             time_entity::ActiveModel {
@@ -1022,12 +1174,11 @@ mod time_tests {
                 created_time: Set(time_val),
                 created_at: Set(pdt),
                 updated_at: Set(odt),
-                nullable_ts: Set(None),
+                nullable_ts: NotSet,
             },
         ];
 
-        let batch =
-            time_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
+        let batch = time_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
         assert_eq!(batch.num_rows(), 2);
 
         // Verify Date32
@@ -1060,8 +1211,7 @@ mod time_tests {
         assert!(nullable_arr.is_null(1));
 
         // Full roundtrip
-        let roundtripped =
-            time_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+        let roundtripped = time_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
         assert_eq!(roundtripped.len(), 2);
         assert_eq!(roundtripped[0].id, Set(1));
         assert_eq!(roundtripped[0].created_date, Set(date));
@@ -1226,11 +1376,7 @@ mod rust_decimal_tests {
         // Full roundtrip
         let roundtripped =
             decimal_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
-        assert_eq!(roundtripped.len(), 2);
-        assert_eq!(roundtripped[0].price, Set(price));
-        assert_eq!(roundtripped[0].amount, Set(amount));
-        assert_eq!(roundtripped[0].nullable_decimal, Set(Some(price)));
-        assert_eq!(roundtripped[1].nullable_decimal, Set(None));
+        assert_eq!(roundtripped, models);
     }
 }
 
@@ -1421,10 +1567,6 @@ mod bigdecimal_tests {
         // Full roundtrip
         let roundtripped =
             decimal_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
-        assert_eq!(roundtripped.len(), 2);
-        assert_eq!(roundtripped[0].price, Set(price.clone()));
-        assert_eq!(roundtripped[0].amount, Set(amount));
-        assert_eq!(roundtripped[0].nullable_decimal, Set(Some(price)));
-        assert_eq!(roundtripped[1].nullable_decimal, Set(None));
+        assert_eq!(roundtripped, original);
     }
 }
