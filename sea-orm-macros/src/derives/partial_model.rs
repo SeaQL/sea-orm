@@ -8,7 +8,7 @@ use syn::{
 use super::from_query_result::{
     DeriveFromQueryResult, FromQueryResultItem, ItemType as FqrItemType,
 };
-use super::into_active_model::DeriveIntoActiveModel;
+use super::into_active_model::{DeriveIntoActiveModel, IntoActiveModelField};
 use super::util::GetMeta;
 
 #[derive(Debug)]
@@ -235,9 +235,11 @@ impl DerivePartialModel {
                             ColumnAs::Nested { .. } => None,
                             ColumnAs::Skip(_) => None,
                         }
-                        .cloned()
+                        .map(|f| IntoActiveModelField::Normal(f.clone()))
                     })
                     .collect(),
+                sets: Vec::new(),
+                exhaustive: false,
             }
             .impl_into_active_model()
         } else {
