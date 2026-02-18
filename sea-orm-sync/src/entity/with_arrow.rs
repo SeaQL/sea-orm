@@ -1,5 +1,6 @@
 use crate::{ColumnType, DbErr};
 use arrow::array::*;
+use arrow::datatypes::i256;
 use sea_query::Value;
 
 /// Extract a [`Value`] from an Arrow array at the given row index,
@@ -107,6 +108,8 @@ pub(crate) fn arrow_array_to_value(
                 .ok_or_else(|| type_err("BooleanArray", "Boolean", array))?;
             Ok(Value::Bool(Some(arr.value(row))))
         }
+        // Decimal types
+        ColumnType::Decimal(_) | ColumnType::Money(_) => arrow_to_decimal(array, row),
         // Date/time types: delegate to feature-gated helpers.
         // Prefer chrono when available; fall back to time crate.
         #[cfg(feature = "with-chrono")]
@@ -154,6 +157,122 @@ pub(crate) fn arrow_array_to_value_alt(
         ColumnType::TimestampWithTimeZone => arrow_to_time_datetime_tz(array, row).map(Some),
         _ => Ok(None),
     }
+}
+
+/// Convert Arrow Decimal128Array or Decimal256Array to a decimal Value.
+/// Prefers rust_decimal when available and precision fits, otherwise bigdecimal.
+fn arrow_to_decimal(array: &dyn Array, row: usize) -> Result<Value, DbErr> {
+    // Try Decimal128Array first
+    if let Some(arr) = array.as_any().downcast_ref::<Decimal128Array>() {
+        let value = arr.value(row);
+        let precision = arr.precision();
+        let scale = arr.scale();
+        return decimal128_to_value(value, precision, scale);
+    }
+
+    // Try Decimal256Array
+    if let Some(arr) = array.as_any().downcast_ref::<Decimal256Array>() {
+        let value = arr.value(row);
+        let precision = arr.precision();
+        let scale = arr.scale();
+        return decimal256_to_value(value, precision, scale);
+    }
+
+    Err(type_err(
+        "Decimal128Array or Decimal256Array",
+        "Decimal",
+        array,
+    ))
+}
+
+#[cfg(feature = "with-rust_decimal")]
+fn decimal128_to_value(value: i128, precision: u8, scale: i8) -> Result<Value, DbErr> {
+    use rust_decimal::Decimal;
+
+    // rust_decimal supports up to 28 digits precision and 28 scale
+    if precision > 28 || scale > 28 || scale < 0 {
+        // If rust_decimal can't handle it, try bigdecimal as fallback
+        #[cfg(feature = "with-bigdecimal")]
+        return decimal128_to_bigdecimal(value, scale);
+
+        #[cfg(not(feature = "with-bigdecimal"))]
+        return Err(DbErr::Type(format!(
+            "Decimal128 with precision={precision}, scale={scale} exceeds rust_decimal limits (max precision=28, scale=0-28). Enable 'with-bigdecimal' feature for arbitrary precision."
+        )));
+    }
+
+    let decimal = Decimal::from_i128_with_scale(value, scale as u32);
+    Ok(Value::Decimal(Some(decimal)))
+}
+
+#[cfg(not(feature = "with-rust_decimal"))]
+fn decimal128_to_value(value: i128, _precision: u8, scale: i8) -> Result<Value, DbErr> {
+    #[cfg(feature = "with-bigdecimal")]
+    return decimal128_to_bigdecimal(value, scale);
+
+    #[cfg(not(feature = "with-bigdecimal"))]
+    Err(DbErr::Type(
+        "Decimal128Array requires 'with-rust_decimal' or 'with-bigdecimal' feature".into(),
+    ))
+}
+
+#[cfg(feature = "with-bigdecimal")]
+fn decimal128_to_bigdecimal(value: i128, scale: i8) -> Result<Value, DbErr> {
+    use bigdecimal::{BigDecimal, num_bigint::BigInt};
+
+    let bigint = BigInt::from(value);
+    let decimal = BigDecimal::new(bigint, scale as i64);
+    Ok(Value::BigDecimal(Some(Box::new(decimal))))
+}
+
+fn decimal256_to_value(_value: i256, _precision: u8, _scale: i8) -> Result<Value, DbErr> {
+    #[cfg(feature = "with-bigdecimal")]
+    {
+        use bigdecimal::{
+            BigDecimal,
+            num_bigint::{BigInt, Sign},
+        };
+
+        // Convert i256 to BigInt via byte representation
+        let bytes = _value.to_be_bytes();
+
+        // Determine sign and magnitude
+        let (sign, magnitude) = if _value.is_negative() {
+            // For negative numbers, we need to compute two's complement
+            let mut abs_bytes = [0u8; 32];
+            let mut carry = true;
+
+            // Invert bits and add 1 (two's complement)
+            for i in (0..32).rev() {
+                abs_bytes[i] = !bytes[i];
+                if carry {
+                    if abs_bytes[i] == 255 {
+                        abs_bytes[i] = 0;
+                    } else {
+                        abs_bytes[i] += 1;
+                        carry = false;
+                    }
+                }
+            }
+
+            (Sign::Minus, abs_bytes.to_vec())
+        } else if _value == i256::ZERO {
+            (Sign::NoSign, vec![0])
+        } else {
+            // Positive: strip leading zeros
+            let first_nonzero = bytes.iter().position(|&b| b != 0).unwrap_or(31);
+            (Sign::Plus, bytes[first_nonzero..].to_vec())
+        };
+
+        let bigint = BigInt::from_bytes_be(sign, &magnitude);
+        let decimal = BigDecimal::new(bigint, _scale as i64);
+        Ok(Value::BigDecimal(Some(Box::new(decimal))))
+    }
+
+    #[cfg(not(feature = "with-bigdecimal"))]
+    Err(DbErr::Type(
+        "Decimal256Array requires 'with-bigdecimal' feature for arbitrary precision support".into(),
+    ))
 }
 
 #[cfg(feature = "with-chrono")]
@@ -386,6 +505,10 @@ fn null_value_for_type(col_type: &ColumnType) -> Value {
         ColumnType::Double => Value::Double(None),
         ColumnType::String(_) | ColumnType::Text | ColumnType::Char(_) => Value::String(None),
         ColumnType::Boolean => Value::Bool(None),
+        #[cfg(feature = "with-rust_decimal")]
+        ColumnType::Decimal(_) | ColumnType::Money(_) => Value::Decimal(None),
+        #[cfg(all(feature = "with-bigdecimal", not(feature = "with-rust_decimal")))]
+        ColumnType::Decimal(_) | ColumnType::Money(_) => Value::BigDecimal(None),
         #[cfg(feature = "with-chrono")]
         ColumnType::Date => Value::ChronoDate(None),
         #[cfg(feature = "with-chrono")]
@@ -435,4 +558,470 @@ pub(crate) fn is_datetime_column(col_type: &ColumnType) -> bool {
             | ColumnType::Timestamp
             | ColumnType::TimestampWithTimeZone
     )
+}
+
+// ---------------------------------------------------------------------------
+// to_arrow: Value → Arrow array conversion
+// ---------------------------------------------------------------------------
+
+/// Convert a slice of optional [`Value`]s to an Arrow array matching the
+/// target [`DataType`](arrow::datatypes::DataType).
+///
+/// `None` entries (from `ActiveValue::NotSet`) become null in the array.
+/// `Some(Value::Variant(None))` (SQL NULL) also become null.
+pub(crate) fn values_to_arrow_array(
+    values: &[Option<Value>],
+    data_type: &arrow::datatypes::DataType,
+) -> Result<std::sync::Arc<dyn Array>, DbErr> {
+    use arrow::datatypes::{DataType, TimeUnit};
+    use std::sync::Arc;
+
+    match data_type {
+        // -- integers --
+        DataType::Int8 => {
+            let arr: Int8Array = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::TinyInt(inner)) => *inner,
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(arr))
+        }
+        DataType::Int16 => {
+            let arr: Int16Array = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::SmallInt(inner)) => *inner,
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(arr))
+        }
+        DataType::Int32 => {
+            let arr: Int32Array = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::Int(inner)) => *inner,
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(arr))
+        }
+        DataType::Int64 => {
+            let arr: Int64Array = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::BigInt(inner)) => *inner,
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(arr))
+        }
+        DataType::UInt8 => {
+            let arr: UInt8Array = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::TinyUnsigned(inner)) => *inner,
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(arr))
+        }
+        DataType::UInt16 => {
+            let arr: UInt16Array = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::SmallUnsigned(inner)) => *inner,
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(arr))
+        }
+        DataType::UInt32 => {
+            let arr: UInt32Array = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::Unsigned(inner)) => *inner,
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(arr))
+        }
+        DataType::UInt64 => {
+            let arr: UInt64Array = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::BigUnsigned(inner)) => *inner,
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(arr))
+        }
+
+        // -- floats --
+        DataType::Float32 => {
+            let arr: Float32Array = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::Float(inner)) => *inner,
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(arr))
+        }
+        DataType::Float64 => {
+            let arr: Float64Array = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::Double(inner)) => *inner,
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(arr))
+        }
+
+        // -- boolean --
+        DataType::Boolean => {
+            let arr: BooleanArray = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::Bool(inner)) => *inner,
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(arr))
+        }
+
+        // -- strings --
+        DataType::Utf8 => {
+            let strs: Vec<Option<&str>> = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::String(Some(s))) => Some(s.as_str()),
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(StringArray::from(strs)))
+        }
+        DataType::LargeUtf8 => {
+            let strs: Vec<Option<&str>> = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::String(Some(s))) => Some(s.as_str()),
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(LargeStringArray::from(strs)))
+        }
+
+        // -- binary --
+        DataType::Binary => {
+            let bufs: Vec<Option<&[u8]>> = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::Bytes(Some(b))) => Some(b.as_slice()),
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(BinaryArray::from(bufs)))
+        }
+
+        // -- date --
+        DataType::Date32 => {
+            let arr: Date32Array = values.iter().map(|v| extract_date32(v)).collect();
+            Ok(Arc::new(arr))
+        }
+
+        // -- time --
+        DataType::Time32(unit) => {
+            let vals: Vec<Option<i32>> = values.iter().map(|v| extract_time32(v, unit)).collect();
+            let arr: Arc<dyn Array> = match unit {
+                TimeUnit::Second => Arc::new(Time32SecondArray::from(vals)),
+                TimeUnit::Millisecond => Arc::new(Time32MillisecondArray::from(vals)),
+                _ => return Err(DbErr::Type(format!("Unsupported Time32 unit: {unit:?}"))),
+            };
+            Ok(arr)
+        }
+        DataType::Time64(unit) => {
+            let vals: Vec<Option<i64>> = values.iter().map(|v| extract_time64(v, unit)).collect();
+            let arr: Arc<dyn Array> = match unit {
+                TimeUnit::Microsecond => Arc::new(Time64MicrosecondArray::from(vals)),
+                TimeUnit::Nanosecond => Arc::new(Time64NanosecondArray::from(vals)),
+                _ => return Err(DbErr::Type(format!("Unsupported Time64 unit: {unit:?}"))),
+            };
+            Ok(arr)
+        }
+
+        // -- timestamp --
+        DataType::Timestamp(unit, tz) => {
+            let vals: Vec<Option<i64>> =
+                values.iter().map(|v| extract_timestamp(v, unit)).collect();
+            let arr: Arc<dyn Array> = match unit {
+                TimeUnit::Second => {
+                    let mut a = TimestampSecondArray::from(vals);
+                    if let Some(tz) = tz {
+                        a = a.with_timezone(tz.as_ref());
+                    }
+                    Arc::new(a)
+                }
+                TimeUnit::Millisecond => {
+                    let mut a = TimestampMillisecondArray::from(vals);
+                    if let Some(tz) = tz {
+                        a = a.with_timezone(tz.as_ref());
+                    }
+                    Arc::new(a)
+                }
+                TimeUnit::Microsecond => {
+                    let mut a = TimestampMicrosecondArray::from(vals);
+                    if let Some(tz) = tz {
+                        a = a.with_timezone(tz.as_ref());
+                    }
+                    Arc::new(a)
+                }
+                TimeUnit::Nanosecond => {
+                    let mut a = TimestampNanosecondArray::from(vals);
+                    if let Some(tz) = tz {
+                        a = a.with_timezone(tz.as_ref());
+                    }
+                    Arc::new(a)
+                }
+            };
+            Ok(arr)
+        }
+
+        // -- decimal --
+        DataType::Decimal128(precision, scale) => {
+            let arr: Decimal128Array = values
+                .iter()
+                .map(|v| extract_decimal128(v, *scale))
+                .collect();
+            let arr = arr
+                .with_precision_and_scale(*precision, *scale)
+                .map_err(|e| DbErr::Type(format!("Invalid Decimal128 precision/scale: {e}")))?;
+            Ok(Arc::new(arr))
+        }
+        DataType::Decimal256(precision, scale) => {
+            let arr: Decimal256Array = values
+                .iter()
+                .map(|v| extract_decimal256(v, *scale))
+                .collect();
+            let arr = arr
+                .with_precision_and_scale(*precision, *scale)
+                .map_err(|e| DbErr::Type(format!("Invalid Decimal256 precision/scale: {e}")))?;
+            Ok(Arc::new(arr))
+        }
+
+        _ => Err(DbErr::Type(format!(
+            "Unsupported Arrow DataType for to_arrow: {data_type:?}"
+        ))),
+    }
+}
+
+// -- Date extraction helpers --
+
+fn extract_date32(v: &Option<Value>) -> Option<i32> {
+    #[cfg(feature = "with-chrono")]
+    if let Some(Value::ChronoDate(Some(d))) = v {
+        let epoch = chrono::NaiveDate::from_ymd_opt(1970, 1, 1).unwrap();
+        return Some((*d - epoch).num_days() as i32);
+    }
+    #[cfg(feature = "with-time")]
+    if let Some(Value::TimeDate(Some(d))) = v {
+        return Some(d.to_julian_day() - 2_440_588);
+    }
+    let _ = v;
+    None
+}
+
+// -- Time extraction helpers --
+
+fn extract_time32(v: &Option<Value>, unit: &arrow::datatypes::TimeUnit) -> Option<i32> {
+    use arrow::datatypes::TimeUnit;
+
+    #[cfg(feature = "with-chrono")]
+    if let Some(Value::ChronoTime(Some(t))) = v {
+        use chrono::Timelike;
+        let secs = t.num_seconds_from_midnight() as i32;
+        return match unit {
+            TimeUnit::Second => Some(secs),
+            TimeUnit::Millisecond => {
+                let ms = (t.nanosecond() / 1_000_000) as i32;
+                Some(secs * 1_000 + ms)
+            }
+            _ => None,
+        };
+    }
+    #[cfg(feature = "with-time")]
+    if let Some(Value::TimeTime(Some(t))) = v {
+        let secs = (t.hour() as i32) * 3600 + (t.minute() as i32) * 60 + (t.second() as i32);
+        return match unit {
+            TimeUnit::Second => Some(secs),
+            TimeUnit::Millisecond => {
+                let ms = (t.nanosecond() / 1_000_000) as i32;
+                Some(secs * 1_000 + ms)
+            }
+            _ => None,
+        };
+    }
+    let _ = (v, unit);
+    None
+}
+
+fn extract_time64(v: &Option<Value>, unit: &arrow::datatypes::TimeUnit) -> Option<i64> {
+    use arrow::datatypes::TimeUnit;
+
+    #[cfg(feature = "with-chrono")]
+    if let Some(Value::ChronoTime(Some(t))) = v {
+        use chrono::Timelike;
+        let secs = t.num_seconds_from_midnight() as i64;
+        let nanos = (t.nanosecond() % 1_000_000_000) as i64;
+        return match unit {
+            TimeUnit::Microsecond => Some(secs * 1_000_000 + nanos / 1_000),
+            TimeUnit::Nanosecond => Some(secs * 1_000_000_000 + nanos),
+            _ => None,
+        };
+    }
+    #[cfg(feature = "with-time")]
+    if let Some(Value::TimeTime(Some(t))) = v {
+        let secs = (t.hour() as i64) * 3600 + (t.minute() as i64) * 60 + (t.second() as i64);
+        let nanos = t.nanosecond() as i64;
+        return match unit {
+            TimeUnit::Microsecond => Some(secs * 1_000_000 + nanos / 1_000),
+            TimeUnit::Nanosecond => Some(secs * 1_000_000_000 + nanos),
+            _ => None,
+        };
+    }
+    let _ = (v, unit);
+    None
+}
+
+// -- Timestamp extraction helpers --
+
+fn extract_timestamp(v: &Option<Value>, unit: &arrow::datatypes::TimeUnit) -> Option<i64> {
+    use arrow::datatypes::TimeUnit;
+
+    #[cfg(feature = "with-chrono")]
+    {
+        if let Some(Value::ChronoDateTime(Some(dt))) = v {
+            let utc = dt.and_utc();
+            return Some(match unit {
+                TimeUnit::Second => utc.timestamp(),
+                TimeUnit::Millisecond => utc.timestamp_millis(),
+                TimeUnit::Microsecond => utc.timestamp_micros(),
+                TimeUnit::Nanosecond => utc.timestamp_nanos_opt().unwrap_or(0),
+            });
+        }
+        if let Some(Value::ChronoDateTimeUtc(Some(dt))) = v {
+            return Some(match unit {
+                TimeUnit::Second => dt.timestamp(),
+                TimeUnit::Millisecond => dt.timestamp_millis(),
+                TimeUnit::Microsecond => dt.timestamp_micros(),
+                TimeUnit::Nanosecond => dt.timestamp_nanos_opt().unwrap_or(0),
+            });
+        }
+    }
+    #[cfg(feature = "with-time")]
+    {
+        if let Some(Value::TimeDateTime(Some(dt))) = v {
+            let odt = dt.assume_utc();
+            return Some(offset_dt_to_timestamp(&odt, unit));
+        }
+        if let Some(Value::TimeDateTimeWithTimeZone(Some(dt))) = v {
+            return Some(offset_dt_to_timestamp(dt, unit));
+        }
+    }
+    let _ = (v, unit);
+    None
+}
+
+#[cfg(feature = "with-time")]
+fn offset_dt_to_timestamp(dt: &time::OffsetDateTime, unit: &arrow::datatypes::TimeUnit) -> i64 {
+    use arrow::datatypes::TimeUnit;
+    match unit {
+        TimeUnit::Second => dt.unix_timestamp(),
+        TimeUnit::Millisecond => (dt.unix_timestamp_nanos() / 1_000_000) as i64,
+        TimeUnit::Microsecond => (dt.unix_timestamp_nanos() / 1_000) as i64,
+        TimeUnit::Nanosecond => dt.unix_timestamp_nanos() as i64,
+    }
+}
+
+// -- Decimal extraction helpers --
+
+fn extract_decimal128(v: &Option<Value>, target_scale: i8) -> Option<i128> {
+    #[cfg(feature = "with-rust_decimal")]
+    if let Some(Value::Decimal(Some(d))) = v {
+        let mantissa = d.mantissa();
+        let current_scale = d.scale() as i8;
+        let scale_diff = target_scale - current_scale;
+        return if scale_diff >= 0 {
+            Some(mantissa * 10i128.pow(scale_diff as u32))
+        } else {
+            Some(mantissa / 10i128.pow((-scale_diff) as u32))
+        };
+    }
+    #[cfg(feature = "with-bigdecimal")]
+    if let Some(Value::BigDecimal(Some(d))) = v {
+        return bigdecimal_to_i128(d, target_scale);
+    }
+    let _ = (v, target_scale);
+    None
+}
+
+#[cfg(feature = "with-bigdecimal")]
+fn bigdecimal_to_i128(d: &bigdecimal::BigDecimal, target_scale: i8) -> Option<i128> {
+    use bigdecimal::ToPrimitive;
+
+    let rescaled = d.clone().with_scale(target_scale as i64);
+    let (digits, _) = rescaled.into_bigint_and_exponent();
+    digits.to_i128()
+}
+
+fn extract_decimal256(v: &Option<Value>, target_scale: i8) -> Option<i256> {
+    #[cfg(feature = "with-bigdecimal")]
+    if let Some(Value::BigDecimal(Some(d))) = v {
+        return bigdecimal_to_i256(d, target_scale);
+    }
+    // rust_decimal values can also be promoted to i256
+    #[cfg(feature = "with-rust_decimal")]
+    if let Some(Value::Decimal(Some(d))) = v {
+        let mantissa = d.mantissa();
+        let current_scale = d.scale() as i8;
+        let scale_diff = target_scale - current_scale;
+        let scaled = if scale_diff >= 0 {
+            mantissa * 10i128.pow(scale_diff as u32)
+        } else {
+            mantissa / 10i128.pow((-scale_diff) as u32)
+        };
+        return Some(i256::from_i128(scaled));
+    }
+    let _ = (v, target_scale);
+    None
+}
+
+#[cfg(feature = "with-bigdecimal")]
+fn bigdecimal_to_i256(d: &bigdecimal::BigDecimal, target_scale: i8) -> Option<i256> {
+    let rescaled = d.clone().with_scale(target_scale as i64);
+    let (digits, _) = rescaled.into_bigint_and_exponent();
+    bigint_to_i256(&digits)
+}
+
+#[cfg(feature = "with-bigdecimal")]
+fn bigint_to_i256(bi: &bigdecimal::num_bigint::BigInt) -> Option<i256> {
+    use bigdecimal::num_bigint::Sign;
+
+    let (sign, bytes) = bi.to_bytes_be();
+    if bytes.len() > 32 {
+        return None; // exceeds i256 capacity
+    }
+
+    let mut buf = [0u8; 32];
+    let start = 32 - bytes.len();
+    buf[start..].copy_from_slice(&bytes);
+
+    let val = i256::from_be_bytes(buf);
+    match sign {
+        Sign::Minus => Some(val.wrapping_neg()),
+        _ => Some(val),
+    }
 }
