@@ -218,7 +218,7 @@ fn decimal128_to_value(value: i128, _precision: u8, scale: i8) -> Result<Value, 
 
 #[cfg(feature = "with-bigdecimal")]
 fn decimal128_to_bigdecimal(value: i128, scale: i8) -> Result<Value, DbErr> {
-    use bigdecimal::{num_bigint::BigInt, BigDecimal};
+    use bigdecimal::{BigDecimal, num_bigint::BigInt};
 
     let bigint = BigInt::from(value);
     let decimal = BigDecimal::new(bigint, scale as i64);
@@ -229,8 +229,8 @@ fn decimal256_to_value(_value: i256, _precision: u8, _scale: i8) -> Result<Value
     #[cfg(feature = "with-bigdecimal")]
     {
         use bigdecimal::{
-            num_bigint::{BigInt, Sign},
             BigDecimal,
+            num_bigint::{BigInt, Sign},
         };
 
         // Convert i256 to BigInt via byte representation
@@ -271,7 +271,7 @@ fn decimal256_to_value(_value: i256, _precision: u8, _scale: i8) -> Result<Value
 
     #[cfg(not(feature = "with-bigdecimal"))]
     Err(DbErr::Type(
-        "Decimal256Array requires 'with-bigdecimal' feature for arbitrary precision support".into()
+        "Decimal256Array requires 'with-bigdecimal' feature for arbitrary precision support".into(),
     ))
 }
 

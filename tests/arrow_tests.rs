@@ -367,8 +367,7 @@ mod chrono_tests {
                     TimestampNanosecondArray::from(vec![epoch_ns, epoch_ns]).with_timezone("UTC"),
                 ),
                 Arc::new(
-                    TimestampNanosecondArray::from(vec![Some(epoch_ns), None])
-                        .with_timezone("UTC"),
+                    TimestampNanosecondArray::from(vec![Some(epoch_ns), None]).with_timezone("UTC"),
                 ),
             ],
         )
@@ -538,8 +537,7 @@ mod time_tests {
                     TimestampNanosecondArray::from(vec![epoch_ns, epoch_ns]).with_timezone("UTC"),
                 ),
                 Arc::new(
-                    TimestampNanosecondArray::from(vec![Some(epoch_ns), None])
-                        .with_timezone("UTC"),
+                    TimestampNanosecondArray::from(vec![Some(epoch_ns), None]).with_timezone("UTC"),
                 ),
             ],
         )
@@ -554,8 +552,7 @@ mod time_tests {
             time::Date::from_calendar_date(2024, time::Month::June, 15).expect("valid");
         assert_eq!(am.created_date, Set(expected_date));
 
-        let expected_time =
-            time::Time::from_hms_nano(10, 30, 0, 123_456_789).expect("valid");
+        let expected_time = time::Time::from_hms_nano(10, 30, 0, 123_456_789).expect("valid");
         assert_eq!(am.created_time, Set(expected_time));
 
         let expected_pdt = time::PrimitiveDateTime::new(expected_date, expected_time);
@@ -701,7 +698,7 @@ mod bigdecimal_tests {
     #[test]
     #[cfg(not(feature = "with-rust_decimal"))]
     fn test_from_arrow_decimal128_bigdecimal() {
-        use bigdecimal::{num_bigint::BigInt, BigDecimal};
+        use bigdecimal::{BigDecimal, num_bigint::BigInt};
 
         let schema = Arc::new(Schema::new(vec![
             Field::new("id", DataType::Int32, false),

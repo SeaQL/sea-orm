@@ -29,6 +29,8 @@ pub fn expand_derive_arrow_schema(
                     // Parse field attributes
                     let mut arrow_attrs = ArrowFieldAttrs::default();
                     let mut column_type_str: Option<String> = None;
+                    let mut column_name_override: Option<String> = None;
+                    let mut arrow_field_override: Option<String> = None;
                     let mut skip = false;
 
                     for attr in field.attrs.iter() {
@@ -36,6 +38,12 @@ pub fn expand_derive_arrow_schema(
                             attr.parse_nested_meta(|meta| {
                                 if meta.path.is_ident("arrow_skip") {
                                     skip = true;
+                                } else if meta.path.is_ident("arrow_field") {
+                                    let lit: LitStr = meta.value()?.parse()?;
+                                    arrow_field_override = Some(lit.value());
+                                } else if meta.path.is_ident("column_name") {
+                                    let lit: LitStr = meta.value()?.parse()?;
+                                    column_name_override = Some(lit.value());
                                 } else if meta.path.is_ident("arrow_precision") {
                                     let lit: LitInt = meta.value()?.parse()?;
                                     arrow_attrs.precision = Some(lit.base10_parse()?);
@@ -69,8 +77,13 @@ pub fn expand_derive_arrow_schema(
                     // Determine final nullability
                     let nullable = is_nullable || arrow_attrs.nullable_attr;
 
+                    // Priority: arrow_field > column_name > Rust field name
+                    let resolved_name = arrow_field_override
+                        .or(column_name_override)
+                        .unwrap_or(field_name);
+
                     fields_info.push(ArrowFieldInfo {
-                        name: field_name,
+                        name: resolved_name,
                         field_type: field_type.clone(),
                         column_type_str,
                         nullable,
