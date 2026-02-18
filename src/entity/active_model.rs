@@ -595,6 +595,58 @@ pub trait ActiveModelTrait: Clone + Debug {
         Ok(results)
     }
 
+    /// Convert a slice of ActiveModels into an Arrow [`RecordBatch`](arrow::array::RecordBatch).
+    ///
+    /// The `schema` determines the output columns: each schema field is matched
+    /// to an entity column by name (using [`ColumnTrait::as_str`](crate::ColumnTrait::as_str)).
+    /// Columns marked `Set` or `Unchanged` contribute their value;
+    /// `NotSet` columns become null in the output.
+    ///
+    /// Typical usage together with [`ArrowSchema`](crate::ArrowSchema):
+    /// ```ignore
+    /// let schema = MyEntity::arrow_schema();
+    /// let batch = MyActiveModel::to_arrow(&models, &schema)?;
+    /// ```
+    #[cfg(feature = "with-arrow")]
+    fn to_arrow(
+        models: &[Self],
+        schema: &arrow::datatypes::Schema,
+    ) -> Result<arrow::array::RecordBatch, DbErr> {
+        use crate::{Iterable, with_arrow::values_to_arrow_array};
+        use std::sync::Arc;
+
+        let mut columns: Vec<Arc<dyn arrow::array::Array>> =
+            Vec::with_capacity(schema.fields().len());
+
+        for field in schema.fields() {
+            let field_name = field.name();
+
+            // Find the entity column whose name matches this schema field
+            let entity_col = <<Self::Entity as EntityTrait>::Column>::iter()
+                .find(|c| c.as_str() == field_name);
+
+            if let Some(col) = entity_col {
+                let values: Vec<Option<Value>> = models
+                    .iter()
+                    .map(|m| match m.get(col) {
+                        ActiveValue::Set(v) | ActiveValue::Unchanged(v) => Some(v),
+                        ActiveValue::NotSet => None,
+                    })
+                    .collect();
+
+                let array = values_to_arrow_array(&values, field.data_type())?;
+                columns.push(array);
+            } else {
+                // Field in schema but not in entity → null column
+                let array = arrow::array::new_null_array(field.data_type(), models.len());
+                columns.push(array);
+            }
+        }
+
+        arrow::array::RecordBatch::try_new(Arc::new(schema.clone()), columns)
+            .map_err(|e| DbErr::Type(format!("Failed to create RecordBatch: {e}")))
+    }
+
     /// Return `true` if any attribute of `ActiveModel` is `Set`
     fn is_changed(&self) -> bool {
         <Self::Entity as EntityTrait>::Column::iter()

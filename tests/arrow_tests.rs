@@ -4,7 +4,7 @@
 use arrow::array::*;
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use sea_orm::entity::prelude::*;
-use sea_orm::{ActiveValue::NotSet, Set, arrow};
+use sea_orm::{ActiveValue::NotSet, ArrowSchema, Set, arrow};
 use std::sync::Arc;
 
 /// Test entity with all supported primitive types
@@ -13,7 +13,7 @@ mod primitive_entity {
 
     #[sea_orm::model]
     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-    #[sea_orm(table_name = "test_arrow")]
+    #[sea_orm(table_name = "test_arrow", arrow_schema)]
     pub struct Model {
         #[sea_orm(primary_key)]
         pub id: i32,
@@ -166,6 +166,270 @@ fn test_from_arrow_type_mismatch() {
     assert!(matches!(result.unwrap_err(), DbErr::Type(_)));
 }
 
+// ===========================================================================
+// to_arrow tests
+// ===========================================================================
+
+#[test]
+fn test_to_arrow_basic_primitives() {
+    use sea_orm::ArrowSchema;
+
+    let schema = primitive_entity::Entity::arrow_schema();
+
+    let models = vec![
+        primitive_entity::ActiveModel {
+            id: Set(1),
+            tiny: Set(10),
+            small: Set(100),
+            big: Set(1000),
+            tiny_u: Set(5),
+            small_u: Set(50),
+            uint: Set(500),
+            big_u: Set(5000),
+            float_val: Set(1.5),
+            double_val: Set(10.5),
+            name: Set("Alice".to_owned()),
+            flag: Set(true),
+            nullable_int: Set(Some(42)),
+            nullable_name: Set(Some("hello".to_owned())),
+        },
+        primitive_entity::ActiveModel {
+            id: Set(2),
+            tiny: Set(20),
+            small: Set(200),
+            big: Set(2000),
+            tiny_u: Set(6),
+            small_u: Set(60),
+            uint: Set(600),
+            big_u: Set(6000),
+            float_val: Set(2.5),
+            double_val: Set(20.5),
+            name: Set("Bob".to_owned()),
+            flag: Set(false),
+            nullable_int: Set(None),
+            nullable_name: Set(None),
+        },
+    ];
+
+    let batch =
+        primitive_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
+
+    assert_eq!(batch.num_rows(), 2);
+    assert_eq!(batch.num_columns(), 14);
+
+    // Verify integer columns
+    let id_arr = batch
+        .column_by_name("id")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
+    assert_eq!(id_arr.value(0), 1);
+    assert_eq!(id_arr.value(1), 2);
+
+    let tiny_arr = batch
+        .column_by_name("tiny")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<Int8Array>()
+        .unwrap();
+    assert_eq!(tiny_arr.value(0), 10);
+    assert_eq!(tiny_arr.value(1), 20);
+
+    // Verify unsigned
+    let tiny_u_arr = batch
+        .column_by_name("tiny_u")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<UInt8Array>()
+        .unwrap();
+    assert_eq!(tiny_u_arr.value(0), 5);
+
+    // Verify floats
+    let float_arr = batch
+        .column_by_name("float_val")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<Float32Array>()
+        .unwrap();
+    assert_eq!(float_arr.value(0), 1.5);
+
+    let double_arr = batch
+        .column_by_name("double_val")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<Float64Array>()
+        .unwrap();
+    assert_eq!(double_arr.value(0), 10.5);
+
+    // Verify strings
+    let name_arr = batch
+        .column_by_name("name")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<StringArray>()
+        .unwrap();
+    assert_eq!(name_arr.value(0), "Alice");
+    assert_eq!(name_arr.value(1), "Bob");
+
+    // Verify boolean
+    let flag_arr = batch
+        .column_by_name("flag")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<BooleanArray>()
+        .unwrap();
+    assert!(flag_arr.value(0));
+    assert!(!flag_arr.value(1));
+
+    // Verify nullable: row 0 has values, row 1 has nulls
+    let ni_arr = batch
+        .column_by_name("nullable_int")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
+    assert!(!ni_arr.is_null(0));
+    assert_eq!(ni_arr.value(0), 42);
+    assert!(ni_arr.is_null(1));
+
+    let nn_arr = batch
+        .column_by_name("nullable_name")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<StringArray>()
+        .unwrap();
+    assert!(!nn_arr.is_null(0));
+    assert_eq!(nn_arr.value(0), "hello");
+    assert!(nn_arr.is_null(1));
+}
+
+#[test]
+fn test_to_arrow_not_set_becomes_null() {
+    // Use an all-nullable schema so that NotSet → null is accepted by Arrow
+    let base = primitive_entity::Entity::arrow_schema();
+    let nullable_fields: Vec<Field> = base
+        .fields()
+        .iter()
+        .map(|f| Field::new(f.name(), f.data_type().clone(), true))
+        .collect();
+    let schema = Schema::new(nullable_fields);
+
+    // ActiveModel with only id and name set; everything else is NotSet
+    let models = vec![primitive_entity::ActiveModel {
+        id: Set(99),
+        name: Set("partial".to_owned()),
+        ..Default::default()
+    }];
+
+    let batch =
+        primitive_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
+    assert_eq!(batch.num_rows(), 1);
+
+    // id and name should be present
+    let id_arr = batch
+        .column_by_name("id")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
+    assert_eq!(id_arr.value(0), 99);
+
+    // NotSet fields should be null
+    let tiny_arr = batch
+        .column_by_name("tiny")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<Int8Array>()
+        .unwrap();
+    assert!(tiny_arr.is_null(0));
+
+    let flag_arr = batch
+        .column_by_name("flag")
+        .unwrap()
+        .as_any()
+        .downcast_ref::<BooleanArray>()
+        .unwrap();
+    assert!(flag_arr.is_null(0));
+}
+
+#[test]
+fn test_to_arrow_empty_slice() {
+    let schema = primitive_entity::Entity::arrow_schema();
+    let batch =
+        primitive_entity::ActiveModel::to_arrow(&[], &schema).expect("to_arrow failed");
+    assert_eq!(batch.num_rows(), 0);
+    assert_eq!(batch.num_columns(), 14);
+}
+
+#[test]
+fn test_to_arrow_roundtrip_primitives() {
+    let schema = primitive_entity::Entity::arrow_schema();
+
+    let original = vec![
+        primitive_entity::ActiveModel {
+            id: Set(1),
+            tiny: Set(10),
+            small: Set(100),
+            big: Set(1000),
+            tiny_u: Set(5),
+            small_u: Set(50),
+            uint: Set(500),
+            big_u: Set(5000),
+            float_val: Set(1.5),
+            double_val: Set(10.5),
+            name: Set("Alice".to_owned()),
+            flag: Set(true),
+            nullable_int: Set(Some(42)),
+            nullable_name: Set(Some("hello".to_owned())),
+        },
+        primitive_entity::ActiveModel {
+            id: Set(2),
+            tiny: Set(20),
+            small: Set(200),
+            big: Set(2000),
+            tiny_u: Set(6),
+            small_u: Set(60),
+            uint: Set(600),
+            big_u: Set(6000),
+            float_val: Set(2.5),
+            double_val: Set(20.5),
+            name: Set("Bob".to_owned()),
+            flag: Set(false),
+            nullable_int: Set(None),
+            nullable_name: Set(None),
+        },
+    ];
+
+    // to_arrow -> from_arrow roundtrip
+    let batch =
+        primitive_entity::ActiveModel::to_arrow(&original, &schema).expect("to_arrow failed");
+    let roundtripped =
+        primitive_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+
+    assert_eq!(roundtripped.len(), 2);
+
+    // First row
+    assert_eq!(roundtripped[0].id, Set(1));
+    assert_eq!(roundtripped[0].tiny, Set(10));
+    assert_eq!(roundtripped[0].small, Set(100));
+    assert_eq!(roundtripped[0].big, Set(1000));
+    assert_eq!(roundtripped[0].tiny_u, Set(5));
+    assert_eq!(roundtripped[0].small_u, Set(50));
+    assert_eq!(roundtripped[0].uint, Set(500));
+    assert_eq!(roundtripped[0].big_u, Set(5000));
+    assert_eq!(roundtripped[0].float_val, Set(1.5));
+    assert_eq!(roundtripped[0].double_val, Set(10.5));
+    assert_eq!(roundtripped[0].name, Set("Alice".to_owned()));
+    assert_eq!(roundtripped[0].flag, Set(true));
+    assert_eq!(roundtripped[0].nullable_int, Set(Some(42)));
+    assert_eq!(roundtripped[0].nullable_name, Set(Some("hello".to_owned())));
+
+    // Second row: nullable fields are None
+    assert_eq!(roundtripped[1].nullable_int, Set(None));
+    assert_eq!(roundtripped[1].nullable_name, Set(None));
+}
+
 /// Chrono datetime tests
 #[cfg(feature = "with-chrono")]
 mod chrono_tests {
@@ -176,7 +440,7 @@ mod chrono_tests {
 
         #[sea_orm::model]
         #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-        #[sea_orm(table_name = "test_chrono")]
+        #[sea_orm(table_name = "test_chrono", arrow_schema)]
         pub struct Model {
             #[sea_orm(primary_key)]
             pub id: i32,
@@ -188,6 +452,167 @@ mod chrono_tests {
         }
 
         impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    #[test]
+    fn test_to_arrow_chrono_roundtrip() {
+        use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
+        use sea_orm::ArrowSchema;
+
+        let schema = chrono_entity::Entity::arrow_schema();
+
+        let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
+        let time = NaiveTime::from_hms_opt(10, 30, 0).unwrap();
+        let naive_dt = NaiveDateTime::new(date, time);
+        let utc_dt: DateTime<Utc> = DateTime::from_timestamp_micros(1_718_447_400_000_000).unwrap();
+
+        let models = vec![
+            chrono_entity::ActiveModel {
+                id: Set(1),
+                created_date: Set(date),
+                created_time: Set(time),
+                created_at: Set(naive_dt),
+                updated_at: Set(utc_dt),
+                nullable_ts: Set(Some(utc_dt)),
+            },
+            chrono_entity::ActiveModel {
+                id: Set(2),
+                created_date: Set(date),
+                created_time: Set(time),
+                created_at: Set(naive_dt),
+                updated_at: Set(utc_dt),
+                nullable_ts: Set(None),
+            },
+        ];
+
+        let batch =
+            chrono_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
+        assert_eq!(batch.num_rows(), 2);
+
+        // Verify Date32
+        let date_arr = batch
+            .column_by_name("created_date")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Date32Array>()
+            .unwrap();
+        assert_eq!(date_arr.value(0), 19889); // 2024-06-15
+
+        // Verify Time64
+        let time_arr = batch
+            .column_by_name("created_time")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Time64MicrosecondArray>()
+            .unwrap();
+        let expected_time_us: i64 = 10 * 3_600_000_000 + 30 * 60_000_000;
+        assert_eq!(time_arr.value(0), expected_time_us);
+
+        // Verify Timestamp (naive)
+        let ts_arr = batch
+            .column_by_name("created_at")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<TimestampMicrosecondArray>()
+            .unwrap();
+        assert_eq!(ts_arr.value(0), 1_718_447_400_000_000);
+
+        // Verify Timestamp with timezone
+        let ts_utc_arr = batch
+            .column_by_name("updated_at")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<TimestampMicrosecondArray>()
+            .unwrap();
+        assert_eq!(ts_utc_arr.value(0), 1_718_447_400_000_000);
+
+        // Verify nullable timestamp: row 0 present, row 1 null
+        let nullable_arr = batch
+            .column_by_name("nullable_ts")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<TimestampMicrosecondArray>()
+            .unwrap();
+        assert!(!nullable_arr.is_null(0));
+        assert!(nullable_arr.is_null(1));
+
+        // Full roundtrip
+        let roundtripped =
+            chrono_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+        assert_eq!(roundtripped.len(), 2);
+        assert_eq!(roundtripped[0].id, Set(1));
+        assert_eq!(roundtripped[0].created_date, Set(date));
+        assert_eq!(roundtripped[0].created_time, Set(time));
+        assert_eq!(roundtripped[0].created_at, Set(naive_dt));
+        assert_eq!(roundtripped[0].updated_at, Set(utc_dt));
+        assert_eq!(roundtripped[0].nullable_ts, Set(Some(utc_dt)));
+        assert_eq!(roundtripped[1].nullable_ts, Set(None));
+    }
+
+    #[test]
+    fn test_to_arrow_chrono_nanosecond_schema() {
+        use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
+
+        let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
+        let time = NaiveTime::from_hms_nano_opt(10, 30, 0, 123_456_789).unwrap();
+        let naive_dt = NaiveDateTime::new(date, time);
+        let utc_dt: DateTime<Utc> = DateTime::from_timestamp_nanos(1_718_447_400_123_456_789);
+
+        let models = vec![chrono_entity::ActiveModel {
+            id: Set(1),
+            created_date: Set(date),
+            created_time: Set(time),
+            created_at: Set(naive_dt),
+            updated_at: Set(utc_dt),
+            nullable_ts: Set(Some(utc_dt)),
+        }];
+
+        // Use a nanosecond schema
+        let schema = Schema::new(vec![
+            Field::new("id", DataType::Int32, false),
+            Field::new("created_date", DataType::Date32, false),
+            Field::new(
+                "created_time",
+                DataType::Time64(TimeUnit::Nanosecond),
+                false,
+            ),
+            Field::new(
+                "created_at",
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
+                false,
+            ),
+            Field::new(
+                "updated_at",
+                DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
+                false,
+            ),
+            Field::new(
+                "nullable_ts",
+                DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
+                true,
+            ),
+        ]);
+
+        let batch =
+            chrono_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
+
+        let time_arr = batch
+            .column_by_name("created_time")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Time64NanosecondArray>()
+            .unwrap();
+        let expected_time_ns: i64 =
+            10 * 3_600_000_000_000 + 30 * 60_000_000_000 + 123_456_789;
+        assert_eq!(time_arr.value(0), expected_time_ns);
+
+        let ts_arr = batch
+            .column_by_name("created_at")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<TimestampNanosecondArray>()
+            .unwrap();
+        assert_eq!(ts_arr.value(0), 1_718_447_400_123_456_789);
     }
 
     #[test]
@@ -411,7 +836,7 @@ mod time_tests {
 
         #[sea_orm::model]
         #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-        #[sea_orm(table_name = "test_time")]
+        #[sea_orm(table_name = "test_time", arrow_schema)]
         pub struct Model {
             #[sea_orm(primary_key)]
             pub id: i32,
@@ -567,6 +992,85 @@ mod time_tests {
         let am = &ams[1];
         assert_eq!(am.nullable_ts, Set(None));
     }
+
+    #[test]
+    fn test_to_arrow_time_crate_roundtrip() {
+        use sea_orm::ArrowSchema;
+
+        let schema = time_entity::Entity::arrow_schema();
+
+        let date =
+            time::Date::from_calendar_date(2024, time::Month::June, 15).expect("valid");
+        let time_val = time::Time::from_hms(10, 30, 0).expect("valid");
+        let pdt = time::PrimitiveDateTime::new(date, time_val);
+        let odt =
+            time::OffsetDateTime::from_unix_timestamp_nanos(1_718_447_400_000_000_000)
+                .expect("valid");
+
+        let models = vec![
+            time_entity::ActiveModel {
+                id: Set(1),
+                created_date: Set(date),
+                created_time: Set(time_val),
+                created_at: Set(pdt),
+                updated_at: Set(odt),
+                nullable_ts: Set(Some(odt)),
+            },
+            time_entity::ActiveModel {
+                id: Set(2),
+                created_date: Set(date),
+                created_time: Set(time_val),
+                created_at: Set(pdt),
+                updated_at: Set(odt),
+                nullable_ts: Set(None),
+            },
+        ];
+
+        let batch =
+            time_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
+        assert_eq!(batch.num_rows(), 2);
+
+        // Verify Date32
+        let date_arr = batch
+            .column_by_name("created_date")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Date32Array>()
+            .unwrap();
+        assert_eq!(date_arr.value(0), 19889); // 2024-06-15
+
+        // Verify Time64
+        let time_arr = batch
+            .column_by_name("created_time")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Time64MicrosecondArray>()
+            .unwrap();
+        let expected_time_us: i64 = 10 * 3_600_000_000 + 30 * 60_000_000;
+        assert_eq!(time_arr.value(0), expected_time_us);
+
+        // Verify nullable: row 0 present, row 1 null
+        let nullable_arr = batch
+            .column_by_name("nullable_ts")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<TimestampMicrosecondArray>()
+            .unwrap();
+        assert!(!nullable_arr.is_null(0));
+        assert!(nullable_arr.is_null(1));
+
+        // Full roundtrip
+        let roundtripped =
+            time_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+        assert_eq!(roundtripped.len(), 2);
+        assert_eq!(roundtripped[0].id, Set(1));
+        assert_eq!(roundtripped[0].created_date, Set(date));
+        assert_eq!(roundtripped[0].created_time, Set(time_val));
+        assert_eq!(roundtripped[0].created_at, Set(pdt));
+        assert_eq!(roundtripped[0].updated_at, Set(odt));
+        assert_eq!(roundtripped[0].nullable_ts, Set(Some(odt)));
+        assert_eq!(roundtripped[1].nullable_ts, Set(None));
+    }
 }
 
 /// rust_decimal type tests
@@ -579,7 +1083,7 @@ mod rust_decimal_tests {
 
         #[sea_orm::model]
         #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-        #[sea_orm(table_name = "test_rust_decimal")]
+        #[sea_orm(table_name = "test_rust_decimal", arrow_schema)]
         pub struct Model {
             #[sea_orm(primary_key)]
             pub id: i32,
@@ -668,6 +1172,66 @@ mod rust_decimal_tests {
         assert_eq!(negative.to_string(), "-1234.56");
         assert!(large.to_string().contains("12345678.9012345678"));
     }
+
+    #[test]
+    fn test_to_arrow_rust_decimal_roundtrip() {
+        use rust_decimal::Decimal;
+        use sea_orm::ArrowSchema;
+
+        let schema = decimal_entity::Entity::arrow_schema();
+
+        let price = Decimal::new(1234567, 2); // 12345.67
+        let amount = Decimal::new(98765432109, 4); // 9876543.2109
+
+        let models = vec![
+            decimal_entity::ActiveModel {
+                id: Set(1),
+                price: Set(price),
+                amount: Set(amount),
+                nullable_decimal: Set(Some(price)),
+            },
+            decimal_entity::ActiveModel {
+                id: Set(2),
+                price: Set(price),
+                amount: Set(amount),
+                nullable_decimal: Set(None),
+            },
+        ];
+
+        let batch =
+            decimal_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
+        assert_eq!(batch.num_rows(), 2);
+
+        // Verify Decimal128 column
+        let price_arr = batch
+            .column_by_name("price")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Decimal128Array>()
+            .unwrap();
+        assert_eq!(price_arr.value(0), 1234567);
+        assert_eq!(price_arr.precision(), 10);
+        assert_eq!(price_arr.scale(), 2);
+
+        // Verify nullable decimal: row 0 present, row 1 null
+        let nullable_arr = batch
+            .column_by_name("nullable_decimal")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Decimal128Array>()
+            .unwrap();
+        assert!(!nullable_arr.is_null(0));
+        assert!(nullable_arr.is_null(1));
+
+        // Full roundtrip
+        let roundtripped =
+            decimal_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+        assert_eq!(roundtripped.len(), 2);
+        assert_eq!(roundtripped[0].price, Set(price));
+        assert_eq!(roundtripped[0].amount, Set(amount));
+        assert_eq!(roundtripped[0].nullable_decimal, Set(Some(price)));
+        assert_eq!(roundtripped[1].nullable_decimal, Set(None));
+    }
 }
 
 /// bigdecimal type tests
@@ -680,7 +1244,7 @@ mod bigdecimal_tests {
 
         #[sea_orm::model]
         #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-        #[sea_orm(table_name = "test_bigdecimal")]
+        #[sea_orm(table_name = "test_bigdecimal", arrow_schema)]
         pub struct Model {
             #[sea_orm(primary_key)]
             pub id: i32,
@@ -801,5 +1365,66 @@ mod bigdecimal_tests {
         assert_eq!(arr.value(0), large_val);
         assert_eq!(arr.precision(), 76);
         assert_eq!(arr.scale(), 20);
+    }
+
+    #[test]
+    #[cfg(not(feature = "with-rust_decimal"))]
+    fn test_to_arrow_bigdecimal_roundtrip() {
+        use bigdecimal::{BigDecimal, num_bigint::BigInt};
+        use sea_orm::ArrowSchema;
+
+        let schema = decimal_entity::Entity::arrow_schema();
+
+        let price = BigDecimal::new(BigInt::from(1234567i64), 2); // 12345.67
+        let amount = BigDecimal::new(BigInt::from(98765432109i64), 4); // 9876543.2109
+
+        let models = vec![
+            decimal_entity::ActiveModel {
+                id: Set(1),
+                price: Set(price.clone()),
+                amount: Set(amount.clone()),
+                nullable_decimal: Set(Some(price.clone())),
+            },
+            decimal_entity::ActiveModel {
+                id: Set(2),
+                price: Set(price.clone()),
+                amount: Set(amount.clone()),
+                nullable_decimal: Set(None),
+            },
+        ];
+
+        let batch =
+            decimal_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
+        assert_eq!(batch.num_rows(), 2);
+
+        // Verify Decimal128 column
+        let price_arr = batch
+            .column_by_name("price")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Decimal128Array>()
+            .unwrap();
+        assert_eq!(price_arr.value(0), 1234567);
+        assert_eq!(price_arr.precision(), 10);
+        assert_eq!(price_arr.scale(), 2);
+
+        // Verify nullable: row 0 present, row 1 null
+        let nullable_arr = batch
+            .column_by_name("nullable_decimal")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Decimal128Array>()
+            .unwrap();
+        assert!(!nullable_arr.is_null(0));
+        assert!(nullable_arr.is_null(1));
+
+        // Full roundtrip
+        let roundtripped =
+            decimal_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+        assert_eq!(roundtripped.len(), 2);
+        assert_eq!(roundtripped[0].price, Set(price.clone()));
+        assert_eq!(roundtripped[0].amount, Set(amount));
+        assert_eq!(roundtripped[0].nullable_decimal, Set(Some(price)));
+        assert_eq!(roundtripped[1].nullable_decimal, Set(None));
     }
 }
