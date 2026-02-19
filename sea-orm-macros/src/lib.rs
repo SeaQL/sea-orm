@@ -1144,6 +1144,43 @@ pub fn derive_iden(input: TokenStream) -> TokenStream {
     }
 }
 
+/// The DeriveArrowSchema derive macro generates an `arrow_schema()` method
+/// that returns an Apache Arrow schema from a SeaORM entity definition.
+///
+/// This macro is automatically applied when `#[sea_orm(arrow_schema)]` is specified
+/// on a model. You typically don't need to use this derive macro directly.
+///
+/// ## Usage
+///
+/// ```rust,ignore
+/// use sea_orm::entity::prelude::*;
+///
+/// #[sea_orm::model]
+/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+/// #[sea_orm(table_name = "user", arrow_schema)]
+/// pub struct Model {
+///     #[sea_orm(primary_key)]
+///     pub id: i64,
+///     pub name: String,
+///     #[sea_orm(column_type = "Decimal(Some((20, 4)))")]
+///     pub amount: Decimal,
+/// }
+/// ```
+#[cfg(feature = "derive")]
+#[proc_macro_derive(DeriveArrowSchema, attributes(sea_orm))]
+pub fn derive_arrow_schema(input: TokenStream) -> TokenStream {
+    let derive_input = parse_macro_input!(input as DeriveInput);
+
+    match derives::expand_derive_arrow_schema(
+        derive_input.ident,
+        derive_input.data,
+        derive_input.attrs,
+    ) {
+        Ok(token_stream) => token_stream.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
 #[proc_macro]
 pub fn raw_sql(input: TokenStream) -> TokenStream {
     match raw_sql::expand(input) {

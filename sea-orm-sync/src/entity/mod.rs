@@ -100,6 +100,8 @@ mod active_enum;
 mod active_model;
 mod active_model_ex;
 mod active_value;
+#[cfg(feature = "with-arrow")]
+mod arrow_schema;
 mod base_entity;
 pub(crate) mod column;
 mod column_def;
@@ -121,6 +123,8 @@ pub use active_enum::*;
 pub use active_model::*;
 pub use active_model_ex::*;
 pub use active_value::*;
+#[cfg(feature = "with-arrow")]
+pub use arrow_schema::*;
 pub use base_entity::*;
 pub use column::*;
 pub use column_def::*;

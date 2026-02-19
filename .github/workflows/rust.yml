@@ -234,6 +234,7 @@ jobs:
             loco_example,
             loco_seaography,
             loco_starter,
+            parquet_example,
             poem_example,
             proxy_gluesql_example,
             quickstart,
@@ -366,6 +367,8 @@ jobs:
       - working-directory: ./sea-orm-sync
         run: cargo test --test '*' --features tests-features,rusqlite
       - working-directory: ./sea-orm-sync/examples/quickstart
+        run: cargo run
+      - working-directory: ./sea-orm-sync/examples/parquet_example
         run: cargo run
 
   mysql:

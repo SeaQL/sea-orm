@@ -1,0 +1,24 @@
+[workspace]
+# A separate workspace
+
+[package]
+edition      = "2024"
+name         = "sea-orm-parquet-example"
+publish      = false
+rust-version = "1.85.0"
+version      = "0.1.0"
+
+[dependencies]
+env_logger = { version = "0.11" }
+fastrand   = "2"
+log        = { version = "0.4" }
+parquet    = { version = "54", default-features = false, features = ["arrow"] }
+
+[dependencies.sea-orm-sync]
+features = [
+    "rusqlite",
+    "with-arrow",
+    "with-chrono",
+    "with-rust_decimal",
+]
+path = "../../"
