@@ -454,7 +454,119 @@ pub fn derive_active_model(input: TokenStream) -> TokenStream {
     }
 }
 
-/// Derive into an active model
+/// Will implement [`IntoActiveModel`] for a struct, allowing conversion into an ActiveModel.
+/// This is useful for "form" or "input" structs (like from API requests) that turn into
+/// an entity's ActiveModel but may omit some fields or provide optional values with defaults.
+///
+/// ## Usage:
+///
+/// ```rust
+/// # mod fruit {
+/// #     use sea_orm::entity::prelude::*;
+/// #     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+/// #     #[sea_orm(table_name = "fruit")]
+/// #     pub struct Model {
+/// #         #[sea_orm(primary_key)]
+/// #         pub id: i32,
+/// #         pub name: String,
+/// #         pub cake_id: Option<i32>,
+/// #     }
+/// #     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// #     pub enum Relation {}
+/// #     impl ActiveModelBehavior for ActiveModel {}
+/// # }
+/// use sea_orm::entity::prelude::*;
+///
+/// #[derive(DeriveIntoActiveModel)]
+/// #[sea_orm(active_model = "fruit::ActiveModel")]
+/// struct NewFruit {
+///     name: String,
+///     // `id` and `cake_id` are omitted - they become `NotSet`
+/// }
+/// ```
+///
+/// ## `set(...)` - always set absent ActiveModel fields
+///
+/// ```rust
+/// # mod fruit {
+/// #     use sea_orm::entity::prelude::*;
+/// #     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+/// #     #[sea_orm(table_name = "fruit")]
+/// #     pub struct Model {
+/// #         #[sea_orm(primary_key)]
+/// #         pub id: i32,
+/// #         pub name: String,
+/// #         pub cake_id: Option<i32>,
+/// #     }
+/// #     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// #     pub enum Relation {}
+/// #     impl ActiveModelBehavior for ActiveModel {}
+/// # }
+/// use sea_orm::entity::prelude::*;
+///
+/// #[derive(DeriveIntoActiveModel)]
+/// #[sea_orm(active_model = "fruit::ActiveModel", set(cake_id = "None"))]
+/// struct NewFruit {
+///     name: String,
+///     // `cake_id` is not on the struct, but will always be `Set(None)`
+/// }
+/// ```
+///
+/// ## `default = "expr"` - fallback for `Option<T>` struct fields
+///
+/// ```rust
+/// # mod fruit {
+/// #     use sea_orm::entity::prelude::*;
+/// #     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+/// #     #[sea_orm(table_name = "fruit")]
+/// #     pub struct Model {
+/// #         #[sea_orm(primary_key)]
+/// #         pub id: i32,
+/// #         pub name: String,
+/// #         pub cake_id: Option<i32>,
+/// #     }
+/// #     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// #     pub enum Relation {}
+/// #     impl ActiveModelBehavior for ActiveModel {}
+/// # }
+/// use sea_orm::entity::prelude::*;
+///
+/// #[derive(DeriveIntoActiveModel)]
+/// #[sea_orm(active_model = "fruit::ActiveModel")]
+/// struct UpdateFruit {
+///     /// `Some("Apple")` -> `Set("Apple")`, `None` ->`Set("Unnamed")`
+///     #[sea_orm(default = "String::from(\"Unnamed\")")]
+///     name: Option<String>,
+/// }
+/// ```
+///
+/// ## Combining `set(...)`, `default`, `ignore`, and `exhaustive`
+///
+/// ```rust
+/// # mod fruit {
+/// #     use sea_orm::entity::prelude::*;
+/// #     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+/// #     #[sea_orm(table_name = "fruit")]
+/// #     pub struct Model {
+/// #         #[sea_orm(primary_key)]
+/// #         pub id: i32,
+/// #         pub name: String,
+/// #         pub cake_id: Option<i32>,
+/// #     }
+/// #     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// #     pub enum Relation {}
+/// #     impl ActiveModelBehavior for ActiveModel {}
+/// # }
+/// use sea_orm::entity::prelude::*;
+///
+/// #[derive(DeriveIntoActiveModel)]
+/// #[sea_orm(active_model = "fruit::ActiveModel", exhaustive, set(cake_id = "None"))]
+/// struct NewFruit {
+///     id: i32,
+///     #[sea_orm(default = "String::from(\"Unnamed\")")]
+///     name: Option<String>,
+/// }
+/// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveIntoActiveModel, attributes(sea_orm))]
 pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
