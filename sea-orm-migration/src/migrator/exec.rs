@@ -23,7 +23,7 @@ where
         .table_name(migration_table_name)
         .columns(seaql_migrations::Column::iter().map(IntoIden::into_iden))
         .order_by(seaql_migrations::Column::Version, Order::Asc)
-        .to_owned();
+        .take();
 
     db.query_all(&stmt)
         .await?
