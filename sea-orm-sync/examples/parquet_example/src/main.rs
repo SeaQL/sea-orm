@@ -2,6 +2,7 @@ use sea_orm::{
     ArrowSchema,
     entity::*,
     prelude::{ChronoUtc, Decimal},
+    sea_query::prelude::chrono::Timelike,
 };
 
 use log::info;
@@ -33,6 +34,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 1: Generate 100 random rows
     // -----------------------------------------------------------------------
     let base_ts = ChronoUtc::now();
+    let base_ts = base_ts
+        .with_nanosecond((base_ts.nanosecond() / 1000) * 1000)
+        .unwrap(); // truncate to microsecond
     let mut rng = fastrand::Rng::new();
 
     let models: Vec<measurement::ActiveModel> = (1..=100)
