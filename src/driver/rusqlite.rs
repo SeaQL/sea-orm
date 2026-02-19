@@ -27,7 +27,17 @@ pub struct RusqliteConnector;
 
 const DEFAULT_ACQUIRE_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// Defines a SQLite connection
+/// A shared SQLite connection for synchronous contexts.
+///
+/// Unlike sqlx's connection pool, which maintains multiple connections that can
+/// be checked out concurrently by different async tasks, this holds a single
+/// [`RusqliteConnection`] behind an `Arc<Mutex<State>>`. All callers contend on
+/// the same mutex; [`acquire`](Self::acquire) spins with `try_lock` until the
+/// mutex is available or the `acquire_timeout` deadline expires.
+///
+/// The connection can also be *loaned* out (via [`State::Loaned`]) for the
+/// duration of a transaction or streaming query, during which `acquire` will
+/// keep retrying until the loan is returned.
 #[derive(Clone)]
 pub struct RusqliteSharedConnection {
     pub(crate) conn: Arc<Mutex<State>>,
@@ -35,6 +45,42 @@ pub struct RusqliteSharedConnection {
     metric_callback: Option<crate::metric::Callback>,
 }
 
+/// A loaned connection that supports nested transactions.
+///
+/// Created by [`RusqliteSharedConnection::loan`], which moves the underlying
+/// [`RusqliteConnection`] out of the shared mutex (leaving it in
+/// [`State::Loaned`]) so that a transaction or streaming query can hold it
+/// without blocking other callers on the mutex itself - they will still wait
+/// via `acquire`, but the mutex is not held for the entire duration.
+///
+/// On [`Drop`], the connection is returned to the shared mutex so that
+/// subsequent callers can acquire it again.
+///
+/// ## Transaction semantics
+///
+/// Nested transactions follow the same model as sqlx's SQLite driver:
+///
+/// | Depth | `begin`            | `commit`              | `rollback`              |
+/// |-------|--------------------|-----------------------|-------------------------|
+/// | 0     | `BEGIN`            | -                     | -                       |
+/// | 1     | `SAVEPOINT sp1`    | `COMMIT`              | `ROLLBACK`              |
+/// | 2     | `SAVEPOINT sp2`    | `RELEASE SAVEPOINT sp1` | `ROLLBACK TO sp1`     |
+/// | *n*   | `SAVEPOINT sp`*n*  | `RELEASE SAVEPOINT sp`*n-1* | `ROLLBACK TO sp`*n-1* |
+///
+/// ## Comparison with rusqlite's native `Transaction`
+///
+/// rusqlite's [`rusqlite::Transaction`] borrows `&mut Connection` for its
+/// entire lifetime. This makes it difficult to pass around, store in structs,
+/// or nest - each nested [`rusqlite::Savepoint`] borrows `&mut Transaction`,
+/// creating a tower of coupled lifetimes that the borrow checker enforces
+/// strictly.
+///
+/// Here, the connection is *moved* (loaned) into this struct as owned state,
+/// and nesting is tracked with a simple `transaction_depth` counter. This
+/// means transactions and savepoints can be started, committed, or rolled back
+/// through the same flat API without lifetime gymnastics. The connection is
+/// returned to the shared pool on [`Drop`], rather than relying on the borrow
+/// ending.
 pub struct RusqliteInnerConnection {
     conn: State,
     loan: Arc<Mutex<State>>,

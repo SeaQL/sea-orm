@@ -67,4 +67,5 @@ fn main() {
     it_impl_traits!(uuid::Uuid);
     #[cfg(feature = "with-ipnetwork")]
     it_impl_traits!(ipnetwork::IpNetwork);
+    it_impl_traits!(common::features::value_type::MyUserId);
 }

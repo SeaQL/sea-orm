@@ -43,11 +43,11 @@ where
 pub trait Topology {}
 
 /// A star topology
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TopologyStar;
 
 /// A chain topology
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TopologyChain;
 
 impl Topology for TopologyStar {}
