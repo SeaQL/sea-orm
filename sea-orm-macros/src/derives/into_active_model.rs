@@ -196,6 +196,13 @@ fn parse_field(field: &syn::Field) -> Result<Option<IntoActiveModelField>, Error
                 }
 
                 if let Some(expr_str) = meta.get_as_kv("default") {
+                    // Error on duplicate `default`
+                    if default_expr.is_some() {
+                        return Err(Error::Syn(syn::Error::new_spanned(
+                            meta,
+                            "duplicate `default` attribute",
+                        )));
+                    }
                     let expr = syn::parse_str::<syn::Expr>(&expr_str).map_err(Error::Syn)?;
                     default_expr = Some(expr);
                 }
