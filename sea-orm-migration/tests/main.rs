@@ -25,7 +25,7 @@ async fn main() -> Result<(), DbErr> {
     run_migration(
         url,
         with_self::Migrator { i: 12 },
-        "sea_orm_migration",
+        "sea_orm_migration_self",
         "public",
     )
     .await?;
