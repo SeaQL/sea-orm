@@ -135,7 +135,7 @@ struct ArrowFieldInfo {
 
 fn generate_field_definition(info: &ArrowFieldInfo) -> TokenStream {
     let field_name = &info.name;
-    let nullable = info.nullable ||true; // we use ActiveModel, where fields can be NotSet.
+    let nullable = info.nullable || true; // we use ActiveModel, where fields can be NotSet.
 
     // Generate DataType based on column_type or field type
     let data_type = if let Some(col_type_str) = &info.column_type_str {
