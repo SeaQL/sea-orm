@@ -82,44 +82,12 @@ impl DeriveIntoActiveModel {
         }
 
         // Field attributes
-        let field_idents = fields
-            .iter()
-            .filter_map(|field| {
-                let mut default_expr: Option<syn::Expr> = None;
-
-                for attr in field.attrs.iter() {
-                    if !attr.path().is_ident("sea_orm") {
-                        continue;
-                    }
-
-                    // Handle each type of argument
-                    if let Ok(list) =
-                        attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                    {
-                        for meta in list.iter() {
-                            // Skip if ignore or skip is present
-                            if meta.exists("ignore") || meta.exists("skip") {
-                                return None;
-                            }
-
-                            if let Some(expr_str) = meta.get_as_kv("default") {
-                                if let Ok(expr) = syn::parse_str::<syn::Expr>(&expr_str) {
-                                    default_expr = Some(expr);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                let ident = field.ident.as_ref().unwrap().clone();
-
-                if let Some(expr) = default_expr {
-                    Some(IntoActiveModelField::WithDefault { ident, expr })
-                } else {
-                    Some(IntoActiveModelField::Normal(ident))
-                }
-            })
-            .collect();
+        let mut field_idents: Vec<IntoActiveModelField> = Vec::new();
+        for field in fields.iter() {
+            if let Some(f) = parse_field(field)? {
+                field_idents.push(f);
+            }
+        }
 
         Ok(Self {
             ident: input.ident,
@@ -209,6 +177,36 @@ impl DeriveIntoActiveModel {
                 }
             }
         )
+    }
+}
+
+fn parse_field(field: &syn::Field) -> Result<Option<IntoActiveModelField>, Error> {
+    let ident = field.ident.as_ref().unwrap().clone();
+    let mut default_expr: Option<syn::Expr> = None;
+
+    for attr in field.attrs.iter() {
+        if !attr.path().is_ident("sea_orm") {
+            continue;
+        }
+
+        if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
+            for meta in list.iter() {
+                if meta.exists("ignore") || meta.exists("skip") {
+                    return Ok(None);
+                }
+
+                if let Some(expr_str) = meta.get_as_kv("default") {
+                    let expr = syn::parse_str::<syn::Expr>(&expr_str).map_err(Error::Syn)?;
+                    default_expr = Some(expr);
+                }
+            }
+        }
+    }
+
+    if let Some(expr) = default_expr {
+        Ok(Some(IntoActiveModelField::WithDefault { ident, expr }))
+    } else {
+        Ok(Some(IntoActiveModelField::Normal(ident)))
     }
 }
 
