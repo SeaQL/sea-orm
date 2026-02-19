@@ -95,9 +95,7 @@ pub fn expand_derive_arrow_schema(
     }
 
     // Generate arrow_schema() method
-    let field_definitions = fields_info
-        .iter()
-        .map(|info| generate_field_definition(info));
+    let field_definitions = fields_info.iter().map(generate_field_definition);
 
     let entity_name = format_ident!("Entity");
 
@@ -129,13 +127,14 @@ struct ArrowFieldInfo {
     name: String,
     field_type: Type,
     column_type_str: Option<String>,
+    #[allow(dead_code)]
     nullable: bool,
     arrow_attrs: ArrowFieldAttrs,
 }
 
 fn generate_field_definition(info: &ArrowFieldInfo) -> TokenStream {
     let field_name = &info.name;
-    let nullable = info.nullable || true; // we use ActiveModel, where fields can be NotSet.
+    let nullable = true; // we use ActiveModel, where fields can be NotSet.
 
     // Generate DataType based on column_type or field type
     let data_type = if let Some(col_type_str) = &info.column_type_str {
