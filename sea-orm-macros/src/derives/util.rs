@@ -244,7 +244,8 @@ impl GetMeta for Meta {
             return None;
         };
 
-        path.get_ident().map(|ident| (ident.clone(), litstr.value()))
+        path.get_ident()
+            .map(|ident| (ident.clone(), litstr.value()))
     }
 }
 

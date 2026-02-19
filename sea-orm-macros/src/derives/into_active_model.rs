@@ -53,6 +53,7 @@ impl DeriveIntoActiveModel {
                 continue;
             }
 
+            // Container attributes
             if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
                 for meta in list {
                     if let Some(s) = meta.get_as_kv("active_model") {
@@ -64,9 +65,7 @@ impl DeriveIntoActiveModel {
                     if let Meta::List(meta_list) = &meta {
                         if meta_list.path.is_ident("set") {
                             let nested = meta_list
-                                .parse_args_with(
-                                    Punctuated::<Meta, Comma>::parse_terminated,
-                                )
+                                .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
                                 .map_err(Error::Syn)?;
                             for nested_meta in nested {
                                 if let Some(val) = nested_meta.get_as_kv_with_ident() {
@@ -82,23 +81,27 @@ impl DeriveIntoActiveModel {
             }
         }
 
+        // Field attributes
         let field_idents = fields
             .iter()
             .filter_map(|field| {
-                let mut skip = false;
                 let mut default_expr: Option<syn::Expr> = None;
 
                 for attr in field.attrs.iter() {
                     if !attr.path().is_ident("sea_orm") {
                         continue;
                     }
+
+                    // Handle each type of argument
                     if let Ok(list) =
                         attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
                     {
                         for meta in list.iter() {
+                            // Skip if ignore or skip is present
                             if meta.exists("ignore") || meta.exists("skip") {
-                                skip = true;
+                                return None;
                             }
+
                             if let Some(expr_str) = meta.get_as_kv("default") {
                                 if let Ok(expr) = syn::parse_str::<syn::Expr>(&expr_str) {
                                     default_expr = Some(expr);
@@ -106,10 +109,6 @@ impl DeriveIntoActiveModel {
                             }
                         }
                     }
-                }
-
-                if skip {
-                    return None;
                 }
 
                 let ident = field.ident.as_ref().unwrap().clone();
@@ -171,22 +170,19 @@ impl DeriveIntoActiveModel {
         };
 
         let field_idents: Vec<_> = fields.iter().map(|f| f.ident()).collect();
-        let expanded_fields = fields.iter().map(|field| {
-            match field {
-                IntoActiveModelField::Normal(ident) => quote!(
-                    sea_orm::IntoActiveValue::<_>::into_active_value(self.#ident).into()
-                ),
-                IntoActiveModelField::WithDefault { ident, expr } => quote!({
-                    match self.#ident {
-                        Some(v) => sea_orm::ActiveValue::Set(v).into(),
-                        None => sea_orm::ActiveValue::Set(#expr).into(),
-                    }
-                }),
-            }
+        let expanded_fields = fields.iter().map(|field| match field {
+            IntoActiveModelField::Normal(ident) => quote!(
+                sea_orm::IntoActiveValue::<_>::into_active_value(self.#ident).into()
+            ),
+            IntoActiveModelField::WithDefault { ident, expr } => quote!({
+                match self.#ident {
+                    Some(v) => sea_orm::ActiveValue::Set(v).into(),
+                    None => sea_orm::ActiveValue::Set(#expr).into(),
+                }
+            }),
         });
 
-        let (set_idents, set_exprs): (Vec<_>, Vec<_>) =
-            sets.iter().cloned().unzip();
+        let (set_idents, set_exprs): (Vec<_>, Vec<_>) = sets.iter().cloned().unzip();
         let expanded_sets = set_exprs.iter().map(|expr| {
             quote!(
                 sea_orm::ActiveValue::Set(#expr)
