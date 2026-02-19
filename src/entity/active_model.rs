@@ -1500,6 +1500,39 @@ mod tests {
 
     #[test]
     #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_foreign_ignore() {
+        use serde::{Deserialize, Serialize};
+
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel, Serialize, Deserialize)]
+        #[sea_orm(active_model = "fruit::ActiveModel")]
+        struct NewFruit {
+            #[sea_orm(ignore)]
+            id: i32,
+            name: String,
+            #[serde(skip)]
+            cake_id: Option<i32>,
+        }
+
+        assert_eq!(
+            NewFruit {
+                id: 1.to_owned(),
+                name: "Apple".to_owned(),
+                cake_id: Some(42)
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple".to_owned()),
+                cake_id: Set(Some(42)),
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
     fn test_derive_into_active_model_exhaustive() {
         use crate as sea_orm;
         use crate::entity::prelude::*;
