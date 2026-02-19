@@ -24,10 +24,12 @@ where
         .columns(seaql_migrations::Column::iter().map(IntoIden::into_iden))
         .order_by(seaql_migrations::Column::Version, Order::Asc)
         .to_owned();
-    let builder = db.get_database_backend();
-    seaql_migrations::Model::find_by_statement(builder.build(&stmt))
-        .all(db)
-        .await
+
+    db.query_all(&stmt)
+        .await?
+        .into_iter()
+        .map(|row| seaql_migrations::Model::from_query_result(&row, ""))
+        .collect()
 }
 
 pub fn get_migration_with_status(
