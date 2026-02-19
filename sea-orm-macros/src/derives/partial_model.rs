@@ -238,7 +238,7 @@ impl DerivePartialModel {
                         .map(|f| IntoActiveModelField::Normal(f.clone()))
                     })
                     .collect(),
-                sets: Vec::new(),
+                set_fields: Vec::new(),
                 exhaustive: false,
             }
             .impl_into_active_model()
