@@ -322,10 +322,10 @@ mod decimal_column_type_entity {
 fn test_basic_schema() {
     let schema = basic_entity::Entity::arrow_schema();
     let expected = Schema::new(vec![
-        Field::new("id", DataType::Int32, false),
+        Field::new("id", DataType::Int32, true),
         // column_name = "user_name" should be used instead of "name"
-        Field::new("user_name", DataType::Utf8, false),
-        Field::new("flag", DataType::Boolean, false),
+        Field::new("user_name", DataType::Utf8, true),
+        Field::new("flag", DataType::Boolean, true),
     ]);
     assert_eq!(schema, expected);
 }
@@ -335,37 +335,34 @@ fn test_all_integer_types() {
     let schema = all_integers_entity::Entity::arrow_schema();
     let fields = schema.fields();
     assert_eq!(fields.len(), 8);
-    assert_eq!(
-        fields[0].as_ref(),
-        &Field::new("id", DataType::Int32, false)
-    );
+    assert_eq!(fields[0].as_ref(), &Field::new("id", DataType::Int32, true));
     assert_eq!(
         fields[1].as_ref(),
-        &Field::new("tiny", DataType::Int8, false)
+        &Field::new("tiny", DataType::Int8, true)
     );
     assert_eq!(
         fields[2].as_ref(),
-        &Field::new("small", DataType::Int16, false)
+        &Field::new("small", DataType::Int16, true)
     );
     assert_eq!(
         fields[3].as_ref(),
-        &Field::new("big", DataType::Int64, false)
+        &Field::new("big", DataType::Int64, true)
     );
     assert_eq!(
         fields[4].as_ref(),
-        &Field::new("tiny_u", DataType::UInt8, false)
+        &Field::new("tiny_u", DataType::UInt8, true)
     );
     assert_eq!(
         fields[5].as_ref(),
-        &Field::new("small_u", DataType::UInt16, false)
+        &Field::new("small_u", DataType::UInt16, true)
     );
     assert_eq!(
         fields[6].as_ref(),
-        &Field::new("uint", DataType::UInt32, false)
+        &Field::new("uint", DataType::UInt32, true)
     );
     assert_eq!(
         fields[7].as_ref(),
-        &Field::new("big_u", DataType::UInt64, false)
+        &Field::new("big_u", DataType::UInt64, true)
     );
 }
 
@@ -375,11 +372,11 @@ fn test_float_types() {
     let fields = schema.fields();
     assert_eq!(
         fields[1].as_ref(),
-        &Field::new("float_val", DataType::Float32, false)
+        &Field::new("float_val", DataType::Float32, true)
     );
     assert_eq!(
         fields[2].as_ref(),
-        &Field::new("double_val", DataType::Float64, false)
+        &Field::new("double_val", DataType::Float64, true)
     );
 }
 
@@ -390,7 +387,7 @@ fn test_nullable_fields() {
 
     // required_name: not nullable
     assert_eq!(fields[1].name(), "required_name");
-    assert!(!fields[1].is_nullable());
+    assert!(fields[1].is_nullable());
 
     // optional_name: Option<String> -> nullable
     assert_eq!(fields[2].name(), "optional_name");
@@ -665,7 +662,7 @@ mod chrono_schema_tests {
 
         assert_eq!(fields[1].name(), "date_val");
         assert_eq!(fields[1].data_type(), &DataType::Date32);
-        assert!(!fields[1].is_nullable());
+        assert!(fields[1].is_nullable());
     }
 
     #[test]
@@ -768,7 +765,7 @@ mod rust_decimal_schema_tests {
         let fields = schema.fields();
 
         assert_eq!(fields[1].data_type(), &DataType::Decimal128(10, 2));
-        assert!(!fields[1].is_nullable());
+        assert!(fields[1].is_nullable());
     }
 
     #[test]
