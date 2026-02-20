@@ -154,7 +154,7 @@ with-chrono = [
     "chrono",
     "sea-query/with-chrono",
     "sea-query-rusqlite?/with-chrono",
-    "sea-query-arrow?/with-chrono",
+    "sea-orm-arrow?/with-chrono",
 ]
 with-ipnetwork = [
     "ipnetwork",
@@ -177,13 +177,13 @@ with-rust_decimal = [
     "rust_decimal",
     "sea-query/with-rust_decimal",
     "sea-query-rusqlite?/with-rust_decimal",
-    "sea-query-arrow?/with-rust_decimal",
+    "sea-orm-arrow?/with-rust_decimal",
 ]
 with-time = [
     "time",
     "sea-query/with-time",
     "sea-query-rusqlite?/with-time",
-    "sea-query-arrow?/with-time",
+    "sea-orm-arrow?/with-time",
 ]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-rusqlite?/with-uuid"]
 

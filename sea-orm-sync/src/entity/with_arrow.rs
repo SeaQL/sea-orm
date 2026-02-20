@@ -31,9 +31,9 @@ pub(crate) fn is_datetime_column(col_type: &ColumnType) -> bool {
     sea_orm_arrow::is_datetime_column(col_type)
 }
 
-pub(crate) fn values_to_arrow_array(
+pub(crate) fn option_values_to_arrow_array(
     values: &[Option<Value>],
     data_type: &arrow::datatypes::DataType,
 ) -> Result<std::sync::Arc<dyn Array>, DbErr> {
-    sea_orm_arrow::values_to_arrow_array(values, data_type).map_err(Into::into)
+    sea_orm_arrow::option_values_to_arrow_array(values, data_type).map_err(Into::into)
 }

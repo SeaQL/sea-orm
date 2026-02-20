@@ -612,7 +612,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         models: &[Self],
         schema: &arrow::datatypes::Schema,
     ) -> Result<arrow::array::RecordBatch, DbErr> {
-        use crate::{Iterable, with_arrow::values_to_arrow_array};
+        use crate::{Iterable, with_arrow::option_values_to_arrow_array};
         use std::sync::Arc;
 
         let mut columns: Vec<Arc<dyn arrow::array::Array>> =
@@ -634,7 +634,7 @@ pub trait ActiveModelTrait: Clone + Debug {
                     })
                     .collect();
 
-                let array = values_to_arrow_array(&values, field.data_type())?;
+                let array = option_values_to_arrow_array(&values, field.data_type())?;
                 columns.push(array);
             } else {
                 // Field in schema but not in entity → null column
