@@ -1,3 +1,5 @@
+pub use arrow;
+
 use arrow::array::*;
 use arrow::datatypes::i256;
 use sea_query::{ColumnType, Value};

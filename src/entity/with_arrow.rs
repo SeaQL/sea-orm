@@ -1,5 +1,5 @@
 use crate::DbErr;
-use arrow::array::Array;
+use sea_orm_arrow::arrow::array::Array;
 use sea_query::{ColumnType, Value};
 
 pub use sea_orm_arrow::ArrowError;

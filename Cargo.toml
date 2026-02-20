@@ -37,7 +37,6 @@ name = "sea_orm"
 path = "src/lib.rs"
 
 [dependencies]
-arrow = { version = "54", default-features = false, optional = true }
 async-stream = { version = "0.3", default-features = false }
 async-trait = { version = "0.1", default-features = false }
 bigdecimal = { version = "0.4", default-features = false, features = [
@@ -185,7 +184,7 @@ tests-features = [
     "with-ipnetwork",
 ]
 tracing-spans = []
-with-arrow = ["arrow", "sea-orm-arrow", "sea-orm-macros/with-arrow"]
+with-arrow = ["sea-orm-arrow", "sea-orm-macros/with-arrow"]
 with-bigdecimal = [
     "bigdecimal",
     "sea-query/with-bigdecimal",

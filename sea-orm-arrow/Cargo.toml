@@ -13,7 +13,7 @@ rust-version  = "1.85.0"
 version       = "2.0.0-rc.1"
 
 [dependencies]
-arrow = { version = "54", default-features = false }
+arrow = { version = "57", default-features = false }
 sea-query = { version = "1.0.0-rc", default-features = false, features = [
     "thread-safe",
 ] }

@@ -33,7 +33,6 @@ name = "sea_orm"
 path = "src/lib.rs"
 
 [dependencies]
-arrow = { version = "54", default-features = false, optional = true }
 bigdecimal = { version = "0.4", default-features = false, features = [
     "std",
 ], optional = true }
@@ -143,7 +142,7 @@ tests-features = [
     "with-arrow",
     "with-bigdecimal",
 ]
-with-arrow = ["arrow", "sea-orm-arrow", "sea-orm-macros/with-arrow"]
+with-arrow = ["sea-orm-arrow", "sea-orm-macros/with-arrow"]
 with-bigdecimal = [
     "bigdecimal",
     "sea-query/with-bigdecimal",
