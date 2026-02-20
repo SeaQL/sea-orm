@@ -464,6 +464,7 @@ let user = user::ActiveModel::builder()
 * [sea-orm-cli] Added `--column-extra-derives` https://github.com/SeaQL/sea-orm/pull/2212
 * [sea-orm-cli] Added `--big-integer-type=i32` to use i32 for bigint (for SQLite)
 * [sea-orm-cli] Fix codegen to not generate relations to filtered entities https://github.com/SeaQL/sea-orm/pull/2913
+* [sea-orm-cli] Added `--experimental-preserve-user-modifications` https://github.com/SeaQL/sea-orm/pull/2755 https://github.com/SeaQL/sea-orm/pull/2964
 * Added `Model::try_set`
 * Added new error variant `BackendNotSupported`. Previously, it panics with e.g. "Database backend doesn't support RETURNING" https://github.com/SeaQL/sea-orm/pull/2630
 ```rust

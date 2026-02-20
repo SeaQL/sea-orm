@@ -1,6 +1,7 @@
 use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueEnum};
 #[cfg(feature = "codegen")]
 use dotenvy::dotenv;
+use std::ffi::OsStr;
 
 #[cfg(feature = "codegen")]
 use crate::{handle_error, run_generate_command, run_migrate_command};
@@ -359,17 +360,19 @@ pub enum GenerateSubcommands {
         impl_active_model_behavior: bool,
 
         #[arg(
-            long,
-            default_value = "true",
+            long = "experimental-preserve-user-modifications",
+            alias = "preserve-user-modifications",
+            default_value = "false",
             default_missing_value = "true",
             num_args = 0..=1,
             require_equals = true,
             action = ArgAction::Set,
             long_help = indoc::indoc! { "
-                Preserve user modifications when regenerating entity files.
+                Experimental!: Preserve user modifications when regenerating entity files.
                 Only supports:
                     - Extra derives and attributes of `Model` and `Relation`
-                    - Impl blocks of `ActiveModelBehavior`"
+                    - Impl blocks of `ActiveModelBehavior`
+                Deprecated alias: `--preserve-user-modifications`"
             }
         )]
         preserve_user_modifications: bool,
@@ -407,13 +410,27 @@ pub enum BannerVersion {
     Patch,
 }
 
+fn is_deprecated_preserve_user_modifications_flag(arg: &OsStr) -> bool {
+    arg.to_str()
+        .is_some_and(|arg| arg.starts_with("--preserve-user-modifications"))
+}
+
 /// Use this to build a local, version-controlled `sea-orm-cli` in dependent projects
 /// (see [example use case](https://github.com/SeaQL/sea-orm/discussions/1889)).
 #[cfg(feature = "codegen")]
 pub async fn main() {
     dotenv().ok();
 
+    let deprecated_preserve_user_modifications_flag_used = std::env::args_os()
+        .skip(1)
+        .any(|arg| is_deprecated_preserve_user_modifications_flag(&arg));
+
     let cli = Cli::parse();
+    if deprecated_preserve_user_modifications_flag_used {
+        eprintln!(
+            "warning: `--preserve-user-modifications` is deprecated; use `--experimental-preserve-user-modifications` instead."
+        );
+    }
     let verbose = cli.verbose;
 
     match cli.command {
