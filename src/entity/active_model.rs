@@ -465,7 +465,7 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     /// Create ActiveModel from a JSON value
     #[cfg(feature = "with-json")]
-    fn from_json(mut json: serde_json::Value) -> Result<Self, DbErr>
+    fn from_json(json: serde_json::Value) -> Result<Self, DbErr>
     where
         Self: crate::TryIntoModel<<Self::Entity as EntityTrait>::Model>,
         <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
@@ -474,43 +474,39 @@ pub trait ActiveModelTrait: Clone + Debug {
     {
         use crate::{IdenStatic, Iterable};
 
-        let serde_json::Value::Object(obj) = &json else {
+        let serde_json::Value::Object(mut input) = json else {
             return Err(DbErr::Json(format!(
                 "invalid type: expected JSON object for {}",
                 <<Self as ActiveModelTrait>::Entity as IdenStatic>::as_str(&Default::default())
             )));
         };
 
+        let dummy_am = Self::default_values();
+        let len = <<Self::Entity as EntityTrait>::Column>::iter().len();
         // Mark down which attribute exists in the JSON object
-        let mut json_keys: Vec<(<Self::Entity as EntityTrait>::Column, bool)> = Vec::new();
+        let mut json_keys = Vec::with_capacity(len);
+        let mut merged = serde_json::Map::with_capacity(len);
 
         for col in <<Self::Entity as EntityTrait>::Column>::iter() {
             let key = col.json_key();
-            let has_key = obj.contains_key(key);
+            let has_key = input.contains_key(key);
             json_keys.push((col, has_key));
-        }
-
-        // Create dummy model with dummy values
-        let dummy_model = Self::default_values();
-        if let Ok(dummy_model) = dummy_model.try_into_model() {
-            if let Ok(mut dummy_json) = serde_json::to_value(&dummy_model) {
-                let serde_json::Value::Object(merged) = &mut dummy_json else {
-                    unreachable!();
-                };
-                let serde_json::Value::Object(obj) = json else {
-                    unreachable!();
-                };
-                // overwrite dummy values with input values
-                for (key, value) in obj {
-                    merged.insert(key, value);
+            match dummy_am.get(col) {
+                ActiveValue::Unchanged(value) | ActiveValue::Set(value) => {
+                    merged.insert(key.to_owned(), sea_query::sea_value_to_json_value(&value));
                 }
-                json = dummy_json;
+                _ => {}
             }
         }
 
+        merged.append(&mut input);
+        let _ = input;
+
+        let json_value = serde_json::Value::Object(merged);
+
         // Convert JSON object into ActiveModel via Model
         let model: <Self::Entity as EntityTrait>::Model =
-            serde_json::from_value(json).map_err(json_err)?;
+            serde_json::from_value(json_value).map_err(json_err)?;
         let mut am = model.into_active_model();
 
         // Transform attribute that exists in JSON object into ActiveValue::Set, otherwise ActiveValue::NotSet
