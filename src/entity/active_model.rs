@@ -1338,12 +1338,12 @@ mod tests {
 
     #[test]
     #[cfg(feature = "macros")]
-    fn test_derive_into_active_model_set_single() {
+    fn test_derive_into_active_model_fill_single() {
         use crate as sea_orm;
         use crate::entity::prelude::*;
 
         #[derive(DeriveIntoActiveModel)]
-        #[sea_orm(active_model = "fruit::ActiveModel", set(cake_id = "None"))]
+        #[sea_orm(active_model = "fruit::ActiveModel", fill(cake_id = "None"))]
         struct NewFruit {
             name: String,
         }

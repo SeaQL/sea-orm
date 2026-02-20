@@ -46,7 +46,7 @@ impl DeriveIntoActiveModel {
     /// Container attributes (#[sea_orm(...)]) on the struct for:
     ///   - active_model: explicit ActiveModel type
     ///   - exhaustive: require all fields to be set
-    ///   - set(...): provided values for ommited fields
+    ///   - set/fill(...): provided values for ommited fields
     /// Field attributes (#[sea_orm(...)]) with:
     ///   - ignore/skip: exclude from conversion
     ///   - default: fallback value for Option<T> fields
@@ -84,10 +84,10 @@ impl DeriveIntoActiveModel {
                     if meta.exists("exhaustive") {
                         exhaustive = true;
                     }
-                    // Parse set attribute: #[sea_orm(set(field1 = expr1, field2 = expr2, ...))]
+                    // Parse set/fill attribute: #[sea_orm(set(field1 = expr1, field2 = expr2, ...))]
                     // Collects field assignments to be included in the generated ActiveModel
                     if let Meta::List(meta_list) = &meta {
-                        if meta_list.path.is_ident("set") {
+                        if meta_list.path.is_ident("set") || meta_list.path.is_ident("fill") {
                             let nested = meta_list
                                 .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
                                 .map_err(Error::Syn)?;
