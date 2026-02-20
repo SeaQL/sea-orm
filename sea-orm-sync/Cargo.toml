@@ -48,6 +48,7 @@ pgvector = { version = "~0.4", default-features = false, optional = true }
 rust_decimal = { version = "1", default-features = false, features = [
     "std",
 ], optional = true }
+sea-orm-arrow = { version = "2.0.0-rc", path = "../sea-orm-arrow", default-features = false, optional = true }
 sea-orm-macros = { version = "~2.0.0-rc.20", path = "../sea-orm-macros", default-features = false, features = [
     "strum",
 ] }
@@ -142,16 +143,18 @@ tests-features = [
     "with-arrow",
     "with-bigdecimal",
 ]
-with-arrow = ["arrow", "sea-orm-macros/with-arrow"]
+with-arrow = ["arrow", "sea-orm-arrow", "sea-orm-macros/with-arrow"]
 with-bigdecimal = [
     "bigdecimal",
     "sea-query/with-bigdecimal",
     "sea-query-rusqlite?/with-bigdecimal",
+    "sea-orm-arrow?/with-bigdecimal",
 ]
 with-chrono = [
     "chrono",
     "sea-query/with-chrono",
     "sea-query-rusqlite?/with-chrono",
+    "sea-query-arrow?/with-chrono",
 ]
 with-ipnetwork = [
     "ipnetwork",
@@ -174,8 +177,14 @@ with-rust_decimal = [
     "rust_decimal",
     "sea-query/with-rust_decimal",
     "sea-query-rusqlite?/with-rust_decimal",
+    "sea-query-arrow?/with-rust_decimal",
 ]
-with-time = ["time", "sea-query/with-time", "sea-query-rusqlite?/with-time"]
+with-time = [
+    "time",
+    "sea-query/with-time",
+    "sea-query-rusqlite?/with-time",
+    "sea-query-arrow?/with-time",
+]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-rusqlite?/with-uuid"]
 
 [patch.crates-io]

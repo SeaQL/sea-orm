@@ -1,0 +1,29 @@
+[package]
+authors       = ["Chris Tsang <chris.2y3@outlook.com>"]
+categories    = ["database"]
+description   = "Arrow integration for SeaORM"
+documentation = "https://docs.rs/sea-orm-arrow"
+edition       = "2024"
+homepage      = "https://www.sea-ql.org/SeaORM"
+keywords      = ["orm", "arrow", "parquet", "sea-orm"]
+license       = "MIT OR Apache-2.0"
+name          = "sea-orm-arrow"
+repository    = "https://github.com/SeaQL/sea-orm"
+rust-version  = "1.85.0"
+version       = "2.0.0-rc.1"
+
+[dependencies]
+arrow = { version = "54", default-features = false }
+sea-query = { version = "1.0.0-rc", default-features = false, features = [
+    "thread-safe",
+] }
+thiserror = { version = "2", default-features = false }
+
+[features]
+with-bigdecimal   = ["sea-query/with-bigdecimal"]
+with-chrono       = ["sea-query/with-chrono"]
+with-rust_decimal = ["sea-query/with-rust_decimal"]
+with-time         = ["sea-query/with-time"]
+
+[patch.crates-io]
+# sea-query = { path = "../../sea-query" }
