@@ -535,7 +535,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// are attempted first. If the model uses time-crate types, the conversion
     /// automatically falls back to the time-crate representation.
     #[cfg(feature = "with-arrow")]
-    fn from_arrow(batch: &arrow::array::RecordBatch) -> Result<Vec<Self>, DbErr> {
+    fn from_arrow(batch: &sea_orm_arrow::arrow::array::RecordBatch) -> Result<Vec<Self>, DbErr> {
         use crate::{IdenStatic, Iterable, with_arrow::arrow_array_to_value};
 
         let num_rows = batch.num_rows();
@@ -602,12 +602,12 @@ pub trait ActiveModelTrait: Clone + Debug {
     #[cfg(feature = "with-arrow")]
     fn to_arrow(
         models: &[Self],
-        schema: &arrow::datatypes::Schema,
-    ) -> Result<arrow::array::RecordBatch, DbErr> {
+        schema: &sea_orm_arrow::arrow::datatypes::Schema,
+    ) -> Result<sea_orm_arrow::arrow::array::RecordBatch, DbErr> {
         use crate::{Iterable, with_arrow::option_values_to_arrow_array};
         use std::sync::Arc;
 
-        let mut columns: Vec<Arc<dyn arrow::array::Array>> =
+        let mut columns: Vec<Arc<dyn sea_orm_arrow::arrow::array::Array>> =
             Vec::with_capacity(schema.fields().len());
 
         for field in schema.fields() {
@@ -630,12 +630,13 @@ pub trait ActiveModelTrait: Clone + Debug {
                 columns.push(array);
             } else {
                 // Field in schema but not in entity → null column
-                let array = arrow::array::new_null_array(field.data_type(), models.len());
+                let array =
+                    sea_orm_arrow::arrow::array::new_null_array(field.data_type(), models.len());
                 columns.push(array);
             }
         }
 
-        arrow::array::RecordBatch::try_new(Arc::new(schema.clone()), columns)
+        sea_orm_arrow::arrow::array::RecordBatch::try_new(Arc::new(schema.clone()), columns)
             .map_err(|e| DbErr::Type(format!("Failed to create RecordBatch: {e}")))
     }
 
