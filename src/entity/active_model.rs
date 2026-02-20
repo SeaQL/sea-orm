@@ -1375,9 +1375,26 @@ mod tests {
         struct IdOnlyFruit {
             id: i32,
         }
-
         assert_eq!(
             IdOnlyFruit { id: 1 }.into_active_model(),
+            fruit::ActiveModel {
+                id: Set(1),
+                name: Set("cherry".to_owned()),
+                cake_id: Set(None),
+            }
+        );
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(
+            active_model = "fruit::ActiveModel",
+            set(name = "String::from(\"cherry\")"),
+            set(cake_id = "None")
+        )]
+        struct IdOnlyFruit2 {
+            id: i32,
+        }
+        assert_eq!(
+            IdOnlyFruit2 { id: 1 }.into_active_model(),
             fruit::ActiveModel {
                 id: Set(1),
                 name: Set("cherry".to_owned()),
