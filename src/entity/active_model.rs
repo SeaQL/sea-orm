@@ -1609,6 +1609,43 @@ mod tests {
 
     #[test]
     #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_field_empty_default() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel")]
+        struct NewFruit {
+            #[sea_orm(default)]
+            name: Option<String>,
+        }
+
+        // Some(v) -> Set(v)
+        assert_eq!(
+            NewFruit {
+                name: Some("Apple".to_owned()),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+
+        // None -> Set(fallback)
+        assert_eq!(
+            NewFruit { name: None }.into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
     fn test_derive_into_active_model_field_default_some() {
         use crate as sea_orm;
         use crate::entity::prelude::*;

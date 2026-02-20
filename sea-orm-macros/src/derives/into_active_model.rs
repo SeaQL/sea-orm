@@ -231,7 +231,18 @@ fn parse_field(field: &syn::Field) -> Result<Option<IntoActiveModelField>, Error
                 if meta.exists("ignore") || meta.exists("skip") {
                     return Ok(None);
                 }
-
+                // Check for bare default: #[sea_orm(default)]
+                if meta.exists("default") {
+                    if default_expr.is_some(){
+                        return Err(Error::Syn(syn::Error::new_spanned(
+                            meta,
+                            "duplicate `default` attribute",
+                        )));
+                    }
+                    let expr: syn::Expr = syn::parse_quote!(::core::default::Default::default());
+                    default_expr = Some(expr);
+                    continue // Skip next default check
+                }
                 // Check for default value: #[sea_orm(default = "expr")]
                 if let Some(expr_str) = meta.get_as_kv("default") {
                     // Error on duplicate `default`
