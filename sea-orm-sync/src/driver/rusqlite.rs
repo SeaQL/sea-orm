@@ -17,8 +17,8 @@ use sea_query_rusqlite::{RusqliteValue, RusqliteValues, rusqlite};
 
 use crate::{
     AccessMode, ColIdx, ConnectOptions, DatabaseConnection, DatabaseConnectionType,
-    DatabaseTransaction, InnerConnection, IsolationLevel, QueryStream, Statement, TransactionError,
-    error::*, executor::*,
+    DatabaseTransaction, InnerConnection, IsolationLevel, QueryStream, SqliteTransactionMode,
+    Statement, TransactionError, error::*, executor::*,
 };
 
 /// A helper class to connect to Rusqlite
@@ -379,6 +379,7 @@ impl RusqliteSharedConnection {
         &self,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
+        sqlite_transaction_mode: Option<SqliteTransactionMode>,
     ) -> Result<DatabaseTransaction, DbErr> {
         let conn = self.loan()?;
         DatabaseTransaction::begin(
@@ -387,6 +388,7 @@ impl RusqliteSharedConnection {
             self.metric_callback.clone(),
             isolation_level,
             access_mode,
+            sqlite_transaction_mode,
         )
     }
 
@@ -402,7 +404,7 @@ impl RusqliteSharedConnection {
         F: for<'b> FnOnce(&'b DatabaseTransaction) -> Result<T, E>,
         E: std::fmt::Display + std::fmt::Debug,
     {
-        self.begin(isolation_level, access_mode)
+        self.begin(isolation_level, access_mode, None)
             .map_err(|e| TransactionError::Connection(e))?
             .run(callback)
     }

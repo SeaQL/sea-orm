@@ -1,16 +1,18 @@
 #![allow(unused_assignments)]
-use crate::{
-    AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
-    QueryResult, Statement, StreamTrait, TransactionSession, TransactionStream, TransactionTrait,
-    debug_print, error::*,
-};
-#[cfg(feature = "sqlx-dep")]
-use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
+use std::{future::Future, pin::Pin, sync::Arc};
+
 use futures_util::lock::Mutex;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::TransactionManager;
-use std::{future::Future, pin::Pin, sync::Arc};
 use tracing::instrument;
+
+use crate::{
+    AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
+    QueryResult, SqliteTransactionMode, Statement, StreamTrait, TransactionOptions,
+    TransactionSession, TransactionStream, TransactionTrait, debug_print, error::*,
+};
+#[cfg(feature = "sqlx-dep")]
+use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 
 /// Defines a database transaction, whether it is an open transaction and the type of
 /// backend to use.
@@ -37,6 +39,7 @@ impl DatabaseTransaction {
         metric_callback: Option<crate::metric::Callback>,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
+        sqlite_transaction_mode: Option<SqliteTransactionMode>,
     ) -> Result<DatabaseTransaction, DbErr> {
         let res = DatabaseTransaction {
             conn,
@@ -92,7 +95,11 @@ impl DatabaseTransaction {
                             access_mode,
                         )
                         .await?;
-                        <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, None)
+                        // TODO using this for beginning a nested transaction currently causes an error. Should we make it a warning instead?
+                        let statement = sqlite_transaction_mode.map(|mode| {
+                            std::borrow::Cow::from(format!("BEGIN {}", mode.sqlite_keyword()))
+                        });
+                        <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, statement)
                             .await
                             .map_err(sqlx_error_to_query_err)
                     }
@@ -605,6 +612,7 @@ impl TransactionTrait for DatabaseTransaction {
             self.metric_callback.clone(),
             None,
             None,
+            None,
         )
         .await
     }
@@ -621,6 +629,23 @@ impl TransactionTrait for DatabaseTransaction {
             self.metric_callback.clone(),
             isolation_level,
             access_mode,
+            None,
+        )
+        .await
+    }
+
+    #[instrument(level = "trace")]
+    async fn begin_with_options(
+        &self,
+        options: TransactionOptions,
+    ) -> Result<DatabaseTransaction, DbErr> {
+        DatabaseTransaction::begin(
+            Arc::clone(&self.conn),
+            self.backend,
+            self.metric_callback.clone(),
+            options.isolation_level,
+            options.access_mode,
+            options.sqlite_transaction_mode,
         )
         .await
     }

@@ -14,8 +14,8 @@ use tracing::{instrument, warn};
 
 use crate::{
     AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
-    IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
-    sqlx_error_to_exec_err,
+    IsolationLevel, QueryStream, SqliteTransactionMode, Statement, TransactionError, debug_print,
+    error::*, executor::*, sqlx_error_to_exec_err,
 };
 
 use super::sqlx_common::*;
@@ -215,6 +215,7 @@ impl SqlxSqlitePoolConnection {
         &self,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
+        sqlite_transaction_mode: Option<SqliteTransactionMode>,
     ) -> Result<DatabaseTransaction, DbErr> {
         let conn = self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
         DatabaseTransaction::new_sqlite(
@@ -222,6 +223,7 @@ impl SqlxSqlitePoolConnection {
             self.metric_callback.clone(),
             isolation_level,
             access_mode,
+            sqlite_transaction_mode,
         )
         .await
     }
@@ -248,6 +250,7 @@ impl SqlxSqlitePoolConnection {
             self.metric_callback.clone(),
             isolation_level,
             access_mode,
+            None,
         )
         .await
         .map_err(|e| TransactionError::Connection(e))?;
@@ -362,6 +365,7 @@ impl crate::DatabaseTransaction {
         metric_callback: Option<crate::metric::Callback>,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
+        sqlite_transaction_mode: Option<SqliteTransactionMode>,
     ) -> Result<crate::DatabaseTransaction, DbErr> {
         Self::begin(
             Arc::new(Mutex::new(crate::InnerConnection::Sqlite(inner))),
@@ -369,6 +373,7 @@ impl crate::DatabaseTransaction {
             metric_callback,
             isolation_level,
             access_mode,
+            sqlite_transaction_mode,
         )
         .await
     }
