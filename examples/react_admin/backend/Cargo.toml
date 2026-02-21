@@ -65,3 +65,5 @@ serial_test = "2.0.0"
 
 [patch.crates-io]
 loco-rs = { git = "https://github.com/SeaQL/loco", branch = "master" }
+sea-query = { git = "https://github.com/Huliiiiii/sea-query", branch = "enum" }
+sea-query-sqlx = { git = "https://github.com/Huliiiiii/sea-query", branch = "enum" }
