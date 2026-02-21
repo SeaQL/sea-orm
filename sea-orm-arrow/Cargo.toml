@@ -10,7 +10,7 @@ license       = "MIT OR Apache-2.0"
 name          = "sea-orm-arrow"
 repository    = "https://github.com/SeaQL/sea-orm"
 rust-version  = "1.85.0"
-version       = "2.0.0-rc.2"
+version       = "2.0.0-rc.3"
 
 [dependencies]
 arrow = { version = "57", default-features = false }
@@ -20,6 +20,7 @@ sea-query = { version = "1.0.0-rc", default-features = false, features = [
 thiserror = { version = "2", default-features = false }
 
 [features]
+prettyprint       = ["arrow/prettyprint"]
 with-bigdecimal   = ["sea-query/with-bigdecimal"]
 with-chrono       = ["sea-query/with-chrono"]
 with-rust_decimal = ["sea-query/with-rust_decimal"]
