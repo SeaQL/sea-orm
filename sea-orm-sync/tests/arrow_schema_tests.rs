@@ -3,8 +3,8 @@
 //!
 //! cargo t --test arrow_schema_tests --features=with-arrow
 
-use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use sea_orm::ArrowSchema;
+use sea_orm_arrow::arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 
 // ---------------------------------------------------------------------------
 // Entities using #[sea_orm::model] (2.0 format, arrow_schema flag)

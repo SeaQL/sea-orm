@@ -1,10 +1,10 @@
 #![cfg(feature = "with-arrow")]
 //! cargo t --test arrow_tests --features=with-arrow
 //! cargo t --test arrow_tests --features=with-arrow,with-bigdecimal
-use arrow::array::*;
-use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use sea_orm::entity::prelude::*;
 use sea_orm::{ActiveValue::NotSet, ArrowSchema, Set, arrow};
+use sea_orm_arrow::arrow::array::*;
+use sea_orm_arrow::arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use std::sync::Arc;
 
 /// Test entity with all supported primitive types
@@ -1469,7 +1469,7 @@ mod bigdecimal_tests {
 
     #[test]
     fn test_from_arrow_decimal256_bigdecimal() {
-        use arrow::datatypes::i256;
+        use sea_orm_arrow::arrow::datatypes::i256;
 
         let schema = Arc::new(Schema::new(vec![
             Field::new("id", DataType::Int32, false),
