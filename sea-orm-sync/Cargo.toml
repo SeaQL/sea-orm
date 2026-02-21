@@ -190,3 +190,4 @@ with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-rusqlite?/with-uuid"]
 # sea-query = { path = "../sea-query" }
 sea-query = { git = "https://github.com/Huliiiiii/sea-query", branch = "enum" }
 sea-query-sqlx = { git = "https://github.com/Huliiiiii/sea-query", branch = "enum" }
+sea-query-rusqlite = { git = "https://github.com/Huliiiiii/sea-query", branch = "enum" }
