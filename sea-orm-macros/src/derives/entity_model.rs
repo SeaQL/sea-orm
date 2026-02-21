@@ -570,18 +570,13 @@ pub fn expand_derive_entity_model(data: &Data, attrs: &[Attribute]) -> syn::Resu
         }
     };
 
-    let with_json_impls = {
+    let with_json_impls = quote! {
         #[cfg(feature = "with-json")]
-        quote! {
-            fn json_key(&self) -> &'static str {
-                match self {
-                    #columns_json_keys
-                }
+        fn json_key(&self) -> &'static str {
+            match self {
+                #columns_json_keys
             }
         }
-
-        #[cfg(not(feature = "with-json"))]
-        quote! {}
     };
 
     Ok(quote! {
