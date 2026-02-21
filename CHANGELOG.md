@@ -651,6 +651,20 @@ struct CakeWithOptionalBakeryModel {
     bakery: Option<bakery::Model>, // can be null
 }
 ```
+* Added `try_from_u64` to `DeriveValueType` https://github.com/SeaQL/sea-orm/pull/2958
+```rust
+// Test for try_from_u64 attribute with type alias
+type UserId = i32;
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(try_from_u64)]
+pub struct MyUserId(pub UserId);
+```
+* Arrow / Parquet support https://github.com/SeaQL/sea-orm/pull/2957
+    + Added `ArrowSchema`, `DeriveArrowSchema`
+    + Support decimal with different formats
+    + Support timestamp with different timezone / resolution
+    + Added parquet example
 
 ### Breaking Changes
 
