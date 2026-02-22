@@ -23,6 +23,18 @@ impl<A> ValidatedUpdateOne<A>
 where
     A: ActiveModelTrait,
 {
+    /// Execute an UPDATE operation on an ActiveModel without returning the updated model
+    pub async fn exec_without_returning<C>(self, db: &C) -> Result<UpdateResult, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        Updater::new(self.query)
+            // If nothing is updated, return RecordNotUpdated error
+            .check_record_exists()
+            .exec(db)
+            .await
+    }
+
     /// Execute an UPDATE operation on an ActiveModel
     pub async fn exec<C>(self, db: &C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
@@ -39,6 +51,14 @@ impl<A> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
+    /// Execute an UPDATE operation on an ActiveModel without returning the updated model
+    pub async fn exec_without_returning<C>(self, db: &C) -> Result<UpdateResult, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.0?.exec_without_returning(db).await
+    }
+
     /// Execute an UPDATE operation on an ActiveModel
     pub async fn exec<C>(self, db: &C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
@@ -79,6 +99,11 @@ impl Updater {
             query,
             check_record_exists: false,
         }
+    }
+
+    fn check_record_exists(mut self) -> Self {
+        self.check_record_exists = true;
+        self
     }
 
     /// Execute an update operation
