@@ -172,7 +172,7 @@ impl DeriveIntoActiveModel {
                 sea_orm::IntoActiveValue::<_>::into_active_value(self.#ident).into()
             ),
             IntoActiveModelField::WithDefault { ident, expr } => quote!({
-                match self.#ident {
+                match self.#ident.into() {
                     Some(v) => sea_orm::ActiveValue::Set(v).into(),
                     None => sea_orm::ActiveValue::Set(#expr).into(),
                 }
