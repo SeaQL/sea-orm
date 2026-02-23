@@ -95,7 +95,7 @@ impl SchemaBuilder {
 
                 let schema = schema_discovery
                     .discover_with(db)
-                    .map_err(|err| DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}"))))?;
+                    .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
 
                 DiscoveredSchema {
                     tables: schema.tables.iter().map(|table| table.write()).collect(),
@@ -117,7 +117,7 @@ impl SchemaBuilder {
 
                 let schema = schema_discovery
                     .discover_with(db)
-                    .map_err(|err| DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}"))))?;
+                    .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
 
                 DiscoveredSchema {
                     tables: schema.tables.iter().map(|table| table.write()).collect(),
