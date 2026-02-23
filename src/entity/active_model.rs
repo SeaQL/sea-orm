@@ -1646,6 +1646,63 @@ mod tests {
 
     #[test]
     #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_field_custom_option() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+        mod foreign_crate {
+            #[derive(Debug, Clone, PartialEq, Eq)]
+            pub enum CustomOption<T> {
+                None,
+                Some(T),
+            }
+
+            impl From<CustomOption<String>> for Option<String> {
+                fn from(option: CustomOption<String>) -> Self {
+                    match option {
+                        CustomOption::None => Option::None,
+                        CustomOption::Some(value) => value.into(),
+                    }
+                }
+            }
+        }
+        use foreign_crate::CustomOption;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel")]
+        struct NewFruit {
+            #[sea_orm(default)]
+            name: CustomOption<String>,
+        }
+
+        // Some(v) -> Set(v)
+        assert_eq!(
+            NewFruit {
+                name: CustomOption::Some("Apple".to_owned()),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+
+        // None -> Set(fallback)
+        assert_eq!(
+            NewFruit {
+                name: CustomOption::None
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
     fn test_derive_into_active_model_field_default_some() {
         use crate as sea_orm;
         use crate::entity::prelude::*;
