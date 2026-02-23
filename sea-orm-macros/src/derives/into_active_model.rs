@@ -47,6 +47,7 @@ impl DeriveIntoActiveModel {
     ///   - active_model: explicit ActiveModel type
     ///   - exhaustive: require all fields to be set
     ///   - set/fill(...): provided values for ommited fields
+    ///
     /// Field attributes (#[sea_orm(...)]) with:
     ///   - ignore/skip: exclude from conversion
     ///   - default: fallback value for Option<T> fields
@@ -233,7 +234,7 @@ fn parse_field(field: &syn::Field) -> Result<Option<IntoActiveModelField>, Error
                 }
                 // Check for bare default: #[sea_orm(default)]
                 if meta.exists("default") {
-                    if default_expr.is_some(){
+                    if default_expr.is_some() {
                         return Err(Error::Syn(syn::Error::new_spanned(
                             meta,
                             "duplicate `default` attribute",
@@ -241,7 +242,7 @@ fn parse_field(field: &syn::Field) -> Result<Option<IntoActiveModelField>, Error
                     }
                     let expr: syn::Expr = syn::parse_quote!(::core::default::Default::default());
                     default_expr = Some(expr);
-                    continue // Skip next default check
+                    continue; // Skip next default check
                 }
                 // Check for default value: #[sea_orm(default = "expr")]
                 if let Some(expr_str) = meta.get_as_kv("default") {
