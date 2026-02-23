@@ -79,99 +79,100 @@ impl SchemaBuilder {
     where
         C: ConnectionTrait + sea_schema::Connection,
     {
-        let _existing =
-            match db.get_database_backend() {
-                #[cfg(feature = "sqlx-mysql")]
-                DbBackend::MySql => {
-                    use sea_schema::{mysql::discovery::SchemaDiscovery, probe::SchemaProbe};
+        let _existing = match db.get_database_backend() {
+            #[cfg(feature = "sqlx-mysql")]
+            DbBackend::MySql => {
+                use sea_schema::{mysql::discovery::SchemaDiscovery, probe::SchemaProbe};
 
-                    let current_schema: String = db
-                        .query_one(
-                            sea_query::SelectStatement::new()
-                                .expr(sea_schema::mysql::MySql::get_current_schema()),
-                        )
-                        .await?
-                        .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
-                        .try_get_by_index(0)?;
-                    let schema_discovery = SchemaDiscovery::new_no_exec(&current_schema);
+                let current_schema: String = db
+                    .query_one(
+                        sea_query::SelectStatement::new()
+                            .expr(sea_schema::mysql::MySql::get_current_schema()),
+                    )
+                    .await?
+                    .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
+                    .try_get_by_index(0)?;
+                let schema_discovery = SchemaDiscovery::new_no_exec(&current_schema);
 
-                    let schema = schema_discovery.discover_with(db).await.map_err(|err| {
-                        DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}")))
-                    })?;
+                let schema = schema_discovery
+                    .discover_with(db)
+                    .await
+                    .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
 
-                    DiscoveredSchema {
-                        tables: schema.tables.iter().map(|table| table.write()).collect(),
-                        enums: vec![],
-                    }
+                DiscoveredSchema {
+                    tables: schema.tables.iter().map(|table| table.write()).collect(),
+                    enums: vec![],
                 }
-                #[cfg(feature = "sqlx-postgres")]
-                DbBackend::Postgres => {
-                    use sea_schema::{postgres::discovery::SchemaDiscovery, probe::SchemaProbe};
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            DbBackend::Postgres => {
+                use sea_schema::{postgres::discovery::SchemaDiscovery, probe::SchemaProbe};
 
-                    let current_schema: String = db
-                        .query_one(
-                            sea_query::SelectStatement::new()
-                                .expr(sea_schema::postgres::Postgres::get_current_schema()),
-                        )
-                        .await?
-                        .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
-                        .try_get_by_index(0)?;
-                    let schema_discovery = SchemaDiscovery::new_no_exec(&current_schema);
+                let current_schema: String = db
+                    .query_one(
+                        sea_query::SelectStatement::new()
+                            .expr(sea_schema::postgres::Postgres::get_current_schema()),
+                    )
+                    .await?
+                    .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
+                    .try_get_by_index(0)?;
+                let schema_discovery = SchemaDiscovery::new_no_exec(&current_schema);
 
-                    let schema = schema_discovery.discover_with(db).await.map_err(|err| {
-                        DbErr::Query(crate::RuntimeErr::Internal(format!("{err:?}")))
-                    })?;
+                let schema = schema_discovery
+                    .discover_with(db)
+                    .await
+                    .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
 
-                    DiscoveredSchema {
-                        tables: schema.tables.iter().map(|table| table.write()).collect(),
-                        enums: schema.enums.iter().map(|def| def.write()).collect(),
-                    }
+                DiscoveredSchema {
+                    tables: schema.tables.iter().map(|table| table.write()).collect(),
+                    enums: schema.enums.iter().map(|def| def.write()).collect(),
                 }
-                #[cfg(feature = "sqlx-sqlite")]
-                DbBackend::Sqlite => {
-                    use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
-                    let schema = SchemaDiscovery::discover_with(db)
-                        .await
-                        .map_err(|err| {
-                            DbErr::Query(match err {
-                                SqliteDiscoveryError::SqlxError(err) => {
-                                    crate::RuntimeErr::SqlxError(err.into())
-                                }
-                                _ => crate::RuntimeErr::Internal(format!("{err:?}")),
-                            })
-                        })?
-                        .merge_indexes_into_table();
-                    DiscoveredSchema {
-                        tables: schema.tables.iter().map(|table| table.write()).collect(),
-                        enums: vec![],
-                    }
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            DbBackend::Sqlite => {
+                use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
+                let schema = SchemaDiscovery::discover_with(db)
+                    .await
+                    .map_err(|err| {
+                        DbErr::Query(match err {
+                            SqliteDiscoveryError::SqlxError(err) => {
+                                crate::RuntimeErr::SqlxError(err.into())
+                            }
+                            _ => crate::RuntimeErr::Internal(format!("{err:?}")),
+                        })
+                    })?
+                    .merge_indexes_into_table();
+                DiscoveredSchema {
+                    tables: schema.tables.iter().map(|table| table.write()).collect(),
+                    enums: vec![],
                 }
-                #[cfg(feature = "rusqlite")]
-                DbBackend::Sqlite => {
-                    use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
-                    let schema = SchemaDiscovery::discover_with(db)
-                        .map_err(|err| {
-                            DbErr::Query(match err {
-                                SqliteDiscoveryError::RusqliteError(err) => {
-                                    crate::RuntimeErr::Rusqlite(err.into())
-                                }
-                                _ => crate::RuntimeErr::Internal(format!("{err:?}")),
-                            })
-                        })?
-                        .merge_indexes_into_table();
-                    DiscoveredSchema {
-                        tables: schema.tables.iter().map(|table| table.write()).collect(),
-                        enums: vec![],
-                    }
+            }
+            #[cfg(feature = "rusqlite")]
+            DbBackend::Sqlite => {
+                use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
+                let schema = SchemaDiscovery::discover_with(db)
+                    .map_err(|err| {
+                        DbErr::Query(match err {
+                            SqliteDiscoveryError::RusqliteError(err) => {
+                                crate::RuntimeErr::Rusqlite(err.into())
+                            }
+                            _ => crate::RuntimeErr::Internal(format!("{err:?}")),
+                        })
+                    })?
+                    .merge_indexes_into_table();
+                DiscoveredSchema {
+                    tables: schema.tables.iter().map(|table| table.write()).collect(),
+                    enums: vec![],
                 }
-                #[allow(unreachable_patterns)]
-                other => {
-                    return Err(DbErr::BackendNotSupported {
-                        db: other.as_str(),
-                        ctx: "SchemaBuilder::sync",
-                    });
-                }
-            };
+            }
+            #[allow(unreachable_patterns)]
+            other => {
+                return Err(DbErr::BackendNotSupported {
+                    db: other.as_str(),
+                    ctx: "SchemaBuilder::sync",
+                });
+            }
+        };
 
         #[allow(unreachable_code)]
         let mut created_enums: Vec<Statement> = Default::default();
