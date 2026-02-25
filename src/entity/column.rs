@@ -617,6 +617,17 @@ pub(crate) fn select_enum_as(col: Expr, _: DynIden, col_type: &ColumnType) -> Ex
 }
 
 pub(crate) fn save_enum_as(col: Expr, enum_name: DynIden, col_type: &ColumnType) -> Expr {
+    if matches!(col, Expr::Value(Value::Enum(_))) {
+        return col;
+    }
+    #[cfg(feature = "postgres-array")]
+    if matches!(
+        col,
+        Expr::Value(Value::Array(sea_query::ArrayType::Enum(_), _))
+    ) {
+        return col;
+    }
+
     let type_name = match col_type {
         ColumnType::Array(_) => format!("{enum_name}[]").into_iden(),
         _ => enum_name,
