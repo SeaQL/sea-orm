@@ -25,6 +25,3 @@ with-bigdecimal   = ["sea-query/with-bigdecimal"]
 with-chrono       = ["sea-query/with-chrono"]
 with-rust_decimal = ["sea-query/with-rust_decimal"]
 with-time         = ["sea-query/with-time"]
-
-[patch.crates-io]
-# sea-query = { path = "../../sea-query" }
