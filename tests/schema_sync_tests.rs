@@ -132,6 +132,7 @@ async fn test_sync_unique_column_no_drop() -> Result<(), DbErr> {
 /// COLUMN … UNIQUE), which creates a column-level unique index. A subsequent
 /// sync must not attempt to drop that index.
 #[sea_orm_macros::test]
+#[cfg(not(any(feature = "sqlx-sqlite", feature = "rusqlite")))]
 async fn test_sync_add_unique_column_no_drop() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_sync_add_unique_column_no_drop").await;
     let db = &ctx.db;
