@@ -193,22 +193,108 @@ pub async fn run_generate_command(
                     #[cfg(feature = "sqlx-postgres")]
                     {
                         use sea_schema::postgres::discovery::SchemaDiscovery;
-                        use sqlx::Postgres;
+                        use sqlx::{Postgres, Row};
+                        use std::collections::{HashMap, HashSet};
 
                         println!("Connecting to Postgres ...");
                         let schema = database_schema.as_deref().unwrap_or("public");
-                        let connection = sqlx_connect::<Postgres>(
+                        let pool = sqlx_connect::<Postgres>(
                             max_connections,
                             acquire_timeout,
                             url.as_str(),
                             Some(schema),
                         )
                         .await?;
-                        println!("Discovering schema ...");
-                        let schema_discovery = SchemaDiscovery::new(connection, schema);
-                        let schema = schema_discovery.discover().await?;
-                        let table_stmts = schema
-                            .tables
+
+                        // Discover all schemas that need to be included based on cross-schema references
+                        println!("Analyzing cross-schema dependencies ...");
+
+                        let mut schemas_to_discover = HashSet::new();
+                        schemas_to_discover.insert(schema.to_string());
+
+                        // Query to find all schemas referenced by the target schema via foreign keys
+                        let fk_query = r#"
+                            SELECT DISTINCT
+                                fn.nspname AS foreign_schema
+                            FROM pg_constraint c
+                            JOIN pg_class t ON c.conrelid = t.oid
+                            JOIN pg_namespace n ON t.relnamespace = n.oid
+                            JOIN pg_class ft ON c.confrelid = ft.oid
+                            JOIN pg_namespace fn ON ft.relnamespace = fn.oid
+                            WHERE c.contype = 'f'
+                                AND n.nspname = $1
+                                AND fn.nspname != $1
+                        "#;
+
+                        let fk_rows = sqlx::query(fk_query).bind(schema).fetch_all(&pool).await?;
+
+                        for row in fk_rows {
+                            let foreign_schema: String = row.get("foreign_schema");
+                            schemas_to_discover.insert(foreign_schema);
+                        }
+
+                        // Query to find all schemas that have enums used by the target schema
+                        let enum_schema_query = r#"
+                            SELECT DISTINCT tn.nspname AS type_schema
+                            FROM pg_attribute a
+                            JOIN pg_class c ON a.attrelid = c.oid
+                            JOIN pg_namespace n ON c.relnamespace = n.oid
+                            JOIN pg_type t ON a.atttypid = t.oid
+                            JOIN pg_namespace tn ON t.typnamespace = tn.oid
+                            WHERE n.nspname = $1
+                                AND t.typtype = 'e'
+                                AND tn.nspname != $1
+                        "#;
+
+                        let enum_schema_rows = sqlx::query(enum_schema_query)
+                            .bind(schema)
+                            .fetch_all(&pool)
+                            .await?;
+
+                        for row in enum_schema_rows {
+                            let type_schema: String = row.get("type_schema");
+                            schemas_to_discover.insert(type_schema);
+                        }
+
+                        println!("Will discover schemas: {:?}", schemas_to_discover);
+
+                        // Discover all enums from all relevant schemas
+                        let enum_query = r#"
+                            SELECT n.nspname as schema, t.typname as typename, e.enumlabel
+                            FROM pg_type t
+                            JOIN pg_enum e ON t.oid = e.enumtypid
+                            JOIN pg_namespace n ON n.oid = t.typnamespace
+                            ORDER BY schema, typename, e.enumsortorder
+                        "#;
+
+                        let enum_rows = sqlx::query(enum_query).fetch_all(&pool).await?;
+                        let mut all_enums: HashMap<String, Vec<String>> = HashMap::new();
+                        for row in enum_rows {
+                            let typename: String = row.get("typename");
+                            let enumlabel: String = row.get("enumlabel");
+                            all_enums
+                                .entry(typename)
+                                .or_insert_with(Vec::new)
+                                .push(enumlabel);
+                        }
+
+                        // Discover tables from all relevant schemas
+                        let mut all_tables = Vec::new();
+
+                        for discover_schema in schemas_to_discover.iter() {
+                            println!("Discovering tables in schema: {}", discover_schema);
+                            let discovery = SchemaDiscovery::new(pool.clone(), discover_schema);
+                            let discovered = discovery.discover().await?;
+                            all_tables.extend(discovered.tables);
+                        }
+
+                        println!(
+                            "Discovered {} tables across {} schemas",
+                            all_tables.len(),
+                            schemas_to_discover.len()
+                        );
+
+                        let table_stmts = all_tables
                             .into_iter()
                             .filter(|schema| filter_tables(&schema.info.name))
                             .filter(|schema| filter_hidden_tables(&schema.info.name))
@@ -329,10 +415,14 @@ where
     let mut pool_options = sqlx::pool::PoolOptions::<DB>::new()
         .max_connections(max_connections)
         .acquire_timeout(time::Duration::from_secs(acquire_timeout));
-    // Set search_path for Postgres, E.g. Some("public") by default
+    // Set search_path for Postgres to allow cross-schema type resolution
     // MySQL & SQLite connection initialize with schema `None`
     if let Some(schema) = schema {
-        let sql = format!("SET search_path = '{schema}'");
+        // Always include "$user" and public in search_path to support cross-schema type references
+        // This allows types (like enums) defined in any schema to be discovered
+        // PostgreSQL will search in order: target schema, then "$user", then public
+        // See: https://www.postgresql.org/docs/current/ddl-schemas.html#DDL-SCHEMAS-PATH
+        let sql = format!("SET search_path = '{schema}', \"$user\", public");
         pool_options = pool_options.after_connect(move |conn, _| {
             let sql = sql.clone();
             Box::pin(async move {
