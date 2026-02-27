@@ -67,6 +67,8 @@ pub fn expand_derive_arrow_schema(
                                     column_type_str = Some(lit.value());
                                 } else if meta.path.is_ident("nullable") {
                                     arrow_attrs.nullable_attr = true;
+                                } else {
+                                    let _ = meta.value().and_then(|v| v.parse::<syn::Expr>());
                                 }
                                 Ok(())
                             })?;
