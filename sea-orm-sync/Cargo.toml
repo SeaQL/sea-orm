@@ -142,6 +142,7 @@ tests-features = [
     "with-arrow",
     "with-bigdecimal",
 ]
+tracing-spans = []
 with-arrow = ["sea-orm-arrow", "sea-orm-macros/with-arrow"]
 with-bigdecimal = [
     "bigdecimal",
