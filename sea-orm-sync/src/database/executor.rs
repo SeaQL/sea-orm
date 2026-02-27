@@ -1,6 +1,7 @@
 use crate::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
-    ExecResult, IsolationLevel, QueryResult, Statement, TransactionError, TransactionTrait,
+    ExecResult, IsolationLevel, QueryResult, Statement, TransactionError, TransactionOptions,
+    TransactionTrait,
 };
 use crate::{Schema, SchemaBuilder};
 use std::future::Future;
@@ -86,6 +87,16 @@ impl TransactionTrait for DatabaseExecutor<'_> {
             DatabaseExecutor::Transaction(trans) => {
                 trans.begin_with_config(isolation_level, access_mode)
             }
+        }
+    }
+
+    fn begin_with_options(
+        &self,
+        options: TransactionOptions,
+    ) -> Result<DatabaseTransaction, DbErr> {
+        match self {
+            DatabaseExecutor::Connection(conn) => conn.begin_with_options(options),
+            DatabaseExecutor::Transaction(trans) => trans.begin_with_options(options),
         }
     }
 

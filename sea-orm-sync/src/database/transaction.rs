@@ -1,8 +1,9 @@
 #![allow(unused_assignments)]
+use crate::SqliteTransactionMode;
 use crate::{
     AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
-    QueryResult, Statement, StreamTrait, TransactionSession, TransactionStream, TransactionTrait,
-    debug_print, error::*,
+    QueryResult, Statement, StreamTrait, TransactionOptions, TransactionSession, TransactionStream,
+    TransactionTrait, debug_print, error::*,
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
@@ -37,6 +38,7 @@ impl DatabaseTransaction {
         metric_callback: Option<crate::metric::Callback>,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
+        sqlite_transaction_mode: Option<SqliteTransactionMode>,
     ) -> Result<DatabaseTransaction, DbErr> {
         let res = DatabaseTransaction {
             conn,
@@ -87,7 +89,12 @@ impl DatabaseTransaction {
                             isolation_level,
                             access_mode,
                         )?;
-                        <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, None)
+                        // TODO using this for beginning a nested transaction currently causes an error. Should we make it a warning instead?
+                        let statement = sqlite_transaction_mode.map(|mode| {
+                            std::borrow::Cow::from(format!("BEGIN {}", mode.sqlite_keyword()))
+                        });
+                        <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, statement)
+                            .await
                             .map_err(sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "rusqlite")]
@@ -575,6 +582,7 @@ impl TransactionTrait for DatabaseTransaction {
             self.metric_callback.clone(),
             None,
             None,
+            None,
         )
     }
 
@@ -590,6 +598,26 @@ impl TransactionTrait for DatabaseTransaction {
             self.metric_callback.clone(),
             isolation_level,
             access_mode,
+            None,
+        )
+    }
+
+    #[instrument(level = "trace")]
+    fn begin_with_options(
+        &self,
+        TransactionOptions {
+            isolation_level,
+            access_mode,
+            sqlite_transaction_mode,
+        }: TransactionOptions,
+    ) -> Result<DatabaseTransaction, DbErr> {
+        DatabaseTransaction::begin(
+            Arc::clone(&self.conn),
+            self.backend,
+            self.metric_callback.clone(),
+            isolation_level,
+            access_mode,
+            sqlite_transaction_mode,
         )
     }
 
