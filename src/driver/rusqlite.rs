@@ -557,9 +557,17 @@ impl RusqliteInnerConnection {
     }
 
     #[instrument(level = "trace")]
-    pub(crate) fn begin(&mut self) -> Result<(), DbErr> {
+    pub(crate) fn begin(
+        &mut self,
+        sqlite_transaction_mode: Option<SqliteTransactionMode>,
+    ) -> Result<(), DbErr> {
         if self.transaction_depth == 0 {
-            self.execute_unprepared("BEGIN")?;
+            match sqlite_transaction_mode {
+                Some(mode) => {
+                    self.execute_unprepared(&format!("BEGIN {}", mode.sqlite_keyword()))?
+                }
+                None => self.execute_unprepared("BEGIN")?,
+            };
         } else {
             self.execute_unprepared(&format!("SAVEPOINT sp{}", self.transaction_depth))?;
         }

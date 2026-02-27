@@ -88,23 +88,27 @@ impl DatabaseTransaction {
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     InnerConnection::Sqlite(c) => {
-                        // in SQLite isolation level and access mode are global settings
                         crate::driver::sqlx_sqlite::set_transaction_config(
                             c,
                             isolation_level,
                             access_mode,
                         )
                         .await?;
-                        // TODO using this for beginning a nested transaction currently causes an error. Should we make it a warning instead?
-                        let statement = sqlite_transaction_mode.map(|mode| {
-                            std::borrow::Cow::from(format!("BEGIN {}", mode.sqlite_keyword()))
-                        });
+                        let depth = <sqlx::Sqlite as sqlx::Database>::TransactionManager::get_transaction_depth(c);
+                        let statement = if depth == 0 {
+                            sqlite_transaction_mode.map(|mode| {
+                                std::borrow::Cow::from(format!("BEGIN {}", mode.sqlite_keyword()))
+                            })
+                        } else {
+                            // Nested transaction uses SAVEPOINT; the mode only applies to the top-level BEGIN
+                            None
+                        };
                         <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, statement)
                             .await
                             .map_err(sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "rusqlite")]
-                    InnerConnection::Rusqlite(c) => c.begin(),
+                    InnerConnection::Rusqlite(c) => c.begin(sqlite_transaction_mode),
                     #[cfg(feature = "mock")]
                     InnerConnection::Mock(c) => {
                         c.begin();

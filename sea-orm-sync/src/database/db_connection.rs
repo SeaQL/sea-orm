@@ -329,7 +329,7 @@ impl TransactionTrait for DatabaseConnection {
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.begin(None, None),
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.begin(None, None),
+            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.begin(None, None, None),
             #[cfg(feature = "rusqlite")]
             DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.begin(None, None, None),
             #[cfg(feature = "mock")]
@@ -361,7 +361,7 @@ impl TransactionTrait for DatabaseConnection {
             }
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
-                conn.begin(_isolation_level, _access_mode)
+                conn.begin(_isolation_level, _access_mode, None)
             }
             #[cfg(feature = "rusqlite")]
             DatabaseConnectionType::RusqliteSharedConnection(conn) => {

@@ -343,6 +343,7 @@ impl crate::DatabaseTransaction {
             metric_callback,
             isolation_level,
             access_mode,
+            None,
         )
     }
 }
