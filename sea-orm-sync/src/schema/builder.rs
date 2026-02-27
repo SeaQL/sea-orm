@@ -1,8 +1,8 @@
 use super::{Schema, TopologicalSort};
 use crate::{ConnectionTrait, DbBackend, DbErr, EntityTrait, Statement};
 use sea_query::{
-    ForeignKeyCreateStatement, IndexCreateStatement, TableAlterStatement, TableCreateStatement,
-    TableName, TableRef, extension::postgres::TypeCreateStatement,
+    ForeignKeyCreateStatement, Index, IndexCreateStatement, IntoIden, TableAlterStatement,
+    TableCreateStatement, TableName, TableRef, extension::postgres::TypeCreateStatement,
 };
 
 /// A schema builder that can take a registry of Entities and synchronize it with database.
@@ -381,6 +381,45 @@ impl EntitySchemaInfo {
             }
         }
         if let Some(existing_table) = existing_table {
+            // For columns with a column-level UNIQUE constraint (#[sea_orm(unique)]) that
+            // already exist in the table but do not yet have a unique index, create one.
+            for column_def in self.table.get_columns() {
+                if column_def.get_column_spec().unique {
+                    let col_name = column_def.get_column_name();
+                    let col_exists = existing_table
+                        .get_columns()
+                        .iter()
+                        .any(|c| c.get_column_name() == col_name);
+                    if !col_exists {
+                        // Column is being added in this sync pass; the ALTER TABLE ADD COLUMN
+                        // will include the UNIQUE inline, so no separate index needed.
+                        continue;
+                    }
+                    let already_unique = existing_table.get_indexes().iter().any(|idx| {
+                        if !idx.is_unique_key() {
+                            return false;
+                        }
+                        let cols = idx.get_index_spec().get_column_names();
+                        cols.len() == 1 && cols[0] == col_name
+                    });
+                    if !already_unique {
+                        let table_name =
+                            self.table.get_table_name().expect("table must have a name");
+                        let tbl_str = table_name.sea_orm_table().to_string();
+                        let table_ref = table_name.clone();
+                        db.execute(
+                            Index::create()
+                                .name(format!("idx-{tbl_str}-{col_name}"))
+                                .table(table_ref)
+                                .col(col_name.into_iden())
+                                .unique()
+                                .if_not_exists(),
+                        )?;
+                    }
+                }
+            }
+        }
+        if let Some(existing_table) = existing_table {
             // find all unique keys from existing table
             // if it no longer exist in new schema, drop it
             for existing_index in existing_table.get_indexes() {
@@ -392,6 +431,23 @@ impl EntitySchemaInfo {
                         {
                             has_index = true;
                             break;
+                        }
+                    }
+                    // Also check if the unique index corresponds to a column-level UNIQUE
+                    // constraint (from #[sea_orm(unique)]). These are embedded in the CREATE
+                    // TABLE column definition and not tracked in self.indexes, so we must not
+                    // try to drop them during sync.
+                    if !has_index {
+                        let index_cols = existing_index.get_index_spec().get_column_names();
+                        if index_cols.len() == 1 {
+                            for column_def in self.table.get_columns() {
+                                if column_def.get_column_name() == index_cols[0]
+                                    && column_def.get_column_spec().unique
+                                {
+                                    has_index = true;
+                                    break;
+                                }
+                            }
                         }
                     }
                     if !has_index {
