@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+#[cfg(not(feature = "with-time"))]
 use std::time::SystemTime;
 use tracing::info;
 
@@ -224,12 +225,16 @@ pub async fn exec_up_with(
         info!("Applying migration '{}'", migration.name());
         migration.up(manager).await?;
         info!("Migration '{}' has been applied", migration.name());
-        let now = SystemTime::now()
+        #[cfg(not(feature = "with-time"))]
+        let applied_at = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("SystemTime before UNIX EPOCH!");
+            .expect("SystemTime before UNIX EPOCH!")
+            .as_secs() as i64;
+        #[cfg(feature = "with-time")]
+        let applied_at = sea_orm::prelude::TimeDateTimeWithTimeZone::now_utc().unix_timestamp();
         seaql_migrations::Entity::insert(seaql_migrations::ActiveModel {
             version: ActiveValue::Set(migration.name().to_owned()),
-            applied_at: ActiveValue::Set(now.as_secs() as i64),
+            applied_at: ActiveValue::Set(applied_at),
         })
         .table_name(migration_table_name.clone())
         .exec(db)
