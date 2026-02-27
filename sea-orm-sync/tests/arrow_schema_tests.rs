@@ -557,15 +557,15 @@ fn test_decimal_column_types() {
     let schema = decimal_column_type_entity::Entity::arrow_schema();
     let fields = schema.fields();
 
-    // Decimal(Some((10, 2))) -> Decimal128(10, 2)
-    assert_eq!(fields[1].data_type(), &DataType::Decimal128(10, 2));
-    // Decimal(Some((20, 4))) -> Decimal128(20, 4)
+    // Decimal(Some((10, 2))) -> Decimal64(10, 2) (precision ≤ 18)
+    assert_eq!(fields[1].data_type(), &DataType::Decimal64(10, 2));
+    // Decimal(Some((20, 4))) -> Decimal128(20, 4) (precision > 18)
     assert_eq!(fields[2].data_type(), &DataType::Decimal128(20, 4));
     // Decimal(None) -> Decimal128(38, 10)
     assert_eq!(fields[3].data_type(), &DataType::Decimal128(38, 10));
-    // Money(None) -> Decimal128(19, 4)
+    // Money(None) -> Decimal128(19, 4) (precision 19 > 18)
     assert_eq!(fields[4].data_type(), &DataType::Decimal128(19, 4));
-    // Money(Some((12, 3))) -> Decimal128
+    // Money(Some((12, 3))) -> Decimal128 (defaults to precision 19)
     assert!(matches!(fields[5].data_type(), DataType::Decimal128(..)));
 }
 
@@ -764,7 +764,8 @@ mod rust_decimal_schema_tests {
         let schema = decimal_entity::Entity::arrow_schema();
         let fields = schema.fields();
 
-        assert_eq!(fields[1].data_type(), &DataType::Decimal128(10, 2));
+        // precision 10 ≤ 18 → Decimal64
+        assert_eq!(fields[1].data_type(), &DataType::Decimal64(10, 2));
         assert!(fields[1].is_nullable());
     }
 

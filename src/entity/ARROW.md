@@ -6,16 +6,25 @@ This document explains Apache Arrow's decimal and timestamp formats and their in
 
 Apache Arrow provides fixed-point decimal types for representing precise numeric values with a specific precision and scale:
 
-### 1. **Decimal128**
+### 1. **Decimal64**
+- **Storage**: 64-bit (8 bytes) fixed-point decimal
+- **Precision**: Up to 18 decimal digits
+- **Format**: `DataType::Decimal64(precision, scale)`
+  - `precision` (u8): Total number of decimal digits (1-18)
+  - `scale` (i8): Number of digits after decimal point (can be negative)
+- **Use case**: Compact precision decimals that fit in an i64 (e.g., prices, exchange rates)
+- **Example**: `Decimal64(10, 2)` represents numbers like `12345678.90`
+
+### 2. **Decimal128**
 - **Storage**: 128-bit (16 bytes) fixed-point decimal
 - **Precision**: Up to 38 decimal digits
 - **Format**: `DataType::Decimal128(precision, scale)`
   - `precision` (u8): Total number of decimal digits (1-38)
   - `scale` (i8): Number of digits after decimal point (can be negative)
-- **Use case**: Standard precision decimals (e.g., financial calculations, prices)
-- **Example**: `Decimal128(10, 2)` represents numbers like `12345678.90`
+- **Use case**: Standard precision decimals (e.g., financial calculations requiring > 18 digits)
+- **Example**: `Decimal128(20, 4)` represents numbers like `9999999999999999.9999`
 
-### 2. **Decimal256**
+### 3. **Decimal256**
 - **Storage**: 256-bit (32 bytes) fixed-point decimal
 - **Precision**: Up to 76 decimal digits
 - **Format**: `DataType::Decimal256(precision, scale)`
@@ -34,8 +43,9 @@ Apache Arrow provides fixed-point decimal types for representing precise numeric
 
 **Examples**:
 ```
-Decimal128(10, 2)  → Can store: -99999999.99 to 99999999.99
-Decimal128(5, 0)   → Can store: -99999 to 99999 (integers)
+Decimal64(10, 2)   → Can store: -99999999.99 to 99999999.99 (compact, i64)
+Decimal64(5, 0)    → Can store: -99999 to 99999 (integers, compact)
+Decimal128(20, 4)  → Can store: -9999999999999999.9999 to 9999999999999999.9999
 Decimal128(10, 4)  → Can store: -999999.9999 to 999999.9999
 Decimal256(38, 10) → High precision: up to 28 digits before, 10 after decimal
 ```
@@ -62,6 +72,17 @@ SeaORM supports two Rust decimal libraries:
 
 ## Arrow → SeaORM Mapping
 
+### Decimal64Array → rust_decimal::Decimal
+- **When**: Feature `with-rust_decimal` is enabled
+- **Limitation**: Precision ≤ 18 (fits in i64)
+- **Conversion**: Cast i64 to i128, then `Decimal::from_i128_with_scale()`
+- **Column Type**: `ColumnType::Decimal(Some((precision, scale)))`
+
+### Decimal64Array → bigdecimal::BigDecimal
+- **When**: Feature `with-bigdecimal` is enabled (fallback if rust_decimal not available)
+- **Conversion**: Convert i64 via BigInt
+- **Column Type**: `ColumnType::Decimal(Some((precision, scale)))`
+
 ### Decimal128Array → rust_decimal::Decimal
 - **When**: Feature `with-rust_decimal` is enabled
 - **Limitation**: Precision ≤ 28, Scale ≤ 28
@@ -71,7 +92,7 @@ SeaORM supports two Rust decimal libraries:
 ### Decimal128Array → bigdecimal::BigDecimal
 - **When**: Feature `with-bigdecimal` is enabled (fallback if rust_decimal fails or not available)
 - **Limitation**: None (arbitrary precision)
-- **Conversion**: Convert via string representation or BigInt
+- **Conversion**: Convert via BigInt
 - **Column Type**: `ColumnType::Decimal(Some((precision, scale)))` or `ColumnType::Money(_)`
 
 ### Decimal256Array → bigdecimal::BigDecimal
@@ -82,17 +103,22 @@ SeaORM supports two Rust decimal libraries:
 
 ## Implementation Strategy
 
-1. **Decimal128Array**:
+1. **Decimal64Array**:
+   - Try `with-rust_decimal` first (always fits, precision ≤ 18)
+   - Fallback to `with-bigdecimal` if needed
+   - Return type error if neither feature is enabled
+
+2. **Decimal128Array**:
    - Try `with-rust_decimal` first (if precision/scale fit)
    - Fallback to `with-bigdecimal` if needed
    - Return type error if neither feature is enabled
 
-2. **Decimal256Array**:
+3. **Decimal256Array**:
    - Requires `with-bigdecimal` (rust_decimal can't handle precision > 28)
    - Convert byte representation to BigInt
    - Apply scale to create BigDecimal
 
-3. **Null Handling**:
+4. **Null Handling**:
    - Return `Value::Decimal(None)` or `Value::BigDecimal(None)` for null values
 
 ---
