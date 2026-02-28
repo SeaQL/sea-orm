@@ -185,6 +185,25 @@ impl DeriveValueTypeStruct {
             quote!()
         };
 
+        let impl_try_getable_array = if cfg!(feature = "postgres-array") {
+            quote!(
+                #[automatically_derived]
+                impl sea_orm::TryGetableArray for #name {
+                    fn try_get_by<I: sea_orm::ColIdx>(
+                        res: &sea_orm::QueryResult,
+                        index: I,
+                    ) -> std::result::Result<Vec<Self>, sea_orm::TryGetError> {
+                        Ok(<Vec<#field_type> as sea_orm::TryGetable>::try_get_by(res, index)?
+                            .into_iter()
+                            .map(|value| Self(value))
+                            .collect())
+                    }
+                }
+            )
+        } else {
+            quote!()
+        };
+
         let impl_not_u8 = if cfg!(feature = "postgres-array") {
             quote!(
                 #[automatically_derived]
@@ -198,6 +217,7 @@ impl DeriveValueTypeStruct {
             #[automatically_derived]
             impl std::convert::From<#name> for sea_orm::Value {
                 fn from(source: #name) -> Self {
+                    println!("Struct");
                     source.0.into()
                 }
             }
@@ -242,6 +262,8 @@ impl DeriveValueTypeStruct {
                     sea_orm::ActiveValue::Set(self)
                 }
             }
+
+            #impl_try_getable_array
 
             #try_from_u64_impl
 
