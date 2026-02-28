@@ -12,6 +12,13 @@ use crate::{
 use sea_query::ValueTuple;
 use std::fmt::Debug;
 
+pub trait InsertActiveModelTrait: Clone + Debug {
+    type Entity: EntityTrait;
+    /// Checks if all required fields are set
+    /// Set, nullable or fields with defaults pass
+    fn is_to_safe_insert(&self) -> bool;
+}
+
 /// `ActiveModel` is a type for constructing `INSERT` and `UPDATE` statements for a particular table.
 ///
 /// Like [Model][ModelTrait], it represents a database record and each field represents a column.
@@ -2239,6 +2246,193 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_is_to_safe_insert_all_set() {
+        // All fields explicitly Set -> always safe
+        mod my_entity {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "my_entity")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub name: String,
+                pub description: Option<String>,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        let am = my_entity::ActiveModel {
+            id: Set(1),
+            name: Set("hello".to_owned()),
+            description: Set(None),
+        };
+        assert!(am.is_to_safe_insert());
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_is_to_safe_insert_required_field_not_set() {
+        // A non-nullable, non-defaulted field is NotSet -> not safe
+        mod my_entity {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "my_entity")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub name: String,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        // `name` is required (non-nullable, no default) and not set
+        let am = my_entity::ActiveModel {
+            id: Set(1),
+            name: NotSet,
+        };
+        assert!(!am.is_to_safe_insert());
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_is_to_safe_insert_nullable_field_not_set() {
+        // A nullable (Option<T>) field that is NotSet is still safe, the DB will store NULL
+        mod my_entity {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "my_entity")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub name: String,
+                pub description: Option<String>,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        // `description` is nullable -> NotSet is fine
+        let am = my_entity::ActiveModel {
+            id: Set(1),
+            name: Set("hello".to_owned()),
+            description: NotSet,
+        };
+        assert!(am.is_to_safe_insert());
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_is_to_safe_insert_auto_increment_pk_not_set() {
+        // The primary key has auto_increment=true -> NotSet is fine
+        mod my_entity {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "my_entity")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub name: String,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        // `id` is auto-increment -> NotSet is acceptable
+        let am = my_entity::ActiveModel {
+            id: NotSet,
+            name: Set("hello".to_owned()),
+        };
+        assert!(am.is_to_safe_insert());
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_is_to_safe_insert_field_with_default_not_set() {
+        // A non-nullable field that has a schema-level default -> NotSet is safe
+        mod my_entity {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "my_entity")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub name: String,
+                #[sea_orm(default_value = 0)]
+                pub score: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        // `score` has a default value -> NotSet is fine
+        let am = my_entity::ActiveModel {
+            id: Set(1),
+            name: Set("hello".to_owned()),
+            score: NotSet,
+        };
+        assert!(am.is_to_safe_insert());
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_is_to_safe_insert_multiple_missing_required_fields() {
+        // Several required fields are NotSet -> not safe
+        mod my_entity {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "my_entity")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub first_name: String,
+                pub last_name: String,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        let am = my_entity::ActiveModel {
+            id: Set(1),
+            first_name: NotSet,
+            last_name: NotSet,
+        };
+        assert!(!am.is_to_safe_insert());
     }
 
     #[smol_potat::test]
