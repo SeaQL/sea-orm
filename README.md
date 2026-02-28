@@ -456,6 +456,8 @@ SeaORM 2.0 is shaping up to be our most significant release yet - with a few bre
 + [A walk-through of SeaORM 2.0](https://www.sea-ql.org/blog/2025-12-05-sea-orm-2.0/)
 + [How we made SeaORM synchronous](https://www.sea-ql.org/blog/2025-12-12-sea-orm-2.0/)
 + [SeaORM 2.0 Migration Guide](https://www.sea-ql.org/blog/2026-01-12-sea-orm-2.0/)
++ [SeaORM now supports Arrow & Parquet](https://www.sea-ql.org/blog/2026-02-22-sea-orm-arrow/)
++ [SeaORM 2.0 with SQL Server Support](https://www.sea-ql.org/blog/2026-02-25-sea-orm-x/)
 
 If you make extensive use of SeaQuery, we recommend checking out our blog post on SeaQuery 1.0 release:
 
