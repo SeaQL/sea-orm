@@ -91,6 +91,7 @@ impl DeriveActiveModel {
     fn impl_active_model(&self) -> TokenStream {
         let mut ts = self.impl_active_model_convert();
         ts.extend(self.impl_active_model_trait());
+        ts.extend(self.impl_insert_active_model_trait());
         ts
     }
 
@@ -122,6 +123,39 @@ impl DeriveActiveModel {
                 }
             }
         )
+    }
+
+    fn impl_insert_active_model_trait(&self) -> TokenStream {
+        let fields = &self.fields;
+        let names = &self.names;
+
+        quote! {
+            #[automatically_derived]
+            impl sea_orm::InsertActiveModelTrait for ActiveModel {
+                type Entity = Entity;
+
+                fn is_to_safe_insert(&self) -> bool {
+                    // Check each field, with short circuit
+                    #(
+                        {
+                        let field_is_set = !matches!(self.#fields, sea_orm::ActiveValue::NotSet);
+                        let col = <Self::Entity as sea_orm::EntityTrait>::Column::#names.def();
+                        let field_is_nullable = col.is_null();
+                        //FIXME: current default implementation doesn't seem to reflect the schema and seems to be a separate layer (I'm not sure).
+                        // Also, this doesn't work with id columns
+                        let field_has_default =  col.get_column_default().is_some();
+
+                        // TODO: Invert conditions
+                        if !field_is_set && !field_is_nullable && !field_has_default {
+                            return false;
+                        }
+                        }
+                    )*
+                    // Finnaly true
+                    true
+                }
+            }
+        }
     }
 
     fn impl_active_model_trait(&self) -> TokenStream {

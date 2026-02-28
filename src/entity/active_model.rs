@@ -12,6 +12,13 @@ use crate::{
 use sea_query::ValueTuple;
 use std::fmt::Debug;
 
+pub trait InsertActiveModelTrait: Clone + Debug {
+    type Entity: EntityTrait;
+    /// Checks if all required fields are set
+    /// Set, nullable or fields with defaults pass
+    fn is_to_safe_insert(&self) -> bool;
+}
+
 /// `ActiveModel` is a type for constructing `INSERT` and `UPDATE` statements for a particular table.
 ///
 /// Like [Model][ModelTrait], it represents a database record and each field represents a column.
