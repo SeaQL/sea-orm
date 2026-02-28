@@ -4,7 +4,7 @@ use dotenvy::dotenv;
 use std::ffi::OsStr;
 
 #[cfg(feature = "codegen")]
-use crate::{handle_error, run_generate_command, run_migrate_command};
+use crate::{handle_error, run_config_command, run_generate_command, run_migrate_command};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -54,16 +54,21 @@ pub struct Cli {
 #[allow(clippy::large_enum_variant)]
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum Commands {
+    #[command(about = "Config related commands", display_order = 10)]
+    Config {
+        #[command(subcommand)]
+        command: ConfigSubcommands,
+    },
     #[command(
         about = "Codegen related commands",
         arg_required_else_help = true,
-        display_order = 10
+        display_order = 20
     )]
     Generate {
         #[command(subcommand)]
         command: GenerateSubcommands,
     },
-    #[command(about = "Migration related commands", display_order = 20)]
+    #[command(about = "Migration related commands", display_order = 30)]
     Migrate {
         #[arg(
             global = true,
@@ -77,7 +82,7 @@ If your migrations are in a submodule of your app,
 you should provide the directory of that submodule.",
             default_value = "./migration"
         )]
-        migration_dir: String,
+        migration_dir: Option<String>,
 
         #[arg(
             global = true,
@@ -102,6 +107,15 @@ you should provide the directory of that submodule.",
 
         #[command(subcommand)]
         command: Option<MigrateSubcommands>,
+    },
+}
+
+#[derive(Subcommand, PartialEq, Eq, Debug)]
+pub enum ConfigSubcommands {
+    #[command(about = "Initialize config file", display_order = 10)]
+    Init {
+        #[arg(long, help = "Overwrite existing config file")]
+        force: bool,
     },
 }
 
@@ -242,7 +256,7 @@ pub enum GenerateSubcommands {
             help = "Database URL",
             hide_env_values = true
         )]
-        database_url: String,
+        database_url: Option<String>,
 
         #[arg(
             long,
@@ -434,6 +448,7 @@ pub async fn main() {
     let verbose = cli.verbose;
 
     match cli.command {
+        Commands::Config { command } => run_config_command(command).unwrap_or_else(handle_error),
         Commands::Generate { command } => {
             run_generate_command(command, verbose)
                 .await
@@ -446,7 +461,7 @@ pub async fn main() {
             command,
         } => run_migrate_command(
             command,
-            &migration_dir,
+            migration_dir,
             database_schema,
             database_url,
             verbose,
