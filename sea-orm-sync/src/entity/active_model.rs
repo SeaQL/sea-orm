@@ -2,7 +2,7 @@ use super::{ActiveValue, ActiveValue::*};
 use crate::{
     ColumnTrait, Condition, ConnectionTrait, DbBackend, DeleteResult, EntityName, EntityTrait,
     IdenStatic, Iterable, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter,
-    Related, RelatedSelfVia, RelationDef, RelationTrait, Value,
+    Related, RelatedSelfVia, RelationDef, RelationTrait, UpdateResult, Value,
     error::*,
     query::{
         clear_key_on_active_model, column_tuple_in_condition, get_key_from_active_model,
@@ -336,6 +336,17 @@ pub trait ActiveModelTrait: Clone + Debug {
         let am = ActiveModelBehavior::before_save(self, db, false)?;
         let model: <Self::Entity as EntityTrait>::Model = Self::Entity::update(am).exec(db)?;
         Self::after_save(model, db, false)
+    }
+
+    /// Similar to [`update`], but without returning
+    /// It also won't execute [`ActiveModelTrait::after_save`]
+    fn update_without_returning<'a, C>(self, db: &'a C) -> Result<UpdateResult, DbErr>
+    where
+        Self: ActiveModelBehavior,
+        C: ConnectionTrait,
+    {
+        let am = ActiveModelBehavior::before_save(self, db, false)?;
+        Self::Entity::update_without_returning(am).exec_without_returning(db)
     }
 
     /// Insert the model if primary key is `NotSet`, update otherwise.
