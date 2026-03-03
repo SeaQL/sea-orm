@@ -485,7 +485,7 @@ pub fn derive_active_model(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// ## `set/fill(...)` - always set absent ActiveModel fields
+/// ## `set(...)` - always set absent ActiveModel fields
 ///
 /// ```rust
 /// # mod fruit {
