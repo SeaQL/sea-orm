@@ -4,7 +4,7 @@ use common::migrator::*;
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DbBackend, DbErr, Statement};
 use sea_orm_migration::{MigratorTraitSelf, migrator::MigrationStatus, prelude::*};
 
-#[async_std::test]
+#[tokio::test]
 async fn main() -> Result<(), DbErr> {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
@@ -45,13 +45,16 @@ async fn main() -> Result<(), DbErr> {
     )
     .await?;
 
+    run_transaction_test(url, "sea_orm_migration_txn", "public").await?;
+
     Ok(())
 }
 
-async fn run_migration<M>(url: &str, migrator: M, db_name: &str, schema: &str) -> Result<(), DbErr>
-where
-    M: MigratorTraitSelf,
-{
+async fn create_db(
+    url: &str,
+    db_name: &str,
+    schema: &str,
+) -> Result<sea_orm::DatabaseConnection, DbErr> {
     let db_connect = |url: String| async {
         let connect_options = ConnectOptions::new(url)
             .set_schema_search_path(format!("{schema},public"))
@@ -62,7 +65,7 @@ where
 
     let db = db_connect(url.to_owned()).await?;
 
-    let db = &match db.get_database_backend() {
+    match db.get_database_backend() {
         DbBackend::MySql => {
             db.execute_raw(Statement::from_string(
                 db.get_database_backend(),
@@ -71,7 +74,7 @@ where
             .await?;
 
             let url = format!("{url}/{db_name}");
-            db_connect(url).await?
+            db_connect(url).await
         }
         DbBackend::Postgres => {
             db.execute_raw(Statement::from_string(
@@ -94,16 +97,21 @@ where
             ))
             .await?;
 
-            db
+            Ok(db)
         }
-        DbBackend::Sqlite => db,
-        db => {
-            return Err(DbErr::BackendNotSupported {
-                db: db.as_str(),
-                ctx: "run_migration",
-            });
-        }
-    };
+        DbBackend::Sqlite => Ok(db),
+        db => Err(DbErr::BackendNotSupported {
+            db: db.as_str(),
+            ctx: "create_db",
+        }),
+    }
+}
+
+async fn run_migration<M>(url: &str, migrator: M, db_name: &str, schema: &str) -> Result<(), DbErr>
+where
+    M: MigratorTraitSelf,
+{
+    let db = &create_db(url, db_name, schema).await?;
     let manager = SchemaManager::new(db);
 
     println!("\nMigrator::status");
@@ -157,7 +165,9 @@ where
     assert!(!manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
 
-    // Tests rolling back changes of "migrate up" when running migration on Postgres
+    // Tests rolling back a failing migration on Postgres.
+    // With per-migration transactions, only the failing migration is rolled back;
+    // earlier migrations that committed successfully are preserved.
     if matches!(db.get_database_backend(), DbBackend::Postgres) {
         println!("\nRoll back changes when encounter errors");
 
@@ -178,9 +188,10 @@ where
         println!("\nMigrator::status");
         migrator.status(db).await?;
 
-        // Check migrations have been rolled back
-        assert!(!manager.has_table("cake").await?);
-        assert!(!manager.has_table("fruit").await?);
+        // Only the failing migration (m20230109) is rolled back;
+        // earlier migrations (cake, fruit, etc.) committed successfully
+        assert!(manager.has_table("cake").await?);
+        assert!(manager.has_table("fruit").await?);
 
         // Unset the flag
         unsafe {
@@ -211,11 +222,15 @@ where
     assert!(manager.has_column("cake", "name").await?);
     assert!(manager.has_column("fruit", "cake_id").await?);
 
-    // Tests rolling back changes of "migrate down" when running migration on Postgres
+    // Tests rolling back a failing migration-down on Postgres.
+    // With per-migration transactions, rollbacks happen one at a time in reverse.
+    // Migrations 6-2 roll back and commit successfully. Migration 1 (drops cake
+    // then ABORTs) fails, so its DROP is restored. But migration 2's DROP of
+    // the fruit table already committed.
     if matches!(db.get_database_backend(), DbBackend::Postgres) {
         println!("\nRoll back changes when encounter errors");
 
-        // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
+        // Set a flag to throw error inside `m20220118_000001_create_cake_table.rs`
         unsafe {
             std::env::set_var("ABORT_MIGRATION", "YES");
         }
@@ -232,9 +247,10 @@ where
         println!("\nMigrator::status");
         migrator.status(db).await?;
 
-        // Check migrations have been rolled back
+        // Only migration 1's down was rolled back (cake table restored).
+        // Migrations 2-6 were rolled back successfully (fruit table dropped).
         assert!(manager.has_table("cake").await?);
-        assert!(manager.has_table("fruit").await?);
+        assert!(!manager.has_table("fruit").await?);
 
         // Unset the flag
         unsafe {
@@ -273,6 +289,78 @@ where
 
     println!("\nMigrator::status");
     migrator.status(db).await?;
+
+    Ok(())
+}
+
+async fn run_transaction_test(url: &str, db_name: &str, schema: &str) -> Result<(), DbErr> {
+    let db = &create_db(url, db_name, schema).await?;
+    let backend = db.get_database_backend();
+    let manager = SchemaManager::new(db);
+
+    // use_transaction = None: Postgres wraps by default, others don't.
+    // The assertion happens inside the migration's up()/down() body.
+    println!("\nTransaction test: use_transaction = None");
+    let m = transaction_test::Migrator {
+        use_transaction: None,
+        should_fail: false,
+    };
+    m.up(db, None).await?;
+    assert!(manager.has_table("test_table").await?);
+    m.down(db, None).await?;
+    assert!(!manager.has_table("test_table").await?);
+    m.reset(db).await.ok();
+
+    // use_transaction = Some(true): forces transaction on every backend.
+    println!("\nTransaction test: use_transaction = Some(true)");
+    let m = transaction_test::Migrator {
+        use_transaction: Some(true),
+        should_fail: false,
+    };
+    m.up(db, None).await?;
+    assert!(manager.has_table("test_table").await?);
+    m.down(db, None).await?;
+    assert!(!manager.has_table("test_table").await?);
+    m.reset(db).await.ok();
+
+    // use_transaction = Some(false): disables transaction, including on Postgres.
+    println!("\nTransaction test: use_transaction = Some(false)");
+    let m = transaction_test::Migrator {
+        use_transaction: Some(false),
+        should_fail: false,
+    };
+    m.up(db, None).await?;
+    assert!(manager.has_table("test_table").await?);
+    m.down(db, None).await?;
+    assert!(!manager.has_table("test_table").await?);
+    m.reset(db).await.ok();
+
+    // Failure with transaction: DDL rolled back (except MySQL which auto-commits DDL).
+    println!("\nTransaction test: failure with transaction");
+    let m = transaction_test::Migrator {
+        use_transaction: Some(true),
+        should_fail: true,
+    };
+    assert!(m.up(db, None).await.is_err());
+    if backend != DbBackend::MySql {
+        assert!(
+            !manager.has_table("test_table").await?,
+            "DDL should be rolled back"
+        );
+    }
+    m.reset(db).await.ok();
+
+    // Failure without transaction: DDL persists.
+    println!("\nTransaction test: failure without transaction");
+    let m = transaction_test::Migrator {
+        use_transaction: Some(false),
+        should_fail: true,
+    };
+    assert!(m.up(db, None).await.is_err());
+    assert!(manager.has_table("test_table").await?, "DDL should persist");
+    db.execute_unprepared("DROP TABLE IF EXISTS test_table")
+        .await?;
+    m.reset(db).await.ok();
 
     Ok(())
 }
