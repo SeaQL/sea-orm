@@ -362,5 +362,14 @@ async fn run_transaction_test(url: &str, db_name: &str, schema: &str) -> Result<
         .await?;
     m.reset(db).await.ok();
 
+    // Manual transaction via manager.begin() / commit().
+    println!("\nTransaction test: manual begin/commit");
+    let m = transaction_test::ManualTxnMigrator;
+    m.up(db, None).await?;
+    assert!(manager.has_table("manual_txn_table").await?);
+    m.down(db, None).await?;
+    assert!(!manager.has_table("manual_txn_table").await?);
+    m.reset(db).await.ok();
+
     Ok(())
 }

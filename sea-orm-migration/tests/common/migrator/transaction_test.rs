@@ -15,3 +15,12 @@ impl MigratorTraitSelf for Migrator {
         })]
     }
 }
+
+pub struct ManualTxnMigrator;
+
+#[async_trait::async_trait]
+impl MigratorTrait for ManualTxnMigrator {
+    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+        vec![Box::new(m20250101_000002_manual_transaction::Migration)]
+    }
+}
