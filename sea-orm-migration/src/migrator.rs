@@ -194,10 +194,9 @@ pub trait MigratorTrait: Send {
     where
         C: IntoSchemaManagerConnection<'c>,
     {
-        exec_with_connection!(db, async |manager| {
-            exec_up::<Self>(manager, steps).await
-        })
-        .await
+        let db = db.into_database_executor();
+        let manager = SchemaManager::new(db);
+        exec_up::<Self>(&manager, steps).await
     }
 
     /// Rollback applied migrations
@@ -205,10 +204,9 @@ pub trait MigratorTrait: Send {
     where
         C: IntoSchemaManagerConnection<'c>,
     {
-        exec_with_connection!(db, async |manager| {
-            exec_down::<Self>(manager, steps).await
-        })
-        .await
+        let db = db.into_database_executor();
+        let manager = SchemaManager::new(db);
+        exec_down::<Self>(&manager, steps).await
     }
 }
 

@@ -7,13 +7,16 @@ use crate::{Schema, SchemaBuilder};
 use std::future::Future;
 use std::pin::Pin;
 
-/// A wrapper that holds either a reference to a [`DatabaseConnection`] or [`DatabaseTransaction`].
+/// A wrapper that holds either a reference to a [`DatabaseConnection`] or [`DatabaseTransaction`],
+/// or an owned [`DatabaseTransaction`].
 #[derive(Debug)]
 pub enum DatabaseExecutor<'c> {
     /// A reference to a database connection
     Connection(&'c DatabaseConnection),
     /// A reference to a database transaction
     Transaction(&'c DatabaseTransaction),
+    /// An owned database transaction (used by migration's `SchemaManager::begin()`)
+    OwnedTransaction(DatabaseTransaction),
 }
 
 impl<'c> From<&'c DatabaseConnection> for DatabaseExecutor<'c> {
@@ -34,6 +37,7 @@ impl ConnectionTrait for DatabaseExecutor<'_> {
         match self {
             DatabaseExecutor::Connection(conn) => conn.get_database_backend(),
             DatabaseExecutor::Transaction(trans) => trans.get_database_backend(),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.get_database_backend(),
         }
     }
 
@@ -41,6 +45,7 @@ impl ConnectionTrait for DatabaseExecutor<'_> {
         match self {
             DatabaseExecutor::Connection(conn) => conn.execute_raw(stmt).await,
             DatabaseExecutor::Transaction(trans) => trans.execute_raw(stmt).await,
+            DatabaseExecutor::OwnedTransaction(trans) => trans.execute_raw(stmt).await,
         }
     }
 
@@ -48,6 +53,7 @@ impl ConnectionTrait for DatabaseExecutor<'_> {
         match self {
             DatabaseExecutor::Connection(conn) => conn.execute_unprepared(sql).await,
             DatabaseExecutor::Transaction(trans) => trans.execute_unprepared(sql).await,
+            DatabaseExecutor::OwnedTransaction(trans) => trans.execute_unprepared(sql).await,
         }
     }
 
@@ -55,6 +61,7 @@ impl ConnectionTrait for DatabaseExecutor<'_> {
         match self {
             DatabaseExecutor::Connection(conn) => conn.query_one_raw(stmt).await,
             DatabaseExecutor::Transaction(trans) => trans.query_one_raw(stmt).await,
+            DatabaseExecutor::OwnedTransaction(trans) => trans.query_one_raw(stmt).await,
         }
     }
 
@@ -62,6 +69,7 @@ impl ConnectionTrait for DatabaseExecutor<'_> {
         match self {
             DatabaseExecutor::Connection(conn) => conn.query_all_raw(stmt).await,
             DatabaseExecutor::Transaction(trans) => trans.query_all_raw(stmt).await,
+            DatabaseExecutor::OwnedTransaction(trans) => trans.query_all_raw(stmt).await,
         }
     }
 }
@@ -74,6 +82,7 @@ impl TransactionTrait for DatabaseExecutor<'_> {
         match self {
             DatabaseExecutor::Connection(conn) => conn.begin().await,
             DatabaseExecutor::Transaction(trans) => trans.begin().await,
+            DatabaseExecutor::OwnedTransaction(trans) => trans.begin().await,
         }
     }
 
@@ -89,6 +98,9 @@ impl TransactionTrait for DatabaseExecutor<'_> {
             DatabaseExecutor::Transaction(trans) => {
                 trans.begin_with_config(isolation_level, access_mode).await
             }
+            DatabaseExecutor::OwnedTransaction(trans) => {
+                trans.begin_with_config(isolation_level, access_mode).await
+            }
         }
     }
 
@@ -99,6 +111,7 @@ impl TransactionTrait for DatabaseExecutor<'_> {
         match self {
             DatabaseExecutor::Connection(conn) => conn.begin_with_options(options).await,
             DatabaseExecutor::Transaction(trans) => trans.begin_with_options(options).await,
+            DatabaseExecutor::OwnedTransaction(trans) => trans.begin_with_options(options).await,
         }
     }
 
@@ -114,6 +127,7 @@ impl TransactionTrait for DatabaseExecutor<'_> {
         match self {
             DatabaseExecutor::Connection(conn) => conn.transaction(callback).await,
             DatabaseExecutor::Transaction(trans) => trans.transaction(callback).await,
+            DatabaseExecutor::OwnedTransaction(trans) => trans.transaction(callback).await,
         }
     }
 
@@ -137,6 +151,11 @@ impl TransactionTrait for DatabaseExecutor<'_> {
                     .await
             }
             DatabaseExecutor::Transaction(trans) => {
+                trans
+                    .transaction_with_config(callback, isolation_level, access_mode)
+                    .await
+            }
+            DatabaseExecutor::OwnedTransaction(trans) => {
                 trans
                     .transaction_with_config(callback, isolation_level, access_mode)
                     .await
@@ -172,7 +191,21 @@ impl<'c> IntoDatabaseExecutor<'c> for &'c DatabaseTransaction {
     }
 }
 
+impl IntoDatabaseExecutor<'static> for DatabaseTransaction {
+    fn into_database_executor(self) -> DatabaseExecutor<'static> {
+        DatabaseExecutor::OwnedTransaction(self)
+    }
+}
+
 impl DatabaseExecutor<'_> {
+    /// Returns `true` if this executor is backed by a transaction (borrowed or owned).
+    pub fn is_transaction(&self) -> bool {
+        matches!(
+            self,
+            DatabaseExecutor::Transaction(_) | DatabaseExecutor::OwnedTransaction(_)
+        )
+    }
+
     /// Creates a [`SchemaBuilder`] for this backend
     pub fn get_schema_builder(&self) -> SchemaBuilder {
         Schema::new(self.get_database_backend()).builder()

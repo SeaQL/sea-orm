@@ -5,7 +5,7 @@ use sea_orm::sea_query::{
     TableRenameStatement, TableTruncateStatement,
     extension::postgres::{TypeAlterStatement, TypeCreateStatement, TypeDropStatement},
 };
-use sea_orm::{ConnectionTrait, DbBackend, DbErr, StatementBuilder};
+use sea_orm::{ConnectionTrait, DbBackend, DbErr, StatementBuilder, TransactionTrait};
 #[allow(unused_imports)]
 use sea_schema::probe::SchemaProbe;
 
@@ -45,6 +45,30 @@ impl<'c> SchemaManager<'c> {
 
     pub fn get_connection(&self) -> &SchemaManagerConnection<'c> {
         &self.conn
+    }
+}
+
+/// Transaction Control
+impl SchemaManager<'_> {
+    /// Begin a new transaction, returning an owned `SchemaManager` backed by it.
+    ///
+    /// Useful in migrations with `use_transaction() -> Some(false)` for manual
+    /// transaction management (e.g., separating DDL and DML into distinct transactions).
+    pub async fn begin(&self) -> Result<SchemaManager<'static>, DbErr> {
+        let txn = self.conn.begin().await?;
+        Ok(SchemaManager {
+            conn: SchemaManagerConnection::OwnedTransaction(txn),
+        })
+    }
+
+    /// Commit the owned transaction. Only valid on a `SchemaManager` created by [`begin()`](Self::begin).
+    pub async fn commit(self) -> Result<(), DbErr> {
+        match self.conn {
+            SchemaManagerConnection::OwnedTransaction(txn) => txn.commit().await,
+            _ => Err(DbErr::Custom(
+                "Cannot commit: SchemaManager does not own a transaction".into(),
+            )),
+        }
     }
 }
 

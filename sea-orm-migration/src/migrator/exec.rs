@@ -10,7 +10,7 @@ use sea_orm::sea_query::{
 };
 use sea_orm::{
     ActiveValue, ConnectionTrait, DbBackend, DbErr, DynIden, EntityTrait, FromQueryResult,
-    Iterable, QueryFilter, Schema, Statement,
+    Iterable, QueryFilter, Schema, Statement, TransactionTrait,
 };
 
 pub async fn get_migration_models<C>(
@@ -198,6 +198,48 @@ pub async fn drop_everything<C: ConnectionTrait>(db: &C) -> Result<(), DbErr> {
     Ok(())
 }
 
+fn should_use_transaction(migration: &dyn crate::MigrationTrait, backend: DbBackend) -> bool {
+    match migration.use_transaction() {
+        Some(v) => v,
+        None => backend == DbBackend::Postgres,
+    }
+}
+
+async fn insert_migration_record<C: ConnectionTrait>(
+    db: &C,
+    name: &str,
+    migration_table_name: DynIden,
+) -> Result<(), DbErr> {
+    #[cfg(not(feature = "with-time"))]
+    let applied_at = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("SystemTime before UNIX EPOCH!")
+        .as_secs() as i64;
+    #[cfg(feature = "with-time")]
+    let applied_at = sea_orm::prelude::TimeDateTimeWithTimeZone::now_utc().unix_timestamp();
+    seaql_migrations::Entity::insert(seaql_migrations::ActiveModel {
+        version: ActiveValue::Set(name.to_owned()),
+        applied_at: ActiveValue::Set(applied_at),
+    })
+    .table_name(migration_table_name)
+    .exec(db)
+    .await?;
+    Ok(())
+}
+
+async fn delete_migration_record<C: ConnectionTrait>(
+    db: &C,
+    name: &str,
+    migration_table_name: DynIden,
+) -> Result<(), DbErr> {
+    seaql_migrations::Entity::delete_many()
+        .filter(Expr::col(seaql_migrations::Column::Version).eq(name))
+        .table_name(migration_table_name)
+        .exec(db)
+        .await?;
+    Ok(())
+}
+
 pub async fn exec_up_with(
     manager: &SchemaManager<'_>,
     mut steps: Option<u32>,
@@ -222,23 +264,23 @@ pub async fn exec_up_with(
             }
             *steps -= 1;
         }
+
+        let use_txn = should_use_transaction(migration.as_ref(), db.get_database_backend());
         info!("Applying migration '{}'", migration.name());
-        migration.up(manager).await?;
-        info!("Migration '{}' has been applied", migration.name());
-        #[cfg(not(feature = "with-time"))]
-        let applied_at = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("SystemTime before UNIX EPOCH!")
-            .as_secs() as i64;
-        #[cfg(feature = "with-time")]
-        let applied_at = sea_orm::prelude::TimeDateTimeWithTimeZone::now_utc().unix_timestamp();
-        seaql_migrations::Entity::insert(seaql_migrations::ActiveModel {
-            version: ActiveValue::Set(migration.name().to_owned()),
-            applied_at: ActiveValue::Set(applied_at),
-        })
-        .table_name(migration_table_name.clone())
-        .exec(db)
-        .await?;
+
+        if use_txn {
+            let transaction = db.begin().await?;
+            let txn_manager = SchemaManager::new(&transaction);
+            migration.up(&txn_manager).await?;
+            info!("Migration '{}' has been applied", migration.name());
+            insert_migration_record(&transaction, migration.name(), migration_table_name.clone())
+                .await?;
+            transaction.commit().await?;
+        } else {
+            migration.up(manager).await?;
+            info!("Migration '{}' has been applied", migration.name());
+            insert_migration_record(db, migration.name(), migration_table_name.clone()).await?;
+        }
     }
 
     Ok(())
@@ -268,14 +310,23 @@ pub async fn exec_down_with(
             }
             *steps -= 1;
         }
+
+        let use_txn = should_use_transaction(migration.as_ref(), db.get_database_backend());
         info!("Rolling back migration '{}'", migration.name());
-        migration.down(manager).await?;
-        info!("Migration '{}' has been rollbacked", migration.name());
-        seaql_migrations::Entity::delete_many()
-            .filter(Expr::col(seaql_migrations::Column::Version).eq(migration.name()))
-            .table_name(migration_table_name.clone())
-            .exec(db)
-            .await?;
+
+        if use_txn {
+            let transaction = db.begin().await?;
+            let txn_manager = SchemaManager::new(&transaction);
+            migration.down(&txn_manager).await?;
+            info!("Migration '{}' has been rolled back", migration.name());
+            delete_migration_record(&transaction, migration.name(), migration_table_name.clone())
+                .await?;
+            transaction.commit().await?;
+        } else {
+            migration.down(manager).await?;
+            info!("Migration '{}' has been rolled back", migration.name());
+            delete_migration_record(db, migration.name(), migration_table_name.clone()).await?;
+        }
     }
 
     Ok(())
