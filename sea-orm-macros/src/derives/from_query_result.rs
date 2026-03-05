@@ -1,20 +1,17 @@
+use std::collections::{HashMap, hash_map::Entry};
+
 use super::util::GetMeta;
 use proc_macro2::{Ident, TokenStream};
-use quote::{ToTokens, format_ident, quote, quote_spanned};
+use quote::{ToTokens, format_ident, quote};
 use syn::{
-    Data, DataStruct, DeriveInput, Fields, Generics, Meta, ext::IdentExt, punctuated::Punctuated,
-    token::Comma,
+    Data, DataStruct, DeriveInput, Error, Fields, Generics, Meta, ext::IdentExt,
+    punctuated::Punctuated, token::Comma,
 };
-
-#[derive(Debug)]
-enum Error {
-    InputNotStruct,
-}
 
 pub(super) enum ItemType {
     Flat,
     Skip,
-    Nested,
+    Nested { prefix: Option<String> },
 }
 
 pub(super) struct DeriveFromQueryResult {
@@ -63,13 +60,16 @@ impl ToTokens for TryFromQueryResultCheck<'_> {
                     let #ident = std::default::Default::default();
                 });
             }
-            ItemType::Nested => {
-                let prefix = if self.0 {
-                    let name = ident.unraw().to_string();
-                    quote! { &format!("{pre}{}_", #name) }
-                } else {
-                    quote! { pre }
+            ItemType::Nested { prefix } => {
+                let prefix = match (self.0, prefix) {
+                    (_, Some(p)) => quote! { &format!("{pre}{}", #p) },
+                    (true, None) => {
+                        let name = ident.unraw().to_string();
+                        quote! { &format!("{pre}{}_", #name) }
+                    }
+                    (false, None) => quote! { pre },
                 };
+
                 tokens.extend(quote! {
                     let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(row, #prefix) {
                         Err(v @ sea_orm::TryGetError::DbErr(_)) => {
@@ -90,7 +90,7 @@ impl ToTokens for TryFromQueryResultAssignment<'_> {
         let FromQueryResultItem { ident, typ, .. } = self.0;
 
         match typ {
-            ItemType::Flat | ItemType::Nested => {
+            ItemType::Flat | ItemType::Nested { .. } => {
                 tokens.extend(quote! {
                     #ident: #ident?,
                 });
@@ -118,10 +118,17 @@ impl DeriveFromQueryResult {
                 fields: Fields::Named(named),
                 ..
             }) => named.named,
-            _ => return Err(Error::InputNotStruct),
+            _ => {
+                return Err(Error::new(
+                    ident.span(),
+                    "you can only derive `FromQueryResult` on named struct",
+                ));
+            }
         };
 
         let mut fields = Vec::with_capacity(parsed_fields.len());
+        let mut seen_nested: HashMap<(syn::Type, Option<String>), ()> = HashMap::new();
+
         for parsed_field in parsed_fields {
             let mut typ = ItemType::Flat;
             let mut alias = None;
@@ -135,16 +142,55 @@ impl DeriveFromQueryResult {
                         if meta.exists("skip") {
                             typ = ItemType::Skip;
                         } else if meta.exists("nested") {
-                            typ = ItemType::Nested;
-                        } else if let Some(alias_) = meta.get_as_kv("from_alias") {
-                            alias = Some(alias_);
+                            typ = ItemType::Nested { prefix: None };
+                        } else if let Some(list) = meta.get_list_args("nested") {
+                            let mut prefix = None;
+
+                            for m in list.iter() {
+                                match m.get_as_kv("prefix") {
+                                    Some(p) => prefix = Some(p),
+                                    None => {
+                                        return Err(Error::new_spanned(
+                                            m,
+                                            "invalid nested attribute, expected `prefix = \"...\"`",
+                                        ));
+                                    }
+                                }
+                            }
+
+                            typ = ItemType::Nested { prefix };
                         } else {
-                            alias = meta.get_as_kv("alias");
+                            alias = meta
+                                .get_as_kv("from_alias")
+                                .or_else(|| meta.get_as_kv("alias"));
                         }
                     }
                 }
             }
             let ident = format_ident!("{}", parsed_field.ident.unwrap().to_string());
+
+            if let ItemType::Nested { ref prefix } = typ {
+                let key = (parsed_field.ty, prefix.clone());
+                match seen_nested.entry(key) {
+                    Entry::Occupied(_) => {
+                        let msg = match prefix {
+                            Some(p) => format!(
+                                "multiple nested fields with the same type share prefix \"{p}\""
+                            ),
+                            None => {
+                                "multiple nested fields with the same type must have a `prefix`: \
+                                     use `#[sea_orm(nested(prefix = \"...\"))]`"
+                                    .to_string()
+                            }
+                        };
+                        return Err(Error::new(ident.span(), msg));
+                    }
+                    Entry::Vacant(e) => {
+                        e.insert(());
+                    }
+                }
+            }
+
             fields.push(FromQueryResultItem { typ, ident, alias });
         }
 
@@ -194,12 +240,5 @@ impl DeriveFromQueryResult {
 }
 
 pub fn expand_derive_from_query_result(input: DeriveInput) -> syn::Result<TokenStream> {
-    let ident_span = input.ident.span();
-
-    match DeriveFromQueryResult::new(input) {
-        Ok(partial_model) => partial_model.expand(),
-        Err(Error::InputNotStruct) => Ok(quote_spanned! {
-            ident_span => compile_error!("you can only derive `FromQueryResult` on named struct");
-        }),
-    }
+    DeriveFromQueryResult::new(input)?.expand()
 }
