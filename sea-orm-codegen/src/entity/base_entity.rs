@@ -116,8 +116,8 @@ impl Entity {
         self.relations.iter().map(|rel| rel.get_def()).collect()
     }
 
-    pub fn get_relation_attrs(&self) -> Vec<TokenStream> {
-        self.relations.iter().map(|rel| rel.get_attrs()).collect()
+    pub fn get_relation_attrs(&self, sea_orm_feature: &Option<String>) -> Vec<TokenStream> {
+        self.relations.iter().map(|rel| rel.get_attrs(sea_orm_feature)).collect()
     }
 
     /// Trimmed get_related_entity_attrs down to just the entity module
@@ -488,10 +488,10 @@ mod tests {
     fn test_get_relation_attrs() {
         let entity = setup();
 
-        for (i, elem) in entity.get_relation_attrs().into_iter().enumerate() {
+        for (i, elem) in entity.get_relation_attrs(&None).into_iter().enumerate() {
             assert_eq!(
                 elem.to_string(),
-                entity.relations[i].get_attrs().to_string()
+                entity.relations[i].get_attrs(&None).to_string()
             );
         }
     }

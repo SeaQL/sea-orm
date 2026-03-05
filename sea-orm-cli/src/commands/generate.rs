@@ -44,6 +44,7 @@ pub async fn run_generate_command(
             impl_active_model_behavior,
             preserve_user_modifications,
             banner_version,
+            sea_orm_feature,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -249,6 +250,7 @@ pub async fn run_generate_command(
                 seaography,
                 impl_active_model_behavior,
                 banner_version.into(),
+                sea_orm_feature,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 

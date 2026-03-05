@@ -14,8 +14,9 @@ impl EntityWriter {
         _column_extra_derives: &TokenStream,
         seaography: bool,
         impl_active_model_behavior: bool,
+        sea_orm_feature: &Option<String>,
     ) -> Vec<TokenStream> {
-        let mut imports = Self::gen_import(with_serde);
+        let mut imports = Self::gen_import(with_serde, sea_orm_feature);
         imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![
             imports,
@@ -28,16 +29,28 @@ impl EntityWriter {
                 serde_skip_hidden_column,
                 model_extra_derives,
                 model_extra_attributes,
+                sea_orm_feature,
             ),
-            Self::gen_compact_relation_enum(entity),
+            Self::gen_compact_relation_enum(entity, sea_orm_feature)
         ];
-        code_blocks.extend(Self::gen_impl_related(entity));
-        code_blocks.extend(Self::gen_impl_conjunct_related(entity));
+        let mut sea_orm_codeblocks = Vec::new();
+        sea_orm_codeblocks.extend(Self::gen_impl_related(entity));
+        sea_orm_codeblocks.extend(Self::gen_impl_conjunct_related(entity));
         if impl_active_model_behavior {
-            code_blocks.extend([Self::impl_active_model_behavior()]);
+            sea_orm_codeblocks.push(Self::wrap_impl_feature_gate(Self::impl_active_model_behavior(), sea_orm_feature));
         }
         if seaography {
-            code_blocks.extend([Self::gen_related_entity(entity)]);
+            sea_orm_codeblocks.push(Self::gen_related_entity(entity, sea_orm_feature));
+        };
+        if let Some(feature) = sea_orm_feature {
+            for code_block in sea_orm_codeblocks {
+                code_blocks.push(quote! {
+                    #[cfg(feature = #feature)]
+                    #code_block
+                });
+            }
+        } else {
+            code_blocks.extend(sea_orm_codeblocks);
         }
         code_blocks
     }
@@ -52,6 +65,7 @@ impl EntityWriter {
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
+        sea_orm_feature: &Option<String>,
     ) -> TokenStream {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
@@ -97,7 +111,11 @@ impl EntityWriter {
                         }
                         ts = quote! { #ts #attr };
                     }
-                    ts = quote! { #[sea_orm(#ts)] };
+                    ts = if let Some(feature) = sea_orm_feature {
+                        quote! { #[cfg_attr(feature = #feature, sea_orm(#ts))] }
+                    } else {
+                        quote! { #[sea_orm(#ts)] }
+                    };
                 }
                 let serde_attribute = col.get_serde_attribute(
                     is_primary_key,
@@ -119,12 +137,27 @@ impl EntityWriter {
         };
         let extra_derive = with_serde.extra_derive();
 
-        quote! {
-            #[derive(Clone, Debug, PartialEq #if_eq_needed, DeriveEntityModel #extra_derive #model_extra_derives)]
-            #[sea_orm(
+        let sea_orm_attr_inner = quote! {
+            sea_orm(
                 #schema_name
                 table_name = #table_name
-            )]
+            )
+        };
+        let (sea_orm_attr, builtin_derives) = if let Some(feature) = sea_orm_feature {
+            (
+                quote! { #[cfg_attr(feature = #feature, derive(DeriveEntityModel))] #[cfg_attr(feature = #feature, #sea_orm_attr_inner)] },
+                quote! {},
+            )
+        } else {
+            (
+                quote! { #[#sea_orm_attr_inner] },
+                quote! { , DeriveEntityModel },
+            )
+        };
+
+        quote! {
+            #[derive(Clone, Debug, PartialEq #if_eq_needed #builtin_derives #extra_derive #model_extra_derives)]
+            #sea_orm_attr
             #model_extra_attributes
             pub struct Model {
                 #(
@@ -135,11 +168,20 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_compact_relation_enum(entity: &Entity) -> TokenStream {
-        let attrs = entity.get_relation_attrs();
+    pub fn gen_compact_relation_enum(entity: &Entity, sea_orm_feature: &Option<String>) -> TokenStream {
+        let attrs = entity.get_relation_attrs(sea_orm_feature);
         let relation_enum_name = entity.get_relation_enum_name();
+        let (additional_derives, additional_attributes) = if let Some(feature) = sea_orm_feature {
+            (
+                quote! {},
+                quote! { #[cfg_attr(feature = #feature, derive(EnumIter, DeriveRelation))] },
+            )
+        } else {
+            (quote! { EnumIter, DeriveRelation }, quote! {})
+        };
         quote! {
-            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            #[derive(Copy, Clone, Debug, #additional_derives)]
+            #additional_attributes
             pub enum Relation {
                 #(
                     #attrs

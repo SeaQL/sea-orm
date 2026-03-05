@@ -384,6 +384,12 @@ pub enum GenerateSubcommands {
             help = "Control how the codegen version is displayed in the top banner of the generated file."
         )]
         banner_version: BannerVersion,
+
+        #[arg(
+            long,
+            help = "Make generated code require a specific crate feature to enable SeaORM-related code. Without that feature enabled, your entities will be available without SeaORM-specific traits and types."
+        )]
+        sea_orm_feature: Option<String>,
     },
 }
 

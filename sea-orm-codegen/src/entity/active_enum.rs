@@ -3,7 +3,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use sea_query::DynIden;
 
-use crate::{EntityFormat, WithSerde};
+use crate::{EntityFormat, WithSerde, entity::writer::feature_flag_derives};
 
 #[derive(Clone, Debug)]
 pub struct ActiveEnum {
@@ -19,6 +19,7 @@ impl ActiveEnum {
         extra_derives: &TokenStream,
         extra_attributes: &TokenStream,
         entity_format: EntityFormat,
+        sea_orm_feature: &Option<String>,
     ) -> TokenStream {
         let enum_name = &self.enum_name.to_string();
         let enum_iden = format_ident!("{}", enum_name.to_upper_camel_case());
@@ -72,27 +73,51 @@ impl ActiveEnum {
             quote! {}
         };
 
-        if entity_format == EntityFormat::Frontend {
-            quote! {
-                #[derive(Debug, Clone, PartialEq, Eq #copy_derive #serde_derive #extra_derives)]
-                #extra_attributes
-                pub enum #enum_iden {
-                    #(
-                        #variants,
-                    )*
-                }
-            }
-        } else {
-            quote! {
-                #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum #copy_derive #serde_derive #extra_derives)]
-                #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = #enum_name)]
-                #extra_attributes
-                pub enum #enum_iden {
-                    #(
-                        #[sea_orm(string_value = #values)]
-                        #variants,
-                    )*
-                }
+        let is_frontend = entity_format == EntityFormat::Frontend;
+
+        let (additional_derives, additional_attributes, sea_orm_enum_attr, variant_sea_orm_attrs) =
+            if is_frontend {
+                let variant_attrs = values.iter().map(|_| quote! {}).collect();
+                (quote! {}, quote! {}, quote! {}, variant_attrs)
+            } else {
+                let (add_derives, add_attrs) =
+                    feature_flag_derives(sea_orm_feature, quote! { EnumIter, DeriveActiveEnum });
+                let add_derives = if !add_derives.is_empty() {
+                    quote! { , #add_derives }
+                } else {
+                    quote! {}
+                };
+
+                let enum_attr = if let Some(feature) = sea_orm_feature {
+                    quote! { #[cfg_attr(feature = #feature, sea_orm(rs_type = "String", db_type = "Enum", enum_name = #enum_name))] }
+                } else {
+                    quote! { #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = #enum_name)] }
+                };
+
+                let variant_attrs: Vec<TokenStream> = values
+                    .iter()
+                    .map(|v| {
+                        if let Some(feature) = sea_orm_feature {
+                            quote! { #[cfg_attr(feature = #feature, sea_orm(string_value = #v))] }
+                        } else {
+                            quote! { #[sea_orm(string_value = #v)] }
+                        }
+                    })
+                    .collect();
+
+                (add_derives, add_attrs, enum_attr, variant_attrs)
+            };
+
+        quote! {
+            #[derive(Debug, Clone, PartialEq, Eq #additional_derives #copy_derive #serde_derive #extra_derives)]
+            #additional_attributes
+            #sea_orm_enum_attr
+            #extra_attributes
+            pub enum #enum_iden {
+                #(
+                    #variant_sea_orm_attrs
+                    #variants,
+                )*
             }
         }
     }
@@ -121,6 +146,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 EntityFormat::Compact,
+                &None,
             )
             .to_string(),
             quote!(
@@ -164,6 +190,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 EntityFormat::Compact,
+                &None,
             )
             .to_string(),
             quote!(
@@ -216,6 +243,7 @@ mod tests {
                 &bonus_derive(["specta::Type", "ts_rs::TS"]),
                 &TokenStream::new(),
                 EntityFormat::Compact,
+                &None,
             )
             .to_string(),
             build_generated_enum(),
@@ -253,6 +281,7 @@ mod tests {
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
                 EntityFormat::Compact,
+                &None,
             )
             .to_string(),
             quote!(
@@ -286,6 +315,7 @@ mod tests {
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
                 EntityFormat::Compact,
+                &None,
             )
             .to_string(),
             quote!(
@@ -337,6 +367,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 EntityFormat::Compact,
+                &None,
             )
             .to_string(),
             quote!(

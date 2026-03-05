@@ -14,6 +14,7 @@ impl EntityWriter {
         _column_extra_derives: &TokenStream,
         _seaography: bool,
         _impl_active_model_behavior: bool,
+        sea_orm_feature: &Option<String>,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import_serde(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
@@ -28,6 +29,7 @@ impl EntityWriter {
                 serde_skip_hidden_column,
                 model_extra_derives,
                 model_extra_attributes,
+                sea_orm_feature,
             ),
         ];
         code_blocks
@@ -43,6 +45,7 @@ impl EntityWriter {
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
+        _sea_orm_feature: &Option<String>,
     ) -> TokenStream {
         let column_names_snake_case = entity.get_column_names_snake_case();
         let column_rs_types = entity.get_column_rs_types(column_option);
