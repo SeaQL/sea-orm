@@ -148,7 +148,7 @@ impl DeriveFromQueryResult {
 
                             for m in list.iter() {
                                 match m.get_as_kv("prefix") {
-                                    Some(p) => prefix = Some(p),
+                                    Some(p) => prefix = (!p.is_empty()).then_some(p),
                                     None => {
                                         return Err(Error::new_spanned(
                                             m,
