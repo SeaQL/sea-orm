@@ -37,7 +37,7 @@ impl EntityWriter {
         sea_orm_codeblocks.extend(Self::gen_impl_related(entity));
         sea_orm_codeblocks.extend(Self::gen_impl_conjunct_related(entity));
         if impl_active_model_behavior {
-            sea_orm_codeblocks.push(Self::wrap_impl_feature_gate(Self::impl_active_model_behavior(), sea_orm_feature));
+            sea_orm_codeblocks.push(Self::impl_active_model_behavior());
         }
         if seaography {
             sea_orm_codeblocks.push(Self::gen_related_entity(entity, sea_orm_feature));
