@@ -496,6 +496,7 @@ impl EntityWriter {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn write_sea_orm_active_enums(
         &self,
         with_serde: &WithSerde,

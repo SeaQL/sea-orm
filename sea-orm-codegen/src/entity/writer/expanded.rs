@@ -69,6 +69,7 @@ impl EntityWriter {
         code_blocks
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn gen_expanded_model_struct(
         entity: &Entity,
         with_serde: &WithSerde,
