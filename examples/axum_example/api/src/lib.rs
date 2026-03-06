@@ -1,29 +1,29 @@
 mod flash;
+pub mod service;
 
 use axum::{
+    Router,
     extract::{Form, Path, Query, State},
     http::StatusCode,
     response::Html,
     routing::{get, get_service, post},
-    Router, Server,
-};
-use axum_example_core::{
-    sea_orm::{Database, DatabaseConnection},
-    Mutation as MutationCore, Query as QueryCore,
 };
 use entity::post;
-use flash::{get_flash_cookie, post_response, PostResponse};
+use flash::{PostResponse, get_flash_cookie, post_response};
 use migration::{Migrator, MigratorTrait};
+use sea_orm::{Database, DatabaseConnection};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
-use std::{env, net::SocketAddr};
+use service::{Mutation, Query as QueryService};
+use std::env;
 use tera::Tera;
 use tower_cookies::{CookieManagerLayer, Cookies};
 use tower_http::services::ServeDir;
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
-    env::set_var("RUST_LOG", "debug");
+    unsafe {
+        env::set_var("RUST_LOG", "debug");
+    }
     tracing_subscriber::fmt::init();
 
     dotenvy::dotenv().ok();
@@ -44,16 +44,16 @@ async fn start() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/", get(list_posts).post(create_post))
-        .route("/:id", get(edit_post).post(update_post))
+        .route("/{id}", get(edit_post).post(update_post))
         .route("/new", get(new_post))
-        .route("/delete/:id", post(delete_post))
+        .route("/delete/{id}", post(delete_post))
         .nest_service(
             "/static",
             get_service(ServeDir::new(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/static"
             )))
-            .handle_error(|error: std::io::Error| async move {
+            .handle_error(|error| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Unhandled internal error: {error}"),
@@ -63,8 +63,8 @@ async fn start() -> anyhow::Result<()> {
         .layer(CookieManagerLayer::new())
         .with_state(state);
 
-    let addr = SocketAddr::from_str(&server_url).unwrap();
-    Server::bind(&addr).serve(app.into_make_service()).await?;
+    let listener = tokio::net::TcpListener::bind(&server_url).await.unwrap();
+    axum::serve(listener, app).await?;
 
     Ok(())
 }
@@ -95,7 +95,7 @@ async fn list_posts(
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.posts_per_page.unwrap_or(5);
 
-    let (posts, num_pages) = QueryCore::find_posts_in_page(&state.conn, page, posts_per_page)
+    let (posts, num_pages) = QueryService::find_posts_in_page(&state.conn, page, posts_per_page)
         .await
         .expect("Cannot find posts in page");
 
@@ -134,13 +134,13 @@ async fn create_post(
 ) -> Result<PostResponse, (StatusCode, &'static str)> {
     let form = form.0;
 
-    MutationCore::create_post(&state.conn, form)
+    Mutation::create_post(&state.conn, form)
         .await
         .expect("could not insert post");
 
     let data = FlashData {
         kind: "success".to_owned(),
-        message: "Post succcessfully added".to_owned(),
+        message: "Post successfully added".to_owned(),
     };
 
     Ok(post_response(&mut cookies, data))
@@ -150,7 +150,7 @@ async fn edit_post(
     state: State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Html<String>, (StatusCode, &'static str)> {
-    let post: post::Model = QueryCore::find_post_by_id(&state.conn, id)
+    let post: post::Model = QueryService::find_post_by_id(&state.conn, id)
         .await
         .expect("could not find post")
         .unwrap_or_else(|| panic!("could not find post with id {id}"));
@@ -174,13 +174,13 @@ async fn update_post(
 ) -> Result<PostResponse, (StatusCode, String)> {
     let form = form.0;
 
-    MutationCore::update_post_by_id(&state.conn, id, form)
+    Mutation::update_post_by_id(&state.conn, id, form)
         .await
         .expect("could not edit post");
 
     let data = FlashData {
         kind: "success".to_owned(),
-        message: "Post succcessfully updated".to_owned(),
+        message: "Post successfully updated".to_owned(),
     };
 
     Ok(post_response(&mut cookies, data))
@@ -191,13 +191,13 @@ async fn delete_post(
     Path(id): Path<i32>,
     mut cookies: Cookies,
 ) -> Result<PostResponse, (StatusCode, &'static str)> {
-    MutationCore::delete_post(&state.conn, id)
+    Mutation::delete_post(&state.conn, id)
         .await
         .expect("could not delete post");
 
     let data = FlashData {
         kind: "success".to_owned(),
-        message: "Post succcessfully deleted".to_owned(),
+        message: "Post successfully deleted".to_owned(),
     };
 
     Ok(post_response(&mut cookies, data))

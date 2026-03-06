@@ -1,15 +1,11 @@
-use std::env;
+pub mod service;
 
 use entity::post;
 use migration::{Migrator, MigratorTrait};
-use salvo::extra::affix;
-use salvo::extra::serve_static::DirHandler;
+use salvo::affix;
 use salvo::prelude::*;
-use salvo::writer::Text;
-use salvo_example_core::{
-    sea_orm::{Database, DatabaseConnection},
-    Mutation, Query,
-};
+use sea_orm::{Database, DatabaseConnection};
+use service::{Mutation, Query};
 use tera::Tera;
 
 const DEFAULT_POSTS_PER_PAGE: u64 = 5;
@@ -29,7 +25,7 @@ async fn create(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
     let conn = &state.conn;
 
     let form = req
-        .extract_form::<post::Model>()
+        .parse_form::<post::Model>()
         .await
         .map_err(|_| StatusError::bad_request())?;
 
@@ -37,7 +33,7 @@ async fn create(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
         .await
         .map_err(|_| StatusError::internal_server_error())?;
 
-    res.redirect_found("/");
+    Redirect::found("/").render(res);
     Ok(())
 }
 
@@ -114,7 +110,7 @@ async fn update(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
     let conn = &state.conn;
     let id = req.param::<i32>("id").unwrap_or_default();
     let form = req
-        .extract_form::<post::Model>()
+        .parse_form::<post::Model>()
         .await
         .map_err(|_| StatusError::bad_request())?;
 
@@ -122,7 +118,7 @@ async fn update(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
         .await
         .map_err(|_| StatusError::internal_server_error())?;
 
-    res.redirect_found("/");
+    Redirect::found("/").render(res);
     Ok(())
 }
 
@@ -138,20 +134,19 @@ async fn delete(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
         .await
         .map_err(|_| StatusError::internal_server_error())?;
 
-    res.redirect_found("/");
+    Redirect::found("/").render(res);
     Ok(())
 }
 
 #[tokio::main]
 pub async fn main() {
-    std::env::set_var("RUST_LOG", "debug");
     tracing_subscriber::fmt::init();
 
     // get env vars
     dotenvy::dotenv().ok();
-    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
-    let host = env::var("HOST").expect("HOST is not set in .env file");
-    let port = env::var("PORT").expect("PORT is not set in .env file");
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
+    let host = std::env::var("HOST").expect("HOST is not set in .env file");
+    let port = std::env::var("PORT").expect("PORT is not set in .env file");
     let server_url = format!("{host}:{port}");
 
     // create post table if not exists
@@ -170,13 +165,13 @@ pub async fn main() {
         .push(Router::with_path("<id>").get(edit).post(update))
         .push(Router::with_path("delete/<id>").post(delete))
         .push(
-            Router::with_path("static/<**>").get(DirHandler::new(concat!(
+            Router::with_path("static/<**>").get(salvo::prelude::StaticDir::new(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/static"
             ))),
         );
 
-    Server::new(TcpListener::bind(&format!("{host}:{port}")))
+    Server::new(TcpListener::bind(TcpListener::new(format!("{host}:{port}"))).await)
         .serve(router)
         .await;
 }

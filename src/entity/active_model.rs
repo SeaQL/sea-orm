@@ -1,88 +1,29 @@
+use super::{ActiveValue, ActiveValue::*};
 use crate::{
-    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, Value,
+    ColumnTrait, Condition, ConnectionTrait, DbBackend, DeleteResult, EntityName, EntityTrait,
+    IdenStatic, Iterable, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter,
+    Related, RelatedSelfVia, RelationDef, RelationTrait, Value,
+    error::*,
+    query::{
+        clear_key_on_active_model, column_tuple_in_condition, get_key_from_active_model,
+        set_key_on_active_model,
+    },
 };
-use async_trait::async_trait;
-use sea_query::{Nullable, ValueTuple};
+use sea_query::ValueTuple;
 use std::fmt::Debug;
 
-pub use ActiveValue::NotSet;
-
-/// Defines a stateful value used in ActiveModel.
+/// `ActiveModel` is a type for constructing `INSERT` and `UPDATE` statements for a particular table.
 ///
-/// There are three possible state represented by three enum variants.
-/// - [ActiveValue::Set]: A defined [Value] actively being set
-/// - [ActiveValue::Unchanged]: A defined [Value] remain unchanged
-/// - [ActiveValue::NotSet]: An undefined [Value]
+/// Like [Model][ModelTrait], it represents a database record and each field represents a column.
 ///
-/// The stateful value is useful when constructing UPDATE SQL statement,
-/// see an example below.
+/// But unlike [Model][ModelTrait], it also stores [additional state][ActiveValue] for every field,
+/// and fields are not guaranteed to have a value.
 ///
-/// # Examples
+/// This allows you to:
 ///
-/// ```
-/// use sea_orm::tests_cfg::{cake, fruit};
-/// use sea_orm::{entity::*, query::*, DbBackend};
-///
-/// // The code snipped below does an UPDATE operation on a `ActiveValue`
-/// assert_eq!(
-///     Update::one(fruit::ActiveModel {
-///         id: ActiveValue::set(1),
-///         name: ActiveValue::set("Orange".to_owned()),
-///         cake_id: ActiveValue::not_set(),
-///     })
-///     .build(DbBackend::Postgres)
-///     .to_string(),
-///     r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#
-/// );
-/// ```
-#[derive(Clone, Debug)]
-pub enum ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    /// A defined [Value] actively being set
-    Set(V),
-    /// A defined [Value] remain unchanged
-    Unchanged(V),
-    /// An undefined [Value]
-    NotSet,
-}
-
-/// Defines a set operation on an [ActiveValue]
-#[allow(non_snake_case)]
-pub fn Set<V>(v: V) -> ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    ActiveValue::set(v)
-}
-
-/// Defines an not set operation on an [ActiveValue]
-#[deprecated(
-    since = "0.5.0",
-    note = "Please use [`ActiveValue::NotSet`] or [`NotSet`]"
-)]
-#[allow(non_snake_case)]
-pub fn Unset<V>(_: Option<bool>) -> ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    ActiveValue::not_set()
-}
-
-/// Defines an unchanged operation on an [ActiveValue]
-#[allow(non_snake_case)]
-pub fn Unchanged<V>(value: V) -> ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    ActiveValue::unchanged(value)
-}
-
-/// A Trait for ActiveModel to perform Create, Update or Delete operation.
-/// The type must also implement the [EntityTrait].
-/// See module level docs [crate::entity] for a full example
-#[async_trait]
+/// - omit columns from the query,
+/// - know which columns have changed after editing a record.
+#[async_trait::async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
     /// The Entity this ActiveModel belongs to
     type Entity: EntityTrait;
@@ -93,8 +34,17 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Get a immutable [ActiveValue] from an ActiveModel
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
 
-    /// Set the Value into an ActiveModel
-    fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
+    /// Set the Value of a ActiveModel field, panic if failed
+    fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) {
+        self.try_set(c, v)
+            .unwrap_or_else(|e| panic!("Failed to set value for {:?}: {e:?}", c.as_column_ref()))
+    }
+
+    /// Set the Value of a ActiveModel field if value is different, panic if failed
+    fn set_if_not_equals(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
+
+    /// Set the Value of a ActiveModel field, return error if failed
+    fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
 
     /// Set the state of an [ActiveValue] to the not set state
     fn not_set(&mut self, c: <Self::Entity as EntityTrait>::Column);
@@ -102,8 +52,11 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Check the state of a [ActiveValue]
     fn is_not_set(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
 
-    /// The default implementation of the ActiveModel
+    /// Create an ActiveModel with all fields to NotSet
     fn default() -> Self;
+
+    /// Create an ActiveModel with all fields to Set(default_value) if Default is implemented, NotSet otherwise
+    fn default_values() -> Self;
 
     /// Reset the value from [ActiveValue::Unchanged] to [ActiveValue::Set],
     /// leaving [ActiveValue::NotSet] untouched.
@@ -118,28 +71,15 @@ pub trait ActiveModelTrait: Clone + Debug {
         self
     }
 
-    /// Get the primary key of the ActiveModel
-    ///
-    /// # Panics
-    ///
-    /// Panics if arity of primary key exceed maximum arity of [ValueTuple]
-    #[allow(clippy::question_mark)]
+    /// Get the primary key of the ActiveModel, only if it's fully specified.
     fn get_primary_key_value(&self) -> Option<ValueTuple> {
         let mut cols = <Self::Entity as EntityTrait>::PrimaryKey::iter();
         macro_rules! next {
             () => {
-                if let Some(col) = cols.next() {
-                    if let Some(val) = self.get(col.into_column()).into_value() {
-                        val
-                    } else {
-                        return None;
-                    }
-                } else {
-                    return None;
-                }
+                self.get(cols.next()?.into_column()).into_value()?
             };
         }
-        match <Self::Entity as EntityTrait>::PrimaryKey::iter().count() {
+        match <<<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY {
             1 => {
                 let s1 = next!();
                 Some(ValueTuple::One(s1))
@@ -275,7 +215,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn insert<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
+        Self: ActiveModelBehavior,
         C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, db, true).await?;
@@ -397,7 +337,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn update<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
+        Self: ActiveModelBehavior,
         C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, db, false).await?;
@@ -410,9 +350,20 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn save<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
+        Self: ActiveModelBehavior,
         C: ConnectionTrait,
     {
+        let res = if !self.is_update() {
+            self.insert(db).await
+        } else {
+            self.update(db).await
+        }?;
+        Ok(res.into_active_model())
+    }
+
+    /// Returns true if the primary key is fully-specified
+    #[doc(hidden)]
+    fn is_update(&self) -> bool {
         let mut is_update = true;
         for key in <Self::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
@@ -421,12 +372,7 @@ pub trait ActiveModelTrait: Clone + Debug {
                 break;
             }
         }
-        let res = if !is_update {
-            self.insert(db).await
-        } else {
-            self.update(db).await
-        }?;
-        Ok(res.into_active_model())
+        is_update
     }
 
     /// Delete an active model by its primary key
@@ -474,7 +420,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// ```
     async fn delete<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
-        Self: ActiveModelBehavior + 'a,
+        Self: ActiveModelBehavior,
         C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_delete(self, db).await?;
@@ -490,9 +436,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     #[cfg(feature = "with-json")]
     fn set_from_json(&mut self, json: serde_json::Value) -> Result<(), DbErr>
     where
+        Self: crate::TryIntoModel<<Self::Entity as EntityTrait>::Model>,
         <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
-            serde::de::Deserialize<'de>,
+            serde::de::Deserialize<'de> + serde::Serialize,
     {
         use crate::Iterable;
 
@@ -518,19 +465,48 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     /// Create ActiveModel from a JSON value
     #[cfg(feature = "with-json")]
-    fn from_json(json: serde_json::Value) -> Result<Self, DbErr>
+    fn from_json(mut json: serde_json::Value) -> Result<Self, DbErr>
     where
+        Self: crate::TryIntoModel<<Self::Entity as EntityTrait>::Model>,
         <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
-            serde::de::Deserialize<'de>,
+            serde::de::Deserialize<'de> + serde::Serialize,
     {
-        use crate::{Iden, Iterable};
+        use crate::{IdenStatic, Iterable};
+
+        let serde_json::Value::Object(obj) = &json else {
+            return Err(DbErr::Json(format!(
+                "invalid type: expected JSON object for {}",
+                <<Self as ActiveModelTrait>::Entity as IdenStatic>::as_str(&Default::default())
+            )));
+        };
 
         // Mark down which attribute exists in the JSON object
-        let json_keys: Vec<(<Self::Entity as EntityTrait>::Column, bool)> =
-            <<Self::Entity as EntityTrait>::Column>::iter()
-                .map(|col| (col, json.get(col.to_string()).is_some()))
-                .collect();
+        let mut json_keys: Vec<(<Self::Entity as EntityTrait>::Column, bool)> = Vec::new();
+
+        for col in <<Self::Entity as EntityTrait>::Column>::iter() {
+            let key = col.json_key();
+            let has_key = obj.contains_key(key);
+            json_keys.push((col, has_key));
+        }
+
+        // Create dummy model with dummy values
+        let dummy_model = Self::default_values();
+        if let Ok(dummy_model) = dummy_model.try_into_model() {
+            if let Ok(mut dummy_json) = serde_json::to_value(&dummy_model) {
+                let serde_json::Value::Object(merged) = &mut dummy_json else {
+                    unreachable!();
+                };
+                let serde_json::Value::Object(obj) = json else {
+                    unreachable!();
+                };
+                // overwrite dummy values with input values
+                for (key, value) in obj {
+                    merged.insert(key, value);
+                }
+                json = dummy_json;
+            }
+        }
 
         // Convert JSON object into ActiveModel via Model
         let model: <Self::Entity as EntityTrait>::Model =
@@ -552,10 +528,497 @@ pub trait ActiveModelTrait: Clone + Debug {
         Ok(am)
     }
 
+    /// Create a Vec of ActiveModels from an Arrow RecordBatch.
+    ///
+    /// Each row in the RecordBatch becomes one ActiveModel.
+    /// Columns are matched by name (using [`ColumnTrait::as_str`](crate::ColumnTrait::as_str)).
+    /// Columns present in the RecordBatch are marked as `Set`;
+    /// columns absent from the RecordBatch are marked as `NotSet`.
+    ///
+    /// Supported column types: integers (i8–i64, u8–u64), floats (f32, f64),
+    /// `String`/`Text`, `Boolean`, and date/time types (with `with-chrono` or `with-time`).
+    /// Null values in nullable columns are handled.
+    ///
+    /// When both `with-chrono` and `with-time` features are enabled, chrono values
+    /// are attempted first. If the model uses time-crate types, the conversion
+    /// automatically falls back to the time-crate representation.
+    #[cfg(feature = "with-arrow")]
+    fn from_arrow(batch: &sea_orm_arrow::arrow::array::RecordBatch) -> Result<Vec<Self>, DbErr> {
+        use crate::{IdenStatic, Iterable, with_arrow::arrow_array_to_value};
+
+        let num_rows = batch.num_rows();
+        let mut results = Vec::with_capacity(num_rows);
+
+        for row in 0..num_rows {
+            let mut am = Self::default();
+
+            for col in <<Self::Entity as EntityTrait>::Column>::iter() {
+                let col_name = col.as_str();
+
+                if let Some(arrow_col) = batch.column_by_name(col_name) {
+                    let col_def = col.def();
+                    let col_type = col_def.get_column_type();
+                    let value = arrow_array_to_value(arrow_col.as_ref(), col_type, row)?;
+
+                    // When both chrono and time features are enabled, the primary
+                    // conversion produces chrono Values for date/time columns.
+                    // If the model's field uses time-crate types, try_set will fail;
+                    // retry with the time-crate alternative.
+                    #[cfg(all(feature = "with-chrono", feature = "with-time"))]
+                    {
+                        use crate::with_arrow::{arrow_array_to_value_alt, is_datetime_column};
+                        match am.try_set(col, value) {
+                            Ok(()) => {}
+                            Err(first_err) if is_datetime_column(col_type) => {
+                                if let Some(alt_value) =
+                                    arrow_array_to_value_alt(arrow_col.as_ref(), col_type, row)?
+                                {
+                                    am.try_set(col, alt_value)?;
+                                } else {
+                                    return Err(first_err);
+                                }
+                            }
+                            Err(e) => return Err(e),
+                        }
+                    }
+
+                    #[cfg(not(all(feature = "with-chrono", feature = "with-time")))]
+                    am.try_set(col, value)?;
+                } else {
+                    am.not_set(col);
+                }
+            }
+
+            results.push(am);
+        }
+
+        Ok(results)
+    }
+
+    /// Convert a slice of ActiveModels into an Arrow [`RecordBatch`](arrow::array::RecordBatch).
+    ///
+    /// The `schema` determines the output columns: each schema field is matched
+    /// to an entity column by name (using [`ColumnTrait::as_str`](crate::ColumnTrait::as_str)).
+    /// Columns marked `Set` or `Unchanged` contribute their value;
+    /// `NotSet` columns become null in the output.
+    ///
+    /// Typical usage together with [`ArrowSchema`](crate::ArrowSchema):
+    /// ```ignore
+    /// let schema = MyEntity::arrow_schema();
+    /// let batch = MyActiveModel::to_arrow(&models, &schema)?;
+    /// ```
+    #[cfg(feature = "with-arrow")]
+    fn to_arrow(
+        models: &[Self],
+        schema: &sea_orm_arrow::arrow::datatypes::Schema,
+    ) -> Result<sea_orm_arrow::arrow::array::RecordBatch, DbErr> {
+        use crate::{Iterable, with_arrow::option_values_to_arrow_array};
+        use std::sync::Arc;
+
+        let mut columns: Vec<Arc<dyn sea_orm_arrow::arrow::array::Array>> =
+            Vec::with_capacity(schema.fields().len());
+
+        for field in schema.fields() {
+            let field_name = field.name();
+
+            // Find the entity column whose name matches this schema field
+            let entity_col =
+                <<Self::Entity as EntityTrait>::Column>::iter().find(|c| c.as_str() == field_name);
+
+            if let Some(col) = entity_col {
+                let values: Vec<Option<Value>> = models
+                    .iter()
+                    .map(|m| match m.get(col) {
+                        ActiveValue::Set(v) | ActiveValue::Unchanged(v) => Some(v),
+                        ActiveValue::NotSet => None,
+                    })
+                    .collect();
+
+                let array = option_values_to_arrow_array(&values, field.data_type())?;
+                columns.push(array);
+            } else {
+                // Field in schema but not in entity → null column
+                let array =
+                    sea_orm_arrow::arrow::array::new_null_array(field.data_type(), models.len());
+                columns.push(array);
+            }
+        }
+
+        sea_orm_arrow::arrow::array::RecordBatch::try_new(Arc::new(schema.clone()), columns)
+            .map_err(|e| DbErr::Type(format!("Failed to create RecordBatch: {e}")))
+    }
+
     /// Return `true` if any attribute of `ActiveModel` is `Set`
     fn is_changed(&self) -> bool {
         <Self::Entity as EntityTrait>::Column::iter()
-            .any(|col| self.get(col).is_set() && !self.get(col).is_unchanged())
+            .any(|col| matches!(self.get(col), ActiveValue::Set(_)))
+    }
+
+    #[doc(hidden)]
+    /// Set the key to parent's key value for a belongs to relation.
+    fn set_parent_key<R, AM>(&mut self, model: &AM) -> Result<(), DbErr>
+    where
+        R: EntityTrait,
+        AM: ActiveModelTrait<Entity = R>,
+        Self::Entity: Related<R>,
+    {
+        let rel_def = Self::Entity::to();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation from {} to {} is not belongs_to",
+                <Self::Entity as Default>::default().as_str(),
+                <R as Default>::default().as_str()
+            )));
+        }
+
+        let values = get_key_from_active_model(&rel_def.to_col, model)?;
+
+        set_key_on_active_model(&rel_def.from_col, self, values)?;
+
+        Ok(())
+    }
+
+    #[doc(hidden)]
+    fn set_parent_key_for<R, AM>(
+        &mut self,
+        model: &AM,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<(), DbErr>
+    where
+        R: EntityTrait,
+        AM: ActiveModelTrait<Entity = R>,
+    {
+        let rel_def = rel.def();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!("Relation {rel:?} is not belongs_to")));
+        }
+
+        let values = get_key_from_active_model(&rel_def.to_col, model)?;
+
+        set_key_on_active_model(&rel_def.from_col, self, values)?;
+
+        Ok(())
+    }
+
+    #[doc(hidden)]
+    fn set_parent_key_for_def<R, AM>(
+        &mut self,
+        model: &AM,
+        rel_def: &RelationDef,
+    ) -> Result<(), DbErr>
+    where
+        R: EntityTrait,
+        AM: ActiveModelTrait<Entity = R>,
+    {
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation {rel_def:?} is not belongs_to"
+            )));
+        }
+
+        let values = get_key_from_active_model(&rel_def.to_col, model)?;
+
+        set_key_on_active_model(&rel_def.from_col, self, values)?;
+
+        Ok(())
+    }
+
+    #[doc(hidden)]
+    fn set_parent_key_for_self_rev<AM>(
+        &mut self,
+        model: &AM,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<(), DbErr>
+    where
+        AM: ActiveModelTrait<Entity = Self::Entity>,
+    {
+        let rel_def = rel.def();
+
+        if !rel_def.is_owner {
+            return Err(DbErr::Type(format!("Relation {rel:?} is not owner")));
+        }
+
+        let values = get_key_from_active_model(&rel_def.from_col, model)?;
+
+        set_key_on_active_model(&rel_def.to_col, self, values)?;
+
+        Ok(())
+    }
+
+    #[doc(hidden)]
+    /// Clear parent association if the relation is optional and return true
+    fn clear_parent_key<R>(&mut self) -> Result<bool, DbErr>
+    where
+        R: EntityTrait,
+        Self::Entity: Related<R>,
+    {
+        let rel_def = Self::Entity::to();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation from {} to {} is not belongs_to",
+                <Self::Entity as Default>::default().as_str(),
+                <R as Default>::default().as_str()
+            )));
+        }
+
+        clear_key_on_active_model(&rel_def.from_col, self)
+    }
+
+    #[doc(hidden)]
+    fn clear_parent_key_for_self_rev(
+        &mut self,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<bool, DbErr> {
+        let rel_def = rel.def();
+
+        if !rel_def.is_owner {
+            return Err(DbErr::Type(format!("Relation {rel:?} is not owner")));
+        }
+
+        clear_key_on_active_model(&rel_def.to_col, self)
+    }
+
+    #[doc(hidden)]
+    /// Get the key value of belongs to relation
+    fn get_parent_key<R>(&self) -> Result<ValueTuple, DbErr>
+    where
+        R: EntityTrait,
+        Self::Entity: Related<R>,
+    {
+        let rel_def = Self::Entity::to();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation from {} to {} is not belongs_to",
+                <Self::Entity as Default>::default().as_str(),
+                <R as Default>::default().as_str()
+            )));
+        }
+
+        get_key_from_active_model(&rel_def.from_col, self)
+    }
+
+    #[doc(hidden)]
+    /// Get the key value of belongs to relation
+    fn get_parent_key_for(
+        &self,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<ValueTuple, DbErr> {
+        let rel_def = rel.def();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!("Relation {rel:?} is not belongs_to")));
+        }
+
+        get_key_from_active_model(&rel_def.from_col, self)
+    }
+
+    #[doc(hidden)]
+    fn find_belongs_to_self(
+        &self,
+        rel: <Self::Entity as EntityTrait>::Relation,
+        db_backend: DbBackend,
+    ) -> Result<crate::query::Select<Self::Entity>, DbErr> {
+        let rel_def = rel.def();
+
+        if !rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation {rel:?} is not has_one / has_many"
+            )));
+        }
+
+        let id = get_key_from_active_model(&rel_def.from_col, self)?;
+
+        Ok(Self::Entity::find().filter(
+            column_tuple_in_condition(
+                &<Self::Entity as Default>::default().table_ref(),
+                &rel_def.to_col,
+                &[id],
+                db_backend,
+            )
+            .expect(""),
+        ))
+    }
+
+    #[doc(hidden)]
+    fn find_belongs_to_model<AM>(
+        rel_def: &RelationDef,
+        belongs_to: &AM,
+        db_backend: DbBackend,
+    ) -> Result<crate::query::Select<Self::Entity>, DbErr>
+    where
+        AM: ActiveModelTrait,
+    {
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!(
+                "Relation {rel_def:?} is not belongs_to"
+            )));
+        }
+
+        let id = get_key_from_active_model(&rel_def.to_col, belongs_to)?;
+        Ok(<Self::Entity as EntityTrait>::find().filter(
+            column_tuple_in_condition(&rel_def.from_tbl, &rel_def.from_col, &[id], db_backend)
+                .expect(""),
+        ))
+    }
+
+    /// Find related Models belonging to self
+    fn find_related<R>(&self, _: R) -> crate::query::Select<R>
+    where
+        R: EntityTrait,
+        Self::Entity: Related<R>,
+    {
+        Self::Entity::find_related().belongs_to_active_model(self)
+    }
+
+    /// Like find_related, but infer type from `AM`
+    #[doc(hidden)]
+    fn find_related_of<AM>(&self, _: &[AM]) -> crate::query::Select<AM::Entity>
+    where
+        AM: ActiveModelTrait,
+        Self::Entity: Related<AM::Entity>,
+    {
+        self.find_related(AM::Entity::default())
+    }
+
+    /// Establish links between self and a related Entity for a many-to-many relation.
+    /// New associations will be added, and leftovers can be optionally deleted.
+    #[doc(hidden)]
+    async fn establish_links<J, R, RM, C>(
+        &self,
+        _: J,
+        related_models: &[RM],
+        delete_leftover: bool,
+        db: &C,
+    ) -> Result<(), DbErr>
+    where
+        R: EntityTrait,
+        RM: ActiveModelTrait<Entity = R> + Sync,
+        J: EntityTrait + Related<R> + Related<Self::Entity>,
+        J::Model: IntoActiveModel<J::ActiveModel>,
+        J::ActiveModel: ActiveModelBehavior + Send,
+        C: ConnectionTrait,
+    {
+        let left = <J as Related<Self::Entity>>::to();
+        let right = <J as Related<R>>::to();
+
+        establish_links::<_, J, _, C>(self, related_models, left, right, delete_leftover, db).await
+    }
+
+    /// Establish links for self-referencing many-to-many relation
+    #[doc(hidden)]
+    async fn establish_links_self<J, RM, C>(
+        &self,
+        _: J,
+        related_models: &[RM],
+        delete_leftover: bool,
+        db: &C,
+    ) -> Result<(), DbErr>
+    where
+        RM: ActiveModelTrait<Entity = Self::Entity> + Sync,
+        J: EntityTrait,
+        J::Model: IntoActiveModel<J::ActiveModel>,
+        J::ActiveModel: ActiveModelBehavior + Send,
+        C: ConnectionTrait,
+        Self::Entity: RelatedSelfVia<J>,
+    {
+        let left = <Self::Entity as RelatedSelfVia<J>>::via().rev();
+        let right = <Self::Entity as RelatedSelfVia<J>>::to();
+
+        establish_links::<_, J, _, C>(self, related_models, left, right, delete_leftover, db).await
+    }
+
+    /// Establish links for self-referencing many-to-many relation, but left-right reversed
+    #[doc(hidden)]
+    async fn establish_links_self_rev<J, RM, C>(
+        &self,
+        _: J,
+        related_models: &[RM],
+        delete_leftover: bool,
+        db: &C,
+    ) -> Result<(), DbErr>
+    where
+        RM: ActiveModelTrait<Entity = Self::Entity> + Sync,
+        J: EntityTrait,
+        J::Model: IntoActiveModel<J::ActiveModel>,
+        J::ActiveModel: ActiveModelBehavior + Send,
+        C: ConnectionTrait,
+        Self::Entity: RelatedSelfVia<J>,
+    {
+        let left = <Self::Entity as RelatedSelfVia<J>>::to();
+        let right = <Self::Entity as RelatedSelfVia<J>>::via().rev();
+
+        establish_links::<_, J, _, C>(self, related_models, left, right, delete_leftover, db).await
+    }
+
+    /// Inverse of establish link, break links between two many-to-many models
+    #[doc(hidden)]
+    async fn delete_links<J, C>(&self, _: J, db: &C) -> Result<DeleteResult, DbErr>
+    where
+        J: EntityTrait + Related<Self::Entity>,
+        C: ConnectionTrait,
+    {
+        let rel_def = <J as Related<Self::Entity>>::to();
+        let id = get_key_from_active_model(&rel_def.to_col, self)?;
+
+        J::delete_many()
+            .filter(
+                column_tuple_in_condition(
+                    &rel_def.from_tbl,
+                    &rel_def.from_col,
+                    &[id],
+                    db.get_database_backend(),
+                )
+                .expect(""),
+            )
+            .exec(db)
+            .await
+    }
+
+    /// Like `delete_links` but for self-referencing relations
+    #[doc(hidden)]
+    async fn delete_links_self<J, C>(&self, _: J, db: &C) -> Result<DeleteResult, DbErr>
+    where
+        J: EntityTrait,
+        C: ConnectionTrait,
+        Self::Entity: RelatedSelfVia<J>,
+    {
+        let left = <Self::Entity as RelatedSelfVia<J>>::via().rev();
+        let right = <Self::Entity as RelatedSelfVia<J>>::to();
+
+        let id = get_key_from_active_model(&left.to_col, self)?;
+
+        if left.to_col != right.to_col {
+            return Err(DbErr::Type("Expect Self Referencing Relation".into()));
+        }
+
+        J::delete_many()
+            .filter(
+                Condition::any()
+                    .add(
+                        column_tuple_in_condition(
+                            &left.from_tbl,
+                            &left.from_col,
+                            std::slice::from_ref(&id),
+                            db.get_database_backend(),
+                        )
+                        .expect(""),
+                    )
+                    .add(
+                        column_tuple_in_condition(
+                            &right.from_tbl,
+                            &right.from_col,
+                            std::slice::from_ref(&id),
+                            db.get_database_backend(),
+                        )
+                        .expect(""),
+                    ),
+            )
+            .exec(db)
+            .await
     }
 }
 
@@ -571,7 +1034,7 @@ pub trait ActiveModelTrait: Clone + Debug {
 ///
 /// /// The [EntityName] describes the name of a table
 /// impl EntityName for Entity {
-///     fn table_name(&self) -> &str {
+///     fn table_name(&self) -> &'static str {
 ///         "cake"
 ///     }
 /// }
@@ -587,9 +1050,20 @@ pub trait ActiveModelTrait: Clone + Debug {
 /// ```
 /// See module level docs [crate::entity] for a full example
 #[allow(unused_variables)]
-#[async_trait]
+#[async_trait::async_trait]
 pub trait ActiveModelBehavior: ActiveModelTrait {
-    /// Create a new ActiveModel with default values. Also used by `Default::default()`.
+    /// Create a new ActiveModel with default values. This is also called by `Default::default()`.
+    ///
+    /// You can override it like the following:
+    ///
+    /// ```ignore
+    /// fn new() -> Self {
+    ///     Self {
+    ///         status: Set(Status::New),
+    ///         ..ActiveModelTrait::default()
+    ///     }
+    /// }
+    /// ```
     fn new() -> Self {
         <Self as ActiveModelTrait>::default()
     }
@@ -631,7 +1105,90 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
     }
 }
 
-/// A Trait for any type that can be converted into an ActiveModel
+/// A Trait for any type that can be converted into an `ActiveModel`,
+/// can be derived using `DeriveIntoActiveModel`.
+///
+/// ## Derive Macro Example
+///
+/// ```rust
+/// use sea_orm::DeriveIntoActiveModel;
+/// mod fruit {
+///     use sea_orm::entity::prelude::*;
+///     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+///     #[sea_orm(table_name = "fruit")]
+///     pub struct Model {
+///         #[sea_orm(primary_key)]
+///         pub id: i32,
+///         pub name: String,
+///         pub cake_id: Option<i32>,
+///     }
+///     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+///     pub enum Relation {}
+///     impl ActiveModelBehavior for ActiveModel {}
+/// }
+///
+/// #[derive(DeriveIntoActiveModel)]
+/// #[sea_orm(active_model = "fruit::ActiveModel")]
+/// struct NewFruit {
+///     name: String,
+///     // `id` and `cake_id` are omitted - they become `NotSet`
+/// }
+/// ```
+///
+/// ## `set(...)` - always set absent ActiveModel fields
+///
+/// ```rust
+/// # mod fruit {
+/// #     use sea_orm::entity::prelude::*;
+/// #     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+/// #     #[sea_orm(table_name = "fruit")]
+/// #     pub struct Model {
+/// #         #[sea_orm(primary_key)]
+/// #         pub id: i32,
+/// #         pub name: String,
+/// #         pub cake_id: Option<i32>,
+/// #     }
+/// #     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// #     pub enum Relation {}
+/// #     impl ActiveModelBehavior for ActiveModel {}
+/// # }
+/// use sea_orm::DeriveIntoActiveModel;
+///
+/// #[derive(DeriveIntoActiveModel)]
+/// #[sea_orm(active_model = "fruit::ActiveModel", set(cake_id = "None"))]
+/// struct NewFruit {
+///     name: String,
+///     // `cake_id` is not on the struct, but will always be `Set(None)`
+/// }
+/// ```
+///
+/// ## `default = "expr"` - fallback for `Option<T>` struct fields
+///
+/// ```rust
+/// # mod fruit {
+/// #     use sea_orm::entity::prelude::*;
+/// #     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+/// #     #[sea_orm(table_name = "fruit")]
+/// #     pub struct Model {
+/// #         #[sea_orm(primary_key)]
+/// #         pub id: i32,
+/// #         pub name: String,
+/// #         pub cake_id: Option<i32>,
+/// #     }
+/// #     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// #     pub enum Relation {}
+/// #     impl ActiveModelBehavior for ActiveModel {}
+/// # }
+/// use sea_orm::DeriveIntoActiveModel;
+///
+/// #[derive(DeriveIntoActiveModel)]
+/// #[sea_orm(active_model = "fruit::ActiveModel")]
+/// struct UpdateFruit {
+///     /// `Some("Apple")` -> `Set("Apple")`, `None` ->`Set("Unnamed")`
+///     #[sea_orm(default = "String::from(\"Unnamed\")")]
+///     name: Option<String>,
+/// }
+/// ```
 pub trait IntoActiveModel<A>
 where
     A: ActiveModelTrait,
@@ -649,253 +1206,106 @@ where
     }
 }
 
-/// Any type that can be converted into an [ActiveValue]
-pub trait IntoActiveValue<V>
+async fn establish_links<EM, J, RM, C>(
+    model: &EM,
+    related_models: &[RM],
+    left: RelationDef,
+    right: RelationDef,
+    delete_leftover: bool,
+    db: &C,
+) -> Result<(), DbErr>
 where
-    V: Into<Value>,
+    EM: ActiveModelTrait,
+    RM: ActiveModelTrait,
+    J: EntityTrait,
+    J::Model: IntoActiveModel<J::ActiveModel>,
+    J::ActiveModel: ActiveModelBehavior,
+    C: ConnectionTrait,
 {
-    /// Method to perform the conversion
-    fn into_active_value(self) -> ActiveValue<V>;
-}
+    let mut require_leftover = true;
 
-impl<V> IntoActiveValue<Option<V>> for Option<V>
-where
-    V: IntoActiveValue<V> + Into<Value> + Nullable,
-{
-    fn into_active_value(self) -> ActiveValue<Option<V>> {
-        match self {
-            Some(value) => Set(Some(value)),
-            None => NotSet,
+    if related_models.is_empty() {
+        // if there are no related models, then there is no risk of insert conflict
+        require_leftover = false;
+    }
+
+    let primary_key = J::primary_key_identity();
+    if require_leftover
+        && primary_key.fully_contains(&left.from_col)
+        && primary_key.fully_contains(&right.from_col)
+    {
+        // if the primary key is a composite key of the two relations
+        // we can use on conflict no action safely
+        require_leftover = false;
+    }
+
+    let mut leftover = Vec::new();
+    if delete_leftover || require_leftover {
+        for item in <J::ActiveModel as ActiveModelTrait>::find_belongs_to_model(
+            &left,
+            model,
+            db.get_database_backend(),
+        )?
+        .all(db)
+        .await?
+        {
+            let item = item.into_active_model();
+            let key = get_key_from_active_model(&right.from_col, &item)?;
+            leftover.push((item, key));
         }
     }
-}
+    let leftover = leftover; // un-mut
 
-impl<V> IntoActiveValue<Option<V>> for Option<Option<V>>
-where
-    V: IntoActiveValue<V> + Into<Value> + Nullable,
-{
-    fn into_active_value(self) -> ActiveValue<Option<V>> {
-        match self {
-            Some(value) => Set(value),
-            None => NotSet,
+    let mut via_models = Vec::new();
+    let mut all_keys = std::collections::HashSet::new();
+
+    for related_model in related_models {
+        let mut via: J::ActiveModel = ActiveModelBehavior::new();
+        via.set_parent_key_for_def(model, &left)?;
+        via.set_parent_key_for_def(related_model, &right)?;
+        let via_key = get_key_from_active_model(&right.from_col, &via)?;
+        if !leftover.iter().any(|t| t.1 == via_key) {
+            // if not already exist, save for insert
+            via_models.push(via);
+        }
+        if delete_leftover {
+            all_keys.insert(via_key);
         }
     }
-}
 
-macro_rules! impl_into_active_value {
-    ($ty: ty) => {
-        impl IntoActiveValue<$ty> for $ty {
-            fn into_active_value(self) -> ActiveValue<$ty> {
-                Set(self)
+    if delete_leftover {
+        let mut to_delete = Vec::new();
+        for (leftover, key) in leftover {
+            if !all_keys.contains(&key) {
+                to_delete.push(
+                    leftover
+                        .get_primary_key_value()
+                        .expect("item is a full model"),
+                );
             }
         }
-    };
-}
-
-impl_into_active_value!(bool);
-impl_into_active_value!(i8);
-impl_into_active_value!(i16);
-impl_into_active_value!(i32);
-impl_into_active_value!(i64);
-impl_into_active_value!(u8);
-impl_into_active_value!(u16);
-impl_into_active_value!(u32);
-impl_into_active_value!(u64);
-impl_into_active_value!(f32);
-impl_into_active_value!(f64);
-impl_into_active_value!(&'static str);
-impl_into_active_value!(String);
-impl_into_active_value!(Vec<u8>);
-
-#[cfg(feature = "with-json")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-json")))]
-impl_into_active_value!(crate::prelude::Json);
-
-#[cfg(feature = "with-chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::Date);
-
-#[cfg(feature = "with-chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::Time);
-
-#[cfg(feature = "with-chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::DateTime);
-
-#[cfg(feature = "with-chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::DateTimeWithTimeZone);
-
-#[cfg(feature = "with-chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::DateTimeUtc);
-
-#[cfg(feature = "with-chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::DateTimeLocal);
-
-#[cfg(feature = "with-rust_decimal")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-rust_decimal")))]
-impl_into_active_value!(crate::prelude::Decimal);
-
-#[cfg(feature = "with-uuid")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-uuid")))]
-impl_into_active_value!(crate::prelude::Uuid);
-
-#[cfg(feature = "with-time")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
-impl_into_active_value!(crate::prelude::TimeDate);
-
-#[cfg(feature = "with-time")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
-impl_into_active_value!(crate::prelude::TimeTime);
-
-#[cfg(feature = "with-time")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
-impl_into_active_value!(crate::prelude::TimeDateTime);
-
-#[cfg(feature = "with-time")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
-impl_into_active_value!(crate::prelude::TimeDateTimeWithTimeZone);
-
-impl<V> Default for ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    /// Create an [ActiveValue::NotSet]
-    fn default() -> Self {
-        Self::NotSet
-    }
-}
-
-impl<V> ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    /// Create an [ActiveValue::Set]
-    pub fn set(value: V) -> Self {
-        Self::Set(value)
-    }
-
-    /// Check if the [ActiveValue] is [ActiveValue::Set]
-    pub fn is_set(&self) -> bool {
-        matches!(self, Self::Set(_))
-    }
-
-    /// Create an [ActiveValue::Unchanged]
-    pub fn unchanged(value: V) -> Self {
-        Self::Unchanged(value)
-    }
-
-    /// Check if the [ActiveValue] is [ActiveValue::Unchanged]
-    pub fn is_unchanged(&self) -> bool {
-        matches!(self, Self::Unchanged(_))
-    }
-
-    /// Create an [ActiveValue::NotSet]
-    pub fn not_set() -> Self {
-        Self::default()
-    }
-
-    /// Check if the [ActiveValue] is [ActiveValue::NotSet]
-    pub fn is_not_set(&self) -> bool {
-        matches!(self, Self::NotSet)
-    }
-
-    /// Get the mutable value an [ActiveValue]
-    /// also setting itself to [ActiveValue::NotSet]
-    pub fn take(&mut self) -> Option<V> {
-        match std::mem::take(self) {
-            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value),
-            ActiveValue::NotSet => None,
+        if !to_delete.is_empty() {
+            J::delete_many()
+                .filter_by_value_tuples(&to_delete, db.get_database_backend())
+                .exec(db)
+                .await?;
         }
     }
 
-    /// Get an owned value of the [ActiveValue]
-    ///
-    /// # Panics
-    ///
-    /// Panics if it is [ActiveValue::NotSet]
-    pub fn unwrap(self) -> V {
-        match self {
-            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
-            ActiveValue::NotSet => panic!("Cannot unwrap ActiveValue::NotSet"),
-        }
+    if !via_models.is_empty() {
+        // insert new junctions
+        J::insert_many(via_models)
+            .on_conflict_do_nothing()
+            .exec(db)
+            .await?;
     }
 
-    /// Check is a [Value] exists or not
-    pub fn into_value(self) -> Option<Value> {
-        match self {
-            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value.into()),
-            ActiveValue::NotSet => None,
-        }
-    }
-
-    /// Wrap the [Value] into a `ActiveValue<Value>`
-    pub fn into_wrapped_value(self) -> ActiveValue<Value> {
-        match self {
-            Self::Set(value) => ActiveValue::set(value.into()),
-            Self::Unchanged(value) => ActiveValue::unchanged(value.into()),
-            Self::NotSet => ActiveValue::not_set(),
-        }
-    }
-
-    /// Reset the value from [ActiveValue::Unchanged] to [ActiveValue::Set],
-    /// leaving [ActiveValue::NotSet] untouched.
-    pub fn reset(&mut self) {
-        *self = match self.take() {
-            Some(value) => ActiveValue::Set(value),
-            None => ActiveValue::NotSet,
-        };
-    }
-}
-
-impl<V> std::convert::AsRef<V> for ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    /// # Panics
-    ///
-    /// Panics if it is [ActiveValue::NotSet]
-    fn as_ref(&self) -> &V {
-        match self {
-            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
-            ActiveValue::NotSet => panic!("Cannot borrow ActiveValue::NotSet"),
-        }
-    }
-}
-
-impl<V> PartialEq for ActiveValue<V>
-where
-    V: Into<Value> + std::cmp::PartialEq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (ActiveValue::Set(l), ActiveValue::Set(r)) => l == r,
-            (ActiveValue::Unchanged(l), ActiveValue::Unchanged(r)) => l == r,
-            (ActiveValue::NotSet, ActiveValue::NotSet) => true,
-            _ => false,
-        }
-    }
-}
-
-impl<V> From<ActiveValue<V>> for ActiveValue<Option<V>>
-where
-    V: Into<Value> + Nullable,
-{
-    fn from(value: ActiveValue<V>) -> Self {
-        match value {
-            ActiveValue::Set(value) => ActiveValue::set(Some(value)),
-            ActiveValue::Unchanged(value) => ActiveValue::unchanged(Some(value)),
-            ActiveValue::NotSet => ActiveValue::not_set(),
-        }
-    }
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{entity::*, tests_cfg::*, DbErr};
+    use crate::{DbErr, entity::*, tests_cfg::*};
     use pretty_assertions::assert_eq;
 
     #[cfg(feature = "with-json")]
@@ -935,19 +1345,101 @@ mod tests {
     #[test]
     #[cfg(feature = "macros")]
     fn test_derive_into_active_model_2() {
-        mod my_fruit {
-            pub use super::fruit::*;
-            use crate as sea_orm;
-            use crate::entity::prelude::*;
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
 
-            #[derive(DeriveIntoActiveModel)]
-            pub struct UpdateFruit {
-                pub cake_id: Option<Option<i32>>,
-            }
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel")]
+        struct RequiredFruitName {
+            name: String,
         }
 
         assert_eq!(
-            my_fruit::UpdateFruit {
+            RequiredFruitName {
+                name: "Apple Pie".to_owned(),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple Pie".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel")]
+        struct OptionalFruitName {
+            name: Option<String>,
+        }
+
+        assert_eq!(
+            OptionalFruitName {
+                name: Some("Apple Pie".to_owned()),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple Pie".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+
+        assert_eq!(
+            OptionalFruitName { name: None }.into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: NotSet,
+                cake_id: NotSet,
+            }
+        );
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "<fruit::Entity as EntityTrait>::ActiveModel")]
+        struct RequiredAndNotNullFruitCake {
+            cake_id: i32,
+        }
+
+        assert_eq!(
+            RequiredAndNotNullFruitCake { cake_id: 1 }.into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: NotSet,
+                cake_id: Set(Some(1)),
+            }
+        );
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "<fruit::Entity as EntityTrait>::ActiveModel")]
+        struct OptionalAndNotNullFruitCake {
+            cake_id: Option<i32>,
+        }
+
+        assert_eq!(
+            OptionalAndNotNullFruitCake { cake_id: Some(1) }.into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: NotSet,
+                cake_id: Set(Some(1)),
+            }
+        );
+
+        assert_eq!(
+            OptionalAndNotNullFruitCake { cake_id: None }.into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: NotSet,
+                cake_id: NotSet,
+            }
+        );
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "<fruit::Entity as EntityTrait>::ActiveModel")]
+        struct OptionalAndNullableFruitCake {
+            cake_id: Option<Option<i32>>,
+        }
+
+        assert_eq!(
+            OptionalAndNullableFruitCake {
                 cake_id: Some(Some(1)),
             }
             .into_active_model(),
@@ -959,7 +1451,7 @@ mod tests {
         );
 
         assert_eq!(
-            my_fruit::UpdateFruit {
+            OptionalAndNullableFruitCake {
                 cake_id: Some(None),
             }
             .into_active_model(),
@@ -971,11 +1463,492 @@ mod tests {
         );
 
         assert_eq!(
-            my_fruit::UpdateFruit { cake_id: None }.into_active_model(),
+            OptionalAndNullableFruitCake { cake_id: None }.into_active_model(),
             fruit::ActiveModel {
                 id: NotSet,
                 name: NotSet,
                 cake_id: NotSet,
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_set_single() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel", set(cake_id = "None"))]
+        struct NewFruit {
+            name: String,
+        }
+
+        assert_eq!(
+            NewFruit {
+                name: "Apple".to_owned(),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple".to_owned()),
+                cake_id: Set(None),
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_set_multiple() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(
+            active_model = "fruit::ActiveModel",
+            set(name = "String::from(\"cherry\")", cake_id = "None")
+        )]
+        struct IdOnlyFruit {
+            id: i32,
+        }
+        assert_eq!(
+            IdOnlyFruit { id: 1 }.into_active_model(),
+            fruit::ActiveModel {
+                id: Set(1),
+                name: Set("cherry".to_owned()),
+                cake_id: Set(None),
+            }
+        );
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(
+            active_model = "fruit::ActiveModel",
+            set(name = "String::from(\"cherry\")"),
+            set(cake_id = "None")
+        )]
+        struct IdOnlyFruit2 {
+            id: i32,
+        }
+        assert_eq!(
+            IdOnlyFruit2 { id: 1 }.into_active_model(),
+            fruit::ActiveModel {
+                id: Set(1),
+                name: Set("cherry".to_owned()),
+                cake_id: Set(None),
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_set_separate_attrs() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(
+            active_model = "fruit::ActiveModel",
+            set(name = "String::from(\"cherry\")")
+        )]
+        #[sea_orm(set(cake_id = "None"))]
+        struct IdOnlyFruit {
+            id: i32,
+        }
+
+        assert_eq!(
+            IdOnlyFruit { id: 1 }.into_active_model(),
+            fruit::ActiveModel {
+                id: Set(1),
+                name: Set("cherry".to_owned()),
+                cake_id: Set(None),
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_ignore() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel")]
+        struct NewFruit {
+            name: String,
+            cake_id: i32,
+            #[sea_orm(ignore)]
+            _extra: String,
+        }
+
+        assert_eq!(
+            NewFruit {
+                name: "Apple".to_owned(),
+                cake_id: 1,
+                _extra: "ignored".to_owned(),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple".to_owned()),
+                cake_id: Set(Some(1)),
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_skip() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel")]
+        struct NewFruit {
+            name: String,
+            #[sea_orm(skip)]
+            _extra: String,
+        }
+
+        assert_eq!(
+            NewFruit {
+                name: "Apple".to_owned(),
+                _extra: "skipped".to_owned(),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_set_and_ignore() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel", set(cake_id = "Some(42)"))]
+        struct NewFruit {
+            name: String,
+            #[sea_orm(ignore)]
+            _extra: String,
+        }
+
+        assert_eq!(
+            NewFruit {
+                name: "Apple".to_owned(),
+                _extra: "ignored".to_owned(),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple".to_owned()),
+                cake_id: Set(Some(42)),
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_foreign_ignore() {
+        use serde::{Deserialize, Serialize};
+
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel, Serialize, Deserialize)]
+        #[sea_orm(active_model = "fruit::ActiveModel")]
+        struct NewFruit {
+            #[sea_orm(ignore)]
+            id: i32,
+            name: String,
+            #[serde(skip)]
+            cake_id: Option<i32>,
+        }
+
+        assert_eq!(
+            NewFruit {
+                id: 1.to_owned(),
+                name: "Apple".to_owned(),
+                cake_id: Some(42)
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple".to_owned()),
+                cake_id: Set(Some(42)),
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_exhaustive() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel", exhaustive, set(cake_id = "None"))]
+        struct FullFruit {
+            id: i32,
+            name: String,
+        }
+
+        assert_eq!(
+            FullFruit {
+                id: 1,
+                name: "Apple".to_owned(),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Apple".to_owned()),
+                cake_id: Set(None),
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_multiple_sets() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        const DEFULT_CAKE_ID: i32 = 1;
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(
+            active_model = "fruit::ActiveModel",
+            exhaustive,
+            set(cake_id = "Some(DEFULT_CAKE_ID)")
+        )]
+        struct FullFruit {
+            id: i32,
+            name: String,
+        }
+
+        assert_eq!(
+            FullFruit {
+                id: 1,
+                name: "Apple".to_owned(),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Apple".to_owned()),
+                cake_id: Set(Some(1)),
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_field_empty_default() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel")]
+        struct NewFruit {
+            #[sea_orm(default)]
+            name: Option<String>,
+        }
+
+        // Some(v) -> Set(v)
+        assert_eq!(
+            NewFruit {
+                name: Some("Apple".to_owned()),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+
+        // None -> Set(fallback)
+        assert_eq!(
+            NewFruit { name: None }.into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_field_custom_option() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+        mod foreign_crate {
+            #[derive(Debug, Clone, PartialEq, Eq)]
+            pub enum CustomOption<T> {
+                None,
+                Some(T),
+            }
+
+            impl From<CustomOption<String>> for Option<String> {
+                fn from(option: CustomOption<String>) -> Self {
+                    match option {
+                        CustomOption::None => Option::None,
+                        CustomOption::Some(value) => value.into(),
+                    }
+                }
+            }
+        }
+        use foreign_crate::CustomOption;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel")]
+        struct NewFruit {
+            #[sea_orm(default)]
+            name: CustomOption<String>,
+        }
+
+        // Some(v) -> Set(v)
+        assert_eq!(
+            NewFruit {
+                name: CustomOption::Some("Apple".to_owned()),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+
+        // None -> Set(fallback)
+        assert_eq!(
+            NewFruit {
+                name: CustomOption::None
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_field_default_some() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel")]
+        struct NewFruit {
+            #[sea_orm(default = "String::from(\"Unnamed\")")]
+            name: Option<String>,
+        }
+
+        // Some(v) -> Set(v)
+        assert_eq!(
+            NewFruit {
+                name: Some("Apple".to_owned()),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+
+        // None -> Set(fallback)
+        assert_eq!(
+            NewFruit { name: None }.into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Unnamed".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_field_default_with_set() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel", set(cake_id = "Some(99)"))]
+        struct NewFruit {
+            #[sea_orm(default = "String::from(\"Unnamed\")")]
+            name: Option<String>,
+            #[sea_orm(ignore)]
+            _extra: String,
+        }
+
+        assert_eq!(
+            NewFruit {
+                name: Some("Apple".to_owned()),
+                _extra: "ignored".to_owned(),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple".to_owned()),
+                cake_id: Set(Some(99)),
+            }
+        );
+
+        assert_eq!(
+            NewFruit {
+                name: None,
+                _extra: "ignored".to_owned(),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Unnamed".to_owned()),
+                cake_id: Set(Some(99)),
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_field_default_exhaustive() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel", exhaustive, set(cake_id = "None"))]
+        struct NewFruit {
+            id: i32,
+            #[sea_orm(default = "String::from(\"Unnamed\")")]
+            name: Option<String>,
+        }
+
+        assert_eq!(
+            NewFruit {
+                id: 1,
+                name: Some("Apple".to_owned()),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Apple".to_owned()),
+                cake_id: Set(None),
+            }
+        );
+
+        assert_eq!(
+            NewFruit { id: 2, name: None }.into_active_model(),
+            fruit::ActiveModel {
+                id: Set(2),
+                name: Set("Unnamed".to_owned()),
+                cake_id: Set(None),
             }
         );
     }
@@ -1128,16 +2101,53 @@ mod tests {
 
     #[test]
     #[cfg(feature = "with-json")]
-    #[should_panic(
-        expected = r#"called `Result::unwrap()` on an `Err` value: Json("missing field `id`")"#
-    )]
     fn test_active_model_set_from_json_1() {
-        let mut cake: cake::ActiveModel = Default::default();
+        assert_eq!(
+            cake::ActiveModel::from_json(json!({
+                "id": 1,
+                "name": "Apple Pie",
+            }))
+            .unwrap(),
+            cake::ActiveModel {
+                id: Set(1),
+                name: Set("Apple Pie".to_owned()),
+            }
+        );
 
+        assert_eq!(
+            cake::ActiveModel::from_json(json!({
+                "id": 1,
+            }))
+            .unwrap(),
+            cake::ActiveModel {
+                id: Set(1),
+                name: NotSet,
+            }
+        );
+
+        assert_eq!(
+            cake::ActiveModel::from_json(json!({
+                "name": "Apple Pie",
+            }))
+            .unwrap(),
+            cake::ActiveModel {
+                id: NotSet,
+                name: Set("Apple Pie".to_owned()),
+            }
+        );
+
+        let mut cake: cake::ActiveModel = Default::default();
         cake.set_from_json(json!({
             "name": "Apple Pie",
         }))
         .unwrap();
+        assert_eq!(
+            cake,
+            cake::ActiveModel {
+                id: NotSet,
+                name: Set("Apple Pie".to_owned()),
+            }
+        );
     }
 
     #[test]
@@ -1304,6 +2314,14 @@ mod tests {
 
         fruit.set(fruit::Column::Name, "apple".into());
         assert!(fruit.is_changed());
+
+        let mut fruit = fruit::Model {
+            id: 1,
+            name: "".into(),
+            cake_id: None,
+        };
+        fruit.set("name".parse().unwrap(), "orange".into());
+        assert_eq!(fruit.name, "orange");
     }
 
     #[test]
@@ -1432,5 +2450,76 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn test_active_model_default_values() {
+        assert_eq!(
+            fruit::ActiveModel::default_values(),
+            fruit::ActiveModel {
+                id: Set(0),
+                name: Set("".into()),
+                cake_id: Set(None),
+            },
+        );
+
+        assert_eq!(
+            lunch_set::ActiveModel::default_values(),
+            lunch_set::ActiveModel {
+                id: Set(0),
+                name: Set("".into()),
+                tea: NotSet,
+            },
+        );
+    }
+
+    #[test]
+    fn test_active_model_set_parent_key() {
+        let mut fruit = fruit::Model {
+            id: 2,
+            name: "F".into(),
+            cake_id: None,
+        }
+        .into_active_model();
+
+        let cake = cake::Model {
+            id: 4,
+            name: "C".into(),
+        }
+        .into_active_model();
+
+        fruit.set_parent_key(&cake).unwrap();
+
+        assert_eq!(
+            fruit,
+            fruit::ActiveModel {
+                id: Unchanged(2),
+                name: Unchanged("F".into()),
+                cake_id: Set(Some(4)),
+            }
+        );
+
+        assert!(fruit.clear_parent_key::<cake::Entity>().unwrap());
+
+        assert_eq!(
+            fruit,
+            fruit::ActiveModel {
+                id: Unchanged(2),
+                name: Unchanged("F".into()),
+                cake_id: Set(None),
+            }
+        );
+
+        let mut cake_filling = cake_filling::ActiveModel::new();
+
+        cake_filling.set_parent_key(&cake).unwrap();
+
+        assert_eq!(
+            cake_filling,
+            cake_filling::ActiveModel {
+                cake_id: Set(4),
+                filling_id: NotSet,
+            }
+        );
     }
 }

@@ -1,4 +1,4 @@
-use sea_orm_migration::prelude::*;
+use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -9,23 +9,28 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Cake::Table)
-                    .col(
-                        ColumnDef::new(Cake::Id)
-                            .integer()
-                            .not_null()
-                            .auto_increment()
-                            .primary_key(),
-                    )
-                    .col(ColumnDef::new(Cake::Name).string().not_null())
+                    .table("cake")
+                    .col(pk_auto("id"))
+                    .col(string("name"))
                     .to_owned(),
             )
-            .await
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("cake_name_index")
+                    .table("cake")
+                    .col("name")
+                    .to_owned(),
+            )
+            .await?;
+        Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Cake::Table).to_owned())
+            .drop_table(Table::drop().table("cake").to_owned())
             .await?;
 
         if std::env::var_os("ABORT_MIGRATION").eq(&Some("YES".into())) {
@@ -36,12 +41,4 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-}
-
-/// Learn more at https://docs.rs/sea-query#iden
-#[derive(Iden)]
-pub enum Cake {
-    Table,
-    Id,
-    Name,
 }

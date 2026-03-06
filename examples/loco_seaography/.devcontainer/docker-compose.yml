@@ -1,0 +1,50 @@
+version: "3"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: sleep infinity
+    networks:
+      - db
+      - redis
+      - mailer
+    volumes:
+      - ../..:/workspaces:cached
+    env_file:
+      - .env
+  db:
+    image: postgres:15.3-alpine
+    restart: unless-stopped
+    ports:
+      - 5432:5432
+    networks:
+      - db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    env_file:
+      - .env
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    ports:
+      - 6379:6379
+    networks:
+      - redis
+  mailer:
+    image: mailtutan/mailtutan:latest
+    restart: unless-stopped
+    ports:
+      - 1080:1080
+      - 1025:1025
+    networks:
+      - mailer
+
+volumes:
+  postgres-data:
+
+networks:
+  db:
+  redis:
+  mailer:

@@ -1,4 +1,4 @@
-use core::clone_a_model;
+use service::clone_a_model;
 
 use sea_orm::tests_cfg::cake;
 

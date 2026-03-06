@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 
-use super::attributes::{derive_attr, field_attr};
+use super::attributes::{derive_attr, relation_attr};
 
 enum Error {
     InputNotEnum,
@@ -46,18 +46,31 @@ impl DeriveRelation {
         let entity_ident = &self.entity_ident;
         let no_relation_def_msg = format!("No RelationDef for {ident}");
 
+        fn lit_str(lit: &syn::Lit) -> syn::Result<String> {
+            match lit {
+                syn::Lit::Str(lit_str) => Ok(lit_str.value()),
+                _ => Err(syn::Error::new_spanned(lit, "attribute must be a string")),
+            }
+        }
+
+        fn parse_lit_str(lit: &syn::Lit) -> syn::Result<TokenStream> {
+            lit_str(lit)?
+                .parse()
+                .map_err(|_| syn::Error::new_spanned(lit, "attribute not valid"))
+        }
+
         let variant_relation_defs: Vec<TokenStream> = self
             .variants
             .iter()
             .map(|variant| {
                 let variant_ident = &variant.ident;
-                let attr = field_attr::SeaOrm::from_attributes(&variant.attrs)?;
+                let attr = relation_attr::SeaOrm::from_attributes(&variant.attrs)?;
                 let mut relation_type = quote! { error };
                 let related_to = if attr.belongs_to.is_some() {
                     relation_type = quote! { belongs_to };
                     attr.belongs_to
                         .as_ref()
-                        .map(Self::parse_lit_string)
+                        .map(parse_lit_str)
                         .ok_or_else(|| {
                             syn::Error::new_spanned(variant, "Missing value for 'belongs_to'")
                         })
@@ -65,7 +78,7 @@ impl DeriveRelation {
                     relation_type = quote! { has_one };
                     attr.has_one
                         .as_ref()
-                        .map(Self::parse_lit_string)
+                        .map(parse_lit_str)
                         .ok_or_else(|| {
                             syn::Error::new_spanned(variant, "Missing value for 'has_one'")
                         })
@@ -73,7 +86,7 @@ impl DeriveRelation {
                     relation_type = quote! { has_many };
                     attr.has_many
                         .as_ref()
-                        .map(Self::parse_lit_string)
+                        .map(parse_lit_str)
                         .ok_or_else(|| {
                             syn::Error::new_spanned(variant, "Missing value for 'has_many'")
                         })
@@ -84,15 +97,27 @@ impl DeriveRelation {
                     ))
                 }??;
 
-                let mut result = quote!(
-                    Self::#variant_ident => #entity_ident::#relation_type(#related_to)
-                );
+                let mut result = if let (Some(has_many), Some(via)) = (&attr.has_many, &attr.via_rel) {
+                    let has_many = lit_str(has_many)?;
+                    let via: TokenStream = if has_many == "Entity" {
+                        lit_str(via)?
+                    } else {
+                        format!("{}::{}", has_many.trim_end_matches("::Entity"), lit_str(via)?)
+                    }.parse().unwrap();
+                    quote!(
+                        Self::#variant_ident => #entity_ident::has_many_via(#related_to, #via)
+                    )
+                } else {
+                    quote!(
+                        Self::#variant_ident => #entity_ident::#relation_type(#related_to)
+                    )
+                };
 
                 if attr.from.is_some() {
                     let from =
                         attr.from
                             .as_ref()
-                            .map(Self::parse_lit_string)
+                            .map(parse_lit_str)
                             .ok_or_else(|| {
                                 syn::Error::new_spanned(variant, "Missing value for 'from'")
                             })??;
@@ -105,7 +130,7 @@ impl DeriveRelation {
                     let to = attr
                         .to
                         .as_ref()
-                        .map(Self::parse_lit_string)
+                        .map(parse_lit_str)
                         .ok_or_else(|| {
                             syn::Error::new_spanned(variant, "Missing value for 'to'")
                         })??;
@@ -118,7 +143,7 @@ impl DeriveRelation {
                     let on_update = attr
                         .on_update
                         .as_ref()
-                        .map(Self::parse_lit_string)
+                        .map(parse_lit_str)
                         .ok_or_else(|| {
                             syn::Error::new_spanned(variant, "Missing value for 'on_update'")
                         })??;
@@ -129,7 +154,7 @@ impl DeriveRelation {
                     let on_delete = attr
                         .on_delete
                         .as_ref()
-                        .map(Self::parse_lit_string)
+                        .map(parse_lit_str)
                         .ok_or_else(|| {
                             syn::Error::new_spanned(variant, "Missing value for 'on_delete'")
                         })??;
@@ -140,7 +165,7 @@ impl DeriveRelation {
                     let on_condition = attr
                         .on_condition
                         .as_ref()
-                        .map(Self::parse_lit_string)
+                        .map(parse_lit_str)
                         .ok_or_else(|| {
                             syn::Error::new_spanned(variant, "Missing value for 'on_condition'")
                         })??;
@@ -161,6 +186,10 @@ impl DeriveRelation {
                             syn::Error::new_spanned(variant, "Missing value for 'fk_name'")
                         })??;
                     result = quote! { #result.fk_name(#fk_name) };
+                }
+
+                if attr.skip_fk.is_some() {
+                    result = quote! { #result.skip_fk() };
                 }
 
                 if attr.condition_type.is_some() {
@@ -202,16 +231,6 @@ impl DeriveRelation {
                 }
             }
         ))
-    }
-
-    fn parse_lit_string(lit: &syn::Lit) -> syn::Result<TokenStream> {
-        match lit {
-            syn::Lit::Str(lit_str) => lit_str
-                .value()
-                .parse()
-                .map_err(|_| syn::Error::new_spanned(lit, "attribute not valid")),
-            _ => Err(syn::Error::new_spanned(lit, "attribute must be a string")),
-        }
     }
 }
 

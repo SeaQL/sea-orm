@@ -14,9 +14,9 @@ run client using
 cargo run --bin client
 ```
 
-Run mock test on the core logic crate:
+Run tests:
 
 ```bash
-cd core
-cargo test --features mock
+cd api
+cargo test
 ```

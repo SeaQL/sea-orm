@@ -2,13 +2,18 @@
 # A separate workspace
 
 [package]
-name = "sea-orm-issues-86"
-version = "0.1.0"
-edition = "2021"
-publish = false
+edition      = "2024"
+name         = "sea-orm-issues-86"
+publish      = false
+rust-version = "1.85.0"
+version      = "0.1.0"
 
 [dependencies]
-sea-orm = { path = "../../", features = [ "sqlx-all", "runtime-tokio-native-tls", "debug-print" ] }
+sea-orm = { path = "../../", features = [
+    "sqlx-all",
+    "runtime-tokio-native-tls",
+    "debug-print",
+] }
 tokio = { version = "1", features = ["full"] }
-tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }

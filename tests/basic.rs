@@ -1,13 +1,17 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
-pub use sea_orm::{entity::*, error::*, query::*, sea_query, tests_cfg::*, Database, DbConn};
+pub use sea_orm::{Database, DbConn, entity::*, error::*, query::*, sea_query, tests_cfg::*};
 
-// cargo test --features sqlx-sqlite,runtime-async-std-native-tls --test basic
-// export DATABASE_URL=mysql://root:root@localhost:3306
-// export DATABASE_URL=sqlite::memory:
+// DATABASE_URL=sqlite::memory: cargo test --features rusqlite --test basic
+// DATABASE_URL=sqlite::memory: cargo test --features sqlx-sqlite,runtime-tokio --test basic
 #[sea_orm_macros::test]
 #[cfg(feature = "sqlx-sqlite")]
 async fn main() -> Result<(), DbErr> {
+    dotenv::from_filename(".env.local").ok();
+    dotenv::from_filename(".env").ok();
+
     let base_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_owned());
 
     let db: DbConn = Database::connect(&base_url).await?;
@@ -33,8 +37,7 @@ async fn setup_schema(db: &DbConn) -> Result<(), DbErr> {
         .col(ColumnDef::new(cake::Column::Name).string())
         .to_owned();
 
-    let builder = db.get_database_backend();
-    let result = db.execute(builder.build(&stmt)).await?;
+    let result = db.execute(&stmt).await?;
     println!("Create table cake: {result:?}");
 
     Ok(())

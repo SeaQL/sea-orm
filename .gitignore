@@ -1,6 +1,9 @@
 target
+firedbg
 Cargo.lock
 *.sublime*
 .vscode
 .idea/*
 */.idea/*
+.env.local
+.DS_Store

@@ -1,17 +1,24 @@
-use crate::{util::escape_rust_keyword, DateTimeCrate};
+use crate::{BigIntegerType, DateTimeCrate, util::escape_rust_keyword};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use sea_query::{BlobSize, ColumnDef, ColumnSpec, ColumnType};
+use sea_query::{ColumnDef, ColumnType, StringLen};
 use std::fmt::Write as FmtWrite;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct Column {
     pub(crate) name: String,
     pub(crate) col_type: ColumnType,
     pub(crate) auto_increment: bool,
     pub(crate) not_null: bool,
     pub(crate) unique: bool,
+    pub(crate) unique_key: Option<String>,
+}
+
+#[derive(Debug, Default, Copy, Clone)]
+pub struct ColumnOption {
+    pub(crate) date_time_crate: DateTimeCrate,
+    pub(crate) big_integer_type: BigIntegerType,
 }
 
 impl Column {
@@ -27,8 +34,8 @@ impl Column {
         self.name.to_snake_case() == self.name
     }
 
-    pub fn get_rs_type(&self, date_time_crate: &DateTimeCrate) -> TokenStream {
-        fn write_rs_type(col_type: &ColumnType, date_time_crate: &DateTimeCrate) -> String {
+    pub fn get_rs_type(&self, opt: &ColumnOption) -> TokenStream {
+        fn write_rs_type(col_type: &ColumnType, opt: &ColumnOption) -> String {
             #[allow(unreachable_patterns)]
             match col_type {
                 ColumnType::Char(_)
@@ -38,7 +45,11 @@ impl Column {
                 ColumnType::TinyInteger => "i8".to_owned(),
                 ColumnType::SmallInteger => "i16".to_owned(),
                 ColumnType::Integer => "i32".to_owned(),
-                ColumnType::BigInteger => "i64".to_owned(),
+                ColumnType::BigInteger => match opt.big_integer_type {
+                    BigIntegerType::I64 => "i64",
+                    BigIntegerType::I32 => "i32",
+                }
+                .to_owned(),
                 ColumnType::TinyUnsigned => "u8".to_owned(),
                 ColumnType::SmallUnsigned => "u16".to_owned(),
                 ColumnType::Unsigned => "u32".to_owned(),
@@ -46,41 +57,48 @@ impl Column {
                 ColumnType::Float => "f32".to_owned(),
                 ColumnType::Double => "f64".to_owned(),
                 ColumnType::Json | ColumnType::JsonBinary => "Json".to_owned(),
-                ColumnType::Date => match date_time_crate {
+                ColumnType::Date => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "Date".to_owned(),
                     DateTimeCrate::Time => "TimeDate".to_owned(),
                 },
-                ColumnType::Time => match date_time_crate {
+                ColumnType::Time => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "Time".to_owned(),
                     DateTimeCrate::Time => "TimeTime".to_owned(),
                 },
-                ColumnType::DateTime => match date_time_crate {
+                ColumnType::DateTime => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "DateTime".to_owned(),
                     DateTimeCrate::Time => "TimeDateTime".to_owned(),
                 },
-                ColumnType::Timestamp => match date_time_crate {
+                ColumnType::Timestamp => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "DateTimeUtc".to_owned(),
-                    // ColumnType::Timpestamp(_) => time::PrimitiveDateTime: https://docs.rs/sqlx/0.3.5/sqlx/postgres/types/index.html#time
                     DateTimeCrate::Time => "TimeDateTime".to_owned(),
                 },
-                ColumnType::TimestampWithTimeZone => match date_time_crate {
+                ColumnType::TimestampWithTimeZone => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "DateTimeWithTimeZone".to_owned(),
                     DateTimeCrate::Time => "TimeDateTimeWithTimeZone".to_owned(),
                 },
                 ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal".to_owned(),
                 ColumnType::Uuid => "Uuid".to_owned(),
-                ColumnType::Binary(_) | ColumnType::VarBinary(_) => "Vec<u8>".to_owned(),
+                ColumnType::Binary(_) | ColumnType::VarBinary(_) | ColumnType::Blob => {
+                    "Vec<u8>".to_owned()
+                }
                 ColumnType::Boolean => "bool".to_owned(),
                 ColumnType::Enum { name, .. } => name.to_string().to_upper_camel_case(),
                 ColumnType::Array(column_type) => {
-                    format!("Vec<{}>", write_rs_type(column_type, date_time_crate))
+                    format!("Vec<{}>", write_rs_type(column_type, opt))
+                }
+                ColumnType::Vector(_) => "PgVector".to_owned(),
+                ColumnType::Bit(None | Some(1)) => "bool".to_owned(),
+                ColumnType::Bit(_) | ColumnType::VarBit(_) => "Vec<u8>".to_owned(),
+                ColumnType::Year => "i32".to_owned(),
+                ColumnType::Cidr | ColumnType::Inet => "IpNetwork".to_owned(),
+                ColumnType::Interval(_, _) | ColumnType::MacAddr | ColumnType::LTree => {
+                    "String".to_owned()
                 }
                 _ => unimplemented!(),
             }
         }
-        let ident: TokenStream = write_rs_type(&self.col_type, date_time_crate)
-            .parse()
-            .unwrap();
+        let ident: TokenStream = write_rs_type(&self.col_type, opt).parse().unwrap();
         match self.not_null {
             true => quote! { #ident },
             false => quote! { Option<#ident> },
@@ -95,15 +113,18 @@ impl Column {
             ColumnType::Money(Some((p, s))) => Some(format!("Money(Some({p}, {s}))")),
             ColumnType::Text => Some("Text".to_owned()),
             ColumnType::JsonBinary => Some("JsonBinary".to_owned()),
-            ColumnType::Custom(iden) => Some(format!("custom(\"{}\")", iden.to_string())),
-            ColumnType::Binary(BlobSize::Blob(None)) => Some("Binary(BlobSize::Blob(None))".into()),
-            ColumnType::Binary(BlobSize::Blob(Some(s))) => {
-                Some(format!("Binary(BlobSize::Blob(Some({s})))"))
+            ColumnType::Custom(iden) => {
+                let ty = format!("custom(\"{iden}\")");
+                return Some(quote! ( ignore, column_type = #ty, select_as = "text" ));
             }
-            ColumnType::Binary(BlobSize::Tiny) => Some("Binary(BlobSize::Tiny)".into()),
-            ColumnType::Binary(BlobSize::Medium) => Some("Binary(BlobSize::Medium)".into()),
-            ColumnType::Binary(BlobSize::Long) => Some("Binary(BlobSize::Long)".into()),
-            ColumnType::VarBinary(s) => Some(format!("VarBinary({s})")),
+            ColumnType::Binary(s) => Some(format!("Binary({s})")),
+            ColumnType::VarBinary(s) => match s {
+                StringLen::N(s) => Some(format!("VarBinary(StringLen::N({s}))")),
+                StringLen::None => Some("VarBinary(StringLen::None)".to_owned()),
+                StringLen::Max => Some("VarBinary(StringLen::Max)".to_owned()),
+            },
+            ColumnType::Blob => Some("Blob".to_owned()),
+            ColumnType::Cidr => Some("Cidr".to_owned()),
             _ => None,
         };
         col_type.map(|ty| quote! { column_type = #ty })
@@ -117,8 +138,9 @@ impl Column {
                     None => quote! { ColumnType::Char(None) },
                 },
                 ColumnType::String(s) => match s {
-                    Some(s) => quote! { ColumnType::String(Some(#s)) },
-                    None => quote! { ColumnType::String(None) },
+                    StringLen::N(s) => quote! { ColumnType::String(StringLen::N(#s)) },
+                    StringLen::None => quote! { ColumnType::String(StringLen::None) },
+                    StringLen::Max => quote! { ColumnType::String(StringLen::Max) },
                 },
                 ColumnType::Text => quote! { ColumnType::Text },
                 ColumnType::TinyInteger => quote! { ColumnType::TinyInteger },
@@ -142,24 +164,15 @@ impl Column {
                 }
                 ColumnType::Time => quote! { ColumnType::Time },
                 ColumnType::Date => quote! { ColumnType::Date },
-                ColumnType::Binary(BlobSize::Blob(None)) => {
-                    quote! { ColumnType::Binary(BlobSize::Blob(None)) }
+                ColumnType::Binary(s) => {
+                    quote! { ColumnType::Binary(#s) }
                 }
-                ColumnType::Binary(BlobSize::Blob(Some(s))) => {
-                    quote! { ColumnType::Binary(BlobSize::Blob(Some(#s))) }
-                }
-                ColumnType::Binary(BlobSize::Tiny) => {
-                    quote! { ColumnType::Binary(BlobSize::Tiny) }
-                }
-                ColumnType::Binary(BlobSize::Medium) => {
-                    quote! { ColumnType::Binary(BlobSize::Medium) }
-                }
-                ColumnType::Binary(BlobSize::Long) => {
-                    quote! { ColumnType::Binary(BlobSize::Long) }
-                }
-                ColumnType::VarBinary(s) => {
-                    quote! { ColumnType::VarBinary(#s) }
-                }
+                ColumnType::VarBinary(s) => match s {
+                    StringLen::N(s) => quote! { ColumnType::VarBinary(StringLen::N(#s)) },
+                    StringLen::None => quote! { ColumnType::VarBinary(StringLen::None) },
+                    StringLen::Max => quote! { ColumnType::VarBinary(StringLen::Max) },
+                },
+                ColumnType::Blob => quote! { ColumnType::Blob },
                 ColumnType::Boolean => quote! { ColumnType::Boolean },
                 ColumnType::Money(s) => match s {
                     Some((s1, s2)) => quote! { ColumnType::Money(Some((#s1, #s2))) },
@@ -168,18 +181,28 @@ impl Column {
                 ColumnType::Json => quote! { ColumnType::Json },
                 ColumnType::JsonBinary => quote! { ColumnType::JsonBinary },
                 ColumnType::Uuid => quote! { ColumnType::Uuid },
+                ColumnType::Cidr => quote! { ColumnType::Cidr },
+                ColumnType::Inet => quote! { ColumnType::Inet },
                 ColumnType::Custom(s) => {
                     let s = s.to_string();
                     quote! { ColumnType::custom(#s) }
                 }
                 ColumnType::Enum { name, .. } => {
                     let enum_ident = format_ident!("{}", name.to_string().to_upper_camel_case());
-                    quote! { #enum_ident::db_type() }
+                    quote! {
+                        #enum_ident::db_type()
+                            .get_column_type()
+                            .to_owned()
+                    }
                 }
                 ColumnType::Array(column_type) => {
                     let column_type = write_col_def(column_type);
                     quote! { ColumnType::Array(RcOrArc::new(#column_type)) }
                 }
+                ColumnType::Vector(size) => match size {
+                    Some(size) => quote! { ColumnType::Vector(Some(#size)) },
+                    None => quote! { ColumnType::Vector(None) },
+                },
                 #[allow(unreachable_patterns)]
                 _ => unimplemented!(),
             }
@@ -201,12 +224,9 @@ impl Column {
         col_def
     }
 
-    pub fn get_info(&self, date_time_crate: &DateTimeCrate) -> String {
+    pub fn get_info(&self, opt: &ColumnOption) -> String {
         let mut info = String::new();
-        let type_info = self
-            .get_rs_type(date_time_crate)
-            .to_string()
-            .replace(' ', "");
+        let type_info = self.get_rs_type(opt).to_string().replace(' ', "");
         let col_info = self.col_info();
         write!(
             &mut info,
@@ -249,6 +269,13 @@ impl Column {
             quote! {}
         }
     }
+
+    pub fn get_inner_col_type(&self) -> &ColumnType {
+        match &self.col_type {
+            ColumnType::Array(inner_col_type) => inner_col_type.as_ref(),
+            _ => &self.col_type,
+        }
+    }
 }
 
 impl From<ColumnDef> for Column {
@@ -264,34 +291,43 @@ impl From<&ColumnDef> for Column {
             Some(ty) => ty.clone(),
             None => panic!("ColumnType should not be empty"),
         };
-        let auto_increment = col_def
-            .get_column_spec()
-            .iter()
-            .any(|spec| matches!(spec, ColumnSpec::AutoIncrement));
-        let not_null = col_def
-            .get_column_spec()
-            .iter()
-            .any(|spec| matches!(spec, ColumnSpec::NotNull));
-        let unique = col_def
-            .get_column_spec()
-            .iter()
-            .any(|spec| matches!(spec, ColumnSpec::UniqueKey));
+        let auto_increment = col_def.get_column_spec().auto_increment;
+        let not_null = match col_def.get_column_spec().nullable {
+            Some(nullable) => !nullable,
+            None => false,
+        };
+        let unique = col_def.get_column_spec().unique;
         Self {
             name,
             col_type,
             auto_increment,
             not_null,
             unique,
+            unique_key: None,
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{Column, DateTimeCrate};
+    use crate::{Column, ColumnOption, DateTimeCrate};
     use proc_macro2::TokenStream;
     use quote::quote;
-    use sea_query::{Alias, BlobSize, ColumnDef, ColumnType, SeaRc};
+    use sea_query::{Alias, ColumnDef, ColumnType, SeaRc, StringLen};
+
+    fn date_time_crate_chrono() -> ColumnOption {
+        ColumnOption {
+            date_time_crate: DateTimeCrate::Chrono,
+            big_integer_type: Default::default(),
+        }
+    }
+
+    fn date_time_crate_time() -> ColumnOption {
+        ColumnOption {
+            date_time_crate: DateTimeCrate::Time,
+            big_integer_type: Default::default(),
+        }
+    }
 
     fn setup() -> Vec<Column> {
         macro_rules! make_col {
@@ -302,11 +338,13 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    unique_key: None,
                 }
             };
         }
         vec![
-            make_col!("id", ColumnType::String(Some(255))),
+            make_col!("id", ColumnType::String(StringLen::N(255))),
+            make_col!("id", ColumnType::String(StringLen::None)),
             make_col!(
                 "cake_id",
                 ColumnType::Custom(SeaRc::new(Alias::new("cus_col")))
@@ -321,15 +359,10 @@ mod tests {
             make_col!("CakeFillingId", ColumnType::BigUnsigned),
             make_col!("cake-filling-id", ColumnType::Float),
             make_col!("CAKE_FILLING_ID", ColumnType::Double),
-            make_col!("CAKE-FILLING-ID", ColumnType::Binary(BlobSize::Blob(None))),
-            make_col!(
-                "CAKE-FILLING-ID",
-                ColumnType::Binary(BlobSize::Blob(Some(10)))
-            ),
-            make_col!("CAKE-FILLING-ID", ColumnType::Binary(BlobSize::Tiny)),
-            make_col!("CAKE-FILLING-ID", ColumnType::Binary(BlobSize::Medium)),
-            make_col!("CAKE-FILLING-ID", ColumnType::Binary(BlobSize::Long)),
-            make_col!("CAKE-FILLING-ID", ColumnType::VarBinary(10)),
+            make_col!("CAKE-FILLING-ID", ColumnType::Binary(10)),
+            make_col!("CAKE-FILLING-ID", ColumnType::VarBinary(StringLen::None)),
+            make_col!("CAKE-FILLING-ID", ColumnType::VarBinary(StringLen::N(10))),
+            make_col!("CAKE-FILLING-ID", ColumnType::VarBinary(StringLen::Max)),
             make_col!("CAKE", ColumnType::Boolean),
             make_col!("date", ColumnType::Date),
             make_col!("time", ColumnType::Time),
@@ -344,6 +377,7 @@ mod tests {
         let columns = setup();
         let snack_cases = vec![
             "id",
+            "id",
             "cake_id",
             "cake_id",
             "cake_id",
@@ -351,8 +385,6 @@ mod tests {
             "cake_id",
             "cake_id",
             "cake_id",
-            "cake_filling_id",
-            "cake_filling_id",
             "cake_filling_id",
             "cake_filling_id",
             "cake_filling_id",
@@ -378,6 +410,7 @@ mod tests {
         let columns = setup();
         let camel_cases = vec![
             "Id",
+            "Id",
             "CakeId",
             "CakeId",
             "CakeId",
@@ -385,8 +418,6 @@ mod tests {
             "CakeId",
             "CakeId",
             "CakeId",
-            "CakeFillingId",
-            "CakeFillingId",
             "CakeFillingId",
             "CakeFillingId",
             "CakeFillingId",
@@ -410,8 +441,8 @@ mod tests {
     #[test]
     fn test_get_rs_type_with_chrono() {
         let columns = setup();
-        let chrono_crate = DateTimeCrate::Chrono;
         let rs_types = vec![
+            "String",
             "String",
             "String",
             "i8",
@@ -424,8 +455,6 @@ mod tests {
             "u64",
             "f32",
             "f64",
-            "Vec<u8>",
-            "Vec<u8>",
             "Vec<u8>",
             "Vec<u8>",
             "Vec<u8>",
@@ -442,13 +471,13 @@ mod tests {
 
             col.not_null = true;
             assert_eq!(
-                col.get_rs_type(&chrono_crate).to_string(),
+                col.get_rs_type(&date_time_crate_chrono()).to_string(),
                 quote!(#rs_type).to_string()
             );
 
             col.not_null = false;
             assert_eq!(
-                col.get_rs_type(&chrono_crate).to_string(),
+                col.get_rs_type(&date_time_crate_chrono()).to_string(),
                 quote!(Option<#rs_type>).to_string()
             );
         }
@@ -457,8 +486,8 @@ mod tests {
     #[test]
     fn test_get_rs_type_with_time() {
         let columns = setup();
-        let time_crate = DateTimeCrate::Time;
         let rs_types = vec![
+            "String",
             "String",
             "String",
             "i8",
@@ -475,8 +504,6 @@ mod tests {
             "Vec<u8>",
             "Vec<u8>",
             "Vec<u8>",
-            "Vec<u8>",
-            "Vec<u8>",
             "bool",
             "TimeDate",
             "TimeTime",
@@ -489,13 +516,13 @@ mod tests {
 
             col.not_null = true;
             assert_eq!(
-                col.get_rs_type(&time_crate).to_string(),
+                col.get_rs_type(&date_time_crate_time()).to_string(),
                 quote!(#rs_type).to_string()
             );
 
             col.not_null = false;
             assert_eq!(
-                col.get_rs_type(&time_crate).to_string(),
+                col.get_rs_type(&date_time_crate_time()).to_string(),
                 quote!(Option<#rs_type>).to_string()
             );
         }
@@ -505,7 +532,8 @@ mod tests {
     fn test_get_def() {
         let columns = setup();
         let col_defs = vec![
-            "ColumnType::String(Some(255u32)).def()",
+            "ColumnType::String(StringLen::N(255u32)).def()",
+            "ColumnType::String(StringLen::None).def()",
             "ColumnType::custom(\"cus_col\").def()",
             "ColumnType::TinyInteger.def()",
             "ColumnType::TinyUnsigned.def()",
@@ -517,12 +545,10 @@ mod tests {
             "ColumnType::BigUnsigned.def()",
             "ColumnType::Float.def()",
             "ColumnType::Double.def()",
-            "ColumnType::Binary(BlobSize::Blob(None)).def()",
-            "ColumnType::Binary(BlobSize::Blob(Some(10u32))).def()",
-            "ColumnType::Binary(BlobSize::Tiny).def()",
-            "ColumnType::Binary(BlobSize::Medium).def()",
-            "ColumnType::Binary(BlobSize::Long).def()",
-            "ColumnType::VarBinary(10u32).def()",
+            "ColumnType::Binary(10u32).def()",
+            "ColumnType::VarBinary(StringLen::None).def()",
+            "ColumnType::VarBinary(StringLen::N(10u32)).def()",
+            "ColumnType::VarBinary(StringLen::Max).def()",
             "ColumnType::Boolean.def()",
             "ColumnType::Date.def()",
             "ColumnType::Time.def()",
@@ -550,7 +576,7 @@ mod tests {
     fn test_get_info() {
         let column: Column = ColumnDef::new(Alias::new("id")).string().to_owned().into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `id`: Option<String>"
         );
 
@@ -560,7 +586,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `id`: String, not_null"
         );
 
@@ -571,7 +597,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `id`: String, not_null, unique"
         );
 
@@ -583,7 +609,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `id`: String, auto_increment, not_null, unique"
         );
 
@@ -593,7 +619,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `date_field`: Date, not_null"
         );
 
@@ -603,7 +629,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&date_time_crate_time()).as_str(),
             "Column `date_field`: TimeDate, not_null"
         );
 
@@ -613,7 +639,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `time_field`: Time, not_null"
         );
 
@@ -623,7 +649,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&date_time_crate_time()).as_str(),
             "Column `time_field`: TimeTime, not_null"
         );
 
@@ -633,7 +659,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `date_time_field`: DateTime, not_null"
         );
 
@@ -643,7 +669,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&date_time_crate_time()).as_str(),
             "Column `date_time_field`: TimeDateTime, not_null"
         );
 
@@ -653,7 +679,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `timestamp_field`: DateTimeUtc, not_null"
         );
 
@@ -663,7 +689,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&date_time_crate_time()).as_str(),
             "Column `timestamp_field`: TimeDateTime, not_null"
         );
 
@@ -673,7 +699,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column.get_info(&date_time_crate_chrono()).as_str(),
             "Column `timestamp_with_timezone_field`: DateTimeWithTimeZone, not_null"
         );
 
@@ -683,7 +709,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column.get_info(&date_time_crate_time()).as_str(),
             "Column `timestamp_with_timezone_field`: TimeDateTimeWithTimeZone, not_null"
         );
     }
@@ -694,7 +720,7 @@ mod tests {
         assert_eq!(
             column.get_def().to_string(),
             quote! {
-                ColumnType::String(None).def().null()
+                ColumnType::String(StringLen::None).def().null()
             }
             .to_string()
         );

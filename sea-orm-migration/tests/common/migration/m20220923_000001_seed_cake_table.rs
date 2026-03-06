@@ -7,31 +7,24 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let insert = Query::insert()
-            .into_table(Cake::Table)
-            .columns([Cake::Name])
+            .into_table("cake")
+            .columns(["name"])
             .values_panic(["Tiramisu".into()])
             .to_owned();
 
-        manager.exec_stmt(insert).await?;
+        manager.execute(insert).await?;
 
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let delete = Query::delete()
-            .from_table(Cake::Table)
-            .and_where(Expr::col(Cake::Name).eq("Tiramisu"))
+            .from_table("cake")
+            .and_where(Expr::col("name").eq("Tiramisu"))
             .to_owned();
 
-        manager.exec_stmt(delete).await?;
+        manager.execute(delete).await?;
 
         Ok(())
     }
-}
-
-/// Learn more at https://docs.rs/sea-query#iden
-#[derive(Iden)]
-pub enum Cake {
-    Table,
-    Name,
 }

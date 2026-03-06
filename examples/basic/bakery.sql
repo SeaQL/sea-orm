@@ -22,7 +22,7 @@ CREATE TABLE `fruit` (
 
 INSERT INTO `fruit` (`id`, `name`, `cake_id`) VALUES
   (1, 'Blueberry', 1),
-  (2, 'Rasberry', 1),
+  (2, 'Raspberry', 1),
   (3, 'Strawberry', 2);
 
 INSERT INTO `fruit` (`name`, `cake_id`) VALUES

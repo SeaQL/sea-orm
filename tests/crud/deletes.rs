@@ -1,5 +1,4 @@
 pub use super::*;
-use rust_decimal_macros::dec;
 use uuid::Uuid;
 
 pub async fn test_delete_cake(db: &DbConn) {
@@ -17,7 +16,7 @@ pub async fn test_delete_cake(db: &DbConn) {
 
     let mud_cake = cake::ActiveModel {
         name: Set("Mud Cake".to_owned()),
-        price: Set(dec!(10.25)),
+        price: Set(rust_dec(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id)),

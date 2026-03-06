@@ -1,4 +1,4 @@
-use sea_orm_migration::prelude::*;
+use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -12,17 +12,11 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Post::Table)
+                    .table("post")
                     .if_not_exists()
-                    .col(
-                        ColumnDef::new(Post::Id)
-                            .integer()
-                            .not_null()
-                            .auto_increment()
-                            .primary_key(),
-                    )
-                    .col(ColumnDef::new(Post::Title).string().not_null())
-                    .col(ColumnDef::new(Post::Text).string().not_null())
+                    .col(pk_auto("id"))
+                    .col(string("title"))
+                    .col(string("text"))
                     .to_owned(),
             )
             .await
@@ -33,16 +27,7 @@ impl MigrationTrait for Migration {
         todo!();
 
         manager
-            .drop_table(Table::drop().table(Post::Table).to_owned())
+            .drop_table(Table::drop().table("post").to_owned())
             .await
     }
-}
-
-/// Learn more at https://docs.rs/sea-query#iden
-#[derive(Iden)]
-enum Post {
-    Table,
-    Id,
-    Title,
-    Text,
 }

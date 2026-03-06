@@ -1,23 +1,22 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
 use sea_orm::{
+    ActiveEnum as ActiveEnumTrait, DatabaseConnection,
     entity::prelude::*,
     entity::*,
     sea_query::{BinOper, Expr},
-    ActiveEnum as ActiveEnumTrait, DatabaseConnection,
 };
+use sea_query::ExprTrait;
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("enum_primary_key_tests").await;
-    create_tables(&ctx.db).await?;
+    create_tea_enum(&ctx.db).await?;
+    create_teas_table(&ctx.db).await?;
     insert_teas(&ctx.db).await?;
     ctx.delete().await;
 
@@ -56,24 +55,28 @@ pub async fn insert_teas(db: &DatabaseConnection) -> Result<(), DbErr> {
     );
 
     // UNIQUE constraint failed
-    assert!(ActiveModel {
-        id: Set(Tea::EverydayTea),
-        category: Set(Some(Category::Big)),
-        color: Set(Some(Color::Black)),
-    }
-    .insert(db)
-    .await
-    .is_err());
+    assert!(
+        ActiveModel {
+            id: Set(Tea::EverydayTea),
+            category: Set(Some(Category::Big)),
+            color: Set(Some(Color::Black)),
+        }
+        .insert(db)
+        .await
+        .is_err()
+    );
 
     // UNIQUE constraint failed
-    assert!(Entity::insert(ActiveModel {
-        id: Set(Tea::EverydayTea),
-        category: Set(Some(Category::Big)),
-        color: Set(Some(Color::Black)),
-    })
-    .exec(db)
-    .await
-    .is_err());
+    assert!(
+        Entity::insert(ActiveModel {
+            id: Set(Tea::EverydayTea),
+            category: Set(Some(Category::Big)),
+            color: Set(Some(Color::Black)),
+        })
+        .exec(db)
+        .await
+        .is_err()
+    );
 
     let _ = ActiveModel {
         category: Set(Some(Category::Big)),
@@ -105,10 +108,19 @@ pub async fn insert_teas(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(
         model,
         Entity::find()
-            .filter(
-                Expr::col(Column::Id)
-                    .binary(BinOper::In, Expr::tuple([Tea::EverydayTea.as_enum()]))
-            )
+            .filter(Expr::col(Column::Id).binary(
+                BinOper::In,
+                Expr::tuple([ActiveEnumTrait::as_enum(&Tea::EverydayTea)])
+            ))
+            .one(db)
+            .await?
+            .unwrap()
+    );
+    // Equivalent to the above.
+    assert_eq!(
+        model,
+        Entity::find()
+            .filter(Column::Id.is_in([Tea::EverydayTea]))
             .one(db)
             .await?
             .unwrap()

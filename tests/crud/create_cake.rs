@@ -1,5 +1,4 @@
 pub use super::*;
-use rust_decimal_macros::dec;
 use uuid::Uuid;
 
 pub async fn test_create_cake(db: &DbConn) {
@@ -31,7 +30,7 @@ pub async fn test_create_cake(db: &DbConn) {
 
     let mud_cake = cake::ActiveModel {
         name: Set("Mud Cake".to_owned()),
-        price: Set(dec!(10.25)),
+        price: Set(rust_dec(-10.25)),
         gluten_free: Set(false),
         serial: Set(uuid),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id)),
@@ -64,7 +63,7 @@ pub async fn test_create_cake(db: &DbConn) {
     assert!(cake.is_some());
     let cake_model = cake.unwrap();
     assert_eq!(cake_model.name, "Mud Cake");
-    assert_eq!(cake_model.price, dec!(10.25));
+    assert_eq!(cake_model.price, rust_dec(-10.25));
     assert!(!cake_model.gluten_free);
     assert_eq!(
         cake_model

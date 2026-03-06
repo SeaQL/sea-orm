@@ -15,7 +15,8 @@ pub use error::*;
 pub use updates::*;
 
 pub use super::common::bakery_chain::*;
-use sea_orm::{entity::*, DbConn};
+pub use crate::common::setup::rust_dec;
+use sea_orm::{DbConn, entity::*};
 
 pub async fn test_create_bakery(db: &DbConn) {
     let seaside_bakery = bakery::ActiveModel {

@@ -1,12 +1,13 @@
-use sea_orm::{entity::prelude::*, ConnectionTrait};
+use sea_orm::{ConnectionTrait, entity::prelude::*};
 
+#[sea_orm::compact_model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "cake")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
-    #[sea_orm(column_type = "Decimal(Some((19, 4)))")]
+    #[sea_orm(column_type = "Decimal(Some((16, 4)))")]
     pub price: Decimal,
     pub bakery_id: Option<i32>,
     pub gluten_free: bool,
@@ -20,7 +21,7 @@ pub enum Relation {
         from = "Column::BakeryId",
         to = "super::bakery::Column::Id",
         on_update = "Cascade",
-        on_delete = "Cascade"
+        on_delete = "SetNull"
     )]
     Bakery,
     #[sea_orm(has_many = "super::lineitem::Entity")]
@@ -49,6 +50,16 @@ impl Related<super::lineitem::Entity> for Entity {
     }
 }
 
+pub struct ToBakery;
+impl Linked for ToBakery {
+    type FromEntity = super::cake::Entity;
+    type ToEntity = super::bakery::Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![Relation::Bakery.def()]
+    }
+}
+
 #[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {
     fn new() -> Self {
@@ -63,8 +74,7 @@ impl ActiveModelBehavior for ActiveModel {
     where
         C: ConnectionTrait,
     {
-        use rust_decimal_macros::dec;
-        if self.price.as_ref() == &dec!(0) {
+        if self.price.as_ref() == &Decimal::ZERO {
             Err(DbErr::Custom(format!(
                 "[before_save] Invalid Price, insert: {insert}"
             )))
@@ -77,8 +87,7 @@ impl ActiveModelBehavior for ActiveModel {
     where
         C: ConnectionTrait,
     {
-        use rust_decimal_macros::dec;
-        if model.price < dec!(0) {
+        if model.price < Decimal::ZERO {
             Err(DbErr::Custom(format!(
                 "[after_save] Invalid Price, insert: {insert}"
             )))
@@ -110,4 +119,14 @@ impl ActiveModelBehavior for ActiveModel {
             Ok(self)
         }
     }
+}
+
+#[test]
+fn column_type_test() {
+    let _id: sea_orm::NumericColumn<Entity> = COLUMN.id;
+    let _name: sea_orm::StringColumn<Entity> = COLUMN.name;
+    let _price: sea_orm::NumericColumn<Entity> = COLUMN.price;
+    let _bakery_id: sea_orm::NumericColumnNullable<Entity> = COLUMN.bakery_id;
+    let _gluten_free: sea_orm::BoolColumn<Entity> = COLUMN.gluten_free;
+    let _serial: sea_orm::UuidColumn<Entity> = COLUMN.serial;
 }

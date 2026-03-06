@@ -8,4 +8,8 @@ template_dir = "api/templates/"
 
 # Postgres
 # make sure to enable "sqlx-postgres" feature in Cargo.toml, i.e default = ["sqlx-postgres"]
-url = "postgres://root:root@localhost/rocket_example"
+# url = "postgres://root:root@localhost/rocket_example"
+
+# SQLite
+# make sure to enable "sqlx-sqlite" feature in Cargo.toml, i.e default = ["sqlx-sqlite"]
+url = "sqlite::memory:"

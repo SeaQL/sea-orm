@@ -1,18 +1,15 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
 use sea_orm::entity::prelude::*;
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("insert_default_tests").await;
-    create_tables(&ctx.db).await?;
+    create_insert_default_table(&ctx.db).await?;
     create_insert_default(&ctx.db).await?;
     ctx.delete().await;
 

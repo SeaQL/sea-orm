@@ -1,10 +1,24 @@
 use heck::ToUpperCamelCase;
-use quote::format_ident;
-use syn::{punctuated::Punctuated, token::Comma, Field, Ident, Meta};
+use syn::{Field, Ident, Meta, MetaNameValue, punctuated::Punctuated, token::Comma};
 
+/// Remove ignored fields and compound fields
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
+    let field_type = &field.ty;
+    let field_type = quote::quote! { #field_type }
+        .to_string() // e.g.: "Option < String >"
+        .replace(' ', ""); // Remove spaces
+
+    if is_compound_field(&field_type) {
+        return false;
+    }
+
+    field_not_ignored_compound(field)
+}
+
+/// Remove ignored fields, compound fields okay
+pub(crate) fn field_not_ignored_compound(field: &Field) -> bool {
     for attr in field.attrs.iter() {
-        if let Some(ident) = attr.path.get_ident() {
+        if let Some(ident) = attr.path().get_ident() {
             if ident != "sea_orm" {
                 continue;
             }
@@ -24,11 +38,33 @@ pub(crate) fn field_not_ignored(field: &Field) -> bool {
             }
         }
     }
+
     true
 }
 
-pub(crate) fn format_field_ident(field: Field) -> Ident {
-    format_ident!("{}", field.ident.unwrap().to_string())
+pub(crate) fn is_compound_field(field_type: &str) -> bool {
+    // for #[sea_orm::model]
+    ((field_type.starts_with("Option<") || field_type.starts_with("Vec<")) && field_type.ends_with("::Entity>"))
+    // for DeriveModelEx
+    || field_type.starts_with("HasOne<") || field_type.starts_with("HasMany<")
+}
+
+pub(crate) fn extract_compound_entity(ty: &str) -> &str {
+    if ty.starts_with("HasMany<") {
+        &ty["HasMany<".len()..(ty.len() - 1)]
+    } else if ty.starts_with("HasOne<") {
+        &ty["HasOne<".len()..(ty.len() - 1)]
+    } else if ty.starts_with("Option<") {
+        &ty["Option<".len()..(ty.len() - 1)]
+    } else if ty.starts_with("Vec<") {
+        &ty["Vec<".len()..(ty.len() - 1)]
+    } else {
+        panic!("Relation applied to non compound type: {ty}")
+    }
+}
+
+pub(crate) fn format_field_ident(field: &Field) -> Ident {
+    field.ident.clone().unwrap()
 }
 
 pub(crate) fn trim_starting_raw_identifier<T>(string: T) -> String
@@ -74,7 +110,8 @@ where
 ///      - `"A  B"`
 ///      - `"A_B"`
 ///      - `"A_ B"`
-///   shares the same identifier of `"AB"`;
+///
+/// All shares the same identifier of `"AB"`;
 ///
 /// This function does the PascelCase conversion with a few special escapes:
 /// - Non-Unicode Standard Annex #31 compliant characters will converted to their hex notation;
@@ -158,6 +195,60 @@ pub(crate) const RUST_KEYWORDS: [&str; 49] = [
 
 pub(crate) const RUST_SPECIAL_KEYWORDS: [&str; 3] = ["crate", "Self", "self"];
 
+pub(crate) trait GetMeta {
+    fn exists(&self, k: &str) -> bool;
+    fn get_as_kv(&self, k: &str) -> Option<String>;
+    fn get_as_kv_with_ident(&self) -> Option<(Ident, String)>;
+}
+
+impl GetMeta for Meta {
+    fn exists(&self, key: &str) -> bool {
+        let Meta::Path(path) = self else {
+            return false;
+        };
+        path.is_ident(key)
+    }
+
+    fn get_as_kv(&self, key: &str) -> Option<String> {
+        let Meta::NameValue(MetaNameValue {
+            path,
+            value: syn::Expr::Lit(exprlit),
+            ..
+        }) = self
+        else {
+            return None;
+        };
+
+        let syn::Lit::Str(litstr) = &exprlit.lit else {
+            return None;
+        };
+
+        if path.is_ident(key) {
+            Some(litstr.value())
+        } else {
+            None
+        }
+    }
+
+    fn get_as_kv_with_ident(&self) -> Option<(Ident, String)> {
+        let Meta::NameValue(MetaNameValue {
+            path,
+            value: syn::Expr::Lit(exprlit),
+            ..
+        }) = self
+        else {
+            return None;
+        };
+
+        let syn::Lit::Str(litstr) = &exprlit.lit else {
+            return None;
+        };
+
+        path.get_ident()
+            .map(|ident| (ident.clone(), litstr.value()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,7 +273,7 @@ mod tests {
         // Test spaced words distinct from non-spaced
         assert_eq!(camel_case_with_escaped_non_uax31("foo bar"), "Foo0x20bar");
 
-        // Test undescored words distinct from non-spaced and spaced
+        // Test underscored words distinct from non-spaced and spaced
         assert_eq!(camel_case_with_escaped_non_uax31("foo_bar"), "Foo0x5Fbar");
 
         // Test leading numeric characters
@@ -194,5 +285,11 @@ mod tests {
             camel_case_with_escaped_non_uax31("1 2 3"),
             "_0x310x2020x203"
         );
+
+        assert_eq!(camel_case_with_escaped_non_uax31("씨오알엠"), "씨오알엠");
+
+        assert_eq!(camel_case_with_escaped_non_uax31("A_B"), "A0x5Fb");
+
+        assert_eq!(camel_case_with_escaped_non_uax31("AB"), "Ab");
     }
 }

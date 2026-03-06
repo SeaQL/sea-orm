@@ -1,5 +1,9 @@
 pub mod bakery_chain;
+pub mod bakery_dense;
+pub mod blogger;
 pub mod features;
+pub mod film_store;
+#[cfg(not(feature = "sync"))]
 pub mod runtime;
 pub mod setup;
 
@@ -13,8 +17,11 @@ pub struct TestContext {
 
 impl TestContext {
     pub async fn new(test_name: &str) -> Self {
+        dotenv::from_filename(".env.local").ok();
+        dotenv::from_filename(".env").ok();
+
         let base_url =
-            std::env::var("DATABASE_URL").expect("Enviroment variable 'DATABASE_URL' not set");
+            std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
         let db: DatabaseConnection = setup::setup(&base_url, test_name).await;
 
         Self {

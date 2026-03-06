@@ -2,21 +2,22 @@
 # A separate workspace
 
 [package]
-name = "sea-orm-issues-693"
-version = "0.1.0"
-authors = ["bleuse <raphael.bleuse@univ-grenoble-alpes.fr>"]
-edition = "2021"
-publish = false
+authors      = ["bleuse <raphael.bleuse@univ-grenoble-alpes.fr>"]
+edition      = "2024"
+name         = "sea-orm-issues-693"
+publish      = false
+rust-version = "1.85.0"
+version      = "0.1.0"
 
 [dependencies]
-tokio = { version = "1.14", features = ["full"] }
-anyhow = "1"
-dotenvy = "0.15"
-futures-util = "0.3"
-serde = "1"
+anyhow             = "1"
+dotenvy            = "0.15"
+futures-util       = "0.3"
+serde              = "1"
+tokio              = { version = "1.14", features = ["full"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 
 [dependencies.sea-orm]
-path = "../../" # remove this line in your own project
-features = ["runtime-tokio-rustls", "sqlx-mysql", "macros"]
 default-features = false
+features         = ["runtime-tokio-rustls", "sqlx-mysql", "macros"]
+path             = "../../"                                         # remove this line in your own project

@@ -1,17 +1,18 @@
 [package]
-name = "entity"
-version = "0.1.0"
-edition = "2021"
-publish = false
+edition      = "2024"
+name         = "entity"
+publish      = false
+rust-version = "1.85.0"
+version      = "0.1.0"
 
 [lib]
 name = "entity"
 path = "src/lib.rs"
 
 [dependencies]
-sea-orm = { path = "../../../" }
-seaography = { path = "../../../../seaography", optional = true }
-async-graphql = { version = "5", optional = true  }
+async-graphql = { version = "5", optional = true }
+sea-orm       = { path = "../../../" }
+seaography    = { path = "../../../../seaography", optional = true }
 
 [features]
 seaography = ["dep:seaography", "async-graphql", "sea-orm/seaography"]

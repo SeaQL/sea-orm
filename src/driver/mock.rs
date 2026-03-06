@@ -1,17 +1,22 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
-    Statement, Transaction,
+    DatabaseConnection, DatabaseConnectionType, DbBackend, ExecResult, MockDatabase, QueryResult,
+    Statement, Transaction, debug_print, error::*,
 };
-use futures::Stream;
+use futures_util::Stream;
 use std::{
     fmt::Debug,
     pin::Pin,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc, Mutex,
+        atomic::{AtomicUsize, Ordering},
     },
 };
 use tracing::instrument;
+
+#[cfg(not(feature = "sync"))]
+type PinBoxStream = Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send>>;
+#[cfg(feature = "sync")]
+type PinBoxStream = Box<dyn Iterator<Item = Result<QueryResult, DbErr>>>;
 
 /// Defines a database driver for the [MockDatabase]
 #[derive(Debug)]
@@ -47,6 +52,9 @@ pub trait MockDatabaseTrait: Send + Debug {
 
     /// Get the backend being used in the [MockDatabase]
     fn get_database_backend(&self) -> DbBackend;
+
+    /// Ping the [MockDatabase]
+    fn ping(&self) -> Result<(), DbErr>;
 }
 
 impl MockDatabaseConnector {
@@ -65,6 +73,10 @@ impl MockDatabaseConnector {
         if DbBackend::Sqlite.is_prefix_of(string) {
             return true;
         }
+        #[cfg(feature = "rusqlite")]
+        if DbBackend::Sqlite.is_prefix_of(string) {
+            return true;
+        }
         false
     }
 
@@ -74,9 +86,10 @@ impl MockDatabaseConnector {
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
         macro_rules! connect_mock_db {
             ( $syntax: expr ) => {
-                Ok(DatabaseConnection::MockDatabaseConnection(Arc::new(
+                Ok(DatabaseConnectionType::MockDatabaseConnection(Arc::new(
                     MockDatabaseConnection::new(MockDatabase::new($syntax)),
-                )))
+                ))
+                .into())
             };
         }
 
@@ -92,15 +105,20 @@ impl MockDatabaseConnector {
         if crate::SqlxSqliteConnector::accepts(string) {
             return connect_mock_db!(DbBackend::Sqlite);
         }
+        #[cfg(feature = "rusqlite")]
+        if crate::driver::rusqlite::RusqliteConnector::accepts(string) {
+            return connect_mock_db!(DbBackend::Sqlite);
+        }
         connect_mock_db!(DbBackend::Postgres)
     }
 }
 
 impl MockDatabaseConnection {
     /// Create a connection to the [MockDatabase]
-    pub fn new<M: 'static>(m: M) -> Self
+    pub fn new<M>(m: M) -> Self
     where
         M: MockDatabaseTrait,
+        M: 'static,
     {
         Self {
             execute_counter: AtomicUsize::new(0),
@@ -114,6 +132,10 @@ impl MockDatabaseConnection {
     }
 
     /// Get the [DatabaseBackend](crate::DatabaseBackend) being used by the [MockDatabase]
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the lock cannot be acquired.
     pub fn get_database_backend(&self) -> DbBackend {
         self.mocker
             .lock()
@@ -158,17 +180,28 @@ impl MockDatabaseConnection {
 
     /// Return [QueryResult]s  from a multi-query operation
     #[instrument(level = "trace")]
-    pub fn fetch(
-        &self,
-        statement: &Statement,
-    ) -> Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send>> {
-        match self.query_all(statement.clone()) {
-            Ok(v) => Box::pin(futures::stream::iter(v.into_iter().map(Ok))),
-            Err(e) => Box::pin(futures::stream::iter(Some(Err(e)).into_iter())),
+    pub fn fetch(&self, statement: &Statement) -> PinBoxStream {
+        #[cfg(not(feature = "sync"))]
+        {
+            match self.query_all(statement.clone()) {
+                Ok(v) => Box::pin(futures_util::stream::iter(v.into_iter().map(Ok))),
+                Err(e) => Box::pin(futures_util::stream::iter(Some(Err(e)).into_iter())),
+            }
+        }
+        #[cfg(feature = "sync")]
+        {
+            match self.query_all(statement.clone()) {
+                Ok(v) => Box::new(v.into_iter().map(Ok)),
+                Err(e) => Box::new(Some(Err(e)).into_iter()),
+            }
         }
     }
 
     /// Create a statement block  of SQL statements that execute together.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the lock cannot be acquired.
     #[instrument(level = "trace")]
     pub fn begin(&self) {
         self.mocker
@@ -178,6 +211,10 @@ impl MockDatabaseConnection {
     }
 
     /// Commit a transaction atomically to the database
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the lock cannot be acquired.
     #[instrument(level = "trace")]
     pub fn commit(&self) {
         self.mocker
@@ -187,11 +224,57 @@ impl MockDatabaseConnection {
     }
 
     /// Roll back a faulty transaction
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the lock cannot be acquired.
     #[instrument(level = "trace")]
     pub fn rollback(&self) {
         self.mocker
             .lock()
             .expect("Failed to acquire mocker")
             .rollback()
+    }
+
+    /// Checks if a connection to the database is still valid.
+    pub fn ping(&self) -> Result<(), DbErr> {
+        self.mocker.lock().map_err(query_err)?.ping()
+    }
+}
+
+impl
+    From<(
+        Arc<crate::MockDatabaseConnection>,
+        Statement,
+        Option<crate::metric::Callback>,
+    )> for crate::QueryStream
+{
+    fn from(
+        (conn, stmt, metric_callback): (
+            Arc<crate::MockDatabaseConnection>,
+            Statement,
+            Option<crate::metric::Callback>,
+        ),
+    ) -> Self {
+        crate::QueryStream::build(stmt, crate::InnerConnection::Mock(conn), metric_callback)
+    }
+}
+
+impl crate::DatabaseTransaction {
+    pub(crate) async fn new_mock(
+        inner: Arc<crate::MockDatabaseConnection>,
+        metric_callback: Option<crate::metric::Callback>,
+    ) -> Result<crate::DatabaseTransaction, DbErr> {
+        use futures_util::lock::Mutex;
+        let backend = inner.get_database_backend();
+        Self::begin(
+            Arc::new(Mutex::new(crate::InnerConnection::Mock(inner))),
+            backend,
+            metric_callback,
+            None,
+            None,
+            None,
+        )
+        .await
     }
 }

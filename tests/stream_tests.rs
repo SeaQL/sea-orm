@@ -1,20 +1,17 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{TestContext, bakery_chain::*, setup::*};
 pub use sea_orm::entity::*;
 pub use sea_orm::{ConnectionTrait, DbErr, QueryFilter};
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 pub async fn stream() -> Result<(), DbErr> {
-    use futures::StreamExt;
+    use futures_util::StreamExt;
 
     let ctx = TestContext::new("stream").await;
-    create_tables(&ctx.db).await?;
+    create_bakery_table(&ctx.db).await?;
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),

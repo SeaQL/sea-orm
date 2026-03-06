@@ -1,5 +1,3 @@
-use sea_query::TableRef;
-
 pub(crate) fn escape_rust_keyword<T>(string: T) -> String
 where
     T: ToString,
@@ -23,17 +21,3 @@ pub(crate) const RUST_KEYWORDS: [&str; 49] = [
 ];
 
 pub(crate) const RUST_SPECIAL_KEYWORDS: [&str; 3] = ["crate", "Self", "self"];
-
-pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> String {
-    match table_ref {
-        TableRef::Table(tbl)
-        | TableRef::SchemaTable(_, tbl)
-        | TableRef::DatabaseSchemaTable(_, _, tbl)
-        | TableRef::TableAlias(tbl, _)
-        | TableRef::SchemaTableAlias(_, tbl, _)
-        | TableRef::DatabaseSchemaTableAlias(_, _, tbl, _)
-        | TableRef::SubQuery(_, tbl)
-        | TableRef::ValuesList(_, tbl)
-        | TableRef::FunctionCall(_, tbl) => tbl.to_string(),
-    }
-}
