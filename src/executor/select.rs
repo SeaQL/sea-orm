@@ -3,8 +3,8 @@ use super::{
 };
 use crate::{
     ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, PartialModelTrait,
-    QueryResult, QuerySelect, Select, SelectA, SelectB, SelectTwo, SelectBoth, SelectTwoMany, Statement,
-    StreamTrait, TryGetableMany, error::*,
+    QueryResult, QuerySelect, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
+    SelectTwoRequired, Statement, StreamTrait, TryGetableMany, error::*,
 };
 use futures_util::{Stream, TryStreamExt};
 use itertools::Itertools;
@@ -94,7 +94,7 @@ where
 
 /// Defines a type to get two Models
 #[derive(Clone, Debug)]
-pub struct SelectBothModel<M, N>
+pub struct SelectTwoRequiredModel<M, N>
 where
     M: FromQueryResult,
     N: FromQueryResult,
@@ -215,7 +215,7 @@ where
     }
 }
 
-impl<M, N> SelectorTrait for SelectBothModel<M, N>
+impl<M, N> SelectorTrait for SelectTwoRequiredModel<M, N>
 where
     M: FromQueryResult + Sized,
     N: FromQueryResult + Sized,
@@ -678,13 +678,13 @@ where
     // we should only count the number of items of the parent model
 }
 
-impl<E, F> SelectBoth<E, F>
+impl<E, F> SelectTwoRequired<E, F>
 where
     E: EntityTrait,
     F: EntityTrait,
 {
-    /// Perform a conversion into a [SelectBothModel]
-    pub fn into_model<M, N>(self) -> Selector<SelectBothModel<M, N>>
+    /// Perform a conversion into a [SelectTwoRequiredModel]
+    pub fn into_model<M, N>(self) -> Selector<SelectTwoRequiredModel<M, N>>
     where
         M: FromQueryResult,
         N: FromQueryResult,
@@ -695,8 +695,8 @@ where
         }
     }
 
-    /// Perform a conversion into a [SelectBothModel] with [PartialModel](PartialModelTrait)
-    pub fn into_partial_model<M, N>(self) -> Selector<SelectBothModel<M, N>>
+    /// Perform a conversion into a [SelectTwoRequiredModel] with [PartialModel](PartialModelTrait)
+    pub fn into_partial_model<M, N>(self) -> Selector<SelectTwoRequiredModel<M, N>>
     where
         M: PartialModelTrait,
         N: PartialModelTrait,
@@ -709,7 +709,7 @@ where
 
     /// Convert the Models into JsonValue
     #[cfg(feature = "with-json")]
-    pub fn into_json(self) -> Selector<SelectBothModel<JsonValue, JsonValue>> {
+    pub fn into_json(self) -> Selector<SelectTwoRequiredModel<JsonValue, JsonValue>> {
         Selector {
             query: self.query,
             selector: PhantomData,

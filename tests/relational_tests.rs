@@ -353,14 +353,18 @@ pub async fn find_both_related() {
         .unwrap();
 
     assert_eq!(results.len(), 2);
-    assert!(results
-        .iter()
-        .any(|result| result.1.name == customer_kate.name.clone()
-            && result.0.total == kate_order_1.total));
-    assert!(results
-        .iter()
-        .any(|result| result.1.name == customer_kate.name.clone()
-            && result.0.total == kate_order_2.total));
+    assert!(
+        results
+            .iter()
+            .any(|result| result.1.name == customer_kate.name.clone()
+                && result.0.total == kate_order_1.total)
+    );
+    assert!(
+        results
+            .iter()
+            .any(|result| result.1.name == customer_kate.name.clone()
+                && result.0.total == kate_order_2.total)
+    );
 
     ctx.delete().await;
 }

@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectBoth, SelectTwo,
-    SelectTwoMany,
+    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectTwo, SelectTwoMany,
+    SelectTwoRequired,
 };
 use core::marker::PhantomData;
 use sea_query::{Iden, IntoIden, Order, SelectExpr, SelectStatement, SimpleExpr};
@@ -106,12 +106,12 @@ where
     }
 
     /// Selects extra Entity and returns it together with the Entity from `Self`
-    pub fn select_both<F>(mut self, _: F) -> SelectBoth<E, F>
+    pub fn select_two_required<F>(mut self, _: F) -> SelectTwoRequired<E, F>
     where
         F: EntityTrait,
     {
         self = self.apply_alias(SelectA.as_str());
-        SelectBoth::new(self.into_query())
+        SelectTwoRequired::new(self.into_query())
     }
 }
 
@@ -168,7 +168,7 @@ where
     }
 }
 
-impl<E, F> SelectBoth<E, F>
+impl<E, F> SelectTwoRequired<E, F>
 where
     E: EntityTrait,
     F: EntityTrait,

@@ -41,7 +41,7 @@ where
 
 /// Defines a structure to perform a SELECT operation on two Models
 #[derive(Clone, Debug)]
-pub struct SelectBoth<E, F>
+pub struct SelectTwoRequired<E, F>
 where
     E: EntityTrait,
     F: EntityTrait,
@@ -185,7 +185,7 @@ macro_rules! impl_query_trait {
             }
         }
 
-        impl<E, F> $trait for SelectBoth<E, F>
+        impl<E, F> $trait for SelectTwoRequired<E, F>
         where
             E: EntityTrait,
             F: EntityTrait,
@@ -329,4 +329,4 @@ macro_rules! select_two {
 
 select_two!(SelectTwo);
 select_two!(SelectTwoMany);
-select_two!(SelectBoth);
+select_two!(SelectTwoRequired);
