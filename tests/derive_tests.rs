@@ -69,3 +69,17 @@ struct FromQueryResultNested {
     #[sea_orm(nested)]
     _test: SimpleTest,
 }
+
+#[cfg(feature = "postgres-array")]
+mod postgres_array {
+    use crate::FromQueryResult;
+    use sea_orm::DeriveValueType;
+
+    #[derive(DeriveValueType)]
+    pub struct GoodId(i32);
+
+    #[derive(FromQueryResult)]
+    pub struct ArrayTest {
+        pub ingredient_path: Vec<GoodId>,
+    }
+}
