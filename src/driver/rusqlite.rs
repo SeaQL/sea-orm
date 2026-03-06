@@ -232,13 +232,6 @@ impl RusqliteConnector {
                 path,
                 OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX,
             ),
-            Some("memory") => RusqliteConnection::open_with_flags(
-                path,
-                OpenFlags::SQLITE_OPEN_MEMORY
-                    | OpenFlags::SQLITE_OPEN_READ_WRITE
-                    | OpenFlags::SQLITE_OPEN_CREATE
-                    | OpenFlags::SQLITE_OPEN_NO_MUTEX,
-            ),
             Some(other) => {
                 return Err(DbErr::Conn(RuntimeErr::Internal(format!(
                     "unknown SQLite mode: {other}"
