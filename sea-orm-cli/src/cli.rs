@@ -384,6 +384,13 @@ pub enum GenerateSubcommands {
             help = "Control how the codegen version is displayed in the top banner of the generated file."
         )]
         banner_version: BannerVersion,
+
+        #[arg(
+            long,
+            default_value = "false",
+            help = "Also generate a Mermaid ER diagram as `entities.mermaid` in the output directory"
+        )]
+        er_diagram: bool,
     },
 }
 

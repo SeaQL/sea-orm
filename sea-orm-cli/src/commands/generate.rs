@@ -44,6 +44,7 @@ pub async fn run_generate_command(
             impl_active_model_behavior,
             preserve_user_modifications,
             banner_version,
+            er_diagram,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -250,10 +251,19 @@ pub async fn run_generate_command(
                 impl_active_model_behavior,
                 banner_version.into(),
             );
-            let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
+            let entity_writer = EntityTransformer::transform(table_stmts)?;
 
             let dir = Path::new(&output_dir);
             fs::create_dir_all(dir)?;
+
+            if er_diagram {
+                let diagram = entity_writer.generate_er_diagram();
+                let diagram_path = dir.join("entities.mermaid");
+                fs::write(&diagram_path, &diagram)?;
+                println!("Writing {}", diagram_path.display());
+            }
+
+            let output = entity_writer.generate(&writer_context);
 
             let mut merge_fallback_files: Vec<String> = Vec::new();
 
