@@ -95,6 +95,7 @@ pub struct EntityWriterContext {
     pub(crate) seaography: bool,
     pub(crate) impl_active_model_behavior: bool,
     pub(crate) banner_version: BannerVersion,
+    pub(crate) sea_orm_feature: Option<String>,
 }
 
 impl WithSerde {
@@ -157,6 +158,20 @@ where
             }
         },
     )
+}
+
+pub(crate) fn feature_flag_derives(
+    sea_orm_feature: &Option<String>,
+    derives: TokenStream,
+) -> (TokenStream, TokenStream) {
+    if let Some(feature) = sea_orm_feature {
+        (
+            quote! {},
+            quote! { #[cfg_attr(feature = #feature, derive(#derives))] },
+        )
+    } else {
+        (derives, quote! {})
+    }
 }
 
 impl FromStr for WithPrelude {
@@ -233,6 +248,7 @@ impl EntityWriterContext {
         seaography: bool,
         impl_active_model_behavior: bool,
         banner_version: BannerVersion,
+        sea_orm_feature: Option<String>,
     ) -> Self {
         Self {
             entity_format,
@@ -253,6 +269,7 @@ impl EntityWriterContext {
             seaography,
             impl_active_model_behavior,
             banner_version,
+            sea_orm_feature,
         }
     }
 
@@ -280,6 +297,7 @@ impl EntityWriter {
                 context.with_prelude,
                 context.entity_format,
                 context.banner_version,
+                &context.sea_orm_feature,
             ));
         }
         if !self.enums.is_empty() {
@@ -290,6 +308,7 @@ impl EntityWriter {
                 &context.enum_extra_attributes,
                 context.entity_format,
                 context.banner_version,
+                &context.sea_orm_feature,
             ));
         }
         WriterOutput { files }
@@ -335,6 +354,7 @@ impl EntityWriter {
                         &context.column_extra_derives,
                         context.seaography,
                         context.impl_active_model_behavior,
+                        &context.sea_orm_feature,
                     )
                 } else if context.entity_format == EntityFormat::Expanded {
                     Self::gen_expanded_code_blocks(
@@ -349,6 +369,7 @@ impl EntityWriter {
                         &context.column_extra_derives,
                         context.seaography,
                         context.impl_active_model_behavior,
+                        &context.sea_orm_feature,
                     )
                 } else if context.entity_format == EntityFormat::Dense {
                     Self::gen_dense_code_blocks(
@@ -363,6 +384,7 @@ impl EntityWriter {
                         &context.column_extra_derives,
                         context.seaography,
                         context.impl_active_model_behavior,
+                        &context.sea_orm_feature,
                     )
                 } else {
                     Self::gen_compact_code_blocks(
@@ -377,6 +399,7 @@ impl EntityWriter {
                         &context.column_extra_derives,
                         context.seaography,
                         context.impl_active_model_behavior,
+                        &context.sea_orm_feature,
                     )
                 };
                 Self::write(&mut lines, code_blocks);
@@ -439,6 +462,7 @@ impl EntityWriter {
         with_prelude: WithPrelude,
         entity_format: EntityFormat,
         banner_version: BannerVersion,
+        sea_orm_feature: &Option<String>,
     ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines, banner_version);
@@ -448,11 +472,20 @@ impl EntityWriter {
         let code_blocks = self
             .entities
             .iter()
-            .map({
+            .map(|entity| {
                 if entity_format == EntityFormat::Frontend {
-                    Self::gen_prelude_use_model
+                    Self::gen_prelude_use_model(entity)
+                } else if entity_format == EntityFormat::Expanded || sea_orm_feature.is_none() {
+                    // The expanded format always has an Entity struct, so we can also export it with feature flags
+                    Self::gen_prelude_use(entity)
+                } else if let Some(feature) = sea_orm_feature {
+                    // This prelude does nothing if the feature is not enabled. This is not identical behaviour
+                    // to frontend mode, but making prelude::Thing reference an Entity if the feature is enabled and
+                    // a Model otherwise could cause confusion.
+                    Self::gen_prelude_use_feature_flag(entity, feature)
                 } else {
-                    Self::gen_prelude_use
+                    // This should be unreachable, but let's handle it gracefully just in case
+                    Self::gen_prelude_use(entity)
                 }
             })
             .collect();
@@ -463,6 +496,7 @@ impl EntityWriter {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn write_sea_orm_active_enums(
         &self,
         with_serde: &WithSerde,
@@ -471,13 +505,17 @@ impl EntityWriter {
         extra_attributes: &TokenStream,
         entity_format: EntityFormat,
         banner_version: BannerVersion,
+        sea_orm_feature: &Option<String>,
     ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines, banner_version);
         if entity_format == EntityFormat::Frontend {
             Self::write(&mut lines, vec![Self::gen_import_serde(with_serde)]);
         } else {
-            Self::write(&mut lines, vec![Self::gen_import(with_serde)]);
+            Self::write(
+                &mut lines,
+                vec![Self::gen_import(with_serde, sea_orm_feature)],
+            );
         }
         lines.push("".to_owned());
         let code_blocks = self
@@ -490,6 +528,7 @@ impl EntityWriter {
                     extra_derives,
                     extra_attributes,
                     entity_format,
+                    sea_orm_feature,
                 )
             })
             .collect();
@@ -543,9 +582,14 @@ impl EntityWriter {
         lines.push("".to_owned());
     }
 
-    pub fn gen_import(with_serde: &WithSerde) -> TokenStream {
+    pub fn gen_import(with_serde: &WithSerde, sea_orm_feature: &Option<String>) -> TokenStream {
         let serde_import = Self::gen_import_serde(with_serde);
+        let feature_flag = sea_orm_feature
+            .as_ref()
+            .map(|f| quote! { #[cfg(feature = #f)] })
+            .unwrap_or_default();
         quote! {
+            #feature_flag
             use sea_orm::entity::prelude::*;
             #serde_import
         }
@@ -572,10 +616,18 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_entity_struct() -> TokenStream {
-        quote! {
-            #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-            pub struct Entity;
+    pub fn gen_entity_struct(sea_orm_feature: &Option<String>) -> TokenStream {
+        if let Some(feature) = sea_orm_feature {
+            quote! {
+                #[derive(Copy, Clone, Default, Debug)]
+                #[cfg_attr(feature = #feature, derive(DeriveEntity))]
+                pub struct Entity;
+            }
+        } else {
+            quote! {
+                #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+                pub struct Entity;
+            }
         }
     }
 
@@ -625,31 +677,46 @@ impl EntityWriter {
             .0
     }
 
-    pub fn gen_column_enum(entity: &Entity, column_extra_derives: &TokenStream) -> TokenStream {
+    pub fn gen_column_enum(
+        entity: &Entity,
+        column_extra_derives: &TokenStream,
+        sea_orm_feature: &Option<String>,
+    ) -> TokenStream {
         let column_variants = entity.columns.iter().map(|col| {
             let variant = col.get_name_camel_case();
             let mut variant = quote! { #variant };
             if !col.is_snake_case_name() {
                 let column_name = &col.name;
+                let attr = if let Some(feature) = sea_orm_feature {
+                    quote! { #[cfg_attr(feature = #feature, sea_orm(column_name = #column_name))] }
+                } else {
+                    quote! { #[sea_orm(column_name = #column_name)] }
+                };
                 variant = quote! {
-                    #[sea_orm(column_name = #column_name)]
+                    #attr
                     #variant
                 };
             }
             variant
         });
+        let (additional_derives, additional_attributes) =
+            feature_flag_derives(sea_orm_feature, quote! { EnumIter, DeriveColumn });
         quote! {
-            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn #column_extra_derives)]
+            #[derive(Copy, Clone, Debug, #additional_derives #column_extra_derives)]
+            #additional_attributes
             pub enum Column {
                 #(#column_variants,)*
             }
         }
     }
 
-    pub fn gen_primary_key_enum(entity: &Entity) -> TokenStream {
+    pub fn gen_primary_key_enum(entity: &Entity, sea_orm_feature: &Option<String>) -> TokenStream {
         let primary_key_names_camel_case = entity.get_primary_key_names_camel_case();
+        let (additional_derives, additional_attributes) =
+            feature_flag_derives(sea_orm_feature, quote! { EnumIter, DerivePrimaryKey });
         quote! {
-            #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+            #[derive(Copy, Clone, Debug, #additional_derives)]
+            #additional_attributes
             pub enum PrimaryKey {
                 #(#primary_key_names_camel_case,)*
             }
@@ -670,10 +737,13 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_relation_enum(entity: &Entity) -> TokenStream {
+    pub fn gen_relation_enum(entity: &Entity, sea_orm_feature: &Option<String>) -> TokenStream {
         let relation_enum_name = entity.get_relation_enum_name();
+        let (additional_derives, additional_attributes) =
+            feature_flag_derives(sea_orm_feature, quote! { EnumIter });
         quote! {
-            #[derive(Copy, Clone, Debug, EnumIter)]
+            #[derive(Copy, Clone, Debug, #additional_derives)]
+            #additional_attributes
             pub enum Relation {
                 #(#relation_enum_name,)*
             }
@@ -746,12 +816,16 @@ impl EntityWriter {
     }
 
     /// Used to generate `enum RelatedEntity` that is useful to the Seaography project
-    pub fn gen_related_entity(entity: &Entity) -> TokenStream {
+    pub fn gen_related_entity(entity: &Entity, sea_orm_feature: &Option<String>) -> TokenStream {
         let related_enum_name = entity.get_related_entity_enum_name();
         let related_attrs = entity.get_related_entity_attrs();
 
+        let (additional_derives, additional_attributes) =
+            feature_flag_derives(sea_orm_feature, quote! { EnumIter, DeriveRelatedEntity });
+
         quote! {
-            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+            #[derive(Copy, Clone, Debug, #additional_derives)]
+            #additional_attributes
             pub enum RelatedEntity {
                 #(
                     #related_attrs
@@ -860,10 +934,33 @@ impl EntityWriter {
         }
     }
 
+    pub fn gen_prelude_use_feature_flag(entity: &Entity, sea_orm_feature: &str) -> TokenStream {
+        let table_name_snake_case_ident = entity.get_table_name_snake_case_ident();
+        let table_name_camel_case_ident = entity.get_table_name_camel_case_ident();
+        quote! {
+            #[cfg(feature = #sea_orm_feature)]
+            pub use super::#table_name_snake_case_ident::Entity as #table_name_camel_case_ident;
+        }
+    }
+
     pub fn gen_schema_name(schema_name: &Option<String>) -> Option<TokenStream> {
         schema_name
             .as_ref()
             .map(|schema_name| quote! { #schema_name })
+    }
+
+    pub(crate) fn wrap_impl_feature_gate(
+        code: TokenStream,
+        sea_orm_feature: &Option<String>,
+    ) -> TokenStream {
+        if let Some(feature) = sea_orm_feature {
+            quote! {
+                #[cfg(feature = #feature)]
+                #code
+            }
+        } else {
+            code
+        }
     }
 }
 
@@ -1665,6 +1762,7 @@ mod tests {
                     &TokenStream::new(),
                     false,
                     true,
+                    &None,
                 )
                 .into_iter()
                 .skip(1)
@@ -1688,6 +1786,7 @@ mod tests {
                     &TokenStream::new(),
                     false,
                     true,
+                    &None,
                 )
                 .into_iter()
                 .skip(1)
@@ -1753,6 +1852,7 @@ mod tests {
                     &TokenStream::new(),
                     false,
                     true,
+                    &None,
                 )
                 .into_iter()
                 .skip(1)
@@ -1776,6 +1876,7 @@ mod tests {
                     &TokenStream::new(),
                     false,
                     true,
+                    &None,
                 )
                 .into_iter()
                 .skip(1)
@@ -1841,6 +1942,7 @@ mod tests {
                     &TokenStream::new(),
                     false,
                     true,
+                    &None,
                 )
                 .into_iter()
                 .skip(1)
@@ -1864,6 +1966,7 @@ mod tests {
                     &TokenStream::new(),
                     false,
                     true,
+                    &None,
                 )
                 .into_iter()
                 .skip(1)
@@ -1899,6 +2002,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -1917,6 +2021,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -1935,6 +2040,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -1951,6 +2057,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
 
@@ -1969,6 +2076,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -1987,6 +2095,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2005,6 +2114,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2021,6 +2131,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
 
@@ -2039,6 +2150,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2057,6 +2169,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2075,6 +2188,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2091,6 +2205,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
 
@@ -2177,6 +2292,7 @@ mod tests {
                 &TokenStream::new(),
                 true,
                 true,
+                &None,
             ))
         );
 
@@ -2195,6 +2311,7 @@ mod tests {
                 &TokenStream::new(),
                 true,
                 true,
+                &None,
             ))
         );
 
@@ -2213,6 +2330,7 @@ mod tests {
                 &TokenStream::new(),
                 true,
                 true,
+                &None,
             ))
         );
 
@@ -2296,6 +2414,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2312,6 +2431,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2330,6 +2450,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
 
@@ -2350,6 +2471,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2368,6 +2490,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2386,6 +2509,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
 
@@ -2406,6 +2530,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2424,6 +2549,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2442,6 +2568,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
 
@@ -2505,6 +2632,7 @@ mod tests {
                 &bonus_derive(["async_graphql::Enum"]),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2523,6 +2651,7 @@ mod tests {
                 &bonus_derive(["async_graphql::Enum", "Eq", "PartialEq"]),
                 false,
                 true,
+                &None,
             ))
         );
 
@@ -2546,6 +2675,7 @@ mod tests {
                 &TokenStream,
                 bool,
                 bool,
+                &Option<String>,
             ) -> Vec<TokenStream>,
         >,
     ) -> io::Result<()> {
@@ -2579,6 +2709,7 @@ mod tests {
             &TokenStream::new(),
             false,
             true,
+            &None,
         )
         .into_iter()
         .fold(TokenStream::new(), |mut acc, tok| {
@@ -2613,6 +2744,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2631,6 +2763,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2649,6 +2782,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
 
@@ -2669,6 +2803,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2687,6 +2822,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2705,6 +2841,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
 
@@ -2725,6 +2862,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2743,6 +2881,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
         assert_eq!(
@@ -2761,6 +2900,7 @@ mod tests {
                 &TokenStream::new(),
                 false,
                 true,
+                &None,
             ))
         );
 
@@ -2859,6 +2999,7 @@ mod tests {
                     &TokenStream::new(),
                     false,
                     true,
+                    &None,
                 )
                 .into_iter()
                 .skip(1)
@@ -2882,6 +3023,7 @@ mod tests {
                     &TokenStream::new(),
                     false,
                     true,
+                    &None,
                 )
                 .into_iter()
                 .skip(1)
@@ -3064,6 +3206,7 @@ mod tests {
                     &TokenStream::new(),
                     false,
                     true,
+                    &None,
                 )
                 .into_iter()
                 .skip(1)

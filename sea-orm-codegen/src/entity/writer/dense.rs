@@ -16,8 +16,9 @@ impl EntityWriter {
         _column_extra_derives: &TokenStream,
         _seaography: bool,
         impl_active_model_behavior: bool,
+        sea_orm_feature: &Option<String>,
     ) -> Vec<TokenStream> {
-        let mut imports = Self::gen_import(with_serde);
+        let mut imports = Self::gen_import(with_serde, sea_orm_feature);
         imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![
             imports,
@@ -30,10 +31,21 @@ impl EntityWriter {
                 serde_skip_hidden_column,
                 model_extra_derives,
                 model_extra_attributes,
+                sea_orm_feature,
             ),
         ];
         if impl_active_model_behavior {
-            code_blocks.push(Self::impl_active_model_behavior());
+            let impl_block = Self::impl_active_model_behavior();
+            if let Some(feature) = sea_orm_feature {
+                code_blocks.push(quote! {
+                    #[cfg(feature = #feature)]
+                    {
+                        #impl_block
+                    }
+                });
+            } else {
+                code_blocks.push(impl_block);
+            }
         }
         code_blocks
     }
@@ -48,6 +60,7 @@ impl EntityWriter {
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
+        sea_orm_feature: &Option<String>,
     ) -> TokenStream {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
@@ -93,7 +106,11 @@ impl EntityWriter {
                         }
                         ts = quote! { #ts #attr };
                     }
-                    ts = quote! { #[sea_orm(#ts)] };
+                    ts = if let Some(feature) = sea_orm_feature {
+                        quote! { #[cfg_attr(feature = #feature, sea_orm(#ts))] }
+                    } else {
+                        quote! { #[sea_orm(#ts)] }
+                    };
                 }
                 let serde_attribute = col.get_serde_attribute(
                     is_primary_key,
@@ -164,9 +181,16 @@ impl EntityWriter {
                         } else {
                             quote!()
                         };
+                        let sea_orm_attr_inner = quote! {
+                            sea_orm(belongs_to, #relation_enum from = #from, to = #to #on_update #on_delete)
+                        };
                         (
                             format_ident!("HasOne"),
-                            quote!(#[sea_orm(belongs_to, #relation_enum from = #from, to = #to #on_update #on_delete)]),
+                            if let Some(feature) = sea_orm_feature {
+                                quote! { #[cfg_attr(feature = #feature, #sea_orm_attr_inner)] }
+                            } else {
+                                quote! { #[#sea_orm_attr_inner] }
+                            },
                         )
                     }
                 };
@@ -244,13 +268,30 @@ impl EntityWriter {
             compound_objects.push_punct(<syn::Token![,]>::default());
         }
 
-        quote! {
-            #[sea_orm::model]
-            #[derive(Clone, Debug, PartialEq #if_eq_needed, DeriveEntityModel #extra_derive #model_extra_derives)]
-            #[sea_orm(
-                #schema_name
+        let sea_orm_attr_inner = quote! {
+            sea_orm(
                 table_name = #table_name
-            )]
+                #schema_name
+            )
+        };
+        let (model_attr, sea_orm_attr, builtin_derives) = if let Some(feature) = sea_orm_feature {
+            (
+                quote! {},
+                quote! { #[cfg_attr(feature = #feature, derive(#sea_orm_attr_inner))] #[cfg_attr(feature = #feature, sea_orm(#sea_orm_attr_inner))] },
+                quote! {},
+            )
+        } else {
+            (
+                quote! { #[sea_orm::model] },
+                quote! { #[#sea_orm_attr_inner] },
+                quote! { DeriveEntityModel },
+            )
+        };
+
+        quote! {
+            #model_attr
+            #[derive(Clone, Debug, PartialEq #if_eq_needed, #builtin_derives #extra_derive #model_extra_derives)]
+            #sea_orm_attr
             #model_extra_attributes
             pub struct Model {
                 #(

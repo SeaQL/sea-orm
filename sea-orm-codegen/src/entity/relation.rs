@@ -93,7 +93,7 @@ impl Relation {
         }
     }
 
-    pub fn get_attrs(&self) -> TokenStream {
+    pub fn get_attrs(&self, sea_orm_feature: &Option<String>) -> TokenStream {
         let rel_type = self.get_rel_type();
         let module_name = if let Some(module_name) = self.get_module_name() {
             format!("super::{module_name}::")
@@ -103,8 +103,14 @@ impl Relation {
         let ref_entity = format!("{module_name}Entity");
         match self.rel_type {
             RelationType::HasOne | RelationType::HasMany => {
-                quote! {
-                    #[sea_orm(#rel_type = #ref_entity)]
+                if let Some(feature) = sea_orm_feature {
+                    quote! {
+                        #[cfg_attr(feature = #feature, sea_orm(#rel_type = #ref_entity))]
+                    }
+                } else {
+                    quote! {
+                        #[sea_orm(#rel_type = #ref_entity)]
+                    }
                 }
             }
             RelationType::BelongsTo => {
@@ -138,14 +144,23 @@ impl Relation {
                 } else {
                     quote! {}
                 };
-                quote! {
-                    #[sea_orm(
+                let sea_orm_attr_inner = quote! {
+                    sea_orm(
                         #rel_type = #ref_entity,
                         from = #from,
                         to = #to,
                         #on_update
                         #on_delete
-                    )]
+                    )
+                };
+                if let Some(feature) = sea_orm_feature {
+                    quote! {
+                        #[cfg_attr(feature = #feature, #sea_orm_attr_inner)]
+                    }
+                } else {
+                    quote! {
+                        #[#sea_orm_attr_inner]
+                    }
                 }
             }
         }
