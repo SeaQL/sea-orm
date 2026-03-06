@@ -252,6 +252,7 @@ impl RusqliteConnector {
             super::sqlite::ensure_returning_version(&version)?;
         }
 
+        // SQLx also enables this by default
         conn.execute_unprepared("PRAGMA foreign_keys = ON")?;
         let conn: DatabaseConnection = conn.into();
 
