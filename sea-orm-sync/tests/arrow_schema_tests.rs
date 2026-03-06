@@ -27,6 +27,22 @@ mod basic_entity {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+mod split_attrs_entity {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "split_attrs", arrow_schema)]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        #[sea_orm(auto_increment = false)]
+        pub id: i32,
+        pub name: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 mod float_entity {
     use sea_orm::entity::prelude::*;
 
