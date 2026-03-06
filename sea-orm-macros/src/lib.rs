@@ -708,7 +708,7 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 /// ### Attributes
 ///
 /// - `skip`: will not try to pull this field from the query result. And set it to the default value of the type.
-/// - `nested`: allows nesting models. can be any type that implements `FromQueryResult`. upports `nested(prefix = "...")` to set an explicit column prefix.
+/// - `nested`: allows nesting models. can be any type that implements `FromQueryResult`. supports `nested(prefix = "...")` to set an explicit column prefix.
 /// - `alias` / `from_alias`: get the value from this column alias
 ///
 /// ### Usage

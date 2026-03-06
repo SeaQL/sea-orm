@@ -251,9 +251,9 @@ impl GetMeta for Meta {
 
     fn get_list_args(&self, name: &str) -> Option<Punctuated<Meta, Comma>> {
         match self {
-            Meta::List(list) if list.path.is_ident(name) => {
-                list.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated).ok()
-            }
+            Meta::List(list) if list.path.is_ident(name) => list
+                .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+                .ok(),
             _ => None,
         }
     }

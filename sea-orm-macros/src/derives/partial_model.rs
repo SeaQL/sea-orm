@@ -2,7 +2,7 @@ use std::collections::{HashMap, hash_map::Entry};
 
 use heck::ToUpperCamelCase;
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote, quote_spanned};
+use quote::{ToTokens, format_ident, quote, quote_spanned};
 use syn::{
     Expr, Meta, Type, ext::IdentExt, punctuated::Punctuated, spanned::Spanned, token::Comma,
 };
@@ -108,7 +108,7 @@ impl DerivePartialModel {
         }
 
         let mut column_as_list = Vec::with_capacity(fields.len());
-        let mut seen_nested: HashMap<(syn::Type, Option<String>), ()> = HashMap::new();
+        let mut seen_nested: HashMap<(syn::Type, Option<String>), TokenStream> = HashMap::new();
 
         for field in fields {
             let field_span = field.span();
@@ -156,6 +156,7 @@ impl DerivePartialModel {
                 }
             }
 
+            let field_tokens = field.to_token_stream();
             let field_name = field.ident.unwrap();
 
             let col_as = match (from_col, from_expr, nested) {
@@ -176,23 +177,26 @@ impl DerivePartialModel {
                 (None, None, true) => {
                     let key = (field.ty.clone(), nested_prefix.clone());
                     match seen_nested.entry(key) {
-                        Entry::Occupied(_) => {
-                            let msg = match &nested_prefix {
+                        Entry::Occupied(e) => {
+                            let msg = match nested_prefix {
                                 Some(p) => format!(
                                     "multiple nested fields with the same type share prefix \"{p}\""
                                 ),
                                 None => {
                                     "multiple nested fields with the same type must have a `prefix`: \
-                                     use `#[sea_orm(nested(prefix = \"...\"))]`"
+                                       use `#[sea_orm(nested(prefix = \"...\"))]`"
                                         .to_string()
                                 }
                             };
-                            return Err(Error::Syn(syn::Error::new(field_name.span(), msg)));
+                            let mut err = syn::Error::new_spanned(&field_tokens, msg);
+                            err.combine(syn::Error::new_spanned(e.get(), "first defined here"));
+                            return Err(Error::Syn(err));
                         }
                         Entry::Vacant(e) => {
-                            e.insert(());
+                            e.insert(field_tokens);
                         }
                     }
+
                     ColumnAs::Nested {
                         typ: field.ty,
                         field: field_name,

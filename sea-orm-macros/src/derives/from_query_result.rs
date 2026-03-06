@@ -2,7 +2,7 @@ use std::collections::{HashMap, hash_map::Entry};
 
 use super::util::GetMeta;
 use proc_macro2::{Ident, TokenStream};
-use quote::{ToTokens, format_ident, quote};
+use quote::{ToTokens, quote};
 use syn::{
     Data, DataStruct, DeriveInput, Error, Fields, Generics, Meta, ext::IdentExt,
     punctuated::Punctuated, token::Comma,
@@ -127,7 +127,7 @@ impl DeriveFromQueryResult {
         };
 
         let mut fields = Vec::with_capacity(parsed_fields.len());
-        let mut seen_nested: HashMap<(syn::Type, Option<String>), ()> = HashMap::new();
+        let mut seen_nested: HashMap<(syn::Type, Option<String>), TokenStream> = HashMap::new();
 
         for parsed_field in parsed_fields {
             let mut typ = ItemType::Flat;
@@ -167,26 +167,30 @@ impl DeriveFromQueryResult {
                     }
                 }
             }
-            let ident = format_ident!("{}", parsed_field.ident.unwrap().to_string());
+
+            let field_tokens = parsed_field.to_token_stream();
+            let ident = parsed_field.ident.unwrap();
 
             if let ItemType::Nested { ref prefix } = typ {
                 let key = (parsed_field.ty, prefix.clone());
                 match seen_nested.entry(key) {
-                    Entry::Occupied(_) => {
+                    Entry::Occupied(e) => {
                         let msg = match prefix {
                             Some(p) => format!(
                                 "multiple nested fields with the same type share prefix \"{p}\""
                             ),
                             None => {
                                 "multiple nested fields with the same type must have a `prefix`: \
-                                     use `#[sea_orm(nested(prefix = \"...\"))]`"
+                                   use `#[sea_orm(nested(prefix = \"...\"))]`"
                                     .to_string()
                             }
                         };
-                        return Err(Error::new(ident.span(), msg));
+                        let mut err = Error::new_spanned(&field_tokens, msg);
+                        err.combine(Error::new_spanned(e.get(), "first defined here"));
+                        return Err(err);
                     }
                     Entry::Vacant(e) => {
-                        e.insert(());
+                        e.insert(field_tokens);
                     }
                 }
             }
