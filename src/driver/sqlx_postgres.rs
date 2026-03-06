@@ -81,6 +81,10 @@ impl SqlxPostgresConnector {
             sqlx_opts = sqlx_opts.application_name(application_name);
         }
 
+        if let Some(timeout) = options.statement_timeout {
+            sqlx_opts = sqlx_opts.options([("statement_timeout", timeout.as_millis().to_string())]);
+        }
+
         if let Some(f) = &options.pg_opts_fn {
             sqlx_opts = f(sqlx_opts);
         }

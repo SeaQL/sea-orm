@@ -92,6 +92,8 @@ pub struct ConnectOptions {
     pub(crate) schema_search_path: Option<String>,
     /// Application name (PostgreSQL only)
     pub(crate) application_name: Option<String>,
+    /// Statement timeout (PostgreSQL only)
+    pub(crate) statement_timeout: Option<Duration>,
     pub(crate) test_before_acquire: bool,
     /// Only establish connections to the DB as needed. If set to `true`, the db connection will
     /// be created using SQLx's [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy)
@@ -218,6 +220,7 @@ impl ConnectOptions {
             sqlcipher_key: None,
             schema_search_path: None,
             application_name: None,
+            statement_timeout: None,
             test_before_acquire: true,
             connect_lazy: false,
             after_connect: None,
@@ -375,6 +378,23 @@ impl ConnectOptions {
     {
         self.application_name = Some(application_name.into());
         self
+    }
+
+    /// Set the statement timeout (PostgreSQL only).
+    ///
+    /// This sets the PostgreSQL `statement_timeout` parameter via the connection options,
+    /// causing the server to abort any statement that exceeds the specified duration.
+    /// The timeout is applied at connection time and does not require an extra roundtrip.
+    ///
+    /// Has no effect on MySQL or SQLite connections.
+    pub fn statement_timeout(&mut self, value: Duration) -> &mut Self {
+        self.statement_timeout = Some(value);
+        self
+    }
+
+    /// Get the statement timeout, if set
+    pub fn get_statement_timeout(&self) -> Option<Duration> {
+        self.statement_timeout
     }
 
     /// If true, the connection will be pinged upon acquiring from the pool (default true).
