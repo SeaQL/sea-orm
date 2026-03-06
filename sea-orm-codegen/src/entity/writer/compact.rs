@@ -31,7 +31,7 @@ impl EntityWriter {
                 model_extra_attributes,
                 sea_orm_feature,
             ),
-            Self::gen_compact_relation_enum(entity, sea_orm_feature)
+            Self::gen_compact_relation_enum(entity, sea_orm_feature),
         ];
         let mut sea_orm_codeblocks = Vec::new();
         sea_orm_codeblocks.extend(Self::gen_impl_related(entity));
@@ -168,7 +168,10 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_compact_relation_enum(entity: &Entity, sea_orm_feature: &Option<String>) -> TokenStream {
+    pub fn gen_compact_relation_enum(
+        entity: &Entity,
+        sea_orm_feature: &Option<String>,
+    ) -> TokenStream {
         let attrs = entity.get_relation_attrs(sea_orm_feature);
         let relation_enum_name = entity.get_relation_enum_name();
         let (additional_derives, additional_attributes) = if let Some(feature) = sea_orm_feature {

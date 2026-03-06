@@ -58,7 +58,10 @@ impl EntityWriter {
         );
 
         if impl_active_model_behavior {
-            code_blocks.push(Self::wrap_impl_feature_gate(Self::impl_active_model_behavior(), sea_orm_feature));
+            code_blocks.push(Self::wrap_impl_feature_gate(
+                Self::impl_active_model_behavior(),
+                sea_orm_feature,
+            ));
         }
         if seaography {
             code_blocks.push(Self::gen_related_entity(entity, sea_orm_feature));

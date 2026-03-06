@@ -117,7 +117,10 @@ impl Entity {
     }
 
     pub fn get_relation_attrs(&self, sea_orm_feature: &Option<String>) -> Vec<TokenStream> {
-        self.relations.iter().map(|rel| rel.get_attrs(sea_orm_feature)).collect()
+        self.relations
+            .iter()
+            .map(|rel| rel.get_attrs(sea_orm_feature))
+            .collect()
     }
 
     /// Trimmed get_related_entity_attrs down to just the entity module
