@@ -51,6 +51,7 @@ inventory = { version = "0.3", optional = true }
 ipnetwork = { version = "0.20", default-features = false, optional = true }
 itertools = "0.14.0"
 log = { version = "0.4", default-features = false }
+mac_address = { version = "1.1", default-features = false, optional = true }
 ouroboros = { version = "0.18", default-features = false }
 pgvector = { version = "~0.4", default-features = false, optional = true }
 rust_decimal = { version = "1", default-features = false, features = [
@@ -134,7 +135,7 @@ postgres-vector = [
     "sea-query/postgres-vector",
     "sea-query-sqlx?/postgres-vector",
 ]
-proxy = ["serde_json", "serde/derive"]
+proxy = ["serde/derive"]
 rbac = ["sea-query/audit", "macros"]
 runtime-async-std = ["sqlx?/runtime-async-std"]
 runtime-async-std-native-tls = [
@@ -211,8 +212,14 @@ with-json = [
     "bigdecimal?/serde",
     "uuid?/serde",
     "time?/serde",
+    "mac_address?/serde",
     "pgvector?/serde",
     "sea-query-sqlx?/with-json",
+]
+with-mac_address = [
+    "mac_address",
+    "sea-query/with-mac_address",
+    "sea-query-sqlx?/with-mac_address",
 ]
 with-rust_decimal = [
     "rust_decimal",
