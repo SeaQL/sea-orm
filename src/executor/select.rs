@@ -717,7 +717,7 @@ where
     }
 
     /// Get one Model from the Select query
-    pub async fn one<'a, C>(self, db: &C) -> Result<Option<(E::Model, F::Model)>, DbErr>
+    pub async fn one<C>(self, db: &C) -> Result<Option<(E::Model, F::Model)>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -725,7 +725,7 @@ where
     }
 
     /// Get all Models from the Select query
-    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, F::Model)>, DbErr>
+    pub async fn all<C>(self, db: &C) -> Result<Vec<(E::Model, F::Model)>, DbErr>
     where
         C: ConnectionTrait,
     {
