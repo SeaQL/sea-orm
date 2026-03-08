@@ -135,6 +135,9 @@ fn try_get(res: &QueryResult, pre: &str, col: &str, ty: &ArrayType) -> Result<Va
 
         #[cfg(feature = "with-ipnetwork")]
         ArrayType::IpNetwork => Value::IpNetwork(res.try_get(pre, col)?),
+
+        #[cfg(feature = "with-mac_address")]
+        ArrayType::MacAddress => Value::MacAddress(res.try_get(pre, col)?),
     })
 }
 
