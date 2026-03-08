@@ -30,6 +30,7 @@ chrono = { version = "0.4.30", default-features = false, optional = true }
 time = { version = "0.3.36", default-features = false, optional = true }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 log = { version = "0.4", default-features = false }
+mac_address = { version = "1.1", default-features = false, optional = true }
 tracing = { version = "0.1", default-features = false, features = ["attributes", "log"] }
 rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.4", default-features = false, optional = true }
@@ -77,14 +78,15 @@ default = [
 ]
 macros = ["sea-orm-macros/derive"]
 mock = []
-proxy = ["serde_json", "serde/derive"]
-with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "rust_decimal?/serde", "bigdecimal?/serde", "uuid?/serde", "time?/serde", "pgvector?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
+proxy = ["serde/derive"]
+with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "rust_decimal?/serde", "bigdecimal?/serde", "uuid?/serde", "time?/serde", "pgvector?/serde", "sea-query-binder?/with-json", "sqlx?/json", "mac_address?/serde"]
 with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono", "sqlx?/chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-binder?/with-rust_decimal", "sqlx?/rust_decimal"]
 with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-binder?/with-bigdecimal", "sqlx?/bigdecimal"]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
 with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
 with-ipnetwork = ["ipnetwork", "sea-query/with-ipnetwork", "sea-query-binder?/with-ipnetwork", "sqlx?/ipnetwork"]
+with-mac_address = ["mac_address", "sea-query/with-mac_address", "sea-query-binder?/with-mac_address"]
 postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros/postgres-array"]
 postgres-vector = ["pgvector", "sea-query/postgres-vector", "sea-query-binder?/postgres-vector"]
 json-array = ["postgres-array"] # this does not actually enable sqlx-postgres, but only a few traits to support array in sea-query
