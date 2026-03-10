@@ -76,10 +76,62 @@ mod postgres_array {
     use sea_orm::DeriveValueType;
 
     #[derive(DeriveValueType)]
-    pub struct GoodId(i32);
+    pub struct IngredientId(i32);
+
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
+    #[sea_orm(value_type = "String")]
+    pub struct NumericLabel {
+        pub value: i64,
+    }
+
+    impl std::fmt::Display for NumericLabel {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.value)
+        }
+    }
+
+    impl std::str::FromStr for NumericLabel {
+        type Err = std::num::ParseIntError;
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            Ok(Self { value: s.parse()? })
+        }
+    }
+
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
+    #[sea_orm(value_type = "String")]
+    pub enum TextureKind {
+        Hard,
+        Soft,
+    }
+
+    impl std::fmt::Display for TextureKind {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(
+                f,
+                "{}",
+                match self {
+                    Self::Hard => "hard",
+                    Self::Soft => "soft",
+                }
+            )
+        }
+    }
+
+    impl std::str::FromStr for TextureKind {
+        type Err = sea_query::ValueTypeErr;
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            Ok(match s {
+                "hard" => Self::Hard,
+                "soft" => Self::Soft,
+                _ => return Err(sea_query::ValueTypeErr),
+            })
+        }
+    }
 
     #[derive(FromQueryResult)]
-    pub struct ArrayTest {
-	pub ingredient_path: Vec<GoodId>,
+    pub struct IngredientPathRow {
+        pub ingredient_path: Vec<IngredientId>,
+        pub numeric_label_path: Vec<NumericLabel>,
+        pub texture_path: Vec<TextureKind>,
     }
 }

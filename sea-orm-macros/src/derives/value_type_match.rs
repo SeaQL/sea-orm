@@ -163,6 +163,7 @@ pub fn omit_vec_impl(field_type: &str) -> bool {
     let mut current = field_type.trim();
 
     while let Some(inner) = current.strip_prefix("Vec<") {
+        #[allow(clippy::absurd_extreme_comparisons)]
         if depth >= MAX_VEC_DIMENSIONALITY {
             return true;
         }
