@@ -313,6 +313,7 @@ impl EntitySchemaInfo {
                 break;
             }
         }
+
         if let Some(existing_table) = existing_table {
             for column_def in self.table.get_columns() {
                 let mut column_exists = false;
@@ -322,7 +323,34 @@ impl EntitySchemaInfo {
                         break;
                     }
                 }
+
                 if !column_exists {
+                    #[cfg(any(feature = "rusqlite", feature = "sqlx-sqlite"))]
+                    {
+                        // TODO: sea_scheme has a bug. this is a quick fix
+                        // On SQLite, PRAGMA table_info does not return generated/virtual columns.
+                        // Actual bug originates in SchemeDiscovery called here:
+                        // https://github.com/sinder38/sea-orm/blob/d9ef425ddab146a5749eb311cadce43ea92d41cd/src/schema/builder.rs#L131-L167
+                        if column_def.get_column_spec().extra.is_some() {
+                            let tbl_str = table_name.1.to_string();
+                            let col_name = column_def.get_column_name();
+                            // hidden IN (2, 3) - filters to only hidden generated columns:
+                            // 2 = Hidden generated column (computed, not stored)
+                            // 3 = Hidden stored generated column (computed and stored)
+                            let xinfo_sql = format!(
+                                "SELECT name FROM pragma_table_xinfo('{}') WHERE name = '{}' AND hidden IN (2, 3)",
+                                tbl_str.replace('\'', "''"),
+                                col_name.replace('\'', "''")
+                            );
+                            let rows = db
+                                .query_all_raw(Statement::from_string(DbBackend::Sqlite, xinfo_sql))
+                                .await?;
+                            if !rows.is_empty() {
+                                continue; // Column exists actually
+                            }
+                        }
+                    }
+
                     let mut renamed_from = "";
                     if let Some(comment) = &column_def.get_column_spec().comment {
                         if let Some((_, suffix)) = comment.rsplit_once("renamed_from \"") {
