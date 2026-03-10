@@ -1,3 +1,5 @@
+use crate::derives::value_type_match::omit_vec_impl;
+
 use super::attributes::value_type_attr;
 use super::value_type_match::{array_type_expr, can_try_from_u64, column_type_expr};
 use proc_macro2::TokenStream;
@@ -15,6 +17,8 @@ struct DeriveValueTypeStruct {
     ty: Type,
     column_type: TokenStream,
     array_type: TokenStream,
+    /// Do not implement `sea_orm::TryGetableArray` for this type. Default: false.
+    no_vec_impl: bool,
     can_try_from_u64: bool,
 }
 
@@ -23,6 +27,7 @@ struct DeriveValueTypeStructAttrs {
     column_type: Option<TokenStream>,
     array_type: Option<TokenStream>,
     try_from_u64: bool,
+    no_vec_impl: bool,
 }
 
 impl TryFrom<value_type_attr::SeaOrm> for DeriveValueTypeStructAttrs {
@@ -33,6 +38,7 @@ impl TryFrom<value_type_attr::SeaOrm> for DeriveValueTypeStructAttrs {
             column_type: attrs.column_type.map(|s| s.parse()).transpose()?,
             array_type: attrs.array_type.map(|s| s.parse()).transpose()?,
             try_from_u64: attrs.try_from_u64.is_some(),
+            no_vec_impl: attrs.no_vec_impl.is_some(),
         })
     }
 }
@@ -151,12 +157,14 @@ impl DeriveValueTypeStruct {
         let column_type = column_type_expr(attrs.column_type, field_type, field_span);
         let array_type = array_type_expr(attrs.array_type, field_type, field_span);
         let can_try_from_u64 = attrs.try_from_u64 || can_try_from_u64(field_type);
+        let no_vec_impl = attrs.no_vec_impl || omit_vec_impl(field_type);
 
         Ok(Self {
             name,
             ty,
             column_type,
             array_type,
+            no_vec_impl,
             can_try_from_u64,
         })
     }
@@ -185,7 +193,7 @@ impl DeriveValueTypeStruct {
             quote!()
         };
 
-        let impl_try_getable_array = if cfg!(feature = "postgres-array") {
+        let impl_try_getable_array = if cfg!(feature = "postgres-array") && !self.no_vec_impl {
             quote!(
                 #[automatically_derived]
                 impl sea_orm::TryGetableArray for #name {
