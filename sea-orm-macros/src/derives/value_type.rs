@@ -305,6 +305,36 @@ impl DeriveValueTypeString {
             None => &quote!(String(sea_orm::sea_query::StringLen::None)),
         };
 
+        let impl_try_getable_array = if cfg!(feature = "postgres-array") {
+            quote!(
+                #[automatically_derived]
+                impl sea_orm::TryGetableArray for #name {
+                    fn try_get_by<I: sea_orm::ColIdx>(
+                        res: &sea_orm::QueryResult,
+                        index: I,
+                    ) -> std::result::Result<Vec<Self>, sea_orm::TryGetError> {
+                        let mut result = Vec::new();
+                        for string in <Vec<String> as sea_orm::TryGetable>::try_get_by(res, index)?.into_iter() {
+                                result.push(#from_str(&string)
+                                    .map_err(|err|
+                                        {
+                                            sea_orm::TryGetError::DbErr(
+                                                sea_orm::DbErr::TryIntoErr {
+                                                        from: "String",
+                                                        into: stringify!(#name),
+                                                        source: std::sync::Arc::new(err),
+                                                })
+                                        }
+                                    )?);
+                            }
+                        Ok(result)
+                    }
+                }
+            )
+        } else {
+            quote!()
+        };
+
         let impl_not_u8 = if cfg!(feature = "postgres-array") {
             quote!(
                 #[automatically_derived]
@@ -372,6 +402,8 @@ impl DeriveValueTypeString {
             }
 
             #impl_not_u8
+
+            #impl_try_getable_array
         )
     }
 }
