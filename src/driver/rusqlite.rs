@@ -7,7 +7,7 @@ use tracing::{debug, instrument, warn};
 
 pub use OwnedRow as RusqliteRow;
 use rusqlite::{
-    CachedStatement, Row,
+    CachedStatement, OpenFlags, Row,
     types::{FromSql, FromSqlError, Value},
 };
 pub use rusqlite::{
@@ -199,12 +199,45 @@ impl RusqliteConnector {
         // TODO handle disable_statement_logging
         let after_conn = options.after_connect;
 
-        let conn = RusqliteConnection::open(
-            options
-                .url
-                .trim_start_matches("sqlite://")
-                .trim_start_matches("sqlite:"),
-        )
+        let raw = options
+            .url
+            .trim_start_matches("sqlite://")
+            .trim_start_matches("sqlite:");
+
+        let (path, mode) = match raw.find('?') {
+            Some(q) => {
+                let query = &raw[q + 1..];
+                let mut mode = None;
+                for kv in query.split('&') {
+                    if let Some(val) = kv.strip_prefix("mode=") {
+                        mode = Some(val);
+                    } else if !kv.is_empty() {
+                        return Err(DbErr::Conn(RuntimeErr::Internal(format!(
+                            "unsupported SQLite connection parameter: {kv}"
+                        ))));
+                    }
+                }
+                (&raw[..q], mode)
+            }
+            None => (raw, None),
+        };
+
+        let conn = match mode {
+            None | Some("rwc") => RusqliteConnection::open(path),
+            Some("ro") => RusqliteConnection::open_with_flags(
+                path,
+                OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+            ),
+            Some("rw") => RusqliteConnection::open_with_flags(
+                path,
+                OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+            ),
+            Some(other) => {
+                return Err(DbErr::Conn(RuntimeErr::Internal(format!(
+                    "unknown SQLite mode: {other}"
+                ))));
+            }
+        }
         .map_err(conn_err)?;
 
         let conn = RusqliteSharedConnection {
@@ -219,6 +252,7 @@ impl RusqliteConnector {
             super::sqlite::ensure_returning_version(&version)?;
         }
 
+        // SQLx also enables this by default
         conn.execute_unprepared("PRAGMA foreign_keys = ON")?;
         let conn: DatabaseConnection = conn.into();
 

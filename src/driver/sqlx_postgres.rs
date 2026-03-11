@@ -626,12 +626,16 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 }),
                         ),
 
+                        #[cfg(feature = "with-json")]
                         "JSON" | "JSONB" => Value::Json(
                             row.try_get::<Option<serde_json::Value>, _>(c.ordinal())
                                 .expect("Failed to get json")
                                 .map(Box::new),
                         ),
-                        #[cfg(any(feature = "json-array", feature = "postgres-array"))]
+                        #[cfg(all(
+                            feature = "with-json",
+                            any(feature = "json-array", feature = "postgres-array")
+                        ))]
                         "JSON[]" | "JSONB[]" => Value::Array(
                             sea_query::ArrayType::Json,
                             row.try_get::<Option<Vec<serde_json::Value>>, _>(c.ordinal())

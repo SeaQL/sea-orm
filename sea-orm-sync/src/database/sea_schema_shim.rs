@@ -42,6 +42,9 @@ impl sea_schema::Connection for crate::DatabaseExecutor<'_> {
             crate::DatabaseExecutor::Transaction(txn) => {
                 <DatabaseTransaction as sea_schema::Connection>::query_all(txn, select)
             }
+            crate::DatabaseExecutor::OwnedTransaction(txn) => {
+                <DatabaseTransaction as sea_schema::Connection>::query_all(txn, select)
+            }
         }
     }
 
@@ -51,6 +54,9 @@ impl sea_schema::Connection for crate::DatabaseExecutor<'_> {
                 <DatabaseConnection as sea_schema::Connection>::query_all_raw(conn, sql)
             }
             crate::DatabaseExecutor::Transaction(txn) => {
+                <DatabaseTransaction as sea_schema::Connection>::query_all_raw(txn, sql)
+            }
+            crate::DatabaseExecutor::OwnedTransaction(txn) => {
                 <DatabaseTransaction as sea_schema::Connection>::query_all_raw(txn, sql)
             }
         }

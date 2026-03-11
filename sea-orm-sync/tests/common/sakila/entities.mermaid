@@ -1,0 +1,145 @@
+erDiagram
+    actor {
+        int actor_id PK
+        varchar first_name
+        varchar last_name
+        datetime last_update
+    }
+    address {
+        int address_id PK
+        varchar address
+        varchar address2
+        varchar district
+        int city_id FK
+        varchar postal_code
+        varchar phone
+        datetime last_update
+    }
+    category {
+        int category_id PK
+        varchar name
+        datetime last_update
+    }
+    city {
+        int city_id PK
+        varchar city
+        int country_id FK
+        datetime last_update
+    }
+    country {
+        int country_id PK
+        varchar country
+        datetime last_update
+    }
+    customer {
+        int customer_id PK
+        int store_id FK
+        varchar first_name
+        varchar last_name
+        varchar email
+        int address_id FK
+        bool activebool
+        date create_date
+        datetime last_update
+        int active
+    }
+    film {
+        int film_id PK
+        varchar title
+        text description
+        int release_year
+        int language_id FK
+        int original_language_id FK
+        int rental_duration
+        decimal rental_rate
+        int length
+        decimal replacement_cost
+        enum rating
+        datetime last_update
+        array special_features
+        custom fulltext
+        json metadata
+    }
+    film_actor {
+        int actor_id PK,FK
+        int film_id PK,FK
+        datetime last_update
+    }
+    film_category {
+        int film_id PK,FK
+        int category_id PK,FK
+        datetime last_update
+    }
+    inventory {
+        int inventory_id PK
+        int film_id FK
+        int store_id FK
+        datetime last_update
+    }
+    language {
+        int language_id PK
+        char name
+        datetime last_update
+    }
+    payment {
+        int payment_id PK
+        int customer_id FK
+        int staff_id FK
+        int rental_id FK
+        decimal amount
+        datetime payment_date
+    }
+    rental {
+        int rental_id PK
+        datetime rental_date UK
+        int inventory_id FK,UK
+        int customer_id FK,UK
+        datetime return_date
+        int staff_id FK
+        datetime last_update
+    }
+    staff {
+        int staff_id PK
+        varchar first_name
+        varchar last_name
+        int address_id FK
+        int reports_to_id FK
+        varchar email
+        int store_id FK
+        bool active
+        varchar username
+        varchar password
+        datetime last_update
+        blob picture
+    }
+    store {
+        int store_id PK
+        int manager_staff_id FK,UK
+        int address_id FK
+        datetime last_update
+    }
+    actor }o--o{ film : "[film_actor]"
+    address }o--|| city : "city_id"
+    category }o--o{ film : "[film_category]"
+    city }o--|| country : "country_id"
+    customer }o--|| address : "address_id"
+    customer }o--|| store : "store_id"
+    film }o--|| language : "language_id"
+    film }o--|| language : "original_language_id"
+    film_actor }o--|| actor : "actor_id"
+    film_actor }o--|| film : "film_id"
+    film_category }o--|| category : "category_id"
+    film_category }o--|| film : "film_id"
+    inventory }o--|| film : "film_id"
+    inventory }o--|| store : "store_id"
+    payment }o--|| customer : "customer_id"
+    payment }o--|| rental : "rental_id"
+    payment }o--|| staff : "staff_id"
+    rental }o--|| customer : "customer_id"
+    rental }o--|| inventory : "inventory_id"
+    rental }o--|| staff : "staff_id"
+    staff }o--|| address : "address_id"
+    staff }o--|| staff : "reports_to_id"
+    staff }o--|| store : "store_id"
+    store }o--|| address : "address_id"
+    store }o--|| staff : "manager_staff_id"

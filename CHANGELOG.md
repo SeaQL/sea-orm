@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release Candidates
 
+- [2.0.0-rc.37](changelog/2.0.0-rc.37.md) — ER Diagram Generation
 - [2.0.0-rc.36](changelog/2.0.0-rc.36.md) — Per-migration transaction control
 - [2.0.0-rc.35](changelog/2.0.0-rc.35.md) — SQLite transaction modes, DeriveIntoActiveModel extensions, Decimal64/Bytes, schema sync fix
 - [2.0.0-rc.34](changelog/2.0.0-rc.34.md) — Arrow/Parquet support, `try_from_u64` for DeriveValueType
