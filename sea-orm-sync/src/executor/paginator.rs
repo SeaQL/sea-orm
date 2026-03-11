@@ -119,6 +119,11 @@ where
         self.page
     }
 
+    /// Set the page counter
+    pub fn set_page(&mut self, page: u64) {
+        self.page = page;
+    }
+
     /// Fetch one page and increment the page counter
     ///
     /// ```
