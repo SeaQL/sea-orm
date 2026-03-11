@@ -325,8 +325,8 @@ pub async fn find_both_related() {
     let kate_order_1 = order::ActiveModel {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
-        total: Set(dec!(15.10)),
-        placed_at: Set(Utc::now().naive_utc()),
+        total: Set(rust_dec(15.10)),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
@@ -337,8 +337,8 @@ pub async fn find_both_related() {
     let kate_order_2 = order::ActiveModel {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
-        total: Set(dec!(100.00)),
-        placed_at: Set(Utc::now().naive_utc()),
+        total: Set(rust_dec(100.00)),
+        placed_at: Set(ChronoUtc::now()),
 
         ..Default::default()
     }
