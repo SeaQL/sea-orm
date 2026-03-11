@@ -4,3 +4,5 @@ pub mod m20220118_000003_seed_cake_table;
 pub mod m20220118_000004_create_tea_enum;
 pub mod m20220923_000001_seed_cake_table;
 pub mod m20230109_000001_seed_cake_table;
+pub mod m20250101_000001_create_test_table;
+pub mod m20250101_000002_manual_transaction;

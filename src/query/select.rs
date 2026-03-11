@@ -1,8 +1,10 @@
-use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect, QueryTrait};
+use crate::{
+    ColumnTrait, EntityTrait, Iterable, Order, PrimaryKeyToColumn, QueryFilter, QueryOrder,
+    QuerySelect, QueryTrait,
+};
 use core::fmt::Debug;
 use core::marker::PhantomData;
-pub use sea_query::JoinType;
-use sea_query::{Expr, IntoColumnRef, SelectStatement, SimpleExpr};
+use sea_query::{FunctionCall, IntoColumnRef, SelectStatement, SimpleExpr};
 
 /// Defines a structure to perform select operations
 #[derive(Clone, Debug)]
@@ -12,6 +14,7 @@ where
 {
     pub(crate) query: SelectStatement,
     pub(crate) entity: PhantomData<E>,
+    pub(crate) linked_index: usize,
 }
 
 /// Defines a structure to perform a SELECT operation on two Models, with the second Model being optional
@@ -38,7 +41,7 @@ where
 
 /// Defines a structure to perform a SELECT operation on two Models
 #[derive(Clone, Debug)]
-pub struct SelectBoth<E, F>
+pub struct SelectTwoRequired<E, F>
 where
     E: EntityTrait,
     F: EntityTrait,
@@ -47,13 +50,105 @@ where
     pub(crate) entity: PhantomData<(E, F)>,
 }
 
+/// Topology of multi-joins
+pub trait Topology {}
+
+/// A star topology
+#[derive(Debug, Clone)]
+pub struct TopologyStar;
+
+/// A chain topology
+#[derive(Debug, Clone)]
+pub struct TopologyChain;
+
+impl Topology for TopologyStar {}
+impl Topology for TopologyChain {}
+
+/// Perform a SELECT operation on three Models
+#[derive(Clone, Debug)]
+pub struct SelectThree<E, F, G, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, TOP)>,
+}
+
+/// Perform a SELECT operation on three Models with results consolidated
+#[derive(Clone, Debug)]
+pub struct SelectThreeMany<E, F, G, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, TOP)>,
+}
+
+/// Perform a SELECT operation on 4 Models
+#[derive(Clone, Debug)]
+pub struct SelectFour<E, F, G, H, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, H, TOP)>,
+}
+
+/// Perform a SELECT operation on 5 Models
+#[derive(Clone, Debug)]
+pub struct SelectFive<E, F, G, H, I, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+    I: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, H, I, TOP)>,
+}
+
+/// Perform a SELECT operation on 6 Models
+#[derive(Clone, Debug)]
+pub struct SelectSix<E, F, G, H, I, J, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+    I: EntityTrait,
+    J: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, H, I, J, TOP)>,
+}
+
 /// Performs a conversion to [SimpleExpr]
 pub trait IntoSimpleExpr {
     /// Method to perform the conversion
     fn into_simple_expr(self) -> SimpleExpr;
 }
 
-macro_rules! impl_trait {
+/// Extending [IntoSimpleExpr] to support casting ActiveEnum as TEXT in select expression
+pub trait ColumnAsExpr: IntoSimpleExpr {
+    /// Casting ActiveEnum as TEXT in select expression,
+    /// otherwise same as [IntoSimpleExpr::into_simple_expr]
+    fn into_column_as_expr(self) -> SimpleExpr;
+}
+
+macro_rules! impl_query_trait {
     ( $trait: ident ) => {
         impl<E> $trait for Select<E>
         where
@@ -90,7 +185,7 @@ macro_rules! impl_trait {
             }
         }
 
-        impl<E, F> $trait for SelectBoth<E, F>
+        impl<E, F> $trait for SelectTwoRequired<E, F>
         where
             E: EntityTrait,
             F: EntityTrait,
@@ -104,9 +199,24 @@ macro_rules! impl_trait {
     };
 }
 
-impl_trait!(QuerySelect);
-impl_trait!(QueryFilter);
-impl_trait!(QueryOrder);
+impl_query_trait!(QuerySelect);
+impl_query_trait!(QueryFilter);
+impl_query_trait!(QueryOrder);
+
+impl<C> ColumnAsExpr for C
+where
+    C: ColumnTrait,
+{
+    fn into_column_as_expr(self) -> SimpleExpr {
+        self.select_as(self.as_column_ref().into_column_ref().into())
+    }
+}
+
+impl ColumnAsExpr for SimpleExpr {
+    fn into_column_as_expr(self) -> SimpleExpr {
+        self.into_simple_expr()
+    }
+}
 
 impl<C> IntoSimpleExpr for C
 where
@@ -117,15 +227,15 @@ where
     }
 }
 
-impl IntoSimpleExpr for Expr {
-    fn into_simple_expr(self) -> SimpleExpr {
-        self.into()
-    }
-}
-
 impl IntoSimpleExpr for SimpleExpr {
     fn into_simple_expr(self) -> SimpleExpr {
         self
+    }
+}
+
+impl IntoSimpleExpr for FunctionCall {
+    fn into_simple_expr(self) -> SimpleExpr {
+        SimpleExpr::FunctionCall(self)
     }
 }
 
@@ -137,6 +247,7 @@ where
         Self {
             query: SelectStatement::new(),
             entity: PhantomData,
+            linked_index: 0,
         }
         .prepare_select()
         .prepare_from()
@@ -155,6 +266,26 @@ where
 
     fn prepare_from(mut self) -> Self {
         self.query.from(E::default().table_ref());
+        self
+    }
+
+    /// Apply order by primary key to the query statement
+    pub fn order_by_id_asc(self) -> Self {
+        self.order_by_id(Order::Asc)
+    }
+
+    /// Apply order by primary key to the query statement
+    pub fn order_by_id_desc(self) -> Self {
+        self.order_by_id(Order::Desc)
+    }
+
+    /// Apply order by primary key to the query statement
+    pub fn order_by_id(mut self, order: Order) -> Self {
+        for key in E::PrimaryKey::iter() {
+            let col = key.into_column();
+            self.query
+                .order_by_expr(col.into_simple_expr(), order.clone());
+        }
         self
     }
 }
@@ -198,4 +329,4 @@ macro_rules! select_two {
 
 select_two!(SelectTwo);
 select_two!(SelectTwoMany);
-select_two!(SelectBoth);
+select_two!(SelectTwoRequired);

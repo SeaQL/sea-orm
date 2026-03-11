@@ -1,14 +1,16 @@
 use crate::{
-    error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel,
-    SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait,
+    ConnectionTrait, EntityTrait, FromQueryResult, Select, SelectModel, SelectTwo, SelectTwoModel,
+    Selector, SelectorRaw, SelectorTrait, error::*,
 };
 use async_stream::stream;
-use futures::Stream;
-use sea_query::{Alias, Expr, SelectStatement};
+use futures_util::Stream;
+use sea_query::{Expr, SelectStatement};
 use std::{marker::PhantomData, pin::Pin};
 
-/// Pin a Model so that stream operations can be performed on the model
-pub type PinBoxStream<'db, Item> = Pin<Box<dyn Stream<Item = Item> + 'db>>;
+#[cfg(not(feature = "sync"))]
+type PinBoxStream<'db, Item> = Pin<Box<dyn Stream<Item = Item> + 'db>>;
+#[cfg(feature = "sync")]
+type PinBoxStream<'db, Item> = Box<dyn Iterator<Item = Item> + 'db>;
 
 /// Defined a structure to handle pagination of a result from a query operation on a Model
 #[derive(Clone, Debug)]
@@ -48,12 +50,9 @@ where
             .limit(self.page_size)
             .offset(self.page_size * page)
             .to_owned();
-        let builder = self.db.get_database_backend();
-        let stmt = builder.build(&query);
-        let rows = self.db.query_all(stmt).await?;
+        let rows = self.db.query_all(&query).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
-            // TODO: Error handling
             buffer.push(S::from_raw_query_result(row)?);
         }
         Ok(buffer)
@@ -66,22 +65,25 @@ where
 
     /// Get the total number of items
     pub async fn num_items(&self) -> Result<u64, DbErr> {
-        let builder = self.db.get_database_backend();
-        let stmt = builder.build(
-            SelectStatement::new()
-                .expr(Expr::cust("COUNT(*) AS num_items"))
-                .from_subquery(
-                    self.query.clone().reset_limit().reset_offset().to_owned(),
-                    Alias::new("sub_query"),
-                ),
-        );
-        let result = match self.db.query_one(stmt).await? {
+        let query = SelectStatement::new()
+            .expr(Expr::cust("COUNT(*) AS num_items"))
+            .from_subquery(
+                self.query
+                    .clone()
+                    .reset_limit()
+                    .reset_offset()
+                    .clear_order_by()
+                    .to_owned(),
+                "sub_query",
+            )
+            .to_owned();
+        let result = match self.db.query_one(&query).await? {
             Some(res) => res,
             None => return Ok(0),
         };
-        let num_items = match builder {
-            DbBackend::Postgres => result.try_get::<i64>("", "num_items")? as u64,
-            _ => result.try_get::<i32>("", "num_items")? as u64,
+        #[allow(clippy::match_single_binding)]
+        let num_items = match self.db.get_database_backend() {
+            _ => result.try_get::<i64>("", "num_items")? as u64,
         };
         Ok(num_items)
     }
@@ -164,7 +166,7 @@ where
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[smol_potat::main]
-    /// # #[cfg(feature = "mock")]
+    /// # #[cfg(all(feature = "mock", not(feature = "sync")))]
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
@@ -178,7 +180,7 @@ where
     /// #     .into_connection();
     /// # let db = &owned_db;
     /// #
-    /// use futures::TryStreamExt;
+    /// use futures_util::TryStreamExt;
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     /// let mut cake_stream = cake::Entity::find()
     ///     .order_by_asc(cake::Column::Id)
@@ -191,14 +193,66 @@ where
     /// #
     /// # Ok(())
     /// # }
+    /// # #[cfg(all(feature = "mock", feature = "sync"))]
+    /// # fn main() {}
     /// ```
-    pub fn into_stream(mut self) -> PinBoxStream<'db, Result<Vec<S::Item>, DbErr>> {
-        Box::pin(stream! {
-            while let Some(vec) = self.fetch_and_next().await? {
-                yield Ok(vec);
-            }
-        })
+    /// (for SeaORM Sync)
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// # #[cfg(all(feature = "mock", feature = "sync"))]
+    /// # fn example() -> Result<(), DbErr> {
+    /// #
+    /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results([
+    /// #         vec![cake::Model {
+    /// #             id: 1,
+    /// #             name: "Cake".to_owned(),
+    /// #         }],
+    /// #         vec![],
+    /// #     ])
+    /// #     .into_connection();
+    /// # let db = &owned_db;
+    /// #
+    /// use futures_util::TryStreamExt;
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    /// let mut cake_stream = cake::Entity::find()
+    ///     .order_by_asc(cake::Column::Id)
+    ///     .paginate(db, 50)
+    ///     .into_stream();
+    ///
+    /// while let Some(cakes) = cake_stream.next() {
+    ///     // Do something on cakes: Vec<cake::Model>
+    /// }
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn into_stream(self) -> PinBoxStream<'db, Result<Vec<S::Item>, DbErr>> {
+        #[cfg(not(feature = "sync"))]
+        {
+            let mut streamer = self;
+            Box::pin(stream! {
+                while let Some(vec) = streamer.fetch_and_next().await? {
+                    yield Ok(vec);
+                }
+            })
+        }
+        #[cfg(feature = "sync")]
+        {
+            Box::new(PaginatorStream { paginator: self })
+        }
     }
+}
+
+#[cfg(feature = "sync")]
+#[derive(Debug)]
+/// Stream items by page
+pub struct PaginatorStream<'db, C, S>
+where
+    C: ConnectionTrait,
+    S: SelectorTrait + 'db,
+{
+    paginator: Paginator<'db, C, S>,
 }
 
 #[async_trait::async_trait]
@@ -249,7 +303,7 @@ where
     type Selector = S;
     fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, S> {
         assert!(page_size != 0, "page_size should not be zero");
-        let sql = self.stmt.sql.trim()[6..].trim();
+        let sql = self.stmt.sql.trim()[6..].trim().to_owned();
         let mut query = SelectStatement::new();
         query.expr(if let Some(values) = self.stmt.values {
             Expr::cust_with_values(sql, values.0)
@@ -295,19 +349,39 @@ where
     }
 }
 
+#[cfg(feature = "sync")]
+impl<'db, C, S> Iterator for PaginatorStream<'db, C, S>
+where
+    C: ConnectionTrait,
+    S: SelectorTrait + 'db,
+{
+    type Item = Result<Vec<S::Item>, DbErr>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.paginator.fetch_and_next() {
+            Ok(Some(vec)) => Some(Ok(vec)),
+            Ok(None) => None,
+            Err(e) => Some(Err(e)),
+        }
+    }
+}
+
 #[cfg(test)]
 #[cfg(feature = "mock")]
 mod tests {
     use super::*;
     use crate::entity::prelude::*;
-    use crate::{tests_cfg::*, ConnectionTrait, Statement};
+    #[cfg(feature = "sync")]
+    use crate::util::StreamShim;
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
-    use futures::TryStreamExt;
-    use once_cell::sync::Lazy;
+    use crate::{QueryOrder, QuerySelect};
+    use crate::{Statement, tests_cfg::*};
+    use futures_util::{TryStreamExt, stream::TryNext};
     use pretty_assertions::assert_eq;
-    use sea_query::{Alias, Expr, SelectStatement, Value};
+    use sea_query::{Expr, SelectStatement, Value};
+    use std::sync::LazyLock;
 
-    static RAW_STMT: Lazy<Statement> = Lazy::new(|| {
+    static RAW_STMT: LazyLock<Statement> = LazyLock::new(|| {
         Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
@@ -324,7 +398,7 @@ mod tests {
             },
             fruit::Model {
                 id: 2,
-                name: "Rasberry".into(),
+                name: "Raspberry".into(),
                 cake_id: Some(1),
             },
         ];
@@ -509,7 +583,7 @@ mod tests {
 
         let select = SelectStatement::new()
             .expr(Expr::cust("COUNT(*) AS num_items"))
-            .from_subquery(sub_query, Alias::new("sub_query"))
+            .from_subquery(sub_query, "sub_query")
             .to_owned();
 
         let query_builder = db.get_database_backend();
@@ -543,7 +617,7 @@ mod tests {
 
         let select = SelectStatement::new()
             .expr(Expr::cust("COUNT(*) AS num_items"))
-            .from_subquery(sub_query, Alias::new("sub_query"))
+            .from_subquery(sub_query, "sub_query")
             .to_owned();
 
         let query_builder = db.get_database_backend();

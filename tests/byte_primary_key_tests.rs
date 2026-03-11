@@ -1,18 +1,15 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("byte_primary_key_tests").await;
-    create_tables(&ctx.db).await?;
+    create_byte_primary_key_table(&ctx.db).await?;
     create_and_update(&ctx.db).await?;
     ctx.delete().await;
 
@@ -41,6 +38,7 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
     };
 
     let update_res = Entity::update(updated_active_model.clone())
+        .validate()?
         .filter(Column::Id.eq(vec![1_u8, 2_u8, 4_u8])) // annotate it as Vec<u8> explicitly
         .exec(db)
         .await;
@@ -48,6 +46,7 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(update_res, Err(DbErr::RecordNotUpdated));
 
     let update_res = Entity::update(updated_active_model)
+        .validate()?
         .filter(Column::Id.eq(vec![1_u8, 2_u8, 3_u8])) // annotate it as Vec<u8> explicitly
         .exec(db)
         .await?;

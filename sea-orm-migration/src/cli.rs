@@ -1,18 +1,34 @@
+use std::future::Future;
+
 use clap::Parser;
 use dotenvy::dotenv;
 use std::{error::Error, fmt::Display, process::exit};
-use tracing_subscriber::{prelude::*, EnvFilter};
+use tracing_subscriber::{EnvFilter, prelude::*};
 
-use sea_orm::{ConnectOptions, Database, DbConn};
-use sea_orm_cli::{run_migrate_generate, run_migrate_init, MigrateSubcommands};
+use sea_orm::{ConnectOptions, Database, DbConn, DbErr};
+use sea_orm_cli::{MigrateSubcommands, run_migrate_generate, run_migrate_init};
 
-use super::MigratorTrait;
+use super::MigratorTraitSelf;
 
 const MIGRATION_DIR: &str = "./";
 
 pub async fn run_cli<M>(migrator: M)
 where
-    M: MigratorTrait,
+    M: MigratorTraitSelf,
+{
+    run_cli_with_connection(migrator, Database::connect).await;
+}
+
+/// Same as [`run_cli`] where you provide the function to create the [`DbConn`].
+///
+/// This allows configuring the database connection as you see fit.
+/// E.g. you can change settings in [`ConnectOptions`] or you can load sqlite
+/// extensions.
+pub async fn run_cli_with_connection<M, F, Fut>(migrator: M, make_connection: F)
+where
+    M: MigratorTraitSelf,
+    F: FnOnce(ConnectOptions) -> Fut,
+    Fut: Future<Output = Result<DbConn, DbErr>>,
 {
     dotenv().ok();
     let cli = Cli::parse();
@@ -25,23 +41,24 @@ where
     let connect_options = ConnectOptions::new(url)
         .set_schema_search_path(schema)
         .to_owned();
-    let db = &Database::connect(connect_options)
+
+    let db = make_connection(connect_options)
         .await
         .expect("Fail to acquire database connection");
 
-    run_migrate(migrator, db, cli.command, cli.verbose)
+    run_migrate(migrator, &db, cli.command, cli.verbose)
         .await
         .unwrap_or_else(handle_error);
 }
 
 pub async fn run_migrate<M>(
-    _: M,
+    migrator: M,
     db: &DbConn,
     command: Option<MigrateSubcommands>,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>>
 where
-    M: MigratorTrait,
+    M: MigratorTraitSelf,
 {
     let filter = match verbose {
         true => "debug",
@@ -68,32 +85,31 @@ where
     };
 
     match command {
-        Some(MigrateSubcommands::Fresh) => M::fresh(db).await?,
-        Some(MigrateSubcommands::Refresh) => M::refresh(db).await?,
-        Some(MigrateSubcommands::Reset) => M::reset(db).await?,
-        Some(MigrateSubcommands::Status) => M::status(db).await?,
-        Some(MigrateSubcommands::Up { num }) => M::up(db, num).await?,
-        Some(MigrateSubcommands::Down { num }) => M::down(db, Some(num)).await?,
+        Some(MigrateSubcommands::Fresh) => migrator.fresh(db).await?,
+        Some(MigrateSubcommands::Refresh) => migrator.refresh(db).await?,
+        Some(MigrateSubcommands::Reset) => migrator.reset(db).await?,
+        Some(MigrateSubcommands::Status) => migrator.status(db).await?,
+        Some(MigrateSubcommands::Up { num }) => migrator.up(db, num).await?,
+        Some(MigrateSubcommands::Down { num }) => migrator.down(db, Some(num)).await?,
         Some(MigrateSubcommands::Init) => run_migrate_init(MIGRATION_DIR)?,
         Some(MigrateSubcommands::Generate {
             migration_name,
             universal_time: _,
             local_time,
         }) => run_migrate_generate(MIGRATION_DIR, &migration_name, !local_time)?,
-        _ => M::up(db, None).await?,
+        _ => migrator.up(db, None).await?,
     };
 
     Ok(())
 }
 
 #[derive(Parser)]
-#[clap(version)]
+#[command(version)]
 pub struct Cli {
-    #[clap(action, short = 'v', long, global = true, help = "Show debug messages")]
+    #[arg(short = 'v', long, global = true, help = "Show debug messages")]
     verbose: bool,
 
-    #[clap(
-        value_parser,
+    #[arg(
         global = true,
         short = 's',
         long,
@@ -104,8 +120,7 @@ pub struct Cli {
     )]
     database_schema: Option<String>,
 
-    #[clap(
-        value_parser,
+    #[arg(
         global = true,
         short = 'u',
         long,
@@ -114,7 +129,7 @@ pub struct Cli {
     )]
     database_url: Option<String>,
 
-    #[clap(subcommand)]
+    #[command(subcommand)]
     command: Option<MigrateSubcommands>,
 }
 

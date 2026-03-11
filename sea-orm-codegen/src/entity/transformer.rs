@@ -1,9 +1,9 @@
 use crate::{
-    util::unpack_table_ref, ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error,
-    PrimaryKey, Relation, RelationType,
+    ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation,
+    RelationType,
 };
-use sea_query::{ColumnSpec, TableCreateStatement};
-use std::collections::{BTreeMap, HashMap};
+use sea_query::TableCreateStatement;
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 #[derive(Clone, Debug)]
 pub struct EntityTransformer;
@@ -15,30 +15,19 @@ impl EntityTransformer {
         let mut entities = BTreeMap::new();
         for table_create in table_create_stmts.into_iter() {
             let table_name = match table_create.get_table_name() {
-                Some(table_ref) => match table_ref {
-                    sea_query::TableRef::Table(t)
-                    | sea_query::TableRef::SchemaTable(_, t)
-                    | sea_query::TableRef::DatabaseSchemaTable(_, _, t)
-                    | sea_query::TableRef::TableAlias(t, _)
-                    | sea_query::TableRef::SchemaTableAlias(_, t, _)
-                    | sea_query::TableRef::DatabaseSchemaTableAlias(_, _, t, _) => t.to_string(),
-                    _ => unimplemented!(),
-                },
+                Some(table_ref) => table_ref.sea_orm_table().to_string(),
                 None => {
                     return Err(Error::TransformError(
                         "Table name should not be empty".into(),
-                    ))
+                    ));
                 }
             };
             let mut primary_keys: Vec<PrimaryKey> = Vec::new();
-            let columns: Vec<Column> = table_create
+            let mut columns: Vec<Column> = table_create
                 .get_columns()
                 .iter()
                 .map(|col_def| {
-                    let primary_key = col_def
-                        .get_column_spec()
-                        .iter()
-                        .any(|spec| matches!(spec, ColumnSpec::PrimaryKey));
+                    let primary_key = col_def.get_column_spec().primary_key;
                     if primary_key {
                         primary_keys.push(PrimaryKey {
                             name: col_def.get_column_name(),
@@ -47,7 +36,7 @@ impl EntityTransformer {
                     col_def.into()
                 })
                 .map(|mut col: Column| {
-                    col.unique = table_create
+                    col.unique |= table_create
                         .get_indexes()
                         .iter()
                         .filter(|index| index.is_unique_key())
@@ -57,8 +46,9 @@ impl EntityTransformer {
                         > 0;
                     col
                 })
-                .map(|col| {
-                    if let sea_query::ColumnType::Enum { name, variants } = &col.col_type {
+                .inspect(|col| {
+                    if let sea_query::ColumnType::Enum { name, variants } = col.get_inner_col_type()
+                    {
                         enums.insert(
                             name.to_string(),
                             ActiveEnum {
@@ -67,16 +57,34 @@ impl EntityTransformer {
                             },
                         );
                     }
-                    col
                 })
                 .collect();
+            for index in table_create.get_indexes().iter() {
+                if index.is_unique_key() {
+                    let col_names = index.get_index_spec().get_column_names();
+                    if col_names.len() > 1 {
+                        if let Some(mut key_name) = index.get_index_spec().get_name() {
+                            if let Some((_, suffix)) = key_name.rsplit_once('-') {
+                                key_name = suffix;
+                            }
+                            for col_name in col_names {
+                                for column in columns.iter_mut() {
+                                    if column.name == col_name {
+                                        column.unique_key = Some(key_name.to_owned());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             let mut ref_table_counts: BTreeMap<String, usize> = BTreeMap::new();
             let relations: Vec<Relation> = table_create
                 .get_foreign_key_create_stmts()
                 .iter()
                 .map(|fk_create_stmt| fk_create_stmt.get_foreign_key())
                 .map(|tbl_fk| {
-                    let ref_tbl = unpack_table_ref(tbl_fk.get_ref_table().unwrap());
+                    let ref_tbl = tbl_fk.get_ref_table().unwrap().sea_orm_table().to_string();
                     if let Some(count) = ref_table_counts.get_mut(&ref_tbl) {
                         if *count == 0 {
                             *count = 1;
@@ -147,13 +155,24 @@ impl EntityTransformer {
                         break;
                     }
                 }
+                if rel.columns.len() == entity.primary_keys.len() {
+                    let mut count_pk = 0;
+                    for primary_key in entity.primary_keys.iter() {
+                        if rel.columns.contains(&primary_key.name) {
+                            count_pk += 1;
+                        }
+                    }
+                    if count_pk == entity.primary_keys.len() {
+                        unique = true;
+                    }
+                }
                 let rel_type = if unique {
                     RelationType::HasOne
                 } else {
                     RelationType::HasMany
                 };
                 rel.rel_type = rel_type;
-                rel.ref_table = table_name.clone();
+                rel.ref_table = table_name.to_string();
                 rel.columns = Vec::new();
                 rel.ref_columns = Vec::new();
                 if let Some(vec) = inverse_relations.get_mut(&ref_table) {
@@ -176,6 +195,17 @@ impl EntityTransformer {
                 }
             }
         }
+
+        // When codegen is fed with a subset of tables (e.g. via `sea-orm-cli generate entity --tables`),
+        // we must not generate relations that point to entities outside this set, otherwise it will
+        // produce invalid paths like `super::<missing_table>::Entity`.
+        let table_names: HashSet<String> = entities.keys().cloned().collect();
+        for entity in entities.values_mut() {
+            entity
+                .relations
+                .retain(|rel| rel.self_referencing || table_names.contains(&rel.ref_table));
+        }
+
         for table_name in entities.clone().keys() {
             let relations = match entities.get(table_name) {
                 Some(entity) => {
@@ -248,6 +278,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
     use sea_orm::{DbBackend, Schema};
+    use sea_query::{ColumnDef, ForeignKey, Table};
     use std::{
         error::Error,
         io::{self, BufRead, BufReader},
@@ -359,46 +390,216 @@ mod tests {
         )
     }
 
-    fn validate_compact_entities(
-        table_create_stmts: Vec<TableCreateStatement>,
-        files: Vec<(&str, &str)>,
-    ) -> Result<(), Box<dyn Error>> {
-        let entities: HashMap<_, _> = EntityTransformer::transform(table_create_stmts)?
+    #[test]
+    fn test_indexes_transform() -> Result<(), Box<dyn Error>> {
+        let schema = Schema::new(DbBackend::Postgres);
+
+        validate_compact_entities(
+            vec![
+                schema.create_table_with_index_from_entity(
+                    crate::tests_cfg::compact::indexes::Entity,
+                ),
+            ],
+            vec![("indexes", include_str!("../tests_cfg/compact/indexes.rs"))],
+        )?;
+
+        validate_dense_entities(
+            vec![
+                schema
+                    .create_table_with_index_from_entity(crate::tests_cfg::dense::indexes::Entity),
+            ],
+            vec![("indexes", include_str!("../tests_cfg/dense/indexes.rs"))],
+        )?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn filter_relations_to_missing_entities() -> Result<(), Box<dyn Error>> {
+        let parent_stmt = || {
+            Table::create()
+                .table("parent")
+                .col(
+                    ColumnDef::new("id")
+                        .integer()
+                        .not_null()
+                        .auto_increment()
+                        .primary_key(),
+                )
+                .to_owned()
+        };
+
+        let child_stmt = || {
+            Table::create()
+                .table("child")
+                .col(
+                    ColumnDef::new("id")
+                        .integer()
+                        .not_null()
+                        .auto_increment()
+                        .primary_key(),
+                )
+                .col(ColumnDef::new("parent_id").integer().not_null())
+                .foreign_key(
+                    ForeignKey::create()
+                        .name("fk-child-parent_id")
+                        .from("child", "parent_id")
+                        .to("parent", "id"),
+                )
+                .to_owned()
+        };
+
+        let entities: HashMap<_, _> =
+            EntityTransformer::transform(vec![parent_stmt(), child_stmt()])?
+                .entities
+                .into_iter()
+                .map(|entity| (entity.table_name.clone(), entity))
+                .collect();
+
+        let child = entities.get("child").expect("missing entity `child`");
+        assert_eq!(child.relations.len(), 1);
+        assert_eq!(child.relations[0].ref_table, "parent");
+
+        let entities: HashMap<_, _> = EntityTransformer::transform(vec![child_stmt()])?
             .entities
             .into_iter()
             .map(|entity| (entity.table_name.clone(), entity))
             .collect();
 
-        for (entity_name, file_content) in files {
-            let entity = entities
-                .get(entity_name)
-                .expect("Forget to add entity to the list");
-
-            assert_eq!(
-                parse_from_file(file_content.as_bytes())?.to_string(),
-                EntityWriter::gen_compact_code_blocks(
-                    entity,
-                    &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
-                    &None,
-                    false,
-                    false,
-                    &Default::default(),
-                    &Default::default(),
-                    false,
-                )
-                .into_iter()
-                .skip(1)
-                .fold(TokenStream::new(), |mut acc, tok| {
-                    acc.extend(tok);
-                    acc
-                })
-                .to_string()
-            );
-        }
+        let child = entities.get("child").expect("missing entity `child`");
+        assert!(child.relations.is_empty());
 
         Ok(())
     }
+
+    #[test]
+    fn filter_conjunct_relations_to_missing_entities() -> Result<(), Box<dyn Error>> {
+        let user_stmt = || {
+            Table::create()
+                .table("user")
+                .col(
+                    ColumnDef::new("id")
+                        .integer()
+                        .not_null()
+                        .auto_increment()
+                        .primary_key(),
+                )
+                .to_owned()
+        };
+
+        let role_stmt = || {
+            Table::create()
+                .table("role")
+                .col(
+                    ColumnDef::new("id")
+                        .integer()
+                        .not_null()
+                        .auto_increment()
+                        .primary_key(),
+                )
+                .to_owned()
+        };
+
+        let user_role_stmt = || {
+            Table::create()
+                .table("user_role")
+                .col(ColumnDef::new("user_id").integer().not_null().primary_key())
+                .col(ColumnDef::new("role_id").integer().not_null().primary_key())
+                .foreign_key(
+                    ForeignKey::create()
+                        .name("fk-user_role-user_id")
+                        .from("user_role", "user_id")
+                        .to("user", "id"),
+                )
+                .foreign_key(
+                    ForeignKey::create()
+                        .name("fk-user_role-role_id")
+                        .from("user_role", "role_id")
+                        .to("role", "id"),
+                )
+                .to_owned()
+        };
+
+        let entities: HashMap<_, _> =
+            EntityTransformer::transform(vec![user_stmt(), role_stmt(), user_role_stmt()])?
+                .entities
+                .into_iter()
+                .map(|entity| (entity.table_name.clone(), entity))
+                .collect();
+
+        let user = entities.get("user").expect("missing entity `user`");
+        assert!(user.conjunct_relations.iter().any(|conjunct_relation| {
+            conjunct_relation.via == "user_role" && conjunct_relation.to == "role"
+        }));
+
+        let entities: HashMap<_, _> =
+            EntityTransformer::transform(vec![user_stmt(), user_role_stmt()])?
+                .entities
+                .into_iter()
+                .map(|entity| (entity.table_name.clone(), entity))
+                .collect();
+
+        let user = entities.get("user").expect("missing entity `user`");
+        assert!(user.conjunct_relations.is_empty());
+
+        let user_role = entities
+            .get("user_role")
+            .expect("missing entity `user_role`");
+        assert_eq!(user_role.relations.len(), 1);
+        assert_eq!(user_role.relations[0].ref_table, "user");
+
+        Ok(())
+    }
+
+    macro_rules! validate_entities_fn {
+        ($fn_name: ident, $method: ident) => {
+            fn $fn_name(
+                table_create_stmts: Vec<TableCreateStatement>,
+                files: Vec<(&str, &str)>,
+            ) -> Result<(), Box<dyn Error>> {
+                let entities: HashMap<_, _> = EntityTransformer::transform(table_create_stmts)?
+                    .entities
+                    .into_iter()
+                    .map(|entity| (entity.table_name.clone(), entity))
+                    .collect();
+
+                for (entity_name, file_content) in files {
+                    let entity = entities
+                        .get(entity_name)
+                        .expect("Forget to add entity to the list");
+
+                    assert_eq!(
+                        parse_from_file(file_content.as_bytes())?.to_string(),
+                        EntityWriter::$method(
+                            entity,
+                            &crate::WithSerde::None,
+                            &Default::default(),
+                            &None,
+                            false,
+                            false,
+                            &Default::default(),
+                            &Default::default(),
+                            &Default::default(),
+                            false,
+                            true,
+                        )
+                        .into_iter()
+                        .skip(1)
+                        .fold(TokenStream::new(), |mut acc, tok| {
+                            acc.extend(tok);
+                            acc
+                        })
+                        .to_string()
+                    );
+                }
+
+                Ok(())
+            }
+        };
+    }
+
+    validate_entities_fn!(validate_compact_entities, gen_compact_code_blocks);
+    validate_entities_fn!(validate_dense_entities, gen_dense_code_blocks);
 
     fn parse_from_file<R>(inner: R) -> io::Result<TokenStream>
     where

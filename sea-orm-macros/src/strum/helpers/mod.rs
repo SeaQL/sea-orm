@@ -1,4 +1,3 @@
-pub use self::case_style::CaseStyleHelpers;
 pub use self::type_props::HasTypeProperties;
 pub use self::variant_props::HasStrumVariantProperties;
 
@@ -15,10 +14,8 @@ pub fn non_enum_error() -> syn::Error {
 }
 
 pub fn occurrence_error<T: ToTokens>(fst: T, snd: T, attr: &str) -> syn::Error {
-    let mut e = syn::Error::new_spanned(
-        snd,
-        format!("Found multiple occurrences of strum({})", attr),
-    );
+    let mut e =
+        syn::Error::new_spanned(snd, format!("Found multiple occurrences of strum({attr})"));
     e.combine(syn::Error::new_spanned(fst, "first one here"));
     e
 }

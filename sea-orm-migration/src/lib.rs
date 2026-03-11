@@ -4,6 +4,7 @@ pub mod connection;
 pub mod manager;
 pub mod migrator;
 pub mod prelude;
+pub mod schema;
 pub mod seaql_migrations;
 pub mod util;
 
@@ -13,8 +14,8 @@ pub use migrator::*;
 
 pub use async_trait;
 pub use sea_orm;
-pub use sea_orm::sea_query;
 pub use sea_orm::DbErr;
+pub use sea_orm::sea_query;
 
 pub trait MigrationName {
     fn name(&self) -> &str;
@@ -29,5 +30,14 @@ pub trait MigrationTrait: MigrationName + Send + Sync {
     /// Define actions to perform when rolling back the migration
     async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
         Err(DbErr::Migration("We Don't Do That Here".to_owned()))
+    }
+
+    /// Control whether this migration runs inside a transaction.
+    ///
+    /// - `None` (default): follow backend convention (Postgres = transaction, MySQL/SQLite = no transaction)
+    /// - `Some(true)`: force wrapping in a transaction on any backend
+    /// - `Some(false)`: disable automatic transaction wrapping (use `manager.begin()` for manual control)
+    fn use_transaction(&self) -> Option<bool> {
+        None
     }
 }

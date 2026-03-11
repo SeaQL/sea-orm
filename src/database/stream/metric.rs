@@ -1,14 +1,19 @@
 use std::{pin::Pin, task::Poll, time::Duration};
 
-use futures::Stream;
+use futures_util::Stream;
 
 use crate::{DbErr, QueryResult, Statement};
+
+#[cfg(not(feature = "sync"))]
+type PinBoxStream<'a> = Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + 'a + Send>>;
+#[cfg(feature = "sync")]
+type PinBoxStream<'a> = Box<dyn Iterator<Item = Result<QueryResult, DbErr>> + 'a>;
 
 pub(crate) struct MetricStream<'a> {
     metric_callback: &'a Option<crate::metric::Callback>,
     stmt: &'a Statement,
     elapsed: Option<Duration>,
-    stream: Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + 'a + Send>>,
+    stream: PinBoxStream<'a>,
 }
 
 impl<'a> MetricStream<'a> {
@@ -31,7 +36,8 @@ impl<'a> MetricStream<'a> {
     }
 }
 
-impl<'a> Stream for MetricStream<'a> {
+#[cfg(not(feature = "sync"))]
+impl Stream for MetricStream<'_> {
     type Item = Result<QueryResult, DbErr>;
 
     fn poll_next(
@@ -51,7 +57,24 @@ impl<'a> Stream for MetricStream<'a> {
     }
 }
 
-impl<'a> Drop for MetricStream<'a> {
+#[cfg(feature = "sync")]
+impl Iterator for MetricStream<'_> {
+    type Item = Result<QueryResult, DbErr>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let _start = self
+            .metric_callback
+            .is_some()
+            .then(std::time::SystemTime::now);
+        let res = self.stream.next();
+        if let (Some(_start), Some(elapsed)) = (_start, &mut self.elapsed) {
+            *elapsed += _start.elapsed().unwrap_or_default();
+        }
+        res
+    }
+}
+
+impl Drop for MetricStream<'_> {
     fn drop(&mut self) {
         if let (Some(callback), Some(elapsed)) = (self.metric_callback.as_deref(), self.elapsed) {
             let info = crate::metric::Info {

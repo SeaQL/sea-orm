@@ -2,7 +2,7 @@
 
 use sea_orm::entity::prelude:: * ;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, ts_rs::TS, utoipa::ToSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, ts_rs::TS, utoipa::ToSchema)]
 #[sea_orm(table_name = "cake")]
 pub struct Model {
     #[sea_orm(primary_key)]

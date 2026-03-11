@@ -1,5 +1,5 @@
 use super::edit_log;
-use sea_orm::{entity::prelude::*, ConnectionTrait, Set, TryIntoModel};
+use sea_orm::{ConnectionTrait, Set, TryIntoModel, entity::prelude::*};
 use serde::Serialize;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize)]

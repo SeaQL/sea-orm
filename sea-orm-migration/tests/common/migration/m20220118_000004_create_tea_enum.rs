@@ -9,18 +9,15 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
 
-        match db.get_database_backend() {
-            DbBackend::MySql | DbBackend::Sqlite => {}
-            DbBackend::Postgres => {
-                manager
-                    .create_type(
-                        Type::create()
-                            .as_enum(Tea::Table)
-                            .values([Tea::EverydayTea, Tea::BreakfastTea])
-                            .to_owned(),
-                    )
-                    .await?;
-            }
+        if db.get_database_backend() == DbBackend::Postgres {
+            manager
+                .create_type(
+                    Type::create()
+                        .as_enum(Tea::Enum)
+                        .values([Tea::EverydayTea, Tea::BreakfastTea])
+                        .to_owned(),
+                )
+                .await?;
         }
 
         Ok(())
@@ -29,25 +26,22 @@ impl MigrationTrait for Migration {
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
 
-        match db.get_database_backend() {
-            DbBackend::MySql | DbBackend::Sqlite => {}
-            DbBackend::Postgres => {
-                manager
-                    .drop_type(Type::drop().name(Tea::Table).to_owned())
-                    .await?;
-            }
+        if db.get_database_backend() == DbBackend::Postgres {
+            manager
+                .drop_type(Type::drop().name(Tea::Enum).to_owned())
+                .await?;
         }
 
         Ok(())
     }
 }
 
-/// Learn more at https://docs.rs/sea-query#iden
-#[derive(Iden)]
+#[derive(DeriveIden)]
 pub enum Tea {
-    Table,
-    #[iden = "EverydayTea"]
+    #[sea_orm(iden = "tea")]
+    Enum,
+    #[sea_orm(iden = "EverydayTea")]
     EverydayTea,
-    #[iden = "BreakfastTea"]
+    #[sea_orm(iden = "BreakfastTea")]
     BreakfastTea,
 }

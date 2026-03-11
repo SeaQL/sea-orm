@@ -2,18 +2,18 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, Ident};
 
-use super::helpers::{non_enum_error, HasStrumVariantProperties, HasTypeProperties};
+use super::helpers::{HasStrumVariantProperties, HasTypeProperties, non_enum_error};
 
 pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
     let name = &ast.ident;
-    let gen = &ast.generics;
-    let (impl_generics, ty_generics, where_clause) = gen.split_for_impl();
+    let r#gen = &ast.generics;
+    let (impl_generics, ty_generics, where_clause) = r#gen.split_for_impl();
     let vis = &ast.vis;
     let type_properties = ast.get_type_properties()?;
     let strum_module_path = type_properties.crate_module_path();
-    let doc_comment = format!("An iterator over the variants of [{}]", name);
+    let doc_comment = format!("An iterator over the variants of [{name}]");
 
-    if gen.lifetimes().count() > 0 {
+    if r#gen.lifetimes().count() > 0 {
         return Err(syn::Error::new(
             Span::call_site(),
             "This macro doesn't support enums with lifetimes. \
@@ -21,8 +21,8 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
         ));
     }
 
-    let phantom_data = if gen.type_params().count() > 0 {
-        let g = gen.type_params().map(|param| &param.ident);
+    let phantom_data = if r#gen.type_params().count() > 0 {
+        let g = r#gen.type_params().map(|param| &param.ident);
         quote! { < ( #(#g),* ) > }
     } else {
         quote! { < () > }
@@ -44,8 +44,10 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
         let params = match &variant.fields {
             Fields::Unit => quote! {},
             Fields::Unnamed(fields) => {
-                let defaults = ::core::iter::repeat(quote!(::core::default::Default::default()))
-                    .take(fields.unnamed.len());
+                let defaults = ::core::iter::repeat_n(
+                    quote!(::core::default::Default::default()),
+                    fields.unnamed.len(),
+                );
                 quote! { (#(#defaults),*) }
             }
             Fields::Named(fields) => {
@@ -63,25 +65,25 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
 
     let variant_count = arms.len();
     arms.push(quote! { _ => ::core::option::Option::None });
-    let iter_name = syn::parse_str::<Ident>(&format!("{}Iter", name)).unwrap();
+    let iter_name = syn::parse_str::<Ident>(&format!("{name}Iter")).unwrap();
 
     // Create a string literal "MyEnumIter" to use in the debug impl.
     let iter_name_debug_struct =
-        syn::parse_str::<syn::LitStr>(&format!("\"{}\"", iter_name)).unwrap();
+        syn::parse_str::<syn::LitStr>(&format!("\"{iter_name}\"")).unwrap();
 
     Ok(quote! {
         #[doc = #doc_comment]
         #[allow(
             missing_copy_implementations,
         )]
-        #vis struct #iter_name #ty_generics {
+        #vis struct #iter_name #impl_generics {
             idx: usize,
             back_idx: usize,
             marker: ::core::marker::PhantomData #phantom_data,
         }
 
-        impl #impl_generics core::fmt::Debug for #iter_name #ty_generics #where_clause {
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        impl #impl_generics ::core::fmt::Debug for #iter_name #ty_generics #where_clause {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                 // We don't know if the variants implement debug themselves so the only thing we
                 // can really show is how many elements are left.
                 f.debug_struct(#iter_name_debug_struct)
@@ -91,7 +93,7 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
         }
 
         impl #impl_generics #iter_name #ty_generics #where_clause {
-            fn get(&self, idx: usize) -> Option<#name #ty_generics> {
+            fn get(&self, idx: usize) -> ::core::option::Option<#name #ty_generics> {
                 match idx {
                     #(#arms),*
                 }
@@ -112,16 +114,16 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
         impl #impl_generics Iterator for #iter_name #ty_generics #where_clause {
             type Item = #name #ty_generics;
 
-            fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+            fn next(&mut self) -> ::core::option::Option<<Self as Iterator>::Item> {
                 self.nth(0)
             }
 
-            fn size_hint(&self) -> (usize, Option<usize>) {
+            fn size_hint(&self) -> (usize, ::core::option::Option<usize>) {
                 let t = if self.idx + self.back_idx >= #variant_count { 0 } else { #variant_count - self.idx - self.back_idx };
                 (t, Some(t))
             }
 
-            fn nth(&mut self, n: usize) -> Option<<Self as Iterator>::Item> {
+            fn nth(&mut self, n: usize) -> ::core::option::Option<<Self as Iterator>::Item> {
                 let idx = self.idx + n + 1;
                 if idx + self.back_idx > #variant_count {
                     // We went past the end of the iterator. Freeze idx at #variant_count
@@ -131,7 +133,7 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
                     ::core::option::Option::None
                 } else {
                     self.idx = idx;
-                    self.get(idx - 1)
+                    #iter_name::get(self, idx - 1)
                 }
             }
         }
@@ -143,7 +145,7 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
         }
 
         impl #impl_generics DoubleEndedIterator for #iter_name #ty_generics #where_clause {
-            fn next_back(&mut self) -> Option<<Self as Iterator>::Item> {
+            fn next_back(&mut self) -> ::core::option::Option<<Self as Iterator>::Item> {
                 let back_idx = self.back_idx + 1;
 
                 if self.idx + back_idx > #variant_count {
@@ -154,10 +156,12 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
                     ::core::option::Option::None
                 } else {
                     self.back_idx = back_idx;
-                    self.get(#variant_count - self.back_idx)
+                    #iter_name::get(self, #variant_count - self.back_idx)
                 }
             }
         }
+
+        impl #impl_generics ::core::iter::FusedIterator for #iter_name #ty_generics #where_clause { }
 
         impl #impl_generics Clone for #iter_name #ty_generics #where_clause {
             fn clone(&self) -> #iter_name #ty_generics {

@@ -1,10 +1,10 @@
 ---
 name: Bug Report
-about: Report a bug or feature flaw
-title: ''
-labels: ''
-assignees: ''
-
+about: Report a bug or design flaw
+title: ""
+labels: ""
+assignees: ""
+type: Bug
 ---
 
 <!--
@@ -19,15 +19,15 @@ Want to ask a question? You can reach us via:
 - GitHub Discussions: https://github.com/SeaQL/sea-orm/discussions/new
 
 Please make sure that you are not asking for a missing feature; a bug is incorrect behavior -
-either in the feature specification or implementation.
+either in the feature specification or implementation. Feature requests should be first raised in discussions.
 
 Please also make sure your description is clear and precise - maintainers don't have access to your
 code and can't see what you have seen. Please avoid vague descriptions like "they are different"
 or "the program crashes" - in either case, provide exact information.
 
 If you are certain there is a bug, please provide a reproducible example, which helps the investigator
-to pin-point the bug and the implementor to verify that a solution is satisfactory. Bug reports without 
-reproducible example may be closed immediately or dangle forever.
+to pin-point the bug and the implementor to verify that a solution is satisfactory. Bug reports without
+reproducible example may be closed or dangle forever.
 
 Finally, please search for existing issues and discussions before submission. Feel free to revive old
 threads if you have new information to add, but please don't ask for ETA or "+1".
@@ -59,10 +59,6 @@ threads if you have new information to add, but please don't ask for ETA or "+1"
 ### Workarounds
 
 <!-- What experiments have you done to understand / workaround the bug? -->
-
-## Reproducible Example
-
-<!-- Please add a minimal reproducible example under https://github.com/SeaQL/sea-orm/tree/master/issues, and open a PR subsequently. -->
 
 ## Versions
 

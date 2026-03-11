@@ -1,21 +1,23 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
 pub use common::{
+    TestContext,
     features::{
         event_trigger::{Event, Events},
         *,
     },
     setup::*,
-    TestContext,
 };
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 
 #[sea_orm_macros::test]
 #[cfg(all(feature = "sqlx-postgres", feature = "postgres-array"))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("event_trigger_tests").await;
-    create_tables(&ctx.db).await?;
+    create_event_trigger_table(&ctx.db).await?;
     insert_event_trigger(&ctx.db).await?;
     ctx.delete().await;
 

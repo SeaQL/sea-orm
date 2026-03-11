@@ -1,19 +1,17 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{DatabaseConnection, TryInsertResult, entity::prelude::*, entity::*};
 use serde_json::json;
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("features_schema_string_primary_key_tests").await;
-    create_tables(&ctx.db).await?;
+    create_repository_table(&ctx.db).await?;
+    create_edit_log_table(&ctx.db).await?;
     create_and_update_repository(&ctx.db).await?;
     insert_and_delete_repository(&ctx.db).await?;
     ctx.delete().await;
@@ -46,7 +44,7 @@ pub async fn insert_and_delete_repository(db: &DatabaseConnection) -> Result<(),
     {
         use sea_orm::sea_query::OnConflict;
 
-        let err = Repository::insert(repository)
+        let err = Repository::insert(repository.clone())
             // MySQL does not support DO NOTHING, we might workaround that later
             .on_conflict(OnConflict::new().do_nothing().to_owned())
             .exec(db)
@@ -103,6 +101,37 @@ pub async fn insert_and_delete_repository(db: &DatabaseConnection) -> Result<(),
         ]
     );
 
+    #[cfg(any(feature = "sqlx-sqlite", feature = "sqlx-postgres"))]
+    {
+        let result = Repository::insert_many([
+            repository::Model {
+                id: "unique-id-002".to_owned(), // conflict
+                owner: "GC".to_owned(),
+                name: "G.C.".to_owned(),
+                description: None,
+            }
+            .into_active_model(),
+            repository::Model {
+                id: "unique-id-003".to_owned(), // insert succeed
+                owner: "GC".to_owned(),
+                name: "G.C.".to_owned(),
+                description: None,
+            }
+            .into_active_model(),
+        ])
+        .on_conflict_do_nothing()
+        .exec_with_returning_many(db)
+        .await?;
+
+        match result {
+            TryInsertResult::Inserted(inserted) => {
+                assert_eq!(inserted.len(), 1);
+                assert_eq!(inserted[0].id, "unique-id-003");
+            }
+            _ => panic!("{result:?}"),
+        }
+    }
+
     Ok(())
 }
 
@@ -128,6 +157,7 @@ pub async fn create_and_update_repository(db: &DatabaseConnection) -> Result<(),
     };
 
     let update_res = Repository::update(updated_active_model.clone())
+        .validate()?
         .filter(repository::Column::Id.eq("not-exists-id".to_owned()))
         .exec(db)
         .await;
@@ -135,6 +165,7 @@ pub async fn create_and_update_repository(db: &DatabaseConnection) -> Result<(),
     assert_eq!(update_res, Err(DbErr::RecordNotUpdated));
 
     let update_res = Repository::update(updated_active_model)
+        .validate()?
         .filter(repository::Column::Id.eq("unique-id-002".to_owned()))
         .exec(db)
         .await?;
@@ -155,6 +186,7 @@ pub async fn create_and_update_repository(db: &DatabaseConnection) -> Result<(),
     };
 
     let update_res = Repository::update(updated_active_model.clone())
+        .validate()?
         .filter(repository::Column::Id.eq("unique-id-002".to_owned()))
         .exec(db)
         .await?;

@@ -1,18 +1,15 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, ConnectionTrait, DatabaseConnection};
+use sea_orm::{ConnectionTrait, DatabaseConnection, entity::prelude::*};
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("execute_unprepared_tests").await;
-    create_tables(&ctx.db).await?;
+    create_insert_default_table(&ctx.db).await?;
     execute_unprepared(&ctx.db).await?;
     ctx.delete().await;
 
@@ -24,7 +21,7 @@ pub async fn execute_unprepared(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     db.execute_unprepared(
         [
-            "INSERT INTO insert_default VALUES (1), (2), (3), (4), (5)",
+            "INSERT INTO insert_default (id) VALUES (1), (2), (3), (4), (5)",
             "DELETE FROM insert_default WHERE id % 2 = 0",
         ]
         .join(";")

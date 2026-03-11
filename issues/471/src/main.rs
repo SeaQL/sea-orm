@@ -8,7 +8,9 @@ use std::env;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    env::set_var("RUST_LOG", "debug");
+    unsafe {
+        env::set_var("RUST_LOG", "debug");
+    }
     tracing_subscriber::fmt::init();
 
     dotenvy::dotenv().ok();

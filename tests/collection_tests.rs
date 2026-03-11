@@ -1,16 +1,18 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{
-    entity::prelude::*, entity::*, DatabaseConnection, DerivePartialModel, FromQueryResult,
-};
+use sea_orm::{DatabaseConnection, DerivePartialModel, QueryOrder, entity::prelude::*, entity::*};
+use serde_json::json;
 
 #[sea_orm_macros::test]
 #[cfg(all(feature = "sqlx-postgres", feature = "postgres-array"))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("collection_tests").await;
-    create_tables(&ctx.db).await?;
+    create_tea_enum(&ctx.db).await?;
+    create_collection_table(&ctx.db).await?;
     insert_collection(&ctx.db).await?;
     update_collection(&ctx.db).await?;
     select_collection(&ctx.db).await?;
@@ -60,7 +62,7 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             name: "Collection 2".into(),
             integers: vec![10, 9],
             integers_opt: None,
-            teas: vec![Tea::BreakfastTea],
+            teas: vec![Tea::BreakfastTea, Tea::AfternoonTea],
             teas_opt: None,
             colors: vec![Color::Black],
             colors_opt: None,
@@ -75,7 +77,7 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             name: "Collection 2".into(),
             integers: vec![10, 9],
             integers_opt: None,
-            teas: vec![Tea::BreakfastTea],
+            teas: vec![Tea::BreakfastTea, Tea::AfternoonTea],
             teas_opt: None,
             colors: vec![Color::Black],
             colors_opt: None,
@@ -113,6 +115,96 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             uuid_hyphenated: vec![uuid.hyphenated()],
         }
     );
+
+    assert_eq!(
+        Entity::find_by_id(1).into_json().one(db).await?,
+        Some(json!({
+            "id": 1,
+            "name": "Collection 1",
+            "integers": [1, 2, 3],
+            "integers_opt": [1, 2, 3],
+            "teas": ["BreakfastTea"],
+            "teas_opt": ["BreakfastTea"],
+            "colors": [0],
+            "colors_opt": [0],
+            "uuid": [uuid],
+            "uuid_hyphenated": [uuid.hyphenated()],
+        }))
+    );
+
+    assert_eq!(
+        Entity::find_by_id(2).into_json().one(db).await?,
+        Some(json!({
+            "id": 2,
+            "name": "Collection 2",
+            "integers": [10, 9],
+            "integers_opt": null,
+            "teas": ["BreakfastTea", "AfternoonTea"],
+            "teas_opt": null,
+            "colors": [0],
+            "colors_opt": null,
+            "uuid": [uuid],
+            "uuid_hyphenated": [uuid.hyphenated()],
+        }))
+    );
+
+    assert_eq!(
+        Entity::find_by_id(3).into_json().one(db).await?,
+        Some(json!({
+            "id": 3,
+            "name": "Collection 3",
+            "integers": [],
+            "integers_opt": [],
+            "teas": [],
+            "teas_opt": [],
+            "colors": [],
+            "colors_opt": [],
+            "uuid": [uuid],
+            "uuid_hyphenated": [uuid.hyphenated()],
+        }))
+    );
+
+    let found = Entity::find()
+        .filter(Entity::COLUMN.teas.contains(vec![Tea::BreakfastTea]))
+        .order_by_asc(Entity::COLUMN.id)
+        .all(db)
+        .await?;
+
+    assert_eq!(found.len(), 2);
+    assert_eq!(found[0].id, 1);
+    assert_eq!(found[1].id, 2);
+
+    let found = Entity::find()
+        .filter(Entity::COLUMN.teas.contains(vec![Tea::AfternoonTea]))
+        .order_by_asc(Entity::COLUMN.id)
+        .all(db)
+        .await?;
+
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].id, 2);
+
+    let found = Entity::find()
+        .filter(
+            Entity::COLUMN
+                .teas
+                .overlap(vec![Tea::BreakfastTea, Tea::AfternoonTea]),
+        )
+        .order_by_asc(Entity::COLUMN.id)
+        .all(db)
+        .await?;
+
+    assert_eq!(found.len(), 2);
+    assert_eq!(found[0].id, 1);
+    assert_eq!(found[1].id, 2);
+
+    let found = Entity::find()
+        .filter(Entity::COLUMN.integers.contains(vec![10]))
+        .order_by_asc(Entity::COLUMN.id)
+        .all(db)
+        .await?;
+
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].id, 2);
 
     Ok(())
 }
@@ -156,7 +248,7 @@ pub async fn update_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
 pub async fn select_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
     use collection::*;
 
-    #[derive(DerivePartialModel, FromQueryResult, Debug, PartialEq)]
+    #[derive(DerivePartialModel, Debug, PartialEq)]
     #[sea_orm(entity = "Entity")]
     struct PartialSelectResult {
         name: String,

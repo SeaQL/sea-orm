@@ -48,6 +48,7 @@ pub fn run_migrate_command(
             };
             // Construct the arguments that will be supplied to `cargo` command
             let mut args = vec!["run", "--manifest-path", &manifest_path, "--", subcommand];
+            let mut envs = vec![];
 
             let mut num: String = "".to_string();
             if let Some(steps) = steps {
@@ -57,17 +58,17 @@ pub fn run_migrate_command(
                 args.extend(["-n", &num])
             }
             if let Some(database_url) = &database_url {
-                args.extend(["-u", database_url]);
+                envs.push(("DATABASE_URL", database_url));
             }
             if let Some(database_schema) = &database_schema {
-                args.extend(["-s", database_schema]);
+                envs.push(("DATABASE_SCHEMA", database_schema));
             }
             if verbose {
                 args.push("-v");
             }
             // Run migrator CLI on user's behalf
             println!("Running `cargo {}`", args.join(" "));
-            let exit_status = Command::new("cargo").args(args).status()?; // Get the status code
+            let exit_status = Command::new("cargo").args(args).envs(envs).status()?; // Get the status code
             if !exit_status.success() {
                 // Propagate the error if any
                 return Err("Fail to run migration".into());
@@ -117,7 +118,7 @@ pub fn run_migrate_init(migration_dir: &str) -> Result<(), Box<dyn Error>> {
         content.replace("<sea-orm-migration-version>", &ver)
     });
     write_file!("README.md");
-    if git2::Repository::discover(Path::new(&migration_dir)).is_ok() {
+    if glob::glob(&format!("{migration_dir}**/.git"))?.count() > 0 {
         write_file!(".gitignore", "_gitignore");
     }
     println!("Done!");
@@ -226,7 +227,11 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
     // find existing mod declarations, add new line
     let mod_regex = Regex::new(r"mod\s+(?P<name>m\d{8}_\d{6}_\w+);")?;
     let mods: Vec<_> = mod_regex.captures_iter(&migrator_content).collect();
-    let mods_end = mods.last().unwrap().get(0).unwrap().end() + 1;
+    let mods_end = if let Some(last_match) = mods.last() {
+        last_match.get(0).unwrap().end() + 1
+    } else {
+        migrator_content.len()
+    };
     updated_migrator_content.insert_str(mods_end, format!("mod {migration_name};\n").as_str());
 
     // build new vector from declared migration modules

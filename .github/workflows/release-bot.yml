@@ -11,12 +11,14 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - uses: billy1624/release-comment-on-pr@master
+      - name: Commenting on `${{ github.event.release.tag_name }}` release
+        uses: billy1624/release-comment-on-pr@master
         with:
+          release-tag: ${{ github.event.release.tag_name }}
           token: ${{ github.token }}
           message: |
             ### :tada: Released In [${releaseTag}](${releaseUrl}) :tada:
             
-            Your participation is what makes us unique; your adoption is what drives us forward.  
-            Thank you all in the Rust community for making SeaQL what it is today. :crab:  
-            You are also invited to shape it's future! Please star our repos, every ⭐ counts!
+            Huge thanks for the contribution!
+            This feature has now been released, so it's a great time to upgrade.
+            Show some love with a ⭐ on our repo, every star counts!

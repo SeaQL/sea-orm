@@ -1,5 +1,3 @@
-use entity::async_graphql;
-
 pub mod note;
 
 pub use note::NoteMutation;

@@ -6,7 +6,7 @@
 //! # use sea_orm::{error::*, tests_cfg::*, *};
 //! #
 //! # #[smol_potat::main]
-//! # #[cfg(feature = "mock")]
+//! # #[cfg(all(feature = "mock", not(feature = "sync")))]
 //! # pub async fn main() -> Result<(), DbErr> {
 //! #
 //! # let db = MockDatabase::new(DbBackend::Postgres)
@@ -27,7 +27,7 @@
 //! #
 //! // execute multiple queries in parallel
 //! let cakes_and_fruits: (Vec<cake::Model>, Vec<fruit::Model>) =
-//!     futures::try_join!(Cake::find().all(&db), Fruit::find().all(&db))?;
+//!     futures_util::future::try_join(Cake::find().all(&db), Fruit::find().all(&db)).await?;
 //! # assert_eq!(
 //! #     cakes_and_fruits,
 //! #     (
@@ -59,6 +59,8 @@
 //! # );
 //! # Ok(())
 //! # }
+//! # #[cfg(all(feature = "mock", feature = "sync"))]
+//! # fn main() {}
 //! ```
 //!
 //! 2. Dynamic

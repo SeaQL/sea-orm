@@ -1,0 +1,14 @@
+[workspace]
+# A separate workspace
+
+[package]
+edition      = "2024"
+name         = "sea-orm-issues-1473"
+publish      = false
+rust-version = "1.85.0"
+version      = "0.1.0"
+
+[dependencies.sea-orm]
+default-features = false
+features         = ["macros", "runtime-tokio-native-tls"]
+path             = "../../"

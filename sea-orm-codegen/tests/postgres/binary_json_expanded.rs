@@ -13,7 +13,7 @@ impl EntityName for Entity {
     fn schema_name(&self) -> Option< &str > {
         Some("schema_name")
     }
-    fn table_name(&self) -> &str {
+    fn table_name(&self) -> & 'static str {
         "task"
     }
 }

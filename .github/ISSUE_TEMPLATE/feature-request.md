@@ -1,10 +1,10 @@
 ---
 name: Feature Request
 about: Suggest a new feature for this project
-title: ''
-labels: ''
-assignees: ''
-
+title: ""
+labels: ""
+assignees: ""
+type: Feature
 ---
 
 <!--
@@ -18,20 +18,18 @@ Want to ask a question? You can reach us via:
 - Discord: https://discord.com/invite/uCPdDXzbdv
 - GitHub Discussions: https://github.com/SeaQL/sea-orm/discussions/new
 
-All feature requests should start from a GitHub Discussion thread.
-
-After a throughout discussion, when the solution is clear, we will create a tracking issue with a feature specification.
+Make sure you have a clear feature specification before open an issue. Alternatively, please start an "Idea" thread on GitHub Discussions and let's formulate the solution together.
 
 -->
 
 ## Motivation
 
-<!-- What is the use case? What is the expected outcome? -->
+<!-- what is the use case? what is the expected outcome? -->
 
 ## Proposed Solutions
 
-<!-- What are the proposed solutions? How it solve the problem or achieve the goal? -->
+<!-- what are the proposed solutions? how it solve the problem or achieve the goal? -->
 
-## Current Workarounds
+## Additional Information
 
-<!-- What are the current workarounds before this feature is being implemented? -->
+<!-- any other additional information that might be helpful -->

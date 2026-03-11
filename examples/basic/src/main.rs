@@ -4,36 +4,30 @@
 
 use sea_orm::Database;
 
-mod entities;
-pub mod example_cake;
-pub mod example_cake_filling;
-pub mod example_filling;
-pub mod example_fruit;
-mod operation;
-pub mod sea_orm_active_enums;
-mod select;
+mod entity;
+mod mutation;
+mod query;
 
-use entities::*;
-use example_cake as cake;
-use example_cake_filling as cake_filling;
-use example_filling as filling;
-use example_fruit as fruit;
-use operation::*;
-use select::*;
+use entity::*;
+use mutation::*;
+use query::*;
 
-#[async_std::main]
+#[tokio::main]
 async fn main() {
-    let db = Database::connect("sql://sea:sea@localhost/bakery")
-        .await
-        .unwrap();
+    let db = Database::connect(
+        std::env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "mysql://sea:sea@localhost/bakery".to_owned()),
+    )
+    .await
+    .unwrap();
 
     println!("{db:?}\n");
 
     println!("===== =====\n");
 
-    all_about_select(&db).await.unwrap();
+    all_about_query(&db).await.unwrap();
 
     println!("===== =====\n");
 
-    all_about_operation(&db).await.unwrap();
+    all_about_mutation(&db).await.unwrap();
 }

@@ -6,7 +6,7 @@ use sea_orm::entity::prelude::*;
 pub struct Entity;
 
 impl EntityName for Entity {
-    fn table_name(&self) -> &str {
+    fn table_name(&self) -> & 'static str {
         "fruit"
     }
 }
@@ -49,7 +49,7 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::Id => ColumnType::Integer.def(),
-            Self::Name => ColumnType::String(Some(255u32)).def(),
+            Self::Name => ColumnType::String(StringLen::N(255u32)).def(),
             Self::CakeId => ColumnType::Integer.def().null(),
         }
     }
