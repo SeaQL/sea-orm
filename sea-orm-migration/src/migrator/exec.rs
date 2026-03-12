@@ -10,7 +10,7 @@ use sea_orm::sea_query::{
 };
 use sea_orm::{
     ActiveValue, ConnectionTrait, DbBackend, DbErr, DynIden, EntityTrait, FromQueryResult,
-    Iterable, QueryFilter, Schema, Statement, TransactionTrait,
+    Iterable, QueryFilter, Schema, Statement, TransactionSession, TransactionTrait,
 };
 
 pub async fn get_migration_models<C>(
@@ -69,33 +69,6 @@ pub fn get_migration_with_status(
     }
 }
 
-macro_rules! exec_with_connection {
-    ($db:ident, $fn:expr) => {{
-        async {
-            let db = $db.into_database_executor();
-
-            match db.get_database_backend() {
-                DbBackend::Postgres => {
-                    let transaction = db.begin().await?;
-                    let manager = SchemaManager::new(&transaction);
-                    $fn(&manager).await?;
-                    transaction.commit().await
-                }
-                DbBackend::MySql | DbBackend::Sqlite => {
-                    let manager = SchemaManager::new(db);
-                    $fn(&manager).await
-                }
-                db => Err(DbErr::BackendNotSupported {
-                    db: db.as_str(),
-                    ctx: "exec_with_connection",
-                }),
-            }
-        }
-    }};
-}
-
-pub(crate) use exec_with_connection;
-
 pub async fn install<C>(db: &C, migration_table_name: DynIden) -> Result<(), DbErr>
 where
     C: ConnectionTrait,
@@ -120,7 +93,17 @@ pub async fn uninstall(
     Ok(())
 }
 
-pub async fn drop_everything<C: ConnectionTrait>(db: &C) -> Result<(), DbErr> {
+pub async fn drop_everything<C: ConnectionTrait + TransactionTrait>(db: &C) -> Result<(), DbErr> {
+    if db.get_database_backend() == DbBackend::Postgres {
+        let transaction = db.begin().await?;
+        drop_everything_impl(&transaction).await?;
+        transaction.commit().await
+    } else {
+        drop_everything_impl(db).await
+    }
+}
+
+async fn drop_everything_impl<C: ConnectionTrait>(db: &C) -> Result<(), DbErr> {
     let db_backend = db.get_database_backend();
 
     // Temporarily disable the foreign key check
