@@ -819,8 +819,8 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 .expect("Failed to get timestamptz"),
                         ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIMESTAMPTZ" => Value::TimeDateTime(
-                            row.try_get::<Option<time::PrimitiveDateTime>, _>(c.ordinal())
+                        "TIMESTAMPTZ" => Value::TimeDateTimeWithTimeZone(
+                            row.try_get::<Option<time::OffsetDateTime>, _>(c.ordinal())
                                 .expect("Failed to get timestamptz"),
                         ),
 
@@ -845,13 +845,13 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                             feature = "postgres-array"
                         ))]
                         "TIMESTAMPTZ[]" => Value::Array(
-                            sea_query::ArrayType::TimeDateTime,
-                            row.try_get::<Option<Vec<time::PrimitiveDateTime>>, _>(c.ordinal())
+                            sea_query::ArrayType::TimeDateTimeWithTimeZone,
+                            row.try_get::<Option<Vec<time::OffsetDateTime>>, _>(c.ordinal())
                                 .expect("Failed to get timestamptz array")
                                 .map(|vals| {
                                     Box::new(
                                         vals.into_iter()
-                                            .map(|val| Value::TimeDateTime(Some(val)))
+                                            .map(|val| Value::TimeDateTimeWithTimeZone(Some(val)))
                                             .collect(),
                                     )
                                 }),
