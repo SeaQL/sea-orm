@@ -199,6 +199,7 @@ pub(crate) trait GetMeta {
     fn exists(&self, k: &str) -> bool;
     fn get_as_kv(&self, k: &str) -> Option<String>;
     fn get_as_kv_with_ident(&self) -> Option<(Ident, String)>;
+    fn get_list_args(&self, name: &str) -> Option<Punctuated<Meta, Comma>>;
 }
 
 impl GetMeta for Meta {
@@ -246,6 +247,15 @@ impl GetMeta for Meta {
 
         path.get_ident()
             .map(|ident| (ident.clone(), litstr.value()))
+    }
+
+    fn get_list_args(&self, name: &str) -> Option<Punctuated<Meta, Comma>> {
+        match self {
+            Meta::List(list) if list.path.is_ident(name) => list
+                .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+                .ok(),
+            _ => None,
+        }
     }
 }
 
