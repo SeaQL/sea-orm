@@ -10,7 +10,6 @@ use crate::debug_print;
 
 #[cfg(feature = "sqlx-dep")]
 use crate::driver::*;
-use serde::de::DeserializeOwned;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::Row;
 
@@ -1533,6 +1532,9 @@ pub trait TryFromU64: Sized {
     /// The method to convert the type to a u64
     fn try_from_u64(n: u64) -> Result<Self, DbErr>;
 }
+
+#[cfg(feature = "with-json")]
+use serde::de::DeserializeOwned;
 
 #[cfg(feature = "with-json")]
 /// Enables JSON column deserialization into a [`HashMap`].
