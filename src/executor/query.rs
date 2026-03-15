@@ -1543,8 +1543,6 @@ pub trait TryFromU64: Sized {
 use serde::de::DeserializeOwned;
 
 #[cfg(feature = "with-json")]
-/// This implementation allows SeaORM to extract JSON database columns
-/// directly into `HashMap<K, V>` using [`TryGetable`].
 impl<K, V> TryGetableFromJson for HashMap<K, V>
 where
     K: DeserializeOwned + Eq + Hash,
@@ -1553,8 +1551,6 @@ where
 }
 
 #[cfg(feature = "with-json")]
-/// This implementation allows SeaORM to extract JSON database columns
-/// directly into `BTreeMap<K, V>` using [`TryGetable`].
 impl<K, V> TryGetableFromJson for BTreeMap<K, V>
 where
     K: DeserializeOwned + Ord,
