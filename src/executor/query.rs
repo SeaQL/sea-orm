@@ -1,9 +1,15 @@
 pub use crate::error::TryGetError;
 use crate::{
+    error::{type_err, DbErr},
     SelectGetableValue, SelectorRaw, Statement,
-    error::{DbErr, type_err},
 };
-use std::{fmt::Debug, marker::PhantomData, sync::Arc, hash::Hash, collections::{HashMap, BTreeMap}};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Debug,
+    hash::Hash,
+    marker::PhantomData,
+    sync::Arc,
+};
 
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use crate::debug_print;
@@ -1537,73 +1543,24 @@ pub trait TryFromU64: Sized {
 use serde::de::DeserializeOwned;
 
 #[cfg(feature = "with-json")]
-/// Enables JSON column deserialization into a [`HashMap`].
-///
 /// This implementation allows SeaORM to extract JSON database columns
 /// directly into `HashMap<K, V>` using [`TryGetable`].
-///
-/// The JSON value is deserialized using `serde_json::from_value`,
-/// so both the key and value types must implement `DeserializeOwned`.
-///
-/// # Example
-///
-/// ```rust
-/// use std::collections::HashMap;
-///
-/// let json = serde_json::json!({
-///     "engine": { "price": 100 }
-/// });
-///
-/// let map: HashMap<String, serde_json::Value> =
-///     serde_json::from_value(json).unwrap();
-///
-/// assert!(map.contains_key("engine"));
-/// ```
-///
-/// This works automatically when querying JSON columns in SeaORM
-/// because `TryGetable` is implemented for all types implementing
-/// [`TryGetableFromJson`].
 impl<K, V> TryGetableFromJson for HashMap<K, V>
 where
     K: DeserializeOwned + Eq + Hash,
     V: DeserializeOwned,
-{}
+{
+}
 
 #[cfg(feature = "with-json")]
-/// Enables JSON column deserialization into a [`BTreeMap`].
-///
 /// This implementation allows SeaORM to extract JSON database columns
 /// directly into `BTreeMap<K, V>` using [`TryGetable`].
-///
-/// The JSON value is deserialized using `serde_json::from_value`,
-/// so both the key and value types must implement `DeserializeOwned`.
-///
-/// Keys must implement [`Ord`] because `BTreeMap` requires ordered keys.
-///
-/// # Example
-///
-/// ```rust
-/// use std::collections::BTreeMap;
-///
-/// let json = serde_json::json!({
-///     "engine": { "price": 100 }
-/// });
-///
-/// let map: BTreeMap<String, serde_json::Value> =
-///     serde_json::from_value(json).unwrap();
-///
-/// assert!(map.contains_key("engine"));
-/// ```
-///
-/// This works automatically when querying JSON columns in SeaORM
-/// because `TryGetable` is implemented for all types implementing
-/// [`TryGetableFromJson`].
 impl<K, V> TryGetableFromJson for BTreeMap<K, V>
 where
     K: DeserializeOwned + Ord,
     V: DeserializeOwned,
-{}
-
+{
+}
 
 macro_rules! try_from_u64_err {
     ( $type: ty ) => {
@@ -1734,10 +1691,10 @@ mod tests {
     use super::*;
     use crate::RuntimeErr;
     use sea_query::Value;
-    
+
     use crate::{QueryResult, TryGetable};
-    use std::collections::{BTreeMap, HashMap};
     use serde::{Deserialize, Serialize};
+    use std::collections::{BTreeMap, HashMap};
 
     #[test]
     fn from_try_get_error() {
@@ -1843,11 +1800,10 @@ mod tests {
         component_type: String,
     }
 
-
     #[test]
     fn json_deserialize_to_btreemap() {
-        use crate::{QueryResult, TryGetable};
         use crate::Value;
+        use crate::{QueryResult, TryGetable};
 
         let json_value = serde_json::json!({
             "engine": {
@@ -1867,7 +1823,8 @@ mod tests {
         };
 
         // Extract as BTreeMap
-        let result: BTreeMap<String, serde_json::Value> = TryGetable::try_get_by(&query_result, "components").unwrap();
+        let result: BTreeMap<String, serde_json::Value> =
+            TryGetable::try_get_by(&query_result, "components").unwrap();
 
         assert_eq!(result.len(), 1);
         assert!(result.contains_key("engine"));
@@ -1875,7 +1832,6 @@ mod tests {
 
     #[test]
     fn json_deserialize_to_hashmap() {
-
         let json_value = serde_json::json!({
             "engine": {
                 "base_price": 100,
@@ -1894,7 +1850,8 @@ mod tests {
         };
 
         // Extract as HashMap
-        let result: HashMap<String, serde_json::Value> = TryGetable::try_get_by(&query_result, "components").unwrap();
+        let result: HashMap<String, serde_json::Value> =
+            TryGetable::try_get_by(&query_result, "components").unwrap();
 
         assert_eq!(result.len(), 1);
         assert!(result.contains_key("engine"));
