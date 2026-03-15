@@ -1,7 +1,7 @@
 pub use crate::error::TryGetError;
 use crate::{
-    error::{type_err, DbErr},
     SelectGetableValue, SelectorRaw, Statement,
+    error::{DbErr, type_err},
 };
 use std::{
     collections::{BTreeMap, HashMap},
