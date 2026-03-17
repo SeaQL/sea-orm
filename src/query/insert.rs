@@ -15,6 +15,7 @@ where
     pub(crate) columns: Vec<bool>,
     pub(crate) primary_key: Option<ValueTuple>,
     pub(crate) model: PhantomData<A>,
+    pub(crate) persistent: Option<bool>,
 }
 
 impl<A> Default for Insert<A>
@@ -39,6 +40,7 @@ where
             columns: Vec::new(),
             primary_key: None,
             model: PhantomData,
+            persistent: None,
         }
     }
 
@@ -346,6 +348,27 @@ where
 
         TryInsert::from_insert(self)
     }
+
+    /// Set whether to use prepared statement caching
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, query::*, tests_cfg::cake, DbBackend};
+    /// #
+    /// let insert = cake::ActiveModel {
+    ///     name: ActiveValue::set("Apple Pie".to_owned()),
+    ///     ..Default::default()
+    /// }
+    /// .into_active_model();
+    ///
+    /// let res = Insert::one(insert)
+    ///     .persistent(false);
+    /// ```
+    pub fn persistent(mut self, value: bool) -> Self {
+        self.persistent = Some(value);
+        self
+    }
 }
 
 impl<A> QueryTrait for Insert<A>
@@ -364,6 +387,16 @@ where
 
     fn into_query(self) -> InsertStatement {
         self.query
+    }
+
+    fn build(&self, db_backend: crate::DbBackend) -> crate::Statement {
+        let query_builder = db_backend.get_query_builder();
+        let mut statement = crate::Statement::from_string_values_tuple(
+            db_backend,
+            self.as_query().build_any(query_builder.as_ref()),
+        );
+        statement.persistent = self.persistent;
+        statement
     }
 }
 

@@ -19,6 +19,7 @@ pub struct DatabaseTransaction {
     backend: DbBackend,
     open: bool,
     metric_callback: Option<crate::metric::Callback>,
+    default_persistent: Option<bool>,
 }
 
 impl std::fmt::Debug for DatabaseTransaction {
@@ -35,12 +36,14 @@ impl DatabaseTransaction {
         metric_callback: Option<crate::metric::Callback>,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
+        default_persistent: Option<bool>,
     ) -> Result<DatabaseTransaction, DbErr> {
         let res = DatabaseTransaction {
             conn,
             backend,
             open: true,
             metric_callback,
+            default_persistent,
         };
         match *res.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
@@ -246,8 +249,13 @@ impl ConnectionTrait for DatabaseTransaction {
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
-    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
+    async fn execute(&self, mut stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
+
+        // Apply default persistent if not explicitly set
+        if stmt.persistent.is_none() {
+            stmt.persistent = self.default_persistent;
+        }
 
         match &mut *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
@@ -335,8 +343,13 @@ impl ConnectionTrait for DatabaseTransaction {
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
-    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
+    async fn query_one(&self, mut stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
+
+        // Apply default persistent if not explicitly set
+        if stmt.persistent.is_none() {
+            stmt.persistent = self.default_persistent;
+        }
 
         match &mut *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
@@ -380,8 +393,13 @@ impl ConnectionTrait for DatabaseTransaction {
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
-    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+    async fn query_all(&self, mut stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
+
+        // Apply default persistent if not explicitly set
+        if stmt.persistent.is_none() {
+            stmt.persistent = self.default_persistent;
+        }
 
         match &mut *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
@@ -436,9 +454,14 @@ impl StreamTrait for DatabaseTransaction {
     #[instrument(level = "trace")]
     fn stream<'a>(
         &'a self,
-        stmt: Statement,
+        mut stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>> {
         Box::pin(async move {
+            // Apply default persistent if not explicitly set
+            if stmt.persistent.is_none() {
+                stmt.persistent = self.default_persistent;
+            }
+
             let conn = self.conn.lock().await;
             Ok(crate::TransactionStream::build(
                 conn,
@@ -459,6 +482,7 @@ impl TransactionTrait for DatabaseTransaction {
             self.metric_callback.clone(),
             None,
             None,
+            self.default_persistent,
         )
         .await
     }
@@ -475,6 +499,7 @@ impl TransactionTrait for DatabaseTransaction {
             self.metric_callback.clone(),
             isolation_level,
             access_mode,
+            self.default_persistent,
         )
         .await
     }
