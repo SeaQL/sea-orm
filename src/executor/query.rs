@@ -960,10 +960,28 @@ impl TryGetable for String {
                     })
                 })?,
             #[cfg(feature = "sqlx-postgres")]
-            QueryResultRow::SqlxPostgres(row) => row
-                .try_get::<Option<String>, _>(idx.as_sqlx_postgres_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+            QueryResultRow::SqlxPostgres(row) => {
+                use sqlx::{Column, Row};
+                let pg_idx = idx.as_sqlx_postgres_index();
+                // Quick Fix:
+                // Native PostgreSQL enum columns have kind PgTypeKind::Enum and are not
+                // compatible with string in sqlx's type-checking. But the representation is identical to `TEXT`, so `String::decode` is fine.
+                let is_pg_enum = match row.try_column(&pg_idx) {
+                    Ok(col) => {
+                        matches!(col.type_info().kind(), sqlx::postgres::PgTypeKind::Enum(_))
+                    }
+                    Err(_) => false,
+                };
+                if is_pg_enum {
+                    row.try_get_unchecked::<Option<String>, _>(pg_idx)
+                        .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
+                } else {
+                    row.try_get::<Option<String>, _>(pg_idx)
+                        .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
+                }
+            }
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => row
                 .try_get::<Option<String>, _>(idx.as_sqlx_sqlite_index())

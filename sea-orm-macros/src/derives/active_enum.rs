@@ -389,6 +389,7 @@ impl ActiveEnum {
             #[automatically_derived]
             impl sea_orm::TryGetable for #ident {
                 fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, idx: I) -> std::result::Result<Self, sea_orm::TryGetError> {
+                    // panic!("Used ENUM try get for enum");
                     let value = <<Self as sea_orm::ActiveEnum>::Value as sea_orm::TryGetable>::try_get_by(res, idx)?;
                     <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(sea_orm::TryGetError::DbErr)
                 }

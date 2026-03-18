@@ -10,9 +10,8 @@ use sea_orm::{
 };
 
 #[sea_orm_macros::test]
-#[cfg(feature = "sqlx-postgres")]
-async fn from_query_result_with_native_pg_enum() -> Result<(), DbErr> {
-    let ctx = TestContext::new("from_query_result_native_pg_enum").await;
+async fn from_query_result_with_native_enum() -> Result<(), DbErr> {
+    let ctx = TestContext::new("from_query_result_native_enum").await;
     let db = &ctx.db;
 
     // Setup: create the `tea` enum type and the `active_enum` table
@@ -31,7 +30,7 @@ async fn from_query_result_with_native_pg_enum() -> Result<(), DbErr> {
 
     let query = Query::select()
         .column(active_enum::Column::Id)
-        .column(active_enum::Column::Tea) // raw enum column, no cast
+        .column(active_enum::Column::Tea)
         .from(active_enum::Entity)
         .to_owned();
 
@@ -41,9 +40,6 @@ async fn from_query_result_with_native_pg_enum() -> Result<(), DbErr> {
         pub tea: Option<Tea>,
     }
 
-    //sea-orm returns:
-    // DEBUG sea_orm::driver::sqlx_postgres: SELECT "id", "tea" FROM "active_enum"
-    // Error: Query(SqlxError(ColumnDecode { index: "\"tea\"", source: "mismatched types; Rust type `core::option::Option<alloc::string::String>` (as SQL type `TEXT`) is not compatible with SQL type `tea`" }))
     let rows = db.query_all(&query).await?;
     let results: Vec<ActiveEnumResult> = rows
         .iter()
@@ -62,7 +58,7 @@ async fn from_query_result_with_native_pg_enum() -> Result<(), DbErr> {
     Ok(())
 }
 
-/// Same thing but with cast, spoiler it works
+/// Verify that explicitly casting the enum column to TEXT still works on Postgres
 #[sea_orm_macros::test]
 #[cfg(feature = "sqlx-postgres")]
 async fn from_query_result_with_cast_works() -> Result<(), DbErr> {
