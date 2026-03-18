@@ -31,7 +31,6 @@ pub enum Tea {
     AfternoonTea,
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "media_type")]
 pub enum MediaType {

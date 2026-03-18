@@ -11,7 +11,7 @@ use crate::debug_print;
 #[cfg(feature = "sqlx-dep")]
 use crate::driver::*;
 #[cfg(feature = "sqlx-dep")]
-use sqlx::Row;
+use sqlx::{Row, TypeInfo, ValueRef};
 
 /// Defines the result of a query operation on a Model
 #[derive(Debug)]
@@ -75,6 +75,37 @@ impl From<DbErr> for TryGetError {
 // QueryResult //
 
 impl QueryResult {
+    #[doc(hidden)]
+    #[cfg(feature = "sqlx-postgres")]
+    pub fn try_get_from_sqlx_postgres<T, I>(&self, idx: I) -> Option<Result<T, TryGetError>>
+    where
+        T: sqlx::Type<sqlx::Postgres> + for<'r> sqlx::Decode<'r, sqlx::Postgres>,
+        I: ColIdx,
+    {
+        match &self.row {
+            QueryResultRow::SqlxPostgres(row) => {
+                let value = match row.try_get_raw(idx.as_sqlx_postgres_index()) {
+                    Ok(value) => value,
+                    Err(err) => return Some(Err(sqlx_error_to_query_err(err).into())),
+                };
+
+                if !value.is_null() {
+                    let ty = value.type_info();
+                    if !ty.is_null() && !T::compatible(&ty) {
+                        return None;
+                    }
+                }
+
+                Some(
+                    row.try_get::<Option<T>, _>(idx.as_sqlx_postgres_index())
+                        .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                )
+            }
+            _ => None,
+        }
+    }
+
     /// Get a value from the query result with an ColIdx
     pub fn try_get_by<T, I>(&self, index: I) -> Result<T, DbErr>
     where
