@@ -1,9 +1,12 @@
 use super::{Schema, TopologicalSort};
 use crate::{ConnectionTrait, DbBackend, DbErr, EntityTrait, Statement};
 use sea_query::{
-    ForeignKeyCreateStatement, Index, IndexCreateStatement, IntoIden, TableAlterStatement,
-    TableCreateStatement, TableName, TableRef, extension::postgres::TypeCreateStatement,
+    IndexCreateStatement, TableCreateStatement, TableName, TableRef,
+    extension::postgres::TypeCreateStatement,
 };
+
+#[cfg(feature = "schema-sync")]
+use sea_query::{ForeignKeyCreateStatement, Index, IntoIden, TableAlterStatement};
 
 /// A schema builder that can take a registry of Entities and synchronize it with database.
 pub struct SchemaBuilder {
@@ -89,6 +92,8 @@ impl SchemaBuilder {
     /// This function fetches the changes needed to sync the database schema with this builder's entities.
     /// * `db` - The database connection to use for fetching existing table schema.
     /// * `allow_dangerous` - If `true`, changes will contain drop statements (drop tables, drop columns, drop constraints).
+    /// # Panics
+    /// if
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
     pub async fn discover<C>(&self, db: &C, allow_dangerous: bool) -> Result<Vec<Statement>, DbErr>
@@ -133,16 +138,8 @@ impl SchemaBuilder {
                     .iter()
                     .any(|e| get_table_name(e.table.get_table_name()) == existing_name);
                 if !in_entities {
-                    let stmt = db_backend.build(
-                        sea_query::Table::drop()
-                            .table(
-                                existing_table
-                                    .get_table_name()
-                                    .expect("table must have a name")
-                                    .clone(),
-                            )
-                            .if_exists(),
-                    );
+                    let stmt =
+                        db_backend.build(sea_query::Table::drop().table(existing_name).if_exists());
                     changes.push(stmt);
                 }
             }
@@ -305,6 +302,8 @@ impl SchemaBuilder {
 }
 
 /// Stores the discovered schema from the database, including tables and enums
+#[cfg(feature = "schema-sync")]
+#[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
 struct DiscoveredSchema {
     tables: Vec<TableCreateStatement>,
     enums: Vec<TypeCreateStatement>,
@@ -339,7 +338,7 @@ impl EntitySchemaInfo {
         Ok(())
     }
 
-    // better to always compile this function
+    #[cfg(feature = "schema-sync")]
     fn discover_changes(
         &self,
         db_backend: DbBackend,
@@ -640,6 +639,7 @@ fn get_table_name(table_ref: Option<&TableRef>) -> TableName {
     }
 }
 
+#[cfg(feature = "schema-sync")]
 fn compare_foreign_key(a: &ForeignKeyCreateStatement, b: &ForeignKeyCreateStatement) -> bool {
     let a = a.get_foreign_key();
     let b = b.get_foreign_key();
