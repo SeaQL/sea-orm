@@ -1,0 +1,43 @@
+[workspace]
+# A separate workspace
+
+[package]
+name = "sea-orm-entity"
+version = "0.1.0"
+edition = "2024"
+description = "Entity-first migration generator for SeaORM"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/SeaQL/sea-orm"
+rust-version = "1.85.0"
+
+[dependencies]
+sea-orm = { path = "..", version = "~2.0.0-rc.37", features = ["schema-sync"] }
+sea-orm-migration = { path = "../sea-orm-migration", version = "~2.0.0-rc.37", default-features = false }
+sea-schema = { version = "0.17.0-rc", default-features = false, features = [
+    "discovery",
+    "writer",
+    "probe",
+] }
+async-trait = { version = "0.1", default-features = false }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+regex = { version = "1" }
+clap = { version = "4.3", features = ["env", "derive"] }
+dotenvy = { version = "0.15", default-features = false }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"], optional = true }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+
+[features]
+default = ["runtime-tokio-native-tls", "sqlx-sqlite"]
+runtime-tokio = ["tokio", "sea-orm/runtime-tokio", "sea-schema/runtime-tokio", "sea-orm-migration/runtime-tokio"]
+runtime-tokio-native-tls = ["tokio", "sea-orm/runtime-tokio-native-tls", "sea-schema/runtime-tokio-native-tls", "sea-orm-migration/runtime-tokio-native-tls"]
+runtime-tokio-rustls = ["tokio", "sea-orm/runtime-tokio-rustls", "sea-schema/runtime-tokio-rustls", "sea-orm-migration/runtime-tokio-rustls"]
+runtime-async-std = ["sea-orm/runtime-async-std", "sea-schema/runtime-async-std", "sea-orm-migration/runtime-async-std"]
+runtime-async-std-native-tls = ["sea-orm/runtime-async-std-native-tls", "sea-schema/runtime-async-std-native-tls", "sea-orm-migration/runtime-async-std-native-tls"]
+runtime-async-std-rustls = ["sea-orm/runtime-async-std-rustls", "sea-schema/runtime-async-std-rustls", "sea-orm-migration/runtime-async-std-rustls"]
+sqlx-mysql = ["sea-orm/sqlx-mysql", "sea-schema/sqlx-mysql", "sea-orm-migration/sqlx-mysql"]
+sqlx-postgres = ["sea-orm/sqlx-postgres", "sea-schema/sqlx-postgres", "sea-orm-migration/sqlx-postgres"]
+sqlx-sqlite = ["sea-orm/sqlx-sqlite", "sea-schema/sqlx-sqlite", "sea-orm-migration/sqlx-sqlite"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tempfile = "3"
