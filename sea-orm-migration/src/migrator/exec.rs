@@ -178,7 +178,7 @@ pub async fn drop_everything<C: ConnectionTrait>(db: &C) -> Result<(), DbErr> {
             let type_name: String = row.try_get("", "typname")?;
             info!("Dropping type '{}'", type_name);
             let mut stmt = Type::drop();
-            stmt.name(Alias::new(&type_name));
+            stmt.name(Alias::new(&type_name)).if_exists().cascade();
             db.execute(&stmt).await?;
             info!("Type '{}' has been dropped", type_name);
         }
