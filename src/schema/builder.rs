@@ -120,7 +120,7 @@ impl SchemaBuilder {
                     DiscoveredSchema {
                         current_schema,
                         tables_by_schema,
-                        enums: vec![],
+                        enums_by_schema: Default::default(),
                     }
                 }
                 #[cfg(feature = "sqlx-postgres")]
@@ -144,7 +144,7 @@ impl SchemaBuilder {
                     }
 
                     let mut tables_by_schema = std::collections::HashMap::new();
-                    let mut all_enums = Vec::new();
+                    let mut enums_by_schema = std::collections::HashMap::new();
                     for schema_name in &target_schemas {
                         let schema_discovery = SchemaDiscovery::new_no_exec(schema_name);
                         let schema = schema_discovery.discover_with(db).await.map_err(|err| {
@@ -155,13 +155,16 @@ impl SchemaBuilder {
                             schema_name.clone(),
                             schema.tables.iter().map(|table| table.write()).collect(),
                         );
-                        all_enums.extend(schema.enums.iter().map(|def| def.write()));
+                        enums_by_schema.insert(
+                            schema_name.clone(),
+                            schema.enums.iter().map(|def| def.write()).collect(),
+                        );
                     }
 
                     DiscoveredSchema {
                         current_schema,
                         tables_by_schema,
-                        enums: all_enums,
+                        enums_by_schema,
                     }
                 }
                 #[cfg(feature = "sqlx-sqlite")]
@@ -186,7 +189,7 @@ impl SchemaBuilder {
                     DiscoveredSchema {
                         current_schema: String::new(),
                         tables_by_schema,
-                        enums: vec![],
+                        enums_by_schema: Default::default(),
                     }
                 }
                 #[cfg(feature = "rusqlite")]
@@ -210,7 +213,7 @@ impl SchemaBuilder {
                     DiscoveredSchema {
                         current_schema: String::new(),
                         tables_by_schema,
-                        enums: vec![],
+                        enums_by_schema: Default::default(),
                     }
                 }
                 #[allow(unreachable_patterns)]
@@ -295,12 +298,11 @@ impl SchemaBuilder {
 
 struct DiscoveredSchema {
     /// The current/default schema of the database connection (e.g., "public" for Postgres).
-    /// Used as the fallback for entities without an explicit schema_name.
     current_schema: String,
     /// Tables discovered from the database, grouped by schema name.
-    /// Key is the schema name (e.g., "public", "sys"). For SQLite, the key is an empty string.
     tables_by_schema: std::collections::HashMap<String, Vec<TableCreateStatement>>,
-    enums: Vec<TypeCreateStatement>,
+    /// Enums discovered from the database, grouped by schema name.
+    enums_by_schema: std::collections::HashMap<String, Vec<TypeCreateStatement>>,
 }
 
 impl DiscoveredSchema {
@@ -325,6 +327,14 @@ impl DiscoveredSchema {
         schema_tables
             .iter()
             .find(|tbl| get_table_name(tbl.get_table_name()) == bare_entity_name)
+    }
+
+    fn find_enums(&self, entity_schema: Option<&str>) -> &[TypeCreateStatement] {
+        let schema = entity_schema.unwrap_or(&self.current_schema);
+        self.enums_by_schema
+            .get(schema)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
     }
 }
 
@@ -369,10 +379,11 @@ impl EntitySchemaInfo {
         let db_backend = db.get_database_backend();
 
         // create enum before creating table
+        let existing_enums = existing.find_enums(self.schema_name.as_deref());
         for stmt in self.enums.iter() {
             let mut has_enum = false;
             let new_stmt = db_backend.build(stmt);
-            for existing_enum in &existing.enums {
+            for existing_enum in existing_enums {
                 if db_backend.build(existing_enum) == new_stmt {
                     has_enum = true;
                     // TODO add enum variants
