@@ -572,20 +572,15 @@ macro_rules! try_getable_date_time {
                         .map_err(|e| sqlx_error_to_query_err(e).into())
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "sqlx-sqlite")]
-                    QueryResultRow::SqlxSqlite(row) => {
-                        use chrono::{DateTime, Utc};
-                        row.try_get::<Option<DateTime<Utc>>, _>(idx.as_sqlx_sqlite_index())
-                            .map_err(|e| sqlx_error_to_query_err(e).into())
-                            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
-                            .map(|v| v.into())
-                    }
+                    QueryResultRow::SqlxSqlite(row) => row
+                        .try_get::<Option<$type>, _>(idx.as_sqlx_sqlite_index())
+                        .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "rusqlite")]
-                    QueryResultRow::Rusqlite(row) => {
-                        use chrono::{DateTime, Utc};
-                        row.try_get::<Option<DateTime<Utc>>, _>(idx)
-                            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
-                            .map(|v| v.into())
-                    }
+                    QueryResultRow::Rusqlite(row) => row
+                        .try_get::<Option<$type>, _>(idx)
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
+                        .map(|v| v.into()),
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
