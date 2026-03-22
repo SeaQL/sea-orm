@@ -16,6 +16,9 @@ pub struct EntitySchemaInfo {
     table: TableCreateStatement,
     enums: Vec<TypeCreateStatement>,
     indexes: Vec<IndexCreateStatement>,
+    /// The schema name from the entity definition (e.g., `#[sea_orm(schema_name = "sys")]`).
+    /// `None` means the entity uses the database's current/default schema.
+    schema_name: Option<String>,
 }
 
 impl std::fmt::Debug for SchemaBuilder {
@@ -91,14 +94,30 @@ impl SchemaBuilder {
                     )?
                     .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
                     .try_get_by_index(0)?;
-                let schema_discovery = SchemaDiscovery::new_no_exec(&current_schema);
 
-                let schema = schema_discovery
-                    .discover_with(db)
-                    .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
+                // Collect all unique schemas that registered entities belong to
+                let mut target_schemas = std::collections::BTreeSet::new();
+                for entity in &self.entities {
+                    let schema = entity.schema_name.as_deref().unwrap_or(&current_schema);
+                    target_schemas.insert(schema.to_string());
+                }
+
+                let mut tables_by_schema = std::collections::HashMap::new();
+                for schema_name in &target_schemas {
+                    let schema_discovery = SchemaDiscovery::new_no_exec(schema_name);
+                    let schema = schema_discovery
+                        .discover_with(db)
+                        .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
+
+                    tables_by_schema.insert(
+                        schema_name.clone(),
+                        schema.tables.iter().map(|table| table.write()).collect(),
+                    );
+                }
 
                 DiscoveredSchema {
-                    tables: schema.tables.iter().map(|table| table.write()).collect(),
+                    current_schema,
+                    tables_by_schema,
                     enums: vec![],
                 }
             }
@@ -113,15 +132,33 @@ impl SchemaBuilder {
                     )?
                     .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
                     .try_get_by_index(0)?;
-                let schema_discovery = SchemaDiscovery::new_no_exec(&current_schema);
 
-                let schema = schema_discovery
-                    .discover_with(db)
-                    .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
+                // Collect all unique schemas that registered entities belong to
+                let mut target_schemas = std::collections::BTreeSet::new();
+                for entity in &self.entities {
+                    let schema = entity.schema_name.as_deref().unwrap_or(&current_schema);
+                    target_schemas.insert(schema.to_string());
+                }
+
+                let mut tables_by_schema = std::collections::HashMap::new();
+                let mut all_enums = Vec::new();
+                for schema_name in &target_schemas {
+                    let schema_discovery = SchemaDiscovery::new_no_exec(schema_name);
+                    let schema = schema_discovery
+                        .discover_with(db)
+                        .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
+
+                    tables_by_schema.insert(
+                        schema_name.clone(),
+                        schema.tables.iter().map(|table| table.write()).collect(),
+                    );
+                    all_enums.extend(schema.enums.iter().map(|def| def.write()));
+                }
 
                 DiscoveredSchema {
-                    tables: schema.tables.iter().map(|table| table.write()).collect(),
-                    enums: schema.enums.iter().map(|def| def.write()).collect(),
+                    current_schema,
+                    tables_by_schema,
+                    enums: all_enums,
                 }
             }
             #[cfg(feature = "sqlx-sqlite")]
@@ -137,8 +174,14 @@ impl SchemaBuilder {
                         })
                     })?
                     .merge_indexes_into_table();
+                let mut tables_by_schema = std::collections::HashMap::new();
+                tables_by_schema.insert(
+                    String::new(),
+                    schema.tables.iter().map(|table| table.write()).collect(),
+                );
                 DiscoveredSchema {
-                    tables: schema.tables.iter().map(|table| table.write()).collect(),
+                    current_schema: String::new(),
+                    tables_by_schema,
                     enums: vec![],
                 }
             }
@@ -155,8 +198,14 @@ impl SchemaBuilder {
                         })
                     })?
                     .merge_indexes_into_table();
+                let mut tables_by_schema = std::collections::HashMap::new();
+                tables_by_schema.insert(
+                    String::new(),
+                    schema.tables.iter().map(|table| table.write()).collect(),
+                );
                 DiscoveredSchema {
-                    tables: schema.tables.iter().map(|table| table.write()).collect(),
+                    current_schema: String::new(),
+                    tables_by_schema,
                     enums: vec![],
                 }
             }
@@ -241,8 +290,38 @@ impl SchemaBuilder {
 }
 
 struct DiscoveredSchema {
-    tables: Vec<TableCreateStatement>,
+    /// The current/default schema of the database connection (e.g., "public" for Postgres).
+    /// Used as the fallback for entities without an explicit schema_name.
+    current_schema: String,
+    /// Tables discovered from the database, grouped by schema name.
+    /// Key is the schema name (e.g., "public", "sys"). For SQLite, the key is an empty string.
+    tables_by_schema: std::collections::HashMap<String, Vec<TableCreateStatement>>,
     enums: Vec<TypeCreateStatement>,
+}
+
+impl DiscoveredSchema {
+    /// Find an existing table in the discovered schema that matches the given entity.
+    ///
+    /// `entity_schema` is the entity's explicit schema_name (from `#[sea_orm(schema_name = "...")]`).
+    /// If `None`, the entity uses the database's current/default schema.
+    ///
+    /// The comparison uses bare table names (without schema qualifiers) because
+    /// `sea-schema` discovery results do not include schema information in the
+    /// `TableCreateStatement`.
+    fn find_table(
+        &self,
+        entity_schema: Option<&str>,
+        entity_table_name: &TableName,
+    ) -> Option<&TableCreateStatement> {
+        let schema = entity_schema.unwrap_or(&self.current_schema);
+        let schema_tables = self.tables_by_schema.get(schema)?;
+        // Strip schema from entity table name for comparison, because discovered
+        // tables from sea-schema do not carry schema qualifiers.
+        let bare_entity_name = TableName(None, entity_table_name.1.clone());
+        schema_tables
+            .iter()
+            .find(|tbl| get_table_name(tbl.get_table_name()) == bare_entity_name)
+    }
 }
 
 impl EntitySchemaInfo {
@@ -252,6 +331,7 @@ impl EntitySchemaInfo {
             table: helper.create_table_from_entity(entity),
             enums: helper.create_enum_from_entity(entity),
             indexes: helper.create_index_from_entity(entity),
+            schema_name: entity.schema_name().map(|s| s.to_string()),
         }
     }
 
@@ -301,13 +381,8 @@ impl EntitySchemaInfo {
             }
         }
         let table_name = get_table_name(self.table.get_table_name());
-        let mut existing_table = None;
-        for tbl in &existing.tables {
-            if get_table_name(tbl.get_table_name()) == table_name {
-                existing_table = Some(tbl);
-                break;
-            }
-        }
+        // Use schema-aware lookup: find existing table in the correct schema
+        let existing_table = existing.find_table(self.schema_name.as_deref(), &table_name);
         if let Some(existing_table) = existing_table {
             for column_def in self.table.get_columns() {
                 let mut column_exists = false;
@@ -451,29 +526,10 @@ impl EntitySchemaInfo {
                         }
                     }
                     if !has_index {
-                        if let Some(drop_existing) = existing_index
-                            .get_index_spec()
-                            .get_name()
-                            .map(|s| s.to_owned())
+                        if let Some(drop_existing) =
+                            existing_index.get_index_spec().get_name().map(|s| s.to_owned())
                         {
-                            if db_backend == DbBackend::Postgres {
-                                // On PostgreSQL, unique indexes created via column-level UNIQUE
-                                // (e.g. ADD COLUMN ... UNIQUE) are backed by a named constraint.
-                                // DROP INDEX fails on constraint-owned indexes; use
-                                // ALTER TABLE ... DROP CONSTRAINT instead.
-                                db.execute(
-                                    TableAlterStatement::new()
-                                        .table(
-                                            self.table
-                                                .get_table_name()
-                                                .expect("Checked above")
-                                                .clone(),
-                                        )
-                                        .drop_constraint(drop_existing),
-                                )?;
-                            } else {
-                                db.execute(sea_query::Index::drop().name(drop_existing))?;
-                            }
+                            db.execute(sea_query::Index::drop().name(drop_existing))?;
                         }
                     }
                 }

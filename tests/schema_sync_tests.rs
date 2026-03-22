@@ -4,7 +4,7 @@ pub mod common;
 
 use crate::common::TestContext;
 use sea_orm::{
-    DatabaseConnection, DbErr,
+    DatabaseBackend, DatabaseConnection, DbErr, Statement,
     entity::*,
     query::*,
     sea_query::{Condition, Expr, Query},
@@ -121,6 +121,22 @@ mod user_v2 {
         pub id: i32,
         #[sea_orm(unique)]
         pub email: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+// Entity in a non-default PostgreSQL schema — for multi-schema sync testing.
+mod custom_schema_entity {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(schema_name = "test_schema_2952", table_name = "sync_custom_schema")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub name: String,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -275,6 +291,72 @@ async fn test_sync_drop_unique_constraint() -> Result<(), DbErr> {
     }
 
     Ok(())
+}
+
+/// Regression test for <https://github.com/SeaQL/sea-orm/issues/2952>.
+///
+/// An entity with `schema_name` pointing to a non-default PostgreSQL schema is
+/// synced twice. The second sync must not fail with "relation already exists".
+#[sea_orm_macros::test]
+#[cfg(feature = "sqlx-postgres")]
+async fn test_sync_non_default_schema() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_sync_non_default_schema").await;
+    let db = &ctx.db;
+
+    #[cfg(feature = "schema-sync")]
+    {
+        db.execute_raw(Statement::from_string(
+            DatabaseBackend::Postgres,
+            "CREATE SCHEMA IF NOT EXISTS test_schema_2952".to_owned(),
+        ))
+        .await?;
+
+        // First sync: creates the table in the non-default schema
+        db.get_schema_builder()
+            .register(custom_schema_entity::Entity)
+            .sync(db)
+            .await?;
+
+        assert!(
+            pg_table_exists_in_schema(db, "test_schema_2952", "sync_custom_schema").await?,
+            "table should exist in schema `test_schema_2952`"
+        );
+
+        assert!(
+            !pg_table_exists_in_schema(db, "public", "sync_custom_schema").await?,
+            "table should NOT exist in schema `public`"
+        );
+
+        // Second sync: must not fail with "relation already exists"
+        db.get_schema_builder()
+            .register(custom_schema_entity::Entity)
+            .sync(db)
+            .await?;
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "sqlx-postgres")]
+async fn pg_table_exists_in_schema(
+    db: &DatabaseConnection,
+    schema: &str,
+    table: &str,
+) -> Result<bool, DbErr> {
+    db.query_one(
+        Query::select()
+            .expr(Expr::cust("COUNT(*) > 0"))
+            .from("information_schema.tables")
+            .cond_where(
+                Condition::all()
+                    .add(Expr::col("table_schema").eq(schema))
+                    .add(Expr::col("table_name").eq(table)),
+            ),
+    )
+    .await?
+    .unwrap()
+    .try_get_by_index(0)
+    .map_err(DbErr::from)
 }
 
 #[cfg(feature = "sqlx-postgres")]
