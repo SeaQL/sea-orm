@@ -7,6 +7,12 @@ cd /path/to/sea-orm
 bash build-tools/make-sync.sh
 ```
 
+On GNU sed/Linux, use:
+
+```bash
+bash build-tools/make-sync.gnu.sh
+```
+
 The script copies `src/` and `tests/` into `sea-orm-sync/`, then applies sed transforms to strip async/await, remove `#[async_trait]`, replace `futures_util::lock::Mutex` with `std::sync::Mutex`, etc.
 
 ## Workflow
