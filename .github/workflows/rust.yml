@@ -367,8 +367,10 @@ jobs:
       - working-directory: ./sea-orm-sync
         run: cargo test --test '*' --features tests-features,rusqlite
       - working-directory: ./sea-orm-sync/examples/quickstart
+        name: run quickstart example
         run: cargo run
       - working-directory: ./sea-orm-sync/examples/parquet_example
+        name: run parquet example
         run: cargo run
 
   mysql:
