@@ -24,6 +24,8 @@ features = [
     "schema-sync",
     "postgres-array",
     "postgres-vector",
+    "tracing-spans",
+    "with-ipnetwork",
     "with-arrow",
 ]
 rustdoc-args = ["--cfg", "docsrs"]
@@ -41,6 +43,11 @@ derive_more = { version = "2", features = ["debug"] }
 inventory = { version = "0.3", optional = true }
 ipnetwork = { version = "0.20", default-features = false, optional = true }
 itertools = "0.14.0"
+jiff = { version = "0.2.15", default-features = false, optional = true, features = [
+    "std",
+    "perf-inline",
+] }
+jiff-sqlx = { version = "0.1.1", default-features = false, optional = true }
 log = { version = "0.4", default-features = false }
 ouroboros = { version = "0.18", default-features = false }
 pgvector = { version = "~0.4", default-features = false, optional = true }
@@ -48,10 +55,10 @@ rust_decimal = { version = "1", default-features = false, features = [
     "std",
 ], optional = true }
 sea-orm-arrow = { version = "2.0.0-rc", path = "../sea-orm-arrow", default-features = false, optional = true }
-sea-orm-macros = { version = "~2.0.0-rc.20", path = "../sea-orm-macros", default-features = false, features = [
+sea-orm-macros = { version = "~2.0.0-rc.37", path = "../sea-orm-macros", default-features = false, features = [
     "strum",
 ] }
-sea-query = { version = "=1.0.0-rc.31", default-features = false, features = [
+sea-query = { version = "=1.0.0-rc.32", default-features = false, features = [
     "thread-safe",
     "hashable-value",
     "backend-mysql",
@@ -68,7 +75,7 @@ sea-schema-sync = { version = "0.17.0-rc.15", default-features = false, features
 ], optional = true }
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false, optional = true }
-strum = { version = "0.27", default-features = false }
+strum = { version = "0.28", default-features = false }
 thiserror = { version = "2", default-features = false }
 time = { version = "0.3.36", default-features = false, optional = true }
 tracing = { version = "0.1", default-features = false, features = [
@@ -137,10 +144,13 @@ sync = []
 tests-cfg = ["serde/derive"]
 tests-features = [
     "default",
+    "postgres-array",
     "rbac",
     "schema-sync",
     "with-arrow",
     "with-bigdecimal",
+    "with-jiff",
+    "with-ipnetwork",
 ]
 tracing-spans = []
 with-arrow = ["sea-orm-arrow", "sea-orm-macros/with-arrow"]
@@ -161,11 +171,18 @@ with-ipnetwork = [
     "sea-query/with-ipnetwork",
     "sea-query-rusqlite?/with-ipnetwork",
 ]
+with-jiff = [
+    "jiff",
+    "jiff-sqlx",
+    "sea-query/with-jiff",
+    "sea-query-rusqlite?/with-jiff",
+]
 with-json = [
     "serde_json",
     "sea-query/with-json",
     "sea-orm-macros/with-json",
     "chrono?/serde",
+    "jiff?/serde",
     "rust_decimal?/serde",
     "bigdecimal?/serde",
     "uuid?/serde",
@@ -188,5 +205,5 @@ with-time = [
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-rusqlite?/with-uuid"]
 
 [patch.crates-io]
-sea-query         = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
+sea-query          = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
 sea-query-rusqlite = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }

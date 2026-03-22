@@ -412,61 +412,112 @@ pub(crate) fn from_sqlx_sqlite_row_to_proxy_row(row: &sqlx::sqlite::SqliteRow) -
                                 .map(Box::new),
                         ),
 
-                        #[cfg(feature = "with-chrono")]
+                        #[cfg(any(
+                            feature = "with-chrono",
+                            feature = "with-time",
+                            feature = "with-jiff"
+                        ))]
                         "DATETIME" => {
-                            use chrono::{DateTime, Utc};
+                            #[allow(unreachable_code)]
+                            let value = 'value: {
+                                #[cfg(feature = "with-chrono")]
+                                {
+                                    use chrono::{DateTime, Utc};
 
-                            Value::ChronoDateTimeUtc(
-                                row.try_get::<Option<DateTime<Utc>>, _>(c.ordinal())
-                                    .expect("Failed to get timestamp")
-                                    .map(Box::new),
-                            )
+                                    break 'value Value::ChronoDateTimeUtc(
+                                        row.try_get::<Option<DateTime<Utc>>, _>(c.ordinal())
+                                            .expect("Failed to get timestamp"),
+                                    );
+                                }
+                                #[cfg(feature = "with-time")]
+                                {
+                                    use time::OffsetDateTime;
+
+                                    break 'value Value::TimeDateTimeWithTimeZone(
+                                        row.try_get::<Option<OffsetDateTime>, _>(c.ordinal())
+                                            .expect("Failed to get timestamp"),
+                                    );
+                                }
+                                #[cfg(feature = "with-jiff")]
+                                break 'value Value::JiffDateTime(
+                                    row.try_get::<Option<jiff_sqlx::DateTime>, _>(c.ordinal())
+                                        .expect("Failed to get timestamp")
+                                        .map(Into::into)
+                                        .map(Box::new),
+                                );
+                            };
+                            value
                         }
-                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "DATETIME" => {
-                            use time::OffsetDateTime;
-                            Value::TimeDateTimeWithTimeZone(
-                                row.try_get::<Option<OffsetDateTime>, _>(c.ordinal())
-                                    .expect("Failed to get timestamp")
-                                    .map(Box::new),
-                            )
-                        }
-                        #[cfg(feature = "with-chrono")]
+                        #[cfg(any(
+                            feature = "with-chrono",
+                            feature = "with-time",
+                            feature = "with-jiff"
+                        ))]
                         "DATE" => {
-                            use chrono::NaiveDate;
-                            Value::ChronoDate(
-                                row.try_get::<Option<NaiveDate>, _>(c.ordinal())
-                                    .expect("Failed to get date")
-                                    .map(Box::new),
-                            )
-                        }
-                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "DATE" => {
-                            use time::Date;
-                            Value::TimeDate(
-                                row.try_get::<Option<Date>, _>(c.ordinal())
-                                    .expect("Failed to get date")
-                                    .map(Box::new),
-                            )
+                            #[allow(unreachable_code)]
+                            let value = 'value: {
+                                #[cfg(feature = "with-chrono")]
+                                {
+                                    use chrono::NaiveDate;
+
+                                    break 'value Value::ChronoDate(
+                                        row.try_get::<Option<NaiveDate>, _>(c.ordinal())
+                                            .expect("Failed to get date"),
+                                    );
+                                }
+                                #[cfg(feature = "with-time")]
+                                {
+                                    use time::Date;
+
+                                    break 'value Value::TimeDate(
+                                        row.try_get::<Option<Date>, _>(c.ordinal())
+                                            .expect("Failed to get date"),
+                                    );
+                                }
+                                #[cfg(feature = "with-jiff")]
+                                break 'value Value::JiffDate(
+                                    row.try_get::<Option<jiff_sqlx::Date>, _>(c.ordinal())
+                                        .expect("Failed to get date")
+                                        .map(Into::into),
+                                );
+                            };
+                            value
                         }
 
-                        #[cfg(feature = "with-chrono")]
+                        #[cfg(any(
+                            feature = "with-chrono",
+                            feature = "with-time",
+                            feature = "with-jiff"
+                        ))]
                         "TIME" => {
-                            use chrono::NaiveTime;
-                            Value::ChronoTime(
-                                row.try_get::<Option<NaiveTime>, _>(c.ordinal())
-                                    .expect("Failed to get time")
-                                    .map(Box::new),
-                            )
-                        }
-                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIME" => {
-                            use time::Time;
-                            Value::TimeTime(
-                                row.try_get::<Option<Time>, _>(c.ordinal())
-                                    .expect("Failed to get time")
-                                    .map(Box::new),
-                            )
+                            #[allow(unreachable_code)]
+                            let value = 'value: {
+                                #[cfg(feature = "with-chrono")]
+                                {
+                                    use chrono::NaiveTime;
+
+                                    break 'value Value::ChronoTime(
+                                        row.try_get::<Option<NaiveTime>, _>(c.ordinal())
+                                            .expect("Failed to get time"),
+                                    );
+                                }
+                                #[cfg(feature = "with-time")]
+                                {
+                                    use time::Time;
+
+                                    break 'value Value::TimeTime(
+                                        row.try_get::<Option<Time>, _>(c.ordinal())
+                                            .expect("Failed to get time"),
+                                    );
+                                }
+                                #[cfg(feature = "with-jiff")]
+                                break 'value Value::JiffTime(
+                                    row.try_get::<Option<jiff_sqlx::Time>, _>(c.ordinal())
+                                        .expect("Failed to get time")
+                                        .map(Into::into),
+                                );
+                            };
+                            value
                         }
 
                         _ => unreachable!("Unknown column type: {}", c.type_info().name()),

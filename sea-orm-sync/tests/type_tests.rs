@@ -63,6 +63,10 @@ fn main() {
     it_impl_traits!(time::Time);
     it_impl_traits!(time::PrimitiveDateTime);
     it_impl_traits!(time::OffsetDateTime);
+    it_impl_traits!(jiff::civil::Date);
+    it_impl_traits!(jiff::civil::Time);
+    it_impl_traits!(jiff::civil::DateTime);
+    it_impl_traits!(jiff::Timestamp);
     it_impl_traits!(rust_decimal::Decimal);
     it_impl_traits!(uuid::Uuid);
     #[cfg(feature = "with-ipnetwork")]

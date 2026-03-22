@@ -412,6 +412,57 @@ macro_rules! try_getable_all {
     };
 }
 
+#[cfg(feature = "with-jiff")]
+macro_rules! try_getable_jiff {
+    ($(($type: ty, $wrapper: ty)),+ $(,)?) => {
+        $(
+            impl TryGetable for $type {
+                #[allow(unused_variables)]
+                fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+                    match &res.row {
+                        #[cfg(feature = "sqlx-mysql")]
+                        QueryResultRow::SqlxMySql(_) => Err(type_err(format!(
+                            "{} unsupported by sqlx-mysql",
+                            stringify!($type)
+                        ))
+                        .into()),
+                        #[cfg(feature = "sqlx-postgres")]
+                        QueryResultRow::SqlxPostgres(row) => row
+                            .try_get::<Option<$wrapper>, _>(idx.as_sqlx_postgres_index())
+                            .map_err(|e| sqlx_error_to_query_err(e).into())
+                            .and_then(|opt| {
+                                opt.map(Into::into).ok_or_else(|| err_null_idx_col(idx))
+                            }),
+                        #[cfg(feature = "sqlx-sqlite")]
+                        QueryResultRow::SqlxSqlite(row) => row
+                            .try_get::<Option<$wrapper>, _>(idx.as_sqlx_sqlite_index())
+                            .map_err(|e| sqlx_error_to_query_err(e).into())
+                            .and_then(|opt| {
+                                opt.map(Into::into).ok_or_else(|| err_null_idx_col(idx))
+                            }),
+                        #[cfg(feature = "rusqlite")]
+                        QueryResultRow::Rusqlite(row) => row
+                            .try_get::<Option<$type>, _>(idx)
+                            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        #[cfg(feature = "mock")]
+                        QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
+                            debug_print!("{:#?}", e.to_string());
+                            err_null_idx_col(idx)
+                        }),
+                        #[cfg(feature = "proxy")]
+                        QueryResultRow::Proxy(row) => row.try_get(idx).map_err(|e| {
+                            debug_print!("{:#?}", e.to_string());
+                            err_null_idx_col(idx)
+                        }),
+                        #[allow(unreachable_patterns)]
+                        _ => unreachable!(),
+                    }
+                }
+            }
+        )+
+    };
+}
+
 macro_rules! try_getable_unsigned {
     ( $type: ty ) => {
         impl TryGetable for $type {
@@ -648,6 +699,14 @@ try_getable_all!(time::PrimitiveDateTime);
 
 #[cfg(feature = "with-time")]
 try_getable_all!(time::OffsetDateTime);
+
+#[cfg(feature = "with-jiff")]
+try_getable_jiff!(
+    (jiff::civil::Date, jiff_sqlx::Date),
+    (jiff::civil::Time, jiff_sqlx::Time),
+    (jiff::civil::DateTime, jiff_sqlx::DateTime),
+    (jiff::Timestamp, jiff_sqlx::Timestamp),
+);
 
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;
@@ -1048,6 +1107,59 @@ mod postgres_array {
         };
     }
 
+    #[cfg(feature = "with-jiff")]
+    macro_rules! try_getable_postgres_jiff_array {
+        ( $type: ty, $wrapper: ty ) => {
+            #[allow(unused_variables)]
+            impl TryGetable for Vec<$type> {
+                fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+                    match &res.row {
+                        #[cfg(feature = "sqlx-mysql")]
+                        QueryResultRow::SqlxMySql(_) => Err(type_err(format!(
+                            "{} unsupported by sqlx-mysql",
+                            stringify!($type)
+                        ))
+                        .into()),
+                        #[cfg(feature = "sqlx-postgres")]
+                        QueryResultRow::SqlxPostgres(row) => row
+                            .try_get::<Option<Vec<$wrapper>>, _>(idx.as_sqlx_postgres_index())
+                            .map_err(|e| sqlx_error_to_query_err(e).into())
+                            .and_then(|opt| {
+                                opt.map(|vals| vals.into_iter().map(Into::into).collect())
+                                    .ok_or_else(|| err_null_idx_col(idx))
+                            }),
+                        #[cfg(feature = "sqlx-sqlite")]
+                        QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
+                            "{} unsupported by sqlx-sqlite",
+                            stringify!($type)
+                        ))
+                        .into()),
+                        #[cfg(feature = "rusqlite")]
+                        QueryResultRow::Rusqlite(_) => Err(type_err(format!(
+                            "{} unsupported by rusqlite",
+                            stringify!($type)
+                        ))
+                        .into()),
+                        #[cfg(feature = "mock")]
+                        #[allow(unused_variables)]
+                        QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
+                            debug_print!("{:#?}", e.to_string());
+                            err_null_idx_col(idx)
+                        }),
+                        #[cfg(feature = "proxy")]
+                        #[allow(unused_variables)]
+                        QueryResultRow::Proxy(row) => row.try_get(idx).map_err(|e| {
+                            debug_print!("{:#?}", e.to_string());
+                            err_null_idx_col(idx)
+                        }),
+                        #[allow(unreachable_patterns)]
+                        _ => unreachable!(),
+                    }
+                }
+            }
+        };
+    }
+
     try_getable_postgres_array!(bool);
     try_getable_postgres_array!(i8);
     try_getable_postgres_array!(i16);
@@ -1090,6 +1202,18 @@ mod postgres_array {
 
     #[cfg(feature = "with-time")]
     try_getable_postgres_array!(time::OffsetDateTime);
+
+    #[cfg(feature = "with-jiff")]
+    try_getable_postgres_jiff_array!(jiff::civil::Date, jiff_sqlx::Date);
+
+    #[cfg(feature = "with-jiff")]
+    try_getable_postgres_jiff_array!(jiff::civil::Time, jiff_sqlx::Time);
+
+    #[cfg(feature = "with-jiff")]
+    try_getable_postgres_jiff_array!(jiff::civil::DateTime, jiff_sqlx::DateTime);
+
+    #[cfg(feature = "with-jiff")]
+    try_getable_postgres_jiff_array!(jiff::Timestamp, jiff_sqlx::Timestamp);
 
     #[cfg(feature = "with-rust_decimal")]
     try_getable_postgres_array!(rust_decimal::Decimal);
@@ -1644,6 +1768,18 @@ try_from_u64_err!(time::PrimitiveDateTime);
 
 #[cfg(feature = "with-time")]
 try_from_u64_err!(time::OffsetDateTime);
+
+#[cfg(feature = "with-jiff")]
+try_from_u64_err!(jiff::civil::Date);
+
+#[cfg(feature = "with-jiff")]
+try_from_u64_err!(jiff::civil::Time);
+
+#[cfg(feature = "with-jiff")]
+try_from_u64_err!(jiff::civil::DateTime);
+
+#[cfg(feature = "with-jiff")]
+try_from_u64_err!(jiff::Timestamp);
 
 #[cfg(feature = "with-rust_decimal")]
 try_from_u64_err!(rust_decimal::Decimal);
