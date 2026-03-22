@@ -151,6 +151,29 @@ pub fn can_try_from_u64(field_type: &str) -> bool {
     )
 }
 
+/// Maximum depth of vector nesting allowed INSIDE NEW TYPE before omitting sea_orm::TryGetableArray
+/// For example, `struct A (Vec<Vec<i32>>)` has dimensionality of 2
+/// Abosolute maximum would be 5, because of Postgres limit of 6
+const MAX_VEC_DIMENSIONALITY: u8 = 0;
+
+/// Determines whether to omit `sea_orm::TryGetableArray` implementation for a given field type
+/// based on the vector dimensionality.
+pub fn omit_vec_impl(field_type: &str) -> bool {
+    let mut depth = 0u8;
+    let mut current = field_type.trim();
+
+    while let Some(inner) = current.strip_prefix("Vec<") {
+        #[allow(clippy::absurd_extreme_comparisons)]
+        if depth >= MAX_VEC_DIMENSIONALITY {
+            return true;
+        }
+        depth += 1;
+        current = inner.trim_start();
+    }
+
+    false
+}
+
 /// Return whether it is nullable
 fn trim_option(s: &str) -> (bool, &str) {
     if s.starts_with("Option<") {
