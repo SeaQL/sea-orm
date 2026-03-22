@@ -60,6 +60,39 @@ mod product_v2 {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+// Scenario 4a: initial version — column has UNIQUE.
+mod order_v1 {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "sync_order")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        #[sea_orm(unique)]
+        pub ref_no: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+// Scenario 4b: UNIQUE removed from the column.
+mod order_v2 {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "sync_order")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub ref_no: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 // Scenario 3a: initial version — column exists without UNIQUE.
 mod user_v1 {
     use sea_orm::entity::prelude::*;
@@ -182,6 +215,42 @@ fn test_sync_make_existing_column_unique() -> Result<(), DbErr> {
         assert!(
             pg_index_exists(db, "sync_user", "idx-sync_user-email")?,
             "unique index on `sync_user.email` should be created when column is made unique"
+        );
+    }
+
+    Ok(())
+}
+
+/// Regression test for <https://github.com/SeaQL/sea-orm/issues/2994>.
+///
+/// A column marked `#[sea_orm(unique)]` is synced, then the unique attribute is
+/// removed. The second sync must drop the PostgreSQL constraint without error.
+#[sea_orm_macros::test]
+#[cfg(feature = "sqlx-postgres")]
+fn test_sync_drop_unique_constraint() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_sync_drop_unique_constraint");
+    let db = &ctx.db;
+
+    #[cfg(feature = "schema-sync")]
+    {
+        // First sync: creates the table with the unique constraint
+        db.get_schema_builder()
+            .register(order_v1::Entity)
+            .sync(db)?;
+
+        assert!(
+            pg_index_exists(db, "sync_order", "sync_order_ref_no_key")?,
+            "unique constraint should exist after first sync"
+        );
+
+        // Second sync: unique is removed — must not error on PostgreSQL
+        db.get_schema_builder()
+            .register(order_v2::Entity)
+            .sync(db)?;
+
+        assert!(
+            !pg_index_exists(db, "sync_order", "sync_order_ref_no_key")?,
+            "unique constraint should be gone after second sync"
         );
     }
 

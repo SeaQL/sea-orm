@@ -447,8 +447,7 @@ pub trait EntityTrait: EntityName {
     ///         id: NotSet,
     ///         name: Set("Apple Pie".to_owned()),
     ///     })
-    ///     .exec_with_returning(&db)
-    ///     ?,
+    ///     .exec_with_returning(&db)?,
     ///     cake::Model {
     ///         id: 1,
     ///         name: "Apple Pie".to_owned(),
@@ -497,9 +496,7 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// let insert_result = cake::Entity::insert_many::<cake::ActiveModel, _>([])
-    ///     .exec(&db)
-    ///     ?;
+    /// let insert_result = cake::Entity::insert_many::<cake::ActiveModel, _>([]).exec(&db)?;
     ///
     /// assert_eq!(insert_result.last_insert_id, None);
     ///
@@ -643,8 +640,7 @@ pub trait EntityTrait: EntityName {
     ///             name: Set("Choco Pie".to_owned()),
     ///         },
     ///     ])
-    ///     .exec_with_returning(&db)
-    ///     ?,
+    ///     .exec_with_returning(&db)?,
     ///     [
     ///         cake::Model {
     ///             id: 1,
@@ -828,8 +824,7 @@ pub trait EntityTrait: EntityName {
     /// let update_result = fruit::Entity::update_many()
     ///     .col_expr(fruit::Column::CakeId, Expr::value(Value::Int(None)))
     ///     .filter(fruit::Column::Name.contains("Apple"))
-    ///     .exec(&db)
-    ///     ?;
+    ///     .exec(&db)?;
     ///
     /// assert_eq!(update_result.rows_affected, 5);
     ///
@@ -931,8 +926,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// let delete_result = fruit::Entity::delete_many()
     ///     .filter(fruit::Column::Name.contains("Apple"))
-    ///     .exec(&db)
-    ///     ?;
+    ///     .exec(&db)?;
     ///
     /// assert_eq!(delete_result.rows_affected, 5);
     ///

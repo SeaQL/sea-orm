@@ -877,6 +877,9 @@ try_getable_uuid!(uuid::fmt::Urn, uuid::Uuid::urn);
 #[cfg(feature = "with-ipnetwork")]
 try_getable_postgres!(ipnetwork::IpNetwork);
 
+#[cfg(feature = "with-mac_address")]
+try_getable_postgres!(mac_address::MacAddress);
+
 impl TryGetable for u32 {
     #[allow(unused_variables)]
     fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
@@ -1097,6 +1100,9 @@ mod postgres_array {
     #[cfg(feature = "with-ipnetwork")]
     try_getable_postgres_array!(ipnetwork::IpNetwork);
 
+    #[cfg(feature = "with-mac_address")]
+    try_getable_postgres_array!(mac_address::MacAddress);
+
     #[allow(unused_macros)]
     macro_rules! try_getable_postgres_array_uuid {
         ( $type: ty, $conversion_fn: expr ) => {
@@ -1291,8 +1297,7 @@ pub trait TryGetableMany: Sized {
     ///         r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#,
     ///         [],
     ///     ))
-    ///     .all(&db)
-    ///     ?;
+    ///     .all(&db)?;
     ///
     /// assert_eq!(
     ///     res,
@@ -1646,6 +1651,9 @@ try_from_u64_err!(uuid::Uuid);
 
 #[cfg(feature = "with-ipnetwork")]
 try_from_u64_err!(ipnetwork::IpNetwork);
+
+#[cfg(feature = "with-mac_address")]
+try_from_u64_err!(mac_address::MacAddress);
 
 #[cfg(test)]
 mod tests {

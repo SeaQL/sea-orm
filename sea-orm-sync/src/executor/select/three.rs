@@ -201,8 +201,7 @@ where
     ///     .find_also_related(cake::Entity)
     ///     .and_also_related(filling::Entity)
     ///     .consolidate()
-    ///     .all(db)
-    ///     ?;
+    ///     .all(db)?;
     ///
     /// // cake -> fruit
     /// //      -> filling
@@ -210,8 +209,7 @@ where
     ///     .find_also_related(fruit::Entity)
     ///     .find_also_related(filling::Entity)
     ///     .consolidate()
-    ///     .all(db)
-    ///     ?;
+    ///     .all(db)?;
     /// # Ok(())
     /// # }
     /// ```
