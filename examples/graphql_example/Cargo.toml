@@ -14,3 +14,6 @@ members = [".", "api", "entity", "migration"]
 graphql-example-api = { path = "api" }
 
 [patch.crates-io]
+[patch.crates-io]
+sea-query      = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
+sea-query-sqlx = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
