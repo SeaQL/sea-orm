@@ -54,6 +54,11 @@ ipnetwork = { version = "0.21", default-features = false, optional = true, featu
     "serde",
 ] }
 itertools = "0.14.0"
+jiff = { version = "0.2.15", default-features = false, optional = true, features = [
+    "std",
+    "perf-inline",
+] }
+jiff-sqlx = { version = "0.1.1", default-features = false, optional = true }
 log = { version = "0.4", default-features = false }
 mac_address = { version = "1.1", default-features = false, optional = true }
 ouroboros = { version = "0.18", default-features = false, optional = true }
@@ -106,6 +111,7 @@ sea-orm = { path = ".", features = [
     "mock",
     "postgres-array",
     "tests-cfg",
+    "with-jiff",
 ] }
 smol = { version = "1.2" }
 smol-potat = { version = "1.1" }
@@ -170,12 +176,14 @@ sqlx-postgres = [
     "sqlx-dep",
     "sea-orm-macros/sqlx-postgres",
     "sea-query-sqlx/sqlx-postgres",
+    "jiff-sqlx?/postgres",
     "postgres-array",
     "sea-schema?/sqlx-postgres",
 ]
 sqlx-sqlite = [
     "sqlx-dep",
     "sea-query-sqlx/sqlx-sqlite",
+    "jiff-sqlx?/sqlite",
     "sea-schema?/sqlx-sqlite",
 ]
 stream = ["dep:ouroboros"]
@@ -188,9 +196,13 @@ tests-features = [
     "schema-sync",
     "with-arrow",
     "with-bigdecimal",
+    "with-jiff",
     "with-ipnetwork",
 ]
 tracing-spans = []
+unimplemented-jiff-sqlx-mysql = [
+    "sea-query-sqlx?/unimplemented-jiff-sqlx-mysql",
+]
 with-arrow = ["sea-orm-arrow", "sea-orm-macros/with-arrow"]
 with-bigdecimal = [
     "bigdecimal",
@@ -209,12 +221,19 @@ with-ipnetwork = [
     "sea-query/with-ipnetwork",
     "sea-query-sqlx?/with-ipnetwork",
 ]
+with-jiff = [
+    "jiff",
+    "jiff-sqlx",
+    "sea-query/with-jiff",
+    "sea-query-sqlx?/with-jiff",
+]
 with-json = [
     "dep:serde",
     "serde_json",
     "sea-query/with-json",
     "sea-orm-macros/with-json",
     "chrono?/serde",
+    "jiff?/serde",
     "rust_decimal?/serde",
     "bigdecimal?/serde",
     "uuid?/serde",

@@ -89,6 +89,21 @@ pub use time::OffsetDateTime as TimeDateTimeWithTimeZone;
 #[cfg(feature = "with-time")]
 pub use crate::value::{TimeUnixTimestamp, TimeUnixTimestampMillis};
 
+#[cfg(feature = "with-jiff")]
+pub use jiff::Timestamp as JiffTimestamp;
+
+#[cfg(feature = "with-jiff")]
+pub use jiff::civil::Date as JiffDate;
+
+#[cfg(feature = "with-jiff")]
+pub use jiff::civil::DateTime as JiffDateTime;
+
+#[cfg(feature = "with-jiff")]
+pub use jiff::civil::Time as JiffTime;
+
+#[cfg(feature = "with-jiff")]
+pub use crate::value::{JiffUnixTimestamp, JiffUnixTimestampMillis};
+
 #[cfg(feature = "with-rust_decimal")]
 pub use rust_decimal::Decimal;
 
