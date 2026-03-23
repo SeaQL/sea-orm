@@ -674,216 +674,411 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 }),
                         ),
 
-                        #[cfg(feature = "with-chrono")]
-                        "TIMESTAMP" => Value::ChronoDateTime(
-                            row.try_get::<Option<chrono::NaiveDateTime>, _>(c.ordinal())
-                                .expect("Failed to get timestamp"),
-                        ),
-                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIMESTAMP" => Value::TimeDateTime(
-                            row.try_get::<Option<time::PrimitiveDateTime>, _>(c.ordinal())
-                                .expect("Failed to get timestamp"),
-                        ),
-
-                        #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
-                        "TIMESTAMP[]" => Value::Array(
-                            sea_query::ArrayType::ChronoDateTime,
-                            row.try_get::<Option<Vec<chrono::NaiveDateTime>>, _>(c.ordinal())
-                                .expect("Failed to get timestamp array")
-                                .map(|vals| {
-                                    Box::new(
-                                        vals.into_iter()
-                                            .map(|val| Value::ChronoDateTime(Some(val)))
-                                            .collect(),
-                                    )
-                                }),
-                        ),
-                        #[cfg(all(
+                        #[cfg(any(
+                            feature = "with-chrono",
                             feature = "with-time",
-                            not(feature = "with-chrono"),
-                            feature = "postgres-array"
+                            feature = "with-jiff"
                         ))]
-                        "TIMESTAMP[]" => Value::Array(
-                            sea_query::ArrayType::TimeDateTime,
-                            row.try_get::<Option<Vec<time::PrimitiveDateTime>>, _>(c.ordinal())
-                                .expect("Failed to get timestamp array")
-                                .map(|vals| {
-                                    Box::new(
-                                        vals.into_iter()
-                                            .map(|val| Value::TimeDateTime(Some(val)))
-                                            .collect(),
-                                    )
-                                }),
-                        ),
-
-                        #[cfg(feature = "with-chrono")]
-                        "DATE" => Value::ChronoDate(
-                            row.try_get::<Option<chrono::NaiveDate>, _>(c.ordinal())
-                                .expect("Failed to get date"),
-                        ),
-                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "DATE" => Value::TimeDate(
-                            row.try_get::<Option<time::Date>, _>(c.ordinal())
-                                .expect("Failed to get date"),
-                        ),
-
-                        #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
-                        "DATE[]" => Value::Array(
-                            sea_query::ArrayType::ChronoDate,
-                            row.try_get::<Option<Vec<chrono::NaiveDate>>, _>(c.ordinal())
-                                .expect("Failed to get date array")
-                                .map(|vals| {
-                                    Box::new(
-                                        vals.into_iter()
-                                            .map(|val| Value::ChronoDate(Some(val)))
-                                            .collect(),
-                                    )
-                                }),
-                        ),
-                        #[cfg(all(
-                            feature = "with-time",
-                            not(feature = "with-chrono"),
-                            feature = "postgres-array"
-                        ))]
-                        "DATE[]" => Value::Array(
-                            sea_query::ArrayType::TimeDate,
-                            row.try_get::<Option<Vec<time::Date>>, _>(c.ordinal())
-                                .expect("Failed to get date array")
-                                .map(|vals| {
-                                    Box::new(
-                                        vals.into_iter()
-                                            .map(|val| Value::TimeDate(Some(val)))
-                                            .collect(),
-                                    )
-                                }),
-                        ),
-
-                        #[cfg(feature = "with-chrono")]
-                        "TIME" => Value::ChronoTime(
-                            row.try_get::<Option<chrono::NaiveTime>, _>(c.ordinal())
-                                .expect("Failed to get time"),
-                        ),
-                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIME" => Value::TimeTime(
-                            row.try_get::<Option<time::Time>, _>(c.ordinal())
-                                .expect("Failed to get time"),
-                        ),
-
-                        #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
-                        "TIME[]" => Value::Array(
-                            sea_query::ArrayType::ChronoTime,
-                            row.try_get::<Option<Vec<chrono::NaiveTime>>, _>(c.ordinal())
-                                .expect("Failed to get time array")
-                                .map(|vals| {
-                                    Box::new(
-                                        vals.into_iter()
-                                            .map(|val| Value::ChronoTime(Some(val)))
-                                            .collect(),
-                                    )
-                                }),
-                        ),
-                        #[cfg(all(
-                            feature = "with-time",
-                            not(feature = "with-chrono"),
-                            feature = "postgres-array"
-                        ))]
-                        "TIME[]" => Value::Array(
-                            sea_query::ArrayType::TimeTime,
-                            row.try_get::<Option<Vec<time::Time>>, _>(c.ordinal())
-                                .expect("Failed to get time array")
-                                .map(|vals| {
-                                    Box::new(
-                                        vals.into_iter()
-                                            .map(|val| Value::TimeTime(Some(val)))
-                                            .collect(),
-                                    )
-                                }),
-                        ),
-
-                        #[cfg(feature = "with-chrono")]
-                        "TIMESTAMPTZ" => Value::ChronoDateTimeUtc(
-                            row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(c.ordinal())
-                                .expect("Failed to get timestamptz"),
-                        ),
-                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIMESTAMPTZ" => Value::TimeDateTimeWithTimeZone(
-                            row.try_get::<Option<time::OffsetDateTime>, _>(c.ordinal())
-                                .expect("Failed to get timestamptz"),
-                        ),
-
-                        #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
-                        "TIMESTAMPTZ[]" => Value::Array(
-                            sea_query::ArrayType::ChronoDateTimeUtc,
-                            row.try_get::<Option<Vec<chrono::DateTime<chrono::Utc>>>, _>(
-                                c.ordinal(),
-                            )
-                            .expect("Failed to get timestamptz array")
-                            .map(|vals| {
-                                Box::new(
-                                    vals.into_iter()
-                                        .map(|val| Value::ChronoDateTimeUtc(Some(val)))
-                                        .collect(),
-                                )
-                            }),
-                        ),
-                        #[cfg(all(
-                            feature = "with-time",
-                            not(feature = "with-chrono"),
-                            feature = "postgres-array"
-                        ))]
-                        "TIMESTAMPTZ[]" => Value::Array(
-                            sea_query::ArrayType::TimeDateTimeWithTimeZone,
-                            row.try_get::<Option<Vec<time::OffsetDateTime>>, _>(c.ordinal())
-                                .expect("Failed to get timestamptz array")
-                                .map(|vals| {
-                                    Box::new(
-                                        vals.into_iter()
-                                            .map(|val| Value::TimeDateTimeWithTimeZone(Some(val)))
-                                            .collect(),
-                                    )
-                                }),
-                        ),
-
-                        #[cfg(feature = "with-chrono")]
-                        "TIMETZ" => Value::ChronoTime(
-                            row.try_get::<Option<chrono::NaiveTime>, _>(c.ordinal())
-                                .expect("Failed to get timetz"),
-                        ),
-                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIMETZ" => {
-                            Value::TimeTime(row.try_get(c.ordinal()).expect("Failed to get timetz"))
+                        "TIMESTAMP" => {
+                            #[allow(unreachable_code)]
+                            let value = 'value: {
+                                #[cfg(feature = "with-chrono")]
+                                break 'value Value::ChronoDateTime(
+                                    row.try_get::<Option<chrono::NaiveDateTime>, _>(c.ordinal())
+                                        .expect("Failed to get timestamp"),
+                                );
+                                #[cfg(feature = "with-time")]
+                                break 'value Value::TimeDateTime(
+                                    row.try_get::<Option<time::PrimitiveDateTime>, _>(c.ordinal())
+                                        .expect("Failed to get timestamp"),
+                                );
+                                #[cfg(feature = "with-jiff")]
+                                break 'value Value::JiffDateTime(
+                                    row.try_get::<Option<jiff_sqlx::DateTime>, _>(c.ordinal())
+                                        .expect("Failed to get timestamp")
+                                        .map(Into::into)
+                                        .map(Box::new),
+                                );
+                            };
+                            value
                         }
 
-                        #[cfg(all(feature = "with-chrono", feature = "postgres-array"))]
-                        "TIMETZ[]" => Value::Array(
-                            sea_query::ArrayType::ChronoTime,
-                            row.try_get::<Option<Vec<chrono::NaiveTime>>, _>(c.ordinal())
-                                .expect("Failed to get timetz array")
-                                .map(|vals| {
-                                    Box::new(
-                                        vals.into_iter()
-                                            .map(|val| Value::ChronoTime(Some(val)))
-                                            .collect(),
-                                    )
-                                }),
-                        ),
                         #[cfg(all(
-                            feature = "with-time",
-                            not(feature = "with-chrono"),
-                            feature = "postgres-array"
+                            feature = "postgres-array",
+                            any(
+                                feature = "with-chrono",
+                                feature = "with-time",
+                                feature = "with-jiff"
+                            )
                         ))]
-                        "TIMETZ[]" => Value::Array(
-                            sea_query::ArrayType::TimeTime,
-                            row.try_get::<Option<Vec<time::Time>>, _>(c.ordinal())
-                                .expect("Failed to get timetz array")
-                                .map(|vals| {
-                                    Box::new(
-                                        vals.into_iter()
-                                            .map(|val| Value::TimeTime(Some(val)))
-                                            .collect(),
+                        "TIMESTAMP[]" => {
+                            #[allow(unreachable_code)]
+                            let value = 'value: {
+                                #[cfg(feature = "with-chrono")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::ChronoDateTime,
+                                    row.try_get::<Option<Vec<chrono::NaiveDateTime>>, _>(
+                                        c.ordinal(),
                                     )
-                                }),
-                        ),
+                                    .expect("Failed to get timestamp array")
+                                    .map(|vals| {
+                                        Box::new(
+                                            vals.into_iter()
+                                                .map(|val| Value::ChronoDateTime(Some(val)))
+                                                .collect(),
+                                        )
+                                    }),
+                                );
+                                #[cfg(feature = "with-time")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::TimeDateTime,
+                                    row.try_get::<Option<Vec<time::PrimitiveDateTime>>, _>(
+                                        c.ordinal(),
+                                    )
+                                    .expect("Failed to get timestamp array")
+                                    .map(|vals| {
+                                        Box::new(
+                                            vals.into_iter()
+                                                .map(|val| Value::TimeDateTime(Some(val)))
+                                                .collect(),
+                                        )
+                                    }),
+                                );
+                                #[cfg(feature = "with-jiff")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::JiffDateTime,
+                                    row.try_get::<Option<Vec<jiff_sqlx::DateTime>>, _>(c.ordinal())
+                                        .expect("Failed to get timestamp array")
+                                        .map(|vals| {
+                                            Box::new(
+                                                vals.into_iter()
+                                                    .map(Into::<jiff::civil::DateTime>::into)
+                                                    .map(|val| {
+                                                        Value::JiffDateTime(Some(Box::new(val)))
+                                                    })
+                                                    .collect(),
+                                            )
+                                        }),
+                                );
+                            };
+                            value
+                        }
+
+                        #[cfg(any(
+                            feature = "with-chrono",
+                            feature = "with-time",
+                            feature = "with-jiff"
+                        ))]
+                        "DATE" => {
+                            #[allow(unreachable_code)]
+                            let value = 'value: {
+                                #[cfg(feature = "with-chrono")]
+                                break 'value Value::ChronoDate(
+                                    row.try_get::<Option<chrono::NaiveDate>, _>(c.ordinal())
+                                        .expect("Failed to get date"),
+                                );
+                                #[cfg(feature = "with-time")]
+                                break 'value Value::TimeDate(
+                                    row.try_get::<Option<time::Date>, _>(c.ordinal())
+                                        .expect("Failed to get date"),
+                                );
+                                #[cfg(feature = "with-jiff")]
+                                break 'value Value::JiffDate(
+                                    row.try_get::<Option<jiff_sqlx::Date>, _>(c.ordinal())
+                                        .expect("Failed to get date")
+                                        .map(Into::into),
+                                );
+                            };
+                            value
+                        }
+
+                        #[cfg(all(
+                            feature = "postgres-array",
+                            any(
+                                feature = "with-chrono",
+                                feature = "with-time",
+                                feature = "with-jiff"
+                            )
+                        ))]
+                        "DATE[]" => {
+                            #[allow(unreachable_code)]
+                            let value = 'value: {
+                                #[cfg(feature = "with-chrono")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::ChronoDate,
+                                    row.try_get::<Option<Vec<chrono::NaiveDate>>, _>(c.ordinal())
+                                        .expect("Failed to get date array")
+                                        .map(|vals| {
+                                            Box::new(
+                                                vals.into_iter()
+                                                    .map(|val| Value::ChronoDate(Some(val)))
+                                                    .collect(),
+                                            )
+                                        }),
+                                );
+                                #[cfg(feature = "with-time")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::TimeDate,
+                                    row.try_get::<Option<Vec<time::Date>>, _>(c.ordinal())
+                                        .expect("Failed to get date array")
+                                        .map(|vals| {
+                                            Box::new(
+                                                vals.into_iter()
+                                                    .map(|val| Value::TimeDate(Some(val)))
+                                                    .collect(),
+                                            )
+                                        }),
+                                );
+                                #[cfg(feature = "with-jiff")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::JiffDate,
+                                    row.try_get::<Option<Vec<jiff_sqlx::Date>>, _>(c.ordinal())
+                                        .expect("Failed to get date array")
+                                        .map(|vals| {
+                                            Box::new(
+                                                vals.into_iter()
+                                                    .map(Into::<jiff::civil::Date>::into)
+                                                    .map(|val| Value::JiffDate(Some(val)))
+                                                    .collect(),
+                                            )
+                                        }),
+                                );
+                            };
+                            value
+                        }
+
+                        #[cfg(any(
+                            feature = "with-chrono",
+                            feature = "with-time",
+                            feature = "with-jiff"
+                        ))]
+                        "TIME" => {
+                            #[allow(unreachable_code)]
+                            let value = 'value: {
+                                #[cfg(feature = "with-chrono")]
+                                break 'value Value::ChronoTime(
+                                    row.try_get::<Option<chrono::NaiveTime>, _>(c.ordinal())
+                                        .expect("Failed to get time"),
+                                );
+                                #[cfg(feature = "with-time")]
+                                break 'value Value::TimeTime(
+                                    row.try_get::<Option<time::Time>, _>(c.ordinal())
+                                        .expect("Failed to get time"),
+                                );
+                                #[cfg(feature = "with-jiff")]
+                                break 'value Value::JiffTime(
+                                    row.try_get::<Option<jiff_sqlx::Time>, _>(c.ordinal())
+                                        .expect("Failed to get time")
+                                        .map(Into::into),
+                                );
+                            };
+                            value
+                        }
+
+                        #[cfg(all(
+                            feature = "postgres-array",
+                            any(
+                                feature = "with-chrono",
+                                feature = "with-time",
+                                feature = "with-jiff"
+                            )
+                        ))]
+                        "TIME[]" => {
+                            #[allow(unreachable_code)]
+                            let value = 'value: {
+                                #[cfg(feature = "with-chrono")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::ChronoTime,
+                                    row.try_get::<Option<Vec<chrono::NaiveTime>>, _>(c.ordinal())
+                                        .expect("Failed to get time array")
+                                        .map(|vals| {
+                                            Box::new(
+                                                vals.into_iter()
+                                                    .map(|val| Value::ChronoTime(Some(val)))
+                                                    .collect(),
+                                            )
+                                        }),
+                                );
+                                #[cfg(feature = "with-time")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::TimeTime,
+                                    row.try_get::<Option<Vec<time::Time>>, _>(c.ordinal())
+                                        .expect("Failed to get time array")
+                                        .map(|vals| {
+                                            Box::new(
+                                                vals.into_iter()
+                                                    .map(|val| Value::TimeTime(Some(val)))
+                                                    .collect(),
+                                            )
+                                        }),
+                                );
+                                #[cfg(feature = "with-jiff")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::JiffTime,
+                                    row.try_get::<Option<Vec<jiff_sqlx::Time>>, _>(c.ordinal())
+                                        .expect("Failed to get time array")
+                                        .map(|vals| {
+                                            Box::new(
+                                                vals.into_iter()
+                                                    .map(Into::<jiff::civil::Time>::into)
+                                                    .map(|val| Value::JiffTime(Some(val)))
+                                                    .collect(),
+                                            )
+                                        }),
+                                );
+                            };
+                            value
+                        }
+
+                        #[cfg(any(
+                            feature = "with-chrono",
+                            feature = "with-time",
+                            feature = "with-jiff"
+                        ))]
+                        "TIMESTAMPTZ" => {
+                            #[allow(unreachable_code)]
+                            let value = 'value: {
+                                #[cfg(feature = "with-chrono")]
+                                break 'value Value::ChronoDateTimeUtc(
+                                    row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(
+                                        c.ordinal(),
+                                    )
+                                    .expect("Failed to get timestamptz"),
+                                );
+                                #[cfg(feature = "with-time")]
+                                break 'value Value::TimeDateTimeWithTimeZone(
+                                    row.try_get::<Option<time::OffsetDateTime>, _>(c.ordinal())
+                                        .expect("Failed to get timestamptz"),
+                                );
+                                #[cfg(feature = "with-jiff")]
+                                break 'value Value::JiffTimestamp(
+                                    row.try_get::<Option<jiff_sqlx::Timestamp>, _>(c.ordinal())
+                                        .expect("Failed to get timestamptz")
+                                        .map(Into::into)
+                                        .map(Box::new),
+                                );
+                            };
+                            value
+                        }
+
+                        #[cfg(all(
+                            feature = "postgres-array",
+                            any(
+                                feature = "with-chrono",
+                                feature = "with-time",
+                                feature = "with-jiff"
+                            )
+                        ))]
+                        "TIMESTAMPTZ[]" => {
+                            #[allow(unreachable_code)]
+                            let value = 'value: {
+                                #[cfg(feature = "with-chrono")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::ChronoDateTimeUtc,
+                                    row.try_get::<Option<Vec<chrono::DateTime<chrono::Utc>>>, _>(
+                                        c.ordinal(),
+                                    )
+                                    .expect("Failed to get timestamptz array")
+                                    .map(|vals| {
+                                        Box::new(
+                                            vals.into_iter()
+                                                .map(|val| Value::ChronoDateTimeUtc(Some(val)))
+                                                .collect(),
+                                        )
+                                    }),
+                                );
+                                #[cfg(feature = "with-time")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::TimeDateTimeWithTimeZone,
+                                    row.try_get::<Option<Vec<time::OffsetDateTime>>, _>(
+                                        c.ordinal(),
+                                    )
+                                    .expect("Failed to get timestamptz array")
+                                    .map(|vals| {
+                                        Box::new(
+                                            vals.into_iter()
+                                                .map(|val| {
+                                                    Value::TimeDateTimeWithTimeZone(Some(val))
+                                                })
+                                                .collect(),
+                                        )
+                                    }),
+                                );
+                                #[cfg(feature = "with-jiff")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::JiffTimestamp,
+                                    row.try_get::<Option<Vec<jiff_sqlx::Timestamp>>, _>(
+                                        c.ordinal(),
+                                    )
+                                    .expect("Failed to get timestamptz array")
+                                    .map(|vals| {
+                                        Box::new(
+                                            vals.into_iter()
+                                                .map(Into::<jiff::Timestamp>::into)
+                                                .map(|val| {
+                                                    Value::JiffTimestamp(Some(Box::new(val)))
+                                                })
+                                                .collect(),
+                                        )
+                                    }),
+                                );
+                            };
+                            value
+                        }
+
+                        #[cfg(any(feature = "with-chrono", feature = "with-time"))]
+                        "TIMETZ" => {
+                            #[allow(unreachable_code)]
+                            let value = 'value: {
+                                #[cfg(feature = "with-chrono")]
+                                break 'value Value::ChronoTime(
+                                    row.try_get::<Option<chrono::NaiveTime>, _>(c.ordinal())
+                                        .expect("Failed to get timetz"),
+                                );
+                                #[cfg(feature = "with-time")]
+                                break 'value Value::TimeTime(
+                                    row.try_get(c.ordinal()).expect("Failed to get timetz"),
+                                );
+                            };
+                            value
+                        }
+
+                        #[cfg(all(
+                            feature = "postgres-array",
+                            any(feature = "with-chrono", feature = "with-time")
+                        ))]
+                        "TIMETZ[]" => {
+                            #[allow(unreachable_code)]
+                            let value = 'value: {
+                                #[cfg(feature = "with-chrono")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::ChronoTime,
+                                    row.try_get::<Option<Vec<chrono::NaiveTime>>, _>(c.ordinal())
+                                        .expect("Failed to get timetz array")
+                                        .map(|vals| {
+                                            Box::new(
+                                                vals.into_iter()
+                                                    .map(|val| Value::ChronoTime(Some(val)))
+                                                    .collect(),
+                                            )
+                                        }),
+                                );
+                                #[cfg(feature = "with-time")]
+                                break 'value Value::Array(
+                                    sea_query::ArrayType::TimeTime,
+                                    row.try_get::<Option<Vec<time::Time>>, _>(c.ordinal())
+                                        .expect("Failed to get timetz array")
+                                        .map(|vals| {
+                                            Box::new(
+                                                vals.into_iter()
+                                                    .map(|val| Value::TimeTime(Some(val)))
+                                                    .collect(),
+                                            )
+                                        }),
+                                );
+                            };
+                            value
+                        }
 
                         #[cfg(feature = "with-uuid")]
                         "UUID" => Value::Uuid(

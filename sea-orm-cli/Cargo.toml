@@ -128,5 +128,6 @@ runtime-tokio-rustls = [
 
 # This allows us to develop using an overridden version of sea-query
 [patch.crates-io]
-# sea-query = { path = "../sea-query" }
+sea-query      = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
+sea-query-sqlx = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
 # sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }

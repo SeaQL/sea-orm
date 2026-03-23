@@ -14,6 +14,11 @@ mod with_time;
 #[cfg(feature = "with-time")]
 pub use with_time::*;
 
+#[cfg(feature = "with-jiff")]
+mod with_jiff;
+#[cfg(feature = "with-jiff")]
+pub use with_jiff::*;
+
 #[cfg(feature = "with-uuid")]
 mod text_uuid;
 #[cfg(feature = "with-uuid")]
