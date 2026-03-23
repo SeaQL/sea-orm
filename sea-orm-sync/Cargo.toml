@@ -94,6 +94,7 @@ sea-orm-sync = { path = ".", features = [
     "mock",
     "postgres-array",
     "tests-cfg",
+    "with-jiff",
 ] }
 time = { version = "0.3.36", features = ["macros"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
