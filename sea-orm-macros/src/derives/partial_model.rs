@@ -518,4 +518,55 @@ mod test {
 
         Ok(())
     }
+
+    const CODE_SNIPPET_3: &str = r#"
+        struct PartialModel {
+            #[sea_orm(nested(prefix = "mgr_"))]
+            manager: Person,
+            #[sea_orm(nested(prefix = "csh_"))]
+            cashier: Person,
+        }
+        "#;
+
+    #[test]
+    fn test_load_macro_input_3() -> StdResult<()> {
+        let input = parse_str::<DeriveInput>(CODE_SNIPPET_3)?;
+        let middle = DerivePartialModel::new(input).unwrap();
+        assert_eq!(middle.fields.len(), 2);
+        assert_eq!(
+            middle.fields[0],
+            ColumnAs::Nested {
+                typ: parse_str("Person").unwrap(),
+                field: format_ident!("manager"),
+                alias: None,
+                prefix: Some("mgr_".to_string()),
+            }
+        );
+        assert_eq!(
+            middle.fields[1],
+            ColumnAs::Nested {
+                typ: parse_str("Person").unwrap(),
+                field: format_ident!("cashier"),
+                alias: None,
+                prefix: Some("csh_".to_string()),
+            }
+        );
+        assert_eq!(middle.from_query_result, true);
+        Ok(())
+    }
+
+    const CODE_SNIPPET_4: &str = r#"
+        struct PartialModel {
+            #[sea_orm(nested(prefix = "x_"))]
+            manager: Person,
+            #[sea_orm(nested(prefix = "x_"))]
+            cashier: Person,
+        }
+        "#;
+
+    #[test]
+    fn test_duplicate_prefix_error() {
+        let input: DeriveInput = parse_str(CODE_SNIPPET_4).unwrap();
+        assert!(DerivePartialModel::new(input).is_err());
+    }
 }
