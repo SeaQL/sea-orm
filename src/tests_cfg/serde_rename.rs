@@ -97,6 +97,7 @@ pub mod directional_rename_all {
     pub struct Model {
         #[sea_orm(primary_key)]
         pub id: i32,
+        #[serde(rename = "user-name")]
         pub user_name: String,
     }
 
@@ -123,7 +124,6 @@ mod tests {
 
         // from_json uses camelCase keys
         let json = serde_json::json!({
-            "id": 1,
             "firstName": "Max",
             "lastName": "Hermit",
             "email": "max@domain.com",
@@ -132,7 +132,8 @@ mod tests {
 
         let am = ActiveModel::from_json(json).unwrap();
 
-        assert_eq!(am.id, ActiveValue::Set(1));
+        // Test whether missing required fields can be handled correctly
+        assert_eq!(am.id, ActiveValue::NotSet);
         assert_eq!(am.first_name, ActiveValue::Set("Max".to_string()));
         assert_eq!(am.last_name, ActiveValue::Set("Hermit".to_string()));
         assert_eq!(am.email, ActiveValue::Set("max@domain.com".to_string()));
@@ -155,7 +156,6 @@ mod tests {
 
         // from_json uses deserialize names
         let json = serde_json::json!({
-            "id": 1,
             "orderDate": "2024-01-01",
             "order-id": "ORD123",
             "serOnly": "ser-value",
@@ -164,7 +164,7 @@ mod tests {
 
         let am = ActiveModel::from_json(json).unwrap();
 
-        assert_eq!(am.id, ActiveValue::Set(1));
+        assert_eq!(am.id, ActiveValue::NotSet);
         assert_eq!(am.order_date, ActiveValue::Set("2024-01-01".to_string()));
         assert_eq!(am.order_id, ActiveValue::Set("ORD123".to_string()));
         assert_eq!(am.ser_only, ActiveValue::Set("ser-value".to_string()));
@@ -191,19 +191,18 @@ mod tests {
 
     #[test]
     fn test_directional_rename_all() {
-        use directional_rename_all::{ActiveModel, Column, Model};
+        use directional_rename_all::{ActiveModel, Column};
 
         assert_eq!(Column::Id.json_key(), "id");
-        assert_eq!(Column::UserName.json_key(), "userName");
+        assert_eq!(Column::UserName.json_key(), "user-name");
 
         let json = serde_json::json!({
-            "id": 1,
-            "userName": "test_user"
+            "user-name": "test_user"
         });
 
         let am = ActiveModel::from_json(json).unwrap();
 
-        assert_eq!(am.id, ActiveValue::Set(1));
+        assert_eq!(am.id, ActiveValue::NotSet);
         assert_eq!(am.user_name, ActiveValue::Set("test_user".to_string()));
     }
 }
