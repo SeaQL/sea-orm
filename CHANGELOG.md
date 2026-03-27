@@ -482,6 +482,7 @@ let user = user::ActiveModel::builder()
 ### Enhancements
 
 * Added `serde` feature 
+* `TextUuid` now derives `Serialize` and `Deserialize` when the `serde` feature is enabled
 * [sea-orm-cli] Added `--column-extra-derives` https://github.com/SeaQL/sea-orm/pull/2212
 * [sea-orm-cli] Added `--big-integer-type=i32` to use i32 for bigint (for SQLite)
 * [sea-orm-cli] Fix codegen to not generate relations to filtered entities https://github.com/SeaQL/sea-orm/pull/2913
