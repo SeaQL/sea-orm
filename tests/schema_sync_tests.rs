@@ -7,7 +7,7 @@ use sea_orm::{
     DatabaseBackend, DatabaseConnection, DbErr, Statement,
     entity::*,
     query::*,
-    sea_query::{Condition, Expr, Query},
+    sea_query::{Condition, Expr, Query, SelectStatement},
 };
 
 // Scenario 1: table is first synced with a `#[sea_orm(unique)]` column already
@@ -338,25 +338,41 @@ async fn test_sync_non_default_schema() -> Result<(), DbErr> {
 }
 
 #[cfg(feature = "sqlx-postgres")]
+fn pg_table_exists_in_schema_query(schema: &str, table: &str) -> SelectStatement {
+    Query::select()
+        .expr(Expr::cust("COUNT(*) > 0"))
+        .from(("information_schema", "tables"))
+        .cond_where(
+            Condition::all()
+                .add(Expr::col("table_schema").eq(schema))
+                .add(Expr::col("table_name").eq(table)),
+        )
+        .to_owned()
+}
+
+#[cfg(feature = "sqlx-postgres")]
+#[test]
+fn pg_table_exists_in_schema_query_qualifies_information_schema() {
+    use sea_orm::sea_query::PostgresQueryBuilder;
+
+    assert_eq!(
+        pg_table_exists_in_schema_query("test_schema_2952", "sync_custom_schema")
+            .to_string(PostgresQueryBuilder),
+        r#"SELECT COUNT(*) > 0 FROM "information_schema"."tables" WHERE "table_schema" = 'test_schema_2952' AND "table_name" = 'sync_custom_schema'"#,
+    );
+}
+
+#[cfg(feature = "sqlx-postgres")]
 async fn pg_table_exists_in_schema(
     db: &DatabaseConnection,
     schema: &str,
     table: &str,
 ) -> Result<bool, DbErr> {
-    db.query_one(
-        Query::select()
-            .expr(Expr::cust("COUNT(*) > 0"))
-            .from("information_schema.tables")
-            .cond_where(
-                Condition::all()
-                    .add(Expr::col("table_schema").eq(schema))
-                    .add(Expr::col("table_name").eq(table)),
-            ),
-    )
-    .await?
-    .unwrap()
-    .try_get_by_index(0)
-    .map_err(DbErr::from)
+    db.query_one(&pg_table_exists_in_schema_query(schema, table))
+        .await?
+        .unwrap()
+        .try_get_by_index(0)
+        .map_err(DbErr::from)
 }
 
 #[cfg(feature = "sqlx-postgres")]
