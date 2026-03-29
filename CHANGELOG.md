@@ -685,6 +685,7 @@ pub struct MyUserId(pub UserId);
     + Support decimal with different formats
     + Support timestamp with different timezone / resolution
     + Added parquet example
+* Support `HashMap` and `BTreeMap` for JSON columns via `TryGetableFromJson` https://github.com/SeaQL/sea-orm/pull/3009
 
 ### Breaking Changes
 
