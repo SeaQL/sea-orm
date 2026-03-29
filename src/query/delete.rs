@@ -17,6 +17,7 @@ where
 {
     pub(crate) query: DeleteStatement,
     pub(crate) model: A,
+    pub(crate) persistent: Option<bool>,
 }
 
 /// Perform a delete operation on multiple models
@@ -27,6 +28,7 @@ where
 {
     pub(crate) query: DeleteStatement,
     pub(crate) entity: PhantomData<E>,
+    pub(crate) persistent: Option<bool>,
 }
 
 impl Delete {
@@ -71,6 +73,7 @@ impl Delete {
                 .from_table(A::Entity::default().table_ref())
                 .to_owned(),
             model: model.into_active_model(),
+            persistent: None,
         };
         myself.prepare()
     }
@@ -97,6 +100,7 @@ impl Delete {
                 .from_table(entity.table_ref())
                 .to_owned(),
             entity: PhantomData,
+            persistent: None,
         }
     }
 }
@@ -116,6 +120,24 @@ where
                 ActiveValue::NotSet => panic!("PrimaryKey is not set"),
             }
         }
+        self
+    }
+
+    /// Set whether to use prepared statement caching
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// #
+    /// let res = Delete::one(cake::Model {
+    ///     id: 1,
+    ///     name: "Apple Pie".to_owned(),
+    /// })
+    /// .persistent(false);
+    /// ```
+    pub fn persistent(mut self, value: bool) -> Self {
+        self.persistent = Some(value);
         self
     }
 }
@@ -159,6 +181,16 @@ where
     fn into_query(self) -> DeleteStatement {
         self.query
     }
+
+    fn build(&self, db_backend: crate::DbBackend) -> crate::Statement {
+        let query_builder = db_backend.get_query_builder();
+        let mut statement = crate::Statement::from_string_values_tuple(
+            db_backend,
+            self.as_query().build_any(query_builder.as_ref()),
+        );
+        statement.persistent = self.persistent;
+        statement
+    }
 }
 
 impl<E> QueryTrait for DeleteMany<E>
@@ -177,6 +209,37 @@ where
 
     fn into_query(self) -> DeleteStatement {
         self.query
+    }
+
+    fn build(&self, db_backend: crate::DbBackend) -> crate::Statement {
+        let query_builder = db_backend.get_query_builder();
+        let mut statement = crate::Statement::from_string_values_tuple(
+            db_backend,
+            self.as_query().build_any(query_builder.as_ref()),
+        );
+        statement.persistent = self.persistent;
+        statement
+    }
+}
+
+impl<E> DeleteMany<E>
+where
+    E: EntityTrait,
+{
+    /// Set whether to use prepared statement caching
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use sea_orm::{entity::*, query::*, tests_cfg::fruit, DbBackend};
+    /// #
+    /// let res = Delete::many(fruit::Entity)
+    ///     .filter(fruit::Column::Name.contains("Apple"))
+    ///     .persistent(false);
+    /// ```
+    pub fn persistent(mut self, value: bool) -> Self {
+        self.persistent = Some(value);
+        self
     }
 }
 

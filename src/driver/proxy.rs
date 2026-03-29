@@ -148,6 +148,7 @@ impl crate::DatabaseTransaction {
             metric_callback,
             None,
             None,
+            None,
         )
         .await
     }

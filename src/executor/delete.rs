@@ -11,6 +11,7 @@ use super::{SelectModel, SelectorRaw};
 #[derive(Clone, Debug)]
 pub struct Deleter {
     query: DeleteStatement,
+    persistent: Option<bool>,
 }
 
 /// The result of a DELETE operation
@@ -30,7 +31,7 @@ where
         C: ConnectionTrait,
     {
         // so that self is dropped before entering await
-        exec_delete_only(self.query, db)
+        exec_delete_only(self.query, self.persistent, db)
     }
 
     /// Execute an delete operation and return the deleted model
@@ -45,7 +46,7 @@ where
     where
         C: ConnectionTrait,
     {
-        exec_delete_with_returning_one::<A::Entity, _>(self.query, db)
+        exec_delete_with_returning_one::<A::Entity, _>(self.query, self.persistent, db)
     }
 }
 
@@ -59,7 +60,7 @@ where
         C: ConnectionTrait,
     {
         // so that self is dropped before entering await
-        exec_delete_only(self.query, db)
+        exec_delete_only(self.query, self.persistent, db)
     }
 
     /// Execute an delete operation and return the deleted model
@@ -75,14 +76,14 @@ where
         E: EntityTrait,
         C: ConnectionTrait,
     {
-        exec_delete_with_returning_many::<E, _>(self.query, db)
+        exec_delete_with_returning_many::<E, _>(self.query, self.persistent, db)
     }
 }
 
 impl Deleter {
     /// Instantiate a new [Deleter] by passing it a [DeleteStatement]
-    pub fn new(query: DeleteStatement) -> Self {
-        Self { query }
+    pub fn new(query: DeleteStatement, persistent: Option<bool>) -> Self {
+        Self { query, persistent }
     }
 
     /// Execute a DELETE operation
@@ -90,7 +91,7 @@ impl Deleter {
     where
         C: ConnectionTrait,
     {
-        exec_delete(self.query, db)
+        exec_delete(self.query, self.persistent, db)
     }
 
     /// Execute an delete operation and return the deleted model
@@ -106,23 +107,24 @@ impl Deleter {
         E: EntityTrait,
         C: ConnectionTrait,
     {
-        exec_delete_with_returning_many::<E, _>(self.query, db)
+        exec_delete_with_returning_many::<E, _>(self.query, self.persistent, db)
     }
 }
 
-async fn exec_delete_only<C>(query: DeleteStatement, db: &C) -> Result<DeleteResult, DbErr>
+async fn exec_delete_only<C>(query: DeleteStatement, persistent: Option<bool>, db: &C) -> Result<DeleteResult, DbErr>
 where
     C: ConnectionTrait,
 {
-    Deleter::new(query).exec(db).await
+    Deleter::new(query, persistent).exec(db).await
 }
 
-async fn exec_delete<C>(query: DeleteStatement, db: &C) -> Result<DeleteResult, DbErr>
+async fn exec_delete<C>(query: DeleteStatement, persistent: Option<bool>, db: &C) -> Result<DeleteResult, DbErr>
 where
     C: ConnectionTrait,
 {
     let builder = db.get_database_backend();
-    let statement = builder.build(&query);
+    let mut statement = builder.build(&query);
+    statement.persistent = persistent;
 
     let result = db.execute(statement).await?;
     Ok(DeleteResult {
@@ -132,6 +134,7 @@ where
 
 async fn exec_delete_with_returning_one<E, C>(
     mut query: DeleteStatement,
+    persistent: Option<bool>,
     db: &C,
 ) -> Result<Option<E::Model>, DbErr>
 where
@@ -141,7 +144,8 @@ where
     let models = match db.support_returning() {
         true => {
             let db_backend = db.get_database_backend();
-            let delete_statement = db_backend.build(&query.returning_all().to_owned());
+            let mut delete_statement = db_backend.build(&query.returning_all().to_owned());
+            delete_statement.persistent = persistent;
             SelectorRaw::<SelectModel<<E>::Model>>::from_statement(delete_statement)
                 .one(db)
                 .await?
@@ -153,6 +157,7 @@ where
 
 async fn exec_delete_with_returning_many<E, C>(
     mut query: DeleteStatement,
+    persistent: Option<bool>,
     db: &C,
 ) -> Result<Vec<E::Model>, DbErr>
 where
@@ -166,7 +171,8 @@ where
                 E::Column::iter().map(|c| c.select_enum_as(c.into_returning_expr(db_backend))),
             );
             let query = query.returning(returning);
-            let delete_statement = db_backend.build(&query.to_owned());
+            let mut delete_statement = db_backend.build(&query.to_owned());
+            delete_statement.persistent = persistent;
             SelectorRaw::<SelectModel<<E>::Model>>::from_statement(delete_statement)
                 .all(db)
                 .await?
