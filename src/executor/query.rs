@@ -1685,7 +1685,7 @@ try_from_u64_err!(mac_address::MacAddress);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RuntimeErr;
+    use crate::{MockRow, RuntimeErr};
     use sea_query::Value;
 
     use crate::{QueryResult, TryGetable};
@@ -1782,7 +1782,7 @@ mod tests {
         values.insert("id".to_string(), Value::Int(Some(1)));
         values.insert("name".to_string(), Value::String(Some("Abc".to_owned())));
         let query_result = QueryResult {
-            row: QueryResultRow::Mock(crate::MockRow { values }),
+            row: QueryResultRow::Mock(MockRow { values }),
         };
         assert_eq!(
             query_result.column_names(),
@@ -1798,9 +1798,6 @@ mod tests {
 
     #[test]
     fn json_deserialize_to_btreemap() {
-        use crate::Value;
-        use crate::{QueryResult, TryGetable};
-
         let json_value = serde_json::json!({
             "engine": {
                 "base_price": 100,
@@ -1808,22 +1805,23 @@ mod tests {
             }
         });
 
-        // Mock database row
-        let values: BTreeMap<String, Value> = BTreeMap::from([(
+        let values = BTreeMap::from([(
             "components".to_string(),
             Value::Json(Some(Box::new(json_value))),
         )]);
 
-        let query_result = QueryResult {
-            row: QueryResultRow::Mock(crate::MockRow { values }),
-        };
+        let row = QueryResultRow::Mock(MockRow { values });
 
-        // Extract as BTreeMap
-        let result: BTreeMap<String, serde_json::Value> =
-            TryGetable::try_get_by(&query_result, "components").unwrap();
+        let result: BTreeMap<String, Component> =
+            TryGetable::try_get_by(&QueryResult { row }, "components").unwrap();
 
-        assert_eq!(result.len(), 1);
-        assert!(result.contains_key("engine"));
+        assert_eq!(
+            result.get("engine"),
+            Some(&Component {
+                base_price: 100,
+                component_type: "metal".to_owned(),
+            })
+        );
     }
 
     #[test]
@@ -1835,21 +1833,22 @@ mod tests {
             }
         });
 
-        // Mock database row
-        let values: BTreeMap<String, Value> = BTreeMap::from([(
+        let values = BTreeMap::from([(
             "components".to_string(),
             Value::Json(Some(Box::new(json_value))),
         )]);
 
-        let query_result = QueryResult {
-            row: QueryResultRow::Mock(crate::MockRow { values }),
-        };
+        let row = QueryResultRow::Mock(MockRow { values });
 
-        // Extract as HashMap
-        let result: HashMap<String, serde_json::Value> =
-            TryGetable::try_get_by(&query_result, "components").unwrap();
+        let result: HashMap<String, Component> =
+            TryGetable::try_get_by(&QueryResult { row }, "components").unwrap();
 
-        assert_eq!(result.len(), 1);
-        assert!(result.contains_key("engine"));
+        assert_eq!(
+            result.get("engine"),
+            Some(&Component {
+                base_price: 100,
+                component_type: "metal".to_owned(),
+            })
+        );
     }
 }
