@@ -3,7 +3,13 @@ use crate::{
     SelectGetableValue, SelectorRaw, Statement,
     error::{DbErr, type_err},
 };
-use std::{fmt::Debug, marker::PhantomData, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Debug,
+    hash::Hash,
+    marker::PhantomData,
+    sync::Arc,
+};
 
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use crate::debug_print;
@@ -1531,6 +1537,25 @@ pub trait TryFromU64: Sized {
     fn try_from_u64(n: u64) -> Result<Self, DbErr>;
 }
 
+#[cfg(feature = "with-json")]
+use serde::de::DeserializeOwned;
+
+#[cfg(feature = "with-json")]
+impl<K, V> TryGetableFromJson for HashMap<K, V>
+where
+    K: DeserializeOwned + Eq + Hash,
+    V: DeserializeOwned,
+{
+}
+
+#[cfg(feature = "with-json")]
+impl<K, V> TryGetableFromJson for BTreeMap<K, V>
+where
+    K: DeserializeOwned + Ord,
+    V: DeserializeOwned,
+{
+}
+
 macro_rules! try_from_u64_err {
     ( $type: ty ) => {
         impl TryFromU64 for $type {
@@ -1658,9 +1683,12 @@ try_from_u64_err!(mac_address::MacAddress);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RuntimeErr;
+    use crate::{MockRow, RuntimeErr};
     use sea_query::Value;
-    use std::collections::BTreeMap;
+
+    use crate::{QueryResult, TryGetable};
+    use serde::{Deserialize, Serialize};
+    use std::collections::{BTreeMap, HashMap};
 
     #[test]
     fn from_try_get_error() {
@@ -1752,11 +1780,73 @@ mod tests {
         values.insert("id".to_string(), Value::Int(Some(1)));
         values.insert("name".to_string(), Value::String(Some("Abc".to_owned())));
         let query_result = QueryResult {
-            row: QueryResultRow::Mock(crate::MockRow { values }),
+            row: QueryResultRow::Mock(MockRow { values }),
         };
         assert_eq!(
             query_result.column_names(),
             vec!["id".to_owned(), "name".to_owned()]
+        );
+    }
+
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+    struct Component {
+        base_price: i32,
+        component_type: String,
+    }
+
+    #[test]
+    fn json_deserialize_to_btreemap() {
+        let json_value = serde_json::json!({
+            "engine": {
+                "base_price": 100,
+                "component_type": "metal"
+            }
+        });
+
+        let values = BTreeMap::from([(
+            "components".to_string(),
+            Value::Json(Some(Box::new(json_value))),
+        )]);
+
+        let row = QueryResultRow::Mock(MockRow { values });
+
+        let result: BTreeMap<String, Component> =
+            TryGetable::try_get_by(&QueryResult { row }, "components").unwrap();
+
+        assert_eq!(
+            result.get("engine"),
+            Some(&Component {
+                base_price: 100,
+                component_type: "metal".to_owned(),
+            })
+        );
+    }
+
+    #[test]
+    fn json_deserialize_to_hashmap() {
+        let json_value = serde_json::json!({
+            "engine": {
+                "base_price": 100,
+                "component_type": "metal"
+            }
+        });
+
+        let values = BTreeMap::from([(
+            "components".to_string(),
+            Value::Json(Some(Box::new(json_value))),
+        )]);
+
+        let row = QueryResultRow::Mock(MockRow { values });
+
+        let result: HashMap<String, Component> =
+            TryGetable::try_get_by(&QueryResult { row }, "components").unwrap();
+
+        assert_eq!(
+            result.get("engine"),
+            Some(&Component {
+                base_price: 100,
+                component_type: "metal".to_owned(),
+            })
         );
     }
 }
