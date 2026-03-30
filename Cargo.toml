@@ -50,6 +50,11 @@ futures-util = { version = "0.3", default-features = false, features = [
 inventory = { version = "0.3", optional = true }
 ipnetwork = { version = "0.20", default-features = false, optional = true }
 itertools = "0.14.0"
+jiff = { version = "0.2.15", default-features = false, optional = true, features = [
+    "std",
+    "perf-inline",
+] }
+jiff-sqlx = { version = "0.1.1", default-features = false, optional = true }
 log = { version = "0.4", default-features = false }
 mac_address = { version = "1.1", default-features = false, optional = true }
 ouroboros = { version = "0.18", default-features = false }
@@ -98,6 +103,7 @@ sea-orm = { path = ".", features = [
     "mock",
     "postgres-array",
     "tests-cfg",
+    "with-jiff",
 ] }
 smol = { version = "1.2" }
 smol-potat = { version = "1.1" }
@@ -165,12 +171,14 @@ sqlx-mysql = [
 sqlx-postgres = [
     "sqlx-dep",
     "sea-query-sqlx/sqlx-postgres",
+    "jiff-sqlx?/postgres",
     "postgres-array",
     "sea-schema?/sqlx-postgres",
 ]
 sqlx-sqlite = [
     "sqlx-dep",
     "sea-query-sqlx/sqlx-sqlite",
+    "jiff-sqlx?/sqlite",
     "sea-schema?/sqlx-sqlite",
 ]
 sync = []
@@ -182,9 +190,13 @@ tests-features = [
     "schema-sync",
     "with-arrow",
     "with-bigdecimal",
+    "with-jiff",
     "with-ipnetwork",
 ]
 tracing-spans = []
+unimplemented-jiff-sqlx-mysql = [
+    "sea-query-sqlx?/unimplemented-jiff-sqlx-mysql",
+]
 with-arrow = ["sea-orm-arrow", "sea-orm-macros/with-arrow"]
 with-bigdecimal = [
     "bigdecimal",
@@ -203,11 +215,18 @@ with-ipnetwork = [
     "sea-query/with-ipnetwork",
     "sea-query-sqlx?/with-ipnetwork",
 ]
+with-jiff = [
+    "jiff",
+    "jiff-sqlx",
+    "sea-query/with-jiff",
+    "sea-query-sqlx?/with-jiff",
+]
 with-json = [
     "serde_json",
     "sea-query/with-json",
     "sea-orm-macros/with-json",
     "chrono?/serde",
+    "jiff?/serde",
     "rust_decimal?/serde",
     "bigdecimal?/serde",
     "uuid?/serde",
@@ -237,5 +256,6 @@ with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-sqlx?/with-uuid"]
 
 # This allows us to develop using a local version of sea-query
 [patch.crates-io]
-# sea-query = { path = "../sea-query" }
+sea-query      = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
+sea-query-sqlx = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
 # sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }

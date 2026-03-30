@@ -60,22 +60,27 @@ impl Column {
                 ColumnType::Date => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "Date".to_owned(),
                     DateTimeCrate::Time => "TimeDate".to_owned(),
+                    DateTimeCrate::Jiff => "JiffDate".to_owned(),
                 },
                 ColumnType::Time => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "Time".to_owned(),
                     DateTimeCrate::Time => "TimeTime".to_owned(),
+                    DateTimeCrate::Jiff => "JiffTime".to_owned(),
                 },
                 ColumnType::DateTime => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "DateTime".to_owned(),
                     DateTimeCrate::Time => "TimeDateTime".to_owned(),
+                    DateTimeCrate::Jiff => "JiffDateTime".to_owned(),
                 },
                 ColumnType::Timestamp => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "DateTimeUtc".to_owned(),
                     DateTimeCrate::Time => "TimeDateTime".to_owned(),
+                    DateTimeCrate::Jiff => "JiffDateTime".to_owned(),
                 },
                 ColumnType::TimestampWithTimeZone => match opt.date_time_crate {
                     DateTimeCrate::Chrono => "DateTimeWithTimeZone".to_owned(),
                     DateTimeCrate::Time => "TimeDateTimeWithTimeZone".to_owned(),
+                    DateTimeCrate::Jiff => "JiffTimestamp".to_owned(),
                 },
                 ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal".to_owned(),
                 ColumnType::Uuid => "Uuid".to_owned(),
@@ -107,6 +112,7 @@ impl Column {
 
     pub fn get_col_type_attrs(&self) -> Option<TokenStream> {
         let col_type = match &self.col_type {
+            ColumnType::DateTime => Some("DateTime".to_owned()),
             ColumnType::Float => Some("Float".to_owned()),
             ColumnType::Double => Some("Double".to_owned()),
             ColumnType::Decimal(Some((p, s))) => Some(format!("Decimal(Some(({p}, {s})))")),
@@ -329,6 +335,13 @@ mod tests {
         }
     }
 
+    fn date_time_crate_jiff() -> ColumnOption {
+        ColumnOption {
+            date_time_crate: DateTimeCrate::Jiff,
+            big_integer_type: Default::default(),
+        }
+    }
+
     fn setup() -> Vec<Column> {
         macro_rules! make_col {
             ($name:expr, $col_type:expr) => {
@@ -526,6 +539,48 @@ mod tests {
                 quote!(Option<#rs_type>).to_string()
             );
         }
+
+        let columns = setup();
+        let rs_types = vec![
+            "String",
+            "String",
+            "String",
+            "i8",
+            "u8",
+            "i16",
+            "u16",
+            "i32",
+            "u32",
+            "i64",
+            "u64",
+            "f32",
+            "f64",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
+            "bool",
+            "JiffDate",
+            "JiffTime",
+            "JiffDateTime",
+            "JiffDateTime",
+            "JiffTimestamp",
+        ];
+        for (mut col, rs_type) in columns.into_iter().zip(rs_types) {
+            let rs_type: TokenStream = rs_type.parse().unwrap();
+
+            col.not_null = true;
+            assert_eq!(
+                col.get_rs_type(&date_time_crate_jiff()).to_string(),
+                quote!(#rs_type).to_string()
+            );
+
+            col.not_null = false;
+            assert_eq!(
+                col.get_rs_type(&date_time_crate_jiff()).to_string(),
+                quote!(Option<#rs_type>).to_string()
+            );
+        }
     }
 
     #[test]
@@ -711,6 +766,55 @@ mod tests {
         assert_eq!(
             column.get_info(&date_time_crate_time()).as_str(),
             "Column `timestamp_with_timezone_field`: TimeDateTimeWithTimeZone, not_null"
+        );
+        let column: Column = ColumnDef::new(Alias::new("date_field"))
+            .date()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&date_time_crate_jiff()).as_str(),
+            "Column `date_field`: JiffDate, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("time_field"))
+            .time()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&date_time_crate_jiff()).as_str(),
+            "Column `time_field`: JiffTime, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("date_time_field"))
+            .date_time()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&date_time_crate_jiff()).as_str(),
+            "Column `date_time_field`: JiffDateTime, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("timestamp_field"))
+            .timestamp()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&date_time_crate_jiff()).as_str(),
+            "Column `timestamp_field`: JiffDateTime, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("timestamp_with_timezone_field"))
+            .timestamp_with_time_zone()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&date_time_crate_jiff()).as_str(),
+            "Column `timestamp_with_timezone_field`: JiffTimestamp, not_null"
         );
     }
 
