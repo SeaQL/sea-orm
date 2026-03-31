@@ -139,14 +139,18 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(DeriveEntityModel, attributes(sea_orm, seaography))]
 pub fn derive_entity_model(input: TokenStream) -> TokenStream {
     let DeriveInput {
-        ident, data, attrs, ..
+        vis,
+        ident,
+        data,
+        attrs,
+        ..
     } = parse_macro_input!(input as DeriveInput);
 
     if ident != "Model" {
         panic!("Struct name must be Model");
     }
 
-    let mut ts: TokenStream = derives::expand_derive_entity_model(&data, &attrs)
+    let mut ts: TokenStream = derives::expand_derive_entity_model(&vis, &data, &attrs)
         .unwrap_or_else(Error::into_compile_error)
         .into();
 
@@ -157,7 +161,7 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
     );
 
     ts.extend::<TokenStream>(
-        derives::expand_derive_active_model(&ident, &data)
+        derives::expand_derive_active_model(&vis, &ident, &data)
             .unwrap_or_else(Error::into_compile_error)
             .into(),
     );
@@ -170,14 +174,18 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(DeriveModelEx, attributes(sea_orm, seaography))]
 pub fn derive_model_ex(input: TokenStream) -> TokenStream {
     let DeriveInput {
-        ident, data, attrs, ..
+        vis,
+        ident,
+        data,
+        attrs,
+        ..
     } = parse_macro_input!(input as DeriveInput);
 
     if ident != "ModelEx" {
         panic!("Struct name must be ModelEx");
     }
 
-    derives::expand_derive_model_ex(ident, data, attrs)
+    derives::expand_derive_model_ex(&vis, ident, data, attrs)
         .unwrap_or_else(Error::into_compile_error)
         .into()
 }
@@ -187,14 +195,18 @@ pub fn derive_model_ex(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(DeriveActiveModelEx, attributes(sea_orm, seaography))]
 pub fn derive_active_model_ex(input: TokenStream) -> TokenStream {
     let DeriveInput {
-        ident, data, attrs, ..
+        vis,
+        ident,
+        data,
+        attrs,
+        ..
     } = parse_macro_input!(input as DeriveInput);
 
     if ident != "ModelEx" {
         panic!("Struct name must be ModelEx");
     }
 
-    derives::expand_derive_active_model_ex(&ident, &data, &attrs)
+    derives::expand_derive_active_model_ex(&vis, &ident, &data, &attrs)
         .unwrap_or_else(Error::into_compile_error)
         .into()
 }
@@ -446,9 +458,11 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveActiveModel, attributes(sea_orm))]
 pub fn derive_active_model(input: TokenStream) -> TokenStream {
-    let DeriveInput { ident, data, .. } = parse_macro_input!(input);
+    let DeriveInput {
+        vis, ident, data, ..
+    } = parse_macro_input!(input);
 
-    match derives::expand_derive_active_model(&ident, &data) {
+    match derives::expand_derive_active_model(&vis, &ident, &data) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
