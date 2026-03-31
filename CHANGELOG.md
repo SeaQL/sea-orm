@@ -686,6 +686,7 @@ pub struct MyUserId(pub UserId);
     + Support timestamp with different timezone / resolution
     + Added parquet example
 * Support `HashMap` and `BTreeMap` for JSON columns via `TryGetableFromJson` https://github.com/SeaQL/sea-orm/pull/3009
+* Derive macros now inherit the visibility of the input type for generated items such as `Entity`, `Column`, `PrimaryKey`, and `ActiveModel` https://github.com/SeaQL/sea-orm/pull/3029
 
 ### Breaking Changes
 
