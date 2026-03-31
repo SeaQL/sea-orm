@@ -2,6 +2,9 @@
 
 pub mod common;
 
+#[path = "partial_model_nested/local/mod.rs"]
+mod local;
+
 pub use common::{
     TestContext,
     bakery_chain::{create_tables, seed_data},
@@ -799,6 +802,66 @@ fn entity_loader_self_join_via() -> Result<(), DbErr> {
         sam_profile.user.as_ref().unwrap().following[1].name,
         bob.name
     );
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+fn entity_loader_diamond_relations() -> Result<(), DbErr> {
+    use local::{bakery as diamond_bakery, create_tables, worker};
+
+    let ctx = TestContext::new("entity_loader_diamond_relations");
+    create_tables(&ctx.db)?;
+
+    let db = &ctx.db;
+
+    let bob = worker::ActiveModel {
+        name: Set("Bob".to_owned()),
+        ..Default::default()
+    }
+    .insert(db)?;
+
+    let alice = worker::ActiveModel {
+        name: Set("Alice".to_owned()),
+        ..Default::default()
+    }
+    .insert(db)?;
+
+    let yum = diamond_bakery::ActiveModel {
+        name: Set("YumBakery".to_owned()),
+        profit_margin: Set(4.1),
+        manager_id: Set(bob.id),
+        cashier_id: Set(alice.id),
+        ..Default::default()
+    }
+    .insert(db)?;
+
+    let yum = diamond_bakery::Entity::load()
+        .filter_by_id(yum.id)
+        .with(diamond_bakery::Relation::Manager)
+        .with(diamond_bakery::Relation::Cashier)
+        .one(db)?
+        .unwrap();
+
+    assert_eq!(yum.name, "YumBakery");
+    assert_eq!(yum.manager.as_ref().unwrap().name, "Bob");
+    assert_eq!(yum.cashier.as_ref().unwrap().name, "Alice");
+
+    let workers = worker::Entity::load()
+        .order_by_asc(worker::Column::Id)
+        .with(worker::Relation::BakeryManager)
+        .with(worker::Relation::BakeryCashier)
+        .all(db)?;
+
+    assert_eq!(workers[0].name, "Bob");
+    assert_eq!(workers[0].manager_of.len(), 1);
+    assert_eq!(workers[0].manager_of[0].name, "YumBakery");
+    assert!(workers[0].cashier_of.is_empty());
+
+    assert_eq!(workers[1].name, "Alice");
+    assert!(workers[1].manager_of.is_empty());
+    assert_eq!(workers[1].cashier_of.len(), 1);
+    assert_eq!(workers[1].cashier_of[0].name, "YumBakery");
 
     Ok(())
 }
