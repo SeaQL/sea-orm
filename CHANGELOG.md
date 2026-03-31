@@ -5,11 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 1.1.20 - 2026-03-31
 
 ### Enhancements
 
 * Add `exists` method to `PaginatorTrait` https://github.com/SeaQL/sea-orm/discussions/730
+
+### Bug Fixes
+
+* Fix conversion of `TIMESTAMPTZ` values to proxy row in Postgres driver https://github.com/SeaQL/sea-orm/pull/3005
+* Fix `no-default-features` compile errors https://github.com/SeaQL/sea-orm/pull/3000
 
 ## 1.1.19 - 2025-11-11
 
