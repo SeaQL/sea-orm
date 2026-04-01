@@ -308,36 +308,31 @@ pub enum GenerateSubcommands {
 
         #[arg(
             long,
-            value_delimiter = ',',
-            help = "Add extra derive macros to generated model struct (comma separated), e.g. `--model-extra-derives 'ts_rs::Ts','CustomDerive'`"
+            help = "Add extra derive macros to generated model struct, e.g. `--model-extra-derives ts_rs::Ts` or `--model-extra-derives ts_rs::Ts,CustomDerive`"
         )]
         model_extra_derives: Vec<String>,
 
         #[arg(
             long,
-            value_delimiter = ',',
-            help = r#"Add extra attributes to generated model struct, no need for `#[]` (comma separated), e.g. `--model-extra-attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
+            help = r#"Add extra attributes to generated model struct, no need for `#[]`, e.g. `--model-extra-attributes 'serde(rename_all = "camelCase")'` or pass multiple attributes in one argument: `--model-extra-attributes 'serde(rename_all = "camelCase"),ts(export)'`"#
         )]
         model_extra_attributes: Vec<String>,
 
         #[arg(
             long,
-            value_delimiter = ',',
-            help = "Add extra derive macros to generated enums (comma separated), e.g. `--enum-extra-derives 'ts_rs::Ts','CustomDerive'`"
+            help = "Add extra derive macros to generated enums, e.g. `--enum-extra-derives ts_rs::Ts` or `--enum-extra-derives ts_rs::Ts,CustomDerive`"
         )]
         enum_extra_derives: Vec<String>,
 
         #[arg(
             long,
-            value_delimiter = ',',
-            help = r#"Add extra attributes to generated enums, no need for `#[]` (comma separated), e.g. `--enum-extra-attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
+            help = r#"Add extra attributes to generated enums, no need for `#[]`, e.g. `--enum-extra-attributes 'serde(rename_all = "camelCase")'` or pass multiple attributes in one argument: `--enum-extra-attributes 'serde(rename_all = "camelCase"),ts(export)'`"#
         )]
         enum_extra_attributes: Vec<String>,
 
         #[arg(
             long,
-            value_delimiter = ',',
-            help = "Add extra derive macros to generated column enum (comma separated), e.g. `--column-extra-derives 'async_graphql::Enum','CustomDerive'`"
+            help = "Add extra derive macros to generated column enum, e.g. `--column-extra-derives async_graphql::Enum` or `--column-extra-derives async_graphql::Enum,Eq,PartialEq`"
         )]
         column_extra_derives: Vec<String>,
 
