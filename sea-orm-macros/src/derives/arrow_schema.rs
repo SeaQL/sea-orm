@@ -23,7 +23,10 @@ pub fn expand_derive_arrow_schema(
                     let field_type = &field.ty;
 
                     // Detect if field is Option<T> for nullability
-                    let type_string = quote! { #field_type }.to_string().replace(' ', "");
+                    let type_string: String = quote! { #field_type }
+                        .to_string()
+                        .split_whitespace()
+                        .collect();
                     let is_nullable = type_string.starts_with("Option<");
 
                     // Parse field attributes
@@ -282,7 +285,10 @@ fn column_type_to_arrow_datatype(col_type: &str, arrow_attrs: &ArrowFieldAttrs) 
 
 /// Map Rust type to Arrow DataType (when no column_type specified)
 fn rust_type_to_arrow_datatype(field_type: &Type, arrow_attrs: &ArrowFieldAttrs) -> TokenStream {
-    let type_string = quote! { #field_type }.to_string().replace(' ', "");
+    let type_string: String = quote! { #field_type }
+        .to_string()
+        .split_whitespace()
+        .collect();
 
     // Strip Option<> wrapper if present
     let inner_type = if type_string.starts_with("Option<") {
