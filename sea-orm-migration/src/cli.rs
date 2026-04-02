@@ -33,20 +33,39 @@ where
     dotenv().ok();
     let cli = Cli::parse();
 
-    let url = cli
-        .database_url
-        .expect("Environment variable 'DATABASE_URL' not set");
-    let schema = cli.database_schema.unwrap_or_else(|| "public".to_owned());
+    run_cli_with_connection_inner(migrator, cli, async move |cli| {
+        let url = cli
+            .database_url
+            .clone()
+            .expect("Environment variable 'DATABASE_URL' not set");
+        let schema = cli
+            .database_schema
+            .clone()
+            .unwrap_or_else(|| "public".to_owned());
 
-    let connect_options = ConnectOptions::new(url)
-        .set_schema_search_path(schema)
-        .to_owned();
+        let connect_options = ConnectOptions::new(url)
+            .set_schema_search_path(schema)
+            .to_owned();
 
-    let db = make_connection(connect_options)
-        .await
-        .expect("Fail to acquire database connection");
+        make_connection(connect_options).await
+    })
+    .await
+    .unwrap_or_else(handle_error);
+}
 
-    run_migrate(migrator, &db, cli.command, cli.verbose)
+/// Same as [`run_cli`] where you provide a fully customized way to create the
+/// [`DbConn`].
+///
+/// This allows loading database configuration from sources other than CLI
+/// arguments or environment variables.
+pub async fn run_cli_with_custom_connection(
+    migrator: impl MigratorTraitSelf,
+    make_connection: impl AsyncFnOnce() -> Result<DbConn, DbErr>,
+) {
+    dotenv().ok();
+    let cli = Cli::parse();
+
+    run_cli_with_connection_inner(migrator, cli, async |_| make_connection().await)
         .await
         .unwrap_or_else(handle_error);
 }
@@ -60,6 +79,74 @@ pub async fn run_migrate<M>(
 where
     M: MigratorTraitSelf,
 {
+    setup_tracing(verbose);
+    run_migrate_inner(migrator, db, command).await
+}
+
+async fn run_cli_with_connection_inner(
+    migrator: impl MigratorTraitSelf,
+    cli: Cli,
+    make_connection: impl AsyncFnOnce(&Cli) -> Result<DbConn, DbErr>,
+) -> Result<(), Box<dyn Error>> {
+    setup_tracing(cli.verbose);
+
+    if run_non_db_command(cli.command.as_ref())? {
+        return Ok(());
+    }
+
+    let db = make_connection(&cli)
+        .await
+        .expect("Fail to acquire database connection");
+    let command = cli.command;
+    run_migrate_inner(migrator, &db, command).await?;
+
+    Ok(())
+}
+
+async fn run_migrate_inner<M>(
+    migrator: M,
+    db: &DbConn,
+    command: Option<MigrateSubcommands>,
+) -> Result<(), Box<dyn Error>>
+where
+    M: MigratorTraitSelf,
+{
+    if run_non_db_command(command.as_ref())? {
+        return Ok(());
+    }
+
+    match command {
+        Some(MigrateSubcommands::Fresh) => migrator.fresh(db).await?,
+        Some(MigrateSubcommands::Refresh) => migrator.refresh(db).await?,
+        Some(MigrateSubcommands::Reset) => migrator.reset(db).await?,
+        Some(MigrateSubcommands::Status) => migrator.status(db).await?,
+        Some(MigrateSubcommands::Up { num }) => migrator.up(db, num).await?,
+        Some(MigrateSubcommands::Down { num }) => migrator.down(db, Some(num)).await?,
+        _ => migrator.up(db, None).await?,
+    };
+
+    Ok(())
+}
+
+fn run_non_db_command(command: Option<&MigrateSubcommands>) -> Result<bool, Box<dyn Error>> {
+    match command {
+        Some(MigrateSubcommands::Init) => {
+            run_migrate_init(MIGRATION_DIR)?;
+            Ok(true)
+        }
+        Some(MigrateSubcommands::Generate {
+            migration_name,
+            universal_time: _,
+            local_time,
+        }) => {
+            run_migrate_generate(MIGRATION_DIR, migration_name, !*local_time)?;
+            Ok(true)
+        }
+        _ => Ok(false),
+    }
+}
+
+fn setup_tracing(verbose: bool) {
     let filter = match verbose {
         true => "debug",
         false => "sea_orm_migration=info",
@@ -83,24 +170,6 @@ where
             .with(fmt_layer)
             .init()
     };
-
-    match command {
-        Some(MigrateSubcommands::Fresh) => migrator.fresh(db).await?,
-        Some(MigrateSubcommands::Refresh) => migrator.refresh(db).await?,
-        Some(MigrateSubcommands::Reset) => migrator.reset(db).await?,
-        Some(MigrateSubcommands::Status) => migrator.status(db).await?,
-        Some(MigrateSubcommands::Up { num }) => migrator.up(db, num).await?,
-        Some(MigrateSubcommands::Down { num }) => migrator.down(db, Some(num)).await?,
-        Some(MigrateSubcommands::Init) => run_migrate_init(MIGRATION_DIR)?,
-        Some(MigrateSubcommands::Generate {
-            migration_name,
-            universal_time: _,
-            local_time,
-        }) => run_migrate_generate(MIGRATION_DIR, &migration_name, !local_time)?,
-        _ => migrator.up(db, None).await?,
-    };
-
-    Ok(())
 }
 
 #[derive(Parser)]
