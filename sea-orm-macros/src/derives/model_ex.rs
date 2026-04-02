@@ -111,9 +111,10 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
 
     for field in all_fields.iter_mut() {
         let field_type = &field.ty;
-        let field_type = quote! { #field_type }
+        let field_type: String = quote! { #field_type }
             .to_string() // e.g.: "Option < String >"
-            .replace(' ', ""); // Remove spaces
+            .split_whitespace()
+            .collect(); // Remove all whitespace
 
         if is_compound_field(&field_type) {
             let entity_path = extract_compound_entity(&field_type);
@@ -173,9 +174,10 @@ pub fn expand_derive_model_ex(
             for field in &fields.named {
                 if let Some(ident) = &field.ident {
                     let field_type = &field.ty;
-                    let field_type = quote! { #field_type }
+                    let field_type: String = quote! { #field_type }
                         .to_string() // e.g.: "Option < String >"
-                        .replace(' ', ""); // Remove spaces
+                        .split_whitespace()
+                        .collect(); // Remove all whitespace
 
                     if is_compound_field(&field_type) {
                         let compound_attrs =

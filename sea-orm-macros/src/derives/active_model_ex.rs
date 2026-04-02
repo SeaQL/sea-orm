@@ -50,9 +50,10 @@ pub fn expand_derive_active_model_ex(
             for field in fields.named.iter() {
                 if field.ident.is_some() && field_not_ignored_compound(field) {
                     let field_type = &field.ty;
-                    let field_type = quote! { #field_type }
+                    let field_type: String = quote! { #field_type }
                         .to_string() // e.g.: "Option < String >"
-                        .replace(' ', ""); // Remove spaces
+                        .split_whitespace()
+                        .collect(); // Remove all whitespace
 
                     if is_compound_field(&field_type) {
                         let entity_path = extract_compound_entity(&field_type);
@@ -69,9 +70,10 @@ pub fn expand_derive_active_model_ex(
                 if let Some(ident) = &field.ident {
                     if field_not_ignored_compound(field) {
                         let field_type = &field.ty;
-                        let field_type = quote! { #field_type }
+                        let field_type: String = quote! { #field_type }
                             .to_string() // e.g.: "Option < String >"
-                            .replace(' ', ""); // Remove spaces
+                            .split_whitespace()
+                            .collect(); // Remove all whitespace
 
                         let ty = if is_compound_field(&field_type) {
                             compound_fields.push(ident);
@@ -706,9 +708,10 @@ fn expand_active_model_setters(data: &Data) -> syn::Result<TokenStream> {
             for field in &fields.named {
                 if let Some(ident) = &field.ident {
                     let field_type = &field.ty;
-                    let field_type_str = quote! { #field_type }
+                    let field_type_str: String = quote! { #field_type }
                         .to_string() // e.g.: "Option < String >"
-                        .replace(' ', ""); // Remove spaces
+                        .split_whitespace()
+                        .collect(); // Remove all whitespace
 
                     let mut ignore = false;
 

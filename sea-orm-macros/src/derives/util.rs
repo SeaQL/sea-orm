@@ -4,9 +4,10 @@ use syn::{Field, Ident, Meta, MetaNameValue, punctuated::Punctuated, token::Comm
 /// Remove ignored fields and compound fields
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
     let field_type = &field.ty;
-    let field_type = quote::quote! { #field_type }
+    let field_type: String = quote::quote! { #field_type }
         .to_string() // e.g.: "Option < String >"
-        .replace(' ', ""); // Remove spaces
+        .split_whitespace()
+        .collect(); // Remove all whitespace
 
     if is_compound_field(&field_type) {
         return false;

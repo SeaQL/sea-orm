@@ -405,9 +405,10 @@ pub fn expand_derive_entity_model(
                     };
 
                     let field_type = &field.ty;
-                    let field_type = quote! { #field_type }
+                    let field_type: String = quote! { #field_type }
                         .to_string() // e.g.: "Option < String >"
-                        .replace(' ', ""); // Remove spaces
+                        .split_whitespace()
+                        .collect(); // Remove all whitespace
 
                     if ignore {
                         continue;
