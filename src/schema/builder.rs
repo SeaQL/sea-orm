@@ -1,9 +1,12 @@
 use super::{Schema, TopologicalSort};
 use crate::{ConnectionTrait, DbBackend, DbErr, EntityTrait, Statement};
 use sea_query::{
-    ForeignKeyCreateStatement, Index, IndexCreateStatement, IntoIden, TableAlterStatement,
-    TableCreateStatement, TableName, TableRef, extension::postgres::TypeCreateStatement,
+    IndexCreateStatement, TableCreateStatement, TableName, TableRef,
+    extension::postgres::TypeCreateStatement,
 };
+
+#[cfg(feature = "schema-sync")]
+use sea_query::{ForeignKeyCreateStatement, Index, IntoIden, TableAlterStatement};
 
 /// A schema builder that can take a registry of Entities and synchronize it with database.
 pub struct SchemaBuilder {
@@ -79,7 +82,78 @@ impl SchemaBuilder {
     where
         C: ConnectionTrait + sea_schema::Connection,
     {
-        let _existing = match db.get_database_backend() {
+        let changes = self.discover(db, false).await?;
+        for stmt in changes {
+            db.execute_raw(stmt).await?;
+        }
+        Ok(())
+    }
+
+    /// This function fetches the changes needed to sync the database schema with this builder's entities.
+    /// * `db` - The database connection to use for fetching existing table schema.
+    /// * `allow_dangerous` - If `true`, changes will contain drop statements (drop tables, drop columns, drop constraints).
+    /// # Panics
+    /// if
+    #[cfg(feature = "schema-sync")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
+    pub async fn discover<C>(&self, db: &C, allow_dangerous: bool) -> Result<Vec<Statement>, DbErr>
+    where
+        C: ConnectionTrait + sea_schema::Connection,
+    {
+        let _existing = Self::discover_existing_schema(db).await?;
+
+        #[allow(unreachable_code)]
+        let db_backend = db.get_database_backend();
+
+        #[allow(unreachable_code)]
+        let mut changes: Vec<Statement> = Vec::new();
+        #[allow(unreachable_code)]
+        let mut created_enums: Vec<Statement> = Default::default();
+
+        #[allow(unreachable_code)]
+        for table_name in self.sorted_tables() {
+            if let Some(entity) = self
+                .entities
+                .iter()
+                .find(|entity| table_name == get_table_name(entity.table.get_table_name()))
+            {
+                entity.discover_changes(
+                    db_backend,
+                    &_existing,
+                    &mut created_enums,
+                    &mut changes,
+                    allow_dangerous,
+                );
+            }
+        }
+
+        // When dangerous is allowed, detect tables in the database that are not in the entity set
+        // and generate drop statements for them.
+        #[allow(unreachable_code)]
+        if allow_dangerous {
+            for existing_table in &_existing.tables {
+                let existing_name = get_table_name(existing_table.get_table_name());
+                let in_entities = self
+                    .entities
+                    .iter()
+                    .any(|e| get_table_name(e.table.get_table_name()) == existing_name);
+                if !in_entities {
+                    let stmt =
+                        db_backend.build(sea_query::Table::drop().table(existing_name).if_exists());
+                    changes.push(stmt);
+                }
+            }
+        }
+
+        Ok(changes)
+    }
+
+    #[cfg(feature = "schema-sync")]
+    async fn discover_existing_schema<C>(db: &C) -> Result<DiscoveredSchema, DbErr>
+    where
+        C: ConnectionTrait + sea_schema::Connection,
+    {
+        match db.get_database_backend() {
             #[cfg(feature = "sqlx-mysql")]
             DbBackend::MySql => {
                 use sea_schema::{mysql::discovery::SchemaDiscovery, probe::SchemaProbe};
@@ -99,10 +173,10 @@ impl SchemaBuilder {
                     .await
                     .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
 
-                DiscoveredSchema {
+                Ok(DiscoveredSchema {
                     tables: schema.tables.iter().map(|table| table.write()).collect(),
                     enums: vec![],
-                }
+                })
             }
             #[cfg(feature = "sqlx-postgres")]
             DbBackend::Postgres => {
@@ -123,10 +197,10 @@ impl SchemaBuilder {
                     .await
                     .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
 
-                DiscoveredSchema {
+                Ok(DiscoveredSchema {
                     tables: schema.tables.iter().map(|table| table.write()).collect(),
                     enums: schema.enums.iter().map(|def| def.write()).collect(),
-                }
+                })
             }
             #[cfg(feature = "sqlx-sqlite")]
             DbBackend::Sqlite => {
@@ -142,10 +216,10 @@ impl SchemaBuilder {
                         })
                     })?
                     .merge_indexes_into_table();
-                DiscoveredSchema {
+                Ok(DiscoveredSchema {
                     tables: schema.tables.iter().map(|table| table.write()).collect(),
                     enums: vec![],
-                }
+                })
             }
             #[cfg(feature = "rusqlite")]
             DbBackend::Sqlite => {
@@ -160,35 +234,17 @@ impl SchemaBuilder {
                         })
                     })?
                     .merge_indexes_into_table();
-                DiscoveredSchema {
+                Ok(DiscoveredSchema {
                     tables: schema.tables.iter().map(|table| table.write()).collect(),
                     enums: vec![],
-                }
+                })
             }
             #[allow(unreachable_patterns)]
-            other => {
-                return Err(DbErr::BackendNotSupported {
-                    db: other.as_str(),
-                    ctx: "SchemaBuilder::sync",
-                });
-            }
-        };
-
-        #[allow(unreachable_code)]
-        let mut created_enums: Vec<Statement> = Default::default();
-
-        #[allow(unreachable_code)]
-        for table_name in self.sorted_tables() {
-            if let Some(entity) = self
-                .entities
-                .iter()
-                .find(|entity| table_name == get_table_name(entity.table.get_table_name()))
-            {
-                entity.sync(db, &_existing, &mut created_enums).await?;
-            }
+            other => Err(DbErr::BackendNotSupported {
+                db: other.as_str(),
+                ctx: "SchemaBuilder::discover_existing_schema",
+            }),
         }
-
-        Ok(())
     }
 
     /// Apply this schema to a database, will create all registered tables, columns, unique keys, and foreign keys.
@@ -245,6 +301,9 @@ impl SchemaBuilder {
     }
 }
 
+/// Stores the discovered schema from the database, including tables and enums
+#[cfg(feature = "schema-sync")]
+#[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
 struct DiscoveredSchema {
     tables: Vec<TableCreateStatement>,
     enums: Vec<TypeCreateStatement>,
@@ -279,16 +338,15 @@ impl EntitySchemaInfo {
         Ok(())
     }
 
-    // better to always compile this function
-    #[allow(dead_code)]
-    async fn sync<C: ConnectionTrait>(
+    #[cfg(feature = "schema-sync")]
+    fn discover_changes(
         &self,
-        db: &C,
+        db_backend: DbBackend,
         existing: &DiscoveredSchema,
         created_enums: &mut Vec<Statement>,
-    ) -> Result<(), DbErr> {
-        let db_backend = db.get_database_backend();
-
+        changes: &mut Vec<Statement>,
+        allow_dangerous: bool,
+    ) {
         // create enum before creating table
         for stmt in self.enums.iter() {
             let mut has_enum = false;
@@ -296,15 +354,15 @@ impl EntitySchemaInfo {
             for existing_enum in &existing.enums {
                 if db_backend.build(existing_enum) == new_stmt {
                     has_enum = true;
-                    // TODO add enum variants
                     break;
                 }
             }
             if !has_enum && !created_enums.iter().any(|s| s == &new_stmt) {
-                db.execute(stmt).await?;
+                changes.push(new_stmt.clone());
                 created_enums.push(new_stmt);
             }
         }
+
         let table_name = get_table_name(self.table.get_table_name());
         let mut existing_table = None;
         for tbl in &existing.tables {
@@ -313,7 +371,9 @@ impl EntitySchemaInfo {
                 break;
             }
         }
+
         if let Some(existing_table) = existing_table {
+            // Discover column additions / renames
             for column_def in self.table.get_columns() {
                 let mut column_exists = false;
                 for existing_column in existing_table.get_columns() {
@@ -332,26 +392,34 @@ impl EntitySchemaInfo {
                         }
                     }
                     if renamed_from.is_empty() {
-                        db.execute(
-                            TableAlterStatement::new()
-                                .table(self.table.get_table_name().expect("Checked above").clone())
-                                .add_column(column_def.to_owned()),
-                        )
-                        .await?;
+                        changes.push(
+                            db_backend.build(
+                                TableAlterStatement::new()
+                                    .table(
+                                        self.table.get_table_name().expect("Checked above").clone(),
+                                    )
+                                    .add_column(column_def.to_owned()),
+                            ),
+                        );
                     } else {
-                        db.execute(
-                            TableAlterStatement::new()
-                                .table(self.table.get_table_name().expect("Checked above").clone())
-                                .rename_column(
-                                    renamed_from.to_owned(),
-                                    column_def.get_column_name(),
-                                ),
-                        )
-                        .await?;
+                        changes.push(
+                            db_backend.build(
+                                TableAlterStatement::new()
+                                    .table(
+                                        self.table.get_table_name().expect("Checked above").clone(),
+                                    )
+                                    .rename_column(
+                                        renamed_from.to_owned(),
+                                        column_def.get_column_name(),
+                                    ),
+                            ),
+                        );
                     }
                 }
             }
-            if db.get_database_backend() != DbBackend::Sqlite {
+
+            // Discover missing foreign keys (not supported on SQLite)
+            if db_backend != DbBackend::Sqlite {
                 for foreign_key in self.table.get_foreign_key_create_stmts().iter() {
                     let mut key_exists = false;
                     for existing_key in existing_table.get_foreign_key_create_stmts().iter() {
@@ -361,13 +429,66 @@ impl EntitySchemaInfo {
                         }
                     }
                     if !key_exists {
-                        db.execute(foreign_key).await?;
+                        changes.push(db_backend.build(foreign_key));
+                    }
+                }
+            }
+
+            // Dangerous: drop columns that exist in DB but not in entity
+            if allow_dangerous {
+                for existing_column in existing_table.get_columns() {
+                    let col_name = existing_column.get_column_name();
+                    let in_entity = self
+                        .table
+                        .get_columns()
+                        .iter()
+                        .any(|c| c.get_column_name() == col_name);
+                    if !in_entity {
+                        changes.push(
+                            db_backend.build(
+                                TableAlterStatement::new()
+                                    .table(
+                                        self.table.get_table_name().expect("Checked above").clone(),
+                                    )
+                                    .drop_column(col_name.into_iden()),
+                            ),
+                        );
+                    }
+                }
+
+                // Dangerous: drop foreign keys that exist in DB but not in entity
+                if db_backend != DbBackend::Sqlite {
+                    for existing_key in existing_table.get_foreign_key_create_stmts().iter() {
+                        let in_entity = self
+                            .table
+                            .get_foreign_key_create_stmts()
+                            .iter()
+                            .any(|fk| compare_foreign_key(fk, existing_key));
+                        if !in_entity {
+                            if let Some(name) = existing_key.get_foreign_key().get_name() {
+                                changes.push(
+                                    db_backend.build(
+                                        TableAlterStatement::new()
+                                            .table(
+                                                self.table
+                                                    .get_table_name()
+                                                    .expect("Checked above")
+                                                    .clone(),
+                                            )
+                                            .drop_foreign_key(name.to_owned()),
+                                    ),
+                                );
+                            }
+                        }
                     }
                 }
             }
         } else {
-            db.execute(&self.table).await?;
+            // Table doesn't exist in DB, create it
+            changes.push(db_backend.build(&self.table));
         }
+
+        // Discover missing indexes
         for stmt in self.indexes.iter() {
             let mut has_index = false;
             if let Some(existing_table) = existing_table {
@@ -381,15 +502,14 @@ impl EntitySchemaInfo {
                 }
             }
             if !has_index {
-                // shall we do alter table add constraint for unique index?
                 let mut stmt = stmt.clone();
                 stmt.if_not_exists();
-                db.execute(&stmt).await?;
+                changes.push(db_backend.build(&stmt));
             }
         }
+
         if let Some(existing_table) = existing_table {
-            // For columns with a column-level UNIQUE constraint (#[sea_orm(unique)]) that
-            // already exist in the table but do not yet have a unique index, create one.
+            // Discover missing unique indexes for column-level UNIQUE constraints
             for column_def in self.table.get_columns() {
                 if column_def.get_column_spec().unique {
                     let col_name = column_def.get_column_name();
@@ -398,8 +518,6 @@ impl EntitySchemaInfo {
                         .iter()
                         .any(|c| c.get_column_name() == col_name);
                     if !col_exists {
-                        // Column is being added in this sync pass; the ALTER TABLE ADD COLUMN
-                        // will include the UNIQUE inline, so no separate index needed.
                         continue;
                     }
                     let already_unique = existing_table.get_indexes().iter().any(|idx| {
@@ -414,22 +532,23 @@ impl EntitySchemaInfo {
                             self.table.get_table_name().expect("table must have a name");
                         let tbl_str = table_name.sea_orm_table().to_string();
                         let table_ref = table_name.clone();
-                        db.execute(
-                            Index::create()
-                                .name(format!("idx-{tbl_str}-{col_name}"))
-                                .table(table_ref)
-                                .col(col_name.into_iden())
-                                .unique()
-                                .if_not_exists(),
-                        )
-                        .await?;
+                        changes.push(
+                            db_backend.build(
+                                Index::create()
+                                    .name(format!("idx-{tbl_str}-{col_name}"))
+                                    .table(table_ref)
+                                    .col(col_name.into_iden())
+                                    .unique()
+                                    .if_not_exists(),
+                            ),
+                        );
                     }
                 }
             }
         }
+
         if let Some(existing_table) = existing_table {
-            // find all unique keys from existing table
-            // if it no longer exist in new schema, drop it
+            // Discover unique keys that need to be dropped
             for existing_index in existing_table.get_indexes() {
                 if existing_index.is_unique_key() {
                     let mut has_index = false;
@@ -441,10 +560,6 @@ impl EntitySchemaInfo {
                             break;
                         }
                     }
-                    // Also check if the unique index corresponds to a column-level UNIQUE
-                    // constraint (from #[sea_orm(unique)]). These are embedded in the CREATE
-                    // TABLE column definition and not tracked in self.indexes, so we must not
-                    // try to drop them during sync.
                     if !has_index {
                         let index_cols = existing_index.get_index_spec().get_column_names();
                         if index_cols.len() == 1 {
@@ -465,31 +580,28 @@ impl EntitySchemaInfo {
                             .map(|s| s.to_owned())
                         {
                             if db_backend == DbBackend::Postgres {
-                                // On PostgreSQL, unique indexes created via column-level UNIQUE
-                                // (e.g. ADD COLUMN ... UNIQUE) are backed by a named constraint.
-                                // DROP INDEX fails on constraint-owned indexes; use
-                                // ALTER TABLE ... DROP CONSTRAINT instead.
-                                db.execute(
-                                    TableAlterStatement::new()
-                                        .table(
-                                            self.table
-                                                .get_table_name()
-                                                .expect("Checked above")
-                                                .clone(),
-                                        )
-                                        .drop_constraint(drop_existing),
-                                )
-                                .await?;
+                                changes.push(
+                                    db_backend.build(
+                                        TableAlterStatement::new()
+                                            .table(
+                                                self.table
+                                                    .get_table_name()
+                                                    .expect("Checked above")
+                                                    .clone(),
+                                            )
+                                            .drop_constraint(drop_existing),
+                                    ),
+                                );
                             } else {
-                                db.execute(sea_query::Index::drop().name(drop_existing))
-                                    .await?;
+                                changes.push(
+                                    db_backend.build(sea_query::Index::drop().name(drop_existing)),
+                                );
                             }
                         }
                     }
                 }
             }
         }
-        Ok(())
     }
 
     fn debug_print(
@@ -527,6 +639,7 @@ fn get_table_name(table_ref: Option<&TableRef>) -> TableName {
     }
 }
 
+#[cfg(feature = "schema-sync")]
 fn compare_foreign_key(a: &ForeignKeyCreateStatement, b: &ForeignKeyCreateStatement) -> bool {
     let a = a.get_foreign_key();
     let b = b.get_foreign_key();
