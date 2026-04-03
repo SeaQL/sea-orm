@@ -14,6 +14,7 @@ seaography::register_entity_modules!([
     collection_float,
     parent,
     child,
+    imports,
 ]);
 
 seaography::register_active_enums!([
