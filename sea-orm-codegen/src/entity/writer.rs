@@ -879,7 +879,10 @@ mod tests {
     use proc_macro2::TokenStream;
     use quote::quote;
     use sea_query::{Alias, ColumnType, ForeignKeyAction, RcOrArc, SeaRc, StringLen};
-    use std::io::{self, BufRead, BufReader, Read};
+    use std::{
+        io::{self, BufRead, BufReader, Read},
+        sync::Arc,
+    };
 
     fn default_column_option() -> ColumnOption {
         Default::default()
@@ -1576,6 +1579,106 @@ mod tests {
                     name: "id".to_owned(),
                 }],
             },
+            Entity {
+                table_name: "imports".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "a".to_owned(),
+                        col_type: ColumnType::Json,
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                        unique_key: None,
+                    },
+                    Column {
+                        name: "b".to_owned(),
+                        col_type: ColumnType::Date,
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                        unique_key: None,
+                    },
+                    Column {
+                        name: "c".to_owned(),
+                        col_type: ColumnType::Time,
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                        unique_key: None,
+                    },
+                    Column {
+                        name: "d".to_owned(),
+                        col_type: ColumnType::DateTime,
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                        unique_key: None,
+                    },
+                    Column {
+                        name: "e".to_owned(),
+                        col_type: ColumnType::TimestampWithTimeZone,
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                        unique_key: None,
+                    },
+                    Column {
+                        name: "f".to_owned(),
+                        col_type: ColumnType::Decimal(None),
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                        unique_key: None,
+                    },
+                    Column {
+                        name: "g".to_owned(),
+                        col_type: ColumnType::Uuid,
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                        unique_key: None,
+                    },
+                    Column {
+                        name: "h".to_owned(),
+                        col_type: ColumnType::Vector(None),
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                        unique_key: None,
+                    },
+                    Column {
+                        name: "i".to_owned(),
+                        col_type: ColumnType::Inet,
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                        unique_key: None,
+                    },
+                    Column {
+                        name: "j".to_owned(),
+                        col_type: ColumnType::Array(Arc::new(ColumnType::Json)),
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                        unique_key: None,
+                    },
+                    Column {
+                        name: "k".to_owned(),
+                        col_type: ColumnType::Array(Arc::new(ColumnType::Array(Arc::new(
+                            ColumnType::Cidr,
+                        )))),
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                        unique_key: None,
+                    },
+                ],
+                relations: vec![],
+                conjunct_relations: vec![],
+                primary_keys: vec![PrimaryKey {
+                    name: "a".to_owned(),
+                }],
+            },
         ]
     }
 
@@ -1875,6 +1978,32 @@ mod tests {
                 .to_string()
             );
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_gen_frontend_imports() -> io::Result<()> {
+        let imports_entity = setup().get(13).unwrap().clone();
+
+        assert_eq!(imports_entity.get_table_name_snake_case(), "imports");
+
+        assert_eq!(
+            comparable_file_string(include_str!("../../tests/frontend/imports.rs"))?,
+            generated_to_string(EntityWriter::gen_frontend_code_blocks(
+                &imports_entity,
+                &WithSerde::None,
+                &default_column_option(),
+                &None,
+                true,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            ))
+        );
 
         Ok(())
     }
