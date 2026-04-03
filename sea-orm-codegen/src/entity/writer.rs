@@ -1721,7 +1721,7 @@ mod tests {
     #[test]
     fn test_gen_expanded_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 13] = [
+        const ENTITY_FILES: [&str; 14] = [
             include_str!("../../tests/expanded/cake.rs"),
             include_str!("../../tests/expanded/cake_filling.rs"),
             include_str!("../../tests/expanded/cake_filling_price.rs"),
@@ -1735,8 +1735,9 @@ mod tests {
             include_str!("../../tests/expanded/collection_float.rs"),
             include_str!("../../tests/expanded/parent.rs"),
             include_str!("../../tests/expanded/child.rs"),
+            include_str!("../../tests/expanded/imports.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 13] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 14] = [
             include_str!("../../tests/expanded_with_schema_name/cake.rs"),
             include_str!("../../tests/expanded_with_schema_name/cake_filling.rs"),
             include_str!("../../tests/expanded_with_schema_name/cake_filling_price.rs"),
@@ -1750,6 +1751,7 @@ mod tests {
             include_str!("../../tests/expanded_with_schema_name/collection_float.rs"),
             include_str!("../../tests/expanded_with_schema_name/parent.rs"),
             include_str!("../../tests/expanded_with_schema_name/child.rs"),
+            include_str!("../../tests/expanded_with_schema_name/imports.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
@@ -1809,7 +1811,7 @@ mod tests {
     #[test]
     fn test_gen_compact_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 13] = [
+        const ENTITY_FILES: [&str; 14] = [
             include_str!("../../tests/compact/cake.rs"),
             include_str!("../../tests/compact/cake_filling.rs"),
             include_str!("../../tests/compact/cake_filling_price.rs"),
@@ -1823,8 +1825,9 @@ mod tests {
             include_str!("../../tests/compact/collection_float.rs"),
             include_str!("../../tests/compact/parent.rs"),
             include_str!("../../tests/compact/child.rs"),
+            include_str!("../../tests/compact/imports.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 13] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 14] = [
             include_str!("../../tests/compact_with_schema_name/cake.rs"),
             include_str!("../../tests/compact_with_schema_name/cake_filling.rs"),
             include_str!("../../tests/compact_with_schema_name/cake_filling_price.rs"),
@@ -1838,6 +1841,7 @@ mod tests {
             include_str!("../../tests/compact_with_schema_name/collection_float.rs"),
             include_str!("../../tests/compact_with_schema_name/parent.rs"),
             include_str!("../../tests/compact_with_schema_name/child.rs"),
+            include_str!("../../tests/compact_with_schema_name/imports.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
@@ -1897,7 +1901,7 @@ mod tests {
     #[test]
     fn test_gen_frontend_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 13] = [
+        const ENTITY_FILES: [&str; 14] = [
             include_str!("../../tests/frontend/cake.rs"),
             include_str!("../../tests/frontend/cake_filling.rs"),
             include_str!("../../tests/frontend/cake_filling_price.rs"),
@@ -1911,8 +1915,9 @@ mod tests {
             include_str!("../../tests/frontend/collection_float.rs"),
             include_str!("../../tests/frontend/parent.rs"),
             include_str!("../../tests/frontend/child.rs"),
+            include_str!("../../tests/frontend/imports.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 13] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 14] = [
             include_str!("../../tests/frontend_with_schema_name/cake.rs"),
             include_str!("../../tests/frontend_with_schema_name/cake_filling.rs"),
             include_str!("../../tests/frontend_with_schema_name/cake_filling_price.rs"),
@@ -1926,6 +1931,7 @@ mod tests {
             include_str!("../../tests/frontend_with_schema_name/collection_float.rs"),
             include_str!("../../tests/frontend_with_schema_name/parent.rs"),
             include_str!("../../tests/frontend_with_schema_name/child.rs"),
+            include_str!("../../tests/frontend_with_schema_name/imports.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
@@ -1989,7 +1995,7 @@ mod tests {
         assert_eq!(imports_entity.get_table_name_snake_case(), "imports");
 
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/frontend/imports.rs"))?,
+            comparable_file_string(include_str!("../../tests/frontend_with_imports/imports.rs"))?,
             generated_to_string(EntityWriter::gen_frontend_code_blocks(
                 &imports_entity,
                 &WithSerde::None,
@@ -3161,7 +3167,7 @@ mod tests {
     #[test]
     fn test_gen_dense_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 13] = [
+        const ENTITY_FILES: [&str; 14] = [
             include_str!("../../tests/dense/cake.rs"),
             include_str!("../../tests/dense/cake_filling.rs"),
             include_str!("../../tests/dense/cake_filling_price.rs"),
@@ -3175,6 +3181,7 @@ mod tests {
             include_str!("../../tests/dense/collection_float.rs"),
             include_str!("../../tests/dense/parent.rs"),
             include_str!("../../tests/dense/child.rs"),
+            include_str!("../../tests/dense/imports.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
