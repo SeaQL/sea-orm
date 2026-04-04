@@ -5,7 +5,7 @@ use sea_orm::{
     Database, DatabaseConnection, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult, ProxyRow,
     RuntimeErr, Statement, Value, Values,
 };
-use worker::{D1Database, console_log};
+use worker::D1Database;
 
 struct D1(Arc<D1Database>);
 
@@ -100,10 +100,7 @@ fn map_values(statement: &Statement) -> Vec<JsValue> {
                 Value::ChronoDateTimeUtc(Some(val)) => JsValue::from(val.to_string()),
                 Value::ChronoDateTimeWithTimeZone(Some(val)) => JsValue::from(val.to_string()),
 
-                e => {
-                    console_log!("running: {}", e);
-                    JsValue::NULL
-                }
+                _ => JsValue::NULL,
             })
             .collect(),
         None => Vec::new(),
