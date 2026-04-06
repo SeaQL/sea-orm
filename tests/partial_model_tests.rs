@@ -132,6 +132,38 @@ async fn partial_model_left_join_does_not_exist() {
 }
 
 #[sea_orm_macros::test]
+async fn partial_model_left_join_with_optional_nested_model_optional_fields_does_not_exist() {
+    #[derive(Debug, DerivePartialModel)]
+    #[sea_orm(entity = "cake::Entity")]
+    struct CakeWithOptionalBakerModel {
+        id: i32,
+        name: String,
+        #[sea_orm(nested)]
+        baker: Option<baker::Model>,
+    }
+
+    let ctx = TestContext::new("partial_model_left_join_optional_baker_model").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    seed_data::init_1(&ctx, false).await;
+
+    let cake: CakeWithOptionalBakerModel = cake::Entity::find()
+        .left_join(baker::Entity)
+        .order_by_asc(cake::Column::Id)
+        .into_partial_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(cake.id, 13);
+    assert_eq!(cake.name, "Cheesecake");
+    assert!(cake.baker.is_none());
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
 async fn partial_model_left_join_exists() {
     let ctx = TestContext::new("partial_model_left_join_exists").await;
     create_tables(&ctx.db).await.unwrap();
