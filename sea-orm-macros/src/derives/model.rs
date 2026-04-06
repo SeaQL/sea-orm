@@ -100,54 +100,6 @@ impl DeriveModel {
         ]))
     }
 
-    fn option_nesting_depth(ty: &Type) -> usize {
-        match ty {
-            Type::Path(type_path) if type_path.qself.is_none() => type_path
-                .path
-                .segments
-                .last()
-                .and_then(|segment| {
-                    if segment.ident != "Option" {
-                        return None;
-                    }
-
-                    match &segment.arguments {
-                        syn::PathArguments::AngleBracketed(args) if args.args.len() == 1 => {
-                            args.args.first().map(|arg| match arg {
-                                syn::GenericArgument::Type(inner) => {
-                                    1 + Self::option_nesting_depth(inner)
-                                }
-                                _ => 1,
-                            })
-                        }
-                        _ => Some(1),
-                    }
-                })
-                .unwrap_or(0),
-            _ => 0,
-        }
-    }
-
-    fn null_check_expr(field_ident: &Ident, field_type: &Type) -> TokenStream {
-        let depth = Self::option_nesting_depth(field_type);
-
-        if depth == 0 {
-            return quote! { #field_ident.is_none() };
-        }
-
-        let patterns: Vec<_> = (0..=depth)
-            .map(|depth| {
-                let mut pattern = quote! { None };
-                for _ in 0..depth {
-                    pattern = quote! { Some(#pattern) };
-                }
-                pattern
-            })
-            .collect();
-
-        quote! { matches!(#field_ident, #( #patterns )|* ) }
-    }
-
     fn impl_from_query_result(&self) -> TokenStream {
         let ident = &self.ident;
         let field_idents = &self.field_idents;
@@ -206,7 +158,7 @@ impl DeriveModel {
                     if ignore {
                         None
                     } else {
-                        Some(Self::null_check_expr(field_ident, field_type))
+                        Some(create_is_null_expr(field_ident, field_type))
                     }
                 })
                 .collect();
@@ -305,4 +257,68 @@ pub fn expand_derive_model(
     attrs: &[Attribute],
 ) -> syn::Result<TokenStream> {
     DeriveModel::new(ident, data, attrs)?.expand()
+}
+
+/// Get the total nesting depth of `Option`.
+///
+/// For example:
+/// - `Option<T>` => `1`
+/// - `Option<Option<T>>` => `2`
+/// - `Option<Option<Option<T>>>` => `3`
+fn option_nesting_depth(ty: &Type) -> usize {
+    match ty {
+        Type::Path(type_path) if type_path.qself.is_none() => type_path
+            .path
+            .segments
+            .last()
+            .and_then(|segment| {
+                if segment.ident != "Option" {
+                    return None;
+                }
+
+                match &segment.arguments {
+                    syn::PathArguments::AngleBracketed(args) if args.args.len() == 1 => {
+                        args.args.first().map(|arg| match arg {
+                            syn::GenericArgument::Type(inner) => 1 + option_nesting_depth(inner),
+                            _ => 1,
+                        })
+                    }
+                    _ => Some(1),
+                }
+            })
+            .unwrap_or(0),
+        _ => 0,
+    }
+}
+
+/// Generate an expr that checks whether an optional field is nullish.
+///
+/// For a nested `Option`, the generated expression treats every partially
+/// unwrapped `None` as null.
+///
+/// For example, for `Option<Option<Option<T>>>`, it will generate:
+/// ```
+/// matches!(
+///     field,
+///     None | Some(None) | Some(Some(None)) | Some(Some(Some(None)))
+/// )
+/// ```
+fn create_is_null_expr(field_ident: &Ident, field_type: &Type) -> TokenStream {
+    let depth = option_nesting_depth(field_type);
+
+    if depth == 0 {
+        return quote! { #field_ident.is_none() };
+    }
+
+    let patterns: Vec<_> = (0..=depth)
+        .map(|depth| {
+            let mut pattern = quote! { None };
+            for _ in 0..depth {
+                pattern = quote! { Some(#pattern) };
+            }
+            pattern
+        })
+        .collect();
+
+    quote! { matches!(#field_ident, #( #patterns )|* ) }
 }
