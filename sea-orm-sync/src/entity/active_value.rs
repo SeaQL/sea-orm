@@ -343,7 +343,7 @@ where
         }
     }
 
-    /// Alias for [`ActiveValue::set_ne`].
+    /// Alias for [`ActiveValue::set_ne`]. Kept for compatibility.
     pub fn set_if_not_equals(&mut self, value: V)
     where
         V: PartialEq,
@@ -386,7 +386,7 @@ where
         }
     }
 
-    /// Alias for [`ActiveValue::set_ne_and`].
+    /// Alias for [`ActiveValue::set_ne_and`]. Kept for compatibility.
     pub fn set_if_not_equals_and(&mut self, value: V, f: impl FnOnce(&V) -> bool)
     where
         V: PartialEq,
