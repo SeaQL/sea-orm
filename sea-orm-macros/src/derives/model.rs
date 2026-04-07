@@ -297,7 +297,7 @@ fn option_nesting_depth(ty: &Type) -> usize {
 /// unwrapped `None` as null.
 ///
 /// For example, for `Option<Option<Option<T>>>`, it will generate:
-/// ```
+/// ```rust,ignore
 /// matches!(
 ///     field,
 ///     None | Some(None) | Some(Some(None)) | Some(Some(Some(None)))

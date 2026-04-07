@@ -132,31 +132,63 @@ fn partial_model_left_join_does_not_exist() {
 
 #[sea_orm_macros::test]
 fn partial_model_left_join_with_optional_nested_model_optional_fields_does_not_exist() {
-    #[derive(Debug, DerivePartialModel)]
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "baker::Entity")]
+    struct BakerDetails {
+        id: i32,
+        name: String,
+        bakery_id: Option<i32>,
+    }
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "baker::Entity")]
+    struct NestedBaker {
+        #[sea_orm(nested)]
+        details: BakerDetails,
+    }
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
     #[sea_orm(entity = "cake::Entity")]
     struct CakeWithOptionalBakerModel {
         id: i32,
         name: String,
         #[sea_orm(nested)]
-        baker: Option<baker::Model>,
+        baker: Option<NestedBaker>,
     }
 
-    let ctx = TestContext::new("partial_model_left_join_optional_baker_model");
+    let ctx = TestContext::new("partial_model_left_join_deep_baker");
     create_tables(&ctx.db).unwrap();
 
-    seed_data::init_1(&ctx, false);
+    seed_data::init_1(&ctx, true);
 
-    let cake: CakeWithOptionalBakerModel = cake::Entity::find()
+    let cakes: Vec<CakeWithOptionalBakerModel> = cake::Entity::find()
         .left_join(baker::Entity)
         .order_by_asc(cake::Column::Id)
         .into_partial_model()
-        .one(&ctx.db)
-        .expect("succeeds to get the result")
-        .expect("exactly one model in DB");
+        .all(&ctx.db)
+        .expect("succeeds to get the result");
 
-    assert_eq!(cake.id, 13);
-    assert_eq!(cake.name, "Cheesecake");
-    assert!(cake.baker.is_none());
+    assert_eq!(
+        cakes,
+        [
+            CakeWithOptionalBakerModel {
+                id: 13,
+                name: "Cheesecake".to_owned(),
+                baker: Some(NestedBaker {
+                    details: BakerDetails {
+                        id: 22,
+                        name: "Master Baker".to_owned(),
+                        bakery_id: Some(42),
+                    },
+                }),
+            },
+            CakeWithOptionalBakerModel {
+                id: 15,
+                name: "Chocolate".to_owned(),
+                baker: None,
+            },
+        ]
+    );
 
     ctx.delete();
 }
