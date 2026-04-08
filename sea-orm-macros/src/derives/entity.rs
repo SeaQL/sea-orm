@@ -166,6 +166,7 @@ impl DeriveEntity {
                 sea_orm::register_entity! {
                     sea_orm::EntityRegistry {
                         module_path: module_path!(),
+                        module_version: option_env!("CARGO_PKG_VERSION"),
                         schema_info: |schema| sea_orm::EntitySchemaInfo::new(Entity, schema),
                     }
                 }
