@@ -7,7 +7,7 @@ use itertools::izip;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use std::iter::FromIterator;
-use syn::{Attribute, Data, Expr, Ident, LitStr};
+use syn::{Attribute, Data, Expr, Ident, LitStr, Type};
 
 pub(crate) struct DeriveModel {
     column_idents: Vec<Ident>,
@@ -153,12 +153,12 @@ impl DeriveModel {
         // In that case we interpret it as "no nested row" (i.e., Option::None).
         // This check detects that condition by testing if all non-ignored fields are NULL.
         let all_null_check = {
-            let checks: Vec<_> = izip!(field_idents, ignore_attrs)
-                .filter_map(|(field_ident, &ignore)| {
+            let checks: Vec<_> = izip!(field_idents, field_types, ignore_attrs)
+                .filter_map(|(field_ident, field_type, &ignore)| {
                     if ignore {
                         None
                     } else {
-                        Some(quote! { #field_ident.is_none() })
+                        Some(create_is_null_expr(field_ident, field_type))
                     }
                 })
                 .collect();
@@ -257,4 +257,68 @@ pub fn expand_derive_model(
     attrs: &[Attribute],
 ) -> syn::Result<TokenStream> {
     DeriveModel::new(ident, data, attrs)?.expand()
+}
+
+/// Get the total nesting depth of `Option`.
+///
+/// For example:
+/// - `Option<T>` => `1`
+/// - `Option<Option<T>>` => `2`
+/// - `Option<Option<Option<T>>>` => `3`
+fn option_nesting_depth(ty: &Type) -> usize {
+    match ty {
+        Type::Path(type_path) if type_path.qself.is_none() => type_path
+            .path
+            .segments
+            .last()
+            .and_then(|segment| {
+                if segment.ident != "Option" {
+                    return None;
+                }
+
+                match &segment.arguments {
+                    syn::PathArguments::AngleBracketed(args) if args.args.len() == 1 => {
+                        args.args.first().map(|arg| match arg {
+                            syn::GenericArgument::Type(inner) => 1 + option_nesting_depth(inner),
+                            _ => 1,
+                        })
+                    }
+                    _ => Some(1),
+                }
+            })
+            .unwrap_or(0),
+        _ => 0,
+    }
+}
+
+/// Generate an expr that checks whether an optional field is nullish.
+///
+/// For a nested `Option`, the generated expression treats every partially
+/// unwrapped `None` as null.
+///
+/// For example, for `Option<Option<Option<T>>>`, it will generate:
+/// ```rust,ignore
+/// matches!(
+///     field,
+///     None | Some(None) | Some(Some(None)) | Some(Some(Some(None)))
+/// )
+/// ```
+fn create_is_null_expr(field_ident: &Ident, field_type: &Type) -> TokenStream {
+    let depth = option_nesting_depth(field_type);
+
+    if depth == 0 {
+        return quote! { #field_ident.is_none() };
+    }
+
+    let patterns: Vec<_> = (0..=depth)
+        .map(|depth| {
+            let mut pattern = quote! { None };
+            for _ in 0..depth {
+                pattern = quote! { Some(#pattern) };
+            }
+            pattern
+        })
+        .collect();
+
+    quote! { matches!(#field_ident, #( #patterns )|* ) }
 }
