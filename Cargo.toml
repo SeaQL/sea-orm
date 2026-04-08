@@ -76,7 +76,7 @@ sea-schema = { version = "0.17.0-rc.15", default-features = false, features = [
     "writer",
     "probe",
 ], optional = true }
-serde = { version = "1.0", default-features = false }
+serde = { version = "1.0", default-features = false, optional = true }
 serde_json = { version = "1.0", default-features = false, optional = true }
 sqlx = { version = "0.8.4", default-features = false, optional = true }
 strum = { version = "0.28", default-features = false }
@@ -153,6 +153,7 @@ rusqlite = []
 schema-sync = ["sea-schema"]
 sea-orm-internal = []
 seaography = ["sea-orm-macros/seaography"]
+serde = ["dep:serde", "serde/derive", "uuid?/serde"]
 sqlite-no-row-value-before-3_15 = []
 sqlite-use-returning-for-3_35 = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
@@ -204,6 +205,7 @@ with-ipnetwork = [
     "sea-query-sqlx?/with-ipnetwork",
 ]
 with-json = [
+    "dep:serde",
     "serde_json",
     "sea-query/with-json",
     "sea-orm-macros/with-json",
