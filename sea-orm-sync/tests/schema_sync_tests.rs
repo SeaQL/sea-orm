@@ -4,10 +4,10 @@ pub mod common;
 
 use crate::common::TestContext;
 use sea_orm::{
-    DatabaseConnection, DbErr,
+    DatabaseBackend, DatabaseConnection, DbErr, Statement,
     entity::*,
     query::*,
-    sea_query::{Condition, Expr, Query},
+    sea_query::{Condition, Expr, Query, SelectStatement},
 };
 
 // Scenario 1: table is first synced with a `#[sea_orm(unique)]` column already
@@ -60,39 +60,6 @@ mod product_v2 {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
-// Scenario 4a: initial version — column has UNIQUE.
-mod order_v1 {
-    use sea_orm::entity::prelude::*;
-
-    #[sea_orm::model]
-    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-    #[sea_orm(table_name = "sync_order")]
-    pub struct Model {
-        #[sea_orm(primary_key)]
-        pub id: i32,
-        #[sea_orm(unique)]
-        pub ref_no: String,
-    }
-
-    impl ActiveModelBehavior for ActiveModel {}
-}
-
-// Scenario 4b: UNIQUE removed from the column.
-mod order_v2 {
-    use sea_orm::entity::prelude::*;
-
-    #[sea_orm::model]
-    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-    #[sea_orm(table_name = "sync_order")]
-    pub struct Model {
-        #[sea_orm(primary_key)]
-        pub id: i32,
-        pub ref_no: String,
-    }
-
-    impl ActiveModelBehavior for ActiveModel {}
-}
-
 // Scenario 3a: initial version — column exists without UNIQUE.
 mod user_v1 {
     use sea_orm::entity::prelude::*;
@@ -121,6 +88,22 @@ mod user_v2 {
         pub id: i32,
         #[sea_orm(unique)]
         pub email: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+// Entity in a non-default PostgreSQL schema — for multi-schema sync testing.
+mod custom_schema_entity {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(schema_name = "test_schema_2952", table_name = "sync_custom_schema")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub name: String,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -221,40 +204,82 @@ fn test_sync_make_existing_column_unique() -> Result<(), DbErr> {
     Ok(())
 }
 
-/// Regression test for <https://github.com/SeaQL/sea-orm/issues/2994>.
+/// Regression test for <https://github.com/SeaQL/sea-orm/issues/2952>.
 ///
-/// A column marked `#[sea_orm(unique)]` is synced, then the unique attribute is
-/// removed. The second sync must drop the PostgreSQL constraint without error.
+/// An entity with `schema_name` pointing to a non-default PostgreSQL schema is
+/// synced twice. The second sync must not fail with "relation already exists".
 #[sea_orm_macros::test]
 #[cfg(feature = "sqlx-postgres")]
-fn test_sync_drop_unique_constraint() -> Result<(), DbErr> {
-    let ctx = TestContext::new("test_sync_drop_unique_constraint");
+fn test_sync_non_default_schema() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_sync_non_default_schema");
     let db = &ctx.db;
 
     #[cfg(feature = "schema-sync")]
     {
-        // First sync: creates the table with the unique constraint
+        db.execute_raw(Statement::from_string(
+            DatabaseBackend::Postgres,
+            "CREATE SCHEMA IF NOT EXISTS test_schema_2952".to_owned(),
+        ))?;
+
+        // First sync: creates the table in the non-default schema
         db.get_schema_builder()
-            .register(order_v1::Entity)
+            .register(custom_schema_entity::Entity)
             .sync(db)?;
 
         assert!(
-            pg_index_exists(db, "sync_order", "sync_order_ref_no_key")?,
-            "unique constraint should exist after first sync"
+            pg_table_exists_in_schema(db, "test_schema_2952", "sync_custom_schema")?,
+            "table should exist in schema `test_schema_2952`"
         );
-
-        // Second sync: unique is removed — must not error on PostgreSQL
-        db.get_schema_builder()
-            .register(order_v2::Entity)
-            .sync(db)?;
 
         assert!(
-            !pg_index_exists(db, "sync_order", "sync_order_ref_no_key")?,
-            "unique constraint should be gone after second sync"
+            !pg_table_exists_in_schema(db, "public", "sync_custom_schema")?,
+            "table should NOT exist in schema `public`"
         );
+
+        // Second sync: must not fail with "relation already exists"
+        db.get_schema_builder()
+            .register(custom_schema_entity::Entity)
+            .sync(db)?;
     }
 
     Ok(())
+}
+
+#[cfg(feature = "sqlx-postgres")]
+fn pg_table_exists_in_schema_query(schema: &str, table: &str) -> SelectStatement {
+    Query::select()
+        .expr(Expr::cust("COUNT(*) > 0"))
+        .from(("information_schema", "tables"))
+        .cond_where(
+            Condition::all()
+                .add(Expr::col("table_schema").eq(schema))
+                .add(Expr::col("table_name").eq(table)),
+        )
+        .to_owned()
+}
+
+#[cfg(feature = "sqlx-postgres")]
+#[test]
+fn pg_table_exists_in_schema_query_qualifies_information_schema() {
+    use sea_orm::sea_query::PostgresQueryBuilder;
+
+    assert_eq!(
+        pg_table_exists_in_schema_query("test_schema_2952", "sync_custom_schema")
+            .to_string(PostgresQueryBuilder),
+        r#"SELECT COUNT(*) > 0 FROM "information_schema"."tables" WHERE "table_schema" = 'test_schema_2952' AND "table_name" = 'sync_custom_schema'"#,
+    );
+}
+
+#[cfg(feature = "sqlx-postgres")]
+fn pg_table_exists_in_schema(
+    db: &DatabaseConnection,
+    schema: &str,
+    table: &str,
+) -> Result<bool, DbErr> {
+    db.query_one(&pg_table_exists_in_schema_query(schema, table))?
+        .unwrap()
+        .try_get_by_index(0)
+        .map_err(DbErr::from)
 }
 
 #[cfg(feature = "sqlx-postgres")]
