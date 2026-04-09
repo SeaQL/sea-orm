@@ -54,7 +54,7 @@ sea-orm-arrow = { version = "2.0.0-rc", path = "../sea-orm-arrow", default-featu
 sea-orm-macros = { version = "~2.0.0-rc.37", path = "../sea-orm-macros", default-features = false, features = [
     "strum",
 ] }
-sea-query = { version = "=1.0.0-rc.32", default-features = false, features = [
+sea-query = { version = "=1.0.0-rc.33", default-features = false, features = [
     "thread-safe",
     "hashable-value",
     "backend-mysql",
@@ -62,7 +62,7 @@ sea-query = { version = "=1.0.0-rc.32", default-features = false, features = [
     "backend-sqlite",
     "sea-orm",
 ] }
-sea-query-rusqlite = { version = "0.8.0-rc.14", optional = true }
+sea-query-rusqlite = { version = "0.8.0-rc.15", optional = true }
 sea-schema-sync = { version = "0.17.0-rc.15", default-features = false, features = [
     "sync",
     "discovery",

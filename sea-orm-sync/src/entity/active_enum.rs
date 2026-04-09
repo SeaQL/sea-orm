@@ -205,6 +205,9 @@ impl TryGetable for sea_query::Enum {
     fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
         let value: String = <String as TryGetable>::try_get_by(res, idx)?;
         Ok(Self {
+            // `DeriveActiveEnum` overwrites `type_name` when constructing values for queries, but we
+            // can't reliably recover the enum type name from `QueryResult`. Keeping it empty may
+            // still cause issues if this value is later reused to build SQL (e.g. missing casts).
             type_name: "".into(),
             value: value.into(),
         })
@@ -219,6 +222,7 @@ impl ActiveEnumValue for sea_query::Enum {
             Ok(values
                 .into_iter()
                 .map(|value| Self {
+                    // See comment in `TryGetable for sea_query::Enum` about empty `type_name`.
                     type_name: "".into(),
                     value: value.into(),
                 })

@@ -537,10 +537,29 @@ impl EntitySchemaInfo {
                         }
                     }
                     if !has_index {
-                        if let Some(drop_existing) =
-                            existing_index.get_index_spec().get_name().map(|s| s.to_owned())
+                        if let Some(drop_existing) = existing_index
+                            .get_index_spec()
+                            .get_name()
+                            .map(|s| s.to_owned())
                         {
-                            db.execute(sea_query::Index::drop().name(drop_existing))?;
+                            if db_backend == DbBackend::Postgres {
+                                // On PostgreSQL, unique indexes created via column-level UNIQUE
+                                // (e.g. ADD COLUMN ... UNIQUE) are backed by a named constraint.
+                                // DROP INDEX fails on constraint-owned indexes; use
+                                // ALTER TABLE ... DROP CONSTRAINT instead.
+                                db.execute(
+                                    TableAlterStatement::new()
+                                        .table(
+                                            self.table
+                                                .get_table_name()
+                                                .expect("Checked above")
+                                                .clone(),
+                                        )
+                                        .drop_constraint(drop_existing),
+                                )?;
+                            } else {
+                                db.execute(sea_query::Index::drop().name(drop_existing))?;
+                            }
                         }
                     }
                 }
