@@ -27,6 +27,3 @@ path = "../../../sea-orm-migration" # remove this line in your own project
 version = "~2.0.0-rc.37" # sea-orm-migration version
 
 [patch.crates-io]
-sea-query = { git = "https://github.com/Huliiiiii/sea-query", branch = "enum" }
-sea-query-sqlx = { git = "https://github.com/Huliiiiii/sea-query", branch = "enum" }
-sea-query-rusqlite = { git = "https://github.com/Huliiiiii/sea-query", branch = "enum" }

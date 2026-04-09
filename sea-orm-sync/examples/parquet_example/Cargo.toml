@@ -24,5 +24,3 @@ features = [
 path = "../../"
 
 [patch.crates-io]
-sea-query = { git = "https://github.com/Huliiiiii/sea-query", branch = "enum" }
-sea-query-rusqlite = { git = "https://github.com/Huliiiiii/sea-query", branch = "enum" }
