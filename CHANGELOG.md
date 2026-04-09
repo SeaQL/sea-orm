@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release Candidates
 
+- [2.0.0-rc.38](changelog/2.0.0-rc.38.md) — `find_both_related`, `set_ne`, pool options, schema sync fixes
 - [2.0.0-rc.37](changelog/2.0.0-rc.37.md) — ER Diagram Generation
 - [2.0.0-rc.36](changelog/2.0.0-rc.36.md) — Per-migration transaction control
 - [2.0.0-rc.35](changelog/2.0.0-rc.35.md) — SQLite transaction modes, DeriveIntoActiveModel extensions, Decimal64/Bytes, schema sync fix
