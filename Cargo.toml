@@ -70,7 +70,7 @@ sea-query = { version = "=1.0.0-rc.33", default-features = false, features = [
     "backend-sqlite",
     "sea-orm",
 ] }
-sea-query-sqlx = { version = "=0.8.0-rc.14", default-features = false, optional = true }
+sea-query-sqlx = { version = "=0.8.0-rc.15", default-features = false, optional = true }
 sea-schema = { version = "0.17.0-rc.15", default-features = false, features = [
     "discovery",
     "writer",
@@ -164,6 +164,7 @@ sqlx-mysql = [
 ]
 sqlx-postgres = [
     "sqlx-dep",
+    "sea-orm-macros/sqlx-postgres",
     "sea-query-sqlx/sqlx-postgres",
     "postgres-array",
     "sea-schema?/sqlx-postgres",

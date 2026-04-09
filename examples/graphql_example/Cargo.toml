@@ -12,3 +12,5 @@ members = [".", "api", "entity", "migration"]
 
 [dependencies]
 graphql-example-api = { path = "api" }
+
+[patch.crates-io]

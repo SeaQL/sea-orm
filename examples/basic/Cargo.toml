@@ -16,3 +16,5 @@ sea-orm = { path = "../../", features = [
 ] }
 serde_json = { version = "1" }
 tokio = { version = "1", features = ["full"] }
+
+[patch.crates-io]

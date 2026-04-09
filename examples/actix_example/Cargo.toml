@@ -11,3 +11,5 @@ members = [".", "api", "entity", "migration"]
 
 [dependencies]
 actix-example-api = { path = "api" }
+
+[patch.crates-io]

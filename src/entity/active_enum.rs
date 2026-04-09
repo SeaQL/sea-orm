@@ -135,7 +135,11 @@ pub trait ActiveEnum: Sized + Iterable {
 
     /// Construct a enum expression with casting
     fn as_enum(&self) -> SimpleExpr {
-        Expr::val(Self::to_value(self)).as_enum(Self::name())
+        let value: Value = Self::to_value(self).into();
+        match value {
+            Value::Enum(_) => Expr::val(value),
+            _ => Expr::val(value).as_enum(Self::name()),
+        }
     }
 
     /// Get the name of all enum variants
@@ -196,6 +200,43 @@ impl_active_enum_value_with_pg_array!(i8);
 impl_active_enum_value_with_pg_array!(i16);
 impl_active_enum_value_with_pg_array!(i32);
 impl_active_enum_value_with_pg_array!(i64);
+
+impl TryGetable for sea_query::Enum {
+    fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        let value: String = <String as TryGetable>::try_get_by(res, idx)?;
+        Ok(Self {
+            // `DeriveActiveEnum` overwrites `type_name` when constructing values for queries, but we
+            // can't reliably recover the enum type name from `QueryResult`. Keeping it empty may
+            // still cause issues if this value is later reused to build SQL (e.g. missing casts).
+            type_name: "".into(),
+            value: value.into(),
+        })
+    }
+}
+
+impl ActiveEnumValue for sea_query::Enum {
+    fn try_get_vec_by<I: ColIdx>(_res: &QueryResult, _index: I) -> Result<Vec<Self>, TryGetError> {
+        #[cfg(feature = "postgres-array")]
+        {
+            let values: Vec<String> = <Vec<String> as TryGetable>::try_get_by(_res, _index)?;
+            Ok(values
+                .into_iter()
+                .map(|value| Self {
+                    // See comment in `TryGetable for sea_query::Enum` about empty `type_name`.
+                    type_name: "".into(),
+                    value: value.into(),
+                })
+                .collect())
+        }
+        #[cfg(not(feature = "postgres-array"))]
+        {
+            Err(TryGetError::DbErr(DbErr::BackendNotSupported {
+                db: "Postgres",
+                ctx: "ActiveEnumValue::try_get_vec_by (`postgres-array` not enabled)",
+            }))
+        }
+    }
+}
 
 impl<T> TryFromU64 for T
 where
