@@ -57,11 +57,19 @@ impl EntityWriter {
             .iter()
             .map(|col| {
                 let is_primary_key = primary_keys.contains(&col.name);
-                col.get_serde_attribute(
+                let ts_type_attribute = col.get_ts_type_attrs(
+                    model_extra_derives,
+                    model_extra_attributes,
+                );
+                let serde_attribute = col.get_serde_attribute(
                     is_primary_key,
                     serde_skip_deserializing_primary_key,
                     serde_skip_hidden_column,
-                )
+                );
+                quote! {
+                    #ts_type_attribute
+                    #serde_attribute
+                }
             })
             .collect();
         let extra_derive = with_serde.extra_derive();

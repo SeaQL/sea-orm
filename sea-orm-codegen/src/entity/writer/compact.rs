@@ -99,6 +99,10 @@ impl EntityWriter {
                     }
                     ts = quote! { #[sea_orm(#ts)] };
                 }
+                let ts_type_attribute = col.get_ts_type_attrs(
+                    model_extra_derives,
+                    model_extra_attributes,
+                );
                 let serde_attribute = col.get_serde_attribute(
                     is_primary_key,
                     serde_skip_deserializing_primary_key,
@@ -106,6 +110,7 @@ impl EntityWriter {
                 );
                 ts = quote! {
                     #ts
+                    #ts_type_attribute
                     #serde_attribute
                 };
                 ts
