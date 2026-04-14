@@ -147,7 +147,7 @@ impl ConnectionTrait for DatabaseConnection {
             "sea_orm.execute",
             self.get_database_backend(),
             stmt.sql.as_str(),
-            record_stmt = true,
+            record_stmt = self.get_tracing_statement_logging(),
             {
                 match &self.inner {
                     #[cfg(feature = "sqlx-mysql")]
@@ -219,7 +219,7 @@ impl ConnectionTrait for DatabaseConnection {
             "sea_orm.query_one",
             self.get_database_backend(),
             stmt.sql.as_str(),
-            record_stmt = true,
+            record_stmt = self.get_tracing_statement_logging(),
             {
                 match &self.inner {
                     #[cfg(feature = "sqlx-mysql")]
@@ -249,7 +249,7 @@ impl ConnectionTrait for DatabaseConnection {
             "sea_orm.query_all",
             self.get_database_backend(),
             stmt.sql.as_str(),
-            record_stmt = true,
+            record_stmt = self.get_tracing_statement_logging(),
             {
                 match &self.inner {
                     #[cfg(feature = "sqlx-mysql")]
@@ -587,6 +587,25 @@ impl DatabaseConnection {
 }
 
 impl DatabaseConnection {
+    #[expect(unused)]
+    pub(crate) fn get_tracing_statement_logging(&self) -> bool {
+        match &self.inner {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => conn.tracing_statement_logging,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.tracing_statement_logging,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.tracing_statement_logging,
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.tracing_statement_logging,
+            DatabaseConnectionType::Disconnected => true,
+            #[cfg(feature = "mock")]
+            DatabaseConnectionType::MockDatabaseConnection(_) => true,
+            #[cfg(feature = "proxy")]
+            DatabaseConnectionType::ProxyDatabaseConnection(_) => true,
+        }
+    }
+
     /// Get the database backend for this connection
     ///
     /// # Panics

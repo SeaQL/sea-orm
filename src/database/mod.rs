@@ -104,6 +104,8 @@ pub struct ConnectOptions {
     pub(crate) max_lifetime: Option<Option<Duration>>,
     /// Enable SQLx statement logging
     pub(crate) sqlx_logging: bool,
+    /// Record SQL statements in tracing spans
+    pub(crate) tracing_statement_logging: bool,
     /// SQLx statement logging level (ignored if `sqlx_logging` is false)
     pub(crate) sqlx_logging_level: log::LevelFilter,
     /// SQLx slow statements logging level (ignored if `sqlx_logging` is false)
@@ -247,6 +249,7 @@ impl ConnectOptions {
             acquire_timeout: None,
             max_lifetime: None,
             sqlx_logging: true,
+            tracing_statement_logging: true,
             sqlx_logging_level: log::LevelFilter::Info,
             sqlx_slow_statements_logging_level: log::LevelFilter::Off,
             sqlx_slow_statements_logging_threshold: Duration::from_secs(1),
@@ -358,6 +361,17 @@ impl ConnectOptions {
     /// Get whether SQLx statement logging is enabled
     pub fn get_sqlx_logging(&self) -> bool {
         self.sqlx_logging
+    }
+
+    /// Enable recording `db.statement` in tracing spans (default true).
+    pub fn tracing_statement_logging(&mut self, value: bool) -> &mut Self {
+        self.tracing_statement_logging = value;
+        self
+    }
+
+    /// Get whether `db.statement` recording in tracing spans is enabled.
+    pub fn get_tracing_statement_logging(&self) -> bool {
+        self.tracing_statement_logging
     }
 
     /// Set SQLx statement logging level (default INFO).

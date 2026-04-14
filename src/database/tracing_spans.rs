@@ -161,7 +161,7 @@ macro_rules! with_db_span {
             if $record_stmt {
                 span.record("db.statement", $sql);
             }
-            span.in_scope($fut)
+            span.in_scope(|| $fut)
         }
         #[cfg(not(feature = "tracing-spans"))]
         {
