@@ -29,7 +29,7 @@ pub struct SqlxMySqlConnector;
 pub struct SqlxMySqlPoolConnection {
     pub(crate) pool: MySqlPool,
     metric_callback: Option<crate::metric::Callback>,
-    pub(crate) tracing_statement_logging: bool,
+    pub(crate) record_stmt_in_spans: bool,
 }
 
 impl std::fmt::Debug for SqlxMySqlPoolConnection {
@@ -43,7 +43,7 @@ impl From<MySqlPool> for SqlxMySqlPoolConnection {
         SqlxMySqlPoolConnection {
             pool,
             metric_callback: None,
-            tracing_statement_logging: true,
+            record_stmt_in_spans: true,
         }
     }
 }
@@ -63,7 +63,7 @@ impl SqlxMySqlConnector {
     /// Add configuration options for the MySQL database
     #[instrument(level = "trace")]
     pub fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
-        let tracing_statement_logging = options.get_tracing_statement_logging();
+        let record_stmt_in_spans = options.get_record_stmt_in_spans();
         let mut sqlx_opts = options
             .url
             .parse::<MySqlConnectOptions>()
@@ -103,7 +103,7 @@ impl SqlxMySqlConnector {
             DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
                 pool,
                 metric_callback: None,
-                tracing_statement_logging,
+                record_stmt_in_spans,
             })
             .into();
 
@@ -121,7 +121,7 @@ impl SqlxMySqlConnector {
         DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
             pool,
             metric_callback: None,
-            tracing_statement_logging: true,
+            record_stmt_in_spans: true,
         })
         .into()
     }
@@ -212,7 +212,7 @@ impl SqlxMySqlPoolConnection {
         DatabaseTransaction::new_mysql(
             conn,
             self.metric_callback.clone(),
-            self.tracing_statement_logging,
+            self.record_stmt_in_spans,
             isolation_level,
             access_mode,
         )
@@ -234,7 +234,7 @@ impl SqlxMySqlPoolConnection {
         let transaction = DatabaseTransaction::new_mysql(
             conn,
             self.metric_callback.clone(),
-            self.tracing_statement_logging,
+            self.record_stmt_in_spans,
             isolation_level,
             access_mode,
         )
@@ -344,7 +344,7 @@ impl crate::DatabaseTransaction {
     pub(crate) fn new_mysql(
         inner: PoolConnection<sqlx::MySql>,
         metric_callback: Option<crate::metric::Callback>,
-        tracing_statement_logging: bool,
+        record_stmt_in_spans: bool,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
     ) -> Result<crate::DatabaseTransaction, DbErr> {
@@ -352,7 +352,7 @@ impl crate::DatabaseTransaction {
             Arc::new(Mutex::new(crate::InnerConnection::MySql(inner))),
             crate::DbBackend::MySql,
             metric_callback,
-            tracing_statement_logging,
+            record_stmt_in_spans,
             isolation_level,
             access_mode,
             None,

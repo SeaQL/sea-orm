@@ -23,7 +23,7 @@ pub struct DatabaseTransaction {
     backend: DbBackend,
     open: bool,
     metric_callback: Option<crate::metric::Callback>,
-    tracing_statement_logging: bool,
+    record_stmt_in_spans: bool,
 }
 
 impl std::fmt::Debug for DatabaseTransaction {
@@ -38,7 +38,7 @@ impl DatabaseTransaction {
         conn: Arc<Mutex<InnerConnection>>,
         backend: DbBackend,
         metric_callback: Option<crate::metric::Callback>,
-        tracing_statement_logging: bool,
+        record_stmt_in_spans: bool,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
         sqlite_transaction_mode: Option<SqliteTransactionMode>,
@@ -48,7 +48,7 @@ impl DatabaseTransaction {
             backend,
             open: true,
             metric_callback,
-            tracing_statement_logging,
+            record_stmt_in_spans,
         };
 
         let begin_result: Result<(), DbErr> = super::tracing_spans::with_db_span!(
@@ -344,7 +344,7 @@ impl ConnectionTrait for DatabaseTransaction {
             "sea_orm.execute",
             self.backend,
             stmt.sql.as_str(),
-            record_stmt = self.tracing_statement_logging,
+            record_stmt = self.record_stmt_in_spans,
             async {
                 #[cfg(not(feature = "sync"))]
                 let conn = &mut *self.conn.lock().await;
@@ -463,7 +463,7 @@ impl ConnectionTrait for DatabaseTransaction {
             "sea_orm.query_one",
             self.backend,
             stmt.sql.as_str(),
-            record_stmt = self.tracing_statement_logging,
+            record_stmt = self.record_stmt_in_spans,
             async {
                 #[cfg(not(feature = "sync"))]
                 let conn = &mut *self.conn.lock().await;
@@ -523,7 +523,7 @@ impl ConnectionTrait for DatabaseTransaction {
             "sea_orm.query_all",
             self.backend,
             stmt.sql.as_str(),
-            record_stmt = self.tracing_statement_logging,
+            record_stmt = self.record_stmt_in_spans,
             async {
                 #[cfg(not(feature = "sync"))]
                 let conn = &mut *self.conn.lock().await;
@@ -617,7 +617,7 @@ impl TransactionTrait for DatabaseTransaction {
             Arc::clone(&self.conn),
             self.backend,
             self.metric_callback.clone(),
-            self.tracing_statement_logging,
+            self.record_stmt_in_spans,
             None,
             None,
             None,
@@ -635,7 +635,7 @@ impl TransactionTrait for DatabaseTransaction {
             Arc::clone(&self.conn),
             self.backend,
             self.metric_callback.clone(),
-            self.tracing_statement_logging,
+            self.record_stmt_in_spans,
             isolation_level,
             access_mode,
             None,
@@ -652,7 +652,7 @@ impl TransactionTrait for DatabaseTransaction {
             Arc::clone(&self.conn),
             self.backend,
             self.metric_callback.clone(),
-            self.tracing_statement_logging,
+            self.record_stmt_in_spans,
             options.isolation_level,
             options.access_mode,
             options.sqlite_transaction_mode,

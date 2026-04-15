@@ -91,7 +91,7 @@ pub struct ConnectOptions {
     /// Enable SQLx statement logging
     pub(crate) sqlx_logging: bool,
     /// Record SQL statements in tracing spans
-    pub(crate) tracing_statement_logging: bool,
+    pub(crate) record_stmt_in_spans: bool,
     /// SQLx statement logging level (ignored if `sqlx_logging` is false)
     pub(crate) sqlx_logging_level: log::LevelFilter,
     /// SQLx slow statements logging level (ignored if `sqlx_logging` is false)
@@ -233,7 +233,7 @@ impl ConnectOptions {
             acquire_timeout: None,
             max_lifetime: None,
             sqlx_logging: true,
-            tracing_statement_logging: true,
+            record_stmt_in_spans: true,
             sqlx_logging_level: log::LevelFilter::Info,
             sqlx_slow_statements_logging_level: log::LevelFilter::Off,
             sqlx_slow_statements_logging_threshold: Duration::from_secs(1),
@@ -348,14 +348,14 @@ impl ConnectOptions {
     }
 
     /// Enable recording `db.statement` in tracing spans (default true).
-    pub fn tracing_statement_logging(&mut self, value: bool) -> &mut Self {
-        self.tracing_statement_logging = value;
+    pub fn record_stmt_in_spans(&mut self, value: bool) -> &mut Self {
+        self.record_stmt_in_spans = value;
         self
     }
 
     /// Get whether `db.statement` recording in tracing spans is enabled.
-    pub fn get_tracing_statement_logging(&self) -> bool {
-        self.tracing_statement_logging
+    pub fn get_record_stmt_in_spans(&self) -> bool {
+        self.record_stmt_in_spans
     }
 
     /// Set SQLx statement logging level (default INFO).
