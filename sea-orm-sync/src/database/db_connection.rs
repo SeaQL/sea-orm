@@ -593,11 +593,17 @@ impl DatabaseConnection {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => conn.tracing_statement_logging,
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.tracing_statement_logging,
+            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => {
+                conn.tracing_statement_logging
+            }
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.tracing_statement_logging,
+            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
+                conn.tracing_statement_logging
+            }
             #[cfg(feature = "rusqlite")]
-            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.tracing_statement_logging,
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => {
+                conn.tracing_statement_logging
+            }
             DatabaseConnectionType::Disconnected => true,
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(_) => true,
