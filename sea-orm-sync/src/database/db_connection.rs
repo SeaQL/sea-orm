@@ -587,7 +587,7 @@ impl DatabaseConnection {
 }
 
 impl DatabaseConnection {
-    #[expect(unused)]
+    #[allow(unused)]
     pub(crate) fn get_record_stmt_in_spans(&self) -> bool {
         match &self.inner {
             #[cfg(feature = "sqlx-mysql")]
