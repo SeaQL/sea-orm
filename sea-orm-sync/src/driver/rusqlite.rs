@@ -43,6 +43,7 @@ pub struct RusqliteSharedConnection {
     pub(crate) conn: Arc<Mutex<State>>,
     acquire_timeout: Duration,
     metric_callback: Option<crate::metric::Callback>,
+    pub(crate) record_stmt_in_spans: bool,
 }
 
 /// A loaned connection that supports nested transactions.
@@ -175,6 +176,7 @@ impl From<RusqliteConnection> for RusqliteSharedConnection {
             conn: Arc::new(Mutex::new(State::Idle(conn))),
             acquire_timeout: DEFAULT_ACQUIRE_TIMEOUT,
             metric_callback: None,
+            record_stmt_in_spans: true,
         }
     }
 }
@@ -196,6 +198,7 @@ impl RusqliteConnector {
     #[instrument(level = "trace")]
     pub fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let acquire_timeout = options.acquire_timeout.unwrap_or(DEFAULT_ACQUIRE_TIMEOUT);
+        let record_stmt_in_spans = options.get_record_stmt_in_spans();
         // TODO handle disable_statement_logging
         let after_conn = options.after_connect;
 
@@ -244,6 +247,7 @@ impl RusqliteConnector {
             conn: Arc::new(Mutex::new(State::Idle(conn))),
             acquire_timeout,
             metric_callback: None,
+            record_stmt_in_spans,
         };
 
         #[cfg(feature = "sqlite-use-returning-for-3_35")]
@@ -420,6 +424,7 @@ impl RusqliteSharedConnection {
             Arc::new(Mutex::new(InnerConnection::Rusqlite(conn))),
             crate::DbBackend::Sqlite,
             self.metric_callback.clone(),
+            self.record_stmt_in_spans,
             isolation_level,
             access_mode,
             sqlite_transaction_mode,

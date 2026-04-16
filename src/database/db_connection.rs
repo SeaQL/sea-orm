@@ -148,7 +148,7 @@ impl ConnectionTrait for DatabaseConnection {
             "sea_orm.execute",
             self.get_database_backend(),
             stmt.sql.as_str(),
-            record_stmt = true,
+            record_stmt = self.get_record_stmt_in_spans(),
             async {
                 match &self.inner {
                     #[cfg(feature = "sqlx-mysql")]
@@ -228,7 +228,7 @@ impl ConnectionTrait for DatabaseConnection {
             "sea_orm.query_one",
             self.get_database_backend(),
             stmt.sql.as_str(),
-            record_stmt = true,
+            record_stmt = self.get_record_stmt_in_spans(),
             async {
                 match &self.inner {
                     #[cfg(feature = "sqlx-mysql")]
@@ -264,7 +264,7 @@ impl ConnectionTrait for DatabaseConnection {
             "sea_orm.query_all",
             self.get_database_backend(),
             stmt.sql.as_str(),
-            record_stmt = true,
+            record_stmt = self.get_record_stmt_in_spans(),
             async {
                 match &self.inner {
                     #[cfg(feature = "sqlx-mysql")]
@@ -633,6 +633,25 @@ impl DatabaseConnection {
 }
 
 impl DatabaseConnection {
+    #[expect(unused)]
+    pub(crate) fn get_record_stmt_in_spans(&self) -> bool {
+        match &self.inner {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => conn.record_stmt_in_spans,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.record_stmt_in_spans,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.record_stmt_in_spans,
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.record_stmt_in_spans,
+            DatabaseConnectionType::Disconnected => true,
+            #[cfg(feature = "mock")]
+            DatabaseConnectionType::MockDatabaseConnection(_) => true,
+            #[cfg(feature = "proxy")]
+            DatabaseConnectionType::ProxyDatabaseConnection(_) => true,
+        }
+    }
+
     /// Get the database backend for this connection
     ///
     /// # Panics

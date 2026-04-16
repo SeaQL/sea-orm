@@ -28,6 +28,7 @@ pub struct SqlxPostgresConnector;
 pub struct SqlxPostgresPoolConnection {
     pub(crate) pool: PgPool,
     metric_callback: Option<crate::metric::Callback>,
+    pub(crate) record_stmt_in_spans: bool,
 }
 
 impl std::fmt::Debug for SqlxPostgresPoolConnection {
@@ -41,6 +42,7 @@ impl From<PgPool> for SqlxPostgresPoolConnection {
         SqlxPostgresPoolConnection {
             pool,
             metric_callback: None,
+            record_stmt_in_spans: true,
         }
     }
 }
@@ -60,6 +62,7 @@ impl SqlxPostgresConnector {
     /// Add configuration options for the PostgreSQL database
     #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
+        let record_stmt_in_spans = options.get_record_stmt_in_spans();
         let mut sqlx_opts = options
             .url
             .parse::<PgConnectOptions>()
@@ -139,6 +142,7 @@ impl SqlxPostgresConnector {
             DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
                 pool,
                 metric_callback: None,
+                record_stmt_in_spans,
             })
             .into();
 
@@ -156,6 +160,7 @@ impl SqlxPostgresConnector {
         DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
             pool,
             metric_callback: None,
+            record_stmt_in_spans: true,
         })
         .into()
     }
@@ -246,6 +251,7 @@ impl SqlxPostgresPoolConnection {
         DatabaseTransaction::new_postgres(
             conn,
             self.metric_callback.clone(),
+            self.record_stmt_in_spans,
             isolation_level,
             access_mode,
         )
@@ -272,6 +278,7 @@ impl SqlxPostgresPoolConnection {
         let transaction = DatabaseTransaction::new_postgres(
             conn,
             self.metric_callback.clone(),
+            self.record_stmt_in_spans,
             isolation_level,
             access_mode,
         )
@@ -384,6 +391,7 @@ impl crate::DatabaseTransaction {
     pub(crate) async fn new_postgres(
         inner: PoolConnection<sqlx::Postgres>,
         metric_callback: Option<crate::metric::Callback>,
+        record_stmt_in_spans: bool,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
     ) -> Result<crate::DatabaseTransaction, DbErr> {
@@ -391,6 +399,7 @@ impl crate::DatabaseTransaction {
             Arc::new(Mutex::new(crate::InnerConnection::Postgres(inner))),
             crate::DbBackend::Postgres,
             metric_callback,
+            record_stmt_in_spans,
             isolation_level,
             access_mode,
             None,
