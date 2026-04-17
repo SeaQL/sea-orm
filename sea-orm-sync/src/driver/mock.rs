@@ -143,7 +143,7 @@ impl MockDatabaseConnection {
     }
 
     /// Execute the SQL statement in the [MockDatabase]
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(statement))]
     pub fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", statement);
         let counter = self.execute_counter.fetch_add(1, Ordering::SeqCst);
@@ -154,7 +154,7 @@ impl MockDatabaseConnection {
     }
 
     /// Return one [QueryResult] if the query was successful
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(statement))]
     pub fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let counter = self.query_counter.fetch_add(1, Ordering::SeqCst);
@@ -167,7 +167,7 @@ impl MockDatabaseConnection {
     }
 
     /// Return all [QueryResult]s if the query was successful
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(statement))]
     pub fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let counter = self.query_counter.fetch_add(1, Ordering::SeqCst);
@@ -178,7 +178,7 @@ impl MockDatabaseConnection {
     }
 
     /// Return [QueryResult]s  from a multi-query operation
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(statement))]
     pub fn fetch(&self, statement: &Statement) -> PinBoxStream {
         #[cfg(not(feature = "sync"))]
         {
