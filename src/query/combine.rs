@@ -113,6 +113,7 @@ where
         Self {
             query,
             entity: PhantomData,
+            persistent: None,
         }
     }
 
@@ -137,6 +138,7 @@ where
         Self {
             query,
             entity: PhantomData,
+            persistent: None,
         }
     }
 
@@ -167,6 +169,7 @@ where
         Self {
             query,
             entity: PhantomData,
+            persistent: None,
         }
     }
 
