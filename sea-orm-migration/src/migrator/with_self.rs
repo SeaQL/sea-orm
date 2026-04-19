@@ -1,7 +1,7 @@
 use super::{Migration, MigrationStatus, exec::*};
 use crate::{IntoSchemaManagerConnection, MigrationTrait, SchemaManager, seaql_migrations};
 use sea_orm::sea_query::IntoIden;
-use sea_orm::{ConnectionTrait, DbBackend, DbErr, DynIden, TransactionTrait};
+use sea_orm::{ConnectionTrait, DbErr, DynIden};
 
 use tracing::info;
 
@@ -105,7 +105,9 @@ pub trait MigratorTraitSelf: Sized + Send + Sync {
     where
         C: IntoSchemaManagerConnection<'c>,
     {
-        exec_with_connection!(db, async |manager| { exec_fresh(self, manager).await }).await
+        let db = db.into_database_executor();
+        let manager = SchemaManager::new(db);
+        exec_fresh(self, &manager).await
     }
 
     /// Rollback all applied migrations, then reapply all migrations
@@ -113,11 +115,10 @@ pub trait MigratorTraitSelf: Sized + Send + Sync {
     where
         C: IntoSchemaManagerConnection<'c>,
     {
-        exec_with_connection!(db, async |manager| {
-            exec_down(self, manager, None).await?;
-            exec_up(self, manager, None).await
-        })
-        .await
+        let db = db.into_database_executor();
+        let manager = SchemaManager::new(db);
+        exec_down(self, &manager, None).await?;
+        exec_up(self, &manager, None).await
     }
 
     /// Rollback all applied migrations
@@ -125,14 +126,10 @@ pub trait MigratorTraitSelf: Sized + Send + Sync {
     where
         C: IntoSchemaManagerConnection<'c>,
     {
-        exec_with_connection!(db, async |manager| {
-            // Rollback all applied migrations first
-            exec_down(self, manager, None).await?;
-
-            // Then drop the migration table itself
-            uninstall(manager, self.migration_table_name()).await
-        })
-        .await
+        let db = db.into_database_executor();
+        let manager = SchemaManager::new(db);
+        exec_down(self, &manager, None).await?;
+        uninstall(&manager, self.migration_table_name()).await
     }
 
     /// Uninstall migration tracking table only (non-destructive)
@@ -141,10 +138,9 @@ pub trait MigratorTraitSelf: Sized + Send + Sync {
     where
         C: IntoSchemaManagerConnection<'c>,
     {
-        exec_with_connection!(db, async |manager| {
-            uninstall(manager, self.migration_table_name()).await
-        })
-        .await
+        let db = db.into_database_executor();
+        let manager = SchemaManager::new(db);
+        uninstall(&manager, self.migration_table_name()).await
     }
 
     /// Apply pending migrations
@@ -152,7 +148,9 @@ pub trait MigratorTraitSelf: Sized + Send + Sync {
     where
         C: IntoSchemaManagerConnection<'c>,
     {
-        exec_with_connection!(db, async |manager| { exec_up(self, manager, steps).await }).await
+        let db = db.into_database_executor();
+        let manager = SchemaManager::new(db);
+        exec_up(self, &manager, steps).await
     }
 
     /// Rollback applied migrations
@@ -160,10 +158,9 @@ pub trait MigratorTraitSelf: Sized + Send + Sync {
     where
         C: IntoSchemaManagerConnection<'c>,
     {
-        exec_with_connection!(db, async |manager| {
-            exec_down(self, manager, steps).await
-        })
-        .await
+        let db = db.into_database_executor();
+        let manager = SchemaManager::new(db);
+        exec_down(self, &manager, steps).await
     }
 }
 

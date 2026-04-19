@@ -28,6 +28,7 @@ pub struct SqlxPostgresConnector;
 pub struct SqlxPostgresPoolConnection {
     pub(crate) pool: PgPool,
     metric_callback: Option<crate::metric::Callback>,
+    pub(crate) record_stmt_in_spans: bool,
 }
 
 impl std::fmt::Debug for SqlxPostgresPoolConnection {
@@ -41,6 +42,7 @@ impl From<PgPool> for SqlxPostgresPoolConnection {
         SqlxPostgresPoolConnection {
             pool,
             metric_callback: None,
+            record_stmt_in_spans: true,
         }
     }
 }
@@ -60,6 +62,7 @@ impl SqlxPostgresConnector {
     /// Add configuration options for the PostgreSQL database
     #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
+        let record_stmt_in_spans = options.get_record_stmt_in_spans();
         let mut sqlx_opts = options
             .url
             .parse::<PgConnectOptions>()
@@ -79,6 +82,10 @@ impl SqlxPostgresConnector {
 
         if let Some(application_name) = &options.application_name {
             sqlx_opts = sqlx_opts.application_name(application_name);
+        }
+
+        if let Some(timeout) = options.statement_timeout {
+            sqlx_opts = sqlx_opts.options([("statement_timeout", timeout.as_millis().to_string())]);
         }
 
         if let Some(f) = &options.pg_opts_fn {
@@ -106,6 +113,7 @@ impl SqlxPostgresConnector {
 
         let lazy = options.connect_lazy;
         let after_connect = options.after_connect.clone();
+        let pg_pool_opts_fn = options.pg_pool_opts_fn.clone();
         let mut pool_options = options.sqlx_pool_options();
 
         if let Some(sql) = set_search_path_sql {
@@ -118,7 +126,9 @@ impl SqlxPostgresConnector {
                 })
             });
         }
-
+        if let Some(f) = &pg_pool_opts_fn {
+            pool_options = f(pool_options);
+        }
         let pool = if lazy {
             pool_options.connect_lazy_with(sqlx_opts)
         } else {
@@ -132,6 +142,7 @@ impl SqlxPostgresConnector {
             DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
                 pool,
                 metric_callback: None,
+                record_stmt_in_spans,
             })
             .into();
 
@@ -149,6 +160,7 @@ impl SqlxPostgresConnector {
         DatabaseConnectionType::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
             pool,
             metric_callback: None,
+            record_stmt_in_spans: true,
         })
         .into()
     }
@@ -239,6 +251,7 @@ impl SqlxPostgresPoolConnection {
         DatabaseTransaction::new_postgres(
             conn,
             self.metric_callback.clone(),
+            self.record_stmt_in_spans,
             isolation_level,
             access_mode,
         )
@@ -265,6 +278,7 @@ impl SqlxPostgresPoolConnection {
         let transaction = DatabaseTransaction::new_postgres(
             conn,
             self.metric_callback.clone(),
+            self.record_stmt_in_spans,
             isolation_level,
             access_mode,
         )
@@ -377,6 +391,7 @@ impl crate::DatabaseTransaction {
     pub(crate) async fn new_postgres(
         inner: PoolConnection<sqlx::Postgres>,
         metric_callback: Option<crate::metric::Callback>,
+        record_stmt_in_spans: bool,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
     ) -> Result<crate::DatabaseTransaction, DbErr> {
@@ -384,8 +399,10 @@ impl crate::DatabaseTransaction {
             Arc::new(Mutex::new(crate::InnerConnection::Postgres(inner))),
             crate::DbBackend::Postgres,
             metric_callback,
+            record_stmt_in_spans,
             isolation_level,
             access_mode,
+            None,
         )
         .await
     }
@@ -621,12 +638,16 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 }),
                         ),
 
+                        #[cfg(feature = "with-json")]
                         "JSON" | "JSONB" => Value::Json(
                             row.try_get::<Option<serde_json::Value>, _>(c.ordinal())
                                 .expect("Failed to get json")
                                 .map(Box::new),
                         ),
-                        #[cfg(any(feature = "json-array", feature = "postgres-array"))]
+                        #[cfg(all(
+                            feature = "with-json",
+                            any(feature = "json-array", feature = "postgres-array")
+                        ))]
                         "JSON[]" | "JSONB[]" => Value::Array(
                             sea_query::ArrayType::Json,
                             row.try_get::<Option<Vec<serde_json::Value>>, _>(c.ordinal())
@@ -810,8 +831,8 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 .expect("Failed to get timestamptz"),
                         ),
                         #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
-                        "TIMESTAMPTZ" => Value::TimeDateTime(
-                            row.try_get::<Option<time::PrimitiveDateTime>, _>(c.ordinal())
+                        "TIMESTAMPTZ" => Value::TimeDateTimeWithTimeZone(
+                            row.try_get::<Option<time::OffsetDateTime>, _>(c.ordinal())
                                 .expect("Failed to get timestamptz"),
                         ),
 
@@ -836,13 +857,13 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                             feature = "postgres-array"
                         ))]
                         "TIMESTAMPTZ[]" => Value::Array(
-                            sea_query::ArrayType::TimeDateTime,
-                            row.try_get::<Option<Vec<time::PrimitiveDateTime>>, _>(c.ordinal())
+                            sea_query::ArrayType::TimeDateTimeWithTimeZone,
+                            row.try_get::<Option<Vec<time::OffsetDateTime>>, _>(c.ordinal())
                                 .expect("Failed to get timestamptz array")
                                 .map(|vals| {
                                     Box::new(
                                         vals.into_iter()
-                                            .map(|val| Value::TimeDateTime(Some(val)))
+                                            .map(|val| Value::TimeDateTimeWithTimeZone(Some(val)))
                                             .collect(),
                                     )
                                 }),

@@ -1,0 +1,52 @@
+erDiagram
+    baker {
+        int id PK
+        varchar name
+        json contact_details
+        int bakery_id FK
+    }
+    bakery {
+        int id PK
+        varchar name
+        double profit_margin
+    }
+    cake {
+        int id PK
+        varchar name
+        decimal price
+        int bakery_id FK
+        bool gluten_free
+        uuid serial
+    }
+    cakes_bakers {
+        int cake_id PK,FK
+        int baker_id PK,FK
+    }
+    customer {
+        int id PK
+        varchar name
+        text notes
+    }
+    lineitem {
+        int id PK
+        decimal price
+        int quantity
+        int order_id FK,UK
+        int cake_id FK,UK
+    }
+    order {
+        int id PK
+        decimal total
+        int bakery_id FK
+        int customer_id FK
+        timestamptz placed_at
+    }
+    baker }o--|| bakery : "bakery_id"
+    baker }o--o{ cake : "[cakes_bakers]"
+    cake }o--|| bakery : "bakery_id"
+    cakes_bakers }o--|| baker : "baker_id"
+    cakes_bakers }o--|| cake : "cake_id"
+    lineitem }o--|| cake : "cake_id"
+    lineitem }o--|| order : "order_id"
+    order }o--|| bakery : "bakery_id"
+    order }o--|| customer : "customer_id"

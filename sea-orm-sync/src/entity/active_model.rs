@@ -1094,7 +1094,90 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
     }
 }
 
-/// A Trait for any type that can be converted into an ActiveModel
+/// A Trait for any type that can be converted into an `ActiveModel`,
+/// can be derived using `DeriveIntoActiveModel`.
+///
+/// ## Derive Macro Example
+///
+/// ```rust
+/// use sea_orm::DeriveIntoActiveModel;
+/// mod fruit {
+///     use sea_orm::entity::prelude::*;
+///     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+///     #[sea_orm(table_name = "fruit")]
+///     pub struct Model {
+///         #[sea_orm(primary_key)]
+///         pub id: i32,
+///         pub name: String,
+///         pub cake_id: Option<i32>,
+///     }
+///     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+///     pub enum Relation {}
+///     impl ActiveModelBehavior for ActiveModel {}
+/// }
+///
+/// #[derive(DeriveIntoActiveModel)]
+/// #[sea_orm(active_model = "fruit::ActiveModel")]
+/// struct NewFruit {
+///     name: String,
+///     // `id` and `cake_id` are omitted - they become `NotSet`
+/// }
+/// ```
+///
+/// ## `set(...)` - always set absent ActiveModel fields
+///
+/// ```rust
+/// # mod fruit {
+/// #     use sea_orm::entity::prelude::*;
+/// #     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+/// #     #[sea_orm(table_name = "fruit")]
+/// #     pub struct Model {
+/// #         #[sea_orm(primary_key)]
+/// #         pub id: i32,
+/// #         pub name: String,
+/// #         pub cake_id: Option<i32>,
+/// #     }
+/// #     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// #     pub enum Relation {}
+/// #     impl ActiveModelBehavior for ActiveModel {}
+/// # }
+/// use sea_orm::DeriveIntoActiveModel;
+///
+/// #[derive(DeriveIntoActiveModel)]
+/// #[sea_orm(active_model = "fruit::ActiveModel", set(cake_id = "None"))]
+/// struct NewFruit {
+///     name: String,
+///     // `cake_id` is not on the struct, but will always be `Set(None)`
+/// }
+/// ```
+///
+/// ## `default = "expr"` - fallback for `Option<T>` struct fields
+///
+/// ```rust
+/// # mod fruit {
+/// #     use sea_orm::entity::prelude::*;
+/// #     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+/// #     #[sea_orm(table_name = "fruit")]
+/// #     pub struct Model {
+/// #         #[sea_orm(primary_key)]
+/// #         pub id: i32,
+/// #         pub name: String,
+/// #         pub cake_id: Option<i32>,
+/// #     }
+/// #     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// #     pub enum Relation {}
+/// #     impl ActiveModelBehavior for ActiveModel {}
+/// # }
+/// use sea_orm::DeriveIntoActiveModel;
+///
+/// #[derive(DeriveIntoActiveModel)]
+/// #[sea_orm(active_model = "fruit::ActiveModel")]
+/// struct UpdateFruit {
+///     /// `Some("Apple")` -> `Set("Apple")`, `None` ->`Set("Unnamed")`
+///     #[sea_orm(default = "String::from(\"Unnamed\")")]
+///     name: Option<String>,
+/// }
+/// ```
 pub trait IntoActiveModel<A>
 where
     A: ActiveModelTrait,
@@ -1377,12 +1460,12 @@ mod tests {
 
     #[test]
     #[cfg(feature = "macros")]
-    fn test_derive_into_active_model_fill_single() {
+    fn test_derive_into_active_model_set_single() {
         use crate as sea_orm;
         use crate::entity::prelude::*;
 
         #[derive(DeriveIntoActiveModel)]
-        #[sea_orm(active_model = "fruit::ActiveModel", fill(cake_id = "None"))]
+        #[sea_orm(active_model = "fruit::ActiveModel", set(cake_id = "None"))]
         struct NewFruit {
             name: String,
         }

@@ -1,7 +1,7 @@
 use crate::{
     AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel, QueryResult,
     Schema, SchemaBuilder, Statement, StatementBuilder, StreamTrait, TransactionError,
-    TransactionTrait, error::*,
+    TransactionOptions, TransactionTrait, error::*,
 };
 use std::fmt::Debug;
 use tracing::instrument;
@@ -147,7 +147,7 @@ impl ConnectionTrait for DatabaseConnection {
             "sea_orm.execute",
             self.get_database_backend(),
             stmt.sql.as_str(),
-            record_stmt = true,
+            record_stmt = self.get_record_stmt_in_spans(),
             {
                 match &self.inner {
                     #[cfg(feature = "sqlx-mysql")]
@@ -219,7 +219,7 @@ impl ConnectionTrait for DatabaseConnection {
             "sea_orm.query_one",
             self.get_database_backend(),
             stmt.sql.as_str(),
-            record_stmt = true,
+            record_stmt = self.get_record_stmt_in_spans(),
             {
                 match &self.inner {
                     #[cfg(feature = "sqlx-mysql")]
@@ -249,7 +249,7 @@ impl ConnectionTrait for DatabaseConnection {
             "sea_orm.query_all",
             self.get_database_backend(),
             stmt.sql.as_str(),
-            record_stmt = true,
+            record_stmt = self.get_record_stmt_in_spans(),
             {
                 match &self.inner {
                     #[cfg(feature = "sqlx-mysql")]
@@ -329,9 +329,9 @@ impl TransactionTrait for DatabaseConnection {
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.begin(None, None),
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.begin(None, None),
+            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.begin(None, None, None),
             #[cfg(feature = "rusqlite")]
-            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.begin(None, None),
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.begin(None, None, None),
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => {
                 DatabaseTransaction::new_mock(Arc::clone(conn), None)
@@ -361,11 +361,49 @@ impl TransactionTrait for DatabaseConnection {
             }
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
-                conn.begin(_isolation_level, _access_mode)
+                conn.begin(_isolation_level, _access_mode, None)
             }
             #[cfg(feature = "rusqlite")]
             DatabaseConnectionType::RusqliteSharedConnection(conn) => {
+                conn.begin(_isolation_level, _access_mode, None)
+            }
+            #[cfg(feature = "mock")]
+            DatabaseConnectionType::MockDatabaseConnection(conn) => {
+                DatabaseTransaction::new_mock(Arc::clone(conn), None)
+            }
+            #[cfg(feature = "proxy")]
+            DatabaseConnectionType::ProxyDatabaseConnection(conn) => {
+                DatabaseTransaction::new_proxy(conn.clone(), None)
+            }
+            DatabaseConnectionType::Disconnected => Err(conn_err("Disconnected")),
+        }
+    }
+
+    #[instrument(level = "trace")]
+    fn begin_with_options(
+        &self,
+        TransactionOptions {
+            isolation_level: _isolation_level,
+            access_mode: _access_mode,
+            sqlite_transaction_mode: _sqlite_transaction_mode,
+        }: TransactionOptions,
+    ) -> Result<DatabaseTransaction, DbErr> {
+        match &self.inner {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => {
                 conn.begin(_isolation_level, _access_mode)
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => {
+                conn.begin(_isolation_level, _access_mode)
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
+                conn.begin(_isolation_level, _access_mode, _sqlite_transaction_mode)
+            }
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => {
+                conn.begin(_isolation_level, _access_mode, _sqlite_transaction_mode)
             }
             #[cfg(feature = "mock")]
             DatabaseConnectionType::MockDatabaseConnection(conn) => {
@@ -549,6 +587,25 @@ impl DatabaseConnection {
 }
 
 impl DatabaseConnection {
+    #[allow(unused)]
+    pub(crate) fn get_record_stmt_in_spans(&self) -> bool {
+        match &self.inner {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => conn.record_stmt_in_spans,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => conn.record_stmt_in_spans,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => conn.record_stmt_in_spans,
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(conn) => conn.record_stmt_in_spans,
+            DatabaseConnectionType::Disconnected => true,
+            #[cfg(feature = "mock")]
+            DatabaseConnectionType::MockDatabaseConnection(_) => true,
+            #[cfg(feature = "proxy")]
+            DatabaseConnectionType::ProxyDatabaseConnection(_) => true,
+        }
+    }
+
     /// Get the database backend for this connection
     ///
     /// # Panics

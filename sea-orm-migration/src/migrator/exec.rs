@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+#[cfg(not(feature = "with-time"))]
 use std::time::SystemTime;
 use tracing::info;
 
@@ -9,7 +10,7 @@ use sea_orm::sea_query::{
 };
 use sea_orm::{
     ActiveValue, ConnectionTrait, DbBackend, DbErr, DynIden, EntityTrait, FromQueryResult,
-    Iterable, QueryFilter, Schema, Statement,
+    Iterable, QueryFilter, Schema, Statement, TransactionSession, TransactionTrait,
 };
 
 pub async fn get_migration_models<C>(
@@ -68,33 +69,6 @@ pub fn get_migration_with_status(
     }
 }
 
-macro_rules! exec_with_connection {
-    ($db:ident, $fn:expr) => {{
-        async {
-            let db = $db.into_database_executor();
-
-            match db.get_database_backend() {
-                DbBackend::Postgres => {
-                    let transaction = db.begin().await?;
-                    let manager = SchemaManager::new(&transaction);
-                    $fn(&manager).await?;
-                    transaction.commit().await
-                }
-                DbBackend::MySql | DbBackend::Sqlite => {
-                    let manager = SchemaManager::new(db);
-                    $fn(&manager).await
-                }
-                db => Err(DbErr::BackendNotSupported {
-                    db: db.as_str(),
-                    ctx: "exec_with_connection",
-                }),
-            }
-        }
-    }};
-}
-
-pub(crate) use exec_with_connection;
-
 pub async fn install<C>(db: &C, migration_table_name: DynIden) -> Result<(), DbErr>
 where
     C: ConnectionTrait,
@@ -119,7 +93,17 @@ pub async fn uninstall(
     Ok(())
 }
 
-pub async fn drop_everything<C: ConnectionTrait>(db: &C) -> Result<(), DbErr> {
+pub async fn drop_everything<C: ConnectionTrait + TransactionTrait>(db: &C) -> Result<(), DbErr> {
+    if db.get_database_backend() == DbBackend::Postgres {
+        let transaction = db.begin().await?;
+        drop_everything_impl(&transaction).await?;
+        transaction.commit().await
+    } else {
+        drop_everything_impl(db).await
+    }
+}
+
+async fn drop_everything_impl<C: ConnectionTrait>(db: &C) -> Result<(), DbErr> {
     let db_backend = db.get_database_backend();
 
     // Temporarily disable the foreign key check
@@ -197,6 +181,48 @@ pub async fn drop_everything<C: ConnectionTrait>(db: &C) -> Result<(), DbErr> {
     Ok(())
 }
 
+fn should_use_transaction(migration: &dyn crate::MigrationTrait, backend: DbBackend) -> bool {
+    match migration.use_transaction() {
+        Some(v) => v,
+        None => backend == DbBackend::Postgres,
+    }
+}
+
+async fn insert_migration_record<C: ConnectionTrait>(
+    db: &C,
+    name: &str,
+    migration_table_name: DynIden,
+) -> Result<(), DbErr> {
+    #[cfg(not(feature = "with-time"))]
+    let applied_at = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("SystemTime before UNIX EPOCH!")
+        .as_secs() as i64;
+    #[cfg(feature = "with-time")]
+    let applied_at = sea_orm::prelude::TimeDateTimeWithTimeZone::now_utc().unix_timestamp();
+    seaql_migrations::Entity::insert(seaql_migrations::ActiveModel {
+        version: ActiveValue::Set(name.to_owned()),
+        applied_at: ActiveValue::Set(applied_at),
+    })
+    .table_name(migration_table_name)
+    .exec(db)
+    .await?;
+    Ok(())
+}
+
+async fn delete_migration_record<C: ConnectionTrait>(
+    db: &C,
+    name: &str,
+    migration_table_name: DynIden,
+) -> Result<(), DbErr> {
+    seaql_migrations::Entity::delete_many()
+        .filter(Expr::col(seaql_migrations::Column::Version).eq(name))
+        .table_name(migration_table_name)
+        .exec(db)
+        .await?;
+    Ok(())
+}
+
 pub async fn exec_up_with(
     manager: &SchemaManager<'_>,
     mut steps: Option<u32>,
@@ -221,19 +247,23 @@ pub async fn exec_up_with(
             }
             *steps -= 1;
         }
+
+        let use_txn = should_use_transaction(migration.as_ref(), db.get_database_backend());
         info!("Applying migration '{}'", migration.name());
-        migration.up(manager).await?;
-        info!("Migration '{}' has been applied", migration.name());
-        let now = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("SystemTime before UNIX EPOCH!");
-        seaql_migrations::Entity::insert(seaql_migrations::ActiveModel {
-            version: ActiveValue::Set(migration.name().to_owned()),
-            applied_at: ActiveValue::Set(now.as_secs() as i64),
-        })
-        .table_name(migration_table_name.clone())
-        .exec(db)
-        .await?;
+
+        if use_txn {
+            let transaction = db.begin().await?;
+            let txn_manager = SchemaManager::new(&transaction);
+            migration.up(&txn_manager).await?;
+            info!("Migration '{}' has been applied", migration.name());
+            insert_migration_record(&transaction, migration.name(), migration_table_name.clone())
+                .await?;
+            transaction.commit().await?;
+        } else {
+            migration.up(manager).await?;
+            info!("Migration '{}' has been applied", migration.name());
+            insert_migration_record(db, migration.name(), migration_table_name.clone()).await?;
+        }
     }
 
     Ok(())
@@ -263,14 +293,23 @@ pub async fn exec_down_with(
             }
             *steps -= 1;
         }
+
+        let use_txn = should_use_transaction(migration.as_ref(), db.get_database_backend());
         info!("Rolling back migration '{}'", migration.name());
-        migration.down(manager).await?;
-        info!("Migration '{}' has been rollbacked", migration.name());
-        seaql_migrations::Entity::delete_many()
-            .filter(Expr::col(seaql_migrations::Column::Version).eq(migration.name()))
-            .table_name(migration_table_name.clone())
-            .exec(db)
-            .await?;
+
+        if use_txn {
+            let transaction = db.begin().await?;
+            let txn_manager = SchemaManager::new(&transaction);
+            migration.down(&txn_manager).await?;
+            info!("Migration '{}' has been rolled back", migration.name());
+            delete_migration_record(&transaction, migration.name(), migration_table_name.clone())
+                .await?;
+            transaction.commit().await?;
+        } else {
+            migration.down(manager).await?;
+            info!("Migration '{}' has been rolled back", migration.name());
+            delete_migration_record(db, migration.name(), migration_table_name.clone()).await?;
+        }
     }
 
     Ok(())

@@ -120,6 +120,7 @@ macro_rules! db_span {
         let op = $crate::database::tracing_spans::DbOperation::from_sql(sql);
         ::tracing::info_span!(
             $name,
+            otel.kind = "client",
             db.system = $crate::database::tracing_spans::db_system_name($backend),
             db.operation = %op,
             db.statement = ::tracing::field::Empty,
@@ -160,7 +161,7 @@ macro_rules! with_db_span {
             if $record_stmt {
                 span.record("db.statement", $sql);
             }
-            span.in_scope($fut)
+            span.in_scope(|| $fut)
         }
         #[cfg(not(feature = "tracing-spans"))]
         {

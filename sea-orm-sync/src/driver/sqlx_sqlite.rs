@@ -14,8 +14,8 @@ use tracing::{instrument, warn};
 
 use crate::{
     AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
-    IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
-    sqlx_error_to_exec_err,
+    IsolationLevel, QueryStream, SqliteTransactionMode, Statement, TransactionError, debug_print,
+    error::*, executor::*, sqlx_error_to_exec_err,
 };
 
 use super::sqlx_common::*;
@@ -29,6 +29,7 @@ pub struct SqlxSqliteConnector;
 pub struct SqlxSqlitePoolConnection {
     pub(crate) pool: SqlitePool,
     metric_callback: Option<crate::metric::Callback>,
+    pub(crate) record_stmt_in_spans: bool,
 }
 
 impl std::fmt::Debug for SqlxSqlitePoolConnection {
@@ -42,6 +43,7 @@ impl From<SqlitePool> for SqlxSqlitePoolConnection {
         SqlxSqlitePoolConnection {
             pool,
             metric_callback: None,
+            record_stmt_in_spans: true,
         }
     }
 }
@@ -62,6 +64,7 @@ impl SqlxSqliteConnector {
     #[instrument(level = "trace")]
     pub fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let mut options = options;
+        let record_stmt_in_spans = options.get_record_stmt_in_spans();
         let mut sqlx_opts = options
             .url
             .parse::<SqliteConnectOptions>()
@@ -91,12 +94,18 @@ impl SqlxSqliteConnector {
         }
 
         let after_conn = options.after_connect.clone();
+        let connect_lazy = options.connect_lazy;
+        let sqlite_pool_opts_fn = options.sqlite_pool_opts_fn.clone();
+        let mut pool_options = options.sqlx_pool_options();
 
-        let pool = if options.connect_lazy {
-            options.sqlx_pool_options().connect_lazy_with(sqlx_opts)
+        if let Some(f) = &sqlite_pool_opts_fn {
+            pool_options = f(pool_options);
+        }
+
+        let pool = if connect_lazy {
+            pool_options.connect_lazy_with(sqlx_opts)
         } else {
-            options
-                .sqlx_pool_options()
+            pool_options
                 .connect_with(sqlx_opts)
                 .map_err(sqlx_error_to_conn_err)?
         };
@@ -104,6 +113,7 @@ impl SqlxSqliteConnector {
         let pool = SqlxSqlitePoolConnection {
             pool,
             metric_callback: None,
+            record_stmt_in_spans,
         };
 
         #[cfg(feature = "sqlite-use-returning-for-3_35")]
@@ -129,6 +139,7 @@ impl SqlxSqliteConnector {
         DatabaseConnectionType::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection {
             pool,
             metric_callback: None,
+            record_stmt_in_spans: true,
         })
         .into()
     }
@@ -214,13 +225,16 @@ impl SqlxSqlitePoolConnection {
         &self,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
+        sqlite_transaction_mode: Option<SqliteTransactionMode>,
     ) -> Result<DatabaseTransaction, DbErr> {
         let conn = self.pool.acquire().map_err(sqlx_conn_acquire_err)?;
         DatabaseTransaction::new_sqlite(
             conn,
             self.metric_callback.clone(),
+            self.record_stmt_in_spans,
             isolation_level,
             access_mode,
+            sqlite_transaction_mode,
         )
     }
 
@@ -240,8 +254,10 @@ impl SqlxSqlitePoolConnection {
         let transaction = DatabaseTransaction::new_sqlite(
             conn,
             self.metric_callback.clone(),
+            self.record_stmt_in_spans,
             isolation_level,
             access_mode,
+            None,
         )
         .map_err(|e| TransactionError::Connection(e))?;
         transaction.run(callback)
@@ -352,15 +368,19 @@ impl crate::DatabaseTransaction {
     pub(crate) fn new_sqlite(
         inner: PoolConnection<sqlx::Sqlite>,
         metric_callback: Option<crate::metric::Callback>,
+        record_stmt_in_spans: bool,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
+        sqlite_transaction_mode: Option<SqliteTransactionMode>,
     ) -> Result<crate::DatabaseTransaction, DbErr> {
         Self::begin(
             Arc::new(Mutex::new(crate::InnerConnection::Sqlite(inner))),
             crate::DbBackend::Sqlite,
             metric_callback,
+            record_stmt_in_spans,
             isolation_level,
             access_mode,
+            sqlite_transaction_mode,
         )
     }
 }

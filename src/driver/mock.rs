@@ -271,6 +271,8 @@ impl crate::DatabaseTransaction {
             Arc::new(Mutex::new(crate::InnerConnection::Mock(inner))),
             backend,
             metric_callback,
+            true,
+            None,
             None,
             None,
         )

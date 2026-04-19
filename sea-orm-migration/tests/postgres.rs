@@ -6,7 +6,7 @@ mod inner {
     use sea_orm::{ConnectOptions, ConnectionTrait, Database, DbBackend, Statement, error::DbErr};
     use sea_orm_migration::prelude::*;
 
-    #[async_std::test]
+    #[tokio::test]
     async fn test_fresh_with_extension() -> Result<(), DbErr> {
         let url =
             &std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");

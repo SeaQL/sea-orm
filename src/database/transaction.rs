@@ -1,16 +1,18 @@
 #![allow(unused_assignments)]
-use crate::{
-    AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
-    QueryResult, Statement, StreamTrait, TransactionSession, TransactionStream, TransactionTrait,
-    debug_print, error::*,
-};
-#[cfg(feature = "sqlx-dep")]
-use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
+use std::{future::Future, pin::Pin, sync::Arc};
+
 use futures_util::lock::Mutex;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::TransactionManager;
-use std::{future::Future, pin::Pin, sync::Arc};
 use tracing::instrument;
+
+use crate::{
+    AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
+    QueryResult, SqliteTransactionMode, Statement, StreamTrait, TransactionOptions,
+    TransactionSession, TransactionStream, TransactionTrait, debug_print, error::*,
+};
+#[cfg(feature = "sqlx-dep")]
+use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 
 /// Defines a database transaction, whether it is an open transaction and the type of
 /// backend to use.
@@ -21,6 +23,7 @@ pub struct DatabaseTransaction {
     backend: DbBackend,
     open: bool,
     metric_callback: Option<crate::metric::Callback>,
+    record_stmt_in_spans: bool,
 }
 
 impl std::fmt::Debug for DatabaseTransaction {
@@ -35,14 +38,17 @@ impl DatabaseTransaction {
         conn: Arc<Mutex<InnerConnection>>,
         backend: DbBackend,
         metric_callback: Option<crate::metric::Callback>,
+        record_stmt_in_spans: bool,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
+        sqlite_transaction_mode: Option<SqliteTransactionMode>,
     ) -> Result<DatabaseTransaction, DbErr> {
         let res = DatabaseTransaction {
             conn,
             backend,
             open: true,
             metric_callback,
+            record_stmt_in_spans,
         };
 
         let begin_result: Result<(), DbErr> = super::tracing_spans::with_db_span!(
@@ -85,19 +91,27 @@ impl DatabaseTransaction {
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     InnerConnection::Sqlite(c) => {
-                        // in SQLite isolation level and access mode are global settings
                         crate::driver::sqlx_sqlite::set_transaction_config(
                             c,
                             isolation_level,
                             access_mode,
                         )
                         .await?;
-                        <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, None)
+                        let depth = <sqlx::Sqlite as sqlx::Database>::TransactionManager::get_transaction_depth(c);
+                        let statement = if depth == 0 {
+                            sqlite_transaction_mode.map(|mode| {
+                                std::borrow::Cow::from(format!("BEGIN {}", mode.sqlite_keyword()))
+                            })
+                        } else {
+                            // Nested transaction uses SAVEPOINT; the mode only applies to the top-level BEGIN
+                            None
+                        };
+                        <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, statement)
                             .await
                             .map_err(sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "rusqlite")]
-                    InnerConnection::Rusqlite(c) => c.begin(),
+                    InnerConnection::Rusqlite(c) => c.begin(sqlite_transaction_mode),
                     #[cfg(feature = "mock")]
                     InnerConnection::Mock(c) => {
                         c.begin();
@@ -330,7 +344,7 @@ impl ConnectionTrait for DatabaseTransaction {
             "sea_orm.execute",
             self.backend,
             stmt.sql.as_str(),
-            record_stmt = true,
+            record_stmt = self.record_stmt_in_spans,
             async {
                 #[cfg(not(feature = "sync"))]
                 let conn = &mut *self.conn.lock().await;
@@ -449,7 +463,7 @@ impl ConnectionTrait for DatabaseTransaction {
             "sea_orm.query_one",
             self.backend,
             stmt.sql.as_str(),
-            record_stmt = true,
+            record_stmt = self.record_stmt_in_spans,
             async {
                 #[cfg(not(feature = "sync"))]
                 let conn = &mut *self.conn.lock().await;
@@ -509,7 +523,7 @@ impl ConnectionTrait for DatabaseTransaction {
             "sea_orm.query_all",
             self.backend,
             stmt.sql.as_str(),
-            record_stmt = true,
+            record_stmt = self.record_stmt_in_spans,
             async {
                 #[cfg(not(feature = "sync"))]
                 let conn = &mut *self.conn.lock().await;
@@ -603,6 +617,8 @@ impl TransactionTrait for DatabaseTransaction {
             Arc::clone(&self.conn),
             self.backend,
             self.metric_callback.clone(),
+            self.record_stmt_in_spans,
+            None,
             None,
             None,
         )
@@ -619,8 +635,27 @@ impl TransactionTrait for DatabaseTransaction {
             Arc::clone(&self.conn),
             self.backend,
             self.metric_callback.clone(),
+            self.record_stmt_in_spans,
             isolation_level,
             access_mode,
+            None,
+        )
+        .await
+    }
+
+    #[instrument(level = "trace")]
+    async fn begin_with_options(
+        &self,
+        options: TransactionOptions,
+    ) -> Result<DatabaseTransaction, DbErr> {
+        DatabaseTransaction::begin(
+            Arc::clone(&self.conn),
+            self.backend,
+            self.metric_callback.clone(),
+            self.record_stmt_in_spans,
+            options.isolation_level,
+            options.access_mode,
+            options.sqlite_transaction_mode,
         )
         .await
     }

@@ -167,8 +167,7 @@ pub trait FromQueryResult: Sized {
     ///     r#"SELECT "name", COUNT(*) AS "num_of_cakes" FROM "cake" GROUP BY("name")"#,
     ///     [],
     /// ))
-    /// .all(&db)
-    /// ?;
+    /// .all(&db)?;
     ///
     /// assert_eq!(
     ///     res,

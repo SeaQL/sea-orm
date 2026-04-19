@@ -10,7 +10,7 @@ license       = "MIT OR Apache-2.0"
 name          = "sea-orm-macros"
 repository    = "https://github.com/SeaQL/sea-orm"
 rust-version  = "1.85.0"
-version       = "2.0.0-rc.34"
+version       = "2.0.0-rc.38"
 
 [lib]
 name       = "sea_orm_macros"
@@ -47,6 +47,7 @@ derive          = ["bae"]
 entity-registry = []
 postgres-array  = []
 seaography      = ["proc-macro-crate"]
+sqlx-postgres   = []
 strum           = []
 with-arrow      = []
 with-json       = []

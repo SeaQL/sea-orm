@@ -31,4 +31,13 @@ pub trait MigrationTrait: MigrationName + Send + Sync {
     async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
         Err(DbErr::Migration("We Don't Do That Here".to_owned()))
     }
+
+    /// Control whether this migration runs inside a transaction.
+    ///
+    /// - `None` (default): follow backend convention (Postgres = transaction, MySQL/SQLite = no transaction)
+    /// - `Some(true)`: force wrapping in a transaction on any backend
+    /// - `Some(false)`: disable automatic transaction wrapping (use `manager.begin()` for manual control)
+    fn use_transaction(&self) -> Option<bool> {
+        None
+    }
 }

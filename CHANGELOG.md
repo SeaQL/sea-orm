@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 2.0.0 - pending
 
+### Release Candidates
+
+- [2.0.0-rc.38](changelog/2.0.0-rc.38.md) — `find_both_related`, `set_ne`, pool options, schema sync fixes
+- [2.0.0-rc.37](changelog/2.0.0-rc.37.md) — ER Diagram Generation
+- [2.0.0-rc.36](changelog/2.0.0-rc.36.md) — Per-migration transaction control
+- [2.0.0-rc.35](changelog/2.0.0-rc.35.md) — SQLite transaction modes, DeriveIntoActiveModel extensions, Decimal64/Bytes, schema sync fix
+- [2.0.0-rc.34](changelog/2.0.0-rc.34.md) — Arrow/Parquet support, `try_from_u64` for DeriveValueType
+- [2.0.0-rc.32](changelog/2.0.0-rc.32.md) — `MigratorTrait` with `self`, PostgreSQL `application_name`
+- [2.0.0-rc.31](changelog/2.0.0-rc.31.md) — `ne_all`, typed `TextUuid`, COUNT overflow fix
+- [2.0.0-rc.30](changelog/2.0.0-rc.30.md) — Maintenance release, `sea-query` bump
+- [2.0.0-rc.29](changelog/2.0.0-rc.29.md) — Tracing spans, UUID-as-TEXT, relation filtering, LEFT JOIN fix
+- [2.0.0-rc.28](changelog/2.0.0-rc.28.md) — `sqlx-all` in migration, `set_if_not_equals_and`, auto_increment for String/Uuid PKs
+- [2.0.0-rc.27](changelog/2.0.0-rc.27.md) — `DeriveValueType` implements `NotU8` for PostgreSQL arrays
+- [2.0.0-rc.26](changelog/2.0.0-rc.26.md) — `postgres-use-serial-pk` feature for legacy serial PKs
+- [2.0.0-rc.25](changelog/2.0.0-rc.25.md) — Value system restoration, `sea-query` bump
+- [2.0.0-rc.24](changelog/2.0.0-rc.24.md) — `sea-query` bump to rc.27
+- [2.0.0-rc.23](changelog/2.0.0-rc.23.md) — `DeriveValueType` implements `IntoActiveValue`, remove `NotU8`
+- [2.0.0-rc.22](changelog/2.0.0-rc.22.md) — `DatabaseExecutor` unified type, value array refactor
+- [2.0.0-rc.21](changelog/2.0.0-rc.21.md) — Rusqlite / `sea-orm-sync` crate, `exists` on PaginatorTrait
+- [2.0.0-rc.20](changelog/2.0.0-rc.20.md) — Stringy newtypes, M2M self-ref, nullable columns, bug fixes
+
 ### New Features
 
 * Role Based Access Control https://github.com/SeaQL/sea-orm/pull/2683
@@ -665,6 +686,8 @@ pub struct MyUserId(pub UserId);
     + Support decimal with different formats
     + Support timestamp with different timezone / resolution
     + Added parquet example
+* Support `HashMap` and `BTreeMap` for JSON columns via `TryGetableFromJson` https://github.com/SeaQL/sea-orm/pull/3009
+* Derive macros now inherit the visibility of the input type for generated items such as `Entity`, `Column`, `PrimaryKey`, and `ActiveModel` https://github.com/SeaQL/sea-orm/pull/3029
 
 ### Breaking Changes
 

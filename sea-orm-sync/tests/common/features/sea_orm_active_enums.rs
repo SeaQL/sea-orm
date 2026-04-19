@@ -18,8 +18,10 @@ pub enum Color {
     White,
 }
 
+// Changed to rs_type to "Enum" for test showcase
+// Works the same with rs_type "String"
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "tea")]
+#[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "tea")]
 pub enum Tea {
     #[sea_orm(string_value = "EverydayTea")]
     EverydayTea,

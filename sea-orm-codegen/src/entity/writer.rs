@@ -10,6 +10,7 @@ mod compact;
 mod dense;
 mod expanded;
 mod frontend;
+mod mermaid;
 
 #[derive(Clone, Debug)]
 pub struct EntityWriter {

@@ -1352,7 +1352,66 @@ mod rust_decimal_tests {
             decimal_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
         assert_eq!(batch.num_rows(), 2);
 
-        // Verify Decimal128 column
+        // price has precision 10 (≤18), so it becomes Decimal64
+        let price_arr = batch
+            .column_by_name("price")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Decimal64Array>()
+            .unwrap();
+        assert_eq!(price_arr.value(0), 1234567);
+        assert_eq!(price_arr.precision(), 10);
+        assert_eq!(price_arr.scale(), 2);
+
+        // nullable_decimal also has precision 10 → Decimal64
+        let nullable_arr = batch
+            .column_by_name("nullable_decimal")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Decimal64Array>()
+            .unwrap();
+        assert!(!nullable_arr.is_null(0));
+        assert!(nullable_arr.is_null(1));
+
+        // Full roundtrip
+        let roundtripped =
+            decimal_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+        assert_eq!(roundtripped, models);
+    }
+
+    #[test]
+    fn test_to_arrow_rust_decimal_decimal128_roundtrip() {
+        use rust_decimal::Decimal;
+
+        let schema = Schema::new(vec![
+            Field::new("id", DataType::Int32, true),
+            Field::new("price", DataType::Decimal128(10, 2), true),
+            Field::new("amount", DataType::Decimal128(20, 4), true),
+            Field::new("nullable_decimal", DataType::Decimal128(10, 2), true),
+        ]);
+
+        let price = Decimal::new(1234567, 2);
+        let amount = Decimal::new(98765432109, 4);
+
+        let models = vec![
+            decimal_entity::ActiveModel {
+                id: Set(1),
+                price: Set(price),
+                amount: Set(amount),
+                nullable_decimal: Set(Some(price)),
+            },
+            decimal_entity::ActiveModel {
+                id: Set(2),
+                price: Set(price),
+                amount: Set(amount),
+                nullable_decimal: Set(None),
+            },
+        ];
+
+        let batch =
+            decimal_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
+        assert_eq!(batch.num_rows(), 2);
+
         let price_arr = batch
             .column_by_name("price")
             .unwrap()
@@ -1363,7 +1422,16 @@ mod rust_decimal_tests {
         assert_eq!(price_arr.precision(), 10);
         assert_eq!(price_arr.scale(), 2);
 
-        // Verify nullable decimal: row 0 present, row 1 null
+        let amount_arr = batch
+            .column_by_name("amount")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Decimal128Array>()
+            .unwrap();
+        assert_eq!(amount_arr.value(0), 98765432109);
+        assert_eq!(amount_arr.precision(), 20);
+        assert_eq!(amount_arr.scale(), 4);
+
         let nullable_arr = batch
             .column_by_name("nullable_decimal")
             .unwrap()
@@ -1371,9 +1439,10 @@ mod rust_decimal_tests {
             .downcast_ref::<Decimal128Array>()
             .unwrap();
         assert!(!nullable_arr.is_null(0));
+        assert_eq!(nullable_arr.value(0), 1234567);
         assert!(nullable_arr.is_null(1));
 
-        // Full roundtrip
+        // Roundtrip through Decimal128
         let roundtripped =
             decimal_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
         assert_eq!(roundtripped, models);
@@ -1543,7 +1612,67 @@ mod bigdecimal_tests {
             decimal_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
         assert_eq!(batch.num_rows(), 2);
 
-        // Verify Decimal128 column
+        // price has precision 10 (≤18), so it becomes Decimal64
+        let price_arr = batch
+            .column_by_name("price")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Decimal64Array>()
+            .unwrap();
+        assert_eq!(price_arr.value(0), 1234567);
+        assert_eq!(price_arr.precision(), 10);
+        assert_eq!(price_arr.scale(), 2);
+
+        // nullable_decimal also has precision 10 → Decimal64
+        let nullable_arr = batch
+            .column_by_name("nullable_decimal")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Decimal64Array>()
+            .unwrap();
+        assert!(!nullable_arr.is_null(0));
+        assert!(nullable_arr.is_null(1));
+
+        // Full roundtrip
+        let roundtripped =
+            decimal_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
+        assert_eq!(roundtripped, models);
+    }
+
+    #[test]
+    #[cfg(not(feature = "with-rust_decimal"))]
+    fn test_to_arrow_bigdecimal_decimal128_roundtrip() {
+        use bigdecimal::{BigDecimal, num_bigint::BigInt};
+
+        let schema = Schema::new(vec![
+            Field::new("id", DataType::Int32, true),
+            Field::new("price", DataType::Decimal128(10, 2), true),
+            Field::new("amount", DataType::Decimal128(20, 4), true),
+            Field::new("nullable_decimal", DataType::Decimal128(10, 2), true),
+        ]);
+
+        let price = BigDecimal::new(BigInt::from(1234567i64), 2);
+        let amount = BigDecimal::new(BigInt::from(98765432109i64), 4);
+
+        let models = vec![
+            decimal_entity::ActiveModel {
+                id: Set(1),
+                price: Set(price.clone()),
+                amount: Set(amount.clone()),
+                nullable_decimal: Set(Some(price.clone())),
+            },
+            decimal_entity::ActiveModel {
+                id: Set(2),
+                price: Set(price.clone()),
+                amount: Set(amount.clone()),
+                nullable_decimal: Set(None),
+            },
+        ];
+
+        let batch =
+            decimal_entity::ActiveModel::to_arrow(&models, &schema).expect("to_arrow failed");
+        assert_eq!(batch.num_rows(), 2);
+
         let price_arr = batch
             .column_by_name("price")
             .unwrap()
@@ -1554,7 +1683,16 @@ mod bigdecimal_tests {
         assert_eq!(price_arr.precision(), 10);
         assert_eq!(price_arr.scale(), 2);
 
-        // Verify nullable: row 0 present, row 1 null
+        let amount_arr = batch
+            .column_by_name("amount")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Decimal128Array>()
+            .unwrap();
+        assert_eq!(amount_arr.value(0), 98765432109);
+        assert_eq!(amount_arr.precision(), 20);
+        assert_eq!(amount_arr.scale(), 4);
+
         let nullable_arr = batch
             .column_by_name("nullable_decimal")
             .unwrap()
@@ -1562,11 +1700,12 @@ mod bigdecimal_tests {
             .downcast_ref::<Decimal128Array>()
             .unwrap();
         assert!(!nullable_arr.is_null(0));
+        assert_eq!(nullable_arr.value(0), 1234567);
         assert!(nullable_arr.is_null(1));
 
-        // Full roundtrip
+        // Roundtrip through Decimal128
         let roundtripped =
             decimal_entity::ActiveModel::from_arrow(&batch).expect("from_arrow failed");
-        assert_eq!(roundtripped, original);
+        assert_eq!(roundtripped, models);
     }
 }

@@ -145,6 +145,8 @@ pub fn arrow_array_to_value(
                 .ok_or_else(|| type_err("BooleanArray", "Boolean", array))?;
             Ok(Value::Bool(Some(arr.value(row))))
         }
+        // Binary types
+        ColumnType::Binary(_) | ColumnType::VarBinary(_) => arrow_to_bytes(array, row),
         // Decimal types
         ColumnType::Decimal(_) | ColumnType::Money(_) => arrow_to_decimal(array, row),
         // Date/time types: delegate to feature-gated helpers.
@@ -209,6 +211,27 @@ pub fn is_datetime_column(col_type: &ColumnType) -> bool {
 }
 
 // ---------------------------------------------------------------------------
+// Binary helpers
+// ---------------------------------------------------------------------------
+
+fn arrow_to_bytes(array: &dyn Array, row: usize) -> Result<Value, ArrowError> {
+    if let Some(arr) = array.as_any().downcast_ref::<BinaryArray>() {
+        return Ok(Value::Bytes(Some(arr.value(row).to_vec())));
+    }
+    if let Some(arr) = array.as_any().downcast_ref::<LargeBinaryArray>() {
+        return Ok(Value::Bytes(Some(arr.value(row).to_vec())));
+    }
+    if let Some(arr) = array.as_any().downcast_ref::<FixedSizeBinaryArray>() {
+        return Ok(Value::Bytes(Some(arr.value(row).to_vec())));
+    }
+    Err(type_err(
+        "BinaryArray, LargeBinaryArray, or FixedSizeBinaryArray",
+        "Binary/VarBinary",
+        array,
+    ))
+}
+
+// ---------------------------------------------------------------------------
 // Decimal helpers
 // ---------------------------------------------------------------------------
 
@@ -222,6 +245,13 @@ fn arrow_to_decimal(array: &dyn Array, row: usize) -> Result<Value, ArrowError> 
         return decimal128_to_value(value, precision, scale);
     }
 
+    if let Some(arr) = array.as_any().downcast_ref::<Decimal64Array>() {
+        let value = arr.value(row);
+        let precision = arr.precision();
+        let scale = arr.scale();
+        return decimal64_to_value(value, precision, scale);
+    }
+
     if let Some(arr) = array.as_any().downcast_ref::<Decimal256Array>() {
         let value = arr.value(row);
         let precision = arr.precision();
@@ -230,10 +260,49 @@ fn arrow_to_decimal(array: &dyn Array, row: usize) -> Result<Value, ArrowError> 
     }
 
     Err(type_err(
-        "Decimal128Array or Decimal256Array",
+        "Decimal64Array, Decimal128Array, or Decimal256Array",
         "Decimal",
         array,
     ))
+}
+
+#[cfg(feature = "with-rust_decimal")]
+fn decimal64_to_value(value: i64, _precision: u8, scale: i8) -> Result<Value, ArrowError> {
+    use sea_query::prelude::Decimal;
+
+    if scale < 0 {
+        #[cfg(feature = "with-bigdecimal")]
+        return decimal64_to_bigdecimal(value, scale);
+
+        #[cfg(not(feature = "with-bigdecimal"))]
+        return Err(ArrowError::Unsupported(format!(
+            "Decimal64 with negative scale={scale} not supported by rust_decimal. \
+             Enable 'with-bigdecimal' feature."
+        )));
+    }
+
+    let decimal = Decimal::from_i128_with_scale(value as i128, scale as u32);
+    Ok(Value::Decimal(Some(decimal)))
+}
+
+#[cfg(not(feature = "with-rust_decimal"))]
+fn decimal64_to_value(_value: i64, _precision: u8, _scale: i8) -> Result<Value, ArrowError> {
+    #[cfg(feature = "with-bigdecimal")]
+    return decimal64_to_bigdecimal(_value, _scale);
+
+    #[cfg(not(feature = "with-bigdecimal"))]
+    Err(ArrowError::Unsupported(
+        "Decimal64Array requires 'with-rust_decimal' or 'with-bigdecimal' feature".into(),
+    ))
+}
+
+#[cfg(feature = "with-bigdecimal")]
+fn decimal64_to_bigdecimal(value: i64, scale: i8) -> Result<Value, ArrowError> {
+    use sea_query::prelude::bigdecimal::{BigDecimal, num_bigint::BigInt};
+
+    let bigint = BigInt::from(value);
+    let decimal = BigDecimal::new(bigint, scale as i64);
+    Ok(Value::BigDecimal(Some(Box::new(decimal))))
 }
 
 #[cfg(feature = "with-rust_decimal")]
@@ -577,6 +646,7 @@ fn null_value_for_type(col_type: &ColumnType) -> Value {
         ColumnType::Float => Value::Float(None),
         ColumnType::Double => Value::Double(None),
         ColumnType::String(_) | ColumnType::Text | ColumnType::Char(_) => Value::String(None),
+        ColumnType::Binary(_) | ColumnType::VarBinary(_) => Value::Bytes(None),
         ColumnType::Boolean => Value::Bool(None),
         #[cfg(feature = "with-rust_decimal")]
         ColumnType::Decimal(_) | ColumnType::Money(_) => Value::Decimal(None),
@@ -770,6 +840,28 @@ pub fn values_to_arrow_array(
                 .collect();
             Ok(Arc::new(BinaryArray::from(bufs)))
         }
+        DataType::LargeBinary => {
+            let bufs: Vec<Option<&[u8]>> = values
+                .iter()
+                .map(|v| match v {
+                    Value::Bytes(Some(b)) => Some(b.as_slice()),
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(LargeBinaryArray::from(bufs)))
+        }
+        DataType::FixedSizeBinary(byte_width) => {
+            let mut builder = FixedSizeBinaryBuilder::with_capacity(values.len(), *byte_width);
+            for v in values {
+                match v {
+                    Value::Bytes(Some(b)) => builder.append_value(b.as_slice()).map_err(|e| {
+                        ArrowError::Unsupported(format!("FixedSizeBinary append error: {e}"))
+                    })?,
+                    _ => builder.append_null(),
+                }
+            }
+            Ok(Arc::new(builder.finish()))
+        }
         DataType::Date32 => {
             let arr: Date32Array = values.iter().map(extract_date32).collect();
             Ok(Arc::new(arr))
@@ -834,6 +926,18 @@ pub fn values_to_arrow_array(
                 }
             };
             Ok(arr)
+        }
+        DataType::Decimal64(precision, scale) => {
+            let arr: Decimal64Array = values
+                .iter()
+                .map(|v| extract_decimal64(v, *scale))
+                .collect();
+            let arr = arr
+                .with_precision_and_scale(*precision, *scale)
+                .map_err(|e| {
+                    ArrowError::Unsupported(format!("Invalid Decimal64 precision/scale: {e}"))
+                })?;
+            Ok(Arc::new(arr))
         }
         DataType::Decimal128(precision, scale) => {
             let arr: Decimal128Array = values
@@ -1018,6 +1122,30 @@ pub fn option_values_to_arrow_array(
                 .collect();
             Ok(Arc::new(BinaryArray::from(bufs)))
         }
+        DataType::LargeBinary => {
+            let bufs: Vec<Option<&[u8]>> = values
+                .iter()
+                .map(|v| match v {
+                    Some(Value::Bytes(Some(b))) => Some(b.as_slice()),
+                    _ => None,
+                })
+                .collect();
+            Ok(Arc::new(LargeBinaryArray::from(bufs)))
+        }
+        DataType::FixedSizeBinary(byte_width) => {
+            let mut builder = FixedSizeBinaryBuilder::with_capacity(values.len(), *byte_width);
+            for v in values {
+                match v {
+                    Some(Value::Bytes(Some(b))) => {
+                        builder.append_value(b.as_slice()).map_err(|e| {
+                            ArrowError::Unsupported(format!("FixedSizeBinary append error: {e}"))
+                        })?
+                    }
+                    _ => builder.append_null(),
+                }
+            }
+            Ok(Arc::new(builder.finish()))
+        }
         DataType::Date32 => {
             let arr: Date32Array = values.iter().map(extract_date32_option).collect();
             Ok(Arc::new(arr))
@@ -1090,6 +1218,18 @@ pub fn option_values_to_arrow_array(
                 }
             };
             Ok(arr)
+        }
+        DataType::Decimal64(precision, scale) => {
+            let arr: Decimal64Array = values
+                .iter()
+                .map(|v| extract_decimal64_option(v, *scale))
+                .collect();
+            let arr = arr
+                .with_precision_and_scale(*precision, *scale)
+                .map_err(|e| {
+                    ArrowError::Unsupported(format!("Invalid Decimal64 precision/scale: {e}"))
+                })?;
+            Ok(Arc::new(arr))
         }
         DataType::Decimal128(precision, scale) => {
             let arr: Decimal128Array = values
@@ -1280,6 +1420,43 @@ fn offset_dt_to_timestamp(
 // ---------------------------------------------------------------------------
 // Decimal extraction helpers
 // ---------------------------------------------------------------------------
+
+fn extract_decimal64_option(v: &Option<Value>, target_scale: i8) -> Option<i64> {
+    extract_decimal64(v.as_ref()?, target_scale)
+}
+
+fn extract_decimal64(v: &Value, target_scale: i8) -> Option<i64> {
+    #[cfg(feature = "with-rust_decimal")]
+    if let Value::Decimal(Some(d)) = v {
+        let mantissa = d.mantissa();
+        let current_scale = d.scale() as i8;
+        let scale_diff = target_scale - current_scale;
+        let scaled = if scale_diff >= 0 {
+            mantissa * 10i128.pow(scale_diff as u32)
+        } else {
+            mantissa / 10i128.pow((-scale_diff) as u32)
+        };
+        return i64::try_from(scaled).ok();
+    }
+    #[cfg(feature = "with-bigdecimal")]
+    if let Value::BigDecimal(Some(d)) = v {
+        return bigdecimal_to_i64(d, target_scale);
+    }
+    let _ = (v, target_scale);
+    None
+}
+
+#[cfg(feature = "with-bigdecimal")]
+fn bigdecimal_to_i64(
+    d: &sea_query::prelude::bigdecimal::BigDecimal,
+    target_scale: i8,
+) -> Option<i64> {
+    use sea_query::prelude::bigdecimal::ToPrimitive;
+
+    let rescaled = d.clone().with_scale(target_scale as i64);
+    let (digits, _) = rescaled.into_bigint_and_exponent();
+    digits.to_i64()
+}
 
 fn extract_decimal128_option(v: &Option<Value>, target_scale: i8) -> Option<i128> {
     extract_decimal128(v.as_ref()?, target_scale)

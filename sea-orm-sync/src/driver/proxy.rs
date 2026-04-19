@@ -149,6 +149,8 @@ impl crate::DatabaseTransaction {
             Arc::new(Mutex::new(crate::InnerConnection::Proxy(inner))),
             backend,
             metric_callback,
+            true,
+            None,
             None,
             None,
         )

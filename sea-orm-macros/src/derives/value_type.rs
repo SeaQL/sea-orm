@@ -145,9 +145,10 @@ impl DeriveValueTypeStruct {
 
         let field_span = field.span();
         let ty = field.ty;
-        let field_type = quote! { #ty }
+        let field_type: String = quote! { #ty }
             .to_string() //E.g.: "Option < String >"
-            .replace(' ', ""); // Remove spaces
+            .split_whitespace()
+            .collect(); // Remove all whitespace
         let field_type = if field_type.starts_with("Option<") {
             &field_type[7..(field_type.len() - 1)] // Extract `T` out of `Option<T>`
         } else {

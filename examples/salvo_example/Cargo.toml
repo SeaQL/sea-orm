@@ -10,3 +10,5 @@ members = [".", "api", "entity", "migration"]
 
 [dependencies]
 salvo-example-api = { path = "api" }
+
+[patch.crates-io]

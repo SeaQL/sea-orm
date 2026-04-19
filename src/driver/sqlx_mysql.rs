@@ -29,6 +29,7 @@ pub struct SqlxMySqlConnector;
 pub struct SqlxMySqlPoolConnection {
     pub(crate) pool: MySqlPool,
     metric_callback: Option<crate::metric::Callback>,
+    pub(crate) record_stmt_in_spans: bool,
 }
 
 impl std::fmt::Debug for SqlxMySqlPoolConnection {
@@ -42,6 +43,7 @@ impl From<MySqlPool> for SqlxMySqlPoolConnection {
         SqlxMySqlPoolConnection {
             pool,
             metric_callback: None,
+            record_stmt_in_spans: true,
         }
     }
 }
@@ -61,6 +63,7 @@ impl SqlxMySqlConnector {
     /// Add configuration options for the MySQL database
     #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
+        let record_stmt_in_spans = options.get_record_stmt_in_spans();
         let mut sqlx_opts = options
             .url
             .parse::<MySqlConnectOptions>()
@@ -81,14 +84,17 @@ impl SqlxMySqlConnector {
         if let Some(f) = &options.mysql_opts_fn {
             sqlx_opts = f(sqlx_opts);
         }
-
         let after_connect = options.after_connect.clone();
-
-        let pool = if options.connect_lazy {
-            options.sqlx_pool_options().connect_lazy_with(sqlx_opts)
+        let connect_lazy = options.connect_lazy;
+        let mysql_pool_opts_fn = options.mysql_pool_opts_fn.clone();
+        let mut pool_options = options.sqlx_pool_options();
+        if let Some(f) = &mysql_pool_opts_fn {
+            pool_options = f(pool_options);
+        }
+        let pool = if connect_lazy {
+            pool_options.connect_lazy_with(sqlx_opts)
         } else {
-            options
-                .sqlx_pool_options()
+            pool_options
                 .connect_with(sqlx_opts)
                 .await
                 .map_err(sqlx_error_to_conn_err)?
@@ -98,6 +104,7 @@ impl SqlxMySqlConnector {
             DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
                 pool,
                 metric_callback: None,
+                record_stmt_in_spans,
             })
             .into();
 
@@ -115,6 +122,7 @@ impl SqlxMySqlConnector {
         DatabaseConnectionType::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
             pool,
             metric_callback: None,
+            record_stmt_in_spans: true,
         })
         .into()
     }
@@ -205,6 +213,7 @@ impl SqlxMySqlPoolConnection {
         DatabaseTransaction::new_mysql(
             conn,
             self.metric_callback.clone(),
+            self.record_stmt_in_spans,
             isolation_level,
             access_mode,
         )
@@ -231,6 +240,7 @@ impl SqlxMySqlPoolConnection {
         let transaction = DatabaseTransaction::new_mysql(
             conn,
             self.metric_callback.clone(),
+            self.record_stmt_in_spans,
             isolation_level,
             access_mode,
         )
@@ -341,6 +351,7 @@ impl crate::DatabaseTransaction {
     pub(crate) async fn new_mysql(
         inner: PoolConnection<sqlx::MySql>,
         metric_callback: Option<crate::metric::Callback>,
+        record_stmt_in_spans: bool,
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
     ) -> Result<crate::DatabaseTransaction, DbErr> {
@@ -348,8 +359,10 @@ impl crate::DatabaseTransaction {
             Arc::new(Mutex::new(crate::InnerConnection::MySql(inner))),
             crate::DbBackend::MySql,
             metric_callback,
+            record_stmt_in_spans,
             isolation_level,
             access_mode,
+            None,
         )
         .await
     }

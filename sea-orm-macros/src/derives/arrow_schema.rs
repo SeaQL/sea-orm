@@ -23,7 +23,10 @@ pub fn expand_derive_arrow_schema(
                     let field_type = &field.ty;
 
                     // Detect if field is Option<T> for nullability
-                    let type_string = quote! { #field_type }.to_string().replace(' ', "");
+                    let type_string: String = quote! { #field_type }
+                        .to_string()
+                        .split_whitespace()
+                        .collect();
                     let is_nullable = type_string.starts_with("Option<");
 
                     // Parse field attributes
@@ -59,11 +62,16 @@ pub fn expand_derive_arrow_schema(
                                 } else if meta.path.is_ident("arrow_comment") {
                                     let lit: LitStr = meta.value()?.parse()?;
                                     arrow_attrs.comment = Some(lit.value());
+                                } else if meta.path.is_ident("arrow_byte_width") {
+                                    let lit: LitInt = meta.value()?.parse()?;
+                                    arrow_attrs.byte_width = Some(lit.base10_parse()?);
                                 } else if meta.path.is_ident("column_type") {
                                     let lit: LitStr = meta.value()?.parse()?;
                                     column_type_str = Some(lit.value());
                                 } else if meta.path.is_ident("nullable") {
                                     arrow_attrs.nullable_attr = true;
+                                } else {
+                                    let _ = meta.value().and_then(|v| v.parse::<syn::Expr>());
                                 }
                                 Ok(())
                             })?;
@@ -121,6 +129,7 @@ struct ArrowFieldAttrs {
     timezone: Option<String>,
     comment: Option<String>,
     nullable_attr: bool,
+    byte_width: Option<i32>,
 }
 
 struct ArrowFieldInfo {
@@ -189,16 +198,21 @@ fn column_type_to_arrow_datatype(col_type: &str, arrow_attrs: &ArrowFieldAttrs) 
         let final_precision = arrow_attrs.precision.unwrap_or(precision);
         let final_scale = arrow_attrs.scale.unwrap_or(scale);
 
-        if final_precision <= 38 {
+        if final_precision <= 18 {
+            quote! { DataType::Decimal64(#final_precision, #final_scale) }
+        } else if final_precision <= 38 {
             quote! { DataType::Decimal128(#final_precision, #final_scale) }
         } else {
             quote! { DataType::Decimal256(#final_precision, #final_scale) }
         }
     } else if col_type.starts_with("Money(") {
-        // Money type - default to Decimal128(19, 4)
         let precision = arrow_attrs.precision.unwrap_or(19);
         let scale = arrow_attrs.scale.unwrap_or(4);
-        quote! { DataType::Decimal128(#precision, #scale) }
+        if precision <= 18 {
+            quote! { DataType::Decimal64(#precision, #scale) }
+        } else {
+            quote! { DataType::Decimal128(#precision, #scale) }
+        }
     } else if col_type == "TinyInteger" {
         quote! { DataType::Int8 }
     } else if col_type == "SmallInteger" {
@@ -252,7 +266,11 @@ fn column_type_to_arrow_datatype(col_type: &str, arrow_attrs: &ArrowFieldAttrs) 
     } else if col_type == "TimestampWithTimeZone" {
         generate_timestamp_datatype(arrow_attrs, true)
     } else if col_type.starts_with("Binary(") || col_type.starts_with("VarBinary(") {
-        quote! { DataType::Binary }
+        if let Some(bw) = arrow_attrs.byte_width {
+            quote! { DataType::FixedSizeBinary(#bw) }
+        } else {
+            quote! { DataType::Binary }
+        }
     } else if col_type == "Json" || col_type == "JsonBinary" {
         quote! { DataType::Utf8 }
     } else if col_type == "Uuid" {
@@ -267,7 +285,10 @@ fn column_type_to_arrow_datatype(col_type: &str, arrow_attrs: &ArrowFieldAttrs) 
 
 /// Map Rust type to Arrow DataType (when no column_type specified)
 fn rust_type_to_arrow_datatype(field_type: &Type, arrow_attrs: &ArrowFieldAttrs) -> TokenStream {
-    let type_string = quote! { #field_type }.to_string().replace(' ', "");
+    let type_string: String = quote! { #field_type }
+        .to_string()
+        .split_whitespace()
+        .collect();
 
     // Strip Option<> wrapper if present
     let inner_type = if type_string.starts_with("Option<") {
@@ -295,7 +316,9 @@ fn rust_type_to_arrow_datatype(field_type: &Type, arrow_attrs: &ArrowFieldAttrs)
         s if s.contains("Decimal") => {
             let precision = arrow_attrs.precision.unwrap_or(38);
             let scale = arrow_attrs.scale.unwrap_or(10);
-            if precision <= 38 {
+            if precision <= 18 {
+                quote! { DataType::Decimal64(#precision, #scale) }
+            } else if precision <= 38 {
                 quote! { DataType::Decimal128(#precision, #scale) }
             } else {
                 quote! { DataType::Decimal256(#precision, #scale) }
@@ -313,6 +336,13 @@ fn rust_type_to_arrow_datatype(field_type: &Type, arrow_attrs: &ArrowFieldAttrs)
         }
         s if s.contains("Date") => quote! { DataType::Date32 },
         s if s.contains("Time") => quote! { DataType::Time64(TimeUnit::Microsecond) },
+        "Vec<u8>" => {
+            if let Some(bw) = arrow_attrs.byte_width {
+                quote! { DataType::FixedSizeBinary(#bw) }
+            } else {
+                quote! { DataType::Binary }
+            }
+        }
         _ => quote! { DataType::Binary }, // Safe fallback
     }
 }

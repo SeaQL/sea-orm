@@ -10,10 +10,10 @@ license       = "MIT OR Apache-2.0"
 name          = "sea-orm-arrow"
 repository    = "https://github.com/SeaQL/sea-orm"
 rust-version  = "1.85.0"
-version       = "2.0.0-rc.3"
+version       = "2.0.0-rc.4"
 
 [dependencies]
-arrow = { version = "57", default-features = false }
+arrow = { version = "58", default-features = false }
 sea-query = { version = "1.0.0-rc", default-features = false, features = [
     "thread-safe",
 ] }
@@ -25,6 +25,3 @@ with-bigdecimal   = ["sea-query/with-bigdecimal"]
 with-chrono       = ["sea-query/with-chrono"]
 with-rust_decimal = ["sea-query/with-rust_decimal"]
 with-time         = ["sea-query/with-time"]
-
-[patch.crates-io]
-# sea-query = { path = "../../sea-query" }

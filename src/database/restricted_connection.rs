@@ -1,13 +1,16 @@
-use crate::rbac::{
-    PermissionRequest, RbacEngine, RbacError, RbacPermissionsByResources,
-    RbacResourcesAndPermissions, RbacRoleHierarchyList, RbacRolesAndRanks, RbacUserRolePermissions,
-    ResourceRequest,
-    entity::{role::RoleId, user::UserId},
-};
 use crate::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
     ExecResult, IsolationLevel, QueryResult, Statement, StatementBuilder, TransactionError,
     TransactionSession, TransactionTrait,
+};
+use crate::{
+    TransactionOptions,
+    rbac::{
+        PermissionRequest, RbacEngine, RbacError, RbacPermissionsByResources,
+        RbacResourcesAndPermissions, RbacRoleHierarchyList, RbacRolesAndRanks,
+        RbacUserRolePermissions, ResourceRequest,
+        entity::{role::RoleId, user::UserId},
+    },
 };
 use std::{
     pin::Pin,
@@ -236,6 +239,18 @@ impl TransactionTrait for RestrictedConnection {
         })
     }
 
+    #[instrument(level = "trace")]
+    async fn begin_with_options(
+        &self,
+        options: TransactionOptions,
+    ) -> Result<RestrictedTransaction, DbErr> {
+        Ok(RestrictedTransaction {
+            user_id: self.user_id,
+            conn: self.conn.begin_with_options(options).await?,
+            rbac: self.conn.rbac.clone(),
+        })
+    }
+
     /// Execute the function inside a transaction.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
     #[instrument(level = "trace", skip(callback))]
@@ -302,6 +317,18 @@ impl TransactionTrait for RestrictedTransaction {
                 .conn
                 .begin_with_config(isolation_level, access_mode)
                 .await?,
+            rbac: self.rbac.clone(),
+        })
+    }
+
+    #[instrument(level = "trace")]
+    async fn begin_with_options(
+        &self,
+        options: TransactionOptions,
+    ) -> Result<RestrictedTransaction, DbErr> {
+        Ok(RestrictedTransaction {
+            user_id: self.user_id,
+            conn: self.conn.begin_with_options(options).await?,
             rbac: self.rbac.clone(),
         })
     }
