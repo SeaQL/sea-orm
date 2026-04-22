@@ -1990,10 +1990,10 @@ mod tests {
 
     #[test]
     fn test_gen_frontend_imports() -> io::Result<()> {
-        let imports_entity = setup().into_iter()
+        let imports_entity = setup()
+            .into_iter()
             .find(|e| e.get_table_name_snake_case() == "imports")
             .unwrap();
-
 
         assert_eq!(imports_entity.get_table_name_snake_case(), "imports");
 
