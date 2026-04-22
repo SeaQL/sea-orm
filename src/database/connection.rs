@@ -165,7 +165,6 @@ pub struct TransactionOptions {
 }
 
 /// Spawn database transaction
-#[async_trait::async_trait]
 pub trait TransactionTrait {
     /// The concrete type for the transaction
     type Transaction: ConnectionTrait + TransactionTrait + TransactionSession;
@@ -193,10 +192,7 @@ pub trait TransactionTrait {
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
     async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
     where
-        F: for<'c> FnOnce(
-                &'c Self::Transaction,
-            ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
-            + Send,
+        F: for<'c> AsyncFnOnce(&'c Self::Transaction) -> Result<T, E> + Send,
         T: Send,
         E: std::fmt::Display + std::fmt::Debug + Send;
 
@@ -209,10 +205,7 @@ pub trait TransactionTrait {
         access_mode: Option<AccessMode>,
     ) -> Result<T, TransactionError<E>>
     where
-        F: for<'c> FnOnce(
-                &'c Self::Transaction,
-            ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
-            + Send,
+        F: for<'c> AsyncFnOnce(&'c Self::Transaction) -> Result<T, E> + Send,
         T: Send,
         E: std::fmt::Display + std::fmt::Debug + Send;
 }
