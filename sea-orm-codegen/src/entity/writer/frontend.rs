@@ -3,6 +3,39 @@ use std::collections::HashSet;
 
 use super::*;
 
+// seperate enum so `ColumnType` doesnt need to derive `Hash` or `Eq`
+#[derive(Hash, PartialEq, Eq)]
+enum ExternalTypes {
+    JsonOrJsonBinary,
+    Date,
+    Time,
+    DateTime,
+    Timestamp,
+    TimestampWithTimeZone,
+    DecimalOrMoney,
+    Uuid,
+    Vector,
+    CidrOrInet,
+}
+
+impl ExternalTypes {
+    fn from_column_type(col_type: &ColumnType) -> Option<Self> {
+        Some(match col_type {
+            ColumnType::Json | ColumnType::JsonBinary => Self::JsonOrJsonBinary,
+            ColumnType::Date => Self::Date,
+            ColumnType::Time => Self::Time,
+            ColumnType::DateTime => Self::DateTime,
+            ColumnType::Timestamp => Self::Timestamp,
+            ColumnType::TimestampWithTimeZone => Self::TimestampWithTimeZone,
+            ColumnType::Decimal(..) | ColumnType::Money(..) => Self::DecimalOrMoney,
+            ColumnType::Uuid => Self::Uuid,
+            ColumnType::Vector(..) => Self::Vector,
+            ColumnType::Cidr | ColumnType::Inet => Self::CidrOrInet,
+            _ => return None,
+        })
+    }
+}
+
 impl EntityWriter {
     #[allow(clippy::too_many_arguments)]
     pub fn gen_frontend_code_blocks(
@@ -83,39 +116,6 @@ impl EntityWriter {
     }
 
     pub fn gen_import_frontend(entity: &Entity, opt: &ColumnOption) -> TokenStream {
-        // seperate enum so `ColumnType` doesnt need to derive `Hash` or `Eq`
-        #[derive(Hash, PartialEq, Eq)]
-        enum ExternalTypes {
-            JsonOrJsonBinary,
-            Date,
-            Time,
-            DateTime,
-            Timestamp,
-            TimestampWithTimeZone,
-            DecimalOrMoney,
-            Uuid,
-            Vector,
-            CidrOrInet,
-        }
-
-        impl ExternalTypes {
-            fn from_column_type(col_type: &ColumnType) -> Option<Self> {
-                Some(match col_type {
-                    ColumnType::Json | ColumnType::JsonBinary => Self::JsonOrJsonBinary,
-                    ColumnType::Date => Self::Date,
-                    ColumnType::Time => Self::Time,
-                    ColumnType::DateTime => Self::DateTime,
-                    ColumnType::Timestamp => Self::Timestamp,
-                    ColumnType::TimestampWithTimeZone => Self::TimestampWithTimeZone,
-                    ColumnType::Decimal(..) | ColumnType::Money(..) => Self::DecimalOrMoney,
-                    ColumnType::Uuid => Self::Uuid,
-                    ColumnType::Vector(..) => Self::Vector,
-                    ColumnType::Cidr | ColumnType::Inet => Self::CidrOrInet,
-                    _ => return None,
-                })
-            }
-        }
-
         fn collect(
             col_type: &ColumnType,
             opt: &ColumnOption,
