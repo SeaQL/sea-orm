@@ -3036,6 +3036,55 @@ mod tests {
     }
 
     #[test]
+    fn test_gen_with_ts_vector_support() -> io::Result<()> {
+        let entity = Entity {
+            table_name: "document".to_owned(),
+            columns: vec![
+                Column {
+                    name: "id".to_owned(),
+                    col_type: ColumnType::Integer,
+                    auto_increment: true,
+                    not_null: true,
+                    unique: false,
+                    unique_key: None,
+                },
+                Column {
+                    name: "embedding".to_owned(),
+                    col_type: ColumnType::Vector(None),
+                    auto_increment: false,
+                    not_null: false,
+                    unique: false,
+                    unique_key: None,
+                },
+            ],
+            relations: vec![],
+            conjunct_relations: vec![],
+            primary_keys: vec![PrimaryKey {
+                name: "id".to_owned(),
+            }],
+        };
+
+        let generated = generated_to_string(EntityWriter::gen_compact_code_blocks(
+            &entity,
+            &WithSerde::None,
+            &default_column_option(),
+            &None,
+            false,
+            false,
+            &bonus_derive(["ts_rs::TS"]),
+            &TokenStream::new(),
+            &TokenStream::new(),
+            false,
+            true,
+        ));
+
+        assert!(generated.contains("# [ts (type = \"number[]\")]"));
+        assert!(generated.contains("pub embedding : Option < PgVector >"));
+
+        Ok(())
+    }
+
+    #[test]
     fn test_gen_import_active_enum() -> io::Result<()> {
         let entities = vec![
             Entity {
