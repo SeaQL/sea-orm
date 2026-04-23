@@ -165,6 +165,7 @@ pub struct TransactionOptions {
 }
 
 /// Spawn database transaction
+#[allow(async_fn_in_trait)]
 pub trait TransactionTrait {
     /// The concrete type for the transaction
     type Transaction: ConnectionTrait + TransactionTrait + TransactionSession;

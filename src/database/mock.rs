@@ -450,13 +450,11 @@ mod tests {
     async fn test_transaction_1() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
-        db.transaction::<_, (), DbErr>(|txn| {
-            Box::pin(async move {
-                let _1 = cake::Entity::find().one(txn).await;
-                let _2 = fruit::Entity::find().all(txn).await;
+        db.transaction::<_, (), DbErr>(async |txn| {
+            let _1 = cake::Entity::find().one(txn).await;
+            let _2 = fruit::Entity::find().all(txn).await;
 
-                Ok(())
-            })
+            Ok(())
         })
         .await
         .unwrap();
@@ -494,11 +492,9 @@ mod tests {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
         let result = db
-            .transaction::<_, (), MyErr>(|txn| {
-                Box::pin(async move {
-                    let _ = cake::Entity::find().one(txn).await;
-                    Err(MyErr("test".to_owned()))
-                })
+            .transaction::<_, (), MyErr>(async |txn| {
+                let _ = cake::Entity::find().one(txn).await;
+                Err(MyErr("test".to_owned()))
             })
             .await;
 
@@ -527,22 +523,18 @@ mod tests {
     async fn test_nested_transaction_1() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
-        db.transaction::<_, (), DbErr>(|txn| {
-            Box::pin(async move {
-                let _ = cake::Entity::find().one(txn).await;
+        db.transaction::<_, (), DbErr>(async |txn| {
+            let _ = cake::Entity::find().one(txn).await;
 
-                txn.transaction::<_, (), DbErr>(|txn| {
-                    Box::pin(async move {
-                        let _ = fruit::Entity::find().all(txn).await;
-
-                        Ok(())
-                    })
-                })
-                .await
-                .unwrap();
+            txn.transaction::<_, (), DbErr>(async |txn| {
+                let _ = fruit::Entity::find().all(txn).await;
 
                 Ok(())
             })
+            .await
+            .unwrap();
+
+            Ok(())
         })
         .await
         .unwrap();
@@ -572,32 +564,26 @@ mod tests {
     async fn test_nested_transaction_2() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
-        db.transaction::<_, (), DbErr>(|txn| {
-            Box::pin(async move {
-                let _ = cake::Entity::find().one(txn).await;
+        db.transaction::<_, (), DbErr>(async |txn| {
+            let _ = cake::Entity::find().one(txn).await;
 
-                txn.transaction::<_, (), DbErr>(|txn| {
-                    Box::pin(async move {
-                        let _ = fruit::Entity::find().all(txn).await;
+            txn.transaction::<_, (), DbErr>(async |txn| {
+                let _ = fruit::Entity::find().all(txn).await;
 
-                        txn.transaction::<_, (), DbErr>(|txn| {
-                            Box::pin(async move {
-                                let _ = cake::Entity::find().all(txn).await;
+                txn.transaction::<_, (), DbErr>(async |txn| {
+                    let _ = cake::Entity::find().all(txn).await;
 
-                                Ok(())
-                            })
-                        })
-                        .await
-                        .unwrap();
-
-                        Ok(())
-                    })
+                    Ok(())
                 })
                 .await
                 .unwrap();
 
                 Ok(())
             })
+            .await
+            .unwrap();
+
+            Ok(())
         })
         .await
         .unwrap();

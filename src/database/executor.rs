@@ -4,8 +4,6 @@ use crate::{
     TransactionTrait,
 };
 use crate::{Schema, SchemaBuilder};
-use std::future::Future;
-use std::pin::Pin;
 
 /// A wrapper that holds either a reference to a [`DatabaseConnection`] or [`DatabaseTransaction`],
 /// or an owned [`DatabaseTransaction`].
