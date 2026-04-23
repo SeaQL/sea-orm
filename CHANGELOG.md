@@ -689,6 +689,10 @@ pub struct MyUserId(pub UserId);
 * Support `HashMap` and `BTreeMap` for JSON columns via `TryGetableFromJson` https://github.com/SeaQL/sea-orm/pull/3009
 * Derive macros now inherit the visibility of the input type for generated items such as `Entity`, `Column`, `PrimaryKey`, and `ActiveModel` https://github.com/SeaQL/sea-orm/pull/3029
 
+### Bug Fixes
+
+* [sea-orm-migration] PostgreSQL `drop_everything` now drops custom types with `CASCADE`
+
 ### Breaking Changes
 
 Please read [SeaQuery's breaking changes](https://github.com/SeaQL/sea-query/blob/master/CHANGELOG.md#breaking-changes) as well. But for most compile errors, you can simply add `use sea_orm::ExprTrait;` in scope.
