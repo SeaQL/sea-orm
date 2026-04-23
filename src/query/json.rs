@@ -76,6 +76,7 @@ impl FromQueryResult for JsonValue {
                     try_get_type!(serde_json::Value, col);
                     #[cfg(feature = "with-uuid")]
                     try_get_type!(uuid::Uuid, col);
+                    try_get_type!(String, col);
                     try_get_type!(Vec<u8>, col);
                 }
                 Ok(JsonValue::Object(map))
