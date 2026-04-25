@@ -9,6 +9,74 @@ use std::{error::Error, fs, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{EnvFilter, prelude::*};
 use url::Url;
 
+/// Split a string by comma while respecting parentheses nesting.
+/// This allows attributes like `test(a, b)` to be treated as a single value
+/// instead of being split into `test(a` and ` b)`.
+fn split_by_comma_ignoring_parentheses(s: &str) -> Vec<String> {
+    let mut result = Vec::new();
+    let mut current = String::new();
+    let mut paren_depth = 0;
+    let mut bracket_depth = 0;
+    let mut brace_depth = 0;
+
+    for c in s.chars() {
+        match c {
+            '(' => {
+                paren_depth += 1;
+                current.push(c);
+            }
+            ')' => {
+                paren_depth = paren_depth.saturating_sub(1);
+                current.push(c);
+            }
+            '[' => {
+                bracket_depth += 1;
+                current.push(c);
+            }
+            ']' => {
+                bracket_depth = bracket_depth.saturating_sub(1);
+                current.push(c);
+            }
+            '{' => {
+                brace_depth += 1;
+                current.push(c);
+            }
+            '}' => {
+                brace_depth = brace_depth.saturating_sub(1);
+                current.push(c);
+            }
+            ',' if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 => {
+                let trimmed = current.trim();
+                if !trimmed.is_empty() {
+                    result.push(trimmed.to_string());
+                }
+                current.clear();
+            }
+            _ => {
+                current.push(c);
+            }
+        }
+    }
+
+    // Add the last segment
+    let trimmed = current.trim();
+    if !trimmed.is_empty() {
+        result.push(trimmed.to_string());
+    }
+
+    result
+}
+
+/// Process a vector of strings that may contain comma-separated values with nested parentheses.
+/// This handles the case where clap no longer splits by comma, so we need to manually split
+/// each string while respecting parentheses nesting.
+fn process_comma_separated_values(values: Vec<String>) -> Vec<String> {
+    values
+        .into_iter()
+        .flat_map(|s| split_by_comma_ignoring_parentheses(&s))
+        .collect()
+}
+
 pub async fn run_generate_command(
     command: GenerateSubcommands,
     verbose: bool,
@@ -222,6 +290,15 @@ pub async fn run_generate_command(
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
             println!("... discovered.");
+
+            // Process extra derives and attributes, splitting by comma while respecting parentheses
+            // This handles cases like `--model-extra-attributes 'cfg_attr(debug_assertions, derive(Debug))'`
+            // which should be treated as a single attribute, not split into `cfg_attr(debug_assertions` and ` derive(Debug))`
+            let model_extra_derives = process_comma_separated_values(model_extra_derives);
+            let model_extra_attributes = process_comma_separated_values(model_extra_attributes);
+            let enum_extra_derives = process_comma_separated_values(enum_extra_derives);
+            let enum_extra_attributes = process_comma_separated_values(enum_extra_attributes);
+            let column_extra_derives = process_comma_separated_values(column_extra_derives);
 
             let writer_context = EntityWriterContext::new(
                 if expanded_format {
@@ -471,5 +548,97 @@ mod tests {
             }
             _ => unreachable!(),
         }
+    }
+
+    #[test]
+    fn test_split_by_comma_simple() {
+        // Simple comma-separated values should split normally
+        let result = super::split_by_comma_ignoring_parentheses("a,b,c");
+        assert_eq!(result, vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn test_split_by_comma_with_parentheses() {
+        // Comma inside parentheses should NOT split
+        let result = super::split_by_comma_ignoring_parentheses("test(a, b)");
+        assert_eq!(result, vec!["test(a, b)"]);
+
+        // Multiple values, one with parentheses containing comma
+        let result = super::split_by_comma_ignoring_parentheses("attr1,test(a, b)");
+        assert_eq!(result, vec!["attr1", "test(a, b)"]);
+    }
+
+    #[test]
+    fn test_split_by_comma_with_nested_parentheses() {
+        // Nested parentheses with commas
+        let result = super::split_by_comma_ignoring_parentheses("cfg_attr(debug_assertions, derive(Debug))");
+        assert_eq!(result, vec!["cfg_attr(debug_assertions, derive(Debug))"]);
+
+        // Multiple nested parentheses
+        let result = super::split_by_comma_ignoring_parentheses("cfg_attr(feature1, attr(a, b)),cfg_attr(feature2, attr(c, d))");
+        assert_eq!(result, vec!["cfg_attr(feature1, attr(a, b))", "cfg_attr(feature2, attr(c, d))"]);
+    }
+
+    #[test]
+    fn test_split_by_comma_with_brackets() {
+        // Brackets should also be respected
+        let result = super::split_by_comma_ignoring_parentheses("serde(rename_all = \"camelCase\"),ts(export)");
+        assert_eq!(result, vec!["serde(rename_all = \"camelCase\")", "ts(export)"]);
+
+        // Brackets with commas
+        let result = super::split_by_comma_ignoring_parentheses("attr[key, value],other");
+        assert_eq!(result, vec!["attr[key, value]", "other"]);
+    }
+
+    #[test]
+    fn test_split_by_comma_with_braces() {
+        // Braces should also be respected
+        let result = super::split_by_comma_ignoring_parentheses("derive{a, b},other");
+        assert_eq!(result, vec!["derive{a, b}", "other"]);
+    }
+
+    #[test]
+    fn test_split_by_comma_empty() {
+        // Empty string should return empty vec
+        let result = super::split_by_comma_ignoring_parentheses("");
+        assert!(result.is_empty());
+
+        // Only whitespace should return empty vec
+        let result = super::split_by_comma_ignoring_parentheses("   ");
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_split_by_comma_whitespace_handling() {
+        // Whitespace around values should be trimmed
+        let result = super::split_by_comma_ignoring_parentheses("  a  ,  b  ");
+        assert_eq!(result, vec!["a", "b"]);
+
+        // Whitespace inside parentheses should be preserved
+        let result = super::split_by_comma_ignoring_parentheses("test( a , b )");
+        assert_eq!(result, vec!["test( a , b )"]);
+    }
+
+    #[test]
+    fn test_process_comma_separated_values() {
+        // Process multiple strings, each potentially containing comma-separated values
+        let input = vec![
+            "attr1,attr2".to_string(),
+            "test(a, b)".to_string(),
+            "attr3".to_string(),
+        ];
+        let result = super::process_comma_separated_values(input);
+        assert_eq!(result, vec!["attr1", "attr2", "test(a, b)", "attr3"]);
+    }
+
+    #[test]
+    fn test_split_by_comma_real_world_examples() {
+        // Real-world example: cfg_attr with derive
+        let result = super::split_by_comma_ignoring_parentheses("cfg_attr(debug_assertions, derive(Debug)),serde(rename_all = \"camelCase\")");
+        assert_eq!(result, vec!["cfg_attr(debug_assertions, derive(Debug))", "serde(rename_all = \"camelCase\")"]);
+
+        // Real-world example: multiple derives
+        let result = super::split_by_comma_ignoring_parentheses("derive(Debug, Clone),derive(Serialize, Deserialize)");
+        assert_eq!(result, vec!["derive(Debug, Clone)", "derive(Serialize, Deserialize)"]);
     }
 }
