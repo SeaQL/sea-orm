@@ -51,6 +51,27 @@ where
     }
 }
 
+pub(super) fn consolidate_query_result_quad_star<L, M, N, R>(
+    rows: Vec<(
+        L::Model,
+        Option<M::Model>,
+        Option<N::Model>,
+        Option<R::Model>,
+    )>,
+) -> Vec<(L::Model, Vec<M::Model>, Vec<N::Model>, Vec<R::Model>)>
+where
+    L: EntityTrait,
+    M: EntityTrait,
+    N: EntityTrait,
+    R: EntityTrait,
+{
+    match <<L::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY {
+        1 => consolidate_query_result_of_quad_star::<L, M, N, R, _>(rows, unit_pk::<L>()),
+        2 => consolidate_query_result_of_quad_star::<L, M, N, R, _>(rows, pair_pk::<L>()),
+        _ => consolidate_query_result_of_quad_star::<L, M, N, R, _>(rows, tuple_pk::<L>()),
+    }
+}
+
 fn retain_unique_models<L>(rows: Vec<L::Model>) -> Vec<L::Model>
 where
     L: EntityTrait,
@@ -258,6 +279,72 @@ where
         .collect()
 }
 
+// this consolidate query result of a quad-star topology
+// where L -> M, L -> N, and L -> R
+fn consolidate_query_result_of_quad_star<L, M, N, R, KEY: ModelKey<L>>(
+    mut rows: Vec<(
+        L::Model,
+        Option<M::Model>,
+        Option<N::Model>,
+        Option<R::Model>,
+    )>,
+    model_key: KEY,
+) -> Vec<(L::Model, Vec<M::Model>, Vec<N::Model>, Vec<R::Model>)>
+where
+    L: EntityTrait,
+    M: EntityTrait,
+    N: EntityTrait,
+    R: EntityTrait,
+{
+    struct Slot<M, N, R> {
+        m: Vec<M>,
+        n: Vec<N>,
+        r: Vec<R>,
+    }
+
+    impl<M, N, R> Default for Slot<M, N, R> {
+        fn default() -> Self {
+            Self {
+                m: vec![],
+                n: vec![],
+                r: vec![],
+            }
+        }
+    }
+
+    // group items by unique key on left model
+    let mut hashmap: HashMap<KEY::Type, Slot<M::Model, N::Model, R::Model>> =
+        rows.iter_mut().fold(HashMap::new(), |mut acc, row| {
+            let key = model_key.get(&row.0);
+            let slot = acc.entry(key).or_default();
+            if let Some(m) = row.1.take() {
+                slot.m.push(m);
+            }
+            if let Some(n) = row.2.take() {
+                slot.n.push(n);
+            }
+            if let Some(r) = row.3.take() {
+                slot.r.push(r);
+            }
+            acc
+        });
+
+    // re-iterate so that we keep the same order
+    rows.into_iter()
+        .filter_map(|(l_model, _, _, _)| {
+            let l_pk = model_key.get(&l_model);
+            hashmap.remove(&l_pk).map(|Slot { m, n, r }| {
+                (
+                    l_model,
+                    retain_unique_models::<M>(m),
+                    retain_unique_models::<N>(n),
+                    retain_unique_models::<R>(r),
+                )
+            })
+        })
+        .collect()
+}
+
 // this consolidate query result of a chained topology
 // where L -> M and M -> R
 fn consolidate_query_result_of_chain<L, M, R, KEY: ModelKey<L>>(
@@ -412,6 +499,22 @@ mod tests {
         }
         .to_string();
         crate::tests_cfg::fruit::Model { id, name, cake_id }
+    }
+
+    fn ingredient_model(id: i32) -> crate::tests_cfg::ingredient::Model {
+        let name = match id {
+            1 => "sugar",
+            2 => "flour",
+            3 => "butter",
+            _ => "",
+        }
+        .to_string();
+        crate::tests_cfg::ingredient::Model {
+            id,
+            name,
+            filling_id: Some(1),
+            ingredient_id: None,
+        }
     }
 
     fn vendor_model(id: i32) -> crate::tests_cfg::vendor::Model {
@@ -1161,6 +1264,59 @@ mod tests {
                 vec![],
                 vec![]
             )]
+        );
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn test_consolidate_quad_star() {
+        use crate::tests_cfg::{Cake, Filling, Fruit, ingredient::Entity as Ingredient};
+
+        // Single row, all children present.
+        assert_eq!(
+            super::consolidate_query_result_quad_star::<Cake, Fruit, Filling, Ingredient>(vec![
+                (cake_model(1), Some(fruit_model(1)), Some(filling_model(1)), Some(ingredient_model(1))),
+            ]),
+            vec![(cake_model(1), vec![fruit_model(1)], vec![filling_model(1)], vec![ingredient_model(1)])]
+        );
+
+        // Some children missing on a row.
+        assert_eq!(
+            super::consolidate_query_result_quad_star::<Cake, Fruit, Filling, Ingredient>(vec![
+                (cake_model(1), Some(fruit_model(1)), None, None),
+                (cake_model(1), None, Some(filling_model(1)), None),
+                (cake_model(1), None, None, Some(ingredient_model(1))),
+            ]),
+            vec![(cake_model(1), vec![fruit_model(1)], vec![filling_model(1)], vec![ingredient_model(1)])]
+        );
+
+        // Cross product duplicates collapsed via retain_unique_models.
+        assert_eq!(
+            super::consolidate_query_result_quad_star::<Cake, Fruit, Filling, Ingredient>(vec![
+                (cake_model(1), Some(fruit_model(1)), Some(filling_model(1)), Some(ingredient_model(1))),
+                (cake_model(1), Some(fruit_model(1)), Some(filling_model(1)), Some(ingredient_model(2))),
+                (cake_model(1), Some(fruit_model(2)), Some(filling_model(2)), Some(ingredient_model(1))),
+            ]),
+            vec![(
+                cake_model(1),
+                vec![fruit_model(1), fruit_model(2)],
+                vec![filling_model(1), filling_model(2)],
+                vec![ingredient_model(1), ingredient_model(2)],
+            )]
+        );
+
+        // Multiple parents preserve order; parent with no children is included.
+        assert_eq!(
+            super::consolidate_query_result_quad_star::<Cake, Fruit, Filling, Ingredient>(vec![
+                (cake_model(1), Some(fruit_model(1)), Some(filling_model(1)), Some(ingredient_model(1))),
+                (cake_model(2), Some(fruit_model(2)), None, None),
+                (cake_model(3), None, None, None),
+            ]),
+            vec![
+                (cake_model(1), vec![fruit_model(1)], vec![filling_model(1)], vec![ingredient_model(1)]),
+                (cake_model(2), vec![fruit_model(2)], vec![], vec![]),
+                (cake_model(3), vec![], vec![], vec![]),
+            ]
         );
     }
 

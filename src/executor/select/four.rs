@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     JoinType, Paginator, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait, Related,
-    SelectC, SelectFive, SelectFour, Topology, TopologyStar,
+    SelectC, SelectFive, SelectFour, SelectFourMany, Topology, TopologyStar,
     combine::{SelectD, prepare_select_col},
 };
 
@@ -231,6 +231,67 @@ where
         P: PartialModelTrait + Send + 'b,
     {
         self.into_partial_model().stream(db).await
+    }
+}
+
+impl<E, F, G, H, TOP> SelectFour<E, F, G, H, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+    TOP: Topology,
+{
+    /// Consolidate query result by first model. Only the star topology
+    /// (E -> F, E -> G, E -> H) provides an `all()` impl.
+    pub fn consolidate(self) -> SelectFourMany<E, F, G, H, TOP> {
+        SelectFourMany {
+            query: self.query,
+            entity: self.entity,
+        }
+    }
+}
+
+impl<E, F, G, H, TOP> SelectFourMany<E, F, G, H, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+    TOP: Topology,
+{
+    /// Performs a conversion to [Selector]
+    fn into_model<M, N, O, P>(self) -> Selector<SelectFourModel<M, N, O, P>>
+    where
+        M: FromQueryResult,
+        N: FromQueryResult,
+        O: FromQueryResult,
+        P: FromQueryResult,
+    {
+        Selector {
+            query: self.query,
+            selector: PhantomData,
+        }
+    }
+}
+
+impl<E, F, G, H> SelectFourMany<E, F, G, H, TopologyStar>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+{
+    /// Execute query and consolidate rows by E
+    pub async fn all<C>(
+        self,
+        db: &C,
+    ) -> Result<Vec<(E::Model, Vec<F::Model>, Vec<G::Model>, Vec<H::Model>)>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        let rows = self.into_model().all(db).await?;
+        Ok(consolidate_query_result_quad_star::<E, F, G, H>(rows))
     }
 }
 
