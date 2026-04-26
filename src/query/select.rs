@@ -104,6 +104,20 @@ where
     pub(crate) entity: PhantomData<(E, F, G, H, TOP)>,
 }
 
+/// Perform a SELECT operation on four Models with results consolidated
+#[derive(Clone, Debug)]
+pub struct SelectFourMany<E, F, G, H, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, H, TOP)>,
+}
+
 /// Perform a SELECT operation on 5 Models
 #[derive(Clone, Debug)]
 pub struct SelectFive<E, F, G, H, I, TOP>

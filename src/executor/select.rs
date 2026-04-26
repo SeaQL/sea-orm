@@ -1,5 +1,6 @@
 use super::{
-    consolidate_query_result, consolidate_query_result_chain, consolidate_query_result_tee,
+    consolidate_query_result, consolidate_query_result_chain, consolidate_query_result_quad_star,
+    consolidate_query_result_tee,
 };
 use crate::{
     ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, PartialModelTrait,
