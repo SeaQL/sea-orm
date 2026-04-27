@@ -55,14 +55,14 @@ impl ProxyDatabaseConnection {
     }
 
     /// Execute the SQL statement in the [ProxyDatabase]
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(statement))]
     pub async fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", statement);
         Ok(self.proxy.execute(statement).await?.into())
     }
 
     /// Return one [QueryResult] if the query was successful
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(statement))]
     pub async fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let result = self.proxy.query(statement).await?;
@@ -77,7 +77,7 @@ impl ProxyDatabaseConnection {
     }
 
     /// Return all [QueryResult]s if the query was successful
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(statement))]
     pub async fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let result = self.proxy.query(statement).await?;

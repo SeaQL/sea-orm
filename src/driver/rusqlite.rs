@@ -313,7 +313,7 @@ impl RusqliteSharedConnection {
     }
 
     /// Execute a [Statement] on a SQLite backend
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug!("{}", stmt);
 
@@ -333,7 +333,7 @@ impl RusqliteSharedConnection {
     }
 
     /// Execute an unprepared SQL statement on a SQLite backend
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(sql))]
     pub fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug!("{}", sql);
 
@@ -350,7 +350,7 @@ impl RusqliteSharedConnection {
     }
 
     /// Get one result from a SQL query. Returns [Option::None] if no match was found
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug!("{}", stmt);
 
@@ -375,7 +375,7 @@ impl RusqliteSharedConnection {
     }
 
     /// Get the results of a query returning them as a Vec<[QueryResult]>
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug!("{}", stmt);
 
@@ -400,7 +400,7 @@ impl RusqliteSharedConnection {
     }
 
     /// Stream the results of executing a SQL query
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug!("{}", stmt);
 
@@ -481,7 +481,7 @@ impl RusqliteSharedConnection {
 }
 
 impl RusqliteInnerConnection {
-    #[instrument(level = "trace", skip(metric_callback))]
+    #[instrument(level = "trace", skip(metric_callback, stmt))]
     pub fn execute(
         &self,
         stmt: Statement,
@@ -503,7 +503,7 @@ impl RusqliteInnerConnection {
         })
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(sql))]
     pub(crate) fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug!("{}", sql);
 
@@ -518,7 +518,7 @@ impl RusqliteInnerConnection {
         }
     }
 
-    #[instrument(level = "trace", skip(metric_callback))]
+    #[instrument(level = "trace", skip(metric_callback, stmt))]
     pub fn query_one(
         &self,
         stmt: Statement,
@@ -545,7 +545,7 @@ impl RusqliteInnerConnection {
         })
     }
 
-    #[instrument(level = "trace", skip(metric_callback))]
+    #[instrument(level = "trace", skip(metric_callback, stmt))]
     pub fn query_all(
         &self,
         stmt: Statement,
@@ -572,7 +572,7 @@ impl RusqliteInnerConnection {
         })
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub(crate) fn stream(&self, stmt: &Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug!("{}", stmt);
 

@@ -140,7 +140,7 @@ impl ConnectionTrait for DatabaseConnection {
         self.get_database_backend()
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         super::tracing_spans::with_db_span!(
@@ -168,7 +168,7 @@ impl ConnectionTrait for DatabaseConnection {
         )
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(sql))]
     #[allow(unused_variables)]
     fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         super::tracing_spans::with_db_span!(
@@ -212,7 +212,7 @@ impl ConnectionTrait for DatabaseConnection {
         )
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         super::tracing_spans::with_db_span!(
@@ -242,7 +242,7 @@ impl ConnectionTrait for DatabaseConnection {
         )
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         super::tracing_spans::with_db_span!(
@@ -291,7 +291,7 @@ impl StreamTrait for DatabaseConnection {
         self.get_database_backend()
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     fn stream_raw<'a>(&'a self, stmt: Statement) -> Result<Self::Stream<'a>, DbErr> {
         ({
