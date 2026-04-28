@@ -8,6 +8,7 @@ use syn::{Expr, Lit, LitInt, LitStr, UnOp, parse};
 struct ActiveEnum {
     ident: syn::Ident,
     enum_name: String,
+    schema_name: Option<String>,
     rs_type: RsType,
     db_type: DbType,
     is_string: bool,
@@ -131,6 +132,7 @@ impl ActiveEnum {
         let ident = input.ident;
 
         let mut enum_name = ident.to_string().to_upper_camel_case();
+        let mut schema_name = None;
         let mut rs_type = None;
         let mut db_type = None;
         let mut rename_all = None;
@@ -150,6 +152,9 @@ impl ActiveEnum {
                     } else if meta.path.is_ident("enum_name") {
                         let litstr: LitStr = meta.value()?.parse()?;
                         enum_name = litstr.value();
+                    } else if meta.path.is_ident("schema_name") {
+                        let litstr: LitStr = meta.value()?.parse()?;
+                        schema_name = Some(litstr.value());
                     } else if meta.path.is_ident("rename_all") {
                         rename_all = Some((&meta).try_into()?);
                     } else {
@@ -299,6 +304,7 @@ impl ActiveEnum {
         Ok(Self {
             ident,
             enum_name,
+            schema_name,
             rs_type,
             db_type,
             is_string,
@@ -504,6 +510,15 @@ impl ActiveEnum {
             }
         };
 
+        let schema_name_impl = match &self.schema_name {
+            Some(name) => quote! {
+                fn schema_name() -> Option<&'static str> {
+                    Some(#name)
+                }
+            },
+            None => quote! {},
+        };
+
         let val = if self.generate_enum_impls() {
             quote! { v.value.as_ref() }
         } else if self.is_string {
@@ -522,6 +537,8 @@ impl ActiveEnum {
                 fn name() -> sea_orm::sea_query::DynIden {
                     #enum_name_iden.into()
                 }
+
+                #schema_name_impl
 
                 fn to_value(&self) -> <Self as sea_orm::ActiveEnum>::Value {
                     #to_value_body
@@ -593,16 +610,20 @@ impl ActiveEnum {
         }
 
         let ident = &self.ident;
-        let enum_name = &self.enum_name;
         let ident_s = ident.to_string();
         let variant_idents = &self.variant_idents;
         let variant_values = &self.variant_values;
+
+        let pg_type_name = match &self.schema_name {
+            Some(schema) => format!("{}.{}", schema, self.enum_name),
+            None => self.enum_name.clone(),
+        };
 
         quote! {
             #[automatically_derived]
             impl sea_orm::sqlx::Type<sea_orm::sqlx::Postgres> for #ident {
                 fn type_info() -> sea_orm::sqlx::postgres::PgTypeInfo {
-                    sea_orm::sqlx::postgres::PgTypeInfo::with_name(#enum_name)
+                    sea_orm::sqlx::postgres::PgTypeInfo::with_name(#pg_type_name)
                 }
             }
 
@@ -631,7 +652,7 @@ impl ActiveEnum {
             #[automatically_derived]
             impl sea_orm::sqlx::postgres::PgHasArrayType for #ident {
                 fn array_type_info() -> sea_orm::sqlx::postgres::PgTypeInfo {
-                    sea_orm::sqlx::postgres::PgTypeInfo::array_of(#enum_name)
+                    sea_orm::sqlx::postgres::PgTypeInfo::array_of(#pg_type_name)
                 }
             }
         }

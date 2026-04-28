@@ -119,6 +119,12 @@ pub trait ActiveEnum: Sized + Iterable {
     /// Get the name of enum
     fn name() -> DynIden;
 
+    /// Get the schema name of the enum, if specified.
+    /// Returns `None` by default, meaning the enum lives in the database search path.
+    fn schema_name() -> Option<&'static str> {
+        None
+    }
+
     /// Convert enum variant into the corresponding value.
     fn to_value(&self) -> Self::Value;
 

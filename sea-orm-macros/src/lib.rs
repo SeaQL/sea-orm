@@ -692,6 +692,8 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 ///     - `enum_name`: Define `String` returned by `ActiveEnum::name()`
 ///         - This attribute is optional with default value being the name of enum in camel-case
 ///         - Note that value has to be passed as string, i.e. `enum_name = "MyEnum"`
+///     - `schema_name`: Define the database schema the enum type belongs to
+///         - This attribute is optional; when omitted the enum uses the database search path
 ///     - Constraints for native enums (`db_type = "Enum"`):
 ///         - `rs_type` is optional; it defaults to `Enum`. If specified it must be `String` or `Enum`.
 ///         - `num_value` and numeric discriminants are not allowed.
