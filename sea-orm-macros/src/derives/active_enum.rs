@@ -7,8 +7,8 @@ use syn::{Expr, Lit, LitInt, LitStr, UnOp, parse};
 
 struct ActiveEnum {
     ident: syn::Ident,
-    enum_name: String,
-    schema_name: Option<String>,
+    // (schema name, enum name)
+    enum_name: (Option<String>, String),
     rs_type: RsType,
     db_type: DbType,
     is_string: bool,
@@ -303,8 +303,7 @@ impl ActiveEnum {
 
         Ok(Self {
             ident,
-            enum_name,
-            schema_name,
+            enum_name: (schema_name, enum_name),
             rs_type,
             db_type,
             is_string,
@@ -320,7 +319,7 @@ impl ActiveEnum {
     }
 
     fn to_value_impl(&self) -> TokenStream {
-        let enum_name = &self.enum_name;
+        let enum_name = self.schema_qualified_name();
         let variant_idents = &self.variant_idents;
         let variant_values = &self.variant_values;
 
@@ -370,7 +369,7 @@ impl ActiveEnum {
 
     fn nullable_impl(&self) -> TokenStream {
         let ident = &self.ident;
-        let enum_name = &self.enum_name;
+        let enum_name = &self.enum_name.1;
         let nullable_value_impl = if self.generate_enum_impls() {
             quote! {
                 use sea_orm::sea_query::{OptionEnum, Value};
@@ -397,7 +396,7 @@ impl ActiveEnum {
     fn value_type_impl(&self) -> TokenStream {
         let ident = &self.ident;
         let value_type_try_from_impl = self.value_type_try_from_impl();
-        let enum_name = &self.enum_name;
+        let enum_name = &self.enum_name.1;
 
         let type_name_impl = quote! { stringify!(#ident).to_owned() };
 
@@ -459,7 +458,8 @@ impl ActiveEnum {
             quote!()
         };
         let try_get_by_impl = {
-            let enum_name = &self.enum_name;
+            let enum_name = self.schema_qualified_name();
+
             if self.generate_enum_impls() {
                 quote! {
                     #sqlx_postgres_try_get
@@ -510,7 +510,7 @@ impl ActiveEnum {
             }
         };
 
-        let schema_name_impl = match &self.schema_name {
+        let schema_name_impl = match &self.enum_name.0 {
             Some(name) => quote! {
                 fn schema_name() -> Option<&'static str> {
                     Some(#name)
@@ -566,7 +566,7 @@ impl ActiveEnum {
         let ident = &self.ident;
 
         if self.generate_enum_impls() {
-            let enum_name = &self.enum_name;
+            let enum_name = self.schema_qualified_name();
             let variant_idents = &self.variant_idents;
             let variant_values = &self.variant_values;
 
@@ -613,11 +613,7 @@ impl ActiveEnum {
         let ident_s = ident.to_string();
         let variant_idents = &self.variant_idents;
         let variant_values = &self.variant_values;
-
-        let pg_type_name = match &self.schema_name {
-            Some(schema) => format!("{}.{}", schema, self.enum_name),
-            None => self.enum_name.clone(),
-        };
+        let pg_type_name = self.schema_qualified_name();
 
         quote! {
             #[automatically_derived]
@@ -698,6 +694,7 @@ impl ActiveEnum {
             ..
         } = self;
 
+        let enum_name = enum_name.1.clone();
         let enum_name_iden = format_ident!("{}Enum", ident);
 
         let str_variants: Vec<String> = variants
@@ -815,6 +812,13 @@ impl ActiveEnum {
 
             #not_u8_impl
         )
+    }
+
+    fn schema_qualified_name(&self) -> String {
+        match &self.enum_name {
+            (Some(schema), enum_name) => format!("{schema}\".\"{enum_name}"),
+            (None, enum_name) => enum_name.clone(),
+        }
     }
 }
 

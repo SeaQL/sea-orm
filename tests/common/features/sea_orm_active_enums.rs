@@ -66,31 +66,3 @@ pub enum DisplayTea {
     #[sea_orm(string_value = "BreakfastTea", display_value = "Breakfast")]
     BreakfastTea,
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(
-    rs_type = "Enum",
-    db_type = "Enum",
-    enum_name = "mood",
-    schema_name = "my_schema"
-)]
-pub enum Mood {
-    #[sea_orm(string_value = "Happy")]
-    Happy,
-    #[sea_orm(string_value = "Sad")]
-    Sad,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(
-    rs_type = "String",
-    db_type = "Enum",
-    enum_name = "priority",
-    schema_name = "my_schema"
-)]
-pub enum Priority {
-    #[sea_orm(string_value = "Low")]
-    Low,
-    #[sea_orm(string_value = "High")]
-    High,
-}
