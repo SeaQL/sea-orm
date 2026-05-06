@@ -1,7 +1,7 @@
 use crate::{
     ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IdentityOf, IntoIdentity,
-    PartialModelTrait, PrimaryKeyToColumn, QuerySelect, Select, SelectModel, SelectThree,
-    SelectThreeModel, SelectTwo, SelectTwoModel, SelectorTrait, Topology,
+    PartialModelTrait, PrimaryKeyToColumn, QuerySelect, Select, SelectFour, SelectFourModel,
+    SelectModel, SelectThree, SelectThreeModel, SelectTwo, SelectTwoModel, SelectorTrait, Topology,
 };
 use sea_query::{
     Condition, DynIden, Expr, ExprTrait, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr,
@@ -404,6 +404,21 @@ where
     type Selector = SelectThreeModel<M, N, O>;
 }
 
+impl<E, F, G, H, M, N, O, P, TOP> CursorTrait for SelectFour<E, F, G, H, TOP>
+where
+    E: EntityTrait<Model = M>,
+    F: EntityTrait<Model = N>,
+    G: EntityTrait<Model = O>,
+    H: EntityTrait<Model = P>,
+    M: FromQueryResult + Sized + Send + Sync,
+    N: FromQueryResult + Sized + Send + Sync,
+    O: FromQueryResult + Sized + Send + Sync,
+    P: FromQueryResult + Sized + Send + Sync,
+    TOP: Topology,
+{
+    type Selector = SelectFourModel<M, N, O, P>;
+}
+
 impl<E, F, M, N> SelectTwo<E, F>
 where
     E: EntityTrait<Model = M>,
@@ -492,6 +507,65 @@ where
                 .map(|pk| {
                     (
                         SeaRc::new(G::default()),
+                        Identity::Unary(SeaRc::new(pk.into_column())),
+                    )
+                })
+                .collect();
+            cursor.set_secondary_order_by(primary_keys);
+        }
+        cursor
+    }
+}
+
+impl<E, F, G, H, M, N, O, P, TOP> SelectFour<E, F, G, H, TOP>
+where
+    E: EntityTrait<Model = M>,
+    F: EntityTrait<Model = N>,
+    G: EntityTrait<Model = O>,
+    H: EntityTrait<Model = P>,
+    M: FromQueryResult + Sized + Send + Sync,
+    N: FromQueryResult + Sized + Send + Sync,
+    O: FromQueryResult + Sized + Send + Sync,
+    P: FromQueryResult + Sized + Send + Sync,
+    TOP: Topology,
+{
+    /// Convert into a cursor using column of first entity
+    pub fn cursor_by<C>(self, order_columns: C) -> Cursor<SelectFourModel<M, N, O, P>>
+    where
+        C: IdentityOf<E>,
+    {
+        let mut cursor = Cursor::new(
+            self.query,
+            SeaRc::new(E::default()),
+            order_columns.identity_of(),
+        );
+        {
+            let primary_keys: Vec<(DynIden, Identity)> = <F::PrimaryKey as Iterable>::iter()
+                .map(|pk| {
+                    (
+                        SeaRc::new(F::default()),
+                        Identity::Unary(SeaRc::new(pk.into_column())),
+                    )
+                })
+                .collect();
+            cursor.set_secondary_order_by(primary_keys);
+        }
+        {
+            let primary_keys: Vec<(DynIden, Identity)> = <G::PrimaryKey as Iterable>::iter()
+                .map(|pk| {
+                    (
+                        SeaRc::new(G::default()),
+                        Identity::Unary(SeaRc::new(pk.into_column())),
+                    )
+                })
+                .collect();
+            cursor.set_secondary_order_by(primary_keys);
+        }
+        {
+            let primary_keys: Vec<(DynIden, Identity)> = <H::PrimaryKey as Iterable>::iter()
+                .map(|pk| {
+                    (
+                        SeaRc::new(H::default()),
                         Identity::Unary(SeaRc::new(pk.into_column())),
                     )
                 })
