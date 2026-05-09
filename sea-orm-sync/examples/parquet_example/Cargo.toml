@@ -22,3 +22,5 @@ features = [
     "with-rust_decimal",
 ]
 path = "../../"
+
+[patch.crates-io]

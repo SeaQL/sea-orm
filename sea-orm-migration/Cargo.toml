@@ -1,5 +1,5 @@
-[workspace]
-# A separate workspace
+# [workspace]
+# # A separate workspace
 
 [package]
 authors       = ["Billy Chan <ccw.billy.123@gmail.com>"]
@@ -13,7 +13,7 @@ license       = "MIT OR Apache-2.0"
 name          = "sea-orm-migration"
 repository    = "https://github.com/SeaQL/sea-orm"
 rust-version  = "1.85.0"
-version       = "2.0.0-rc.37"
+version       = "2.0.0-rc.38"
 
 [lib]
 name = "sea_orm_migration"
@@ -21,29 +21,35 @@ path = "src/lib.rs"
 
 [dependencies]
 async-trait = { version = "0.1", default-features = false }
+chrono = { version = "0.4", default-features = false, features = ["clock"], optional = true }
 clap = { version = "4.3", features = ["env", "derive"], optional = true }
+colored = "2"
 dotenvy = { version = "0.15", default-features = false, optional = true }
-sea-orm = { version = "~2.0.0-rc.37", path = "../", features = [
-    "schema-sync",
-] }
-sea-orm-cli = { version = "~2.0.0-rc.37", path = "../sea-orm-cli", default-features = false, optional = true }
+glob = { version = "0.3", default-features = false }
+regex = { version = "1", optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
+sea-orm-cli = { version = "~2.0.0-rc.38", path = "../sea-orm-cli", default-features = false, optional = true }
+sea-orm = { version = "~2.0.0-rc.38", path = "../", features = ["schema-sync",] }
 sea-schema = { version = "0.17.0-rc", default-features = false, features = [
     "discovery",
     "writer",
     "probe",
 ] }
 tracing = { version = "0.1", default-features = false, features = ["log"] }
-tracing-subscriber = { version = "0.3.17", default-features = false, features = [
-    "env-filter",
-    "fmt",
-] }
 
 [dev-dependencies]
+tempfile = "3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 
+[[test]]
+name = "entity_first"
+required-features = ["entity-first", "sqlx-sqlite", "runtime-tokio-native-tls"]
+
 [features]
-cli = ["clap", "dotenvy", "sea-orm-cli/cli"]
+cli = ["clap", "dotenvy", "chrono", "regex"]
 default = ["cli"]
+entity-first = ["chrono", "clap", "dotenvy", "regex"]
 entity-registry = ["sea-orm/entity-registry"]
 runtime-async-std = [
     "sea-orm/runtime-async-std",
@@ -92,6 +98,3 @@ with-json = ["sea-orm/with-json"]
 with-rust_decimal = ["sea-orm/with-rust_decimal"]
 with-time = ["sea-orm/with-time"]
 with-uuid = ["sea-orm/with-uuid"]
-
-[patch.crates-io]
-# sea-query = { path = "../sea-query" }

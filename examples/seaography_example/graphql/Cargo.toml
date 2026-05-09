@@ -24,3 +24,6 @@ serde_json = { version = "1.0.103" }
 
 [workspace]
 members = []
+
+[patch.crates-io]
+# sea-query = { path = "../sea-query" }

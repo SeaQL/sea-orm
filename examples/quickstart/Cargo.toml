@@ -22,3 +22,5 @@ features = [
     "schema-sync",
 ]
 path = "../../"
+
+[patch.crates-io]

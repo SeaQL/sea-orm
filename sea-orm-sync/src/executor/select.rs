@@ -3,8 +3,8 @@ use super::{
 };
 use crate::{
     ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, PartialModelTrait,
-    QueryResult, QuerySelect, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement,
-    StreamTrait, TryGetableMany, error::*,
+    QueryResult, QuerySelect, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
+    SelectTwoRequired, Statement, StreamTrait, TryGetableMany, error::*,
 };
 use itertools::Itertools;
 use sea_query::SelectStatement;
@@ -81,9 +81,19 @@ where
     model: PhantomData<M>,
 }
 
-/// Helper class to handle query result for 2 Models
+/// Defines a type to get two Models, with the second being optional
 #[derive(Clone, Debug)]
 pub struct SelectTwoModel<M, N>
+where
+    M: FromQueryResult,
+    N: FromQueryResult,
+{
+    model: PhantomData<(M, N)>,
+}
+
+/// Defines a type to get two Models
+#[derive(Clone, Debug)]
+pub struct SelectTwoRequiredModel<M, N>
 where
     M: FromQueryResult,
     N: FromQueryResult,
@@ -204,6 +214,21 @@ where
     }
 }
 
+impl<M, N> SelectorTrait for SelectTwoRequiredModel<M, N>
+where
+    M: FromQueryResult + Sized,
+    N: FromQueryResult + Sized,
+{
+    type Item = (M, N);
+
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
+        Ok((
+            M::from_query_result(&res, SelectA.as_str())?,
+            N::from_query_result(&res, SelectB.as_str())?,
+        ))
+    }
+}
+
 impl<E> Select<E>
 where
     E: EntityTrait,
@@ -304,8 +329,7 @@ where
     ///     .select_only()
     ///     .column_as(cake::Column::Name, QueryAs::CakeName)
     ///     .into_values::<_, QueryAs>()
-    ///     .all(&db)
-    ///     ?;
+    ///     .all(&db)?;
     ///
     /// assert_eq!(
     ///     res,
@@ -354,8 +378,7 @@ where
     ///     .column_as(cake::Column::Id.count(), QueryAs::NumOfCakes)
     ///     .group_by(cake::Column::Name)
     ///     .into_values::<_, QueryAs>()
-    ///     .all(&db)
-    ///     ?;
+    ///     .all(&db)?;
     ///
     /// assert_eq!(res, [("Chocolate Forest".to_owned(), 2i64)]);
     ///
@@ -410,8 +433,7 @@ where
     ///     .select_only()
     ///     .column(cake::Column::Name)
     ///     .into_tuple()
-    ///     .all(&db)
-    ///     ?;
+    ///     .all(&db)?;
     ///
     /// assert_eq!(
     ///     res,
@@ -454,8 +476,7 @@ where
     ///     .column(cake::Column::Id)
     ///     .group_by(cake::Column::Name)
     ///     .into_tuple()
-    ///     .all(&db)
-    ///     ?;
+    ///     .all(&db)?;
     ///
     /// assert_eq!(res, vec![("Chocolate Forest".to_owned(), 2i64)]);
     ///
@@ -648,6 +669,85 @@ where
     // we should only count the number of items of the parent model
 }
 
+impl<E, F> SelectTwoRequired<E, F>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+{
+    /// Perform a conversion into a [SelectTwoRequiredModel]
+    pub fn into_model<M, N>(self) -> Selector<SelectTwoRequiredModel<M, N>>
+    where
+        M: FromQueryResult,
+        N: FromQueryResult,
+    {
+        Selector {
+            query: self.query,
+            selector: PhantomData,
+        }
+    }
+
+    /// Perform a conversion into a [SelectTwoRequiredModel] with [PartialModel](PartialModelTrait)
+    pub fn into_partial_model<M, N>(self) -> Selector<SelectTwoRequiredModel<M, N>>
+    where
+        M: PartialModelTrait,
+        N: PartialModelTrait,
+    {
+        let select = QuerySelect::select_only(self);
+        let select = M::select_cols(select);
+        let select = N::select_cols(select);
+        select.into_model::<M, N>()
+    }
+
+    /// Convert the Models into JsonValue
+    #[cfg(feature = "with-json")]
+    pub fn into_json(self) -> Selector<SelectTwoRequiredModel<JsonValue, JsonValue>> {
+        Selector {
+            query: self.query,
+            selector: PhantomData,
+        }
+    }
+
+    /// Get one Model from the Select query
+    pub fn one<C>(self, db: &C) -> Result<Option<(E::Model, F::Model)>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().one(db)
+    }
+
+    /// Get all Models from the Select query
+    pub fn all<C>(self, db: &C) -> Result<Vec<(E::Model, F::Model)>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().all(db)
+    }
+
+    /// Stream the results of a Select operation on a Model
+    pub fn stream<'a: 'b, 'b, C>(
+        self,
+        db: &'a C,
+    ) -> Result<impl Iterator<Item = Result<(E::Model, F::Model), DbErr>> + 'b, DbErr>
+    where
+        C: ConnectionTrait + StreamTrait,
+    {
+        self.into_model().stream(db)
+    }
+
+    /// Stream the result of the operation with PartialModel
+    pub fn stream_partial_model<'a: 'b, 'b, C, M, N>(
+        self,
+        db: &'a C,
+    ) -> Result<impl Iterator<Item = Result<(M, N), DbErr>> + 'b, DbErr>
+    where
+        C: ConnectionTrait + StreamTrait,
+        M: PartialModelTrait + 'b,
+        N: PartialModelTrait + 'b,
+    {
+        self.into_partial_model().stream(db)
+    }
+}
+
 impl<S> Selector<S>
 where
     S: SelectorTrait,
@@ -753,8 +853,7 @@ where
     ///         [],
     ///     ))
     ///     .into_model::<SelectResult>()
-    ///     .all(&db)
-    ///     ?;
+    ///     .all(&db)?;
     ///
     /// assert_eq!(
     ///     res,
@@ -885,8 +984,7 @@ where
     ///         Postgres,
     ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = {id}"#
     ///     ))
-    ///     .one(&db)
-    ///     ?;
+    ///     .one(&db)?;
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -934,8 +1032,7 @@ where
     ///         Postgres,
     ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake""#
     ///     ))
-    ///     .all(&db)
-    ///     ?;
+    ///     .all(&db)?;
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),

@@ -1,5 +1,5 @@
 [package]
-authors      = ["Langyo <langyo.china@gmail.com>"]
+authors      = ["bjn7 <https://github.com/bjn7>", "Langyo <langyo.china@gmail.com>"]
 edition      = "2024"
 name         = "sea-orm-proxy-cloudflare-worker-example"
 publish      = false
@@ -11,31 +11,24 @@ version      = "0.1.0"
 [package.metadata.release]
 release = false
 
-# https://github.com/rustwasm/wasm-pack/issues/1247
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = false
-
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
 anyhow      = "1"
 async-trait = "0.1"
-once_cell   = "1"
 serde       = { version = "1", features = ["derive"] }
 serde_json  = "1"
 
 axum          = { version = "0.7", default-features = false, features = ["macros"] }
 tower-service = "0.3.2"
-worker        = { version = "0.3.0", features = ['http', 'axum', "d1"] }
-worker-macros = { version = "0.3.0", features = ['http'] }
+worker        = { version = "0.7.5", features = ['http', 'axum', "d1"] }
+worker-macros = { version = "0.7.5", features = ['http'] }
 
 chrono = "0.4"
-uuid   = { version = "1", features = ["v4"] }
+uuid   = { version = "1", features = ["v4", "js"] }
 
 console_error_panic_hook = { version = "0.1" }
-gloo                     = "0.11"
-oneshot                  = "0.1"
 wasm-bindgen             = "0.2.92"
 wasm-bindgen-futures     = { version = "0.4" }
 
@@ -47,7 +40,3 @@ sea-orm = { path = "../../", default-features = false, features = [
     "with-json",
     "debug-print",
 ] }
-
-[patch.crates-io]
-# https://github.com/cloudflare/workers-rs/pull/591
-worker = { git = "https://github.com/cloudflare/workers-rs.git", rev = "ff2e6a0fd58b7e7b4b7651aba46e04067597eb03" }

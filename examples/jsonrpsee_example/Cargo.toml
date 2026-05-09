@@ -11,3 +11,5 @@ members = [".", "api", "entity", "migration"]
 
 [dependencies]
 jsonrpsee-example-api = { path = "api" }
+
+[patch.crates-io]

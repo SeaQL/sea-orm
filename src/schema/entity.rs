@@ -274,6 +274,280 @@ mod tests {
     use crate::{DbBackend, EntityName, Schema, sea_query::*, tests_cfg::*};
     use pretty_assertions::assert_eq;
 
+    /// Postgres native enum (db_type = "Enum") — should produce CREATE TYPE on
+    /// Postgres, nothing on MySQL/SQLite.
+    #[test]
+    fn test_create_enum_native_postgres() {
+        let schema_pg = Schema::new(DbBackend::Postgres);
+        let enums = schema_pg.create_enum_from_entity(lunch_set::Entity);
+        assert_eq!(
+            enums.len(),
+            1,
+            "Postgres should produce one CREATE TYPE for the Tea enum"
+        );
+        let sql = DbBackend::Postgres.build(&enums[0]).to_string();
+        assert!(
+            sql.contains("CREATE TYPE"),
+            "should be a CREATE TYPE statement: {sql}"
+        );
+        assert!(
+            sql.contains("tea"),
+            "should reference the enum name 'tea': {sql}"
+        );
+
+        // MySQL/SQLite: no enum type statements
+        for backend in [DbBackend::MySql, DbBackend::Sqlite] {
+            let schema = Schema::new(backend);
+            let enums = schema.create_enum_from_entity(lunch_set::Entity);
+            assert!(
+                enums.is_empty(),
+                "{backend:?} should not produce enum type statements"
+            );
+        }
+    }
+
+    /// Postgres native enum column: Postgres references the custom type name,
+    /// MySQL uses inline ENUM('v1', 'v2').
+    #[test]
+    fn test_native_enum_column_type_per_backend() {
+        let pg_sql = DbBackend::Postgres
+            .build(&Schema::new(DbBackend::Postgres).create_table_from_entity(lunch_set::Entity))
+            .to_string();
+        assert!(
+            pg_sql.contains("\"tea\""),
+            "Postgres table should reference custom type 'tea': {pg_sql}"
+        );
+
+        let mysql_sql = DbBackend::MySql
+            .build(&Schema::new(DbBackend::MySql).create_table_from_entity(lunch_set::Entity))
+            .to_string();
+        assert!(
+            mysql_sql.contains("ENUM("),
+            "MySQL table should use inline ENUM(...): {mysql_sql}"
+        );
+    }
+
+    /// String-based enum (db_type = "String(...)") must NOT produce any
+    /// CREATE TYPE statements — it's just a regular string column.
+    #[test]
+    fn test_create_enum_string_based_no_create_type() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+        #[sea_orm(rs_type = "String", db_type = "String(StringLen::N(1))")]
+        pub enum Size {
+            #[sea_orm(string_value = "S")]
+            Small,
+            #[sea_orm(string_value = "L")]
+            Large,
+        }
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "shirt")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            pub size: Size,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+        impl ActiveModelBehavior for ActiveModel {}
+
+        for backend in [DbBackend::MySql, DbBackend::Postgres, DbBackend::Sqlite] {
+            let schema = Schema::new(backend);
+            let enums = schema.create_enum_from_entity(Entity);
+            assert!(
+                enums.is_empty(),
+                "{backend:?}: String-based enum should not produce CREATE TYPE"
+            );
+
+            // Verify the column appears as a string type in the table DDL
+            let table_sql = backend
+                .build(&schema.create_table_from_entity(Entity))
+                .to_string();
+            assert!(
+                !table_sql.to_uppercase().contains("CREATE TYPE"),
+                "{backend:?}: table DDL should not contain CREATE TYPE: {table_sql}"
+            );
+        }
+    }
+
+    /// Integer-based enum (db_type = "Integer") must NOT produce any
+    /// CREATE TYPE statements — it's just a regular integer column.
+    #[test]
+    fn test_create_enum_integer_based_no_create_type() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+        #[sea_orm(rs_type = "i32", db_type = "Integer")]
+        pub enum Priority {
+            #[sea_orm(num_value = 0)]
+            Low,
+            #[sea_orm(num_value = 1)]
+            High,
+        }
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "task")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            pub priority: Priority,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+        impl ActiveModelBehavior for ActiveModel {}
+
+        for backend in [DbBackend::MySql, DbBackend::Postgres, DbBackend::Sqlite] {
+            let schema = Schema::new(backend);
+            let enums = schema.create_enum_from_entity(Entity);
+            assert!(
+                enums.is_empty(),
+                "{backend:?}: Integer-based enum should not produce CREATE TYPE"
+            );
+        }
+    }
+
+    /// Entity with no enum columns at all — should produce nothing.
+    #[test]
+    fn test_create_enum_no_enum_columns() {
+        for backend in [DbBackend::MySql, DbBackend::Postgres, DbBackend::Sqlite] {
+            let schema = Schema::new(backend);
+            let enums = schema.create_enum_from_entity(cake::Entity);
+            assert!(
+                enums.is_empty(),
+                "{backend:?}: entity without enum columns should produce no enum statements"
+            );
+        }
+    }
+
+    /// Entity with multiple Postgres enum columns produces one CREATE TYPE per enum.
+    #[test]
+    fn test_create_enum_multiple_enum_columns() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+        #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "color")]
+        pub enum Color {
+            #[sea_orm(string_value = "red")]
+            Red,
+            #[sea_orm(string_value = "blue")]
+            Blue,
+        }
+
+        #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+        #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "shape")]
+        pub enum Shape {
+            #[sea_orm(string_value = "circle")]
+            Circle,
+            #[sea_orm(string_value = "square")]
+            Square,
+        }
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "widget")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            pub color: Color,
+            pub shape: Shape,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+        impl ActiveModelBehavior for ActiveModel {}
+
+        let schema = Schema::new(DbBackend::Postgres);
+        let enums = schema.create_enum_from_entity(Entity);
+        assert_eq!(
+            enums.len(),
+            2,
+            "should produce two CREATE TYPE statements for two enum columns"
+        );
+
+        let sqls: Vec<String> = enums
+            .iter()
+            .map(|e| DbBackend::Postgres.build(e).to_string())
+            .collect();
+        assert!(
+            sqls.iter().any(|s| s.contains("color")),
+            "should have CREATE TYPE for 'color': {sqls:?}"
+        );
+        assert!(
+            sqls.iter().any(|s| s.contains("shape")),
+            "should have CREATE TYPE for 'shape': {sqls:?}"
+        );
+
+        // MySQL: no CREATE TYPE
+        let mysql_enums = Schema::new(DbBackend::MySql).create_enum_from_entity(Entity);
+        assert!(mysql_enums.is_empty());
+    }
+
+    /// Mixed entity: one Postgres native enum, one string enum, one integer enum.
+    /// Only the native enum should produce CREATE TYPE on Postgres.
+    #[test]
+    fn test_create_enum_mixed_column_types() {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+        #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "mood")]
+        pub enum Mood {
+            #[sea_orm(string_value = "happy")]
+            Happy,
+            #[sea_orm(string_value = "sad")]
+            Sad,
+        }
+
+        #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+        #[sea_orm(rs_type = "String", db_type = "String(StringLen::N(10))")]
+        pub enum Tag {
+            #[sea_orm(string_value = "work")]
+            Work,
+            #[sea_orm(string_value = "play")]
+            Play,
+        }
+
+        #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+        #[sea_orm(rs_type = "i32", db_type = "Integer")]
+        pub enum Level {
+            #[sea_orm(num_value = 1)]
+            One,
+            #[sea_orm(num_value = 2)]
+            Two,
+        }
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "entry")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            pub mood: Mood,
+            pub tag: Tag,
+            pub level: Level,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+        impl ActiveModelBehavior for ActiveModel {}
+
+        // Only the native Postgres enum should produce a CREATE TYPE
+        let schema = Schema::new(DbBackend::Postgres);
+        let enums = schema.create_enum_from_entity(Entity);
+        assert_eq!(
+            enums.len(),
+            1,
+            "only the native Postgres enum (Mood) should produce CREATE TYPE"
+        );
+        let sql = DbBackend::Postgres.build(&enums[0]).to_string();
+        assert!(sql.contains("mood"), "should be the 'mood' enum: {sql}");
+    }
+
     #[test]
     fn test_create_table_from_entity_table_ref() {
         for builder in [DbBackend::MySql, DbBackend::Postgres, DbBackend::Sqlite] {

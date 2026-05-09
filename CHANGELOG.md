@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release Candidates
 
+- [2.0.0-rc.38](changelog/2.0.0-rc.38.md) — `find_both_related`, `set_ne`, pool options, schema sync fixes
 - [2.0.0-rc.37](changelog/2.0.0-rc.37.md) — ER Diagram Generation
 - [2.0.0-rc.36](changelog/2.0.0-rc.36.md) — Per-migration transaction control
 - [2.0.0-rc.35](changelog/2.0.0-rc.35.md) — SQLite transaction modes, DeriveIntoActiveModel extensions, Decimal64/Bytes, schema sync fix
@@ -685,6 +686,8 @@ pub struct MyUserId(pub UserId);
     + Support decimal with different formats
     + Support timestamp with different timezone / resolution
     + Added parquet example
+* Support `HashMap` and `BTreeMap` for JSON columns via `TryGetableFromJson` https://github.com/SeaQL/sea-orm/pull/3009
+* Derive macros now inherit the visibility of the input type for generated items such as `Entity`, `Column`, `PrimaryKey`, and `ActiveModel` https://github.com/SeaQL/sea-orm/pull/3029
 
 ### Breaking Changes
 

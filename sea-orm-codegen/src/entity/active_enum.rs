@@ -85,7 +85,7 @@ impl ActiveEnum {
         } else {
             quote! {
                 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum #copy_derive #serde_derive #extra_derives)]
-                #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = #enum_name)]
+                #[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = #enum_name)]
                 #extra_attributes
                 pub enum #enum_iden {
                     #(
@@ -125,7 +125,7 @@ mod tests {
             .to_string(),
             quote!(
                 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
-                #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "media_type")]
+                #[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "media_type")]
                 pub enum MediaType {
                     #[sea_orm(string_value = "")]
                     __EmptyString,
@@ -168,7 +168,7 @@ mod tests {
             .to_string(),
             quote!(
                 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
-                #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "media_type")]
+                #[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "media_type")]
                 pub enum MediaType {
                     #[sea_orm(string_value = "UNKNOWN")]
                     Unknown,
@@ -225,7 +225,7 @@ mod tests {
         fn build_generated_enum() -> String {
             quote!(
                 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy, specta :: Type, ts_rs :: TS)]
-                #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "media_type")]
+                #[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "media_type")]
                 pub enum MediaType {
                     #[sea_orm(string_value = "UNKNOWN")]
                     Unknown,
@@ -257,11 +257,7 @@ mod tests {
             .to_string(),
             quote!(
                 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
-                #[sea_orm(
-                    rs_type = "String",
-                    db_type = "Enum",
-                    enum_name = "coinflip_result_type"
-                )]
+                #[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "coinflip_result_type")]
                 #[serde(rename_all = "camelCase")]
                 pub enum CoinflipResultType {
                     #[sea_orm(string_value = "HEADS")]
@@ -290,11 +286,7 @@ mod tests {
             .to_string(),
             quote!(
                 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
-                #[sea_orm(
-                    rs_type = "String",
-                    db_type = "Enum",
-                    enum_name = "coinflip_result_type"
-                )]
+                #[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "coinflip_result_type")]
                 #[serde(rename_all = "camelCase")]
                 #[ts(export)]
                 pub enum CoinflipResultType {
@@ -341,7 +333,7 @@ mod tests {
             .to_string(),
             quote!(
                 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
-                #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "ty")]
+                #[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "ty")]
                 pub enum Ty {
                     #[sea_orm(string_value = "Question")]
                     Question,

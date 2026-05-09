@@ -60,7 +60,7 @@ where
     ///
     /// Use this to insert or set a specific value.
     ///
-    /// When editing an existing value, you can use [set_if_not_equals][ActiveValue::set_if_not_equals]
+    /// When editing an existing value, you can use [set_ne][ActiveValue::set_ne]
     /// to preserve the [Unchanged] state when the new value is the same as the old one.
     /// Then you can meaningfully use methods like [ActiveModelTrait::is_changed].
     Set(V),
@@ -69,7 +69,7 @@ where
     /// You get these when you query an existing [Model][crate::ModelTrait]
     /// from the database and convert it into an [ActiveModel][ActiveModelTrait].
     ///
-    /// When you edit it, you can use [set_if_not_equals][ActiveValue::set_if_not_equals]
+    /// When you edit it, you can use [set_ne][ActiveValue::set_ne]
     /// to preserve this "unchanged" state if the new value is the same as the old one.
     /// Then you can meaningfully use methods like [ActiveModelTrait::is_changed].
     Unchanged(V),
@@ -325,15 +325,15 @@ where
     /// let mut value = ActiveValue::Unchanged("old");
     ///
     /// // This wouldn't be the case if we used plain `value = Set("old");`
-    /// value.set_if_not_equals("old");
+    /// value.set_ne("old");
     /// assert!(value.is_unchanged());
     ///
     /// // Only when we change the actual `&str` value, it becomes `Set`
-    /// value.set_if_not_equals("new");
+    /// value.set_ne("new");
     /// assert_eq!(value.is_unchanged(), false);
     /// assert_eq!(value, ActiveValue::Set("new"));
     /// ```
-    pub fn set_if_not_equals(&mut self, value: V)
+    pub fn set_ne(&mut self, value: V)
     where
         V: PartialEq,
     {
@@ -343,11 +343,19 @@ where
         }
     }
 
+    /// Alias for [`ActiveValue::set_ne`]. Kept for compatibility.
+    pub fn set_if_not_equals(&mut self, value: V)
+    where
+        V: PartialEq,
+    {
+        self.set_ne(value);
+    }
+
     /// `Set(value)`, except when [`self.is_unchanged()`][ActiveValue#method.is_unchanged],
     /// `value` equals the current [Unchanged][ActiveValue::Unchanged] value, and `value`
     /// does not match a given predicate.
     ///
-    /// This is useful in the same situations as [ActiveValue#method.set_if_not_equals] as
+    /// This is useful in the same situations as [`ActiveValue::set_ne`] as
     /// well as when you want to leave an existing [Set][ActiveValue::Set] value alone
     /// depending on a condition, such as ensuring a `None` value never replaced an
     /// existing `Some` value. This can come up when trying to merge two [ActiveValue]s.
@@ -360,14 +368,14 @@ where
     /// let mut value = ActiveValue::Set(Some("old"));
     ///
     /// // since Option::is_some(None) == false, we leave the existing set value alone
-    /// value.set_if_not_equals_and(None, Option::is_some);
+    /// value.set_ne_and(None, Option::is_some);
     /// assert_eq!(value, ActiveValue::Set(Some("old")));
     ///
     /// // since Option::is_some(Some("new")) == true, we replace the set value
-    /// value.set_if_not_equals_and(Some("new"), Option::is_some);
+    /// value.set_ne_and(Some("new"), Option::is_some);
     /// assert_eq!(value, ActiveValue::Set(Some("new")));
     /// ```
-    pub fn set_if_not_equals_and(&mut self, value: V, f: impl FnOnce(&V) -> bool)
+    pub fn set_ne_and(&mut self, value: V, f: impl FnOnce(&V) -> bool)
     where
         V: PartialEq,
     {
@@ -376,6 +384,14 @@ where
             ActiveValue::Set(_) if !f(&value) => {}
             _ => *self = ActiveValue::Set(value),
         }
+    }
+
+    /// Alias for [`ActiveValue::set_ne_and`]. Kept for compatibility.
+    pub fn set_if_not_equals_and(&mut self, value: V, f: impl FnOnce(&V) -> bool)
+    where
+        V: PartialEq,
+    {
+        self.set_ne_and(value, f);
     }
 
     /// Get the inner value, unless `self` is [NotSet][ActiveValue::NotSet].

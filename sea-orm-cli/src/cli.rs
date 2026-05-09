@@ -1,10 +1,15 @@
 use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueEnum};
-#[cfg(feature = "codegen")]
+use colored::Colorize;
+#[cfg(feature = "cli")]
 use dotenvy::dotenv;
 use std::ffi::OsStr;
 
+#[cfg(feature = "cli")]
+use crate::commands::entity::{run_entity_init, run_entity_schema, run_entity_sync};
 #[cfg(feature = "codegen")]
-use crate::{handle_error, run_generate_command, run_migrate_command};
+use crate::run_generate_command;
+#[cfg(feature = "cli")]
+use crate::{handle_error, run_migrate_command};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -62,6 +67,15 @@ pub enum Commands {
     Generate {
         #[command(subcommand)]
         command: GenerateSubcommands,
+    },
+    #[command(
+        about = "Entity-first workflow commands",
+        arg_required_else_help = true,
+        display_order = 15
+    )]
+    Entity {
+        #[command(subcommand)]
+        command: EntitySubcommands,
     },
     #[command(about = "Migration related commands", display_order = 20)]
     Migrate {
@@ -160,6 +174,110 @@ pub enum MigrateSubcommands {
             display_order = 90
         )]
         num: u32,
+    },
+}
+
+#[derive(Subcommand, PartialEq, Eq, Debug)]
+pub enum EntitySubcommands {
+    #[command(
+        about = "Diff entity definitions against the live database and interactively generate a migration",
+        display_order = 10
+    )]
+    Sync {
+        // TODO: add a help message in case default value fails
+        #[arg(
+            short = 'd',
+            long,
+            env = "ENTITY_DIR",
+            help = "Path to the entity crate root directory",
+            default_value = "./entity"
+        )]
+        dir: String,
+
+        #[arg(
+            long,
+            env = "MIGRATION_DIR",
+            help = "Path to the migration crate root directory",
+            default_value = "./migration"
+        )]
+        migration_dir: String,
+
+        #[arg(
+            short = 'u',
+            long,
+            env = "DATABASE_URL",
+            help = "Database URL",
+            hide_env_values = true
+        )]
+        database_url: Option<String>,
+
+        #[arg(
+            short = 's',
+            long,
+            env = "DATABASE_SCHEMA",
+            long_help = "Database schema\n \
+                        - For MySQL and SQLite, this argument is ignored.\n \
+                        - For PostgreSQL, this argument is optional with default value 'public'.\n"
+        )]
+        database_schema: Option<String>,
+
+        /// Name for the generated migration (e.g. add_users). Prompted interactively if omitted.
+        #[arg(long, help = "Name for the generated migration (e.g. add_users)")]
+        name: Option<String>,
+
+        #[arg(
+            long,
+            default_value_t = true,
+            help = "Allow dangerous operations (e.g. dropping tables) in diff"
+        )]
+        allow_dangerous: bool,
+
+        /// Pre-supply rename decisions: `table.old_col:new_col`.
+        /// May be repeated for multiple renames. If any unresolved rename is
+        /// not covered by a --rename flag the command will exit with an error.
+        #[arg(long = "rename", value_name = "TABLE.OLD:NEW")]
+        renames: Vec<String>,
+
+        /// Skip the Y/n confirmation prompt and generate the migration immediately.
+        #[arg(long, default_value_t = false)]
+        no_confirm: bool,
+    },
+
+    #[command(
+        about = "Preview the schema as defined by registered entities, without connecting to a database",
+        display_order = 15
+    )]
+    Schema {
+        #[arg(
+            short = 'd',
+            long,
+            env = "ENTITY_DIR",
+            help = "Path to the entity crate root directory",
+            default_value = "./entity"
+        )]
+        dir: String,
+
+        #[arg(
+            long,
+            default_value = "postgres",
+            help = "Database backend to render SQL for (postgres, mysql, sqlite)"
+        )]
+        database_backend: String,
+    },
+
+    #[command(
+        about = "Scaffold a new entity crate (not yet implemented)",
+        display_order = 20
+    )]
+    Init {
+        #[arg(
+            short = 'd',
+            long,
+            env = "ENTITY_DIR",
+            help = "Path where the entity crate should be created",
+            default_value = "./entity"
+        )]
+        dir: String,
     },
 }
 
@@ -392,6 +510,57 @@ pub enum GenerateSubcommands {
         )]
         er_diagram: bool,
     },
+    #[command(about = "Preview the current database schema as SQL DDL statements")]
+    Schema {
+        #[arg(
+            short = 'u',
+            long,
+            env = "DATABASE_URL",
+            help = "Database URL",
+            hide_env_values = true
+        )]
+        database_url: String,
+
+        #[arg(
+            short = 's',
+            long,
+            env = "DATABASE_SCHEMA",
+            long_help = "Database schema\n \
+                        - For MySQL, this argument is ignored.\n \
+                        - For PostgreSQL, this argument is optional with default value 'public'."
+        )]
+        database_schema: Option<String>,
+
+        #[arg(
+            short = 't',
+            long,
+            value_delimiter = ',',
+            help = "Preview schema for specified tables only (comma separated)"
+        )]
+        tables: Vec<String>,
+
+        #[arg(
+            long,
+            value_delimiter = ',',
+            default_value = "seaql_migrations",
+            help = "Skip tables from schema preview (comma separated)"
+        )]
+        ignore_tables: Vec<String>,
+
+        #[arg(
+            long,
+            default_value = "1",
+            help = "The maximum amount of connections to use when connecting to the database."
+        )]
+        max_connections: u32,
+
+        #[arg(
+            long,
+            default_value = "30",
+            long_help = "Acquire timeout in seconds of the connection used for schema discovery"
+        )]
+        acquire_timeout: u64,
+    },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Default)]
@@ -424,7 +593,7 @@ fn is_deprecated_preserve_user_modifications_flag(arg: &OsStr) -> bool {
 
 /// Use this to build a local, version-controlled `sea-orm-cli` in dependent projects
 /// (see [example use case](https://github.com/SeaQL/sea-orm/discussions/1889)).
-#[cfg(feature = "codegen")]
+#[cfg(feature = "cli")]
 pub async fn main() {
     dotenv().ok();
 
@@ -435,17 +604,69 @@ pub async fn main() {
     let cli = Cli::parse();
     if deprecated_preserve_user_modifications_flag_used {
         eprintln!(
-            "warning: `--preserve-user-modifications` is deprecated; use `--experimental-preserve-user-modifications` instead."
+            "{}: `--preserve-user-modifications` is deprecated; use `--experimental-preserve-user-modifications` instead.",
+            "warning".yellow().bold()
         );
     }
     let verbose = cli.verbose;
 
     match cli.command {
         Commands::Generate { command } => {
+            #[cfg(feature = "codegen")]
             run_generate_command(command, verbose)
                 .await
                 .unwrap_or_else(handle_error);
+            #[cfg(not(feature = "codegen"))]
+            {
+                let _ = command;
+                eprintln!(
+                    "{} `generate` requires the `codegen` feature.",
+                    "Error:".red().bold()
+                );
+                std::process::exit(1);
+            }
         }
+        Commands::Entity { command } => match command {
+            EntitySubcommands::Sync {
+                dir,
+                migration_dir,
+                database_url,
+                database_schema,
+                name,
+                allow_dangerous,
+                renames,
+                no_confirm,
+            } => {
+                if let Err(e) = run_entity_sync(
+                    &dir,
+                    &migration_dir,
+                    name.as_deref(),
+                    database_url.as_deref(),
+                    database_schema.as_deref(),
+                    allow_dangerous,
+                    &renames,
+                    no_confirm,
+                ) {
+                    eprintln!("{} {e}", "Error:".red().bold());
+                    std::process::exit(1);
+                }
+            }
+            EntitySubcommands::Schema {
+                dir,
+                database_backend,
+            } => {
+                if let Err(e) = run_entity_schema(&dir, &database_backend) {
+                    eprintln!("{} {e}", "Error:".red().bold());
+                    std::process::exit(1);
+                }
+            }
+            EntitySubcommands::Init { dir } => {
+                if let Err(e) = run_entity_init(&dir) {
+                    eprintln!("{} {e}", "Error:".red().bold());
+                    std::process::exit(1);
+                }
+            }
+        },
         Commands::Migrate {
             migration_dir,
             database_schema,

@@ -82,6 +82,18 @@ fn try_get(res: &QueryResult, pre: &str, col: &str, ty: &ArrayType) -> Result<Va
         ArrayType::Float => Value::Float(res.try_get(pre, col)?),
         ArrayType::Double => Value::Double(res.try_get(pre, col)?),
         ArrayType::String => Value::String(res.try_get(pre, col)?),
+        ArrayType::Enum(type_name) => {
+            let type_name = type_name.as_ref().clone();
+            match res.try_get::<Option<String>>(pre, col)? {
+                Some(value) => {
+                    Value::Enum(sea_query::OptionEnum::Some(Box::new(sea_query::Enum {
+                        type_name,
+                        value: value.into(),
+                    })))
+                }
+                None => Value::Enum(sea_query::OptionEnum::None(type_name)),
+            }
+        }
         ArrayType::Char => return Err(DbErr::Type("Unsupported type: char".into())),
         ArrayType::Bytes => Value::Bytes(res.try_get(pre, col)?),
 
@@ -135,6 +147,9 @@ fn try_get(res: &QueryResult, pre: &str, col: &str, ty: &ArrayType) -> Result<Va
 
         #[cfg(feature = "with-ipnetwork")]
         ArrayType::IpNetwork => Value::IpNetwork(res.try_get(pre, col)?),
+
+        #[cfg(feature = "with-mac_address")]
+        ArrayType::MacAddress => Value::MacAddress(res.try_get(pre, col)?),
     })
 }
 

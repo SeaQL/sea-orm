@@ -1,25 +1,23 @@
-use anyhow::Result;
 use std::sync::Arc;
 
 use axum::{Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
-use worker::{Env, console_error, console_log};
 
 use sea_orm::{
     ActiveModelTrait,
     ActiveValue::{NotSet, Set},
-    EntityTrait,
+    DatabaseConnection, EntityTrait,
 };
 
-#[derive(Clone)]
-struct CFEnv {
-    pub env: Arc<Env>,
+use crate::utility::map_error;
+
+struct AppState {
+    pub db: DatabaseConnection,
 }
 
-unsafe impl Send for CFEnv {}
-unsafe impl Sync for CFEnv {}
-
-pub fn router(env: Env) -> Router {
-    let state = CFEnv { env: Arc::new(env) };
+pub fn router(db: DatabaseConnection) -> Router {
+    // generally, it is much simpler and cleaner to wrap the AppState itself,
+    // rather than its individual members.
+    let state = Arc::new(AppState { db });
 
     Router::new()
         .route("/", get(handler_get))
@@ -28,49 +26,28 @@ pub fn router(env: Env) -> Router {
 }
 
 async fn handler_get(
-    State(state): State<CFEnv>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let env = state.env.clone();
-    let db = crate::orm::init_db(env).await.map_err(|err| {
-        console_log!("Failed to connect to database: {:?}", err);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to connect to database".to_string(),
-        )
-    })?;
+    crate::utility::ensure_schema(&state.db)
+        .await
+        .map_err(|err| map_error(err, "Failed to create table"))?;
 
     let ret = crate::entity::Entity::find()
-        .all(&db)
+        .all(&state.db)
         .await
-        .map_err(|err| {
-            console_log!("Failed to query database: {:?}", err);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to query database".to_string(),
-            )
-        })?;
-    let ret = serde_json::to_string(&ret).map_err(|err| {
-        console_error!("Failed to serialize response: {:?}", err);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to serialize response".to_string(),
-        )
-    })?;
+        .map_err(|err| map_error(err, "Failed to query database"))?;
+    let ret = serde_json::to_string(&ret)
+        .map_err(|err| map_error(err, "Failed to serialize response"))?;
 
     Ok(ret.into_response())
 }
 
 async fn handler_generate(
-    State(state): State<CFEnv>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let env = state.env.clone();
-    let db = crate::orm::init_db(env).await.map_err(|err| {
-        console_log!("Failed to connect to database: {:?}", err);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to connect to database".to_string(),
-        )
-    })?;
+    crate::utility::ensure_schema(&state.db)
+        .await
+        .map_err(|err| map_error(err, "Failed to serialize response"))?;
 
     let ret = crate::entity::ActiveModel {
         id: NotSet,
@@ -78,13 +55,10 @@ async fn handler_generate(
         text: Set(uuid::Uuid::new_v4().to_string()),
     };
 
-    let ret = ret.insert(&db).await.map_err(|err| {
-        console_log!("Failed to insert into database: {:?}", err);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to insert into database".to_string(),
-        )
-    })?;
+    let ret = ret
+        .insert(&state.db)
+        .await
+        .map_err(|err| map_error(err, "Failed to insert into database"))?;
 
     Ok(format!("Inserted: {:?}", ret).into_response())
 }

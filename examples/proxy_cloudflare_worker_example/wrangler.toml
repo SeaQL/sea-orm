@@ -1,9 +1,9 @@
-compatibility_date = "2024-07-08"
+compatibility_date = "2026-03-29"
 main               = "build/worker/shim.mjs"
 name               = "axum"
 
 [[d1_databases]]
-binding       = "test-d1"
+binding       = "D1TEST"
 database_name = "axumtest"
 # Change it if you want to use your own database
 database_id = "00000000-0000-0000-0000-000000000000"

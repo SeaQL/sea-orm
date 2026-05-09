@@ -40,7 +40,7 @@ cargo test --doc
 
 ### Launch some databases
 
-There is a docker compose under `build-tools`, but usually I just pick the ones I need from `build-tools/docker-crete.sh`:
+There is a docker compose under `build-tools`, but usually I just pick the ones I need from `build-tools/docker-create.sh`:
 
 ```sh
 docker run \
