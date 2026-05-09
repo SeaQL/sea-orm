@@ -1,14 +1,24 @@
 use super::{Schema, TopologicalSort};
 use crate::{ConnectionTrait, DbBackend, DbErr, EntityTrait, Statement};
 use sea_query::{
-    ForeignKeyCreateStatement, Index, IndexCreateStatement, IntoIden, TableAlterStatement,
-    TableCreateStatement, TableName, TableRef, extension::postgres::TypeCreateStatement,
+    IndexCreateStatement, TableCreateStatement, TableName, TableRef,
+    extension::postgres::TypeCreateStatement,
+};
+
+#[cfg(feature = "schema-sync")]
+pub use super::discover::resolver::extract_enum_type_name;
+#[cfg(feature = "schema-sync")]
+pub use super::discover::{
+    DiscoverSuggestion, DiscoverWarning, InterpretConfig, InterpretResult, RenameDecision,
+    SchemaChangeId, SuggestionKind, WarningKind, interpret::interpret as interpret_changes,
 };
 
 /// A schema builder that can take a registry of Entities and synchronize it with database.
 pub struct SchemaBuilder {
     helper: Schema,
     entities: Vec<EntitySchemaInfo>,
+    #[cfg(feature = "schema-sync")]
+    excluded_tables: Vec<String>,
 }
 
 /// Schema info for Entity. Can be used to re-create schema in database.
@@ -48,6 +58,8 @@ impl SchemaBuilder {
         Self {
             helper: schema,
             entities: Default::default(),
+            #[cfg(feature = "schema-sync")]
+            excluded_tables: Default::default(),
         }
     }
 
@@ -74,6 +86,17 @@ impl SchemaBuilder {
         self.entities.push(entity);
     }
 
+    /// Exclude tables from schema discovery.
+    ///
+    /// Excluded tables are never reported as orphans and are never diffed for column/FK changes.
+    /// Use this to protect system tables (e.g. the migration tracker) from being dropped.
+    #[cfg(feature = "schema-sync")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
+    pub fn exclude(mut self, table: impl Into<String>) -> Self {
+        self.excluded_tables.push(table.into());
+        self
+    }
+
     /// Synchronize the schema with database, will create missing tables, columns, unique keys, and foreign keys.
     /// This operation is addition only, will not drop any table / columns.
     #[cfg(feature = "schema-sync")]
@@ -82,164 +105,59 @@ impl SchemaBuilder {
     where
         C: ConnectionTrait + sea_schema::Connection,
     {
-        let _existing =
-            match db.get_database_backend() {
-                #[cfg(feature = "sqlx-mysql")]
-                DbBackend::MySql => {
-                    use sea_schema::{mysql::discovery::SchemaDiscovery, probe::SchemaProbe};
+        let change_set = self.discover(db, true).await?;
+        for stmt in change_set.statements() {
+            db.execute_raw(stmt).await?;
+        }
+        Ok(())
+    }
 
-                    let current_schema: String = db
-                        .query_one(
-                            sea_query::SelectStatement::new()
-                                .expr(sea_schema::mysql::MySql::get_current_schema()),
-                        )
-                        .await?
-                        .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
-                        .try_get_by_index(0)?;
+    /// Returns a [`ChangeSet`](super::discover::changes::ChangeSet) grouped by origin.
+    /// Use [`interpret`](super::discover::interpret) to turn it into SQL statements.
+    ///
+    /// * `db` - The database connection to use for fetching existing table schema.
+    /// * `allow_dangerous` - If `true`, changes will include drops (tables, columns, constraints).
+    ///
+    /// Panics if TableCreateStatement any table name is empty, will never happen.
+    #[cfg(feature = "schema-sync")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
+    pub async fn discover<C>(
+        &self,
+        db: &C,
+        allow_dangerous: bool,
+    ) -> Result<super::discover::changes::ChangeSet, DbErr>
+    where
+        C: ConnectionTrait + sea_schema::Connection,
+    {
+        super::discover::discover(&self.entities, db, allow_dangerous, &self.excluded_tables).await
+    }
 
-                    // Collect all unique schemas that registered entities belong to
-                    let mut target_schemas = std::collections::BTreeSet::new();
-                    for entity in &self.entities {
-                        let schema = entity.schema_name.as_deref().unwrap_or(&current_schema);
-                        target_schemas.insert(schema.to_string());
-                    }
-
-                    let mut tables_by_schema = std::collections::HashMap::new();
-                    for schema_name in &target_schemas {
-                        let schema_discovery = SchemaDiscovery::new_no_exec(schema_name);
-                        let schema = schema_discovery.discover_with(db).await.map_err(|err| {
-                            DbErr::Query(crate::RuntimeErr::SqlxError(err.into()))
-                        })?;
-
-                        tables_by_schema.insert(
-                            schema_name.clone(),
-                            schema.tables.iter().map(|table| table.write()).collect(),
-                        );
-                    }
-
-                    DiscoveredSchema {
-                        current_schema,
-                        tables_by_schema,
-                        enums_by_schema: Default::default(),
-                    }
-                }
-                #[cfg(feature = "sqlx-postgres")]
-                DbBackend::Postgres => {
-                    use sea_schema::{postgres::discovery::SchemaDiscovery, probe::SchemaProbe};
-
-                    let current_schema: String = db
-                        .query_one(
-                            sea_query::SelectStatement::new()
-                                .expr(sea_schema::postgres::Postgres::get_current_schema()),
-                        )
-                        .await?
-                        .ok_or_else(|| DbErr::RecordNotFound("Can't get current schema".into()))?
-                        .try_get_by_index(0)?;
-
-                    // Collect all unique schemas that registered entities belong to
-                    let mut target_schemas = std::collections::BTreeSet::new();
-                    for entity in &self.entities {
-                        let schema = entity.schema_name.as_deref().unwrap_or(&current_schema);
-                        target_schemas.insert(schema.to_string());
-                    }
-
-                    let mut tables_by_schema = std::collections::HashMap::new();
-                    let mut enums_by_schema = std::collections::HashMap::new();
-                    for schema_name in &target_schemas {
-                        let schema_discovery = SchemaDiscovery::new_no_exec(schema_name);
-                        let schema = schema_discovery.discover_with(db).await.map_err(|err| {
-                            DbErr::Query(crate::RuntimeErr::SqlxError(err.into()))
-                        })?;
-
-                        tables_by_schema.insert(
-                            schema_name.clone(),
-                            schema.tables.iter().map(|table| table.write()).collect(),
-                        );
-                        enums_by_schema.insert(
-                            schema_name.clone(),
-                            schema.enums.iter().map(|def| def.write()).collect(),
-                        );
-                    }
-
-                    DiscoveredSchema {
-                        current_schema,
-                        tables_by_schema,
-                        enums_by_schema,
-                    }
-                }
-                #[cfg(feature = "sqlx-sqlite")]
-                DbBackend::Sqlite => {
-                    use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
-                    let schema = SchemaDiscovery::discover_with(db)
-                        .await
-                        .map_err(|err| {
-                            DbErr::Query(match err {
-                                SqliteDiscoveryError::SqlxError(err) => {
-                                    crate::RuntimeErr::SqlxError(err.into())
-                                }
-                                _ => crate::RuntimeErr::Internal(format!("{err:?}")),
-                            })
-                        })?
-                        .merge_indexes_into_table();
-                    let mut tables_by_schema = std::collections::HashMap::new();
-                    tables_by_schema.insert(
-                        String::new(),
-                        schema.tables.iter().map(|table| table.write()).collect(),
-                    );
-                    DiscoveredSchema {
-                        current_schema: String::new(),
-                        tables_by_schema,
-                        enums_by_schema: Default::default(),
-                    }
-                }
-                #[cfg(feature = "rusqlite")]
-                DbBackend::Sqlite => {
-                    use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
-                    let schema = SchemaDiscovery::discover_with(db)
-                        .map_err(|err| {
-                            DbErr::Query(match err {
-                                SqliteDiscoveryError::RusqliteError(err) => {
-                                    crate::RuntimeErr::Rusqlite(err.into())
-                                }
-                                _ => crate::RuntimeErr::Internal(format!("{err:?}")),
-                            })
-                        })?
-                        .merge_indexes_into_table();
-                    let mut tables_by_schema = std::collections::HashMap::new();
-                    tables_by_schema.insert(
-                        String::new(),
-                        schema.tables.iter().map(|table| table.write()).collect(),
-                    );
-                    DiscoveredSchema {
-                        current_schema: String::new(),
-                        tables_by_schema,
-                        enums_by_schema: Default::default(),
-                    }
-                }
-                #[allow(unreachable_patterns)]
-                other => {
-                    return Err(DbErr::BackendNotSupported {
-                        db: other.as_str(),
-                        ctx: "SchemaBuilder::sync",
-                    });
-                }
-            };
-
-        #[allow(unreachable_code)]
-        let mut created_enums: Vec<Statement> = Default::default();
-
-        #[allow(unreachable_code)]
-        for table_name in self.sorted_tables() {
+    /// Returns the SQL DDL statements (CREATE TABLE, CREATE TYPE, CREATE INDEX) for all
+    /// registered entities, rendered for the builder's backend.
+    ///
+    /// Tables are ordered topologically (parents before children). Useful for previewing
+    /// the schema without connecting to a database.
+    pub fn schema_statements(&self) -> Vec<Statement> {
+        let backend = self.helper.backend;
+        let mut stmts: Vec<Statement> = Vec::new();
+        let table_refs: Vec<&TableCreateStatement> =
+            self.entities.iter().map(|e| &e.table).collect();
+        for table_name in sorted_tables(&table_refs, TableSortOrder::ParentsFirst) {
             if let Some(entity) = self
                 .entities
                 .iter()
-                .find(|entity| table_name == get_table_name(entity.table.get_table_name()))
+                .find(|e| table_name == get_table_name(e.table.get_table_name()))
             {
-                entity.sync(db, &_existing, &mut created_enums).await?;
+                for stmt in &entity.enums {
+                    stmts.push(backend.build(stmt));
+                }
+                stmts.push(backend.build(&entity.table));
+                for stmt in &entity.indexes {
+                    stmts.push(backend.build(stmt));
+                }
             }
         }
-
-        Ok(())
+        stmts
     }
 
     /// Apply this schema to a database, will create all registered tables, columns, unique keys, and foreign keys.
@@ -247,7 +165,9 @@ impl SchemaBuilder {
     pub async fn apply<C: ConnectionTrait>(self, db: &C) -> Result<(), DbErr> {
         let mut created_enums: Vec<Statement> = Default::default();
 
-        for table_name in self.sorted_tables() {
+        let table_refs: Vec<&TableCreateStatement> =
+            self.entities.iter().map(|entity| &entity.table).collect();
+        for table_name in sorted_tables(&table_refs, TableSortOrder::ParentsFirst) {
             if let Some(entity) = self
                 .entities
                 .iter()
@@ -258,41 +178,6 @@ impl SchemaBuilder {
         }
 
         Ok(())
-    }
-
-    fn sorted_tables(&self) -> Vec<TableName> {
-        let mut sorter = TopologicalSort::<TableName>::new();
-
-        for entity in self.entities.iter() {
-            let table_name = get_table_name(entity.table.get_table_name());
-            sorter.insert(table_name);
-        }
-        for entity in self.entities.iter() {
-            let self_table = get_table_name(entity.table.get_table_name());
-            for fk in entity.table.get_foreign_key_create_stmts().iter() {
-                let fk = fk.get_foreign_key();
-                let ref_table = get_table_name(fk.get_ref_table());
-                if self_table != ref_table {
-                    // self cycle is okay
-                    sorter.add_dependency(ref_table, self_table.clone());
-                }
-            }
-        }
-        let mut sorted = Vec::new();
-        while let Some(i) = sorter.pop() {
-            sorted.push(i);
-        }
-        if sorted.len() != self.entities.len() {
-            // push leftover tables
-            for entity in self.entities.iter() {
-                let table_name = get_table_name(entity.table.get_table_name());
-                if !sorted.contains(&table_name) {
-                    sorted.push(table_name);
-                }
-            }
-        }
-
-        sorted
     }
 }
 
@@ -349,6 +234,24 @@ impl EntitySchemaInfo {
         }
     }
 
+    /// Returns a reference to the table create statement.
+    #[cfg(feature = "schema-sync")]
+    pub(crate) fn table(&self) -> &TableCreateStatement {
+        &self.table
+    }
+
+    /// Returns a reference to the enum type create statements.
+    #[cfg(feature = "schema-sync")]
+    pub(crate) fn enums(&self) -> &[TypeCreateStatement] {
+        &self.enums
+    }
+
+    /// Returns a reference to the index create statements.
+    #[cfg(feature = "schema-sync")]
+    pub(crate) fn indexes(&self) -> &[IndexCreateStatement] {
+        &self.indexes
+    }
+
     async fn apply<C: ConnectionTrait>(
         &self,
         db: &C,
@@ -364,215 +267,6 @@ impl EntitySchemaInfo {
         db.execute(&self.table).await?;
         for stmt in self.indexes.iter() {
             db.execute(stmt).await?;
-        }
-        Ok(())
-    }
-
-    // better to always compile this function
-    #[allow(dead_code)]
-    async fn sync<C: ConnectionTrait>(
-        &self,
-        db: &C,
-        existing: &DiscoveredSchema,
-        created_enums: &mut Vec<Statement>,
-    ) -> Result<(), DbErr> {
-        let db_backend = db.get_database_backend();
-
-        // create enum before creating table
-        let existing_enums = existing.find_enums(self.schema_name.as_deref());
-        for stmt in self.enums.iter() {
-            let mut has_enum = false;
-            let new_stmt = db_backend.build(stmt);
-            for existing_enum in existing_enums {
-                if db_backend.build(existing_enum) == new_stmt {
-                    has_enum = true;
-                    // TODO add enum variants
-                    break;
-                }
-            }
-            if !has_enum && !created_enums.iter().any(|s| s == &new_stmt) {
-                db.execute(stmt).await?;
-                created_enums.push(new_stmt);
-            }
-        }
-        let table_name = get_table_name(self.table.get_table_name());
-        // Use schema-aware lookup: find existing table in the correct schema
-        let existing_table = existing.find_table(self.schema_name.as_deref(), &table_name);
-        if let Some(existing_table) = existing_table {
-            for column_def in self.table.get_columns() {
-                let mut column_exists = false;
-                for existing_column in existing_table.get_columns() {
-                    if column_def.get_column_name() == existing_column.get_column_name() {
-                        column_exists = true;
-                        break;
-                    }
-                }
-                if !column_exists {
-                    let mut renamed_from = "";
-                    if let Some(comment) = &column_def.get_column_spec().comment {
-                        if let Some((_, suffix)) = comment.rsplit_once("renamed_from \"") {
-                            if let Some((prefix, _)) = suffix.split_once('"') {
-                                renamed_from = prefix;
-                            }
-                        }
-                    }
-                    if renamed_from.is_empty() {
-                        db.execute(
-                            TableAlterStatement::new()
-                                .table(self.table.get_table_name().expect("Checked above").clone())
-                                .add_column(column_def.to_owned()),
-                        )
-                        .await?;
-                    } else {
-                        db.execute(
-                            TableAlterStatement::new()
-                                .table(self.table.get_table_name().expect("Checked above").clone())
-                                .rename_column(
-                                    renamed_from.to_owned(),
-                                    column_def.get_column_name(),
-                                ),
-                        )
-                        .await?;
-                    }
-                }
-            }
-            if db.get_database_backend() != DbBackend::Sqlite {
-                for foreign_key in self.table.get_foreign_key_create_stmts().iter() {
-                    let mut key_exists = false;
-                    for existing_key in existing_table.get_foreign_key_create_stmts().iter() {
-                        if compare_foreign_key(foreign_key, existing_key) {
-                            key_exists = true;
-                            break;
-                        }
-                    }
-                    if !key_exists {
-                        db.execute(foreign_key).await?;
-                    }
-                }
-            }
-        } else {
-            db.execute(&self.table).await?;
-        }
-        for stmt in self.indexes.iter() {
-            let mut has_index = false;
-            if let Some(existing_table) = existing_table {
-                for existing_index in existing_table.get_indexes() {
-                    if existing_index.get_index_spec().get_column_names()
-                        == stmt.get_index_spec().get_column_names()
-                    {
-                        has_index = true;
-                        break;
-                    }
-                }
-            }
-            if !has_index {
-                // shall we do alter table add constraint for unique index?
-                let mut stmt = stmt.clone();
-                stmt.if_not_exists();
-                db.execute(&stmt).await?;
-            }
-        }
-        if let Some(existing_table) = existing_table {
-            // For columns with a column-level UNIQUE constraint (#[sea_orm(unique)]) that
-            // already exist in the table but do not yet have a unique index, create one.
-            for column_def in self.table.get_columns() {
-                if column_def.get_column_spec().unique {
-                    let col_name = column_def.get_column_name();
-                    let col_exists = existing_table
-                        .get_columns()
-                        .iter()
-                        .any(|c| c.get_column_name() == col_name);
-                    if !col_exists {
-                        // Column is being added in this sync pass; the ALTER TABLE ADD COLUMN
-                        // will include the UNIQUE inline, so no separate index needed.
-                        continue;
-                    }
-                    let already_unique = existing_table.get_indexes().iter().any(|idx| {
-                        if !idx.is_unique_key() {
-                            return false;
-                        }
-                        let cols = idx.get_index_spec().get_column_names();
-                        cols.len() == 1 && cols[0] == col_name
-                    });
-                    if !already_unique {
-                        let table_name =
-                            self.table.get_table_name().expect("table must have a name");
-                        let tbl_str = table_name.sea_orm_table().to_string();
-                        let table_ref = table_name.clone();
-                        db.execute(
-                            Index::create()
-                                .name(format!("idx-{tbl_str}-{col_name}"))
-                                .table(table_ref)
-                                .col(col_name.into_iden())
-                                .unique()
-                                .if_not_exists(),
-                        )
-                        .await?;
-                    }
-                }
-            }
-        }
-        if let Some(existing_table) = existing_table {
-            // find all unique keys from existing table
-            // if it no longer exist in new schema, drop it
-            for existing_index in existing_table.get_indexes() {
-                if existing_index.is_unique_key() {
-                    let mut has_index = false;
-                    for stmt in self.indexes.iter() {
-                        if existing_index.get_index_spec().get_column_names()
-                            == stmt.get_index_spec().get_column_names()
-                        {
-                            has_index = true;
-                            break;
-                        }
-                    }
-                    // Also check if the unique index corresponds to a column-level UNIQUE
-                    // constraint (from #[sea_orm(unique)]). These are embedded in the CREATE
-                    // TABLE column definition and not tracked in self.indexes, so we must not
-                    // try to drop them during sync.
-                    if !has_index {
-                        let index_cols = existing_index.get_index_spec().get_column_names();
-                        if index_cols.len() == 1 {
-                            for column_def in self.table.get_columns() {
-                                if column_def.get_column_name() == index_cols[0]
-                                    && column_def.get_column_spec().unique
-                                {
-                                    has_index = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if !has_index {
-                        if let Some(drop_existing) = existing_index
-                            .get_index_spec()
-                            .get_name()
-                            .map(|s| s.to_owned())
-                        {
-                            if db_backend == DbBackend::Postgres {
-                                // On PostgreSQL, unique indexes created via column-level UNIQUE
-                                // (e.g. ADD COLUMN ... UNIQUE) are backed by a named constraint.
-                                // DROP INDEX fails on constraint-owned indexes; use
-                                // ALTER TABLE ... DROP CONSTRAINT instead.
-                                db.execute(
-                                    TableAlterStatement::new()
-                                        .table(
-                                            self.table
-                                                .get_table_name()
-                                                .expect("Checked above")
-                                                .clone(),
-                                        )
-                                        .drop_constraint(drop_existing),
-                                )
-                                .await?;
-                            } else {
-                                db.execute(sea_query::Index::drop().name(drop_existing))
-                                    .await?;
-                            }
-                        }
-                    }
-                }
-            }
         }
         Ok(())
     }
@@ -604,7 +298,9 @@ impl EntitySchemaInfo {
     }
 }
 
-fn get_table_name(table_ref: Option<&TableRef>) -> TableName {
+/// Panics if the table reference is not a table name
+pub(crate) fn get_table_name(table_ref: Option<&TableRef>) -> TableName {
+    //TODO: either rewrite TableCreateStatement or move to something else that is not a builder with options
     match table_ref {
         Some(TableRef::Table(table_name, _)) => table_name.clone(),
         None => panic!("Expect TableCreateStatement is properly built"),
@@ -612,12 +308,62 @@ fn get_table_name(table_ref: Option<&TableRef>) -> TableName {
     }
 }
 
-fn compare_foreign_key(a: &ForeignKeyCreateStatement, b: &ForeignKeyCreateStatement) -> bool {
-    let a = a.get_foreign_key();
-    let b = b.get_foreign_key();
+/// Controls which tables appear first in [`sorted_tables`] output.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TableSortOrder {
+    /// Parent tables (no FK dependents) appear before children
+    ParentsFirst,
+    /// Child tables (FK holders) appear before parents
+    ChildrenFirst,
+}
 
-    a.get_name() == b.get_name()
-        || (a.get_ref_table() == b.get_ref_table()
-            && a.get_columns() == b.get_columns()
-            && a.get_ref_columns() == b.get_ref_columns())
+/// Sort table names topologically by FK dependency
+pub(crate) fn sorted_tables(
+    tables: &[&TableCreateStatement],
+    order: TableSortOrder,
+) -> Vec<TableName> {
+    let mut sorter = TopologicalSort::<TableName>::new();
+
+    for tbl in tables {
+        sorter.insert(get_table_name(tbl.get_table_name()));
+    }
+    for tbl in tables {
+        let self_name = get_table_name(tbl.get_table_name());
+        for fk in tbl.get_foreign_key_create_stmts() {
+            let ref_table = get_table_name(fk.get_foreign_key().get_ref_table());
+            if self_name != ref_table {
+                match order {
+                    TableSortOrder::ParentsFirst => {
+                        sorter.add_dependency(ref_table.clone(), self_name.clone());
+                    }
+                    TableSortOrder::ChildrenFirst => {
+                        sorter.add_dependency(self_name.clone(), ref_table.clone());
+                    }
+                }
+            }
+        }
+    }
+    let mut sorted = Vec::new();
+    loop {
+        // Collect all zero-predecessor nodes, sort by name for determinism,
+        // then drain them one level at a time. Without this sort, HashMap
+        // iteration order inside TopologicalSort::peek() is random per process,
+        // causing different orderings across subprocess invocations (e.g. diff
+        // vs generate in `entity sync`), which breaks the schema-hash check.
+        let mut level = sorter.pop_all();
+        if level.is_empty() {
+            break;
+        }
+        level.sort_by(|a, b| a.1.to_string().cmp(&b.1.to_string()));
+        sorted.extend(level);
+    }
+
+    // Append any leftovers (circular deps)
+    for tbl in tables {
+        let name = get_table_name(tbl.get_table_name());
+        if !sorted.contains(&name) {
+            sorted.push(name);
+        }
+    }
+    sorted
 }

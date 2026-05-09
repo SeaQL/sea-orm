@@ -1,10 +1,12 @@
 use crate::{BannerVersion, BigIntegerType, DateTimeCrate, GenerateSubcommands};
+use colored::Colorize;
 use core::time;
 use sea_orm_codegen::{
     BannerVersion as CodegenBannerVersion, BigIntegerType as CodegenBigIntegerType,
     DateTimeCrate as CodegenDateTimeCrate, EntityFormat, EntityTransformer, EntityWriterContext,
     MergeReport, OutputFile, WithPrelude, WithSerde, merge_entity_files,
 };
+use sea_schema::sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, SqliteQueryBuilder};
 use std::{error::Error, fs, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{EnvFilter, prelude::*};
 use url::Url;
@@ -129,7 +131,7 @@ pub async fn run_generate_command(
                         use sea_schema::mysql::discovery::SchemaDiscovery;
                         use sqlx::MySql;
 
-                        println!("Connecting to MySQL ...");
+                        println!("{}", "Connecting to MySQL ...".cyan());
                         let connection = sqlx_connect::<MySql>(
                             max_connections,
                             acquire_timeout,
@@ -137,7 +139,7 @@ pub async fn run_generate_command(
                             None,
                         )
                         .await?;
-                        println!("Discovering schema ...");
+                        println!("{}", "Discovering schema ...".cyan().dimmed());
                         let schema_discovery = SchemaDiscovery::new(connection, _database_name);
                         let schema = schema_discovery.discover().await?;
                         let table_stmts = schema
@@ -161,7 +163,7 @@ pub async fn run_generate_command(
                         use sea_schema::sqlite::discovery::SchemaDiscovery;
                         use sqlx::Sqlite;
 
-                        println!("Connecting to SQLite ...");
+                        println!("{}", "Connecting to SQLite ...".cyan());
                         let connection = sqlx_connect::<Sqlite>(
                             max_connections,
                             acquire_timeout,
@@ -169,7 +171,7 @@ pub async fn run_generate_command(
                             None,
                         )
                         .await?;
-                        println!("Discovering schema ...");
+                        println!("{}", "Discovering schema ...".cyan().dimmed());
                         let schema_discovery = SchemaDiscovery::new(connection);
                         let schema = schema_discovery
                             .discover()
@@ -196,7 +198,7 @@ pub async fn run_generate_command(
                         use sea_schema::postgres::discovery::SchemaDiscovery;
                         use sqlx::Postgres;
 
-                        println!("Connecting to Postgres ...");
+                        println!("{}", "Connecting to Postgres ...".cyan());
                         let schema = database_schema.as_deref().unwrap_or("public");
                         let connection = sqlx_connect::<Postgres>(
                             max_connections,
@@ -205,7 +207,7 @@ pub async fn run_generate_command(
                             Some(schema),
                         )
                         .await?;
-                        println!("Discovering schema ...");
+                        println!("{}", "Discovering schema ...".cyan().dimmed());
                         let schema_discovery = SchemaDiscovery::new(connection, schema);
                         let schema = schema_discovery.discover().await?;
                         let table_stmts = schema
@@ -221,7 +223,7 @@ pub async fn run_generate_command(
                 }
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
-            println!("... discovered.");
+            println!("{}", "... discovered.".green());
 
             let writer_context = EntityWriterContext::new(
                 if expanded_format {
@@ -260,7 +262,7 @@ pub async fn run_generate_command(
                 let diagram = entity_writer.generate_er_diagram();
                 let diagram_path = dir.join("entities.mermaid");
                 fs::write(&diagram_path, &diagram)?;
-                println!("Writing {}", diagram_path.display());
+                println!("Writing {}", diagram_path.display().to_string().dimmed());
             }
 
             let output = entity_writer.generate(&writer_context);
@@ -269,7 +271,7 @@ pub async fn run_generate_command(
 
             for OutputFile { name, content } in output.files.iter() {
                 let file_path = dir.join(name);
-                println!("Writing {}", file_path.display());
+                println!("Writing {}", file_path.display().to_string().dimmed());
 
                 if !matches!(
                     name.as_str(),
@@ -288,7 +290,7 @@ pub async fn run_generate_command(
                             fallback_applied,
                         }) => {
                             for message in warnings {
-                                eprintln!("{message}");
+                                eprintln!("{}", message.yellow());
                             }
                             fs::write(file_path, output)?;
                             if fallback_applied {
@@ -311,7 +313,7 @@ pub async fn run_generate_command(
             }
 
             if merge_fallback_files.is_empty() {
-                println!("... Done.");
+                println!("{}", "... Done.".green().bold());
             } else {
                 return Err(format!(
                     "Merge fallback applied for {} file(s): \n{}",
@@ -319,6 +321,147 @@ pub async fn run_generate_command(
                     merge_fallback_files.join("\n")
                 )
                 .into());
+            }
+        }
+        GenerateSubcommands::Schema {
+            database_url,
+            database_schema,
+            tables,
+            ignore_tables,
+            max_connections,
+            acquire_timeout,
+        } => {
+            let url = Url::parse(&database_url)?;
+            let is_sqlite = url.scheme() == "sqlite";
+
+            let filter_tables =
+                |table: &String| -> bool { tables.is_empty() || tables.contains(table) };
+            let filter_skip_tables = |table: &String| -> bool { !ignore_tables.contains(table) };
+
+            if !is_sqlite {
+                let database_name = url
+                    .path_segments()
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "There is no database name as part of the url path: {}",
+                            url.as_str()
+                        )
+                    })
+                    .next()
+                    .unwrap();
+                if database_name.is_empty() {
+                    panic!(
+                        "There is no database name as part of the url path: {}",
+                        url.as_str()
+                    );
+                }
+            }
+
+            match url.scheme() {
+                "mysql" => {
+                    #[cfg(not(feature = "sqlx-mysql"))]
+                    {
+                        panic!("mysql feature is off")
+                    }
+                    #[cfg(feature = "sqlx-mysql")]
+                    {
+                        use sea_schema::mysql::discovery::SchemaDiscovery;
+                        use sqlx::MySql;
+
+                        let database_name = url.path_segments().unwrap().next().unwrap();
+                        println!("{}", "Connecting to MySQL ...".cyan());
+                        let connection = sqlx_connect::<MySql>(
+                            max_connections,
+                            acquire_timeout,
+                            url.as_str(),
+                            None,
+                        )
+                        .await?;
+                        println!("{}", "Discovering schema ...".cyan().dimmed());
+                        let schema_discovery = SchemaDiscovery::new(connection, database_name);
+                        let schema = schema_discovery.discover().await?;
+                        let stmts: Vec<_> = schema
+                            .tables
+                            .into_iter()
+                            .filter(|s| filter_tables(&s.info.name))
+                            .filter(|s| filter_skip_tables(&s.info.name))
+                            .map(|s| s.write())
+                            .collect();
+                        for stmt in stmts {
+                            println!("{};", stmt.build(MysqlQueryBuilder));
+                        }
+                    }
+                }
+                "sqlite" => {
+                    #[cfg(not(feature = "sqlx-sqlite"))]
+                    {
+                        panic!("sqlite feature is off")
+                    }
+                    #[cfg(feature = "sqlx-sqlite")]
+                    {
+                        use sea_schema::sqlite::discovery::SchemaDiscovery;
+                        use sqlx::Sqlite;
+
+                        println!("{}", "Connecting to SQLite ...".cyan());
+                        let connection = sqlx_connect::<Sqlite>(
+                            max_connections,
+                            acquire_timeout,
+                            url.as_str(),
+                            None,
+                        )
+                        .await?;
+                        println!("{}", "Discovering schema ...".cyan().dimmed());
+                        let schema = SchemaDiscovery::new(connection)
+                            .discover()
+                            .await?
+                            .merge_indexes_into_table();
+                        let stmts: Vec<_> = schema
+                            .tables
+                            .into_iter()
+                            .filter(|s| filter_tables(&s.name))
+                            .filter(|s| filter_skip_tables(&s.name))
+                            .map(|s| s.write())
+                            .collect();
+                        for stmt in stmts {
+                            println!("{};", stmt.build(SqliteQueryBuilder));
+                        }
+                    }
+                }
+                "postgres" | "postgresql" => {
+                    #[cfg(not(feature = "sqlx-postgres"))]
+                    {
+                        panic!("postgres feature is off")
+                    }
+                    #[cfg(feature = "sqlx-postgres")]
+                    {
+                        use sea_schema::postgres::discovery::SchemaDiscovery;
+                        use sqlx::Postgres;
+
+                        let schema = database_schema.as_deref().unwrap_or("public");
+                        println!("{}", "Connecting to Postgres ...".cyan());
+                        let connection = sqlx_connect::<Postgres>(
+                            max_connections,
+                            acquire_timeout,
+                            url.as_str(),
+                            Some(schema),
+                        )
+                        .await?;
+                        println!("{}", "Discovering schema ...".cyan().dimmed());
+                        let schema_discovery = SchemaDiscovery::new(connection, schema);
+                        let discovered = schema_discovery.discover().await?;
+                        let stmts: Vec<_> = discovered
+                            .tables
+                            .into_iter()
+                            .filter(|s| filter_tables(&s.info.name))
+                            .filter(|s| filter_skip_tables(&s.info.name))
+                            .map(|s| s.write())
+                            .collect();
+                        for stmt in stmts {
+                            println!("{};", stmt.build(PostgresQueryBuilder));
+                        }
+                    }
+                }
+                _ => unimplemented!("{} is not supported", url.scheme()),
             }
         }
     }

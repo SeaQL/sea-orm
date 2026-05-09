@@ -1,0 +1,2 @@
+pub mod m20250101_000001_create_cake_table;
+pub mod m20250101_000002_create_fruit_table;

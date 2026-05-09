@@ -7,9 +7,9 @@ mod with_self;
 pub use with_self::*;
 
 use std::fmt::Display;
-use tracing::info;
 
 use super::{IntoSchemaManagerConnection, MigrationTrait, SchemaManager, seaql_migrations};
+use crate::response::{AppliedData, LifecycleData, MigrationEntry, RolledBackData, StatusData};
 use sea_orm::sea_query::IntoIden;
 use sea_orm::{ConnectionTrait, DbErr, DynIden};
 
@@ -127,23 +127,24 @@ pub trait MigratorTrait: Send {
     }
 
     /// Check the status of all migrations
-    async fn status<C>(db: &C) -> Result<(), DbErr>
+    async fn status<C>(db: &C) -> Result<StatusData, DbErr>
     where
         C: ConnectionTrait,
     {
         Self::install(db).await?;
-
-        info!("Checking migration status");
-
-        for Migration { migration, status } in Self::get_migration_with_status(db).await? {
-            info!("Migration '{}'... {}", migration.name(), status);
-        }
-
-        Ok(())
+        let migrations = Self::get_migration_with_status(db)
+            .await?
+            .into_iter()
+            .map(|m| MigrationEntry {
+                name: m.migration.name().to_owned(),
+                status: m.status.to_string(),
+            })
+            .collect();
+        Ok(StatusData { migrations })
     }
 
     /// Drop all tables from the database, then reapply all migrations
-    async fn fresh<'c, C>(db: C) -> Result<(), DbErr>
+    async fn fresh<'c, C>(db: C) -> Result<AppliedData, DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
     {
@@ -153,25 +154,30 @@ pub trait MigratorTrait: Send {
     }
 
     /// Rollback all applied migrations, then reapply all migrations
-    async fn refresh<'c, C>(db: C) -> Result<(), DbErr>
+    async fn refresh<'c, C>(db: C) -> Result<LifecycleData, DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
     {
         let db = db.into_database_executor();
         let manager = SchemaManager::new(db);
-        exec_down::<Self>(&manager, None).await?;
-        exec_up::<Self>(&manager, None).await
+        let rolled_back = exec_down::<Self>(&manager, None).await?;
+        let applied = exec_up::<Self>(&manager, None).await?;
+        Ok::<_, DbErr>(LifecycleData {
+            rolled_back,
+            applied,
+        })
     }
 
     /// Rollback all applied migrations
-    async fn reset<'c, C>(db: C) -> Result<(), DbErr>
+    async fn reset<'c, C>(db: C) -> Result<RolledBackData, DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
     {
         let db = db.into_database_executor();
         let manager = SchemaManager::new(db);
-        exec_down::<Self>(&manager, None).await?;
-        uninstall(&manager, Self::migration_table_name()).await
+        let rolled_back = exec_down::<Self>(&manager, None).await?;
+        uninstall(&manager, Self::migration_table_name()).await?;
+        Ok::<_, DbErr>(RolledBackData { rolled_back })
     }
 
     /// Uninstall migration tracking table only (non-destructive)
@@ -186,47 +192,45 @@ pub trait MigratorTrait: Send {
     }
 
     /// Apply pending migrations
-    async fn up<'c, C>(db: C, steps: Option<u32>) -> Result<(), DbErr>
+    async fn up<'c, C>(db: C, steps: Option<u32>) -> Result<AppliedData, DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
     {
         let db = db.into_database_executor();
         let manager = SchemaManager::new(db);
-        exec_up::<Self>(&manager, steps).await
+        let applied = exec_up::<Self>(&manager, steps).await?;
+        Ok(AppliedData { applied })
     }
 
     /// Rollback applied migrations
-    async fn down<'c, C>(db: C, steps: Option<u32>) -> Result<(), DbErr>
+    async fn down<'c, C>(db: C, steps: Option<u32>) -> Result<RolledBackData, DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
     {
         let db = db.into_database_executor();
         let manager = SchemaManager::new(db);
-        exec_down::<Self>(&manager, steps).await
+        let rolled_back = exec_down::<Self>(&manager, steps).await?;
+        Ok(RolledBackData { rolled_back })
     }
 }
 
-async fn exec_fresh<M>(manager: &SchemaManager<'_>) -> Result<(), DbErr>
+async fn exec_fresh<M>(manager: &SchemaManager<'_>) -> Result<AppliedData, DbErr>
 where
     M: MigratorTrait + ?Sized,
 {
     let db = manager.get_connection();
-
     M::install(db).await?;
-
     drop_everything(db).await?;
-
-    exec_up::<M>(manager, None).await
+    let applied = exec_up::<M>(manager, None).await?;
+    Ok(AppliedData { applied })
 }
 
-async fn exec_up<M>(manager: &SchemaManager<'_>, steps: Option<u32>) -> Result<(), DbErr>
+async fn exec_up<M>(manager: &SchemaManager<'_>, steps: Option<u32>) -> Result<Vec<String>, DbErr>
 where
     M: MigratorTrait + ?Sized,
 {
     let db = manager.get_connection();
-
     M::install(db).await?;
-
     exec_up_with(
         manager,
         steps,
@@ -236,14 +240,12 @@ where
     .await
 }
 
-async fn exec_down<M>(manager: &SchemaManager<'_>, steps: Option<u32>) -> Result<(), DbErr>
+async fn exec_down<M>(manager: &SchemaManager<'_>, steps: Option<u32>) -> Result<Vec<String>, DbErr>
 where
     M: MigratorTrait + ?Sized,
 {
     let db = manager.get_connection();
-
     M::install(db).await?;
-
     exec_down_with(
         manager,
         steps,

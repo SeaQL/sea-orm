@@ -77,7 +77,6 @@ pub mod value_type_attr {
         pub from_str: Option<syn::LitStr>,
         pub to_str: Option<syn::LitStr>,
         pub try_from_u64: Option<()>,
-        pub no_vec_impl: Option<()>,
     }
 }
 

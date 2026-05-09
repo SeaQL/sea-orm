@@ -1,5 +1,5 @@
-[workspace]
-# A separate workspace
+# [workspace]
+# # A separate workspace
 
 [package]
 authors = [
@@ -24,13 +24,18 @@ name = "sea_orm_cli"
 path = "src/lib.rs"
 
 [[bin]]
-name              = "sea-orm-cli"
-path              = "src/bin/main.rs"
+name = "sea-orm-cli"
+path = "src/bin/main.rs"
 required-features = ["cli", "codegen"]
 
 [[bin]]
-name              = "sea"
-path              = "src/bin/main.rs"
+name = "sea"
+path = "src/bin/main.rs"
+required-features = ["cli", "codegen"]
+
+[[bin]]
+name = "sea-dev"
+path = "src/bin/main.rs"
 required-features = ["cli", "codegen"]
 
 [dependencies]
@@ -38,14 +43,15 @@ async-std = { version = "1.9", default-features = false, features = [
     "attributes",
     "tokio1",
 ], optional = true }
-chrono = { version = "0.4.20", default-features = false, features = [
-    "clock",
-] }
+chrono = { version = "0.4.20", default-features = false, features = ["clock"] }
 clap = { version = "4.3", features = ["env", "derive"], optional = true }
+colored = "2"
 dotenvy = { version = "0.15", default-features = false, optional = true }
 glob = { version = "0.3", default-features = false }
 indoc = "2.0.6"
 regex = { version = "1.11.2" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
 sea-orm-codegen = { version = "=2.0.0-rc.38", path = "../sea-orm-codegen", default-features = false, optional = true }
 sea-schema = { version = "0.17.0-rc.1", default-features = false, features = [
     "discovery",
@@ -78,11 +84,7 @@ default = [
     "runtime-tokio-native-tls",
 ]
 postgres-vector = ["sea-schema/postgres-vector"]
-sqlx-mysql = [
-    "sqlx?/sqlx-mysql",
-    "sea-schema?/sqlx-mysql",
-    "sea-schema?/mysql",
-]
+sqlx-mysql = ["sqlx?/sqlx-mysql", "sea-schema?/sqlx-mysql", "sea-schema?/mysql"]
 sqlx-postgres = [
     "sqlx?/sqlx-postgres",
     "sea-schema?/sqlx-postgres",
@@ -94,9 +96,9 @@ sqlx-sqlite = [
     "sea-schema?/sqlite",
 ]
 
-runtime-actix            = ["runtime-tokio"]
+runtime-actix = ["runtime-tokio"]
 runtime-actix-native-tls = ["runtime-tokio-native-tls"]
-runtime-actix-rustls     = ["runtime-tokio-rustls"]
+runtime-actix-rustls = ["runtime-tokio-rustls"]
 
 runtime-async-std = [
     "async-std",
@@ -129,4 +131,5 @@ runtime-tokio-rustls = [
 # This allows us to develop using an overridden version of sea-query
 [patch.crates-io]
 # sea-query = { path = "../sea-query" }
+sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }
 # sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }
