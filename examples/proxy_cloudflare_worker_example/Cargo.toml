@@ -3,7 +3,7 @@ authors      = ["bjn7 <https://github.com/bjn7>", "Langyo <langyo.china@gmail.co
 edition      = "2024"
 name         = "sea-orm-proxy-cloudflare-worker-example"
 publish      = false
-rust-version = "1.85.0"
+rust-version = "1.94.0"
 version      = "0.1.0"
 
 [workspace]

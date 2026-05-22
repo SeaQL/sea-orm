@@ -3,7 +3,7 @@ authors      = ["Sam Samai <sam@studio2pi.com.au>"]
 edition      = "2024"
 name         = "sea-orm-rocket-example"
 publish      = false
-rust-version = "1.85.0"
+rust-version = "1.94.0"
 version      = "0.1.0"
 
 [workspace]

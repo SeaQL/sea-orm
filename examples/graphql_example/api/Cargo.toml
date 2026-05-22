@@ -3,7 +3,7 @@ authors      = ["Aaron Leopold <aaronleopold1221@gmail.com>"]
 edition      = "2024"
 name         = "graphql-example-api"
 publish      = false
-rust-version = "1.85.0"
+rust-version = "1.94.0"
 version      = "0.1.0"
 
 [dependencies]

@@ -7,7 +7,7 @@ license      = "MIT OR Apache-2.0"
 name         = "sea-orm-rocket-codegen"
 readme       = "../README.md"
 repository   = "https://github.com/SergioBenitez/Rocket/contrib/db_pools"
-rust-version = "1.85.0"
+rust-version = "1.94.0"
 version      = "0.6.0"
 
 [lib]

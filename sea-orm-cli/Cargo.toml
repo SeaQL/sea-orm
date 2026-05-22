@@ -16,7 +16,7 @@ keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 license = "MIT OR Apache-2.0"
 name = "sea-orm-cli"
 repository = "https://github.com/SeaQL/sea-orm"
-rust-version = "1.85.0"
+rust-version = "1.94.0"
 version = "2.0.0-rc.38"
 
 [lib]

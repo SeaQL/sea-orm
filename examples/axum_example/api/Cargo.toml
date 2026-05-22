@@ -3,7 +3,7 @@ authors      = ["Yoshiera Huang <huangjasper@126.com>"]
 edition      = "2024"
 name         = "axum-example-api"
 publish      = false
-rust-version = "1.85.0"
+rust-version = "1.94.0"
 version      = "0.1.0"
 
 [dependencies]
