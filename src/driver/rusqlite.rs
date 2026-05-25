@@ -207,22 +207,26 @@ impl RusqliteConnector {
             .trim_start_matches("sqlite://")
             .trim_start_matches("sqlite:");
 
-        let (path, mode) = match raw.find('?') {
-            Some(q) => {
-                let query = &raw[q + 1..];
-                let mut mode = None;
-                for kv in query.split('&') {
-                    if let Some(val) = kv.strip_prefix("mode=") {
-                        mode = Some(val);
-                    } else if !kv.is_empty() {
-                        return Err(DbErr::Conn(RuntimeErr::Internal(format!(
-                            "unsupported SQLite connection parameter: {kv}"
-                        ))));
+        let (path, mode) = if raw.starts_with("file:") {
+            (raw, None)
+        } else {
+            match raw.find('?') {
+                Some(q) => {
+                    let query = &raw[q + 1..];
+                    let mut mode = None;
+                    for kv in query.split('&') {
+                        if let Some(val) = kv.strip_prefix("mode=") {
+                            mode = Some(val);
+                        } else if !kv.is_empty() {
+                            return Err(DbErr::Conn(RuntimeErr::Internal(format!(
+                                "unsupported SQLite connection parameter: {kv}"
+                            ))));
+                        }
                     }
+                    (&raw[..q], mode)
                 }
-                (&raw[..q], mode)
+                None => (raw, None),
             }
-            None => (raw, None),
         };
 
         let conn = match mode {
