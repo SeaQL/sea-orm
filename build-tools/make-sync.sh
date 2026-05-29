@@ -33,6 +33,9 @@ replace_rs "s/Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>/Result<T, 
 replace_rs "s/Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>/Result<T, E>/" src
 replace_rs 's/Box::pin(async move {/({/' src
 replace_rs 's/Box::pin(async move {/({/' tests
+replace_rs 's/AsyncFnOnce/FnOnce/g' src
+replace_rs 's/transaction_with_config_async/transaction_with_config/g' src tests
+replace_rs 's/transaction_async/transaction/g' src tests
 replace_rs 's/async //' src
 replace_rs 's/async //' tests
 replace_rs 's/async //' examples

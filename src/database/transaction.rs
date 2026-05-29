@@ -26,6 +26,34 @@ pub struct DatabaseTransaction {
     record_stmt_in_spans: bool,
 }
 
+#[instrument(level = "trace", skip(transaction, callback))]
+pub(crate) async fn run_async_transaction_callback<Txn, F, T, E>(
+    transaction: Txn,
+    callback: F,
+) -> Result<T, TransactionError<E>>
+where
+    Txn: TransactionSession + Send + Sync,
+    F: for<'b> AsyncFnOnce(&'b Txn) -> Result<T, E> + Send,
+    T: Send,
+    E: std::fmt::Display + std::fmt::Debug + Send,
+{
+    let res = callback(&transaction)
+        .await
+        .map_err(TransactionError::Transaction);
+    if res.is_ok() {
+        transaction
+            .commit()
+            .await
+            .map_err(TransactionError::Connection)?;
+    } else {
+        transaction
+            .rollback()
+            .await
+            .map_err(TransactionError::Connection)?;
+    }
+    res
+}
+
 impl std::fmt::Debug for DatabaseTransaction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "DatabaseTransaction")
@@ -154,6 +182,42 @@ impl DatabaseTransaction {
                 .map_err(TransactionError::Connection)?;
         }
         res
+    }
+
+    /// Execute the function inside a transaction.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
+    #[instrument(level = "trace", skip(callback))]
+    pub async fn transaction_async<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> AsyncFnOnce(&'c DatabaseTransaction) -> Result<T, E> + Send,
+        T: Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
+    {
+        let transaction = self.begin().await.map_err(TransactionError::Connection)?;
+        run_async_transaction_callback(transaction, callback).await
+    }
+
+    /// Execute the function inside a transaction with isolation level and/or access mode.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
+    #[instrument(level = "trace", skip(callback))]
+    pub async fn transaction_with_config_async<F, T, E>(
+        &self,
+        callback: F,
+        isolation_level: Option<IsolationLevel>,
+        access_mode: Option<AccessMode>,
+    ) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> AsyncFnOnce(&'c DatabaseTransaction) -> Result<T, E> + Send,
+        T: Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
+    {
+        let transaction = self
+            .begin_with_config(isolation_level, access_mode)
+            .await
+            .map_err(TransactionError::Connection)?;
+        run_async_transaction_callback(transaction, callback).await
     }
 
     /// Commit a transaction

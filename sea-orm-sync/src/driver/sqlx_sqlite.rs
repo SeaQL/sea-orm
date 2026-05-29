@@ -167,7 +167,7 @@ impl SqlxSqlitePoolConnection {
         debug_print!("{}", sql);
 
         let conn = &mut self.pool.acquire().map_err(sqlx_conn_acquire_err)?;
-        match conn.execute(sql) {
+        match conn.execute(sqlx::AssertSqlSafe(sql.to_owned())) {
             Ok(res) => Ok(res.into()),
             Err(err) => Err(sqlx_error_to_exec_err(err)),
         }
@@ -313,7 +313,7 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, Sql
         .values
         .as_ref()
         .map_or(Values(Vec::new()), |values| values.clone());
-    sqlx::query_with(&stmt.sql, SqlxValues(values))
+    sqlx::query_with(sqlx::AssertSqlSafe(stmt.sql.as_str()), SqlxValues(values))
 }
 
 pub(crate) fn set_transaction_config(

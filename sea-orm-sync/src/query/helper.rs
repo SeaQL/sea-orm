@@ -909,7 +909,7 @@ pub(crate) fn join_tbl_on_condition(
     foreign_keys: Identity,
 ) -> Condition {
     let mut cond = Condition::all();
-    for (owner_key, foreign_key) in owner_keys.into_iter().zip(foreign_keys.into_iter()) {
+    for (owner_key, foreign_key) in owner_keys.into_iter().zip(foreign_keys) {
         cond = cond
             .add(Expr::col((from_tbl.clone(), owner_key)).equals((to_tbl.clone(), foreign_key)));
     }

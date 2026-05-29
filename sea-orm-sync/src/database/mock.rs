@@ -450,12 +450,10 @@ mod tests {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
         db.transaction::<_, (), DbErr>(|txn| {
-            ({
-                let _1 = cake::Entity::find().one(txn);
-                let _2 = fruit::Entity::find().all(txn);
+            let _1 = cake::Entity::find().one(txn);
+            let _2 = fruit::Entity::find().all(txn);
 
-                Ok(())
-            })
+            Ok(())
         })
         .unwrap();
 
@@ -492,10 +490,8 @@ mod tests {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
         let result = db.transaction::<_, (), MyErr>(|txn| {
-            ({
-                let _ = cake::Entity::find().one(txn);
-                Err(MyErr("test".to_owned()))
-            })
+            let _ = cake::Entity::find().one(txn);
+            Err(MyErr("test".to_owned()))
         });
 
         match result {
@@ -524,20 +520,16 @@ mod tests {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
         db.transaction::<_, (), DbErr>(|txn| {
-            ({
-                let _ = cake::Entity::find().one(txn);
+            let _ = cake::Entity::find().one(txn);
 
-                txn.transaction::<_, (), DbErr>(|txn| {
-                    ({
-                        let _ = fruit::Entity::find().all(txn);
-
-                        Ok(())
-                    })
-                })
-                .unwrap();
+            txn.transaction::<_, (), DbErr>(|txn| {
+                let _ = fruit::Entity::find().all(txn);
 
                 Ok(())
             })
+            .unwrap();
+
+            Ok(())
         })
         .unwrap();
 
@@ -567,29 +559,23 @@ mod tests {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
         db.transaction::<_, (), DbErr>(|txn| {
-            ({
-                let _ = cake::Entity::find().one(txn);
+            let _ = cake::Entity::find().one(txn);
+
+            txn.transaction::<_, (), DbErr>(|txn| {
+                let _ = fruit::Entity::find().all(txn);
 
                 txn.transaction::<_, (), DbErr>(|txn| {
-                    ({
-                        let _ = fruit::Entity::find().all(txn);
+                    let _ = cake::Entity::find().all(txn);
 
-                        txn.transaction::<_, (), DbErr>(|txn| {
-                            ({
-                                let _ = cake::Entity::find().all(txn);
-
-                                Ok(())
-                            })
-                        })
-                        .unwrap();
-
-                        Ok(())
-                    })
+                    Ok(())
                 })
                 .unwrap();
 
                 Ok(())
             })
+            .unwrap();
+
+            Ok(())
         })
         .unwrap();
 
