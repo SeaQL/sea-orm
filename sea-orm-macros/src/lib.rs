@@ -1017,6 +1017,79 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// LIMIT 1
 /// ```
 ///
+/// You can use `nested(prefix = "...")` to disambiguate multiple nested fields of the same type.
+/// Without an explicit prefix, the field name plus an underscore is used (e.g. `manager_`).
+///
+/// ```
+/// use sea_orm::DerivePartialModel;
+/// #
+/// # mod worker {
+/// # use sea_orm::entity::prelude::*;
+/// # #[derive(Clone, Debug, DeriveEntityModel)]
+/// # #[sea_orm(table_name = "worker")]
+/// # pub struct Model {
+/// #     #[sea_orm(primary_key)]
+/// #     pub id: i32,
+/// #     pub name: String,
+/// # }
+/// # #[derive(Copy, Clone, Debug, DeriveRelation, EnumIter)]
+/// # pub enum Relation {}
+/// # impl ActiveModelBehavior for ActiveModel {}
+/// # }
+/// #
+/// # mod bakery {
+/// # use sea_orm::entity::prelude::*;
+/// # #[derive(Clone, Debug, DeriveEntityModel)]
+/// # #[sea_orm(table_name = "bakery")]
+/// # pub struct Model {
+/// #     #[sea_orm(primary_key)]
+/// #     pub id: i32,
+/// #     pub name: String,
+/// # }
+/// # #[derive(Copy, Clone, Debug, DeriveRelation, EnumIter)]
+/// # pub enum Relation {}
+/// # impl ActiveModelBehavior for ActiveModel {}
+/// # }
+///
+/// #[derive(DerivePartialModel)]
+/// #[sea_orm(entity = "worker::Entity")]
+/// struct Worker {
+///     id: i32,
+///     name: String,
+/// }
+///
+/// #[derive(DerivePartialModel)]
+/// #[sea_orm(entity = "bakery::Entity")]
+/// struct BakeryWithStaff {
+///     id: i32,
+///     name: String,
+///     #[sea_orm(nested(prefix = "mgr_"), alias = "manager")]
+///     manager: Option<Worker>,
+///     #[sea_orm(nested(prefix = "csh_"), alias = "cashier")]
+///     cashier: Option<Worker>,
+/// }
+/// ```
+///
+/// ```ignore
+/// let bakery: BakeryWithStaff = bakery::Entity::find()
+///     .join_as(JoinType::LeftJoin, bakery::Relation::Manager.def(), "manager")
+///     .join_as(JoinType::LeftJoin, bakery::Relation::Cashier.def(), "cashier")
+///     .into_partial_model()
+///     .one(&db)
+///     .await
+///     .unwrap()
+///     .unwrap()
+///
+/// SELECT
+///     "bakery"."id" AS "id", "bakery"."name" AS "name",
+///     "manager"."id" AS "mgr_id", "manager"."name" AS "mgr_name",
+///     "cashier"."id" AS "csh_id", "cashier"."name" AS "csh_name"
+/// FROM "bakery"
+/// LEFT JOIN "worker" AS "manager" ON "bakery"."manager_id" = "manager"."id"
+/// LEFT JOIN "worker" AS "cashier" ON "bakery"."cashier_id" = "cashier"."id"
+/// LIMIT 1
+/// ```
+///
 /// A field cannot have attributes `from_col`, `from_expr` or `nested` at the same time.
 /// Or, it will result in a compile error.
 ///
