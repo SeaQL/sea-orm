@@ -6,11 +6,6 @@ use sea_orm_migration::{MigratorTraitSelf, migrator::MigrationStatus, prelude::*
 
 #[tokio::test]
 async fn main() -> Result<(), DbErr> {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .with_test_writer()
-        .init();
-
     let url = &std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
 
     run_migration(url, default::Migrator, "sea_orm_migration", "public").await?;

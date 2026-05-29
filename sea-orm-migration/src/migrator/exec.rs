@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 #[cfg(not(feature = "with-time"))]
 use std::time::SystemTime;
-use tracing::info;
 
 use super::{Migration, MigrationStatus, queries::*};
 use crate::{SchemaManager, seaql_migrations};
@@ -106,76 +105,55 @@ pub async fn drop_everything<C: ConnectionTrait + TransactionTrait>(db: &C) -> R
 async fn drop_everything_impl<C: ConnectionTrait>(db: &C) -> Result<(), DbErr> {
     let db_backend = db.get_database_backend();
 
-    // Temporarily disable the foreign key check
     if db_backend == DbBackend::Sqlite {
-        info!("Disabling foreign key check");
         db.execute_raw(Statement::from_string(
             db_backend,
             "PRAGMA foreign_keys = OFF".to_owned(),
         ))
         .await?;
-        info!("Foreign key check disabled");
     }
 
-    // Drop all foreign keys
     if db_backend == DbBackend::MySql {
-        info!("Dropping all foreign keys");
         let stmt = query_mysql_foreign_keys(db);
         let rows = db.query_all(&stmt).await?;
         for row in rows.into_iter() {
             let constraint_name: String = row.try_get("", "CONSTRAINT_NAME")?;
             let table_name: String = row.try_get("", "TABLE_NAME")?;
-            info!(
-                "Dropping foreign key '{}' from table '{}'",
-                constraint_name, table_name
-            );
             let mut stmt = ForeignKey::drop();
             stmt.table(Alias::new(table_name.as_str()))
                 .name(constraint_name.as_str());
             db.execute(&stmt).await?;
-            info!("Foreign key '{}' has been dropped", constraint_name);
         }
-        info!("All foreign keys dropped");
     }
 
-    // Drop all tables
     let stmt = query_tables(db)?;
     let rows = db.query_all(&stmt).await?;
     for row in rows.into_iter() {
         let table_name: String = row.try_get("", "table_name")?;
-        info!("Dropping table '{}'", table_name);
         let mut stmt = Table::drop();
         stmt.table(Alias::new(table_name.as_str()))
             .if_exists()
             .cascade();
         db.execute(&stmt).await?;
-        info!("Table '{}' has been dropped", table_name);
     }
 
-    // Drop all types
     if db_backend == DbBackend::Postgres {
-        info!("Dropping all types");
         let stmt = query_pg_types(db);
         let rows = db.query_all(&stmt).await?;
         for row in rows {
             let type_name: String = row.try_get("", "typname")?;
-            info!("Dropping type '{}'", type_name);
             let mut stmt = Type::drop();
             stmt.name(Alias::new(&type_name));
             db.execute(&stmt).await?;
-            info!("Type '{}' has been dropped", type_name);
         }
     }
 
-    // Restore the foreign key check
     if db_backend == DbBackend::Sqlite {
-        info!("Restoring foreign key check");
         db.execute_raw(Statement::from_string(
             db_backend,
             "PRAGMA foreign_keys = ON".to_owned(),
         ))
         .await?;
-        info!("Foreign key check restored");
     }
 
     Ok(())
@@ -228,17 +206,9 @@ pub async fn exec_up_with(
     mut steps: Option<u32>,
     pending_migrations: Vec<Migration>,
     migration_table_name: DynIden,
-) -> Result<(), DbErr> {
+) -> Result<Vec<String>, DbErr> {
     let db = manager.get_connection();
-
-    if let Some(steps) = steps {
-        info!("Applying {} pending migrations", steps);
-    } else {
-        info!("Applying all pending migrations");
-    }
-    if pending_migrations.is_empty() {
-        info!("No pending migrations");
-    }
+    let mut applied = Vec::new();
 
     for Migration { migration, .. } in pending_migrations {
         if let Some(steps) = steps.as_mut() {
@@ -249,24 +219,22 @@ pub async fn exec_up_with(
         }
 
         let use_txn = should_use_transaction(migration.as_ref(), db.get_database_backend());
-        info!("Applying migration '{}'", migration.name());
 
         if use_txn {
             let transaction = db.begin().await?;
             let txn_manager = SchemaManager::new(&transaction);
             migration.up(&txn_manager).await?;
-            info!("Migration '{}' has been applied", migration.name());
             insert_migration_record(&transaction, migration.name(), migration_table_name.clone())
                 .await?;
             transaction.commit().await?;
         } else {
             migration.up(manager).await?;
-            info!("Migration '{}' has been applied", migration.name());
             insert_migration_record(db, migration.name(), migration_table_name.clone()).await?;
         }
+        applied.push(migration.name().to_owned());
     }
 
-    Ok(())
+    Ok(applied)
 }
 
 pub async fn exec_down_with(
@@ -274,17 +242,9 @@ pub async fn exec_down_with(
     mut steps: Option<u32>,
     applied_migrations: Vec<Migration>,
     migration_table_name: DynIden,
-) -> Result<(), DbErr> {
+) -> Result<Vec<String>, DbErr> {
     let db = manager.get_connection();
-
-    if let Some(steps) = steps {
-        info!("Rolling back {} applied migrations", steps);
-    } else {
-        info!("Rolling back all applied migrations");
-    }
-    if applied_migrations.is_empty() {
-        info!("No applied migrations");
-    }
+    let mut rolled_back = Vec::new();
 
     for Migration { migration, .. } in applied_migrations.into_iter().rev() {
         if let Some(steps) = steps.as_mut() {
@@ -295,22 +255,20 @@ pub async fn exec_down_with(
         }
 
         let use_txn = should_use_transaction(migration.as_ref(), db.get_database_backend());
-        info!("Rolling back migration '{}'", migration.name());
 
         if use_txn {
             let transaction = db.begin().await?;
             let txn_manager = SchemaManager::new(&transaction);
             migration.down(&txn_manager).await?;
-            info!("Migration '{}' has been rolled back", migration.name());
             delete_migration_record(&transaction, migration.name(), migration_table_name.clone())
                 .await?;
             transaction.commit().await?;
         } else {
             migration.down(manager).await?;
-            info!("Migration '{}' has been rolled back", migration.name());
             delete_migration_record(db, migration.name(), migration_table_name.clone()).await?;
         }
+        rolled_back.push(migration.name().to_owned());
     }
 
-    Ok(())
+    Ok(rolled_back)
 }
