@@ -169,20 +169,18 @@ async fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
         .await
         .expect("insert succeeds");
 
-        db.transaction::<_, _, DbErr>(|txn| {
-            Box::pin(async move {
-                cake::Entity::insert(cake::ActiveModel {
-                    name: Set("Chocolate".to_owned()),
-                    price: Set(3.into()),
-                    bakery_id: Set(Some(1)),
-                    gluten_free: Set(true),
-                    ..Default::default()
-                })
-                .exec(txn)
-                .await?;
-
-                Ok(())
+        db.transaction::<_, _, DbErr>(async |txn| {
+            cake::Entity::insert(cake::ActiveModel {
+                name: Set("Chocolate".to_owned()),
+                price: Set(3.into()),
+                bakery_id: Set(Some(1)),
+                gluten_free: Set(true),
+                ..Default::default()
             })
+            .exec(txn)
+            .await?;
+
+            Ok(())
         })
         .await
         .expect("insert succeeds");

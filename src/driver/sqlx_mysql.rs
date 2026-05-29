@@ -229,10 +229,7 @@ impl SqlxMySqlPoolConnection {
         access_mode: Option<AccessMode>,
     ) -> Result<T, TransactionError<E>>
     where
-        F: for<'b> FnOnce(
-                &'b DatabaseTransaction,
-            ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
-            + Send,
+        F: for<'b> AsyncFnOnce(&'b DatabaseTransaction) -> Result<T, E> + Send,
         T: Send,
         E: std::fmt::Display + std::fmt::Debug + Send,
     {

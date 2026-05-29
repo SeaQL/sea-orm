@@ -137,10 +137,7 @@ impl DatabaseTransaction {
     #[instrument(level = "trace", skip(callback))]
     pub(crate) async fn run<F, T, E>(self, callback: F) -> Result<T, TransactionError<E>>
     where
-        F: for<'b> FnOnce(
-                &'b DatabaseTransaction,
-            ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
-            + Send,
+        F: for<'b> AsyncFnOnce(&'b DatabaseTransaction) -> Result<T, E> + Send,
         T: Send,
         E: std::fmt::Display + std::fmt::Debug + Send,
     {
@@ -607,7 +604,6 @@ impl StreamTrait for DatabaseTransaction {
     }
 }
 
-#[async_trait::async_trait]
 impl TransactionTrait for DatabaseTransaction {
     type Transaction = DatabaseTransaction;
 
@@ -666,10 +662,7 @@ impl TransactionTrait for DatabaseTransaction {
     #[instrument(level = "trace", skip(_callback))]
     async fn transaction<F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>
     where
-        F: for<'c> FnOnce(
-                &'c DatabaseTransaction,
-            ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
-            + Send,
+        F: for<'c> AsyncFnOnce(&'c DatabaseTransaction) -> Result<T, E> + Send,
         T: Send,
         E: std::fmt::Display + std::fmt::Debug + Send,
     {
@@ -688,10 +681,7 @@ impl TransactionTrait for DatabaseTransaction {
         access_mode: Option<AccessMode>,
     ) -> Result<T, TransactionError<E>>
     where
-        F: for<'c> FnOnce(
-                &'c DatabaseTransaction,
-            ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
-            + Send,
+        F: for<'c> AsyncFnOnce(&'c DatabaseTransaction) -> Result<T, E> + Send,
         T: Send,
         E: std::fmt::Display + std::fmt::Debug + Send,
     {

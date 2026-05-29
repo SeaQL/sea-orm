@@ -9,12 +9,6 @@ use sea_orm::{
     TransactionOptions, TransactionTrait, prelude::*,
 };
 
-#[cfg(not(feature = "sync"))]
-type FutureResult<'a> =
-    std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), DbErr>> + Send + 'a>>;
-#[cfg(feature = "sync")]
-type FutureResult<'a> = Result<(), DbErr>;
-
 fn seaside_bakery() -> bakery::ActiveModel {
     bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -37,20 +31,18 @@ pub async fn transaction() {
     create_bakery_table(&ctx.db).await.unwrap();
 
     ctx.db
-        .transaction::<_, _, DbErr>(|txn| {
-            Box::pin(async move {
-                let _ = seaside_bakery().save(txn).await?;
-                let _ = top_bakery().save(txn).await?;
+        .transaction::<_, _, DbErr>(async |txn| {
+            let _ = seaside_bakery().save(txn).await?;
+            let _ = top_bakery().save(txn).await?;
 
-                let bakeries = Bakery::find()
-                    .filter(bakery::Column::Name.contains("Bakery"))
-                    .all(txn)
-                    .await?;
+            let bakeries = Bakery::find()
+                .filter(bakery::Column::Name.contains("Bakery"))
+                .all(txn)
+                .await?;
 
-                assert_eq!(bakeries.len(), 2);
+            assert_eq!(bakeries.len(), 2);
 
-                Ok(())
-            })
+            Ok(())
         })
         .await
         .unwrap();
@@ -71,20 +63,18 @@ pub async fn rbac_transaction() {
     ));
     let db = ctx.db.restricted_for(RbacUserId(0)).unwrap();
 
-    db.transaction::<_, _, DbErr>(|txn| {
-        Box::pin(async move {
-            let _ = seaside_bakery().save(txn).await?;
-            let _ = top_bakery().save(txn).await?;
+    db.transaction::<_, _, DbErr>(async |txn| {
+        let _ = seaside_bakery().save(txn).await?;
+        let _ = top_bakery().save(txn).await?;
 
-            let bakeries = Bakery::find()
-                .filter(bakery::Column::Name.contains("Bakery"))
-                .all(txn)
-                .await?;
+        let bakeries = Bakery::find()
+            .filter(bakery::Column::Name.contains("Bakery"))
+            .all(txn)
+            .await?;
 
-            assert_eq!(bakeries.len(), 2);
+        assert_eq!(bakeries.len(), 2);
 
-            Ok(())
-        })
+        Ok(())
     })
     .await
     .unwrap();
@@ -101,45 +91,43 @@ pub async fn transaction_with_reference() {
     let name2 = "Top Bakery";
     let search_name = "Bakery";
     ctx.db
-        .transaction(|txn| _transaction_with_reference(txn, name1, name2, search_name))
+        .transaction(async |txn| _transaction_with_reference(txn, name1, name2, search_name).await)
         .await
         .unwrap();
 
     ctx.delete().await;
 }
 
-fn _transaction_with_reference<'a>(
-    txn: &'a DatabaseTransaction,
-    name1: &'a str,
-    name2: &'a str,
-    search_name: &'a str,
-) -> FutureResult<'a> {
-    Box::pin(async move {
-        let _ = bakery::ActiveModel {
-            name: Set(name1.to_owned()),
-            profit_margin: Set(10.4),
-            ..Default::default()
-        }
-        .save(txn)
+async fn _transaction_with_reference(
+    txn: &DatabaseTransaction,
+    name1: &str,
+    name2: &str,
+    search_name: &str,
+) -> Result<(), DbErr> {
+    let _ = bakery::ActiveModel {
+        name: Set(name1.to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .save(txn)
+    .await?;
+
+    let _ = bakery::ActiveModel {
+        name: Set(name2.to_owned()),
+        profit_margin: Set(15.0),
+        ..Default::default()
+    }
+    .save(txn)
+    .await?;
+
+    let bakeries = Bakery::find()
+        .filter(bakery::Column::Name.contains(search_name))
+        .all(txn)
         .await?;
 
-        let _ = bakery::ActiveModel {
-            name: Set(name2.to_owned()),
-            profit_margin: Set(15.0),
-            ..Default::default()
-        }
-        .save(txn)
-        .await?;
+    assert_eq!(bakeries.len(), 2);
 
-        let bakeries = Bakery::find()
-            .filter(bakery::Column::Name.contains(search_name))
-            .all(txn)
-            .await?;
-
-        assert_eq!(bakeries.len(), 2);
-
-        Ok(())
-    })
+    Ok(())
 }
 
 #[sea_orm_macros::test]
@@ -310,18 +298,16 @@ pub async fn transaction_closure_commit() -> Result<(), DbErr> {
 
     let res = ctx
         .db
-        .transaction::<_, _, DbErr>(|txn| {
-            Box::pin(async move {
-                seaside_bakery().save(txn).await?;
+        .transaction::<_, _, DbErr>(async |txn| {
+            seaside_bakery().save(txn).await?;
 
-                assert_eq!(bakery::Entity::find().all(txn).await?.len(), 1);
+            assert_eq!(bakery::Entity::find().all(txn).await?.len(), 1);
 
-                top_bakery().save(txn).await?;
+            top_bakery().save(txn).await?;
 
-                assert_eq!(bakery::Entity::find().all(txn).await?.len(), 2);
+            assert_eq!(bakery::Entity::find().all(txn).await?.len(), 2);
 
-                Ok(())
-            })
+            Ok(())
         })
         .await;
 
@@ -342,30 +328,28 @@ pub async fn transaction_closure_rollback() -> Result<(), DbErr> {
 
     let res = ctx
         .db
-        .transaction::<_, _, DbErr>(|txn| {
-            Box::pin(async move {
-                seaside_bakery().save(txn).await?;
+        .transaction::<_, _, DbErr>(async |txn| {
+            seaside_bakery().save(txn).await?;
 
-                assert_eq!(bakery::Entity::find().all(txn).await?.len(), 1);
+            assert_eq!(bakery::Entity::find().all(txn).await?.len(), 1);
 
-                top_bakery().save(txn).await?;
+            top_bakery().save(txn).await?;
 
-                assert_eq!(bakery::Entity::find().all(txn).await?.len(), 2);
+            assert_eq!(bakery::Entity::find().all(txn).await?.len(), 2);
 
-                bakery::ActiveModel {
-                    id: Set(1),
-                    name: Set("Duplicated primary key".to_owned()),
-                    profit_margin: Set(20.0),
-                }
-                .insert(txn)
-                .await?; // Throw error and rollback
+            bakery::ActiveModel {
+                id: Set(1),
+                name: Set("Duplicated primary key".to_owned()),
+                profit_margin: Set(20.0),
+            }
+            .insert(txn)
+            .await?; // Throw error and rollback
 
-                // This line won't be reached
-                unreachable!();
+            // This line won't be reached
+            unreachable!();
 
-                #[allow(unreachable_code)]
-                Ok(())
-            })
+            #[allow(unreachable_code)]
+            Ok(())
         })
         .await;
 
@@ -467,18 +451,34 @@ pub async fn transaction_nested() {
     create_bakery_table(&ctx.db).await.unwrap();
 
     ctx.db
-        .transaction::<_, _, DbErr>(|txn| {
-            Box::pin(async move {
-                let _ = seaside_bakery().save(txn).await?;
+        .transaction::<_, _, DbErr>(async |txn| {
+            let _ = seaside_bakery().save(txn).await?;
 
-                let _ = top_bakery().save(txn).await?;
+            let _ = top_bakery().save(txn).await?;
 
-                // Try nested transaction committed
-                txn.transaction::<_, _, DbErr>(|txn| {
-                    Box::pin(async move {
+            // Try nested transaction committed
+            txn.transaction::<_, _, DbErr>(async |txn| {
+                let _ = bakery::ActiveModel {
+                    name: Set("Nested Bakery".to_owned()),
+                    profit_margin: Set(88.88),
+                    ..Default::default()
+                }
+                .save(txn)
+                .await?;
+
+                let bakeries = Bakery::find()
+                    .filter(bakery::Column::Name.contains("Bakery"))
+                    .all(txn)
+                    .await?;
+
+                assert_eq!(bakeries.len(), 3);
+
+                // Try nested-nested transaction rollbacked
+                let is_err = txn
+                    .transaction::<_, _, DbErr>(async |txn| {
                         let _ = bakery::ActiveModel {
-                            name: Set("Nested Bakery".to_owned()),
-                            profit_margin: Set(88.88),
+                            name: Set("Rock n Roll Bakery".to_owned()),
+                            profit_margin: Set(28.8),
                             ..Default::default()
                         }
                         .save(txn)
@@ -489,89 +489,112 @@ pub async fn transaction_nested() {
                             .all(txn)
                             .await?;
 
-                        assert_eq!(bakeries.len(), 3);
-
-                        // Try nested-nested transaction rollbacked
-                        let is_err = txn
-                            .transaction::<_, _, DbErr>(|txn| {
-                                Box::pin(async move {
-                                    let _ = bakery::ActiveModel {
-                                        name: Set("Rock n Roll Bakery".to_owned()),
-                                        profit_margin: Set(28.8),
-                                        ..Default::default()
-                                    }
-                                    .save(txn)
-                                    .await?;
-
-                                    let bakeries = Bakery::find()
-                                        .filter(bakery::Column::Name.contains("Bakery"))
-                                        .all(txn)
-                                        .await?;
-
-                                    assert_eq!(bakeries.len(), 4);
-
-                                    if true {
-                                        Err(DbErr::Query(RuntimeErr::Internal(
-                                            "Force Rollback!".to_owned(),
-                                        )))
-                                    } else {
-                                        Ok(())
-                                    }
-                                })
-                            })
-                            .await
-                            .is_err();
-
-                        assert!(is_err);
-
-                        let bakeries = Bakery::find()
-                            .filter(bakery::Column::Name.contains("Bakery"))
-                            .all(txn)
-                            .await?;
-
-                        assert_eq!(bakeries.len(), 3);
-
-                        // Try nested-nested transaction committed
-                        txn.transaction::<_, _, DbErr>(|txn| {
-                            Box::pin(async move {
-                                let _ = bakery::ActiveModel {
-                                    name: Set("Rock n Roll Bakery".to_owned()),
-                                    profit_margin: Set(28.8),
-                                    ..Default::default()
-                                }
-                                .save(txn)
-                                .await?;
-
-                                let bakeries = Bakery::find()
-                                    .filter(bakery::Column::Name.contains("Bakery"))
-                                    .all(txn)
-                                    .await?;
-
-                                assert_eq!(bakeries.len(), 4);
-
-                                Ok(())
-                            })
-                        })
-                        .await
-                        .unwrap();
-
-                        let bakeries = Bakery::find()
-                            .filter(bakery::Column::Name.contains("Bakery"))
-                            .all(txn)
-                            .await?;
-
                         assert_eq!(bakeries.len(), 4);
 
-                        Ok(())
+                        if true {
+                            Err(DbErr::Query(RuntimeErr::Internal(
+                                "Force Rollback!".to_owned(),
+                            )))
+                        } else {
+                            Ok(())
+                        }
                     })
+                    .await
+                    .is_err();
+
+                assert!(is_err);
+
+                let bakeries = Bakery::find()
+                    .filter(bakery::Column::Name.contains("Bakery"))
+                    .all(txn)
+                    .await?;
+
+                assert_eq!(bakeries.len(), 3);
+
+                // Try nested-nested transaction committed
+                txn.transaction::<_, _, DbErr>(async |txn| {
+                    let _ = bakery::ActiveModel {
+                        name: Set("Rock n Roll Bakery".to_owned()),
+                        profit_margin: Set(28.8),
+                        ..Default::default()
+                    }
+                    .save(txn)
+                    .await?;
+
+                    let bakeries = Bakery::find()
+                        .filter(bakery::Column::Name.contains("Bakery"))
+                        .all(txn)
+                        .await?;
+
+                    assert_eq!(bakeries.len(), 4);
+
+                    Ok(())
                 })
                 .await
                 .unwrap();
 
-                // Try nested transaction rollbacked
-                let is_err = txn
-                    .transaction::<_, _, DbErr>(|txn| {
-                        Box::pin(async move {
+                let bakeries = Bakery::find()
+                    .filter(bakery::Column::Name.contains("Bakery"))
+                    .all(txn)
+                    .await?;
+
+                assert_eq!(bakeries.len(), 4);
+
+                Ok(())
+            })
+            .await
+            .unwrap();
+
+            // Try nested transaction rollbacked
+            let is_err = txn
+                .transaction::<_, _, DbErr>(async |txn| {
+                    let _ = bakery::ActiveModel {
+                        name: Set("Rock n Roll Bakery".to_owned()),
+                        profit_margin: Set(28.8),
+                        ..Default::default()
+                    }
+                    .save(txn)
+                    .await?;
+
+                    let bakeries = Bakery::find()
+                        .filter(bakery::Column::Name.contains("Bakery"))
+                        .all(txn)
+                        .await?;
+
+                    assert_eq!(bakeries.len(), 5);
+
+                    // Try nested-nested transaction committed
+                    txn.transaction::<_, _, DbErr>(async |txn| {
+                        let _ = bakery::ActiveModel {
+                            name: Set("Rock n Roll Bakery".to_owned()),
+                            profit_margin: Set(28.8),
+                            ..Default::default()
+                        }
+                        .save(txn)
+                        .await?;
+
+                        let bakeries = Bakery::find()
+                            .filter(bakery::Column::Name.contains("Bakery"))
+                            .all(txn)
+                            .await?;
+
+                        assert_eq!(bakeries.len(), 6);
+
+                        Ok(())
+                    })
+                    .await
+                    .unwrap();
+
+                    let bakeries = Bakery::find()
+                        .filter(bakery::Column::Name.contains("Bakery"))
+                        .all(txn)
+                        .await?;
+
+                    assert_eq!(bakeries.len(), 6);
+
+                    // Try nested-nested transaction rollbacked
+                    let is_err = txn
+                        .transaction::<_, _, DbErr>(async |txn| {
                             let _ = bakery::ActiveModel {
                                 name: Set("Rock n Roll Bakery".to_owned()),
                                 profit_margin: Set(28.8),
@@ -585,78 +608,7 @@ pub async fn transaction_nested() {
                                 .all(txn)
                                 .await?;
 
-                            assert_eq!(bakeries.len(), 5);
-
-                            // Try nested-nested transaction committed
-                            txn.transaction::<_, _, DbErr>(|txn| {
-                                Box::pin(async move {
-                                    let _ = bakery::ActiveModel {
-                                        name: Set("Rock n Roll Bakery".to_owned()),
-                                        profit_margin: Set(28.8),
-                                        ..Default::default()
-                                    }
-                                    .save(txn)
-                                    .await?;
-
-                                    let bakeries = Bakery::find()
-                                        .filter(bakery::Column::Name.contains("Bakery"))
-                                        .all(txn)
-                                        .await?;
-
-                                    assert_eq!(bakeries.len(), 6);
-
-                                    Ok(())
-                                })
-                            })
-                            .await
-                            .unwrap();
-
-                            let bakeries = Bakery::find()
-                                .filter(bakery::Column::Name.contains("Bakery"))
-                                .all(txn)
-                                .await?;
-
-                            assert_eq!(bakeries.len(), 6);
-
-                            // Try nested-nested transaction rollbacked
-                            let is_err = txn
-                                .transaction::<_, _, DbErr>(|txn| {
-                                    Box::pin(async move {
-                                        let _ = bakery::ActiveModel {
-                                            name: Set("Rock n Roll Bakery".to_owned()),
-                                            profit_margin: Set(28.8),
-                                            ..Default::default()
-                                        }
-                                        .save(txn)
-                                        .await?;
-
-                                        let bakeries = Bakery::find()
-                                            .filter(bakery::Column::Name.contains("Bakery"))
-                                            .all(txn)
-                                            .await?;
-
-                                        assert_eq!(bakeries.len(), 7);
-
-                                        if true {
-                                            Err(DbErr::Query(RuntimeErr::Internal(
-                                                "Force Rollback!".to_owned(),
-                                            )))
-                                        } else {
-                                            Ok(())
-                                        }
-                                    })
-                                })
-                                .await
-                                .is_err();
-
-                            assert!(is_err);
-
-                            let bakeries = Bakery::find()
-                                .filter(bakery::Column::Name.contains("Bakery"))
-                                .all(txn)
-                                .await?;
-
-                            assert_eq!(bakeries.len(), 6);
+                            assert_eq!(bakeries.len(), 7);
 
                             if true {
                                 Err(DbErr::Query(RuntimeErr::Internal(
@@ -666,21 +618,39 @@ pub async fn transaction_nested() {
                                 Ok(())
                             }
                         })
-                    })
-                    .await
-                    .is_err();
+                        .await
+                        .is_err();
 
-                assert!(is_err);
+                    assert!(is_err);
 
-                let bakeries = Bakery::find()
-                    .filter(bakery::Column::Name.contains("Bakery"))
-                    .all(txn)
-                    .await?;
+                    let bakeries = Bakery::find()
+                        .filter(bakery::Column::Name.contains("Bakery"))
+                        .all(txn)
+                        .await?;
 
-                assert_eq!(bakeries.len(), 4);
+                    assert_eq!(bakeries.len(), 6);
 
-                Ok(())
-            })
+                    if true {
+                        Err(DbErr::Query(RuntimeErr::Internal(
+                            "Force Rollback!".to_owned(),
+                        )))
+                    } else {
+                        Ok(())
+                    }
+                })
+                .await
+                .is_err();
+
+            assert!(is_err);
+
+            let bakeries = Bakery::find()
+                .filter(bakery::Column::Name.contains("Bakery"))
+                .all(txn)
+                .await?;
+
+            assert_eq!(bakeries.len(), 4);
+
+            Ok(())
         })
         .await
         .unwrap();
@@ -853,63 +823,46 @@ pub async fn rbac_transaction_nested() {
     ));
     let db = ctx.db.restricted_for(RbacUserId(0)).unwrap();
 
-    db.transaction::<_, _, DbErr>(|txn| {
-        Box::pin(async move {
-            let _ = seaside_bakery().save(txn).await?;
+    db.transaction::<_, _, DbErr>(async |txn| {
+        let _ = seaside_bakery().save(txn).await?;
 
-            let _ = top_bakery().save(txn).await?;
+        let _ = top_bakery().save(txn).await?;
 
-            // Try nested transaction committed
-            txn.transaction::<_, _, DbErr>(|txn| {
-                Box::pin(async move {
-                    let _ = bakery::ActiveModel {
-                        name: Set("Nested Bakery".to_owned()),
-                        profit_margin: Set(88.88),
-                        ..Default::default()
-                    }
-                    .save(txn)
+        // Try nested transaction committed
+        txn.transaction::<_, _, DbErr>(async |txn| {
+            let _ = bakery::ActiveModel {
+                name: Set("Nested Bakery".to_owned()),
+                profit_margin: Set(88.88),
+                ..Default::default()
+            }
+            .save(txn)
+            .await?;
+
+            let bakeries = Bakery::find()
+                .filter(bakery::Column::Name.contains("Bakery"))
+                .all(txn)
+                .await?;
+
+            assert_eq!(bakeries.len(), 3);
+
+            // Try nested-nested transaction committed
+            txn.transaction::<_, _, DbErr>(async |txn| {
+                let _ = bakery::ActiveModel {
+                    name: Set("Rock n Roll Bakery".to_owned()),
+                    profit_margin: Set(28.8),
+                    ..Default::default()
+                }
+                .save(txn)
+                .await?;
+
+                let bakeries = Bakery::find()
+                    .filter(bakery::Column::Name.contains("Bakery"))
+                    .all(txn)
                     .await?;
 
-                    let bakeries = Bakery::find()
-                        .filter(bakery::Column::Name.contains("Bakery"))
-                        .all(txn)
-                        .await?;
+                assert_eq!(bakeries.len(), 4);
 
-                    assert_eq!(bakeries.len(), 3);
-
-                    // Try nested-nested transaction committed
-                    txn.transaction::<_, _, DbErr>(|txn| {
-                        Box::pin(async move {
-                            let _ = bakery::ActiveModel {
-                                name: Set("Rock n Roll Bakery".to_owned()),
-                                profit_margin: Set(28.8),
-                                ..Default::default()
-                            }
-                            .save(txn)
-                            .await?;
-
-                            let bakeries = Bakery::find()
-                                .filter(bakery::Column::Name.contains("Bakery"))
-                                .all(txn)
-                                .await?;
-
-                            assert_eq!(bakeries.len(), 4);
-
-                            Ok(())
-                        })
-                    })
-                    .await
-                    .unwrap();
-
-                    let bakeries = Bakery::find()
-                        .filter(bakery::Column::Name.contains("Bakery"))
-                        .all(txn)
-                        .await?;
-
-                    assert_eq!(bakeries.len(), 4);
-
-                    Ok(())
-                })
+                Ok(())
             })
             .await
             .unwrap();
@@ -923,6 +876,17 @@ pub async fn rbac_transaction_nested() {
 
             Ok(())
         })
+        .await
+        .unwrap();
+
+        let bakeries = Bakery::find()
+            .filter(bakery::Column::Name.contains("Bakery"))
+            .all(txn)
+            .await?;
+
+        assert_eq!(bakeries.len(), 4);
+
+        Ok(())
     })
     .await
     .unwrap();
@@ -957,7 +921,7 @@ pub async fn transaction_with_config() {
         let search_name = format!("Bakery {}", i);
         ctx.db
             .transaction_with_config(
-                |txn| _transaction_with_config(txn, name1, name2, search_name),
+                async |txn| _transaction_with_config(txn, name1, name2, search_name).await,
                 Some(isolation_level),
                 access_mode,
             )
@@ -967,17 +931,15 @@ pub async fn transaction_with_config() {
 
     ctx.db
         .transaction_with_config::<_, _, DbErr>(
-            |txn| {
-                Box::pin(async move {
-                    let bakeries = Bakery::find()
-                        .filter(bakery::Column::Name.contains("Bakery"))
-                        .all(txn)
-                        .await?;
+            async |txn| {
+                let bakeries = Bakery::find()
+                    .filter(bakery::Column::Name.contains("Bakery"))
+                    .all(txn)
+                    .await?;
 
-                    assert_eq!(bakeries.len(), 8);
+                assert_eq!(bakeries.len(), 8);
 
-                    Ok(())
-                })
+                Ok(())
             },
             None,
             Some(AccessMode::ReadOnly),
@@ -988,38 +950,36 @@ pub async fn transaction_with_config() {
     ctx.delete().await;
 }
 
-fn _transaction_with_config<'a>(
-    txn: &'a DatabaseTransaction,
+async fn _transaction_with_config(
+    txn: &DatabaseTransaction,
     name1: String,
     name2: String,
     search_name: String,
-) -> FutureResult<'a> {
-    Box::pin(async move {
-        let _ = bakery::ActiveModel {
-            name: Set(name1),
-            profit_margin: Set(10.4),
-            ..Default::default()
-        }
-        .save(txn)
+) -> Result<(), DbErr> {
+    let _ = bakery::ActiveModel {
+        name: Set(name1),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .save(txn)
+    .await?;
+
+    let _ = bakery::ActiveModel {
+        name: Set(name2),
+        profit_margin: Set(15.0),
+        ..Default::default()
+    }
+    .save(txn)
+    .await?;
+
+    let bakeries = Bakery::find()
+        .filter(bakery::Column::Name.contains(&search_name))
+        .all(txn)
         .await?;
 
-        let _ = bakery::ActiveModel {
-            name: Set(name2),
-            profit_margin: Set(15.0),
-            ..Default::default()
-        }
-        .save(txn)
-        .await?;
+    assert_eq!(bakeries.len(), 2);
 
-        let bakeries = Bakery::find()
-            .filter(bakery::Column::Name.contains(&search_name))
-            .all(txn)
-            .await?;
-
-        assert_eq!(bakeries.len(), 2);
-
-        Ok(())
-    })
+    Ok(())
 }
 
 #[sea_orm_macros::test]
