@@ -42,8 +42,8 @@ replace_rs 's/async //' examples
 replace_rs 's/\.await//' src
 replace_rs 's/\.await//' tests
 replace_rs 's/\.await//' examples
-replace_rs '/#\[async_trait::async_trait\]/d' src
-replace_rs '/#\[async_trait::async_trait\]/d' tests
+replace_rs '/#\[async_trait::async_trait/d' src
+replace_rs '/#\[async_trait::async_trait/d' tests
 replace_rs 's/#\[smol_potat::test\]/#\[test\]/' src
 replace_rs '/#\[smol_potat::main\]/d' src
 replace_rs '/#\[tokio::main\]/d' examples

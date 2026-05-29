@@ -171,27 +171,27 @@ impl EntityWriter {
                     }
                 };
 
-                if let Some(to_entity) = rel.get_module_name() {
-                    if !via_entities.contains(&to_entity) {
-                        // skip junctions
-                        let field = if matches!(rel.rel_type, RelationType::HasMany) {
-                            format_ident!(
-                                "{}",
-                                pluralizer::pluralize(&to_entity.to_string(), 2, false)
-                            )
-                        } else {
-                            to_entity.clone()
-                        };
-                        let field = if rel.num_suffix == 0 {
-                            field
-                        } else {
-                            format_ident!("{field}_{}", rel.num_suffix)
-                        };
-                        compound_objects.push(quote! {
-                            #sea_orm_attr
-                            pub #field: #rel_type<super::#to_entity::Entity>
-                        });
-                    }
+                if let Some(to_entity) = rel.get_module_name()
+                    && !via_entities.contains(&to_entity)
+                {
+                    // skip junctions
+                    let field = if matches!(rel.rel_type, RelationType::HasMany) {
+                        format_ident!(
+                            "{}",
+                            pluralizer::pluralize(&to_entity.to_string(), 2, false)
+                        )
+                    } else {
+                        to_entity.clone()
+                    };
+                    let field = if rel.num_suffix == 0 {
+                        field
+                    } else {
+                        format_ident!("{field}_{}", rel.num_suffix)
+                    };
+                    compound_objects.push(quote! {
+                        #sea_orm_attr
+                        pub #field: #rel_type<super::#to_entity::Entity>
+                    });
                 }
             } else if rel.self_referencing {
                 let (from, to) = rel.get_src_ref_columns(map_col, map_col, map_punctuated);

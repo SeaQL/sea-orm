@@ -47,12 +47,12 @@ glob = { version = "0.3", default-features = false }
 indoc = "2.0.6"
 regex = { version = "1.11.2" }
 sea-orm-codegen = { version = "=2.0.0-rc.38", path = "../sea-orm-codegen", default-features = false, optional = true }
-sea-schema = { version = "0.17.0-rc.1", default-features = false, features = [
+sea-schema = { version = "0.18.0", default-features = false, features = [
     "discovery",
     "writer",
     "probe",
 ], optional = true }
-sqlx = { version = "0.8.4", default-features = false, optional = true }
+sqlx = { version = "0.9.0", default-features = false, optional = true }
 tokio = { version = "1.38.2", default-features = false, features = [
     "rt-multi-thread",
     "macros",
@@ -79,17 +79,17 @@ default = [
 ]
 postgres-vector = ["sea-schema/postgres-vector"]
 sqlx-mysql = [
-    "sqlx?/sqlx-mysql",
+    "sqlx?/mysql",
     "sea-schema?/sqlx-mysql",
     "sea-schema?/mysql",
 ]
 sqlx-postgres = [
-    "sqlx?/sqlx-postgres",
+    "sqlx?/postgres",
     "sea-schema?/sqlx-postgres",
     "sea-schema?/postgres",
 ]
 sqlx-sqlite = [
-    "sqlx?/sqlx-sqlite",
+    "sqlx?/sqlite",
     "sea-schema?/sqlx-sqlite",
     "sea-schema?/sqlite",
 ]
@@ -105,24 +105,28 @@ runtime-async-std = [
 ]
 runtime-async-std-native-tls = [
     "async-std",
-    "sqlx?/runtime-async-std-native-tls",
+    "sqlx?/runtime-async-std",
+    "sqlx?/tls-native-tls",
     "sea-schema?/runtime-async-std-native-tls",
 ]
 runtime-async-std-rustls = [
     "async-std",
-    "sqlx?/runtime-async-std-rustls",
+    "sqlx?/runtime-async-std",
+    "sqlx?/tls-rustls",
     "sea-schema?/runtime-async-std-rustls",
 ]
 
 runtime-tokio = ["tokio", "sqlx?/runtime-tokio", "sea-schema?/runtime-tokio"]
 runtime-tokio-native-tls = [
     "tokio",
-    "sqlx?/runtime-tokio-native-tls",
+    "sqlx?/runtime-tokio",
+    "sqlx?/tls-native-tls",
     "sea-schema?/runtime-tokio-native-tls",
 ]
 runtime-tokio-rustls = [
     "tokio",
-    "sqlx?/runtime-tokio-rustls",
+    "sqlx?/runtime-tokio",
+    "sqlx?/tls-rustls",
     "sea-schema?/runtime-tokio-rustls",
 ]
 

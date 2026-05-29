@@ -1,8 +1,10 @@
 #![allow(unused_assignments)]
 use std::sync::Arc;
 
+#[cfg(feature = "sqlx-sqlite")]
+use sqlx_core::sql_str::SqlSafeStr;
 #[cfg(feature = "sqlx-dep")]
-use sqlx_core::{sql_str::SqlSafeStr, transaction::TransactionManager};
+use sqlx_core::transaction::TransactionManager;
 use std::sync::Mutex;
 use tracing::instrument;
 

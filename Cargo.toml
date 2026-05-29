@@ -48,7 +48,9 @@ futures-util = { version = "0.3", default-features = false, features = [
     "std",
 ] }
 inventory = { version = "0.3", optional = true }
-ipnetwork = { version = "0.20", default-features = false, optional = true }
+ipnetwork = { version = "0.21", default-features = false, optional = true, features = [
+    "serde",
+] }
 itertools = "0.14.0"
 log = { version = "0.4", default-features = false }
 mac_address = { version = "1.1", default-features = false, optional = true }
@@ -62,7 +64,7 @@ sea-orm-macros = { version = "~2.0.0-rc.38", path = "sea-orm-macros", default-fe
     "async",
     "strum",
 ] }
-sea-query = { version = "=1.0.0", default-features = false, features = [
+sea-query = { version = "~1.0.0", default-features = false, features = [
     "thread-safe",
     "hashable-value",
     "backend-mysql",
@@ -71,7 +73,7 @@ sea-query = { version = "=1.0.0", default-features = false, features = [
     "sea-orm",
 ] }
 sea-query-sqlx = { version = "=0.9.0", default-features = false, optional = true }
-sea-schema = { version = "0.17.0-rc.15", default-features = false, features = [
+sea-schema = { version = "0.18.0", default-features = false, features = [
     "discovery",
     "writer",
     "probe",

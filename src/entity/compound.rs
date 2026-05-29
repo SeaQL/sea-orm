@@ -159,6 +159,7 @@ where
     }
 
     /// Compute the number of pages for the current page
+    #[allow(clippy::manual_is_multiple_of)]
     fn compute_pages_number(&self, num_items: u64) -> u64 {
         (num_items / self.page_size) + (num_items % self.page_size > 0) as u64
     }

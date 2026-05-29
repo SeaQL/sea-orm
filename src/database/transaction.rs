@@ -2,8 +2,10 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use futures_util::lock::Mutex;
+#[cfg(feature = "sqlx-sqlite")]
+use sqlx_core::sql_str::SqlSafeStr;
 #[cfg(feature = "sqlx-dep")]
-use sqlx_core::{sql_str::SqlSafeStr, transaction::TransactionManager};
+use sqlx_core::transaction::TransactionManager;
 use tracing::instrument;
 
 use crate::{

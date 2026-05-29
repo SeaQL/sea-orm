@@ -125,10 +125,10 @@ impl EntityWriter {
             encountered: &mut HashSet<ExternalTypes>,
         ) {
             // skip column types we have already generated imports for
-            if let Some(ty) = ExternalTypes::from_column_type(col_type) {
-                if !encountered.insert(ty) {
-                    return;
-                }
+            if let Some(ty) = ExternalTypes::from_column_type(col_type)
+                && !encountered.insert(ty)
+            {
+                return;
             }
 
             match col_type {

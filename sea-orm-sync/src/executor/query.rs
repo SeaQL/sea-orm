@@ -17,7 +17,9 @@ use crate::debug_print;
 #[cfg(feature = "sqlx-dep")]
 use crate::driver::*;
 #[cfg(feature = "sqlx-dep")]
-use sqlx::{Row, TypeInfo, ValueRef};
+use sqlx::Row;
+#[cfg(feature = "sqlx-postgres")]
+use sqlx::{TypeInfo, ValueRef};
 
 /// Defines the result of a query operation on a Model
 #[derive(Debug)]

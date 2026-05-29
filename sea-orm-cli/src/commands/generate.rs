@@ -346,7 +346,7 @@ where
         pool_options = pool_options.after_connect(move |conn, _| {
             let sql = sql.clone();
             Box::pin(async move {
-                sqlx::Executor::execute(conn, sql.as_str())
+                sqlx::Executor::execute(conn, sqlx::AssertSqlSafe(sql))
                     .await
                     .map(|_| ())
             })
