@@ -3,7 +3,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use futures_util::lock::Mutex;
 #[cfg(feature = "sqlx-dep")]
-use sqlx::TransactionManager;
+use sqlx_core::{sql_str::SqlSafeStr, transaction::TransactionManager};
 use tracing::instrument;
 
 use crate::{
@@ -100,7 +100,8 @@ impl DatabaseTransaction {
                         let depth = <sqlx::Sqlite as sqlx::Database>::TransactionManager::get_transaction_depth(c);
                         let statement = if depth == 0 {
                             sqlite_transaction_mode.map(|mode| {
-                                std::borrow::Cow::from(format!("BEGIN {}", mode.sqlite_keyword()))
+                                sqlx::AssertSqlSafe(format!("BEGIN {}", mode.sqlite_keyword()))
+                                    .into_sql_str()
                             })
                         } else {
                             // Nested transaction uses SAVEPOINT; the mode only applies to the top-level BEGIN
@@ -412,7 +413,7 @@ impl ConnectionTrait for DatabaseTransaction {
                     #[cfg(feature = "sqlx-mysql")]
                     InnerConnection::MySql(conn) => {
                         let conn: &mut sqlx::MySqlConnection = &mut *conn;
-                        sqlx::Executor::execute(conn, sql)
+                        sqlx::Executor::execute(conn, sqlx::AssertSqlSafe(sql.to_owned()))
                             .await
                             .map(Into::into)
                             .map_err(sqlx_error_to_exec_err)
@@ -420,7 +421,7 @@ impl ConnectionTrait for DatabaseTransaction {
                     #[cfg(feature = "sqlx-postgres")]
                     InnerConnection::Postgres(conn) => {
                         let conn: &mut sqlx::PgConnection = &mut *conn;
-                        sqlx::Executor::execute(conn, sql)
+                        sqlx::Executor::execute(conn, sqlx::AssertSqlSafe(sql.to_owned()))
                             .await
                             .map(Into::into)
                             .map_err(sqlx_error_to_exec_err)
@@ -428,7 +429,7 @@ impl ConnectionTrait for DatabaseTransaction {
                     #[cfg(feature = "sqlx-sqlite")]
                     InnerConnection::Sqlite(conn) => {
                         let conn: &mut sqlx::SqliteConnection = &mut *conn;
-                        sqlx::Executor::execute(conn, sql)
+                        sqlx::Executor::execute(conn, sqlx::AssertSqlSafe(sql.to_owned()))
                             .await
                             .map(Into::into)
                             .map_err(sqlx_error_to_exec_err)

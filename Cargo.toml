@@ -12,7 +12,7 @@ keywords      = ["async", "orm", "mysql", "postgres", "sqlite"]
 license       = "MIT OR Apache-2.0"
 name          = "sea-orm"
 repository    = "https://github.com/SeaQL/sea-orm"
-rust-version  = "1.85.0"
+rust-version  = "1.94.0"
 version       = "2.0.0-rc.38"
 
 [package.metadata.docs.rs]
@@ -62,7 +62,7 @@ sea-orm-macros = { version = "~2.0.0-rc.38", path = "sea-orm-macros", default-fe
     "async",
     "strum",
 ] }
-sea-query = { version = "=1.0.0-rc.33", default-features = false, features = [
+sea-query = { version = "=1.0.0", default-features = false, features = [
     "thread-safe",
     "hashable-value",
     "backend-mysql",
@@ -70,7 +70,7 @@ sea-query = { version = "=1.0.0-rc.33", default-features = false, features = [
     "backend-sqlite",
     "sea-orm",
 ] }
-sea-query-sqlx = { version = "=0.8.0-rc.15", default-features = false, optional = true }
+sea-query-sqlx = { version = "=0.9.0", default-features = false, optional = true }
 sea-schema = { version = "0.17.0-rc.15", default-features = false, features = [
     "discovery",
     "writer",
@@ -78,7 +78,8 @@ sea-schema = { version = "0.17.0-rc.15", default-features = false, features = [
 ], optional = true }
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false, optional = true }
-sqlx = { version = "0.8.4", default-features = false, optional = true }
+sqlx = { version = "0.9.0", default-features = false, optional = true }
+sqlx-core = { version = "0.9.0", default-features = false, optional = true }
 strum = { version = "0.28", default-features = false }
 thiserror = { version = "2", default-features = false }
 time = { version = "0.3.36", default-features = false, optional = true }
@@ -141,17 +142,11 @@ postgres-vector = [
 proxy = ["serde/derive"]
 rbac = ["sea-query/audit", "macros"]
 runtime-async-std = ["sqlx?/runtime-async-std"]
-runtime-async-std-native-tls = [
-    "sqlx?/runtime-async-std-native-tls",
-    "runtime-async-std",
-]
-runtime-async-std-rustls = [
-    "sqlx?/runtime-async-std-rustls",
-    "runtime-async-std",
-]
+runtime-async-std-native-tls = ["sqlx?/tls-native-tls", "runtime-async-std"]
+runtime-async-std-rustls = ["sqlx?/tls-rustls", "runtime-async-std"]
 runtime-tokio = ["sqlx?/runtime-tokio"]
-runtime-tokio-native-tls = ["sqlx?/runtime-tokio-native-tls", "runtime-tokio"]
-runtime-tokio-rustls = ["sqlx?/runtime-tokio-rustls", "runtime-tokio"]
+runtime-tokio-native-tls = ["sqlx?/tls-native-tls", "runtime-tokio"]
+runtime-tokio-rustls = ["sqlx?/tls-rustls", "runtime-tokio"]
 rusqlite = []
 schema-sync = ["sea-schema"]
 sea-orm-internal = []
@@ -159,7 +154,7 @@ seaography = ["sea-orm-macros/seaography"]
 sqlite-no-row-value-before-3_15 = []
 sqlite-use-returning-for-3_35 = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
-sqlx-dep = ["sqlx"]
+sqlx-dep = ["sqlx", "sqlx-core"]
 sqlx-mysql = [
     "sqlx-dep",
     "sea-query-sqlx/sqlx-mysql",
