@@ -492,20 +492,20 @@ pub trait ActiveModelTrait: Clone + Debug {
 
         // Create dummy model with dummy values
         let dummy_model = Self::default_values();
-        if let Ok(dummy_model) = dummy_model.try_into_model() {
-            if let Ok(mut dummy_json) = serde_json::to_value(&dummy_model) {
-                let serde_json::Value::Object(merged) = &mut dummy_json else {
-                    unreachable!();
-                };
-                let serde_json::Value::Object(obj) = json else {
-                    unreachable!();
-                };
-                // overwrite dummy values with input values
-                for (key, value) in obj {
-                    merged.insert(key, value);
-                }
-                json = dummy_json;
+        if let Ok(dummy_model) = dummy_model.try_into_model()
+            && let Ok(mut dummy_json) = serde_json::to_value(&dummy_model)
+        {
+            let serde_json::Value::Object(merged) = &mut dummy_json else {
+                unreachable!();
+            };
+            let serde_json::Value::Object(obj) = json else {
+                unreachable!();
+            };
+            // overwrite dummy values with input values
+            for (key, value) in obj {
+                merged.insert(key, value);
             }
+            json = dummy_json;
         }
 
         // Convert JSON object into ActiveModel via Model

@@ -2,8 +2,10 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use futures_util::lock::Mutex;
+#[cfg(feature = "sqlx-sqlite")]
+use sqlx_core::sql_str::SqlSafeStr;
 #[cfg(feature = "sqlx-dep")]
-use sqlx::TransactionManager;
+use sqlx_core::transaction::TransactionManager;
 use tracing::instrument;
 
 use crate::{
@@ -24,6 +26,34 @@ pub struct DatabaseTransaction {
     open: bool,
     metric_callback: Option<crate::metric::Callback>,
     record_stmt_in_spans: bool,
+}
+
+#[instrument(level = "trace", skip(transaction, callback))]
+pub(crate) async fn run_async_transaction_callback<Txn, F, T, E>(
+    transaction: Txn,
+    callback: F,
+) -> Result<T, TransactionError<E>>
+where
+    Txn: TransactionSession + Send + Sync,
+    F: for<'b> AsyncFnOnce(&'b Txn) -> Result<T, E> + Send,
+    T: Send,
+    E: std::fmt::Display + std::fmt::Debug + Send,
+{
+    let res = callback(&transaction)
+        .await
+        .map_err(TransactionError::Transaction);
+    if res.is_ok() {
+        transaction
+            .commit()
+            .await
+            .map_err(TransactionError::Connection)?;
+    } else {
+        transaction
+            .rollback()
+            .await
+            .map_err(TransactionError::Connection)?;
+    }
+    res
 }
 
 impl std::fmt::Debug for DatabaseTransaction {
@@ -100,7 +130,8 @@ impl DatabaseTransaction {
                         let depth = <sqlx::Sqlite as sqlx::Database>::TransactionManager::get_transaction_depth(c);
                         let statement = if depth == 0 {
                             sqlite_transaction_mode.map(|mode| {
-                                std::borrow::Cow::from(format!("BEGIN {}", mode.sqlite_keyword()))
+                                sqlx::AssertSqlSafe(format!("BEGIN {}", mode.sqlite_keyword()))
+                                    .into_sql_str()
                             })
                         } else {
                             // Nested transaction uses SAVEPOINT; the mode only applies to the top-level BEGIN
@@ -153,6 +184,42 @@ impl DatabaseTransaction {
                 .map_err(TransactionError::Connection)?;
         }
         res
+    }
+
+    /// Execute the function inside a transaction.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
+    #[instrument(level = "trace", skip(callback))]
+    pub async fn transaction_async<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> AsyncFnOnce(&'c DatabaseTransaction) -> Result<T, E> + Send,
+        T: Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
+    {
+        let transaction = self.begin().await.map_err(TransactionError::Connection)?;
+        run_async_transaction_callback(transaction, callback).await
+    }
+
+    /// Execute the function inside a transaction with isolation level and/or access mode.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
+    #[instrument(level = "trace", skip(callback))]
+    pub async fn transaction_with_config_async<F, T, E>(
+        &self,
+        callback: F,
+        isolation_level: Option<IsolationLevel>,
+        access_mode: Option<AccessMode>,
+    ) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> AsyncFnOnce(&'c DatabaseTransaction) -> Result<T, E> + Send,
+        T: Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
+    {
+        let transaction = self
+            .begin_with_config(isolation_level, access_mode)
+            .await
+            .map_err(TransactionError::Connection)?;
+        run_async_transaction_callback(transaction, callback).await
     }
 
     /// Commit a transaction
@@ -412,7 +479,7 @@ impl ConnectionTrait for DatabaseTransaction {
                     #[cfg(feature = "sqlx-mysql")]
                     InnerConnection::MySql(conn) => {
                         let conn: &mut sqlx::MySqlConnection = &mut *conn;
-                        sqlx::Executor::execute(conn, sql)
+                        sqlx::Executor::execute(conn, sqlx::AssertSqlSafe(sql.to_owned()))
                             .await
                             .map(Into::into)
                             .map_err(sqlx_error_to_exec_err)
@@ -420,7 +487,7 @@ impl ConnectionTrait for DatabaseTransaction {
                     #[cfg(feature = "sqlx-postgres")]
                     InnerConnection::Postgres(conn) => {
                         let conn: &mut sqlx::PgConnection = &mut *conn;
-                        sqlx::Executor::execute(conn, sql)
+                        sqlx::Executor::execute(conn, sqlx::AssertSqlSafe(sql.to_owned()))
                             .await
                             .map(Into::into)
                             .map_err(sqlx_error_to_exec_err)
@@ -428,7 +495,7 @@ impl ConnectionTrait for DatabaseTransaction {
                     #[cfg(feature = "sqlx-sqlite")]
                     InnerConnection::Sqlite(conn) => {
                         let conn: &mut sqlx::SqliteConnection = &mut *conn;
-                        sqlx::Executor::execute(conn, sql)
+                        sqlx::Executor::execute(conn, sqlx::AssertSqlSafe(sql.to_owned()))
                             .await
                             .map(Into::into)
                             .map_err(sqlx_error_to_exec_err)

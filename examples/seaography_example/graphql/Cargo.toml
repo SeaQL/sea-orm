@@ -27,3 +27,4 @@ members = []
 
 [patch.crates-io]
 # sea-query = { path = "../sea-query" }
+sea-orm = { path = "../../.." } # remove this line in your own project

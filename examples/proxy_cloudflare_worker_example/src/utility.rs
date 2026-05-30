@@ -4,14 +4,11 @@ use worker::console_error;
 
 pub async fn ensure_schema(db: &DatabaseConnection) -> Result<(), DbErr> {
     let backend = db.get_database_backend();
-    db.execute(
-        backend.build(
-            Schema::new(backend)
-                .create_table_from_entity(crate::entity::Entity)
-                .if_not_exists(),
-        ),
-    )
-    .await?;
+    let stmt = Schema::new(backend)
+        .create_table_from_entity(crate::entity::Entity)
+        .if_not_exists()
+        .to_owned();
+    db.execute(&stmt).await?;
 
     Ok(())
 }

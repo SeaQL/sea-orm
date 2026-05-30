@@ -610,15 +610,14 @@ impl EntityWriter {
             .fold(
                 (TokenStream::new(), Vec::new()),
                 |(mut ts, mut enums), col| {
-                    if let sea_query::ColumnType::Enum { name, .. } = col.get_inner_col_type() {
-                        if !enums.contains(&name) {
-                            enums.push(name);
-                            let enum_name =
-                                format_ident!("{}", name.to_string().to_upper_camel_case());
-                            ts.extend([quote! {
-                                use super::sea_orm_active_enums::#enum_name;
-                            }]);
-                        }
+                    if let sea_query::ColumnType::Enum { name, .. } = col.get_inner_col_type()
+                        && !enums.contains(&name)
+                    {
+                        enums.push(name);
+                        let enum_name = format_ident!("{}", name.to_string().to_upper_camel_case());
+                        ts.extend([quote! {
+                            use super::sea_orm_active_enums::#enum_name;
+                        }]);
                     }
                     (ts, enums)
                 },

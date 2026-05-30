@@ -126,7 +126,7 @@ fn json_to_proxy_row(row: serde_json::Value) -> ProxyRow {
                     Value::Double(Some(val.as_f64().unwrap_or(0.0)))
                 }
             }
-            serde_json::Value::String(val) => Value::String(Some(Box::new(val.clone()))),
+            serde_json::Value::String(val) => Value::String(Some(val.clone())),
             _ => unreachable!(),
         };
         values.insert(k.clone(), sea_val);
