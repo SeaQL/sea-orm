@@ -65,3 +65,5 @@ serial_test = "2.0.0"
 
 [patch.crates-io]
 loco-rs = { git = "https://github.com/SeaQL/loco", branch = "master" }
+sea-orm = { path = "../../.." }                                   # remove this line in your own project
+sea-orm-migration = { path = "../../../sea-orm-migration" }       # remove this line in your own project

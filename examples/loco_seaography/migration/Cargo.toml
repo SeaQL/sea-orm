@@ -21,6 +21,3 @@ features = [
     "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
 ]
 version = "~2.0.0-rc.38" # sea-orm-migration version
-
-[patch.crates-io]
-loco-rs = { git = "https://github.com/SeaQL/loco", branch = "master" }
