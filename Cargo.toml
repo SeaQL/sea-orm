@@ -72,7 +72,7 @@ sea-query = { version = "~1.0.0", default-features = false, features = [
     "backend-sqlite",
     "sea-orm",
 ] }
-sea-query-sqlx = { version = "=0.9.0", default-features = false, optional = true }
+sea-query-sqlx = { version = "0.9", default-features = false, optional = true }
 sea-schema = { version = "0.18.0", default-features = false, features = [
     "discovery",
     "writer",
