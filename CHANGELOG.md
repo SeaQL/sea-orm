@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release Candidates
 
+- [2.0.0-rc.39](changelog/2.0.0-rc.39.md) - SeaQuery 1.0, SQLx 0.9, async transaction helpers
 - [2.0.0-rc.38](changelog/2.0.0-rc.38.md) — `find_both_related`, `set_ne`, pool options, schema sync fixes
 - [2.0.0-rc.37](changelog/2.0.0-rc.37.md) — ER Diagram Generation
 - [2.0.0-rc.36](changelog/2.0.0-rc.36.md) — Per-migration transaction control
