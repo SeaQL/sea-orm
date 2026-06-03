@@ -14,11 +14,13 @@ use tracing::instrument;
 
 use crate::{
     AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
-    DbBackend, IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*,
-    executor::*,
+    DbBackend, IsolationLevel, Statement, TransactionError, debug_print, error::*, executor::*,
 };
 
 use super::sqlx_common::*;
+
+#[cfg(feature = "stream")]
+use crate::QueryStream;
 
 /// Defines the [sqlx::mysql] connector
 #[derive(Debug)]
@@ -191,6 +193,7 @@ impl SqlxMySqlPoolConnection {
 
     /// Stream the results of executing a SQL query
     #[instrument(level = "trace")]
+    #[cfg(feature = "stream")]
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
@@ -329,6 +332,7 @@ pub(crate) async fn set_transaction_config(
     Ok(())
 }
 
+#[cfg(feature = "stream")]
 impl
     From<(
         PoolConnection<sqlx::MySql>,

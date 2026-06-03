@@ -7,6 +7,7 @@ pub use sea_orm::entity::*;
 pub use sea_orm::{ConnectionTrait, DbErr, QueryFilter};
 
 #[sea_orm_macros::test]
+#[cfg(feature = "stream")]
 pub async fn stream() -> Result<(), DbErr> {
     use futures_util::StreamExt;
 

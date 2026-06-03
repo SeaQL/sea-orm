@@ -120,6 +120,7 @@ impl ProxyDatabaseConnection {
     }
 }
 
+#[cfg(feature = "stream")]
 impl
     From<(
         Arc<crate::ProxyDatabaseConnection>,

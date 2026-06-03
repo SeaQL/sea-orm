@@ -1,12 +1,15 @@
 use super::transaction::run_async_transaction_callback;
 use crate::{
     AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel, QueryResult,
-    Schema, SchemaBuilder, Statement, StatementBuilder, StreamTrait, TransactionError,
+    Schema, SchemaBuilder, Statement, StatementBuilder, TransactionError,
     TransactionOptions, TransactionTrait, error::*,
 };
 use std::fmt::Debug;
 use tracing::instrument;
 use url::Url;
+
+#[cfg(feature = "stream")]
+use crate::StreamTrait;
 
 #[cfg(feature = "sqlx-dep")]
 use sqlx::pool::PoolConnection;
@@ -285,6 +288,7 @@ impl ConnectionTrait for DatabaseConnection {
     }
 }
 
+#[cfg(feature = "stream")]
 impl StreamTrait for DatabaseConnection {
     type Stream<'a> = crate::QueryStream;
 

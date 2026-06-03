@@ -4,8 +4,12 @@ use super::{
 use crate::{
     ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, PartialModelTrait,
     QueryResult, QuerySelect, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
-    SelectTwoRequired, Statement, StreamTrait, TryGetableMany, error::*,
+    SelectTwoRequired, Statement, TryGetableMany, error::*,
 };
+
+#[cfg(feature = "stream")]
+use crate::StreamTrait;
+
 use itertools::Itertools;
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
@@ -524,6 +528,7 @@ where
     }
 
     /// Stream the results of a SELECT operation on a Model
+#[cfg(feature = "stream")]
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -535,6 +540,7 @@ where
     }
 
     /// Stream the result of the operation with PartialModel
+#[cfg(feature = "stream")]
     pub fn stream_partial_model<'a: 'b, 'b, C, M>(
         self,
         db: &'a C,
@@ -602,6 +608,7 @@ where
     }
 
     /// Stream the results of a Select operation on a Model
+#[cfg(feature = "stream")]
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -613,6 +620,7 @@ where
     }
 
     /// Stream the result of the operation with PartialModel
+#[cfg(feature = "stream")]
     pub fn stream_partial_model<'a: 'b, 'b, C, M, N>(
         self,
         db: &'a C,
@@ -724,6 +732,7 @@ where
     }
 
     /// Stream the results of a Select operation on a Model
+#[cfg(feature = "stream")]
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -735,6 +744,7 @@ where
     }
 
     /// Stream the result of the operation with PartialModel
+#[cfg(feature = "stream")]
     pub fn stream_partial_model<'a: 'b, 'b, C, M, N>(
         self,
         db: &'a C,
@@ -782,6 +792,7 @@ where
     }
 
     /// Stream the results of the Select operation
+#[cfg(feature = "stream")]
     pub fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<PinBoxStream<'b, S::Item>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
@@ -1057,6 +1068,7 @@ where
     }
 
     /// Stream the results of the Select operation
+#[cfg(feature = "stream")]
     pub fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<PinBoxStream<'b, S::Item>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,

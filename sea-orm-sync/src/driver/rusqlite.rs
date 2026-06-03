@@ -21,9 +21,12 @@ use sea_query_rusqlite::{RusqliteValue, RusqliteValues, rusqlite};
 
 use crate::{
     AccessMode, ColIdx, ConnectOptions, DatabaseConnection, DatabaseConnectionType,
-    DatabaseTransaction, InnerConnection, IsolationLevel, QueryStream, SqliteTransactionMode,
+    DatabaseTransaction, InnerConnection, IsolationLevel, SqliteTransactionMode,
     Statement, TransactionError, error::*, executor::*,
 };
+
+#[cfg(feature = "stream")]
+use crate::QueryStream;
 
 /// A helper class to connect to Rusqlite
 #[derive(Debug)]
@@ -405,6 +408,7 @@ impl RusqliteSharedConnection {
 
     /// Stream the results of executing a SQL query
     #[instrument(level = "trace")]
+#[cfg(feature = "stream")]
     pub fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug!("{}", stmt);
 

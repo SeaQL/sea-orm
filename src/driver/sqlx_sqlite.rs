@@ -14,11 +14,14 @@ use tracing::{instrument, warn};
 
 use crate::{
     AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
-    IsolationLevel, QueryStream, SqliteTransactionMode, Statement, TransactionError, debug_print,
-    error::*, executor::*, sqlx_error_to_exec_err,
+    IsolationLevel, SqliteTransactionMode, Statement, TransactionError, debug_print, error::*,
+    executor::*, sqlx_error_to_exec_err,
 };
 
 use super::sqlx_common::*;
+
+#[cfg(feature = "stream")]
+use crate::QueryStream;
 
 /// Defines the [sqlx::sqlite] connector
 #[derive(Debug)]
@@ -209,6 +212,7 @@ impl SqlxSqlitePoolConnection {
 
     /// Stream the results of executing a SQL query
     #[instrument(level = "trace")]
+    #[cfg(feature = "stream")]
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
@@ -354,6 +358,7 @@ async fn get_version(conn: &SqlxSqlitePoolConnection) -> Result<String, DbErr> {
         .try_get_by(0)
 }
 
+#[cfg(feature = "stream")]
 impl
     From<(
         PoolConnection<sqlx::Sqlite>,
