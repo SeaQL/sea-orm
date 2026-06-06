@@ -7,3 +7,7 @@ Cargo.lock
 */.idea/*
 .env.local
 .DS_Store
+# Auto-generated trybuild stderr captures; we only assert must-fail,
+# stderr content is regenerated each run via TRYBUILD=overwrite.
+tests/value_type_pk_compile_fail/*.stderr
+sea-orm-sync/tests/value_type_pk_compile_fail/*.stderr

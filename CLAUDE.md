@@ -150,6 +150,40 @@ db.get_schema_registry("my_crate::*")
     .await?;
 ```
 
+## Type-safe primary keys
+
+`find_by_id` / `filter_by_id` / `delete_by_id` accept any `T: FindByIdArg<E>`, which is implemented blanket for `T: Into<<E::PrimaryKey as PrimaryKeyTrait>::ValueType>`. So `&str → String` and `u8 → i32` style conversions still flow through. The type safety comes from the PK type itself: a newtype like `UserId` has no `From<i32>`, so `find_by_id(1)` against a `UserId` PK fails to compile. To get that compile-time protection, wrap each entity's PK in a per-entity newtype with `DeriveValueType` (or use a `sea_orm::Id<E, T>` alias):
+
+```rust
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, DeriveValueType)]
+pub struct UserId(pub i32);
+
+#[sea_orm::model]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "user")]
+pub struct Model {
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id: UserId,
+    pub name: String,
+}
+```
+
+**Do not** add `impl From<i32> for UserId` (or any `From<inner>`). That re-opens the door to `find_by_id(1)` and defeats the safety contract. Construct ids explicitly with the tuple form: `UserId(1)`.
+
+For foreign keys, spell the column type with the parent's newtype too:
+
+```rust
+// post.rs
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: PostId,
+    pub user_id: super::user::UserId,
+    // ...
+}
+```
+
+The trybuild harness at `tests/value_type_pk_compile_fail/` pins this contract: any regression that re-allows `find_by_id(raw_int)` or cross-PK confusion will start compiling and fail the test.
+
 ## Anti-Patterns -- DO NOT DO THESE
 
 ### 1. Do not specify `column_type` on custom wrapper types
@@ -209,7 +243,7 @@ Expr::col((self.entity_name(), *self)).like(s)
 
 ### 5. Do not manually impl traits that `DeriveValueType` now generates
 
-In 2.0, `DeriveValueType` auto-generates `NotU8`, `IntoActiveValue`, and `TryFromU64`. Remove manual implementations to avoid conflicts.
+In 2.0, `DeriveValueType` auto-generates `NotU8`, `IntoActiveValue`, `TryFromU64`, and the primary-key auto-increment hint (`DelegatesPkAutoIncrementHint` for struct wrappers, `PkAutoIncrementHint` for string wrappers). Remove manual implementations to avoid conflicts. Hand-writing the auto-increment hint collides directly for string wrappers and via the blanket bridge for struct wrappers.
 
 ### 6. PostgreSQL: `serial` is no longer the default
 

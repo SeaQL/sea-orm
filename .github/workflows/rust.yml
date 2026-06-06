@@ -229,6 +229,7 @@ jobs:
             actix_example,
             axum_example,
             basic,
+            basic_typed_pk,
             graphql_example,
             jsonrpsee_example,
             loco_example,

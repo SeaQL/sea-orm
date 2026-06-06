@@ -1,0 +1,22 @@
+[workspace]
+# A separate workspace
+
+[package]
+edition      = "2024"
+name         = "sea-orm-example-basic-typed-pk"
+publish      = false
+rust-version = "1.85.0"
+version      = "0.1.0"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+
+[dependencies.sea-orm]
+features = [
+    "sqlx-sqlite",
+    "runtime-tokio",
+    "debug-print",
+]
+path = "../../"
+
+[patch.crates-io]

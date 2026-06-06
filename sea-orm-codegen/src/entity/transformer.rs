@@ -124,6 +124,23 @@ impl EntityTransformer {
                             .collect::<Vec<_>>()
                     }),
             );
+            // Populate per-column FK back-references from the relations.
+            // FK columns will carry `refs: Vec<ColumnRef>` of
+            // `(parent_table, parent_column)` so downstream codegen can
+            // resolve the referenced PK type.
+            for rel in relations.iter() {
+                if !matches!(rel.rel_type, RelationType::BelongsTo) {
+                    continue;
+                }
+                for (fk_col, parent_col) in rel.columns.iter().zip(rel.ref_columns.iter()) {
+                    if let Some(col) = columns.iter_mut().find(|c| &c.name == fk_col) {
+                        col.refs.push(crate::ColumnRef {
+                            table: rel.ref_table.clone(),
+                            column: parent_col.clone(),
+                        });
+                    }
+                }
+            }
             let entity = Entity {
                 table_name: table_name.clone(),
                 columns,
@@ -410,6 +427,147 @@ mod tests {
             ],
             vec![("indexes", include_str!("../tests_cfg/dense/indexes.rs"))],
         )?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn fk_columns_get_ref_table_and_ref_column_populated() -> Result<(), Box<dyn Error>> {
+        // parent has a unary PK; child has a single FK to parent.id
+        let parent_stmt = Table::create()
+            .table("parent")
+            .col(
+                ColumnDef::new("id")
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .to_owned();
+
+        let child_stmt = Table::create()
+            .table("child")
+            .col(
+                ColumnDef::new("id")
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(ColumnDef::new("parent_id").integer().not_null())
+            .foreign_key(
+                ForeignKey::create()
+                    .name("fk-child-parent_id")
+                    .from("child", "parent_id")
+                    .to("parent", "id"),
+            )
+            .to_owned();
+
+        let entities: HashMap<_, _> = EntityTransformer::transform(vec![parent_stmt, child_stmt])?
+            .entities
+            .into_iter()
+            .map(|entity| (entity.table_name.clone(), entity))
+            .collect();
+
+        let child = entities.get("child").expect("missing entity `child`");
+        let parent_id_col = child
+            .columns
+            .iter()
+            .find(|c| c.name == "parent_id")
+            .expect("missing parent_id column");
+        assert_eq!(parent_id_col.refs.len(), 1);
+        assert_eq!(parent_id_col.refs[0].table, "parent");
+        assert_eq!(parent_id_col.refs[0].column, "id");
+
+        // The PK column itself is not an FK, refs must stay empty.
+        let id_col = child
+            .columns
+            .iter()
+            .find(|c| c.name == "id")
+            .expect("missing id column");
+        assert!(id_col.refs.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn multi_fk_same_column_records_both_backrefs() -> Result<(), Box<dyn Error>> {
+        // The same SQL column (`child.user_id`) is constrained against two
+        // different parents. `Column::refs` is a `Vec<ColumnRef>`, so both
+        // back-references survive the transform.
+        //
+        // Downstream behavior under `--with-pk-newtypes`: the writer
+        // deliberately does NOT pick one parent's alias. Instead it
+        // emits the raw scalar (`pub user_id: i32`) and the user keeps
+        // the column unwrapped. See
+        // `pk_newtypes_multi_parent_fk_falls_back_to_scalar` in
+        // `writer.rs` for the writer-level assertion.
+        let users = Table::create()
+            .table("users")
+            .col(
+                ColumnDef::new("id")
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .to_owned();
+        let legacy_users = Table::create()
+            .table("legacy_users")
+            .col(
+                ColumnDef::new("id")
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .to_owned();
+        let child = Table::create()
+            .table("child")
+            .col(
+                ColumnDef::new("id")
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(ColumnDef::new("user_id").integer().not_null())
+            .foreign_key(
+                ForeignKey::create()
+                    .name("fk-child-user")
+                    .from("child", "user_id")
+                    .to("users", "id"),
+            )
+            .foreign_key(
+                ForeignKey::create()
+                    .name("fk-child-legacy_user")
+                    .from("child", "user_id")
+                    .to("legacy_users", "id"),
+            )
+            .to_owned();
+
+        let entities: HashMap<_, _> =
+            EntityTransformer::transform(vec![users, legacy_users, child])?
+                .entities
+                .into_iter()
+                .map(|entity| (entity.table_name.clone(), entity))
+                .collect();
+
+        let child = entities.get("child").expect("missing entity `child`");
+        let user_id_col = child
+            .columns
+            .iter()
+            .find(|c| c.name == "user_id")
+            .expect("missing user_id column");
+
+        assert_eq!(
+            user_id_col.refs.len(),
+            2,
+            "expected both FKs recorded, got refs = {:?}",
+            user_id_col.refs
+        );
+        assert!(user_id_col.refs.iter().any(|r| r.table == "users"));
+        assert!(user_id_col.refs.iter().any(|r| r.table == "legacy_users"));
 
         Ok(())
     }

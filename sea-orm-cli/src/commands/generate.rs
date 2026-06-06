@@ -45,6 +45,7 @@ pub async fn run_generate_command(
             preserve_user_modifications,
             banner_version,
             er_diagram,
+            with_pk_newtypes,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -250,6 +251,11 @@ pub async fn run_generate_command(
                 seaography,
                 impl_active_model_behavior,
                 banner_version.into(),
+                if with_pk_newtypes {
+                    sea_orm_codegen::PkNewtypeFormat::Inline
+                } else {
+                    sea_orm_codegen::PkNewtypeFormat::None
+                },
             );
             let entity_writer = EntityTransformer::transform(table_stmts)?;
 

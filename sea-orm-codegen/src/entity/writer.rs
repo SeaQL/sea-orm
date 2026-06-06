@@ -1,8 +1,10 @@
-use crate::{ActiveEnum, ColumnOption, Entity, util::escape_rust_keyword};
+use crate::{ActiveEnum, ColumnOption, Entity, PkNewtypeIndex, util::escape_rust_keyword};
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use std::{collections::BTreeMap, str::FromStr};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::rc::Rc;
+use std::str::FromStr;
 use syn::{punctuated::Punctuated, token::Comma};
 use tracing::info;
 
@@ -76,6 +78,21 @@ pub enum BannerVersion {
     Patch,
 }
 
+/// Controls whether codegen wraps each entity's primary key in a per-table
+/// `sea_orm::Id<Entity, T>` alias (e.g. `pub type CakePk = ...;`) and
+/// propagates that alias to foreign-key column types.
+#[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
+pub enum PkNewtypeFormat {
+    /// Default, emit raw scalar types for primary keys.
+    #[default]
+    None,
+    /// Emit `pub type <Table>Pk = sea_orm::Id<Entity, <inner>>;` above the
+    /// `pub struct Model` declaration, and resolve foreign keys to the
+    /// parent's alias (`super::ref_table::RefTablePk`). Self-ref junction
+    /// PK columns get per-column role-wrapper structs instead.
+    Inline,
+}
+
 #[derive(Debug)]
 pub struct EntityWriterContext {
     pub(crate) entity_format: EntityFormat,
@@ -96,6 +113,7 @@ pub struct EntityWriterContext {
     pub(crate) seaography: bool,
     pub(crate) impl_active_model_behavior: bool,
     pub(crate) banner_version: BannerVersion,
+    pub(crate) pk_newtype_format: PkNewtypeFormat,
 }
 
 impl WithSerde {
@@ -125,6 +143,21 @@ impl WithSerde {
         }
         extra_derive
     }
+}
+
+/// Strip a single outer `Option<...>` wrapper from a Rust type token stream.
+/// Used to render the inner type for PK newtype declarations: a PK column
+/// is always NOT NULL but `Column::get_rs_type` defensively wraps optional
+/// types in `Option<_>`, which we don't want inside the wrapper struct.
+fn strip_optional(ts: TokenStream) -> TokenStream {
+    let s = ts.to_string();
+    let trimmed = s.split_whitespace().collect::<String>();
+    if let Some(rest) = trimmed.strip_prefix("Option<") {
+        if let Some(inner) = rest.strip_suffix('>') {
+            return inner.parse().unwrap_or(ts);
+        }
+    }
+    ts
 }
 
 /// Converts *_extra_derives argument to token stream
@@ -234,6 +267,7 @@ impl EntityWriterContext {
         seaography: bool,
         impl_active_model_behavior: bool,
         banner_version: BannerVersion,
+        pk_newtype_format: PkNewtypeFormat,
     ) -> Self {
         Self {
             entity_format,
@@ -254,13 +288,28 @@ impl EntityWriterContext {
             seaography,
             impl_active_model_behavior,
             banner_version,
+            pk_newtype_format,
         }
     }
 
-    fn column_option(&self) -> ColumnOption {
+    fn column_option(
+        &self,
+        entity: &Entity,
+        pk_aliases: Option<&Rc<PkNewtypeIndex>>,
+        role_wrappers: Option<&Rc<PkNewtypeIndex>>,
+    ) -> ColumnOption {
+        let pk_newtype = match (pk_aliases, role_wrappers) {
+            (Some(aliases), Some(roles)) => Some(crate::entity::column::PkNewtypeContext {
+                current_table: entity.table_name.clone(),
+                pk_aliases: Rc::clone(aliases),
+                role_wrappers: Rc::clone(roles),
+            }),
+            _ => None,
+        };
         ColumnOption {
             date_time_crate: self.date_time_crate,
             big_integer_type: self.big_integer_type,
+            pk_newtype,
         }
     }
 }
@@ -297,14 +346,30 @@ impl EntityWriter {
     }
 
     pub fn write_entities(&self, context: &EntityWriterContext) -> Vec<OutputFile> {
+        let pk_newtype_index = if context.pk_newtype_format == PkNewtypeFormat::Inline {
+            Some(Rc::new(Self::build_pk_newtype_index(&self.entities)))
+        } else {
+            None
+        };
+        let role_wrapper_index = if context.pk_newtype_format == PkNewtypeFormat::Inline {
+            Some(Rc::new(Self::build_role_wrapper_index(&self.entities)))
+        } else {
+            None
+        };
+
         self.entities
             .iter()
             .map(|entity| {
                 let entity_file = format!("{}.rs", entity.get_table_name_snake_case());
+                let column_option = context.column_option(
+                    entity,
+                    pk_newtype_index.as_ref(),
+                    role_wrapper_index.as_ref(),
+                );
                 let column_info = entity
                     .columns
                     .iter()
-                    .map(|column| column.get_info(&context.column_option()))
+                    .map(|column| column.get_info(&column_option))
                     .collect::<Vec<String>>();
                 // Serde must be enabled to use this
                 let serde_skip_deserializing_primary_key = context
@@ -323,11 +388,12 @@ impl EntityWriter {
 
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines, context.banner_version);
+                let pk_newtype_decls = Self::gen_pk_newtype_decls(entity, &column_option);
                 let code_blocks = if context.entity_format == EntityFormat::Frontend {
                     Self::gen_frontend_code_blocks(
                         entity,
                         &context.with_serde,
-                        &context.column_option(),
+                        &column_option,
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
                         serde_skip_hidden_column,
@@ -341,7 +407,7 @@ impl EntityWriter {
                     Self::gen_expanded_code_blocks(
                         entity,
                         &context.with_serde,
-                        &context.column_option(),
+                        &column_option,
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
                         serde_skip_hidden_column,
@@ -355,7 +421,7 @@ impl EntityWriter {
                     Self::gen_dense_code_blocks(
                         entity,
                         &context.with_serde,
-                        &context.column_option(),
+                        &column_option,
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
                         serde_skip_hidden_column,
@@ -369,7 +435,7 @@ impl EntityWriter {
                     Self::gen_compact_code_blocks(
                         entity,
                         &context.with_serde,
-                        &context.column_option(),
+                        &column_option,
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
                         serde_skip_hidden_column,
@@ -380,6 +446,37 @@ impl EntityWriter {
                         context.impl_active_model_behavior,
                     )
                 };
+                // The PK newtype aliases and role wrappers need to live
+                // *after* the `use sea_orm::entity::prelude::*;` import
+                // (so `sea_orm::Id` resolves) and *before* the model
+                // declaration (so the model field type can name them).
+                //
+                // Without splicing, a file would emit:
+                //
+                //     pub struct Model {
+                //         pub id: TaskPk,            // unresolved
+                //         ...
+                //     }
+                //     use sea_orm::entity::prelude::*;
+                //
+                // With splicing, the file reads:
+                //
+                //     use sea_orm::entity::prelude::*;
+                //     pub type TaskPk = sea_orm::Id<Entity, i64>;
+                //     pub struct Model {
+                //         pub id: TaskPk,            // resolves
+                //         ...
+                //     }
+                let code_blocks: Vec<_> = if pk_newtype_decls.is_empty() {
+                    code_blocks
+                } else if let Some((imports, rest)) = code_blocks.split_first() {
+                    std::iter::once(imports.clone())
+                        .chain(pk_newtype_decls)
+                        .chain(rest.iter().cloned())
+                        .collect()
+                } else {
+                    pk_newtype_decls
+                };
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
                     name: entity_file,
@@ -387,6 +484,168 @@ impl EntityWriter {
                 }
             })
             .collect()
+    }
+
+    /// Build the `(table, column) -> AliasIdent` lookup of PK newtype
+    /// aliases. Naming: unary PK is `<TableCamel>Pk`; composite PK
+    /// columns are `<TableCamel><ColumnCamel>` with a one-step
+    /// collapse if the combined name would end in `IdId`
+    /// (e.g. table `cake_id` column `id` -> `CakeId`, not `CakeIdId`).
+    fn build_pk_newtype_index(entities: &[Entity]) -> PkNewtypeIndex {
+        let mut index = PkNewtypeIndex::new();
+        for entity in entities {
+            let table_camel = entity.table_name.to_upper_camel_case();
+            for pk in entity.primary_keys.iter() {
+                let ident_str = if entity.primary_keys.len() == 1 {
+                    format!("{table_camel}Pk")
+                } else {
+                    let column_camel = pk.name.to_upper_camel_case();
+                    let combined = format!("{table_camel}{column_camel}");
+                    if combined.ends_with("IdId") {
+                        format!("{}Id", &combined[..combined.len() - 4])
+                    } else {
+                        combined
+                    }
+                };
+                let ident = format_ident!("{}", ident_str);
+                index.insert((entity.table_name.clone(), pk.name.clone()), ident);
+            }
+        }
+        index
+    }
+
+    /// Build the `(own_table, fk_column) -> RoleWrapperIdent` lookup
+    /// for junction tables whose PK has more than one column FK-
+    /// referencing the same parent. Wrappers are named
+    /// `<OwnTableCamel>Pk<ColumnCamel>`. PK columns only; non-PK role
+    /// disambiguation is out of scope.
+    fn build_role_wrapper_index(entities: &[Entity]) -> PkNewtypeIndex {
+        let mut index = PkNewtypeIndex::new();
+        for entity in entities {
+            // Count how many of this entity's columns FK-reference each parent
+            // table. Junction PK columns each carry exactly one back-ref (one
+            // `ColumnRef` per `BelongsTo` column, see `EntityTransformer`), so
+            // `.first()` is the sole ref here. This index feeds `get_rs_type`
+            // step 1, which runs before the single-ref/empty-ref checks, so a
+            // role wrapper must only ever be emitted for a single-parent column.
+            let mut ref_counts: HashMap<String, usize> = HashMap::new();
+            for col in entity.columns.iter() {
+                if let Some(first_ref) = col.refs.first() {
+                    *ref_counts.entry(first_ref.table.clone()).or_insert(0) += 1;
+                }
+            }
+            // For PK columns whose parent is referenced by more than one
+            // column of this entity, emit a role wrapper.
+            let pk_names: HashSet<&String> =
+                entity.primary_keys.iter().map(|pk| &pk.name).collect();
+            for col in entity.columns.iter() {
+                if !pk_names.contains(&col.name) {
+                    continue;
+                }
+                let Some(first_ref) = col.refs.first() else {
+                    continue;
+                };
+                if ref_counts.get(&first_ref.table).copied().unwrap_or(0) <= 1 {
+                    continue;
+                }
+                let table_camel = entity.table_name.to_upper_camel_case();
+                let col_camel = col.name.to_upper_camel_case();
+                let ident_str = format!("{table_camel}Pk{col_camel}");
+                let ident = format_ident!("{}", ident_str);
+                index.insert((entity.table_name.clone(), col.name.clone()), ident);
+            }
+        }
+        index
+    }
+
+    /// Emit type aliases and role-wrapper structs for an entity's PK
+    /// columns. See `Column::get_rs_type` for the resolution rule that
+    /// downstream call sites use to interpret these declarations.
+    fn gen_pk_newtype_decls(entity: &Entity, opt: &ColumnOption) -> Vec<TokenStream> {
+        use crate::entity::column::PkNewtypeContext;
+        let Some(ctx) = opt.pk_newtype.as_ref() else {
+            return Vec::new();
+        };
+        let mut decls = Vec::new();
+        // Render inner types without the newtype context so we get raw scalars
+        // (or, for role wrappers, the parent's alias resolved via FK ref).
+        let raw_opt = ColumnOption {
+            date_time_crate: opt.date_time_crate,
+            big_integer_type: opt.big_integer_type,
+            pk_newtype: None,
+        };
+        // For role wrappers we want the parent's alias path, so we synthesize
+        // a context with the same `pk_aliases` but an empty `role_wrappers`
+        // map and a `current_table` that intentionally won't match anything
+        // in `pk_aliases`, that way `get_rs_type` falls through to the FK
+        // resolution branch (step 2) and emits `super::ref::ParentAlias`
+        // rather than the local own-PK alias (step 3).
+        //
+        // This is a load-bearing dependency on `Column::get_rs_type`'s branch
+        // ORDER (column.rs steps 1-3): the empty `role_wrappers` map skips
+        // step 1, and the non-matching `current_table` skips step 3, leaving
+        // step 2. Reordering those branches would silently change role-wrapper
+        // inner types with no compile-time signal.
+        let parent_resolve_opt = ColumnOption {
+            date_time_crate: opt.date_time_crate,
+            big_integer_type: opt.big_integer_type,
+            pk_newtype: Some(PkNewtypeContext {
+                current_table: String::from("__synthetic_no_match__"),
+                pk_aliases: Rc::clone(&ctx.pk_aliases),
+                role_wrappers: Rc::new(PkNewtypeIndex::default()),
+            }),
+        };
+        for pk in entity.primary_keys.iter() {
+            let Some(column) = entity.columns.iter().find(|c| c.name == pk.name) else {
+                continue;
+            };
+
+            // Role wrapper? Emit standalone struct around the parent's alias.
+            //
+            // The `try_from_u64` attribute forces `DeriveValueType` to emit
+            // a `TryFromU64` impl by delegation: the parent's alias is
+            // `Id<E, T>`, which impls `TryFromU64` whenever its inner `T`
+            // does, and every PK inner type codegen supports (integers,
+            // `String`, `Uuid`) qualifies, so this is always satisfiable.
+            // Without the attribute the macro's textual allowlist
+            // (i8…u64/String/Uuid) wouldn't fire, and tuple-PK arity
+            // (composite junctions) would lose its `TryFromU64` bound.
+            if let Some(ident) = ctx
+                .role_wrappers
+                .get(&(entity.table_name.clone(), pk.name.clone()))
+            {
+                // Parent alias type, e.g. `super::user::UserId`.
+                let parent_ty = column.get_rs_type(&parent_resolve_opt);
+                let parent_ty = strip_optional(parent_ty);
+                decls.push(quote! {
+                    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, DeriveValueType)]
+                    #[sea_orm(try_from_u64)]
+                    pub struct #ident(pub #parent_ty);
+                });
+                continue;
+            }
+
+            // FK PK without role-wrapper status? No local emission, the
+            // column resolves to the parent's alias via Column::get_rs_type.
+            if !column.refs.is_empty() {
+                continue;
+            }
+
+            // Own-PK alias. Render the inner type as a raw scalar so the
+            // alias is `pub type CakePk = sea_orm::Id<Entity, i32>;`.
+            let Some(ident) = ctx
+                .pk_aliases
+                .get(&(entity.table_name.clone(), pk.name.clone()))
+            else {
+                continue;
+            };
+            let inner_rs = column.get_rs_type(&raw_opt);
+            let inner_rs = strip_optional(inner_rs);
+            decls.push(quote! {
+                pub type #ident = sea_orm::Id<Entity, #inner_rs>;
+            });
+        }
+        decls
     }
 
     pub fn write_index_file(
@@ -871,8 +1130,9 @@ impl EntityWriter {
 #[cfg(test)]
 mod tests {
     use crate::{
-        Column, ColumnOption, ConjunctRelation, Entity, EntityWriter, PrimaryKey, Relation,
-        RelationType, WithSerde,
+        BannerVersion, BigIntegerType, Column, ColumnOption, ConjunctRelation, DateTimeCrate,
+        Entity, EntityFormat, EntityWriter, EntityWriterContext, PkNewtypeFormat, PrimaryKey,
+        Relation, RelationType, WithPrelude, WithSerde,
         entity::writer::{bonus_attributes, bonus_derive},
     };
     use pretty_assertions::assert_eq;
@@ -900,6 +1160,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "name".to_owned(),
@@ -908,6 +1169,7 @@ mod tests {
                         not_null: false,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![Relation {
@@ -939,6 +1201,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "filling_id".to_owned(),
@@ -947,6 +1210,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![
@@ -993,6 +1257,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "filling_id".to_owned(),
@@ -1001,6 +1266,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "price".to_owned(),
@@ -1009,6 +1275,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![Relation {
@@ -1042,6 +1309,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "name".to_owned(),
@@ -1050,6 +1318,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![],
@@ -1071,6 +1340,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "name".to_owned(),
@@ -1079,6 +1349,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "cake_id".to_owned(),
@@ -1087,6 +1358,7 @@ mod tests {
                         not_null: false,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![
@@ -1128,6 +1400,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "_name_".to_owned(),
@@ -1136,6 +1409,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "fruitId".to_owned(),
@@ -1144,6 +1418,7 @@ mod tests {
                         not_null: false,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![Relation {
@@ -1172,6 +1447,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "testing".to_owned(),
@@ -1180,6 +1456,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "rust".to_owned(),
@@ -1188,6 +1465,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "keywords".to_owned(),
@@ -1196,6 +1474,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "type".to_owned(),
@@ -1204,6 +1483,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "typeof".to_owned(),
@@ -1212,6 +1492,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "crate".to_owned(),
@@ -1220,6 +1501,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "self".to_owned(),
@@ -1228,6 +1510,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "self_id1".to_owned(),
@@ -1236,6 +1519,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "self_id2".to_owned(),
@@ -1244,6 +1528,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "fruit_id1".to_owned(),
@@ -1252,6 +1537,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "fruit_id2".to_owned(),
@@ -1260,6 +1546,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "cake_id".to_owned(),
@@ -1268,6 +1555,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![
@@ -1342,6 +1630,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "name".to_owned(),
@@ -1350,6 +1639,7 @@ mod tests {
                         not_null: false,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "price".to_owned(),
@@ -1358,6 +1648,7 @@ mod tests {
                         not_null: false,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![Relation {
@@ -1389,6 +1680,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "name".to_owned(),
@@ -1397,6 +1689,7 @@ mod tests {
                         not_null: false,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "price".to_owned(),
@@ -1405,6 +1698,7 @@ mod tests {
                         not_null: false,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![Relation {
@@ -1436,6 +1730,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "integers".to_owned(),
@@ -1444,6 +1739,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "integers_opt".to_owned(),
@@ -1452,6 +1748,7 @@ mod tests {
                         not_null: false,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![],
@@ -1470,6 +1767,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "floats".to_owned(),
@@ -1478,6 +1776,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "doubles".to_owned(),
@@ -1486,6 +1785,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![],
@@ -1504,6 +1804,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "id2".to_owned(),
@@ -1512,6 +1813,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![Relation {
@@ -1545,6 +1847,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "parent_id1".to_owned(),
@@ -1553,6 +1856,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "parent_id2".to_owned(),
@@ -1561,6 +1865,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![Relation {
@@ -1589,6 +1894,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "b".to_owned(),
@@ -1597,6 +1903,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "c".to_owned(),
@@ -1605,6 +1912,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "d".to_owned(),
@@ -1613,6 +1921,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "e".to_owned(),
@@ -1621,6 +1930,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "f".to_owned(),
@@ -1629,6 +1939,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "g".to_owned(),
@@ -1637,6 +1948,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "h".to_owned(),
@@ -1645,6 +1957,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "i".to_owned(),
@@ -1653,6 +1966,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "j".to_owned(),
@@ -1661,6 +1975,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "k".to_owned(),
@@ -1671,6 +1986,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![],
@@ -2248,6 +2564,7 @@ mod tests {
                     not_null: true,
                     unique: false,
                     unique_key: None,
+                    refs: Vec::new(),
                 },
                 Column {
                     name: "name".to_owned(),
@@ -2256,6 +2573,7 @@ mod tests {
                     not_null: false,
                     unique: false,
                     unique_key: None,
+                    refs: Vec::new(),
                 },
                 Column {
                     name: "base_id".to_owned(),
@@ -2264,6 +2582,7 @@ mod tests {
                     not_null: false,
                     unique: false,
                     unique_key: None,
+                    refs: Vec::new(),
                 },
             ],
             relations: vec![
@@ -2951,6 +3270,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "payload".to_owned(),
@@ -2959,6 +3279,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "payload_binary".to_owned(),
@@ -2967,6 +3288,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![],
@@ -3048,6 +3370,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "first_tea".to_owned(),
@@ -3062,6 +3385,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "second_tea".to_owned(),
@@ -3076,6 +3400,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![],
@@ -3094,6 +3419,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "first_tea".to_owned(),
@@ -3108,6 +3434,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "second_tea".to_owned(),
@@ -3122,6 +3449,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                     Column {
                         name: "size".to_owned(),
@@ -3137,6 +3465,7 @@ mod tests {
                         not_null: true,
                         unique: false,
                         unique_key: None,
+                        refs: Vec::new(),
                     },
                 ],
                 relations: vec![],
@@ -3216,5 +3545,207 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn pk_newtypes_emit_wrappers_and_thread_through_fks() {
+        use crate::EntityTransformer;
+        use sea_query::{ColumnDef, ForeignKey, Table};
+
+        let parent = Table::create()
+            .table("cake")
+            .col(
+                ColumnDef::new("id")
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(ColumnDef::new("name").string().not_null())
+            .to_owned();
+        let child = Table::create()
+            .table("fruit")
+            .col(
+                ColumnDef::new("id")
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(ColumnDef::new("cake_id").integer())
+            .foreign_key(
+                ForeignKey::create()
+                    .name("fk-fruit-cake")
+                    .from("fruit", "cake_id")
+                    .to("cake", "id"),
+            )
+            .to_owned();
+
+        let writer = EntityTransformer::transform(vec![parent, child]).unwrap();
+        let context = EntityWriterContext::new(
+            EntityFormat::Compact,
+            WithPrelude::None,
+            WithSerde::None,
+            false,
+            DateTimeCrate::Chrono,
+            BigIntegerType::I64,
+            None,
+            false,
+            false,
+            false,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            false,
+            true,
+            BannerVersion::Off,
+            PkNewtypeFormat::Inline,
+        );
+        let output = writer.generate(&context);
+
+        let cake = output
+            .files
+            .iter()
+            .find(|f| f.name == "cake.rs")
+            .expect("missing cake.rs");
+        let fruit = output
+            .files
+            .iter()
+            .find(|f| f.name == "fruit.rs")
+            .expect("missing fruit.rs");
+
+        // The codegen output is rendered from a TokenStream so spacing is
+        // not stable across versions, so we normalize to whitespace-free strings
+        // and check that the expected sequences appear.
+        let cake_norm: String = cake.content.split_whitespace().collect();
+        let fruit_norm: String = fruit.content.split_whitespace().collect();
+
+        // Parent emits a type alias and the PK field is typed.
+        assert!(
+            cake_norm.contains("pubtypeCakePk=sea_orm::Id<Entity,i32>"),
+            "cake.rs should declare `pub type CakePk = sea_orm::Id<Entity, i32>;` (got:\n{})",
+            cake.content
+        );
+        assert!(
+            cake_norm.contains("pubid:CakePk"),
+            "cake.rs should type `id` as `CakePk` (got:\n{})",
+            cake.content
+        );
+
+        // Child emits its own alias plus references the parent's via `super::cake::CakePk`.
+        assert!(
+            fruit_norm.contains("pubtypeFruitPk=sea_orm::Id<Entity,i32>"),
+            "fruit.rs should declare `pub type FruitPk = sea_orm::Id<Entity, i32>;` (got:\n{})",
+            fruit.content
+        );
+        assert!(
+            fruit_norm.contains("super::cake::CakePk"),
+            "fruit.rs should reference parent PK as `super::cake::CakePk` (got:\n{})",
+            fruit.content
+        );
+    }
+
+    /// When a single column is FK-constrained against more than one
+    /// parent, codegen deliberately opts out of newtyping for that
+    /// column and emits the raw scalar instead. The companion
+    /// transformer test `multi_fk_same_column_records_both_backrefs`
+    /// pins the multiple back-refs being recorded; this test pins the
+    /// downstream writer choice. See `Column::get_rs_type` for the
+    /// rationale (no single typed alias can faithfully represent a
+    /// column that may hold either parent's id).
+    #[test]
+    fn pk_newtypes_multi_parent_fk_falls_back_to_scalar() {
+        use crate::EntityTransformer;
+        use sea_query::{ColumnDef, ForeignKey, Table};
+
+        let users = Table::create()
+            .table("users")
+            .col(
+                ColumnDef::new("id")
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .to_owned();
+        let legacy_users = Table::create()
+            .table("legacy_users")
+            .col(
+                ColumnDef::new("id")
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .to_owned();
+        let child = Table::create()
+            .table("child")
+            .col(
+                ColumnDef::new("id")
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(ColumnDef::new("user_id").integer().not_null())
+            .foreign_key(
+                ForeignKey::create()
+                    .name("fk-child-user")
+                    .from("child", "user_id")
+                    .to("users", "id"),
+            )
+            .foreign_key(
+                ForeignKey::create()
+                    .name("fk-child-legacy_user")
+                    .from("child", "user_id")
+                    .to("legacy_users", "id"),
+            )
+            .to_owned();
+
+        let writer = EntityTransformer::transform(vec![users, legacy_users, child]).unwrap();
+        let context = EntityWriterContext::new(
+            EntityFormat::Compact,
+            WithPrelude::None,
+            WithSerde::None,
+            false,
+            DateTimeCrate::Chrono,
+            BigIntegerType::I64,
+            None,
+            false,
+            false,
+            false,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            false,
+            true,
+            BannerVersion::Off,
+            PkNewtypeFormat::Inline,
+        );
+        let output = writer.generate(&context);
+        let child = output
+            .files
+            .iter()
+            .find(|f| f.name == "child.rs")
+            .expect("missing child.rs");
+        let child_norm: String = child.content.split_whitespace().collect();
+
+        // Multi-parent FK -> raw scalar at the field-type level.
+        // (The Relation enum still references both parents, that's
+        // independent of the column type emission.)
+        assert!(
+            child_norm.contains("pubuser_id:i32"),
+            "child.rs should type multi-parent FK `user_id` as raw `i32` (got:\n{})",
+            child.content
+        );
+        assert!(
+            !child_norm.contains("pubuser_id:super::"),
+            "child.rs should NOT type `user_id` as a parent alias (got:\n{})",
+            child.content
+        );
     }
 }

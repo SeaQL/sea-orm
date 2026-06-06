@@ -777,7 +777,13 @@ pub async fn create_value_type_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &general_stmt, value_type::value_type_general::Entity).await?;
-    create_table_from_entity(db, value_type::value_type_pk::Entity).await
+    create_table_from_entity(db, value_type::value_type_pk::Entity).await?;
+    create_table_from_entity(db, value_type::value_type_token_pk::Entity).await
+}
+
+#[cfg(feature = "with-uuid")]
+pub async fn create_value_type_uuid_pk_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    create_table_from_entity(db, value_type::value_type_uuid_pk::Entity).await
 }
 
 pub async fn create_value_type_postgres_table(db: &DbConn) -> Result<ExecResult, DbErr> {

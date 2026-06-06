@@ -313,6 +313,7 @@ mod tests {
                     not_null: false,
                     unique: false,
                     unique_key: None,
+                    refs: Vec::new(),
                 },
                 Column {
                     name: "name".to_owned(),
@@ -321,6 +322,7 @@ mod tests {
                     not_null: false,
                     unique: false,
                     unique_key: None,
+                    refs: Vec::new(),
                 },
             ],
             relations: vec![

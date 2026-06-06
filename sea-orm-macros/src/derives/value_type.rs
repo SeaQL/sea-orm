@@ -169,16 +169,15 @@ impl DeriveValueTypeStruct {
         let array_type = &self.array_type;
 
         let try_from_u64_impl = if self.can_try_from_u64 {
+            // Delegate to the inner type's `TryFromU64` impl so this works
+            // for any wrapped type that itself impls `TryFromU64`, including
+            // `Uuid` (returns `Err(ConvertFromU64)`) and `String` (returns
+            // the digit string), not just integer primitives.
             quote!(
                 #[automatically_derived]
                 impl sea_orm::TryFromU64 for #name {
-                    fn try_from_u64(n: u64) -> Result<Self, sea_orm::DbErr> {
-                        use std::convert::TryInto;
-                        Ok(Self(n.try_into().map_err(|e| sea_orm::DbErr::TryIntoErr {
-                            from: stringify!(u64),
-                            into: stringify!(#name),
-                            source: std::sync::Arc::new(e),
-                        })?))
+                    fn try_from_u64(n: u64) -> std::result::Result<Self, sea_orm::DbErr> {
+                        <#field_type as sea_orm::TryFromU64>::try_from_u64(n).map(#name)
                     }
                 }
             )
@@ -242,6 +241,11 @@ impl DeriveValueTypeStruct {
                 fn into_active_value(self) -> sea_orm::ActiveValue<#name> {
                     sea_orm::ActiveValue::Set(self)
                 }
+            }
+
+            #[automatically_derived]
+            impl sea_orm::DelegatesPkAutoIncrementHint for #name {
+                type Inner = #field_type;
             }
 
             #try_from_u64_impl
@@ -340,6 +344,15 @@ impl DeriveValueTypeString {
                 fn into_active_value(self) -> sea_orm::ActiveValue<#name> {
                     sea_orm::ActiveValue::Set(self)
                 }
+            }
+
+            // String-backed wrappers are always non-auto, so impl the hint
+            // directly. The struct path instead emits
+            // `DelegatesPkAutoIncrementHint` and resolves through the inner
+            // type; both spellings yield `false` for a `String` inner.
+            #[automatically_derived]
+            impl sea_orm::PkAutoIncrementHint for #name {
+                const IS_AUTO: bool = false;
             }
 
             #impl_not_u8

@@ -72,6 +72,12 @@ impl EntityWriter {
                     attrs.push(quote! { primary_key });
                     if !col.auto_increment {
                         attrs.push(quote! { auto_increment = false });
+                    } else if column_option.pk_newtype.is_some() {
+                        // Emit `auto_increment` explicitly so the regenerated
+                        // entity matches the source schema regardless of how
+                        // `PkAutoIncrementHint` resolves for the wrapper type
+                        // chosen by downstream code.
+                        attrs.push(quote! { auto_increment });
                     }
                 }
                 if let Some(ts) = col.get_col_type_attrs() {

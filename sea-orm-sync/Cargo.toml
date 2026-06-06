@@ -93,6 +93,7 @@ sea-orm-sync = { path = ".", features = [
 ] }
 time = { version = "0.3.36", features = ["macros"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+trybuild = { version = "1" }
 uuid = { version = "1", features = ["v4"] }
 
 [features]
