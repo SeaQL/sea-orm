@@ -168,6 +168,7 @@ mod tests {
                             not_null: true,
                             unique: false,
                             unique_key: None,
+                            refs: Vec::new(),
                         },
                         Column {
                             name: "name".to_owned(),
@@ -176,6 +177,7 @@ mod tests {
                             not_null: true,
                             unique: false,
                             unique_key: None,
+                            refs: Vec::new(),
                         },
                         Column {
                             name: "email".to_owned(),
@@ -184,6 +186,7 @@ mod tests {
                             not_null: true,
                             unique: true,
                             unique_key: None,
+                            refs: Vec::new(),
                         },
                         Column {
                             name: "parent_id".to_owned(),
@@ -192,6 +195,7 @@ mod tests {
                             not_null: false,
                             unique: false,
                             unique_key: None,
+                            refs: Vec::new(),
                         },
                     ],
                     relations: vec![
@@ -233,6 +237,7 @@ mod tests {
                             not_null: true,
                             unique: false,
                             unique_key: None,
+                            refs: Vec::new(),
                         },
                         Column {
                             name: "title".to_owned(),
@@ -241,6 +246,7 @@ mod tests {
                             not_null: true,
                             unique: false,
                             unique_key: None,
+                            refs: Vec::new(),
                         },
                         Column {
                             name: "user_id".to_owned(),
@@ -249,6 +255,7 @@ mod tests {
                             not_null: true,
                             unique: false,
                             unique_key: None,
+                            refs: Vec::new(),
                         },
                     ],
                     relations: vec![Relation {
@@ -280,6 +287,7 @@ mod tests {
                             not_null: true,
                             unique: false,
                             unique_key: None,
+                            refs: Vec::new(),
                         },
                         Column {
                             name: "name".to_owned(),
@@ -288,6 +296,7 @@ mod tests {
                             not_null: true,
                             unique: true,
                             unique_key: None,
+                            refs: Vec::new(),
                         },
                     ],
                     relations: vec![],
@@ -309,6 +318,7 @@ mod tests {
                             not_null: true,
                             unique: false,
                             unique_key: None,
+                            refs: Vec::new(),
                         },
                         Column {
                             name: "tag_id".to_owned(),
@@ -317,6 +327,7 @@ mod tests {
                             not_null: true,
                             unique: false,
                             unique_key: None,
+                            refs: Vec::new(),
                         },
                     ],
                     relations: vec![

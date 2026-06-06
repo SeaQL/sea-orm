@@ -1,5 +1,5 @@
 use crate::{
-    ActiveModelBehavior, ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne,
+    ActiveModelBehavior, ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne, FindByIdArg,
     FromQueryResult, Identity, Insert, InsertMany, ModelTrait, PrimaryKeyArity, PrimaryKeyToColumn,
     PrimaryKeyTrait, QueryFilter, Related, RelationBuilder, RelationTrait, RelationType, Select,
     Update, UpdateMany, UpdateOne, ValidatedDeleteOne,
@@ -201,7 +201,39 @@ pub trait EntityTrait: EntityName {
         Select::<R>::new().join_join(JoinType::InnerJoin, R::to(), R::via())
     }
 
-    /// Find a model by primary key
+    /// Find a model by primary key.
+    ///
+    /// `values` must satisfy [`FindByIdArg<Self>`], which is implemented
+    /// blanket for any `T: Into<<Self::PrimaryKey as PrimaryKeyTrait>::ValueType>`.
+    /// In practice that means:
+    ///
+    /// - For an entity with a raw scalar PK (`pub id: i32`), pass any
+    ///   `T: Into<i32>`, including `i32`, `u8`, `&i32`, etc.
+    /// - For an entity with a typed PK newtype (`pub id: UserId` where
+    ///   `UserId` is a `DeriveValueType` wrapper or `sea_orm::Id<E, T>`
+    ///   alias), pass the newtype itself: `find_by_id(UserId::new(7))`.
+    ///   Raw scalars are rejected, there is no `From<i32> for UserId`
+    ///   to satisfy the `Into` bound.
+    /// - For composite PKs, pass a tuple of the component types
+    ///   (e.g. `(i32, String)` or `(UserId, RoleId)`).
+    ///
+    /// # Type-safe PKs
+    ///
+    /// Wrap each entity's primary key in a per-entity newtype to get
+    /// compile-time protection against passing the wrong id type:
+    ///
+    /// ```ignore
+    /// use sea_orm::entity::prelude::*;
+    ///
+    /// #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, DeriveValueType)]
+    /// pub struct UserId(pub i32);
+    ///
+    /// // Now `user::Entity::find_by_id` accepts only `UserId`, not raw `i32`
+    /// // and not any other entity's id type.
+    /// ```
+    ///
+    /// Do **not** add `impl From<i32> for UserId`, that re-opens the door to
+    /// `find_by_id(1)` and defeats the safety contract.
     ///
     /// # Example
     ///
@@ -288,11 +320,11 @@ pub trait EntityTrait: EntityName {
     /// ```
     fn find_by_id<T>(values: T) -> Select<Self>
     where
-        T: Into<<Self::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+        T: FindByIdArg<Self>,
     {
         let mut select = Self::find();
         let mut keys = Self::PrimaryKey::iter();
-        for v in values.into().into_value_tuple() {
+        for v in values.into_pk_value().into_value_tuple() {
             if let Some(key) = keys.next() {
                 let col = key.into_column();
                 select = select.filter(col.eq(v));
@@ -1019,11 +1051,11 @@ pub trait EntityTrait: EntityName {
     /// ```
     fn delete_by_id<T>(values: T) -> ValidatedDeleteOne<Self>
     where
-        T: Into<<Self::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+        T: FindByIdArg<Self>,
     {
         let mut am = Self::ActiveModel::default();
         let mut keys = Self::PrimaryKey::iter();
-        for v in values.into().into_value_tuple() {
+        for v in values.into_pk_value().into_value_tuple() {
             if let Some(key) = keys.next() {
                 let col = key.into_column();
                 am.set(col, v);
@@ -1138,7 +1170,7 @@ mod tests {
 
         fn delete_by_id<T>(value: T)
         where
-            T: Into<<<hello::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+            T: crate::FindByIdArg<hello::Entity>,
         {
             assert_eq!(
                 hello::Entity::delete_by_id(value)

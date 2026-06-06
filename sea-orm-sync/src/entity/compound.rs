@@ -1,8 +1,8 @@
 #![allow(missing_docs)]
-use super::{ColumnTrait, EntityTrait, PrimaryKeyToColumn, PrimaryKeyTrait};
+use super::{ColumnTrait, EntityTrait, PrimaryKeyToColumn};
 use crate::{
-    ConnectionTrait, DbErr, IntoSimpleExpr, ItemsAndPagesNumber, Iterable, ModelTrait, QueryFilter,
-    QueryOrder,
+    ConnectionTrait, DbErr, FindByIdArg, IntoSimpleExpr, ItemsAndPagesNumber, Iterable, ModelTrait,
+    QueryFilter, QueryOrder,
 };
 use sea_query::{IntoValueTuple, Order, TableRef};
 use std::marker::PhantomData;
@@ -20,10 +20,10 @@ pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter + QueryOrder + Clone {
     /// Find a model by primary key
     fn filter_by_id<T>(mut self, values: T) -> Self
     where
-        T: Into<<E::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+        T: FindByIdArg<E>,
     {
         let mut keys = E::PrimaryKey::iter();
-        for v in values.into().into_value_tuple() {
+        for v in values.into_pk_value().into_value_tuple() {
             if let Some(key) = keys.next() {
                 let col = key.into_column();
                 self.filter_mut(col.eq(v));

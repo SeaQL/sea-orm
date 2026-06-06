@@ -47,7 +47,23 @@ pub trait PrimaryKeyTrait: IdenStatic + Iterable {
         + TryFromU64
         + PrimaryKeyArity;
 
-    /// Method to call to perform `AUTOINCREMENT` operation on a Primary Key
+    /// Method to call to perform `AUTOINCREMENT` operation on a Primary Key.
+    ///
+    /// The `DeriveEntityModel` macro emits this from one of three sources, in order:
+    ///
+    /// 1. An explicit `#[sea_orm(auto_increment = true/false)]` on the primary
+    ///    key column always wins.
+    /// 2. Composite primary keys (more than one `primary_key` column) always
+    ///    return `false`.
+    /// 3. Otherwise the default is resolved at trait-resolution time via
+    ///    [`crate::PkAutoIncrementHint`] on the column's type, integer
+    ///    primitives default to `true`, `String` / `Uuid` / `Vec<u8>` default
+    ///    to `false`, and `DeriveValueType` wrappers delegate to their inner
+    ///    type (so `RoleId(pub i64)` → `true`, `Token(pub String)` → `false`).
+    ///
+    /// For custom primary key types that do not impl `PkAutoIncrementHint`,
+    /// provide an explicit `auto_increment = ...` on the column or impl the
+    /// trait on the type.
     fn auto_increment() -> bool;
 }
 
