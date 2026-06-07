@@ -1,6 +1,63 @@
 use crate::sea_query::{Nullable, ValueType};
 use crate::{ActiveValue, Value};
 
+macro_rules! impl_serde_with_str {
+    ($ty:ty) => {
+        #[cfg(feature = "serde")]
+        impl serde::Serialize for $ty {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                serializer.serialize_str(&self.to_string())
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl<'de> serde::Deserialize<'de> for $ty {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                let value = <String as serde::Deserialize>::deserialize(deserializer)?;
+                value.parse().map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+
+macro_rules! impl_serde_with_i64 {
+    ($ty:ident, $from:ident, $to:ident) => {
+        #[cfg(feature = "serde")]
+        impl serde::Serialize for $ty {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                serializer.serialize_i64($to(*self))
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl<'de> serde::Deserialize<'de> for $ty {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                let value = <i64 as serde::Deserialize>::deserialize(deserializer)?;
+                $from(value).ok_or_else(|| {
+                    serde::de::Error::custom(format_args!(
+                        "failed to convert i64 to {}",
+                        stringify!($ty)
+                    ))
+                })
+            }
+        }
+    };
+}
+
+pub(super) use {impl_serde_with_i64, impl_serde_with_str};
+
 mod timestamp;
 use timestamp::*;
 

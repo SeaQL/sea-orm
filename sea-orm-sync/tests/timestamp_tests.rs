@@ -91,6 +91,72 @@ fn entity_timestamp_test() -> Result<(), DbErr> {
     Ok(())
 }
 
+#[cfg(all(feature = "serde", feature = "with-json"))]
+#[test]
+fn unix_timestamp_serde_uses_i64() -> Result<(), serde_json::Error> {
+    let chrono_seconds: i64 = 1_700_000_000;
+    let chrono_millis: i64 = 1_700_000_000_123;
+    let time_seconds: i64 = 1_700_000_001;
+    let time_millis: i64 = 1_700_000_001_234;
+
+    let chrono_timestamp = ChronoUnixTimestamp(
+        sea_orm::prelude::ChronoDateTimeUtc::from_timestamp(chrono_seconds, 0).unwrap(),
+    );
+    let chrono_timestamp_millis = ChronoUnixTimestampMillis(
+        sea_orm::prelude::ChronoDateTimeUtc::from_timestamp_millis(chrono_millis).unwrap(),
+    );
+    let time_timestamp = TimeUnixTimestamp(
+        sea_orm::prelude::TimeDateTimeWithTimeZone::from_unix_timestamp(time_seconds).unwrap(),
+    );
+    let time_timestamp_millis = TimeUnixTimestampMillis(
+        sea_orm::prelude::TimeDateTimeWithTimeZone::from_unix_timestamp_nanos(
+            time_millis as i128 * 1_000_000,
+        )
+        .unwrap(),
+    );
+
+    assert_eq!(
+        serde_json::to_string(&chrono_timestamp)?,
+        chrono_seconds.to_string()
+    );
+    assert_eq!(
+        serde_json::from_str::<ChronoUnixTimestamp>(&chrono_seconds.to_string())?,
+        chrono_timestamp
+    );
+
+    assert_eq!(
+        serde_json::to_string(&chrono_timestamp_millis)?,
+        chrono_millis.to_string()
+    );
+    assert_eq!(
+        serde_json::from_str::<ChronoUnixTimestampMillis>(&chrono_millis.to_string())?,
+        chrono_timestamp_millis
+    );
+
+    assert_eq!(
+        serde_json::to_string(&time_timestamp)?,
+        time_seconds.to_string()
+    );
+    assert_eq!(
+        serde_json::from_str::<TimeUnixTimestamp>(&time_seconds.to_string())?,
+        time_timestamp
+    );
+
+    assert_eq!(
+        serde_json::to_string(&time_timestamp_millis)?,
+        time_millis.to_string()
+    );
+    assert_eq!(
+        serde_json::from_str::<TimeUnixTimestampMillis>(&time_millis.to_string())?,
+        time_timestamp_millis
+    );
+
+    assert!(serde_json::from_str::<ChronoUnixTimestamp>(&i64::MAX.to_string()).is_err());
+    assert!(serde_json::from_str::<TimeUnixTimestamp>(&i64::MAX.to_string()).is_err());
+
+    Ok(())
+}
+
 pub fn create_applog(db: &DatabaseConnection) -> Result<(), DbErr> {
     let log = applog::Model {
         id: 1,

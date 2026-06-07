@@ -19,10 +19,16 @@ impl_timestamp!(
     from_timestamp,
     to_timestamp
 );
+super::impl_serde_with_i64!(TimeUnixTimestamp, from_timestamp, to_timestamp);
 
 impl_timestamp!(
     TimeUnixTimestampMillis,
     TimeDateTimeWithTimeZone,
+    from_timestamp_millis,
+    to_timestamp_millis
+);
+super::impl_serde_with_i64!(
+    TimeUnixTimestampMillis,
     from_timestamp_millis,
     to_timestamp_millis
 );
