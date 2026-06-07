@@ -181,13 +181,13 @@ fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(),
         get_full_migration_dir(migration_dir).join(format!("{}.rs", &migration_name));
     println!("Creating migration file `{}`", migration_filepath.display());
 
-    let migration_template = fmt_migration_tempelate(migration_name);
+    let migration_template = fmt_migration_template(migration_name);
     let mut migration_file = fs::File::create(migration_filepath)?;
     migration_file.write_all(migration_template.as_bytes())?;
     Ok(())
 }
 
-fn fmt_migration_tempelate(migration_name: &str) -> String {
+fn fmt_migration_template(migration_name: &str) -> String {
     format! {
         r#"use sea_orm_migration::{{prelude::*, schema::*}};
 
@@ -201,12 +201,12 @@ impl MigrationName for Migration {{
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {{
-    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {{
+    async fn up(&self, _manager: &SchemaManager) -> Result<(), DbErr> {{
         // Replace the sample below with your own migration scripts
         todo!();
     }}
 
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {{
+    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {{
         // Replace the sample below with your own migration scripts
         todo!();
     }}
@@ -315,12 +315,12 @@ impl MigrationName for Migration {
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
-    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+    async fn up(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
         // Replace the sample below with your own migration scripts
         todo!();
     }
 
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
         // Replace the sample below with your own migration scripts
         todo!();
     }

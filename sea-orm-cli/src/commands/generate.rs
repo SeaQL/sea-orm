@@ -15,9 +15,9 @@ use url::Url;
 fn split_by_comma_ignoring_parentheses(s: &str) -> Vec<String> {
     let mut result = Vec::new();
     let mut current = String::new();
-    let mut paren_depth = 0;
-    let mut bracket_depth = 0;
-    let mut brace_depth = 0;
+    let mut paren_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    let mut brace_depth = 0usize;
 
     for c in s.chars() {
         match c {
@@ -571,19 +571,33 @@ mod tests {
     #[test]
     fn test_split_by_comma_with_nested_parentheses() {
         // Nested parentheses with commas
-        let result = super::split_by_comma_ignoring_parentheses("cfg_attr(debug_assertions, derive(Debug))");
+        let result =
+            super::split_by_comma_ignoring_parentheses("cfg_attr(debug_assertions, derive(Debug))");
         assert_eq!(result, vec!["cfg_attr(debug_assertions, derive(Debug))"]);
 
         // Multiple nested parentheses
-        let result = super::split_by_comma_ignoring_parentheses("cfg_attr(feature1, attr(a, b)),cfg_attr(feature2, attr(c, d))");
-        assert_eq!(result, vec!["cfg_attr(feature1, attr(a, b))", "cfg_attr(feature2, attr(c, d))"]);
+        let result = super::split_by_comma_ignoring_parentheses(
+            "cfg_attr(feature1, attr(a, b)),cfg_attr(feature2, attr(c, d))",
+        );
+        assert_eq!(
+            result,
+            vec![
+                "cfg_attr(feature1, attr(a, b))",
+                "cfg_attr(feature2, attr(c, d))"
+            ]
+        );
     }
 
     #[test]
     fn test_split_by_comma_with_brackets() {
         // Brackets should also be respected
-        let result = super::split_by_comma_ignoring_parentheses("serde(rename_all = \"camelCase\"),ts(export)");
-        assert_eq!(result, vec!["serde(rename_all = \"camelCase\")", "ts(export)"]);
+        let result = super::split_by_comma_ignoring_parentheses(
+            "serde(rename_all = \"camelCase\"),ts(export)",
+        );
+        assert_eq!(
+            result,
+            vec!["serde(rename_all = \"camelCase\")", "ts(export)"]
+        );
 
         // Brackets with commas
         let result = super::split_by_comma_ignoring_parentheses("attr[key, value],other");
@@ -634,11 +648,24 @@ mod tests {
     #[test]
     fn test_split_by_comma_real_world_examples() {
         // Real-world example: cfg_attr with derive
-        let result = super::split_by_comma_ignoring_parentheses("cfg_attr(debug_assertions, derive(Debug)),serde(rename_all = \"camelCase\")");
-        assert_eq!(result, vec!["cfg_attr(debug_assertions, derive(Debug))", "serde(rename_all = \"camelCase\")"]);
+        let result = super::split_by_comma_ignoring_parentheses(
+            "cfg_attr(debug_assertions, derive(Debug)),serde(rename_all = \"camelCase\")",
+        );
+        assert_eq!(
+            result,
+            vec![
+                "cfg_attr(debug_assertions, derive(Debug))",
+                "serde(rename_all = \"camelCase\")"
+            ]
+        );
 
         // Real-world example: multiple derives
-        let result = super::split_by_comma_ignoring_parentheses("derive(Debug, Clone),derive(Serialize, Deserialize)");
-        assert_eq!(result, vec!["derive(Debug, Clone)", "derive(Serialize, Deserialize)"]);
+        let result = super::split_by_comma_ignoring_parentheses(
+            "derive(Debug, Clone),derive(Serialize, Deserialize)",
+        );
+        assert_eq!(
+            result,
+            vec!["derive(Debug, Clone)", "derive(Serialize, Deserialize)"]
+        );
     }
 }

@@ -13,6 +13,7 @@ use crate::{DbErr, TryGetError};
 /// - Allows for queries like `WHERE id IN (<uuid>, <uuid>, ...)` which are
 ///   impossible to write with `BLOB` values
 #[derive(Clone, Debug, PartialEq, Eq, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TextUuid(pub uuid::Uuid);
 
 impl From<TextUuid> for sea_query::Value {
