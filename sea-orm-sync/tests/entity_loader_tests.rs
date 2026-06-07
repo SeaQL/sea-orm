@@ -863,6 +863,31 @@ fn entity_loader_diamond_relations() -> Result<(), DbErr> {
     assert_eq!(workers[1].cashier_of.len(), 1);
     assert_eq!(workers[1].cashier_of[0].name, "YumBakery");
 
+    let yum = diamond_bakery::Entity::load()
+        .filter_by_id(yum.id)
+        .with((
+            diamond_bakery::Relation::Manager,
+            worker::Relation::BakeryManager,
+        ))
+        .with((
+            diamond_bakery::Relation::Cashier,
+            worker::Relation::BakeryCashier,
+        ))
+        .one(db)?
+        .unwrap();
+
+    let manager = yum.manager.as_ref().unwrap();
+    assert_eq!(manager.name, "Bob");
+    assert_eq!(manager.manager_of.len(), 1);
+    assert_eq!(manager.manager_of[0].name, "YumBakery");
+    assert!(manager.cashier_of.is_empty());
+
+    let cashier = yum.cashier.as_ref().unwrap();
+    assert_eq!(cashier.name, "Alice");
+    assert!(cashier.manager_of.is_empty());
+    assert_eq!(cashier.cashier_of.len(), 1);
+    assert_eq!(cashier.cashier_of[0].name, "YumBakery");
+
     Ok(())
 }
 

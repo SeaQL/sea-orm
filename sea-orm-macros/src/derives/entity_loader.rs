@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use syn::{Ident, Visibility, punctuated::Punctuated, token::Comma};
 
 #[derive(Default)]
@@ -38,6 +38,7 @@ pub fn expand_entity_loader(vis: &Visibility, schema: EntityLoaderSchema) -> Tok
     let mut load_one_nest_nest = TokenStream::new();
     let mut load_many_nest_nest = TokenStream::new();
     let mut into_with_param_impl = TokenStream::new();
+    let mut relation_tuple_impls = HashSet::new();
     let mut arity = 1;
 
     let (async_, await_) = if cfg!(feature = "async") {
@@ -103,6 +104,37 @@ pub fn expand_entity_loader(vis: &Visibility, schema: EntityLoaderSchema) -> Tok
                         }
                     }
                 });
+                with_nest_impl.extend(quote! {
+                    if let sea_orm::compound::LoadTarget::Relation(relation_enum) = &left {
+                        if relation_enum == #relation_enum {
+                            self.with.#field = true;
+                            self.nest.#field.set(right);
+                            return self;
+                        }
+                    }
+                });
+
+                if relation_tuple_impls.insert(entity_field.entity.clone()) {
+                    into_with_param_impl.extend(quote! {
+                        impl EntityLoaderWithParam for (Relation, #entity_module::Entity) {
+                            fn into_with_param(self) -> (sea_orm::compound::LoadTarget, Option<sea_orm::compound::LoadTarget>) {
+                                (
+                                    sea_orm::compound::LoadTarget::Relation(sea_orm::RelationTrait::name(&self.0)),
+                                    Some(sea_orm::compound::LoadTarget::TableRef(self.1.table_ref())),
+                                )
+                            }
+                        }
+
+                        impl EntityLoaderWithParam for (Relation, #entity_module::Relation) {
+                            fn into_with_param(self) -> (sea_orm::compound::LoadTarget, Option<sea_orm::compound::LoadTarget>) {
+                                (
+                                    sea_orm::compound::LoadTarget::Relation(sea_orm::RelationTrait::name(&self.0)),
+                                    Some(sea_orm::compound::LoadTarget::Relation(sea_orm::RelationTrait::name(&self.1))),
+                                )
+                            }
+                        }
+                    });
+                }
             }
         } else {
             field_bools.push(quote! {
