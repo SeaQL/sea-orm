@@ -115,7 +115,7 @@ impl MockDatabase {
 }
 
 impl MockDatabaseTrait for MockDatabase {
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(statement))]
     fn execute(&mut self, counter: usize, statement: Statement) -> Result<ExecResult, DbErr> {
         if let Some(transaction) = &mut self.transaction {
             transaction.push(statement);
@@ -137,7 +137,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(statement))]
     fn query(&mut self, counter: usize, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         if let Some(transaction) = &mut self.transaction {
             transaction.push(statement);
@@ -432,7 +432,7 @@ mod tests {
         DbBackend, DbErr, IntoMockRow, MockDatabase, Statement, Transaction, TransactionError,
         TransactionTrait, entity::*, error::*, tests_cfg::*,
     };
-    use futures_util::{TryStreamExt, stream::TryNext};
+    use futures_util::TryStreamExt;
     use pretty_assertions::assert_eq;
 
     #[derive(Debug, PartialEq, Eq)]
