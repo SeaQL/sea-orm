@@ -173,6 +173,17 @@ pub trait LoaderTraitEx {
         R::ModelEx: From<R::Model>,
         <Self::Model as ModelTrait>::Entity: Related<R>;
 
+    async fn load_one_ex_with_rel<R>(
+        &self,
+        stmt: impl EntityOrSelect<R>,
+        rel_def: RelationDef,
+        db: &impl ConnectionTrait,
+    ) -> Result<Vec<Option<R::ModelEx>>, DbErr>
+    where
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        R::ModelEx: From<R::Model>;
+
     async fn load_many_ex<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<R::ModelEx>>, DbErr>
     where
         C: ConnectionTrait,
@@ -181,6 +192,17 @@ pub trait LoaderTraitEx {
         S: EntityOrSelect<R>,
         R::ModelEx: From<R::Model>,
         <Self::Model as ModelTrait>::Entity: Related<R>;
+
+    async fn load_many_ex_with_rel<R>(
+        &self,
+        stmt: impl EntityOrSelect<R>,
+        rel_def: RelationDef,
+        db: &impl ConnectionTrait,
+    ) -> Result<Vec<Vec<R::ModelEx>>, DbErr>
+    where
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        R::ModelEx: From<R::Model>;
 }
 
 type NestedEntity<T> = <<T as NestedLoaderTrait>::Model as ModelTrait>::Entity;
@@ -248,6 +270,17 @@ pub trait NestedLoaderTrait {
         R::ModelEx: From<R::Model>,
         <Self::Model as ModelTrait>::Entity: Related<R>;
 
+    async fn load_one_ex_with_rel<R>(
+        &self,
+        stmt: impl EntityOrSelect<R>,
+        rel_def: RelationDef,
+        db: &impl ConnectionTrait,
+    ) -> Result<Vec<Vec<Option<R::ModelEx>>>, DbErr>
+    where
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        R::ModelEx: From<R::Model>;
+
     async fn load_many_ex<R, S, C>(
         &self,
         stmt: S,
@@ -260,6 +293,17 @@ pub trait NestedLoaderTrait {
         S: EntityOrSelect<R>,
         R::ModelEx: From<R::Model>,
         <Self::Model as ModelTrait>::Entity: Related<R>;
+
+    async fn load_many_ex_with_rel<R>(
+        &self,
+        stmt: impl EntityOrSelect<R>,
+        rel_def: RelationDef,
+        db: &impl ConnectionTrait,
+    ) -> Result<Vec<Vec<Vec<R::ModelEx>>>, DbErr>
+    where
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        R::ModelEx: From<R::Model>;
 }
 
 impl<E> EntityOrSelect<E> for E
@@ -701,6 +745,23 @@ where
         loader_impl(self.iter(), stmt.select(), db).await
     }
 
+    async fn load_one_ex_with_rel<R>(
+        &self,
+        stmt: impl EntityOrSelect<R>,
+        rel_def: RelationDef,
+        db: &impl ConnectionTrait,
+    ) -> Result<Vec<Option<R::ModelEx>>, DbErr>
+    where
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        R::ModelEx: From<R::Model>,
+    {
+        if rel_def.rel_type != RelationType::HasOne {
+            return Err(query_err("Relation is HasMany instead of HasOne"));
+        }
+        loader_impl_impl(self.iter(), stmt.select(), rel_def, None, db).await
+    }
+
     async fn load_many_ex<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<R::ModelEx>>, DbErr>
     where
         C: ConnectionTrait,
@@ -711,6 +772,20 @@ where
         <Self::Model as ModelTrait>::Entity: Related<R>,
     {
         loader_impl(self.iter(), stmt.select(), db).await
+    }
+
+    async fn load_many_ex_with_rel<R>(
+        &self,
+        stmt: impl EntityOrSelect<R>,
+        rel_def: RelationDef,
+        db: &impl ConnectionTrait,
+    ) -> Result<Vec<Vec<R::ModelEx>>, DbErr>
+    where
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        R::ModelEx: From<R::Model>,
+    {
+        loader_impl_impl(self.iter(), stmt.select(), rel_def, None, db).await
     }
 }
 
@@ -826,6 +901,31 @@ where
         Ok(assemble_options(self, items))
     }
 
+    async fn load_one_ex_with_rel<R>(
+        &self,
+        stmt: impl EntityOrSelect<R>,
+        rel_def: RelationDef,
+        db: &impl ConnectionTrait,
+    ) -> Result<Vec<Option<R::ModelEx>>, DbErr>
+    where
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        R::ModelEx: From<R::Model>,
+    {
+        if rel_def.rel_type != RelationType::HasOne {
+            return Err(query_err("Relation is HasMany instead of HasOne"));
+        }
+        let items: Vec<Option<R::ModelEx>> = loader_impl_impl(
+            self.iter().filter_map(|o| o.as_ref()),
+            stmt.select(),
+            rel_def,
+            None,
+            db,
+        )
+        .await?;
+        Ok(assemble_options(self, items))
+    }
+
     async fn load_many_ex<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<R::ModelEx>>, DbErr>
     where
         C: ConnectionTrait,
@@ -837,6 +937,28 @@ where
     {
         let items: Vec<Vec<R::ModelEx>> =
             loader_impl(self.iter().filter_map(|o| o.as_ref()), stmt.select(), db).await?;
+        Ok(assemble_options(self, items))
+    }
+
+    async fn load_many_ex_with_rel<R>(
+        &self,
+        stmt: impl EntityOrSelect<R>,
+        rel_def: RelationDef,
+        db: &impl ConnectionTrait,
+    ) -> Result<Vec<Vec<R::ModelEx>>, DbErr>
+    where
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        R::ModelEx: From<R::Model>,
+    {
+        let items: Vec<Vec<R::ModelEx>> = loader_impl_impl(
+            self.iter().filter_map(|o| o.as_ref()),
+            stmt.select(),
+            rel_def,
+            None,
+            db,
+        )
+        .await?;
         Ok(assemble_options(self, items))
     }
 }
@@ -945,6 +1067,25 @@ where
         Ok(assemble_vectors(self, items))
     }
 
+    async fn load_one_ex_with_rel<R>(
+        &self,
+        stmt: impl EntityOrSelect<R>,
+        rel_def: RelationDef,
+        db: &impl ConnectionTrait,
+    ) -> Result<Vec<Vec<Option<R::ModelEx>>>, DbErr>
+    where
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        R::ModelEx: From<R::Model>,
+    {
+        if rel_def.rel_type != RelationType::HasOne {
+            return Err(query_err("Relation is HasMany instead of HasOne"));
+        }
+        let items: Vec<Option<R::ModelEx>> =
+            loader_impl_impl(self.iter().flatten(), stmt.select(), rel_def, None, db).await?;
+        Ok(assemble_vectors(self, items))
+    }
+
     async fn load_many_ex<R, S, C>(
         &self,
         stmt: S,
@@ -960,6 +1101,22 @@ where
     {
         let items: Vec<Vec<R::ModelEx>> =
             loader_impl(self.iter().flatten(), stmt.select(), db).await?;
+        Ok(assemble_vectors(self, items))
+    }
+
+    async fn load_many_ex_with_rel<R>(
+        &self,
+        stmt: impl EntityOrSelect<R>,
+        rel_def: RelationDef,
+        db: &impl ConnectionTrait,
+    ) -> Result<Vec<Vec<Vec<R::ModelEx>>>, DbErr>
+    where
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        R::ModelEx: From<R::Model>,
+    {
+        let items: Vec<Vec<R::ModelEx>> =
+            loader_impl_impl(self.iter().flatten(), stmt.select(), rel_def, None, db).await?;
         Ok(assemble_vectors(self, items))
     }
 }
