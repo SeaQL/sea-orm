@@ -136,7 +136,7 @@ impl DerivePartialModel {
                             nested = true;
                             for m in list.iter() {
                                 match m.get_as_kv("prefix") {
-                                    Some(p) => nested_prefix = Some(p),
+                                    Some(p) => nested_prefix = (!p.is_empty()).then_some(p),
                                     None => {
                                         return Err(Error::Syn(syn::Error::new_spanned(
                                             m,
@@ -175,25 +175,20 @@ impl DerivePartialModel {
                     field: field_name,
                 },
                 (None, None, true) => {
-                    let key = (field.ty.clone(), nested_prefix.clone());
-                    match seen_nested.entry(key) {
-                        Entry::Occupied(e) => {
-                            let msg = match nested_prefix {
-                                Some(p) => format!(
-                                    "multiple nested fields with the same type share prefix \"{p}\""
-                                ),
-                                None => {
-                                    "multiple nested fields with the same type must have a `prefix`: \
-                                       use `#[sea_orm(nested(prefix = \"...\"))]`"
-                                        .to_string()
-                                }
-                            };
-                            let mut err = syn::Error::new_spanned(&field_tokens, msg);
-                            err.combine(syn::Error::new_spanned(e.get(), "first defined here"));
-                            return Err(Error::Syn(err));
-                        }
-                        Entry::Vacant(e) => {
-                            e.insert(field_tokens);
+                    if let Some(prefix) = &nested_prefix {
+                        let key = (field.ty.clone(), Some(prefix.clone()));
+                        match seen_nested.entry(key) {
+                            Entry::Occupied(e) => {
+                                let msg = format!(
+                                    "multiple nested fields with the same type share prefix \"{prefix}\""
+                                );
+                                let mut err = syn::Error::new_spanned(&field_tokens, msg);
+                                err.combine(syn::Error::new_spanned(e.get(), "first defined here"));
+                                return Err(Error::Syn(err));
+                            }
+                            Entry::Vacant(e) => {
+                                e.insert(field_tokens);
+                            }
                         }
                     }
 
@@ -568,5 +563,40 @@ mod test {
     fn test_duplicate_prefix_error() {
         let input: DeriveInput = parse_str(CODE_SNIPPET_4).unwrap();
         assert!(DerivePartialModel::new(input).is_err());
+    }
+
+    const CODE_SNIPPET_5: &str = r#"
+        struct PartialModel {
+            #[sea_orm(nested)]
+            manager: Person,
+            #[sea_orm(nested)]
+            cashier: Person,
+        }
+        "#;
+
+    #[test]
+    fn test_duplicate_nested_without_prefix_is_accepted() -> StdResult<()> {
+        let input = parse_str::<DeriveInput>(CODE_SNIPPET_5)?;
+        let middle = DerivePartialModel::new(input).unwrap();
+        assert_eq!(middle.fields.len(), 2);
+        assert_eq!(
+            middle.fields[0],
+            ColumnAs::Nested {
+                typ: parse_str("Person").unwrap(),
+                field: format_ident!("manager"),
+                alias: None,
+                prefix: None,
+            }
+        );
+        assert_eq!(
+            middle.fields[1],
+            ColumnAs::Nested {
+                typ: parse_str("Person").unwrap(),
+                field: format_ident!("cashier"),
+                alias: None,
+                prefix: None,
+            }
+        );
+        Ok(())
     }
 }

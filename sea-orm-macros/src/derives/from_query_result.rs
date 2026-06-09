@@ -171,20 +171,16 @@ impl DeriveFromQueryResult {
             let field_tokens = parsed_field.to_token_stream();
             let ident = parsed_field.ident.unwrap();
 
-            if let ItemType::Nested { ref prefix } = typ {
-                let key = (parsed_field.ty, prefix.clone());
+            if let ItemType::Nested {
+                prefix: Some(prefix),
+            } = &typ
+            {
+                let key = (parsed_field.ty, Some(prefix.clone()));
                 match seen_nested.entry(key) {
                     Entry::Occupied(e) => {
-                        let msg = match prefix {
-                            Some(p) => format!(
-                                "multiple nested fields with the same type share prefix \"{p}\""
-                            ),
-                            None => {
-                                "multiple nested fields with the same type must have a `prefix`: \
-                                   use `#[sea_orm(nested(prefix = \"...\"))]`"
-                                    .to_string()
-                            }
-                        };
+                        let msg = format!(
+                            "multiple nested fields with the same type share prefix \"{prefix}\""
+                        );
                         let mut err = Error::new_spanned(&field_tokens, msg);
                         err.combine(Error::new_spanned(e.get(), "first defined here"));
                         return Err(err);
