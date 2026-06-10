@@ -193,6 +193,24 @@ mod composite_c {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+mod unique_item {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "unique_item")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        #[sea_orm(unique)]
+        pub name: String,
+        #[sea_orm(unique_key = "code")]
+        pub code: i32,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 #[sea_orm_macros::test]
 fn test_select_six() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_select_six");
@@ -404,6 +422,64 @@ fn test_select_six() -> Result<(), DbErr> {
     let six = one_ex.six.unwrap();
     assert_eq!(six.id, 6);
     assert_eq!(six.five.unwrap().id, 55);
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+fn test_delete_by_one_column_unique_keys() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_delete_by_one_column_unique_keys");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(unique_item::Entity)
+        .apply(db)?;
+
+    unique_item::ActiveModel {
+        id: Set(1),
+        name: Set("alpha".to_owned()),
+        code: Set(10),
+    }
+    .insert(db)?;
+
+    unique_item::ActiveModel {
+        id: Set(2),
+        name: Set("beta".to_owned()),
+        code: Set(20),
+    }
+    .insert(db)?;
+
+    assert_eq!(
+        unique_item::Entity::find_by_name("alpha")
+            .one(db)?
+            .unwrap()
+            .id,
+        1
+    );
+    assert_eq!(
+        unique_item::Entity::find_by_code(20).one(db)?.unwrap().id,
+        2
+    );
+
+    assert_eq!(
+        unique_item::Entity::delete_by_name("alpha")
+            .exec(db)?
+            .rows_affected,
+        1
+    );
+    assert!(
+        unique_item::Entity::find_by_name("alpha")
+            .one(db)?
+            .is_none()
+    );
+
+    assert_eq!(
+        unique_item::Entity::delete_by_code(20)
+            .exec(db)?
+            .rows_affected,
+        1
+    );
+    assert!(unique_item::Entity::find_by_code(20).one(db)?.is_none());
 
     Ok(())
 }

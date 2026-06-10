@@ -165,7 +165,7 @@ where
     }
 
     /// Stream the results of a Select operation on a Model
-#[cfg(feature = "stream")]
+    #[cfg(feature = "stream")]
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -180,7 +180,7 @@ where
     }
 
     /// Stream the result of the operation with PartialModel
-#[cfg(feature = "stream")]
+    #[cfg(feature = "stream")]
     pub fn stream_partial_model<'a: 'b, 'b, C, M, N, O>(
         self,
         db: &'a C,

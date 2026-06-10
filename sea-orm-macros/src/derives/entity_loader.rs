@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use syn::{Ident, Visibility, punctuated::Punctuated, token::Comma};
 
 #[derive(Default)]
@@ -19,6 +19,10 @@ pub struct EntityLoaderField {
     pub via: Option<syn::LitStr>,
 }
 
+fn relation_enum_ident(relation_enum: &syn::LitStr) -> Ident {
+    Ident::new(&relation_enum.value(), relation_enum.span())
+}
+
 pub fn expand_entity_loader(vis: &Visibility, schema: EntityLoaderSchema) -> TokenStream {
     let mut field_bools: Punctuated<_, Comma> = Punctuated::new();
     let mut field_nests: Punctuated<_, Comma> = Punctuated::new();
@@ -34,6 +38,7 @@ pub fn expand_entity_loader(vis: &Visibility, schema: EntityLoaderSchema) -> Tok
     let mut load_one_nest_nest = TokenStream::new();
     let mut load_many_nest_nest = TokenStream::new();
     let mut into_with_param_impl = TokenStream::new();
+    let mut relation_tuple_impls = HashSet::new();
     let mut arity = 1;
 
     let (async_, await_) = if cfg!(feature = "async") {
@@ -60,18 +65,13 @@ pub fn expand_entity_loader(vis: &Visibility, schema: EntityLoaderSchema) -> Tok
         let is_one = entity_field.is_one;
         let is_self = entity_field.is_self;
         let is_reverse = entity_field.is_reverse;
+        let is_duplicate_entity = *total_count.get(&entity_field.entity).unwrap() != 1;
         let entity: TokenStream = entity_field.entity.parse().unwrap();
         let entity_module: TokenStream = entity_field
             .entity
             .trim_end_matches("::Entity")
             .parse()
             .unwrap();
-
-        if !is_self && *total_count.get(&entity_field.entity).unwrap() != 1 {
-            // prevent impl trait for same entity twice
-            // self_ref is allowed
-            continue;
-        }
 
         if !is_self {
             field_bools.push(quote! {
@@ -83,18 +83,59 @@ pub fn expand_entity_loader(vis: &Visibility, schema: EntityLoaderSchema) -> Tok
                 pub #field: #entity_module::EntityLoaderWith
             });
 
-            with_impl.extend(quote! {
-                if target == sea_orm::compound::LoadTarget::TableRef(#entity.table_ref()) {
-                    self.#field = true;
+            if !is_duplicate_entity {
+                with_impl.extend(quote! {
+                    if target == sea_orm::compound::LoadTarget::TableRef(#entity.table_ref()) {
+                        self.#field = true;
+                    }
+                });
+                with_nest_impl.extend(quote! {
+                    if left == sea_orm::compound::LoadTarget::TableRef(#entity.table_ref()) {
+                        self.with.#field = true;
+                        self.nest.#field.set(right);
+                        return self;
+                    }
+                });
+            } else if let Some(relation_enum) = &entity_field.relation_enum {
+                with_impl.extend(quote! {
+                    if let sea_orm::compound::LoadTarget::Relation(relation_enum) = &target {
+                        if relation_enum == #relation_enum {
+                            self.#field = true;
+                        }
+                    }
+                });
+                with_nest_impl.extend(quote! {
+                    if let sea_orm::compound::LoadTarget::Relation(relation_enum) = &left {
+                        if relation_enum == #relation_enum {
+                            self.with.#field = true;
+                            self.nest.#field.set(right);
+                            return self;
+                        }
+                    }
+                });
+
+                if relation_tuple_impls.insert(entity_field.entity.clone()) {
+                    into_with_param_impl.extend(quote! {
+                        impl EntityLoaderWithParam for (Relation, #entity_module::Entity) {
+                            fn into_with_param(self) -> (sea_orm::compound::LoadTarget, Option<sea_orm::compound::LoadTarget>) {
+                                (
+                                    sea_orm::compound::LoadTarget::Relation(sea_orm::RelationTrait::name(&self.0)),
+                                    Some(sea_orm::compound::LoadTarget::TableRef(self.1.table_ref())),
+                                )
+                            }
+                        }
+
+                        impl EntityLoaderWithParam for (Relation, #entity_module::Relation) {
+                            fn into_with_param(self) -> (sea_orm::compound::LoadTarget, Option<sea_orm::compound::LoadTarget>) {
+                                (
+                                    sea_orm::compound::LoadTarget::Relation(sea_orm::RelationTrait::name(&self.0)),
+                                    Some(sea_orm::compound::LoadTarget::Relation(sea_orm::RelationTrait::name(&self.1))),
+                                )
+                            }
+                        }
+                    });
                 }
-            });
-            with_nest_impl.extend(quote! {
-                if left == sea_orm::compound::LoadTarget::TableRef(#entity.table_ref()) {
-                    self.with.#field = true;
-                    self.nest.#field.set(right);
-                    return self;
-                }
-            });
+            }
         } else {
             field_bools.push(quote! {
                 #[doc = " Generated by sea-orm-macros"]
@@ -166,96 +207,194 @@ pub fn expand_entity_loader(vis: &Visibility, schema: EntityLoaderSchema) -> Tok
         }
 
         if is_one && !is_self {
-            arity += 1;
-            if arity <= 3 {
-                // do not go beyond SelectThree
-                one_fields.push(quote!(#field));
+            if !is_duplicate_entity {
+                arity += 1;
+                if arity <= 3 {
+                    // do not go beyond SelectThree
+                    one_fields.push(quote!(#field));
 
-                select_impl.extend(quote! {
-                    let select = if self.with.#field && self.nest.#field.is_empty() {
-                        self.with.#field = false;
-                        loaded.#field = true;
-                        select.find_also(Entity, #entity)
-                    } else {
-                        select.select_also_fake(#entity)
-                    };
+                    select_impl.extend(quote! {
+                        let select = if self.with.#field && self.nest.#field.is_empty() {
+                            self.with.#field = false;
+                            loaded.#field = true;
+                            select.find_also(Entity, #entity)
+                        } else {
+                            select.select_also_fake(#entity)
+                        };
+                    });
+
+                    assemble_one.extend(quote! {
+                        if loaded.#field {
+                            model.#field = #field.map(Into::into).map(Box::new).into();
+                        }
+                    });
+                }
+
+                load_one.extend(quote! {
+                    if with.#field {
+                        let #field = models.as_slice().load_one_ex(#entity, db)#await_?;
+                        let #field = #entity_module::EntityLoader::load_nest(#field, &nest.#field, db)#await_?;
+
+                        for (model, #field) in models.iter_mut().zip(#field) {
+                            model.#field = #field.map(Into::into).map(Box::new).into();
+                        }
+                    }
                 });
+                load_one_nest.extend(quote! {
+                    if with.#field {
+                        let #field = models.as_slice().load_one_ex(#entity, db)#await_?;
 
-                assemble_one.extend(quote! {
-                    if loaded.#field {
-                        model.#field = #field.map(Into::into).map(Box::new).into();
+                        for (model, #field) in models.iter_mut().zip(#field) {
+                            if let Some(model) = model.as_mut() {
+                                model.#field = #field.map(Into::into).map(Box::new).into();
+                            }
+                        }
+                    }
+                });
+                load_one_nest_nest.extend(quote! {
+                    if with.#field {
+                        let #field = models.as_slice().load_one_ex(#entity, db)#await_?;
+
+                        for (models, #field) in models.iter_mut().zip(#field) {
+                            for (model, #field) in models.iter_mut().zip(#field) {
+                                model.#field = #field.map(Into::into).map(Box::new).into();
+                            }
+                        }
+                    }
+                });
+            } else if let Some(relation_enum) = &entity_field.relation_enum {
+                let relation_enum = relation_enum_ident(relation_enum);
+                load_one.extend(quote! {
+                    if with.#field {
+                        let #field = models.as_slice().load_one_ex_with_rel(
+                            #entity,
+                            sea_orm::RelationTrait::def(&Relation::#relation_enum),
+                            db,
+                        )#await_?;
+                        let #field = #entity_module::EntityLoader::load_nest(#field, &nest.#field, db)#await_?;
+
+                        for (model, #field) in models.iter_mut().zip(#field) {
+                            model.#field = #field.map(Into::into).map(Box::new).into();
+                        }
+                    }
+                });
+                load_one_nest.extend(quote! {
+                    if with.#field {
+                        let #field = models.as_slice().load_one_ex_with_rel(
+                            #entity,
+                            sea_orm::RelationTrait::def(&Relation::#relation_enum),
+                            db,
+                        )#await_?;
+
+                        for (model, #field) in models.iter_mut().zip(#field) {
+                            if let Some(model) = model.as_mut() {
+                                model.#field = #field.map(Into::into).map(Box::new).into();
+                            }
+                        }
+                    }
+                });
+                load_one_nest_nest.extend(quote! {
+                    if with.#field {
+                        let #field = models.as_slice().load_one_ex_with_rel(
+                            #entity,
+                            sea_orm::RelationTrait::def(&Relation::#relation_enum),
+                            db,
+                        )#await_?;
+
+                        for (models, #field) in models.iter_mut().zip(#field) {
+                            for (model, #field) in models.iter_mut().zip(#field) {
+                                model.#field = #field.map(Into::into).map(Box::new).into();
+                            }
+                        }
                     }
                 });
             }
-
-            load_one.extend(quote! {
-                if with.#field {
-                    let #field = models.as_slice().load_one_ex(#entity, db)#await_?;
-                    let #field = #entity_module::EntityLoader::load_nest(#field, &nest.#field, db)#await_?;
-
-                    for (model, #field) in models.iter_mut().zip(#field) {
-                        model.#field = #field.map(Into::into).map(Box::new).into();
-                    }
-                }
-            });
-            load_one_nest.extend(quote! {
-                if with.#field {
-                    let #field = models.as_slice().load_one_ex(#entity, db)#await_?;
-
-                    for (model, #field) in models.iter_mut().zip(#field) {
-                        if let Some(model) = model.as_mut() {
-                            model.#field = #field.map(Into::into).map(Box::new).into();
-                        }
-                    }
-                }
-            });
-            load_one_nest_nest.extend(quote! {
-                if with.#field {
-                    let #field = models.as_slice().load_one_ex(#entity, db)#await_?;
-
-                    for (models, #field) in models.iter_mut().zip(#field) {
-                        for (model, #field) in models.iter_mut().zip(#field) {
-                            model.#field = #field.map(Into::into).map(Box::new).into();
-                        }
-                    }
-                }
-            });
         } else if !is_one && !is_self {
-            load_many.extend(quote! {
-                if with.#field {
-                    let #field = models.as_slice().load_many_ex(#entity, db)#await_?;
-                    let #field = #entity_module::EntityLoader::load_nest_nest(#field, &nest.#field, db)#await_?;
+            if !is_duplicate_entity {
+                load_many.extend(quote! {
+                    if with.#field {
+                        let #field = models.as_slice().load_many_ex(#entity, db)#await_?;
+                        let #field = #entity_module::EntityLoader::load_nest_nest(#field, &nest.#field, db)#await_?;
 
-                    for (model, #field) in models.iter_mut().zip(#field) {
-                        model.#field = #field.into();
-                    }
-                }
-            });
-            load_many_nest.extend(quote! {
-                if with.#field {
-                    let #field = models.as_slice().load_many_ex(#entity, db)#await_?;
-
-                    for (model, #field) in models.iter_mut().zip(#field) {
-                        if let Some(model) = model.as_mut() {
-                            model.#field = #field.into();
-                        }
-                    }
-                }
-            });
-            load_many_nest_nest.extend(quote! {
-                if with.#field {
-                    let #field = models.as_slice().load_many_ex(#entity, db)#await_?;
-
-                    for (models, #field) in models.iter_mut().zip(#field) {
                         for (model, #field) in models.iter_mut().zip(#field) {
                             model.#field = #field.into();
                         }
                     }
+                });
+                load_many_nest.extend(quote! {
+                    if with.#field {
+                        let #field = models.as_slice().load_many_ex(#entity, db)#await_?;
+
+                        for (model, #field) in models.iter_mut().zip(#field) {
+                            if let Some(model) = model.as_mut() {
+                                model.#field = #field.into();
+                            }
+                        }
+                    }
+                });
+                load_many_nest_nest.extend(quote! {
+                    if with.#field {
+                        let #field = models.as_slice().load_many_ex(#entity, db)#await_?;
+
+                        for (models, #field) in models.iter_mut().zip(#field) {
+                            for (model, #field) in models.iter_mut().zip(#field) {
+                                model.#field = #field.into();
+                            }
+                        }
+                    }
+                });
+            } else if entity_field.via.is_none() {
+                if let Some(relation_enum) = &entity_field.relation_enum {
+                    let relation_enum = relation_enum_ident(relation_enum);
+                    load_many.extend(quote! {
+                    if with.#field {
+                        let #field = models.as_slice().load_many_ex_with_rel(
+                            #entity,
+                            sea_orm::RelationTrait::def(&Relation::#relation_enum),
+                            db,
+                        )#await_?;
+                        let #field = #entity_module::EntityLoader::load_nest_nest(#field, &nest.#field, db)#await_?;
+
+                        for (model, #field) in models.iter_mut().zip(#field) {
+                            model.#field = #field.into();
+                        }
+                    }
+                });
+                    load_many_nest.extend(quote! {
+                        if with.#field {
+                            let #field = models.as_slice().load_many_ex_with_rel(
+                                #entity,
+                                sea_orm::RelationTrait::def(&Relation::#relation_enum),
+                                db,
+                            )#await_?;
+
+                            for (model, #field) in models.iter_mut().zip(#field) {
+                                if let Some(model) = model.as_mut() {
+                                    model.#field = #field.into();
+                                }
+                            }
+                        }
+                    });
+                    load_many_nest_nest.extend(quote! {
+                        if with.#field {
+                            let #field = models.as_slice().load_many_ex_with_rel(
+                                #entity,
+                                sea_orm::RelationTrait::def(&Relation::#relation_enum),
+                                db,
+                            )#await_?;
+
+                            for (models, #field) in models.iter_mut().zip(#field) {
+                                for (model, #field) in models.iter_mut().zip(#field) {
+                                    model.#field = #field.into();
+                                }
+                            }
+                        }
+                    });
                 }
-            });
+            }
         } else if is_one && is_self {
             if let Some(relation_enum) = &entity_field.relation_enum {
-                let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
+                let relation_enum = relation_enum_ident(relation_enum);
                 load_one.extend(quote! {
                     if with.#field {
                         let #field = models.as_slice().load_self_ex(#entity, Relation::#relation_enum, db)#await_?;
@@ -268,7 +407,7 @@ pub fn expand_entity_loader(vis: &Visibility, schema: EntityLoaderSchema) -> Tok
             }
         } else if !is_one && is_self {
             if let Some(relation_enum) = &entity_field.relation_enum {
-                let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
+                let relation_enum = relation_enum_ident(relation_enum);
                 load_many.extend(quote! {
                     if with.#field {
                         let #field = models.as_slice().load_self_many_ex(#entity, Relation::#relation_enum, db)#await_?;

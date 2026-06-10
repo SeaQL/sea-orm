@@ -484,10 +484,13 @@ let user = user::ActiveModel::builder()
 
 ### Enhancements
 
+* Added `serde` feature 
+* `TextUuid` now derives `Serialize` and `Deserialize` when the `serde` feature is enabled
 * [sea-orm-cli] Added `--column-extra-derives` https://github.com/SeaQL/sea-orm/pull/2212
 * [sea-orm-cli] Added `--big-integer-type=i32` to use i32 for bigint (for SQLite)
 * [sea-orm-cli] Fix codegen to not generate relations to filtered entities https://github.com/SeaQL/sea-orm/pull/2913
 * [sea-orm-cli] Added `--experimental-preserve-user-modifications` https://github.com/SeaQL/sea-orm/pull/2755 https://github.com/SeaQL/sea-orm/pull/2964
+* [sea-orm-migration] Add custom connection entrypoint to migration CLI https://github.com/SeaQL/sea-orm/pull/3035
 * Added `Model::try_set`
 * Added new error variant `BackendNotSupported`. Previously, it panics with e.g. "Database backend doesn't support RETURNING" https://github.com/SeaQL/sea-orm/pull/2630
 ```rust
@@ -690,6 +693,10 @@ pub struct MyUserId(pub UserId);
     + Added parquet example
 * Support `HashMap` and `BTreeMap` for JSON columns via `TryGetableFromJson` https://github.com/SeaQL/sea-orm/pull/3009
 * Derive macros now inherit the visibility of the input type for generated items such as `Entity`, `Column`, `PrimaryKey`, and `ActiveModel` https://github.com/SeaQL/sea-orm/pull/3029
+
+### Bug Fixes
+
+* [sea-orm-migration] PostgreSQL `drop_everything` now drops custom types with `CASCADE`
 
 ### Breaking Changes
 

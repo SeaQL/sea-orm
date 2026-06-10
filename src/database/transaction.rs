@@ -405,7 +405,7 @@ impl ConnectionTrait for DatabaseTransaction {
         self.backend
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
@@ -462,7 +462,7 @@ impl ConnectionTrait for DatabaseTransaction {
         )
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(sql))]
     #[allow(unused_variables)]
     async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug_print!("{}", sql);
@@ -524,7 +524,7 @@ impl ConnectionTrait for DatabaseTransaction {
         )
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
@@ -584,7 +584,7 @@ impl ConnectionTrait for DatabaseTransaction {
         )
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
@@ -659,7 +659,7 @@ impl StreamTrait for DatabaseTransaction {
         self.backend
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     fn stream_raw<'a>(
         &'a self,
         stmt: Statement,

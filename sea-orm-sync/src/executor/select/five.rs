@@ -203,7 +203,7 @@ where
     }
 
     /// Stream the results of a Select operation on a Model
-#[cfg(feature = "stream")]
+    #[cfg(feature = "stream")]
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,

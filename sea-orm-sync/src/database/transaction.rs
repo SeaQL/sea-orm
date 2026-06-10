@@ -10,15 +10,14 @@ use tracing::instrument;
 
 use crate::{
     AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
-    QueryResult, SqliteTransactionMode, Statement, TransactionOptions,
-    TransactionSession, TransactionTrait, debug_print, error::*,
+    QueryResult, SqliteTransactionMode, Statement, TransactionOptions, TransactionSession,
+    TransactionTrait, debug_print, error::*,
 };
+#[cfg(feature = "sqlx-dep")]
+use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 
 #[cfg(feature = "stream")]
 use crate::{StreamTrait, TransactionStream};
-
-#[cfg(feature = "sqlx-dep")]
-use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 
 /// Defines a database transaction, whether it is an open transaction and the type of
 /// backend to use.
@@ -376,7 +375,7 @@ impl ConnectionTrait for DatabaseTransaction {
         self.backend
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
@@ -433,7 +432,7 @@ impl ConnectionTrait for DatabaseTransaction {
         )
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(sql))]
     #[allow(unused_variables)]
     fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug_print!("{}", sql);
@@ -492,7 +491,7 @@ impl ConnectionTrait for DatabaseTransaction {
         )
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
@@ -552,7 +551,7 @@ impl ConnectionTrait for DatabaseTransaction {
         )
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
@@ -624,7 +623,7 @@ impl StreamTrait for DatabaseTransaction {
         self.backend
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     fn stream_raw<'a>(&'a self, stmt: Statement) -> Result<Self::Stream<'a>, DbErr> {
         ({
             #[cfg(not(feature = "sync"))]

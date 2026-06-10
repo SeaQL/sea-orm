@@ -132,7 +132,7 @@ impl SqlxMySqlConnector {
 
 impl SqlxMySqlPoolConnection {
     /// Execute a [Statement] on a MySQL backend
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
@@ -147,7 +147,7 @@ impl SqlxMySqlPoolConnection {
     }
 
     /// Execute an unprepared SQL statement on a MySQL backend
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(sql))]
     pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug_print!("{}", sql);
 
@@ -159,7 +159,7 @@ impl SqlxMySqlPoolConnection {
     }
 
     /// Get one result from a SQL query. Returns [Option::None] if no match was found
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -177,7 +177,7 @@ impl SqlxMySqlPoolConnection {
     }
 
     /// Get the results of a query returning them as a Vec<[QueryResult]>
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -192,7 +192,7 @@ impl SqlxMySqlPoolConnection {
     }
 
     /// Stream the results of executing a SQL query
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[cfg(feature = "stream")]
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);

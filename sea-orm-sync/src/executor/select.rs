@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[cfg(feature = "stream")]
-use crate::StreamTrait;
+pub use crate::StreamTrait;
 
 use itertools::Itertools;
 use sea_query::SelectStatement;
@@ -22,8 +22,8 @@ mod three;
 #[cfg(feature = "with-json")]
 use crate::JsonValue;
 
-#[cfg(not(feature = "sync"))]
-type PinBoxStream<'b, S> = Pin<Box<dyn Stream<Item = Result<S, DbErr>> + 'b>>;
+#[cfg(all(not(feature = "sync"), feature = "stream"))]
+type PinBoxStream<'b, S> = std::pin::Pin<Box<dyn Stream<Item = Result<S, DbErr>> + 'b>>;
 #[cfg(feature = "sync")]
 type PinBoxStream<'b, S> = Box<dyn Iterator<Item = Result<S, DbErr>> + 'b>;
 
@@ -528,7 +528,7 @@ where
     }
 
     /// Stream the results of a SELECT operation on a Model
-#[cfg(feature = "stream")]
+    #[cfg(feature = "stream")]
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -540,7 +540,7 @@ where
     }
 
     /// Stream the result of the operation with PartialModel
-#[cfg(feature = "stream")]
+    #[cfg(feature = "stream")]
     pub fn stream_partial_model<'a: 'b, 'b, C, M>(
         self,
         db: &'a C,
@@ -608,7 +608,7 @@ where
     }
 
     /// Stream the results of a Select operation on a Model
-#[cfg(feature = "stream")]
+    #[cfg(feature = "stream")]
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -620,7 +620,7 @@ where
     }
 
     /// Stream the result of the operation with PartialModel
-#[cfg(feature = "stream")]
+    #[cfg(feature = "stream")]
     pub fn stream_partial_model<'a: 'b, 'b, C, M, N>(
         self,
         db: &'a C,
@@ -732,7 +732,7 @@ where
     }
 
     /// Stream the results of a Select operation on a Model
-#[cfg(feature = "stream")]
+    #[cfg(feature = "stream")]
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -744,7 +744,7 @@ where
     }
 
     /// Stream the result of the operation with PartialModel
-#[cfg(feature = "stream")]
+    #[cfg(feature = "stream")]
     pub fn stream_partial_model<'a: 'b, 'b, C, M, N>(
         self,
         db: &'a C,
@@ -792,7 +792,7 @@ where
     }
 
     /// Stream the results of the Select operation
-#[cfg(feature = "stream")]
+    #[cfg(feature = "stream")]
     pub fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<PinBoxStream<'b, S::Item>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
@@ -1068,7 +1068,7 @@ where
     }
 
     /// Stream the results of the Select operation
-#[cfg(feature = "stream")]
+    #[cfg(feature = "stream")]
     pub fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<PinBoxStream<'b, S::Item>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
