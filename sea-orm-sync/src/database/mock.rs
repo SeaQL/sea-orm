@@ -609,6 +609,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "stream")]
     fn test_stream_1() -> Result<(), DbErr> {
         let apple = fruit::Model {
             id: 1,
@@ -638,6 +639,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "stream")]
     fn test_stream_2() -> Result<(), DbErr> {
         use fruit::Entity as Fruit;
         let db = MockDatabase::new(DbBackend::Postgres)
@@ -654,6 +656,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "stream")]
     fn test_stream_in_transaction() -> Result<(), DbErr> {
         let apple = fruit::Model {
             id: 1,

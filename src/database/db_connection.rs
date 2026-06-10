@@ -1,8 +1,8 @@
 use super::transaction::run_async_transaction_callback;
 use crate::{
     AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel, QueryResult,
-    Schema, SchemaBuilder, Statement, StatementBuilder, StreamTrait, TransactionError,
-    TransactionOptions, TransactionTrait, error::*,
+    Schema, SchemaBuilder, Statement, StatementBuilder, TransactionError, TransactionOptions,
+    TransactionTrait, error::*,
 };
 use std::{fmt::Debug, future::Future, pin::Pin};
 use tracing::instrument;
@@ -13,6 +13,9 @@ use sqlx::pool::PoolConnection;
 
 #[cfg(feature = "rusqlite")]
 use crate::driver::rusqlite::{RusqliteInnerConnection, RusqliteSharedConnection};
+
+#[cfg(feature = "stream")]
+use crate::StreamTrait;
 
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use std::sync::Arc;
@@ -307,6 +310,7 @@ impl ConnectionTrait for DatabaseConnection {
 }
 
 #[async_trait::async_trait]
+#[cfg(feature = "stream")]
 impl StreamTrait for DatabaseConnection {
     type Stream<'a> = crate::QueryStream;
 

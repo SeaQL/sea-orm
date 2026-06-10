@@ -24,6 +24,7 @@ mod sea_schema_rusqlite;
 #[cfg(all(feature = "schema-sync", feature = "sqlx-dep"))]
 mod sea_schema_shim;
 mod statement;
+#[cfg(feature = "stream")]
 mod stream;
 mod tracing_spans;
 mod transaction;
@@ -41,6 +42,7 @@ pub use proxy::*;
 pub use restricted_connection::*;
 pub use statement::*;
 use std::borrow::Cow;
+#[cfg(feature = "stream")]
 pub use stream::*;
 use tracing::instrument;
 pub use transaction::*;

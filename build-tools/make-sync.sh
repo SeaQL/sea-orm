@@ -78,6 +78,9 @@ replace_rs '/use std::{pin::Pin};/d' src
 replace_rs '/use std::{task::Poll};/d' src
 replace_rs '/use std::{future::Future};/d' src
 replace_rs 's/, future::Future//' src
+# delete a `#[cfg(feature = "stream")]` together with the `use futures_util` line it gates,
+# so the attribute does not attach to the following item once the import is removed
+replace_rs '/^#\[cfg(feature = "stream")\]$/{N;/use futures_util/d;}' src
 replace_rs '/use futures_util::Stream/d' src
 replace_rs '/use futures_util::{Stream/d' src
 replace_rs '/use futures_util::{TryStreamExt,/d' src

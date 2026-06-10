@@ -29,6 +29,7 @@ features = [
     "postgres-vector",
     "with-ipnetwork",
     "with-arrow",
+    "stream",
 ]
 rustdoc-args = ["--cfg", "docsrs"]
 
@@ -54,7 +55,7 @@ ipnetwork = { version = "0.21", default-features = false, optional = true, featu
 itertools = "0.14.0"
 log = { version = "0.4", default-features = false }
 mac_address = { version = "1.1", default-features = false, optional = true }
-ouroboros = { version = "0.18", default-features = false }
+ouroboros = { version = "0.18", default-features = false, optional = true }
 pgvector = { version = "~0.4", default-features = false, optional = true }
 rust_decimal = { version = "1", default-features = false, features = [
     "std",
@@ -122,6 +123,7 @@ default = [
     "with-uuid",
     "with-time",
     "sqlite-use-returning-for-3_35",
+    "stream",
 ]
 entity-registry = ["inventory", "sea-orm-macros/entity-registry"]
 json-array = [
@@ -175,6 +177,7 @@ sqlx-sqlite = [
     "sea-query-sqlx/sqlx-sqlite",
     "sea-schema?/sqlx-sqlite",
 ]
+stream = ["dep:ouroboros"]
 sync = []
 tests-cfg = ["serde/derive"]
 tests-features = [

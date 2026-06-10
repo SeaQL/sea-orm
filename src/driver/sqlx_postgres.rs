@@ -14,10 +14,13 @@ use tracing::instrument;
 
 use crate::{
     AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
-    IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
+    IsolationLevel, Statement, TransactionError, debug_print, error::*, executor::*,
 };
 
 use super::sqlx_common::*;
+
+#[cfg(feature = "stream")]
+use crate::QueryStream;
 
 /// Defines the [sqlx::postgres] connector
 #[derive(Debug)]
@@ -229,6 +232,7 @@ impl SqlxPostgresPoolConnection {
 
     /// Stream the results of executing a SQL query
     #[instrument(level = "trace", skip(stmt))]
+    #[cfg(feature = "stream")]
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
@@ -365,6 +369,7 @@ pub(crate) async fn set_transaction_config(
     Ok(())
 }
 
+#[cfg(feature = "stream")]
 impl
     From<(
         PoolConnection<sqlx::Postgres>,

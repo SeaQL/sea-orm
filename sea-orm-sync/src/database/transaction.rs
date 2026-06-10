@@ -10,11 +10,14 @@ use tracing::instrument;
 
 use crate::{
     AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
-    QueryResult, SqliteTransactionMode, Statement, StreamTrait, TransactionOptions,
-    TransactionSession, TransactionStream, TransactionTrait, debug_print, error::*,
+    QueryResult, SqliteTransactionMode, Statement, TransactionOptions, TransactionSession,
+    TransactionTrait, debug_print, error::*,
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
+
+#[cfg(feature = "stream")]
+use crate::{StreamTrait, TransactionStream};
 
 /// Defines a database transaction, whether it is an open transaction and the type of
 /// backend to use.
@@ -612,6 +615,7 @@ impl ConnectionTrait for DatabaseTransaction {
     }
 }
 
+#[cfg(feature = "stream")]
 impl StreamTrait for DatabaseTransaction {
     type Stream<'a> = TransactionStream<'a>;
 
