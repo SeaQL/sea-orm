@@ -226,7 +226,6 @@ impl DeriveValueTypeStruct {
             #[automatically_derived]
             impl std::convert::From<#name> for sea_orm::Value {
                 fn from(source: #name) -> Self {
-                    println!("Struct");
                     source.0.into()
                 }
             }
