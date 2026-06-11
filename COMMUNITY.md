@@ -11,6 +11,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Lapdev](https://lap.dev/) [![GitHub stars](https://img.shields.io/github/stars/lapce/lapdev.svg?style=social)](https://github.com/lapce/lapdev) | Self-hosted remote development enviroment | DB: Postgres
 - [OpenObserve](https://openobserve.ai/) [![GitHub stars](https://img.shields.io/github/stars/openobserve/openobserve.svg?style=social)](https://github.com/openobserve/openobserve) | Open-source observability platform | DB: MySQL, Postgres, SQLite
 - [My Data My Consent](https://mydatamyconsent.com/) | Online data sharing for people and businesses simplified
+- [Noorle](https://noorle.com/) | Managed AI agent runtime with MCP gateways, WASM plugins and connectors | DB: Postgres, SQLite
 - [Prefix.dev](https://prefix.dev/) | Conda Package Search, Environment Management and Deployment built for mamba  | DB: Postgres, SQLite
 - [RisingWave](https://risingwave.com/) [![GitHub stars](https://img.shields.io/github/stars/risingwavelabs/risingwave.svg?style=social)](https://github.com/risingwavelabs/risingwave) | Stream processing and management platform | DB: MySQL, Postgres, SQLite
 - [Svix](https://www.svix.com/) [![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social)](https://github.com/svix/svix-webhooks) | The enterprise ready webhooks service | DB: Postgres
