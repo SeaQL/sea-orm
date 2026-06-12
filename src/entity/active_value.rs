@@ -393,7 +393,7 @@ where
     {
         self.set_ne_and(value, f);
     }
-    
+
     /// `Set(value)` if [`self.is_not_set()`][ActiveValue#method.is_not_set], no-op otherwise.
     /// Similar to "null coalescing" or [Option#method.get_or_insert], but without
     /// returning the inner value if it is set/unchanged.
@@ -474,7 +474,6 @@ where
         };
     }
 
-
     /// `Set(V::default())` if [`self.is_not_set()`][ActiveValue#method.is_not_set], no-op otherwise.
     /// Similar to "null coalescing" or [Option#method.get_or_insert_default], but without
     /// returning the inner value if it is set/unchanged.
@@ -503,8 +502,8 @@ where
     /// assert_eq!(notset_value, ActiveValue::Set(0));
     /// ```
     pub fn set_unset_default(&mut self)
-    where 
-        V: Default
+    where
+        V: Default,
     {
         match self {
             ActiveValue::NotSet => *self = ActiveValue::Set(V::default()),
