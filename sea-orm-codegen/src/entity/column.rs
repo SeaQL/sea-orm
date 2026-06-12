@@ -130,6 +130,33 @@ impl Column {
         col_type.map(|ty| quote! { column_type = #ty })
     }
 
+    pub fn get_ts_type_attrs(
+        &self,
+        model_extra_derives: &TokenStream,
+        model_extra_attributes: &TokenStream,
+    ) -> Option<TokenStream> {
+        if !matches!(self.col_type, ColumnType::Vector(_)) {
+            return None;
+        }
+
+        let mut attrs = Vec::new();
+        let tokens = format!("{}{}", model_extra_derives, model_extra_attributes)
+            .replace(|c: char| c.is_whitespace(), "");
+
+        if tokens.contains("ts_rs::TS") || tokens.contains("ts(export)") {
+            attrs.push(quote! { #[ts(type = "number[]")] });
+        }
+        if tokens.contains("specta::Type") || tokens.contains("specta(export)") {
+            attrs.push(quote! { #[specta(type = "number[]")] });
+        }
+
+        if attrs.is_empty() {
+            None
+        } else {
+            Some(quote! { #(#attrs)* })
+        }
+    }
+
     pub fn get_def(&self) -> TokenStream {
         fn write_col_def(col_type: &ColumnType) -> TokenStream {
             match col_type {
@@ -369,7 +396,36 @@ mod tests {
             make_col!("date_time", ColumnType::DateTime),
             make_col!("timestamp", ColumnType::Timestamp),
             make_col!("timestamp_tz", ColumnType::TimestampWithTimeZone),
+            make_col!("embedding", ColumnType::Vector(None)),
         ]
+    }
+
+    #[test]
+    fn test_get_ts_type_attrs() {
+        let col = Column {
+            name: "embedding".to_owned(),
+            col_type: ColumnType::Vector(None),
+            auto_increment: false,
+            not_null: false,
+            unique: false,
+            unique_key: None,
+        };
+
+        let ts_attr = col
+            .get_ts_type_attrs(
+                &quote! { ts_rs::TS },
+                &TokenStream::new(),
+            )
+            .expect("Expected ts attribute");
+        assert_eq!(ts_attr.to_string(), "# [ts (type = \"number[]\")]");
+
+        let specta_attr = col
+            .get_ts_type_attrs(
+                &quote! { specta::Type },
+                &TokenStream::new(),
+            )
+            .expect("Expected specta attribute");
+        assert_eq!(specta_attr.to_string(), "# [specta (type = \"number[]\")]");
     }
 
     #[test]

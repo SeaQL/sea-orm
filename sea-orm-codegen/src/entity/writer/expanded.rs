@@ -60,10 +60,26 @@ impl EntityWriter {
         let column_names_snake_case = entity.get_column_names_snake_case();
         let column_rs_types = entity.get_column_rs_types(column_option);
         let if_eq_needed = entity.get_eq_needed();
-        let serde_attributes = entity.get_column_serde_attributes(
-            serde_skip_deserializing_primary_key,
-            serde_skip_hidden_column,
-        );
+        let column_attributes: Vec<TokenStream> = entity
+            .columns
+            .iter()
+            .map(|col| {
+                let is_primary_key = entity.primary_keys.iter().any(|pk| pk.name == col.name);
+                let ts_type_attribute = col.get_ts_type_attrs(
+                    model_extra_derives,
+                    model_extra_attributes,
+                );
+                let serde_attribute = col.get_serde_attribute(
+                    is_primary_key,
+                    serde_skip_deserializing_primary_key,
+                    serde_skip_hidden_column,
+                );
+                quote! {
+                    #ts_type_attribute
+                    #serde_attribute
+                }
+            })
+            .collect();
         let extra_derive = with_serde.extra_derive();
 
         quote! {
@@ -71,7 +87,7 @@ impl EntityWriter {
             #model_extra_attributes
             pub struct Model {
                 #(
-                    #serde_attributes
+                    #column_attributes
                     pub #column_names_snake_case: #column_rs_types,
                 )*
             }
