@@ -393,6 +393,124 @@ where
     {
         self.set_ne_and(value, f);
     }
+    
+    /// `Set(value)` if [`self.is_not_set()`][ActiveValue#method.is_not_set], no-op otherwise.
+    /// Similar to "null coalescing" or [Option#method.get_or_insert], but without
+    /// returning the inner value if it is set/unchanged.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// # use sea_orm::ActiveValue;
+    /// #
+    /// let mut set_value = ActiveValue::Set(true);
+    /// let mut unchanged_value = ActiveValue::Unchanged(true);
+    /// let mut notset_value = ActiveValue::NotSet;
+    ///
+    /// // since `set_value.is_not_set == false`, we leave the existing set value alone
+    /// set_value.set_unset(false);
+    /// assert_eq!(set_value, ActiveValue::Set(true));
+    ///
+    /// // since `set_value.is_not_set == false`, we leave the existing set value alone
+    /// unchanged_value.set_unset(false);
+    /// assert_eq!(unchanged_value, ActiveValue::Unchanged(true));
+    ///
+    /// // since `set_value.is_not_set == true`, we fill with the provided value
+    /// notset_value.set_unset(false);
+    /// assert_eq!(notset_value, ActiveValue::Set(false));
+    /// ```
+    pub fn set_unset(&mut self, value: V) {
+        match self {
+            ActiveValue::NotSet => *self = ActiveValue::Set(value),
+            _ => {}
+        };
+    }
+
+    /// `Set(f())` if [`self.is_not_set()`][ActiveValue#method.is_not_set], no-op otherwise.
+    /// Similar to "null coalescing" or [Option#method.get_or_insert_with], but without
+    /// returning the inner value if it is set/unchanged.
+    ///
+    /// This can be useful if the value you want to replace it with is expensive to compute,
+    /// or has side-effects which need to be ran (like logging).
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// # use sea_orm::ActiveValue;
+    /// #
+    /// let mut set_value = ActiveValue::Set(true);
+    /// let mut unchanged_value = ActiveValue::Unchanged(true);
+    /// let mut notset_value = ActiveValue::NotSet;
+    ///
+    /// let mut count = 0;
+    /// // since `set_value.is_not_set == false`, we leave the existing set value alone
+    /// set_value.set_unset_with(|| {
+    ///     count += 1;
+    ///     false
+    /// });
+    /// assert_eq!(set_value, ActiveValue::Set(true));
+    ///
+    /// // since `set_value.is_not_set == false`, we leave the existing set value alone
+    /// unchanged_value.set_unset_with(|| {
+    ///     count += 1;
+    ///     false
+    /// });
+    /// assert_eq!(unchanged_value, ActiveValue::Unchanged(true));
+    ///
+    /// // since `set_value.is_not_set == true`, we fill with the result of the provided computation.
+    /// notset_value.set_unset_with(|| {
+    ///     count += 1;
+    ///     false
+    /// });
+    /// assert_eq!(notset_value, ActiveValue::Set(false));
+    ///
+    /// // Only the last closure actually executed.
+    /// assert_eq!(count, 1);
+    /// ```
+    pub fn set_unset_with(&mut self, f: impl FnOnce() -> V) {
+        match self {
+            ActiveValue::NotSet => *self = ActiveValue::Set(f()),
+            _ => {}
+        };
+    }
+
+
+    /// `Set(V::default())` if [`self.is_not_set()`][ActiveValue#method.is_not_set], no-op otherwise.
+    /// Similar to "null coalescing" or [Option#method.get_or_insert_default], but without
+    /// returning the inner value if it is set/unchanged.
+    ///
+    /// Convenient shorthand for `set_unset(Default::default())`.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// # use sea_orm::ActiveValue;
+    /// #
+    /// let mut set_value = ActiveValue::Set(100);
+    /// let mut unchanged_value = ActiveValue::Unchanged(100);
+    /// let mut notset_value = ActiveValue::NotSet;
+    ///
+    /// // since `set_value.is_not_set == false`, we leave the existing set value alone
+    /// set_value.set_unset_default();
+    /// assert_eq!(set_value, ActiveValue::Set(100));
+    ///
+    /// // since `set_value.is_not_set == false`, we leave the existing set value alone
+    /// unchanged_value.set_unset_default();
+    /// assert_eq!(unchanged_value, ActiveValue::Unchanged(100));
+    ///
+    /// // since `set_value.is_not_set == true`, we fill with the default int (0)
+    /// notset_value.set_unset_default();
+    /// assert_eq!(notset_value, ActiveValue::Set(0));
+    /// ```
+    pub fn set_unset_default(&mut self)
+    where 
+        V: Default
+    {
+        match self {
+            ActiveValue::NotSet => *self = ActiveValue::Set(V::default()),
+            _ => {}
+        };
+    }
 
     /// Get the inner value, unless `self` is [NotSet][ActiveValue::NotSet].
     ///
