@@ -219,3 +219,78 @@ fn derive_non_database_enum_value_type() {
     assert_eq!(TestEnum2::enum_type_name(), None);
     assert_eq!(TestEnum2::array_type(), ArrayType::String);
 }
+
+#[derive(Debug, EnumIter, DeriveActiveEnum, Eq, PartialEq)]
+#[sea_orm(
+    rs_type = "Enum",
+    db_type = "Enum",
+    enum_name = "tea",
+    schema_name = "my_schema"
+)]
+enum SchemaEnum {
+    #[sea_orm(string_value = "EverydayTea")]
+    EverydayTea,
+    #[sea_orm(string_value = "BreakfastTea")]
+    BreakfastTea,
+}
+
+#[derive(Debug, EnumIter, DeriveActiveEnum, Eq, PartialEq)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = "Enum",
+    enum_name = "color",
+    schema_name = "palette"
+)]
+enum SchemaStringEnum {
+    #[sea_orm(string_value = "Red")]
+    Red,
+    #[sea_orm(string_value = "Blue")]
+    Blue,
+}
+
+#[derive(Debug, EnumIter, DeriveActiveEnum, Eq, PartialEq)]
+#[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "status")]
+enum NoSchemaEnum {
+    #[sea_orm(string_value = "Active")]
+    Active,
+    #[sea_orm(string_value = "Inactive")]
+    Inactive,
+}
+
+#[test]
+fn derive_active_enum_schema_name() {
+    assert_eq!(SchemaEnum::schema_name(), Some("my_schema"));
+    assert_eq!(SchemaStringEnum::schema_name(), Some("palette"));
+    assert_eq!(NoSchemaEnum::schema_name(), None);
+}
+
+#[test]
+fn derive_active_enum_schema_name_enum_type() {
+    assert_eq!(SchemaEnum::enum_type_name(), Some("tea"));
+    assert_eq!(SchemaStringEnum::enum_type_name(), Some("color"));
+    assert_eq!(NoSchemaEnum::enum_type_name(), Some("status"));
+}
+
+#[test]
+fn derive_active_enum_schema_name_values_roundtrip() {
+    let value = SchemaEnum::EverydayTea.to_value();
+    assert_eq!(value.value.as_ref(), "EverydayTea");
+    assert_eq!(
+        <SchemaEnum as ActiveEnum>::try_from_value(&value),
+        Ok(SchemaEnum::EverydayTea)
+    );
+}
+
+#[test]
+fn derive_active_enum_schema_name_value_conversion() {
+    let value: Value = SchemaEnum::BreakfastTea.to_value().into();
+    assert_eq!(
+        value,
+        Value::Enum(sea_orm::sea_query::OptionEnum::Some(Box::new(
+            sea_orm::sea_query::Enum {
+                type_name: String::from("tea").into(),
+                value: "BreakfastTea".into(),
+            },
+        )))
+    );
+}

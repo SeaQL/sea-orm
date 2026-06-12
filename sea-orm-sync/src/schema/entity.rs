@@ -3,14 +3,17 @@ use crate::{
     PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
-    ColumnDef, DynIden, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement,
+    Alias, ColumnDef, DynIden, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement,
     extension::postgres::{Type, TypeCreateStatement},
 };
 use std::collections::BTreeMap;
 
 impl Schema {
-    /// Creates Postgres enums from an ActiveEnum. See [`TypeCreateStatement`] for more details.
-    /// Returns None if not Postgres.
+    /// Creates a Postgres enum type from an [`ActiveEnum`]. See [`TypeCreateStatement`] for more details.
+    /// Returns `None` if not Postgres.
+    ///
+    /// If the [`ActiveEnum`] has a `schema_name` (via `#[sea_orm(schema_name = "...")]`),
+    /// the resulting statement will be schema-qualified: `CREATE TYPE "schema"."name" AS ENUM (...)`.
     pub fn create_enum_from_active_enum<A>(&self) -> Option<TypeCreateStatement>
     where
         A: ActiveEnum,
@@ -106,7 +109,18 @@ where
     }
     let col_def = A::db_type();
     let col_type = col_def.get_column_type();
-    create_enum_from_column_type(col_type)
+    let (name, variants) = match col_type {
+        ColumnType::Enum { name, variants } => (name.clone(), variants.clone()),
+        _ => return None,
+    };
+    let mut stmt = Type::create();
+    if let Some(schema) = A::schema_name() {
+        let schema_iden: DynIden = SeaRc::new(Alias::new(schema));
+        stmt.as_enum((schema_iden, name));
+    } else {
+        stmt.as_enum(name);
+    }
+    Some(stmt.values(variants).to_owned())
 }
 
 pub(crate) fn create_enum_from_column_type(col_type: &ColumnType) -> Option<TypeCreateStatement> {
