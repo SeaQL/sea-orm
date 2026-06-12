@@ -2,7 +2,7 @@ use super::{ActiveValue, ActiveValue::*};
 use crate::{
     ColumnTrait, Condition, ConnectionTrait, DbBackend, DeleteResult, EntityName, EntityTrait,
     IdenStatic, Iterable, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter,
-    Related, RelatedSelfVia, RelationDef, RelationTrait, Value,
+    Related, RelatedSelfVia, RelationDef, RelationTrait, TryInsertResult, Value,
     error::*,
     query::{
         clear_key_on_active_model, column_tuple_in_condition, get_key_from_active_model,
@@ -1263,6 +1263,7 @@ where
 
     if delete_leftover {
         let mut to_delete = Vec::new();
+        let mut to_delete_am = Vec::new();
         for (leftover, key) in leftover {
             if !all_keys.contains(&key) {
                 to_delete.push(
@@ -1270,20 +1271,66 @@ where
                         .get_primary_key_value()
                         .expect("item is a full model"),
                 );
+                to_delete_am.push(leftover);
             }
         }
         if !to_delete.is_empty() {
-            J::delete_many()
-                .filter_by_value_tuples(&to_delete, db.get_database_backend())
-                .exec(db)?;
+            // run before_delete hooks
+            for am in to_delete_am.clone() {
+                am.before_delete(db)?;
+            }
+            if db.support_returning() {
+                let deleted = J::delete_many()
+                    .filter_by_value_tuples(&to_delete, db.get_database_backend())
+                    .exec_with_returning(db)?;
+                // run after_delete hooks with the returned value if possible
+                for am in deleted {
+                    let am = am.into_active_model();
+                    let _ = am.after_delete(db)?;
+                }
+            } else {
+                J::delete_many()
+                    .filter_by_value_tuples(&to_delete, db.get_database_backend())
+                    .exec(db)?;
+                // fall back to the saved values if returning is not supported
+                for am in to_delete_am {
+                    let _ = am.after_delete(db)?;
+                }
+            }
         }
     }
 
     if !via_models.is_empty() {
+        // run the before_save hooks
+        let mut via_models_res = Vec::with_capacity(via_models.len());
+        for am in via_models {
+            let am = am.before_save(db, true)?;
+            via_models_res.push(am);
+        }
+
         // insert new junctions
-        J::insert_many(via_models)
-            .on_conflict_do_nothing()
-            .exec(db)?;
+        if db.support_returning() {
+            // use the returned value if it is supported
+            let res = J::insert_many(via_models_res)
+                .on_conflict_do_nothing()
+                .exec_with_returning_many(db)?;
+            // run after_save hooks
+            if let TryInsertResult::Inserted(inserted) = res {
+                for model in inserted {
+                    let _ = J::ActiveModel::after_save(model, db, true)?;
+                }
+            }
+        } else {
+            // fall back to individual inserts if returning is not supported
+            for model in via_models_res {
+                let res = J::insert(model)
+                    .on_conflict_do_nothing()
+                    .exec_with_returning(db)?;
+                if let TryInsertResult::Inserted(model) = res {
+                    let _ = J::ActiveModel::after_save(model, db, true)?;
+                }
+            }
+        }
     }
 
     Ok(())
