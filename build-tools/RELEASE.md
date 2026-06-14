@@ -140,6 +140,25 @@ git push origin 2.0.0-rc.N
 
 Create a GitHub Release using `changelog/2.0.0-rc.N.md` as the release body.
 
+## 8b. Release prebuilt `sea-orm-cli` binaries
+
+The `.github/workflows/sea-orm-cli-release.yml` workflow builds prebuilt
+`sea-orm-cli` binaries and powers `cargo binstall sea-orm-cli`. It triggers on a
+**separate** tag namespace, `sea-orm-cli@<version>`, not the `2.0.0-rc.N` release
+tag — so it does nothing unless that tag is pushed.
+
+Create the tag as **annotated**, because the workflow's `gh release create
+--notes-from-tag` reads the tag's message (a lightweight tag yields empty notes):
+
+```sh
+git tag -a "sea-orm-cli@2.0.0-rc.N" -m "sea-orm-cli 2.0.0-rc.N"
+git push origin "sea-orm-cli@2.0.0-rc.N"
+```
+
+The workflow then builds the 5 targets, attaches the archives to a draft release,
+and publishes it. Confirm the assets appear on the `sea-orm-cli@2.0.0-rc.N`
+release and that `cargo binstall sea-orm-cli` resolves.
+
 ## 9. Verify
 
 Confirm crates.io shows the new versions:
