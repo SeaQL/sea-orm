@@ -3,7 +3,8 @@ use crate::{
     PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
-    ColumnDef, DynIden, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement,
+    ColumnDef, DynIden, Iden, Index, IndexCreateStatement, IntoTableRef, SeaRc,
+    TableCreateStatement, TableRef,
     extension::postgres::{Type, TypeCreateStatement},
 };
 use std::collections::BTreeMap;
@@ -141,7 +142,7 @@ where
 
 pub(crate) fn create_index_from_entity<E>(
     entity: E,
-    _backend: DbBackend,
+    backend: DbBackend,
 ) -> Vec<IndexCreateStatement>
 where
     E: EntityTrait,
@@ -155,7 +156,7 @@ where
         if column_def.indexed && !column_def.unique {
             let stmt = Index::create()
                 .name(format!("idx-{}-{}", entity.to_string(), column.to_string()))
-                .table(entity)
+                .table(index_table_ref(entity, backend))
                 .col(column)
                 .take();
             indexes.push(stmt);
@@ -169,7 +170,7 @@ where
     for (key, cols) in unique_keys {
         let mut stmt = Index::create()
             .name(format!("idx-{}-{}", entity.to_string(), key))
-            .table(entity)
+            .table(index_table_ref(entity, backend))
             .unique()
             .take();
         for col in cols {
@@ -179,6 +180,16 @@ where
     }
 
     indexes
+}
+
+fn index_table_ref<E>(entity: E, backend: DbBackend) -> TableRef
+where
+    E: EntityTrait,
+{
+    match backend {
+        DbBackend::Postgres => entity.table_ref(),
+        DbBackend::MySql | DbBackend::Sqlite => entity.into_table_ref(),
+    }
 }
 
 pub(crate) fn create_table_from_entity<E>(entity: E, backend: DbBackend) -> TableCreateStatement
@@ -274,6 +285,29 @@ mod tests {
     use crate::{DbBackend, EntityName, Schema, sea_query::*, tests_cfg::*};
     use pretty_assertions::assert_eq;
 
+    mod custom_schema_indexes {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(schema_name = "sys", table_name = "app_user")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            #[sea_orm(indexed)]
+            pub email: String,
+            #[sea_orm(unique_key = "tenant_name")]
+            pub tenant_id: i32,
+            #[sea_orm(unique_key = "tenant_name")]
+            pub name: String,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
     #[test]
     fn test_create_table_from_entity_table_ref() {
         for builder in [DbBackend::MySql, DbBackend::Postgres, DbBackend::Sqlite] {
@@ -344,22 +378,54 @@ mod tests {
             let stmts = schema.create_index_from_entity(indexes::Entity);
             assert_eq!(stmts.len(), 2);
 
+            let index_table = match builder {
+                DbBackend::Postgres => indexes::Entity.table_ref(),
+                DbBackend::MySql | DbBackend::Sqlite => indexes::Entity.into_table_ref(),
+            };
             let idx: IndexCreateStatement = Index::create()
                 .name("idx-indexes-index1_attr")
-                .table(indexes::Entity)
+                .table(index_table)
                 .col(indexes::Column::Index1Attr)
                 .to_owned();
             assert_eq!(builder.build(&stmts[0]), builder.build(&idx));
 
+            let index_table = match builder {
+                DbBackend::Postgres => indexes::Entity.table_ref(),
+                DbBackend::MySql | DbBackend::Sqlite => indexes::Entity.into_table_ref(),
+            };
             let idx: IndexCreateStatement = Index::create()
                 .name("idx-indexes-my_unique")
-                .table(indexes::Entity)
+                .table(index_table)
                 .col(indexes::Column::UniqueKeyA)
                 .col(indexes::Column::UniqueKeyB)
                 .unique()
                 .take();
             assert_eq!(builder.build(&stmts[1]), builder.build(&idx));
         }
+    }
+
+    #[test]
+    fn test_create_index_from_entity_non_default_schema_table_ref() {
+        let builder = DbBackend::Postgres;
+        let schema = Schema::new(builder);
+        let stmts = schema.create_index_from_entity(custom_schema_indexes::Entity);
+        assert_eq!(stmts.len(), 2);
+
+        let idx: IndexCreateStatement = Index::create()
+            .name("idx-app_user-email")
+            .table(custom_schema_indexes::Entity.table_ref())
+            .col(custom_schema_indexes::Column::Email)
+            .to_owned();
+        assert_eq!(builder.build(&stmts[0]), builder.build(&idx));
+
+        let idx: IndexCreateStatement = Index::create()
+            .name("idx-app_user-tenant_name")
+            .table(custom_schema_indexes::Entity.table_ref())
+            .col(custom_schema_indexes::Column::TenantId)
+            .col(custom_schema_indexes::Column::Name)
+            .unique()
+            .take();
+        assert_eq!(builder.build(&stmts[1]), builder.build(&idx));
     }
 
     fn get_indexes_table_stmt() -> TableCreateStatement {
