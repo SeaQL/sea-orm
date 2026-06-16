@@ -338,8 +338,14 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self::after_save(model, db, false)
     }
 
-    /// Similar to [`update`], but without returning
-    /// It also won't execute [`ActiveModelTrait::after_save`]
+    /// Update an ActiveModel without a RETURNING clause, yielding an
+    /// [`UpdateResult`] instead of the updated model. Useful on backends without
+    /// RETURNING support, or when the updated model is not needed.
+    ///
+    /// Unlike [`ActiveModelTrait::update`], this runs
+    /// [`ActiveModelBehavior::before_save`] but does **not** run
+    /// [`ActiveModelBehavior::after_save`] (there is no returned model to pass to
+    /// it). Returns [`DbErr::RecordNotUpdated`] if no row matches.
     fn update_without_returning<'a, C>(self, db: &'a C) -> Result<UpdateResult, DbErr>
     where
         Self: ActiveModelBehavior,

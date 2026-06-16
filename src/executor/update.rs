@@ -23,7 +23,9 @@ impl<A> ValidatedUpdateOne<A>
 where
     A: ActiveModelTrait,
 {
-    /// Execute an UPDATE operation on an ActiveModel without returning the updated model
+    /// Execute an UPDATE operation without a RETURNING clause, yielding an
+    /// [`UpdateResult`] instead of the updated model. Returns
+    /// [`DbErr::RecordNotUpdated`] if no row matches.
     pub async fn exec_without_returning<C>(self, db: &C) -> Result<UpdateResult, DbErr>
     where
         C: ConnectionTrait,
@@ -51,7 +53,9 @@ impl<A> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
-    /// Execute an UPDATE operation on an ActiveModel without returning the updated model
+    /// Execute an UPDATE operation without a RETURNING clause, yielding an
+    /// [`UpdateResult`] instead of the updated model. Returns
+    /// [`DbErr::RecordNotUpdated`] if no row matches.
     pub async fn exec_without_returning<C>(self, db: &C) -> Result<UpdateResult, DbErr>
     where
         C: ConnectionTrait,
