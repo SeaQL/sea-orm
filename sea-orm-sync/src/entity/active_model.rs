@@ -346,7 +346,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, db, false)?;
-        Self::Entity::update_without_returning(am).exec_without_returning(db)
+        Self::Entity::update(am).exec_without_returning(db)
     }
 
     /// Insert the model if primary key is `NotSet`, update otherwise.
