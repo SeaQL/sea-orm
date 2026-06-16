@@ -632,8 +632,8 @@ impl EntityWriter {
             let sea_query::ColumnType::Enum { name, .. } = col.get_inner_col_type() else {
                 continue;
             };
-            let enum_name = name.as_str();
-            if type_idents.contains_key(enum_name) {
+            let enum_name = name.to_string();
+            if type_idents.contains_key(&enum_name) {
                 continue;
             }
 
@@ -688,7 +688,7 @@ impl EntityWriter {
             .iter()
             .map(|col| {
                 if let sea_query::ColumnType::Enum { name, .. } = col.get_inner_col_type()
-                    && let Some(enum_type_ident) = active_enum_type_idents.get(name.as_str())
+                    && let Some(enum_type_ident) = active_enum_type_idents.get(&name.to_string())
                 {
                     if col.not_null {
                         quote! { #enum_type_ident }
@@ -767,7 +767,7 @@ impl EntityWriter {
             .iter()
             .map(|col| {
                 if let sea_query::ColumnType::Enum { name, .. } = col.get_inner_col_type()
-                    && let Some(enum_type_ident) = active_enum_type_idents.get(name.as_str())
+                    && let Some(enum_type_ident) = active_enum_type_idents.get(&name.to_string())
                 {
                     col.get_def_with_enum_type_ident(enum_type_ident)
                 } else {
@@ -917,7 +917,7 @@ impl EntityWriter {
 
         let mut enum_ts = TokenStream::new();
         for active_enum in enums.values() {
-            let enum_name = active_enum.enum_name.as_str();
+            let enum_name = active_enum.enum_name.to_string();
             let enum_iden = format_ident!("{}", enum_name.to_upper_camel_case());
             enum_ts = quote! {
                 #enum_ts

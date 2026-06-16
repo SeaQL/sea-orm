@@ -83,7 +83,7 @@ impl Column {
                     "Vec<u8>".to_owned()
                 }
                 ColumnType::Boolean => "bool".to_owned(),
-                ColumnType::Enum { name, .. } => name.as_str().to_upper_camel_case(),
+                ColumnType::Enum { name, .. } => name.to_string().to_upper_camel_case(),
                 ColumnType::Array(column_type) => {
                     format!("Vec<{}>", write_rs_type(column_type, opt))
                 }
@@ -189,7 +189,7 @@ impl Column {
                 }
                 ColumnType::Enum { name, .. } => {
                     let enum_ident = enum_type_ident.cloned().unwrap_or_else(|| {
-                        format_ident!("{}", name.as_str().to_upper_camel_case())
+                        format_ident!("{}", name.to_string().to_upper_camel_case())
                     });
                     quote! {
                         #enum_ident::db_type()
