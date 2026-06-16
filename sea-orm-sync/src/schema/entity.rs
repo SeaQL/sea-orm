@@ -3,8 +3,8 @@ use crate::{
     PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
-    ColumnDef, DynIden, Iden, Index, IndexCreateStatement, IntoTableRef, SeaRc,
-    TableCreateStatement, TableRef,
+    ColumnDef, DynIden, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement, TableName,
+    TableRef,
     extension::postgres::{Type, TypeCreateStatement},
 };
 use std::collections::BTreeMap;
@@ -156,7 +156,7 @@ where
         if column_def.indexed && !column_def.unique {
             let stmt = Index::create()
                 .name(format!("idx-{}-{}", entity.to_string(), column.to_string()))
-                .table(index_table_ref(entity, backend))
+                .table(index_table_ref(entity.table_ref(), backend))
                 .col(column)
                 .take();
             indexes.push(stmt);
@@ -170,7 +170,7 @@ where
     for (key, cols) in unique_keys {
         let mut stmt = Index::create()
             .name(format!("idx-{}-{}", entity.to_string(), key))
-            .table(index_table_ref(entity, backend))
+            .table(index_table_ref(entity.table_ref(), backend))
             .unique()
             .take();
         for col in cols {
@@ -182,13 +182,22 @@ where
     indexes
 }
 
-fn index_table_ref<E>(entity: E, backend: DbBackend) -> TableRef
-where
-    E: EntityTrait,
-{
+/// Build the table reference used for a generated index.
+///
+/// PostgreSQL accepts a schema-qualified index target
+/// (`CREATE INDEX ... ON "schema"."table"`), so a `schema_name` qualifier is
+/// preserved. SeaQuery's MySQL and SQLite index builders accept only a bare
+/// table name and panic on a qualified one; their generated index is implicitly
+/// scoped to the table's database/schema anyway, so the qualifier is stripped.
+pub(crate) fn index_table_ref(table_ref: TableRef, backend: DbBackend) -> TableRef {
     match backend {
-        DbBackend::Postgres => entity.table_ref(),
-        DbBackend::MySql | DbBackend::Sqlite => entity.into_table_ref(),
+        DbBackend::Postgres => table_ref,
+        DbBackend::MySql | DbBackend::Sqlite => match table_ref {
+            TableRef::Table(TableName(Some(_), table), alias) => {
+                TableRef::Table(TableName(None, table), alias)
+            }
+            other => other,
+        },
     }
 }
 
@@ -426,6 +435,35 @@ mod tests {
             .unique()
             .take();
         assert_eq!(builder.build(&stmts[1]), builder.build(&idx));
+
+        // The generated DDL targets the schema-qualified table.
+        assert!(builder.build(&stmts[0]).sql.contains(r#""sys"."app_user""#));
+    }
+
+    // Regression guard for the SeaQuery MySQL/SQLite index builders, which panic
+    // on a schema-qualified table reference. `create_index_from_entity` must
+    // strip the `schema_name` qualifier on those backends, so generation neither
+    // panics nor emits a qualified target. See `index_table_ref`.
+    #[test]
+    fn test_create_index_from_entity_non_default_schema_strips_schema_on_mysql_sqlite() {
+        for builder in [DbBackend::MySql, DbBackend::Sqlite] {
+            let schema = Schema::new(builder);
+            // Must not panic for a `schema_name` entity on MySQL/SQLite.
+            let stmts = schema.create_index_from_entity(custom_schema_indexes::Entity);
+            assert_eq!(stmts.len(), 2);
+
+            for stmt in &stmts {
+                let sql = builder.build(stmt).sql;
+                assert!(
+                    sql.contains("app_user"),
+                    "{builder:?} index should target the table: {sql}"
+                );
+                assert!(
+                    !sql.contains("sys"),
+                    "{builder:?} index should not be schema-qualified: {sql}"
+                );
+            }
+        }
     }
 
     fn get_indexes_table_stmt() -> TableCreateStatement {

@@ -1,4 +1,4 @@
-use super::{Schema, TopologicalSort};
+use super::{Schema, TopologicalSort, entity::index_table_ref};
 use crate::{ConnectionTrait, DbBackend, DbErr, EntityTrait, Statement};
 use sea_query::{
     ForeignKeyCreateStatement, Index, IndexCreateStatement, IntoIden, TableAlterStatement,
@@ -491,7 +491,7 @@ impl EntitySchemaInfo {
                         let table_name =
                             self.table.get_table_name().expect("table must have a name");
                         let tbl_str = table_name.sea_orm_table().to_string();
-                        let table_ref = table_name.clone();
+                        let table_ref = index_table_ref(table_name.clone(), db_backend);
                         db.execute(
                             Index::create()
                                 .name(format!("idx-{tbl_str}-{col_name}"))
