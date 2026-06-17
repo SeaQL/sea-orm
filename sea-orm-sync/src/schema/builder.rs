@@ -1,4 +1,4 @@
-use super::{Schema, TopologicalSort};
+use super::{Schema, TopologicalSort, entity::index_table_ref};
 use crate::{ConnectionTrait, DbBackend, DbErr, EntityTrait, Statement};
 use sea_query::{
     ForeignKeyCreateStatement, Index, IndexCreateStatement, IntoIden, TableAlterStatement,
@@ -405,12 +405,11 @@ impl EntitySchemaInfo {
                 }
                 if !column_exists {
                     let mut renamed_from = "";
-                    if let Some(comment) = &column_def.get_column_spec().comment {
-                        if let Some((_, suffix)) = comment.rsplit_once("renamed_from \"") {
-                            if let Some((prefix, _)) = suffix.split_once('"') {
-                                renamed_from = prefix;
-                            }
-                        }
+                    if let Some(comment) = &column_def.get_column_spec().comment
+                        && let Some((_, suffix)) = comment.rsplit_once("renamed_from \"")
+                        && let Some((prefix, _)) = suffix.split_once('"')
+                    {
+                        renamed_from = prefix;
                     }
                     if renamed_from.is_empty() {
                         db.execute(
@@ -492,7 +491,7 @@ impl EntitySchemaInfo {
                         let table_name =
                             self.table.get_table_name().expect("table must have a name");
                         let tbl_str = table_name.sea_orm_table().to_string();
-                        let table_ref = table_name.clone();
+                        let table_ref = index_table_ref(table_name.clone(), db_backend);
                         db.execute(
                             Index::create()
                                 .name(format!("idx-{tbl_str}-{col_name}"))
@@ -536,30 +535,26 @@ impl EntitySchemaInfo {
                             }
                         }
                     }
-                    if !has_index {
-                        if let Some(drop_existing) = existing_index
+                    if !has_index
+                        && let Some(drop_existing) = existing_index
                             .get_index_spec()
                             .get_name()
                             .map(|s| s.to_owned())
-                        {
-                            if db_backend == DbBackend::Postgres {
-                                // On PostgreSQL, unique indexes created via column-level UNIQUE
-                                // (e.g. ADD COLUMN ... UNIQUE) are backed by a named constraint.
-                                // DROP INDEX fails on constraint-owned indexes; use
-                                // ALTER TABLE ... DROP CONSTRAINT instead.
-                                db.execute(
-                                    TableAlterStatement::new()
-                                        .table(
-                                            self.table
-                                                .get_table_name()
-                                                .expect("Checked above")
-                                                .clone(),
-                                        )
-                                        .drop_constraint(drop_existing),
-                                )?;
-                            } else {
-                                db.execute(sea_query::Index::drop().name(drop_existing))?;
-                            }
+                    {
+                        if db_backend == DbBackend::Postgres {
+                            // On PostgreSQL, unique indexes created via column-level UNIQUE
+                            // (e.g. ADD COLUMN ... UNIQUE) are backed by a named constraint.
+                            // DROP INDEX fails on constraint-owned indexes; use
+                            // ALTER TABLE ... DROP CONSTRAINT instead.
+                            db.execute(
+                                TableAlterStatement::new()
+                                    .table(
+                                        self.table.get_table_name().expect("Checked above").clone(),
+                                    )
+                                    .drop_constraint(drop_existing),
+                            )?;
+                        } else {
+                            db.execute(sea_query::Index::drop().name(drop_existing))?;
                         }
                     }
                 }

@@ -147,18 +147,16 @@ fn crud_tests(db: &DbConn) -> Result<(), DbErr> {
         .expect("insert succeeds");
 
         db.transaction::<_, _, DbErr>(|txn| {
-            ({
-                cake::Entity::insert(cake::ActiveModel {
-                    name: Set("Chocolate".to_owned()),
-                    price: Set(3.into()),
-                    bakery_id: Set(Some(1)),
-                    gluten_free: Set(true),
-                    ..Default::default()
-                })
-                .exec(txn)?;
-
-                Ok(())
+            cake::Entity::insert(cake::ActiveModel {
+                name: Set("Chocolate".to_owned()),
+                price: Set(3.into()),
+                bakery_id: Set(Some(1)),
+                gluten_free: Set(true),
+                ..Default::default()
             })
+            .exec(txn)?;
+
+            Ok(())
         })
         .expect("insert succeeds");
 

@@ -25,6 +25,15 @@ struct BakeryWorker {
 }
 
 #[derive(DerivePartialModel)]
+#[sea_orm(entity = "bakery::Entity")]
+struct BakeryWorkerWithPrefix {
+    #[sea_orm(nested(prefix = "mgr_"), alias = "manager")]
+    manager: Worker,
+    #[sea_orm(nested(prefix = "csh_"), alias = "cashier")]
+    cashier: Worker,
+}
+
+#[derive(DerivePartialModel)]
 #[sea_orm(entity = "worker::Entity")]
 struct ManagerOfBakery {
     id: i32,
@@ -90,6 +99,44 @@ async fn partial_model_nested_alias() {
 
     let bakery: BakeryWorker = selector
         .into_partial_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(bakery.manager.name, "Tom");
+    assert_eq!(bakery.cashier.name, "Jerry");
+
+    let selector = bakery::Entity::find()
+        .join_as(
+            sea_orm::JoinType::LeftJoin,
+            bakery::Relation::Manager.def(),
+            "manager",
+        )
+        .join_as(
+            sea_orm::JoinType::LeftJoin,
+            bakery::Relation::Cashier.def(),
+            "cashier",
+        )
+        .into_partial_model::<BakeryWorkerWithPrefix>();
+
+    assert_eq!(
+        selector.into_statement(DbBackend::MySql).sql,
+        "SELECT `manager`.`id` AS `mgr_id`, `manager`.`name` AS `mgr_name`, `cashier`.`id` AS `csh_id`, `cashier`.`name` AS `csh_name` FROM `bakery` LEFT JOIN `worker` AS `manager` ON `bakery`.`manager_id` = `manager`.`id` LEFT JOIN `worker` AS `cashier` ON `bakery`.`cashier_id` = `cashier`.`id`"
+    );
+
+    let bakery = bakery::Entity::find()
+        .join_as(
+            sea_orm::JoinType::LeftJoin,
+            bakery::Relation::Manager.def(),
+            "manager",
+        )
+        .join_as(
+            sea_orm::JoinType::LeftJoin,
+            bakery::Relation::Cashier.def(),
+            "cashier",
+        )
+        .into_partial_model::<BakeryWorkerWithPrefix>()
         .one(&ctx.db)
         .await
         .expect("succeeds to get the result")

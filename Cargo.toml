@@ -12,8 +12,8 @@ keywords      = ["async", "orm", "mysql", "postgres", "sqlite"]
 license       = "MIT OR Apache-2.0"
 name          = "sea-orm"
 repository    = "https://github.com/SeaQL/sea-orm"
-rust-version  = "1.85.0"
-version       = "2.0.0-rc.38"
+rust-version  = "1.94.0"
+version       = "2.0.0-rc.40"
 
 [package.metadata.docs.rs]
 features = [
@@ -29,6 +29,7 @@ features = [
     "postgres-vector",
     "with-ipnetwork",
     "with-arrow",
+    "stream",
 ]
 rustdoc-args = ["--cfg", "docsrs"]
 
@@ -48,21 +49,23 @@ futures-util = { version = "0.3", default-features = false, features = [
     "std",
 ] }
 inventory = { version = "0.3", optional = true }
-ipnetwork = { version = "0.20", default-features = false, optional = true }
+ipnetwork = { version = "0.21", default-features = false, optional = true, features = [
+    "serde",
+] }
 itertools = "0.14.0"
 log = { version = "0.4", default-features = false }
 mac_address = { version = "1.1", default-features = false, optional = true }
-ouroboros = { version = "0.18", default-features = false }
+ouroboros = { version = "0.18", default-features = false, optional = true }
 pgvector = { version = "~0.4", default-features = false, optional = true }
 rust_decimal = { version = "1", default-features = false, features = [
     "std",
 ], optional = true }
 sea-orm-arrow = { version = "2.0.0-rc", path = "sea-orm-arrow", default-features = false, optional = true }
-sea-orm-macros = { version = "~2.0.0-rc.38", path = "sea-orm-macros", default-features = false, features = [
+sea-orm-macros = { version = "~2.0.0-rc.40", path = "sea-orm-macros", default-features = false, features = [
     "async",
     "strum",
 ] }
-sea-query = { version = "=1.0.0-rc.33", default-features = false, features = [
+sea-query = { version = "~1.0.0", default-features = false, features = [
     "thread-safe",
     "hashable-value",
     "backend-mysql",
@@ -70,15 +73,16 @@ sea-query = { version = "=1.0.0-rc.33", default-features = false, features = [
     "backend-sqlite",
     "sea-orm",
 ] }
-sea-query-sqlx = { version = "=0.8.0-rc.15", default-features = false, optional = true }
-sea-schema = { version = "0.17.0-rc.15", default-features = false, features = [
+sea-query-sqlx = { version = "0.9", default-features = false, optional = true }
+sea-schema = { version = "0.18.0", default-features = false, features = [
     "discovery",
     "writer",
     "probe",
 ], optional = true }
-serde = { version = "1.0", default-features = false }
+serde = { version = "1.0", default-features = false, optional = true }
 serde_json = { version = "1.0", default-features = false, optional = true }
-sqlx = { version = "0.8.4", default-features = false, optional = true }
+sqlx = { version = "0.9.0", default-features = false, optional = true }
+sqlx-core = { version = "0.9.0", default-features = false, optional = true }
 strum = { version = "0.28", default-features = false }
 thiserror = { version = "2", default-features = false }
 time = { version = "0.3.36", default-features = false, optional = true }
@@ -88,6 +92,9 @@ tracing = { version = "0.1", default-features = false, features = [
 ] }
 url = { version = "2.2", default-features = false }
 uuid = { version = "1", default-features = false, optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-time = { version = "1.1.0", default-features = false }
 
 [dev-dependencies]
 dotenv = "0.15"
@@ -116,6 +123,7 @@ default = [
     "with-uuid",
     "with-time",
     "sqlite-use-returning-for-3_35",
+    "stream",
 ]
 entity-registry = ["inventory", "sea-orm-macros/entity-registry"]
 json-array = [
@@ -138,25 +146,20 @@ postgres-vector = [
 proxy = ["serde/derive"]
 rbac = ["sea-query/audit", "macros"]
 runtime-async-std = ["sqlx?/runtime-async-std"]
-runtime-async-std-native-tls = [
-    "sqlx?/runtime-async-std-native-tls",
-    "runtime-async-std",
-]
-runtime-async-std-rustls = [
-    "sqlx?/runtime-async-std-rustls",
-    "runtime-async-std",
-]
+runtime-async-std-native-tls = ["sqlx?/tls-native-tls", "runtime-async-std"]
+runtime-async-std-rustls = ["sqlx?/tls-rustls", "runtime-async-std"]
 runtime-tokio = ["sqlx?/runtime-tokio"]
-runtime-tokio-native-tls = ["sqlx?/runtime-tokio-native-tls", "runtime-tokio"]
-runtime-tokio-rustls = ["sqlx?/runtime-tokio-rustls", "runtime-tokio"]
+runtime-tokio-native-tls = ["sqlx?/tls-native-tls", "runtime-tokio"]
+runtime-tokio-rustls = ["sqlx?/tls-rustls", "runtime-tokio"]
 rusqlite = []
 schema-sync = ["sea-schema"]
 sea-orm-internal = []
 seaography = ["sea-orm-macros/seaography"]
+serde = ["dep:serde", "serde/derive", "uuid?/serde"]
 sqlite-no-row-value-before-3_15 = []
 sqlite-use-returning-for-3_35 = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
-sqlx-dep = ["sqlx"]
+sqlx-dep = ["sqlx", "sqlx-core"]
 sqlx-mysql = [
     "sqlx-dep",
     "sea-query-sqlx/sqlx-mysql",
@@ -174,6 +177,7 @@ sqlx-sqlite = [
     "sea-query-sqlx/sqlx-sqlite",
     "sea-schema?/sqlx-sqlite",
 ]
+stream = ["dep:ouroboros"]
 sync = []
 tests-cfg = ["serde/derive"]
 tests-features = [
@@ -205,6 +209,7 @@ with-ipnetwork = [
     "sea-query-sqlx?/with-ipnetwork",
 ]
 with-json = [
+    "dep:serde",
     "serde_json",
     "sea-query/with-json",
     "sea-orm-macros/with-json",

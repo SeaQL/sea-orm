@@ -23,6 +23,19 @@ impl<A> ValidatedUpdateOne<A>
 where
     A: ActiveModelTrait,
 {
+    /// Execute an UPDATE operation without a RETURNING clause, yielding an
+    /// [`UpdateResult`] instead of the updated model. Returns
+    /// [`DbErr::RecordNotUpdated`] if no row matches.
+    pub fn exec_without_returning<C>(self, db: &C) -> Result<UpdateResult, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        Updater::new(self.query)
+            // If nothing is updated, return RecordNotUpdated error
+            .check_record_exists()
+            .exec(db)
+    }
+
     /// Execute an UPDATE operation on an ActiveModel
     pub fn exec<C>(self, db: &C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
@@ -37,6 +50,16 @@ impl<A> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
+    /// Execute an UPDATE operation without a RETURNING clause, yielding an
+    /// [`UpdateResult`] instead of the updated model. Returns
+    /// [`DbErr::RecordNotUpdated`] if no row matches.
+    pub fn exec_without_returning<C>(self, db: &C) -> Result<UpdateResult, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.0?.exec_without_returning(db)
+    }
+
     /// Execute an UPDATE operation on an ActiveModel
     pub fn exec<C>(self, db: &C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
@@ -75,6 +98,11 @@ impl Updater {
             query,
             check_record_exists: false,
         }
+    }
+
+    fn check_record_exists(mut self) -> Self {
+        self.check_record_exists = true;
+        self
     }
 
     /// Execute an update operation

@@ -54,6 +54,7 @@ pub trait ConnectionTrait {
 }
 
 /// Stream query results
+#[cfg(feature = "stream")]
 pub trait StreamTrait {
     /// Create a stream for the [QueryResult]
     type Stream<'a>: Iterator<Item = Result<QueryResult, DbErr>>

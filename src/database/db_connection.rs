@@ -1,7 +1,8 @@
+use super::transaction::run_async_transaction_callback;
 use crate::{
     AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel, QueryResult,
-    Schema, SchemaBuilder, Statement, StatementBuilder, StreamTrait, TransactionError,
-    TransactionOptions, TransactionTrait, error::*,
+    Schema, SchemaBuilder, Statement, StatementBuilder, TransactionError, TransactionOptions,
+    TransactionTrait, error::*,
 };
 use std::{fmt::Debug, future::Future, pin::Pin};
 use tracing::instrument;
@@ -12,6 +13,9 @@ use sqlx::pool::PoolConnection;
 
 #[cfg(feature = "rusqlite")]
 use crate::driver::rusqlite::{RusqliteInnerConnection, RusqliteSharedConnection};
+
+#[cfg(feature = "stream")]
+use crate::StreamTrait;
 
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use std::sync::Arc;
@@ -141,7 +145,7 @@ impl ConnectionTrait for DatabaseConnection {
         self.get_database_backend()
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         super::tracing_spans::with_db_span!(
@@ -177,7 +181,7 @@ impl ConnectionTrait for DatabaseConnection {
         )
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(sql))]
     #[allow(unused_variables)]
     async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         super::tracing_spans::with_db_span!(
@@ -221,7 +225,7 @@ impl ConnectionTrait for DatabaseConnection {
         )
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         super::tracing_spans::with_db_span!(
@@ -257,7 +261,7 @@ impl ConnectionTrait for DatabaseConnection {
         )
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         super::tracing_spans::with_db_span!(
@@ -306,6 +310,7 @@ impl ConnectionTrait for DatabaseConnection {
 }
 
 #[async_trait::async_trait]
+#[cfg(feature = "stream")]
 impl StreamTrait for DatabaseConnection {
     type Stream<'a> = crate::QueryStream;
 
@@ -313,7 +318,7 @@ impl StreamTrait for DatabaseConnection {
         self.get_database_backend()
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     #[allow(unused_variables)]
     fn stream_raw<'a>(
         &'a self,
@@ -633,6 +638,42 @@ impl DatabaseConnection {
 }
 
 impl DatabaseConnection {
+    /// Execute the function inside a transaction.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
+    #[instrument(level = "trace", skip(callback))]
+    pub async fn transaction_async<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> AsyncFnOnce(&'c DatabaseTransaction) -> Result<T, E> + Send,
+        T: Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
+    {
+        let transaction = self.begin().await.map_err(TransactionError::Connection)?;
+        run_async_transaction_callback(transaction, callback).await
+    }
+
+    /// Execute the function inside a transaction with isolation level and/or access mode.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
+    #[instrument(level = "trace", skip(callback))]
+    pub async fn transaction_with_config_async<F, T, E>(
+        &self,
+        callback: F,
+        isolation_level: Option<IsolationLevel>,
+        access_mode: Option<AccessMode>,
+    ) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> AsyncFnOnce(&'c DatabaseTransaction) -> Result<T, E> + Send,
+        T: Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
+    {
+        let transaction = self
+            .begin_with_config(isolation_level, access_mode)
+            .await
+            .map_err(TransactionError::Connection)?;
+        run_async_transaction_callback(transaction, callback).await
+    }
+
     #[allow(unused)]
     pub(crate) fn get_record_stmt_in_spans(&self) -> bool {
         match &self.inner {

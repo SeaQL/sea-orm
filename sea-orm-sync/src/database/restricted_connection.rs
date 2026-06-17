@@ -1,3 +1,4 @@
+use super::transaction::run_async_transaction_callback;
 use crate::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
     ExecResult, IsolationLevel, QueryResult, Statement, StatementBuilder, TransactionError,
@@ -13,6 +14,7 @@ use crate::{
     },
 };
 use std::{
+    future::Future,
     pin::Pin,
     sync::{Arc, RwLock},
 };
@@ -139,6 +141,39 @@ impl RestrictedConnection {
         self.user_id
     }
 
+    /// Execute the function inside a transaction.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
+    #[instrument(level = "trace", skip(callback))]
+    pub fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> FnOnce(&'c RestrictedTransaction) -> Result<T, E>,
+        E: std::fmt::Display + std::fmt::Debug,
+    {
+        let transaction = self.begin().map_err(TransactionError::Connection)?;
+        run_async_transaction_callback(transaction, callback)
+    }
+
+    /// Execute the function inside a transaction with isolation level and/or access mode.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
+    #[instrument(level = "trace", skip(callback))]
+    pub fn transaction_with_config<F, T, E>(
+        &self,
+        callback: F,
+        isolation_level: Option<IsolationLevel>,
+        access_mode: Option<AccessMode>,
+    ) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> FnOnce(&'c RestrictedTransaction) -> Result<T, E>,
+        E: std::fmt::Display + std::fmt::Debug,
+    {
+        let transaction = self
+            .begin_with_config(isolation_level, access_mode)
+            .map_err(TransactionError::Connection)?;
+        run_async_transaction_callback(transaction, callback)
+    }
+
     /// Returns `()` if the current user can execute / query the given SQL statement.
     /// Returns `DbErr::AccessDenied` otherwise.
     pub fn user_can_run<S: StatementBuilder>(&self, stmt: &S) -> Result<(), DbErr> {
@@ -190,6 +225,39 @@ impl RestrictedTransaction {
     /// Get the [`RbacUserId`] bounded to this connection.
     pub fn user_id(&self) -> UserId {
         self.user_id
+    }
+
+    /// Execute the function inside a transaction.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
+    #[instrument(level = "trace", skip(callback))]
+    pub fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> FnOnce(&'c RestrictedTransaction) -> Result<T, E>,
+        E: std::fmt::Display + std::fmt::Debug,
+    {
+        let transaction = self.begin().map_err(TransactionError::Connection)?;
+        run_async_transaction_callback(transaction, callback)
+    }
+
+    /// Execute the function inside a transaction with isolation level and/or access mode.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
+    #[instrument(level = "trace", skip(callback))]
+    pub fn transaction_with_config<F, T, E>(
+        &self,
+        callback: F,
+        isolation_level: Option<IsolationLevel>,
+        access_mode: Option<AccessMode>,
+    ) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> FnOnce(&'c RestrictedTransaction) -> Result<T, E>,
+        E: std::fmt::Display + std::fmt::Debug,
+    {
+        let transaction = self
+            .begin_with_config(isolation_level, access_mode)
+            .map_err(TransactionError::Connection)?;
+        run_async_transaction_callback(transaction, callback)
     }
 
     /// Returns `()` if the current user can execute / query the given SQL statement.

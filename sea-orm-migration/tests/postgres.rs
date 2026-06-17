@@ -30,16 +30,23 @@ mod inner {
         let url = format!("{url}/{db_name}");
         let db = db_connect(url).await?;
 
-        // Create the extension and a custom type
+        // Create the extension, a custom type, and dependent objects.
         db.execute_unprepared("CREATE EXTENSION IF NOT EXISTS citext")
             .await?;
         db.execute_unprepared("CREATE TYPE \"UserFruit\" AS ENUM ('Apple', 'Banana')")
             .await?;
+        db.execute_unprepared(r#"CREATE DOMAIN "UserFruitDomain" AS "UserFruit""#)
+            .await?;
+        db.execute_unprepared(
+            r#"CREATE FUNCTION format_user_fruit("UserFruit") RETURNS text LANGUAGE SQL AS $$ SELECT $1::text $$"#,
+        )
+        .await?;
 
         // Run the fresh migration
         Migrator::fresh(&db).await?;
 
-        // Check that the custom type was dropped and the extension's type was not
+        // Check that the custom type and its dependent objects were dropped,
+        // and the extension's type was not.
         let citext_exists: Option<i32> = db
             .query_one_raw(Statement::from_string(
                 DbBackend::Postgres,
@@ -61,6 +68,33 @@ mod inner {
         assert_eq!(
             user_fruit_exists, None,
             "the UserFruit type should have been dropped"
+        );
+
+        let user_fruit_domain_exists: Option<i32> = db
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                r#"SELECT 1 as "value" FROM pg_type WHERE typname = 'UserFruitDomain'"#.to_owned(),
+            ))
+            .await?
+            .map(|row| row.try_get("", "value").unwrap());
+
+        assert_eq!(
+            user_fruit_domain_exists, None,
+            "the dependent UserFruitDomain type should have been dropped"
+        );
+
+        let format_user_fruit_exists: Option<i32> = db
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                r#"SELECT 1 as "value" FROM pg_proc WHERE proname = 'format_user_fruit'"#
+                    .to_owned(),
+            ))
+            .await?
+            .map(|row| row.try_get("", "value").unwrap());
+
+        assert_eq!(
+            format_user_fruit_exists, None,
+            "the dependent format_user_fruit function should have been dropped"
         );
 
         Ok(())

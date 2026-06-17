@@ -76,10 +76,10 @@ impl<'a> Fold for Merger<'a> {
             merge_item_attributes(&mut i.attrs, self.old.model_attrs);
             if let Fields::Named(named) = &mut i.fields {
                 for field in &mut named.named {
-                    if let Some(ident) = &field.ident {
-                        if let Some(old_attrs) = self.old.model_field_attrs.get(ident) {
-                            merge_item_attributes(&mut field.attrs, old_attrs);
-                        }
+                    if let Some(ident) = &field.ident
+                        && let Some(old_attrs) = self.old.model_field_attrs.get(ident)
+                    {
+                        merge_item_attributes(&mut field.attrs, old_attrs);
                     }
                 }
             }

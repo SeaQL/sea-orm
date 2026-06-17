@@ -1,93 +1,88 @@
-version: "3"
-
 services:
-    # 
-    # MariaDB
-    # 
-
-    mariadb_10_6:
-        image: mariadb:10.6
-        ports:
-            - 3306
-        environment:
-            MYSQL_DB: mysql
-            MYSQL_USER: sea
-            MYSQL_PASSWORD: sea
-            MYSQL_ALLOW_EMPTY_PASSWORD: yes
-            MYSQL_ROOT_PASSWORD: root
-
-    mariadb_10_5:
-        image: mariadb:10.5
-        ports:
-            - 3306
-        environment:
-            MYSQL_DB: mysql
-            MYSQL_USER: sea
-            MYSQL_PASSWORD: sea
-            MYSQL_ALLOW_EMPTY_PASSWORD: yes
-            MYSQL_ROOT_PASSWORD: root
-
-    mariadb_10_4:
-        image: mariadb:10.4
-        ports:
-            - 3306
-        environment:
-            MYSQL_DB: mysql
-            MYSQL_USER: sea
-            MYSQL_PASSWORD: sea
-            MYSQL_ALLOW_EMPTY_PASSWORD: yes
-            MYSQL_ROOT_PASSWORD: root
-
-    # 
+    #
     # MySQL
-    # 
+    #
 
-    mysql_8_0:
-        image: mysql:8.0
+    mysql_lts:
+        image: mysql:lts
         ports:
             - 3306
         environment:
-            MYSQL_DB: mysql
+            MYSQL_HOST: 127.0.0.1
+            MYSQL_DATABASE: mysql
             MYSQL_USER: sea
             MYSQL_PASSWORD: sea
-            MYSQL_ALLOW_EMPTY_PASSWORD: yes
-            MYSQL_ROOT_PASSWORD: root
+            MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
 
     mysql_5_7:
         image: mysql:5.7
         ports:
             - 3306
         environment:
-            MYSQL_DB: mysql
+            MYSQL_HOST: 127.0.0.1
+            MYSQL_DATABASE: mysql
             MYSQL_USER: sea
             MYSQL_PASSWORD: sea
-            MYSQL_ALLOW_EMPTY_PASSWORD: yes
-            MYSQL_ROOT_PASSWORD: root
+            MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
 
-    # 
+    #
+    # MariaDB
+    #
+
+    mariadb_lts:
+        image: mariadb:lts
+        ports:
+            - 3306
+        environment:
+            MARIADB_HOST: 127.0.0.1
+            MARIADB_DATABASE: mysql
+            MARIADB_USER: sea
+            MARIADB_PASSWORD: sea
+            MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
+        healthcheck:
+            test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
+
+    #
     # PostgreSQL
-    # 
+    #
 
-    postgres_13:
-        image: postgres:13
+    postgres_16:
+        image: postgres:16
         ports:
             - 5432
         environment:
+            POSTGRES_HOST: 127.0.0.1
             POSTGRES_USER: root
             POSTGRES_PASSWORD: root
+        healthcheck:
+            test: ["CMD", "pg_isready", "-U", "root"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
-    postgres_12:
-        image: postgres:12
+    postgres_14:
+        image: postgres:14
         ports:
             - 5432
         environment:
+            POSTGRES_HOST: 127.0.0.1
             POSTGRES_USER: root
             POSTGRES_PASSWORD: root
-
-    postgres_11:
-        image: postgres:11
-        ports:
-            - 5432
-        environment:
-            POSTGRES_USER: root
-            POSTGRES_PASSWORD: root
+        healthcheck:
+            test: ["CMD", "pg_isready", "-U", "root"]
+            interval: 10s
+            timeout: 5s
+            retries: 5

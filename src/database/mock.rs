@@ -115,7 +115,7 @@ impl MockDatabase {
 }
 
 impl MockDatabaseTrait for MockDatabase {
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(statement))]
     fn execute(&mut self, counter: usize, statement: Statement) -> Result<ExecResult, DbErr> {
         if let Some(transaction) = &mut self.transaction {
             transaction.push(statement);
@@ -137,7 +137,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(statement))]
     fn query(&mut self, counter: usize, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         if let Some(transaction) = &mut self.transaction {
             transaction.push(statement);
@@ -432,7 +432,7 @@ mod tests {
         DbBackend, DbErr, IntoMockRow, MockDatabase, Statement, Transaction, TransactionError,
         TransactionTrait, entity::*, error::*, tests_cfg::*,
     };
-    use futures_util::{TryStreamExt, stream::TryNext};
+    use futures_util::TryStreamExt;
     use pretty_assertions::assert_eq;
 
     #[derive(Debug, PartialEq, Eq)]
@@ -450,13 +450,11 @@ mod tests {
     async fn test_transaction_1() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
-        db.transaction::<_, (), DbErr>(|txn| {
-            Box::pin(async move {
-                let _1 = cake::Entity::find().one(txn).await;
-                let _2 = fruit::Entity::find().all(txn).await;
+        db.transaction_async::<_, (), DbErr>(async |txn| {
+            let _1 = cake::Entity::find().one(txn).await;
+            let _2 = fruit::Entity::find().all(txn).await;
 
-                Ok(())
-            })
+            Ok(())
         })
         .await
         .unwrap();
@@ -494,11 +492,9 @@ mod tests {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
         let result = db
-            .transaction::<_, (), MyErr>(|txn| {
-                Box::pin(async move {
-                    let _ = cake::Entity::find().one(txn).await;
-                    Err(MyErr("test".to_owned()))
-                })
+            .transaction_async::<_, (), MyErr>(async |txn| {
+                let _ = cake::Entity::find().one(txn).await;
+                Err(MyErr("test".to_owned()))
             })
             .await;
 
@@ -527,22 +523,18 @@ mod tests {
     async fn test_nested_transaction_1() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
-        db.transaction::<_, (), DbErr>(|txn| {
-            Box::pin(async move {
-                let _ = cake::Entity::find().one(txn).await;
+        db.transaction_async::<_, (), DbErr>(async |txn| {
+            let _ = cake::Entity::find().one(txn).await;
 
-                txn.transaction::<_, (), DbErr>(|txn| {
-                    Box::pin(async move {
-                        let _ = fruit::Entity::find().all(txn).await;
-
-                        Ok(())
-                    })
-                })
-                .await
-                .unwrap();
+            txn.transaction_async::<_, (), DbErr>(async |txn| {
+                let _ = fruit::Entity::find().all(txn).await;
 
                 Ok(())
             })
+            .await
+            .unwrap();
+
+            Ok(())
         })
         .await
         .unwrap();
@@ -572,32 +564,26 @@ mod tests {
     async fn test_nested_transaction_2() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
-        db.transaction::<_, (), DbErr>(|txn| {
-            Box::pin(async move {
-                let _ = cake::Entity::find().one(txn).await;
+        db.transaction_async::<_, (), DbErr>(async |txn| {
+            let _ = cake::Entity::find().one(txn).await;
 
-                txn.transaction::<_, (), DbErr>(|txn| {
-                    Box::pin(async move {
-                        let _ = fruit::Entity::find().all(txn).await;
+            txn.transaction_async::<_, (), DbErr>(async |txn| {
+                let _ = fruit::Entity::find().all(txn).await;
 
-                        txn.transaction::<_, (), DbErr>(|txn| {
-                            Box::pin(async move {
-                                let _ = cake::Entity::find().all(txn).await;
+                txn.transaction_async::<_, (), DbErr>(async |txn| {
+                    let _ = cake::Entity::find().all(txn).await;
 
-                                Ok(())
-                            })
-                        })
-                        .await
-                        .unwrap();
-
-                        Ok(())
-                    })
+                    Ok(())
                 })
                 .await
                 .unwrap();
 
                 Ok(())
             })
+            .await
+            .unwrap();
+
+            Ok(())
         })
         .await
         .unwrap();
@@ -631,6 +617,7 @@ mod tests {
     }
 
     #[smol_potat::test]
+    #[cfg(feature = "stream")]
     async fn test_stream_1() -> Result<(), DbErr> {
         let apple = fruit::Model {
             id: 1,
@@ -660,6 +647,7 @@ mod tests {
     }
 
     #[smol_potat::test]
+    #[cfg(feature = "stream")]
     async fn test_stream_2() -> Result<(), DbErr> {
         use fruit::Entity as Fruit;
         let db = MockDatabase::new(DbBackend::Postgres)
@@ -676,6 +664,7 @@ mod tests {
     }
 
     #[smol_potat::test]
+    #[cfg(feature = "stream")]
     async fn test_stream_in_transaction() -> Result<(), DbErr> {
         let apple = fruit::Model {
             id: 1,

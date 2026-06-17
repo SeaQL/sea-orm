@@ -14,10 +14,13 @@ use tracing::instrument;
 
 use crate::{
     AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
-    IsolationLevel, QueryStream, Statement, TransactionError, debug_print, error::*, executor::*,
+    IsolationLevel, Statement, TransactionError, debug_print, error::*, executor::*,
 };
 
 use super::sqlx_common::*;
+
+#[cfg(feature = "stream")]
+use crate::QueryStream;
 
 /// Defines the [sqlx::postgres] connector
 #[derive(Debug)]
@@ -120,7 +123,7 @@ impl SqlxPostgresConnector {
             pool_options = pool_options.after_connect(move |conn, _| {
                 let sql = sql.clone();
                 Box::pin(async move {
-                    sqlx::Executor::execute(conn, sql.as_str())
+                    sqlx::Executor::execute(conn, sqlx::AssertSqlSafe(sql))
                         .await
                         .map(|_| ())
                 })
@@ -168,7 +171,7 @@ impl SqlxPostgresConnector {
 
 impl SqlxPostgresPoolConnection {
     /// Execute a [Statement] on a PostgreSQL backend
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
@@ -183,19 +186,19 @@ impl SqlxPostgresPoolConnection {
     }
 
     /// Execute an unprepared SQL statement on a PostgreSQL backend
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(sql))]
     pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug_print!("{}", sql);
 
         let conn = &mut self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
-        match conn.execute(sql).await {
+        match conn.execute(sqlx::AssertSqlSafe(sql.to_owned())).await {
             Ok(res) => Ok(res.into()),
             Err(err) => Err(sqlx_error_to_exec_err(err)),
         }
     }
 
     /// Get one result from a SQL query. Returns [Option::None] if no match was found
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -213,7 +216,7 @@ impl SqlxPostgresPoolConnection {
     }
 
     /// Get the results of a query returning them as a Vec<[QueryResult]>
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -228,7 +231,8 @@ impl SqlxPostgresPoolConnection {
     }
 
     /// Stream the results of executing a SQL query
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
+    #[cfg(feature = "stream")]
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
@@ -337,7 +341,7 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Postgres, S
         .values
         .as_ref()
         .map_or(Values(Vec::new()), |values| values.clone());
-    sqlx::query_with(&stmt.sql, SqlxValues(values))
+    sqlx::query_with(sqlx::AssertSqlSafe(stmt.sql.as_str()), SqlxValues(values))
 }
 
 pub(crate) async fn set_transaction_config(
@@ -357,7 +361,7 @@ pub(crate) async fn set_transaction_config(
 
     if !settings.is_empty() {
         let sql = format!("SET TRANSACTION {}", settings.join(" "));
-        sqlx::query(&sql)
+        sqlx::query(sqlx::AssertSqlSafe(sql))
             .execute(&mut **conn)
             .await
             .map_err(sqlx_error_to_exec_err)?;
@@ -365,6 +369,7 @@ pub(crate) async fn set_transaction_config(
     Ok(())
 }
 
+#[cfg(feature = "stream")]
 impl
     From<(
         PoolConnection<sqlx::Postgres>,

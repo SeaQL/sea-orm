@@ -3,6 +3,8 @@ use serde_json::Map;
 pub use serde_json::Value as JsonValue;
 
 impl FromQueryResult for JsonValue {
+    /// # Warnings
+    /// If the database does not provide a data type for a value, that value may be lost.
     #[allow(unused_variables, unused_mut)]
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
         let mut map = Map::new();
@@ -19,7 +21,7 @@ impl FromQueryResult for JsonValue {
             #[cfg(feature = "sqlx-mysql")]
             crate::QueryResultRow::SqlxMySql(row) => {
                 use serde_json::json;
-                use sqlx::{Column, MySql, Row, Type};
+                use sqlx::{Column, MySql, Row, Type, TypeInfo};
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
                         continue;
@@ -52,6 +54,14 @@ impl FromQueryResult for JsonValue {
                     match_mysql_type!(u64);
                     match_mysql_type!(f32);
                     match_mysql_type!(f64);
+                    #[cfg(feature = "with-json")]
+                    // MariaDB reports JSON columns as text-compatible BLOBs.
+                    if col_type.name().eq_ignore_ascii_case("JSON")
+                        || (col_type.name().eq_ignore_ascii_case("BLOB")
+                            && <String as Type<MySql>>::compatible(col_type))
+                    {
+                        try_get_type!(serde_json::Value, col);
+                    }
                     match_mysql_type!(String);
                     #[cfg(feature = "with-chrono")]
                     match_mysql_type!(chrono::NaiveDate);
@@ -72,8 +82,6 @@ impl FromQueryResult for JsonValue {
                     #[cfg(feature = "with-rust_decimal")]
                     match_mysql_type!(rust_decimal::Decimal);
                     match_mysql_compatible_type!(String);
-                    #[cfg(feature = "with-json")]
-                    try_get_type!(serde_json::Value, col);
                     #[cfg(feature = "with-uuid")]
                     try_get_type!(uuid::Uuid, col);
                     try_get_type!(Vec<u8>, col);

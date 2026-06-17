@@ -7,7 +7,7 @@ use sea_schema::sqlx_types::SqlxRow;
 use sqlx::Error as SqlxError;
 use std::sync::Arc;
 
-#[async_trait::async_trait]
+#[async_trait::async_trait(?Send)]
 impl sea_schema::Connection for DatabaseConnection {
     async fn query_all(&self, select: SelectStatement) -> Result<Vec<SqlxRow>, SqlxError> {
         map_result(ConnectionTrait::query_all(self, &select).await)
@@ -24,7 +24,7 @@ impl sea_schema::Connection for DatabaseConnection {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait::async_trait(?Send)]
 impl sea_schema::Connection for DatabaseTransaction {
     async fn query_all(&self, select: SelectStatement) -> Result<Vec<SqlxRow>, SqlxError> {
         map_result(ConnectionTrait::query_all(self, &select).await)
@@ -41,7 +41,7 @@ impl sea_schema::Connection for DatabaseTransaction {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait::async_trait(?Send)]
 impl sea_schema::Connection for crate::DatabaseExecutor<'_> {
     async fn query_all(&self, select: SelectStatement) -> Result<Vec<SqlxRow>, SqlxError> {
         match self {

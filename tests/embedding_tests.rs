@@ -9,6 +9,9 @@ use serde_json::json;
 
 #[cfg(feature = "postgres-vector")]
 mod test {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
 
     #[sea_orm_macros::test]
     async fn main() -> Result<(), DbErr> {
