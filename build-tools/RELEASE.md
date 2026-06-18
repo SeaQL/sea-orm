@@ -51,15 +51,7 @@ The first commit bumps the publishable crate manifests:
 
 The second commit bumps example `sea-orm` / `sea-orm-migration` dependency comments.
 
-### macOS Note
-
-`bump.sh` currently uses GNU `sed -i` syntax. On macOS BSD `sed`, it can fail with:
-
-```text
-sed: 1: "Cargo.toml": invalid command code C
-```
-
-Use GNU sed, or manually apply the same changes and keep the same two-commit structure.
+`bump.sh` detects GNU vs BSD `sed`, so it runs on both Linux and macOS.
 
 ## 4. Write Changelog
 
