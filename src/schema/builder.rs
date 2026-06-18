@@ -242,8 +242,9 @@ impl SchemaBuilder {
         Ok(())
     }
 
-    /// Apply this schema to a database, will create all registered tables, columns, unique keys, and foreign keys.
-    /// Will fail if any table already exists. Use [`sync`] if you want an incremental version that can perform schema diff.
+    /// Create all registered tables, columns, unique keys, and foreign keys.
+    /// Fails if any table already exists. Use `sync` (feature `schema-sync`)
+    /// instead for an incremental version that diffs against the live schema.
     pub async fn apply<C: ConnectionTrait>(self, db: &C) -> Result<(), DbErr> {
         let mut created_enums: Vec<Statement> = Default::default();
 

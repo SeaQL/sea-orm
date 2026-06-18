@@ -704,22 +704,18 @@ mod database;
 mod docs;
 mod driver;
 pub mod dynamic;
-/// Module for the Entity type and operations
 pub mod entity;
-/// Error types for all database operations
+/// Error types returned by SeaORM operations.
 pub mod error;
-/// This module performs execution of queries on a Model or ActiveModel
 mod executor;
-/// Types and methods to perform metric collection
+/// Per-query metric collection hooks.
 pub mod metric;
-/// Types and methods to perform queries
 pub mod query;
 #[cfg(feature = "rbac")]
 #[cfg_attr(docsrs, doc(cfg(feature = "rbac")))]
 pub mod rbac;
-/// Types that defines the schemas of an Entity
 pub mod schema;
-/// Helpers for working with Value
+/// Helpers for working with [`sea_query::Value`].
 pub mod value;
 
 #[doc(hidden)]

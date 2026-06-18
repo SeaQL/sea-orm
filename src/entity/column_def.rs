@@ -4,7 +4,14 @@ use sea_query::{SimpleExpr, Value};
 // It was replaced by `sea_query::ColumnType`, we reexport it here to keep the `ColumnType` symbol
 pub use sea_query::ColumnType;
 
-/// Defines a Column for an Entity
+/// Schema metadata for a single column: SQL type, nullability, defaults,
+/// constraints, and other DDL-level options.
+///
+/// Returned by [`ColumnTrait::def`](crate::ColumnTrait::def) and used by
+/// SeaORM's schema builder to generate `CREATE TABLE` / `ALTER TABLE`
+/// statements. Most fields are set declaratively via attributes on a
+/// `#[derive(DeriveEntityModel)]` `Model`; the chainable methods below
+/// cover the cases that need to be configured at runtime.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ColumnDef {
     pub(crate) col_type: ColumnType,
@@ -19,11 +26,12 @@ pub struct ColumnDef {
     pub(crate) seaography: SeaographyColumnAttr,
 }
 
-/// Seaography specific attributes
+/// Column-level attributes consumed by [Seaography](https://github.com/SeaQL/seaography)
+/// when generating GraphQL schemas.
 #[non_exhaustive]
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SeaographyColumnAttr {
-    /// Ignore this column in seaography
+    /// If `true`, this column is omitted from Seaography's GraphQL schema.
     pub ignore: bool,
 }
 
@@ -104,7 +112,7 @@ impl ColumnDef {
         &self.col_type
     }
 
-    /// Get [Option<SimpleExpr>] as reference
+    /// Get the column's default value/expression, if one is set.
     pub fn get_column_default(&self) -> Option<&SimpleExpr> {
         self.default.as_ref()
     }

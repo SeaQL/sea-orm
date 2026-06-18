@@ -30,7 +30,12 @@ type PinBoxStream<'b, S> = std::pin::Pin<Box<dyn Stream<Item = Result<S, DbErr>>
 #[cfg(feature = "sync")]
 type PinBoxStream<'b, S> = Box<dyn Iterator<Item = Result<S, DbErr>> + 'b + Send>;
 
-/// Defines a type to do `SELECT` operations through a [SelectStatement] on a Model
+/// A ready-to-execute `SELECT` query backed by a [`SelectStatement`]. The
+/// type parameter `S` (a [`SelectorTrait`]) determines what each row is
+/// decoded into. Build one via
+/// [`Select::into_model`](crate::Select::into_model) or
+/// [`Select::into_partial_model`](crate::Select::into_partial_model), then
+/// call `.one(db)` / `.all(db)` / `.paginate(db, n)`.
 #[derive(Clone, Debug)]
 pub struct Selector<S>
 where
@@ -40,7 +45,8 @@ where
     selector: PhantomData<S>,
 }
 
-/// Performs a raw `SELECT` operation on a model
+/// Like [`Selector`] but executes a raw [`Statement`] (e.g. built with the
+/// [`raw_sql!`](crate::raw_sql) macro) instead of a `sea_query` query.
 #[derive(Clone, Debug)]
 pub struct SelectorRaw<S>
 where
@@ -50,16 +56,19 @@ where
     pub(super) selector: PhantomData<S>,
 }
 
-/// A Trait for any type that can perform SELECT queries
+/// Decodes one row of a [`Selector`] / [`SelectorRaw`] result into a value of
+/// type [`Item`](Self::Item). Implemented by the `SelectModel*` types below;
+/// you usually never name this trait directly.
 pub trait SelectorTrait {
-    #[allow(missing_docs)]
+    /// Type produced for each row.
     type Item: Sized;
 
-    /// The method to perform a query on a Model
+    /// Decode one row.
     fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr>;
 }
 
-/// Get tuple from query result based on a list of column identifiers
+/// [`SelectorTrait`] adapter that decodes each row as a tuple `T` whose
+/// columns are addressed by the iden enum `C` (rather than positionally).
 #[derive(Debug)]
 pub struct SelectGetableValue<T, C>
 where
@@ -70,7 +79,8 @@ where
     model: PhantomData<T>,
 }
 
-/// Get tuple from query result based on column index
+/// [`SelectorTrait`] adapter that decodes each row positionally into the
+/// tuple type `T`.
 #[derive(Debug)]
 pub struct SelectGetableTuple<T>
 where
@@ -79,7 +89,7 @@ where
     model: PhantomData<T>,
 }
 
-/// Helper class to handle query result for 1 Model
+/// [`SelectorTrait`] for a query that yields a single model per row.
 #[derive(Debug)]
 pub struct SelectModel<M>
 where
@@ -88,7 +98,8 @@ where
     model: PhantomData<M>,
 }
 
-/// Defines a type to get two Models, with the second being optional
+/// [`SelectorTrait`] for a join that yields `(M, Option<N>)` per row — the
+/// right side is `None` for outer-join rows with no match.
 #[derive(Clone, Debug)]
 pub struct SelectTwoModel<M, N>
 where
@@ -98,7 +109,8 @@ where
     model: PhantomData<(M, N)>,
 }
 
-/// Defines a type to get two Models
+/// [`SelectorTrait`] for a join that yields `(M, N)` per row (both sides
+/// required, e.g. an inner join).
 #[derive(Clone, Debug)]
 pub struct SelectTwoRequiredModel<M, N>
 where
@@ -108,7 +120,7 @@ where
     model: PhantomData<(M, N)>,
 }
 
-/// Helper class to handle query result for 3 Models
+/// [`SelectorTrait`] for a three-way join that yields `(M, Option<N>, Option<O>)`.
 #[derive(Clone, Debug)]
 pub struct SelectThreeModel<M, N, O>
 where
@@ -119,7 +131,8 @@ where
     model: PhantomData<(M, N, O)>,
 }
 
-/// Helper class to handle query result for 4 Models
+/// [`SelectorTrait`] for a four-way join that yields
+/// `(M, Option<N>, Option<O>, Option<P>)`.
 #[derive(Clone, Debug)]
 pub struct SelectFourModel<M, N, O, P>
 where
@@ -131,7 +144,8 @@ where
     model: PhantomData<(M, N, O, P)>,
 }
 
-/// Helper class to handle query result for 5 Models
+/// [`SelectorTrait`] for a five-way join that yields
+/// `(M, Option<N>, Option<O>, Option<P>, Option<Q>)`.
 #[derive(Clone, Debug)]
 pub struct SelectFiveModel<M, N, O, P, Q>
 where
@@ -144,7 +158,8 @@ where
     model: PhantomData<(M, N, O, P, Q)>,
 }
 
-/// Helper class to handle query result for 6 Models
+/// [`SelectorTrait`] for a six-way join that yields
+/// `(M, Option<N>, Option<O>, Option<P>, Option<Q>, Option<R>)`.
 #[derive(Clone, Debug)]
 pub struct SelectSixModel<M, N, O, P, Q, R>
 where
@@ -662,14 +677,16 @@ where
         }
     }
 
-    /// Get all Models from the select operation and consolidate result based on left Model.
+    /// Run the select and return all matching parent models, each paired
+    /// with its related models (rows are deduplicated and grouped by left
+    /// model).
     ///
     /// > `SelectTwoMany::one()` method has been dropped (#486)
     /// >
     /// > You can get `(Entity, Vec<relatedEntity>)` by first querying a single model from Entity,
-    /// > then use [`ModelTrait::find_related`] on the model.
+    /// > then use [`ModelTrait::find_related`](crate::ModelTrait::find_related) on the model.
     /// >
-    /// > See https://www.sea-ql.org/SeaORM/docs/basic-crud/select#lazy-loading for details.
+    /// > See <https://www.sea-ql.org/SeaORM/docs/basic-crud/select#lazy-loading> for details.
     pub async fn all<C>(self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
     where
         C: ConnectionTrait,

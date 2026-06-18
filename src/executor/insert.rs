@@ -9,7 +9,11 @@ use std::marker::PhantomData;
 
 type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
 
-/// Defines a structure to perform INSERT operations in an ActiveModel
+/// Lower-level executor that runs a raw `sea_query` [`InsertStatement`].
+/// Most code shouldn't need it directly — prefer
+/// [`EntityTrait::insert`](crate::EntityTrait::insert) /
+/// [`insert_many`](crate::EntityTrait::insert_many), which return
+/// strongly-typed builders.
 #[derive(Debug)]
 pub struct Inserter<A>
 where
@@ -20,25 +24,27 @@ where
     model: PhantomData<A>,
 }
 
-/// The result of an INSERT operation on an ActiveModel
+/// Result of inserting a single ActiveModel: the primary key the database
+/// assigned (or the one already on the ActiveModel if it had been `Set`).
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct InsertResult<A>
 where
     A: ActiveModelTrait,
 {
-    /// The primary key value of the last inserted row
+    /// Primary key of the inserted row.
     pub last_insert_id: <PrimaryKey<A> as PrimaryKeyTrait>::ValueType,
 }
 
-/// The result of an INSERT many operation for a set of ActiveModels
+/// Result of inserting many ActiveModels: the primary key of the last row
+/// inserted, or `None` if the iterator was empty.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct InsertManyResult<A>
 where
     A: ActiveModelTrait,
 {
-    /// The primary key value of the last inserted row
+    /// Primary key of the last inserted row, if any.
     pub last_insert_id: Option<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>,
 }
 
@@ -217,10 +223,11 @@ where
             .await
     }
 
-    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
+    /// Execute an insert operation and return the inserted model (uses
+    /// `RETURNING` if the backend supports it).
     ///
-    /// + To get back all inserted models, use [`exec_with_returning_many`].
-    /// + To get back all inserted primary keys, use [`exec_with_returning_keys`].
+    /// + To get back all inserted models, use [`InsertMany::exec_with_returning_many`].
+    /// + To get back all inserted primary keys, use [`InsertMany::exec_with_returning_keys`].
     pub async fn exec_with_returning<'a, C>(
         self,
         db: &'a C,

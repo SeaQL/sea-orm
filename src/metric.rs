@@ -6,13 +6,14 @@ pub(crate) type Callback = Arc<dyn Fn(&Info<'_>) + Send + Sync>;
 pub(crate) use inner::metric;
 
 #[derive(Debug)]
-/// Query execution infos
+/// Information about a single query execution, passed to the callback
+/// registered via [`DatabaseConnection::set_metric_callback`](crate::DatabaseConnection::set_metric_callback).
 pub struct Info<'a> {
-    /// Query executiuon duration
+    /// Query execution duration
     pub elapsed: Duration,
-    /// Query data
+    /// SQL statement with parameters
     pub statement: &'a crate::Statement,
-    /// Query execution failed
+    /// `true` if the query returned an error
     pub failed: bool,
 }
 

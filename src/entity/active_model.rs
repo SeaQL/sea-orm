@@ -12,58 +12,67 @@ use crate::{
 use sea_query::ValueTuple;
 use std::fmt::Debug;
 
-/// `ActiveModel` is a type for constructing `INSERT` and `UPDATE` statements for a particular table.
+/// The editable counterpart of a [`Model`](crate::ModelTrait), used to build
+/// `INSERT` and `UPDATE` statements.
 ///
-/// Like [Model][ModelTrait], it represents a database record and each field represents a column.
+/// Each field of an ActiveModel is wrapped in an [`ActiveValue`], so it can
+/// be one of:
 ///
-/// But unlike [Model][ModelTrait], it also stores [additional state][ActiveValue] for every field,
-/// and fields are not guaranteed to have a value.
+/// - [`Set(v)`](ActiveValue::Set) — a new value to write,
+/// - [`Unchanged(v)`](ActiveValue::Unchanged) — the value already in the
+///   database, will not be sent in `UPDATE`,
+/// - [`NotSet`](ActiveValue::NotSet) — value is absent; the column is
+///   omitted from `INSERT` (letting the database supply a default) and
+///   from `UPDATE`.
 ///
-/// This allows you to:
-///
-/// - omit columns from the query,
-/// - know which columns have changed after editing a record.
+/// This makes ActiveModel ideal for partial updates: only the columns you
+/// touch end up in the generated `UPDATE`.
 #[async_trait::async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
-    /// The Entity this ActiveModel belongs to
+    /// The [`EntityTrait`] this ActiveModel belongs to.
     type Entity: EntityTrait;
 
-    /// Get a mutable [ActiveValue] from an ActiveModel
+    /// Take the [`ActiveValue`] of a column, leaving it as `NotSet`.
     fn take(&mut self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
 
-    /// Get a immutable [ActiveValue] from an ActiveModel
+    /// Read the [`ActiveValue`] of a column.
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
 
-    /// Set the Value of a ActiveModel field, panic if failed
+    /// Set one column to `Set(v)`. Panics on type mismatch; prefer
+    /// [`try_set`](Self::try_set) when the value comes from untrusted input.
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) {
         self.try_set(c, v)
             .unwrap_or_else(|e| panic!("Failed to set value for {:?}: {e:?}", c.as_column_ref()))
     }
 
-    /// Set the Value of a ActiveModel field if value is different, panic if failed
+    /// Set one column to `Set(v)` only if `v` differs from the current value,
+    /// avoiding spurious `UPDATE` rewrites. Panics on type mismatch.
     fn set_if_not_equals(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
 
-    /// Set the Value of a ActiveModel field, return error if failed
+    /// Set one column to `Set(v)`, returning an error on type mismatch.
     fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
 
-    /// Set the state of an [ActiveValue] to the not set state
+    /// Mark a column as `NotSet` so it is omitted from the next `INSERT` or
+    /// `UPDATE`.
     fn not_set(&mut self, c: <Self::Entity as EntityTrait>::Column);
 
-    /// Check the state of a [ActiveValue]
+    /// `true` if the column is currently in the `NotSet` state.
     fn is_not_set(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
 
-    /// Create an ActiveModel with all fields to NotSet
+    /// A fresh ActiveModel with every column `NotSet`.
     fn default() -> Self;
 
-    /// Create an ActiveModel with all fields to Set(default_value) if Default is implemented, NotSet otherwise
+    /// A fresh ActiveModel pre-populated with `Set(default_value)` for each
+    /// column that has a `Default` impl; other columns remain `NotSet`.
     fn default_values() -> Self;
 
-    /// Reset the value from [ActiveValue::Unchanged] to [ActiveValue::Set],
-    /// leaving [ActiveValue::NotSet] untouched.
+    /// Promote one column from [`Unchanged`](ActiveValue::Unchanged) to
+    /// [`Set`](ActiveValue::Set) so it will be included in the next
+    /// `UPDATE`. Leaves [`NotSet`](ActiveValue::NotSet) untouched.
     fn reset(&mut self, c: <Self::Entity as EntityTrait>::Column);
 
-    /// Reset all values from [ActiveValue::Unchanged] to [ActiveValue::Set],
-    /// leaving [ActiveValue::NotSet] untouched.
+    /// Apply [`reset`](Self::reset) to every column, forcing the next
+    /// `UPDATE` to write all non-`NotSet` columns.
     fn reset_all(mut self) -> Self {
         for col in <Self::Entity as EntityTrait>::Column::iter() {
             self.reset(col);
@@ -71,7 +80,8 @@ pub trait ActiveModelTrait: Clone + Debug {
         self
     }
 
-    /// Get the primary key of the ActiveModel, only if it's fully specified.
+    /// The primary key as a `ValueTuple`, or `None` if any primary-key
+    /// column is still `NotSet`.
     fn get_primary_key_value(&self) -> Option<ValueTuple> {
         let mut cols = <Self::Entity as EntityTrait>::PrimaryKey::iter();
         macro_rules! next {
@@ -1035,39 +1045,36 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 }
 
-/// A Trait for overriding the ActiveModel behavior
+/// Lifecycle hooks for an [`ActiveModelTrait`].
 ///
-/// ### Example
+/// Every entity must have an impl of this trait — even the empty
+/// `impl ActiveModelBehavior for ActiveModel {}` you see in the examples is
+/// required so that the default `new` / `before_save` / `after_save` /
+/// `before_delete` / `after_delete` implementations are wired up. Override
+/// the hooks to enforce invariants, populate computed columns, or run side
+/// effects around saves and deletes.
+///
 /// ```ignore
 /// use sea_orm::entity::prelude::*;
 ///
-///  // Use [DeriveEntity] to derive the EntityTrait automatically
-/// #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-/// pub struct Entity;
-///
-/// /// The [EntityName] describes the name of a table
-/// impl EntityName for Entity {
-///     fn table_name(&self) -> &'static str {
-///         "cake"
+/// impl ActiveModelBehavior for ActiveModel {
+///     async fn before_save<C>(mut self, _db: &C, insert: bool) -> Result<Self, DbErr>
+///     where
+///         C: ConnectionTrait,
+///     {
+///         if insert && self.created_at.is_not_set() {
+///             self.created_at = Set(chrono::Utc::now());
+///         }
+///         self.updated_at = Set(chrono::Utc::now());
+///         Ok(self)
 ///     }
 /// }
-///
-/// // Derive the ActiveModel
-/// #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
-/// pub struct Model {
-///     pub id: i32,
-///     pub name: String,
-/// }
-///
-/// impl ActiveModelBehavior for ActiveModel {}
 /// ```
-/// See module level docs [crate::entity] for a full example
 #[allow(unused_variables)]
 #[async_trait::async_trait]
 pub trait ActiveModelBehavior: ActiveModelTrait {
-    /// Create a new ActiveModel with default values. This is also called by `Default::default()`.
-    ///
-    /// You can override it like the following:
+    /// Build a fresh ActiveModel. Defaults to [`ActiveModelTrait::default`]
+    /// (every column `NotSet`); override to pre-fill columns:
     ///
     /// ```ignore
     /// fn new() -> Self {
@@ -1081,7 +1088,8 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         <Self as ActiveModelTrait>::default()
     }
 
-    /// Will be called before `ActiveModel::insert`, `ActiveModel::update`, and `ActiveModel::save`
+    /// Hook invoked before `insert`, `update`, and `save`. `insert` is `true`
+    /// for inserts. Return an error to abort the operation.
     async fn before_save<C>(self, db: &C, insert: bool) -> Result<Self, DbErr>
     where
         C: ConnectionTrait,
@@ -1089,7 +1097,8 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         Ok(self)
     }
 
-    /// Will be called after `ActiveModel::insert`, `ActiveModel::update`, and `ActiveModel::save`
+    /// Hook invoked after `insert`, `update`, and `save` succeed. Receives
+    /// (and may transform) the resulting `Model`.
     async fn after_save<C>(
         model: <Self::Entity as EntityTrait>::Model,
         db: &C,
@@ -1101,7 +1110,7 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         Ok(model)
     }
 
-    /// Will be called before `ActiveModel::delete`
+    /// Hook invoked before `delete`. Return an error to abort.
     async fn before_delete<C>(self, db: &C) -> Result<Self, DbErr>
     where
         C: ConnectionTrait,
@@ -1109,7 +1118,7 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         Ok(self)
     }
 
-    /// Will be called after `ActiveModel::delete`
+    /// Hook invoked after `delete` succeeds.
     async fn after_delete<C>(self, db: &C) -> Result<Self, DbErr>
     where
         C: ConnectionTrait,
