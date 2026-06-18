@@ -2,37 +2,46 @@ use super::compound::{HasMany, HasOne};
 use crate::{ActiveModelTrait, DbErr, EntityTrait, ModelTrait, TryIntoModel};
 use core::ops::{Index, IndexMut};
 
-/// Container for belongs_to or has_one relation
+/// State carried by a `belongs_to` or `has_one` field on an
+/// [`ActiveModelEx`](crate::EntityTrait::ActiveModelEx). Mirrors the
+/// `NotSet` / `Set` shape of [`ActiveValue`](crate::ActiveValue) but for a
+/// related model.
 #[derive(Debug, Default, Clone)]
 pub enum HasOneModel<E: EntityTrait> {
-    /// Unspecified value, do nothing
+    /// Field is absent; the related model is left as-is on save.
     #[default]
     NotSet,
-    /// Specify the value for the has one relation
+    /// Field is being assigned to this related ActiveModel on save.
     Set(Box<E::ActiveModelEx>),
 }
 
-/// Container for 1-N or M-N related Models
+/// State carried by a `has_many` (or many-to-many) field on an
+/// [`ActiveModelEx`](crate::EntityTrait::ActiveModelEx). Chooses between
+/// "leave alone", "additive write", and "destructive replace" semantics.
 #[derive(Debug, Default, Clone)]
 pub enum HasManyModel<E: EntityTrait> {
-    /// Unspecified value, do nothing
+    /// Field is absent; existing related models are left as-is on save.
     #[default]
     NotSet,
-    /// Replace all items with this value set; delete leftovers
+    /// Persist exactly this list of related models, deleting any existing
+    /// children that are not in the list.
     Replace(Vec<E::ActiveModelEx>),
-    /// Add new items to this has many relation; do not delete
+    /// Persist these related models alongside any existing children; never
+    /// deletes.
     Append(Vec<E::ActiveModelEx>),
 }
 
-/// Action to perform on ActiveModel
+/// Which save operation an [`ActiveModel`](crate::ActiveModelTrait) is about
+/// to perform — used by hooks and helpers that need to branch on the kind
+/// of write.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ActiveModelAction {
-    /// Insert
+    /// `INSERT`.
     Insert,
-    /// Update
+    /// `UPDATE`.
     Update,
-    /// Insert the model if primary key is `NotSet`, update otherwise.
-    /// Only works if the entity has auto increment primary key.
+    /// Insert if the primary key is `NotSet`, otherwise update.
+    /// Only meaningful for entities with an auto-increment primary key.
     Save,
 }
 

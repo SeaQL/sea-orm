@@ -8,15 +8,21 @@ use crate::{Schema, SchemaBuilder};
 use std::future::Future;
 use std::pin::Pin;
 
-/// A wrapper that holds either a reference to a [`DatabaseConnection`] or [`DatabaseTransaction`],
-/// or an owned [`DatabaseTransaction`].
+/// Either a borrowed [`DatabaseConnection`] / [`DatabaseTransaction`], or an
+/// owned [`DatabaseTransaction`].
+///
+/// Implements [`ConnectionTrait`] and [`TransactionTrait`], so APIs that
+/// need to accept "any of those three" can take a `DatabaseExecutor` and
+/// not worry about which variant the caller had. Used in particular by
+/// `sea-orm-migration`'s `SchemaManager`.
 #[derive(Debug)]
 pub enum DatabaseExecutor<'c> {
-    /// A reference to a database connection
+    /// Borrowed connection — use against a long-lived pool.
     Connection(&'c DatabaseConnection),
-    /// A reference to a database transaction
+    /// Borrowed transaction — caller still owns the transaction handle.
     Transaction(&'c DatabaseTransaction),
-    /// An owned database transaction (used by migration's `SchemaManager::begin()`)
+    /// Owned transaction — used by migration's `SchemaManager::begin()` so
+    /// the transaction can be committed/rolled back at the end of the call.
     OwnedTransaction(DatabaseTransaction),
 }
 
@@ -150,12 +156,15 @@ impl TransactionTrait for DatabaseExecutor<'_> {
     }
 }
 
-/// A trait for converting into [`DatabaseExecutor`]
+/// Conversion into a [`DatabaseExecutor`]. Implemented for
+/// `&DatabaseConnection`, `&DatabaseTransaction`, and owned
+/// `DatabaseTransaction` — let users hand any of them to functions that
+/// take `impl IntoDatabaseExecutor<'_>`.
 pub trait IntoDatabaseExecutor<'c>
 where
     Self: 'c,
 {
-    /// Convert into a [`DatabaseExecutor`]
+    /// Build the [`DatabaseExecutor`].
     fn into_database_executor(self) -> DatabaseExecutor<'c>;
 }
 

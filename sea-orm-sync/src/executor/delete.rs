@@ -5,16 +5,21 @@ use crate::{
 };
 use sea_query::{DeleteStatement, Query};
 
-/// Handles DELETE operations in a ActiveModel using [DeleteStatement]
+/// Lower-level executor that runs a raw `sea_query` [`DeleteStatement`] and
+/// collects the result. Most code shouldn't need it directly — prefer
+/// [`EntityTrait::delete`](crate::EntityTrait::delete) /
+/// [`delete_many`](crate::EntityTrait::delete_many) /
+/// [`delete_by_id`](crate::EntityTrait::delete_by_id), which return
+/// strongly-typed builders.
 #[derive(Clone, Debug)]
 pub struct Deleter {
     query: DeleteStatement,
 }
 
-/// The result of a DELETE operation
+/// Result of a `DELETE`: how many rows were removed.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeleteResult {
-    /// The number of rows affected by the DELETE operation
+    /// Number of rows removed by the statement.
     pub rows_affected: u64,
 }
 

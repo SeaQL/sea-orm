@@ -13,7 +13,16 @@ use strum::IntoEnumIterator as Iterable;
 #[cfg(feature = "with-json")]
 use crate::JsonValue;
 
-/// Cursor pagination
+/// Keyset (cursor) pagination over an ordered query.
+///
+/// Unlike [`Paginator`](crate::Paginator) which uses `LIMIT` / `OFFSET`,
+/// `Cursor` paginates by filtering on the configured order column(s) — fast
+/// and stable across concurrent inserts. Build one with
+/// [`Select::cursor_by`](crate::Select::cursor_by) (or
+/// [`CursorTrait`]-aware helpers on other selects), then drive it with
+/// [`before`](Self::before) / [`after`](Self::after) /
+/// [`first`](Self::first) / [`last`](Self::last) before calling
+/// `.all(db)` / `.one(db)`.
 #[derive(Debug, Clone)]
 pub struct Cursor<S>
 where
@@ -309,7 +318,8 @@ where
         }
     }
 
-    /// Return a [Selector] from `Self` that wraps a [SelectModel] with a [PartialModel](PartialModelTrait)
+    /// Restrict the cursor's projection to a [`PartialModelTrait`] type `M`,
+    /// returning a [`Cursor`] that yields `M` instead of the full model.
     pub fn into_partial_model<M>(self) -> Cursor<SelectModel<M>>
     where
         M: PartialModelTrait,
@@ -353,9 +363,11 @@ where
     }
 }
 
-/// A trait for any type that can be turn into a cursor
+/// Extension trait that adds `.cursor_by(...)` to anything that can be
+/// paginated with a keyset cursor — implemented for [`Select`],
+/// [`SelectTwo`], [`SelectThree`].
 pub trait CursorTrait {
-    /// Select operation
+    /// The [`SelectorTrait`] used to materialise each row of the cursor.
     type Selector: SelectorTrait;
 }
 

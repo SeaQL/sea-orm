@@ -7,7 +7,10 @@ use crate::{
 use core::marker::PhantomData;
 use sea_query::DeleteStatement;
 
-/// Defines the structure for a delete operation
+/// Type-level entry point for `DELETE` builders, e.g.
+/// `Delete::one(model)` and `Delete::many(Entity)`. You normally call
+/// [`EntityTrait::delete`](crate::EntityTrait::delete) /
+/// [`delete_many`](crate::EntityTrait::delete_many) instead.
 #[derive(Clone, Debug)]
 pub struct Delete;
 
@@ -45,7 +48,9 @@ impl<E: EntityTrait> DeleteOne<E> {
     }
 }
 
-/// Perform a delete operation on multiple models
+/// Multi-row `DELETE` builder, returned by
+/// [`EntityTrait::delete_many`](crate::EntityTrait::delete_many). Add
+/// `.filter(...)` to scope which rows are deleted.
 #[derive(Clone, Debug)]
 pub struct DeleteMany<E>
 where

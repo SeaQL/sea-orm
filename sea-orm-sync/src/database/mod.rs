@@ -49,7 +49,7 @@ pub use transaction::*;
 
 use crate::error::*;
 
-/// Defines a database
+/// Entry point for opening a [`DatabaseConnection`]; see [`Database::connect`].
 #[derive(Debug, Default)]
 pub struct Database;
 
@@ -72,7 +72,11 @@ type MapSqlitePoolOptsFn = Option<
 type AfterConnectCallback =
     Option<Arc<dyn Fn(DatabaseConnection) -> BoxFuture<'static, Result<(), DbErr>> + 'static>>;
 
-/// Defines the configuration options of a database
+/// Configuration for opening a [`DatabaseConnection`]: connection URL, pool
+/// sizing, timeouts, logging, and backend-specific options.
+///
+/// Construct with [`ConnectOptions::new`] (or directly from a URL `&str`),
+/// then chain the setter methods before passing to [`Database::connect`].
 #[derive(derive_more::Debug, Clone)]
 pub struct ConnectOptions {
     /// The URI of the database

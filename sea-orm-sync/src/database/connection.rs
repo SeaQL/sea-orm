@@ -2,8 +2,13 @@ use crate::{
     DbBackend, DbErr, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError,
 };
 
-/// The generic API for a database connection that can perform query or execute statements.
-/// It abstracts database connection and transaction
+/// A connection (or transaction) that can run queries against the database.
+///
+/// Implemented by [`DatabaseConnection`](crate::DatabaseConnection),
+/// [`DatabaseTransaction`](crate::DatabaseTransaction), and the mock/proxy
+/// connections used in testing. Most query and mutation methods in SeaORM
+/// (`.one(db)`, `.all(db)`, `.exec(db)`, ...) take any `&impl ConnectionTrait`,
+/// so the same code works on a pool, a transaction, or a mock.
 pub trait ConnectionTrait {
     /// Get the database backend for the connection. This depends on feature flags enabled.
     fn get_database_backend(&self) -> DbBackend;
@@ -11,7 +16,7 @@ pub trait ConnectionTrait {
     /// Execute a [Statement]
     fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr>;
 
-    /// Execute a [QueryStatement]
+    /// Execute a [`StatementBuilder`]
     fn execute<S: StatementBuilder>(&self, stmt: &S) -> Result<ExecResult, DbErr> {
         let db_backend = self.get_database_backend();
         let stmt = db_backend.build(stmt);
@@ -24,7 +29,7 @@ pub trait ConnectionTrait {
     /// Execute a [Statement] and return a single row of `QueryResult`
     fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr>;
 
-    /// Execute a [QueryStatement] and return a single row of `QueryResult`
+    /// Execute a [`StatementBuilder`] and return a single row of `QueryResult`
     fn query_one<S: StatementBuilder>(&self, stmt: &S) -> Result<Option<QueryResult>, DbErr> {
         let db_backend = self.get_database_backend();
         let stmt = db_backend.build(stmt);
@@ -34,7 +39,7 @@ pub trait ConnectionTrait {
     /// Execute a [Statement] and return a vector of `QueryResult`
     fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
 
-    /// Execute a [QueryStatement] and return a vector of `QueryResult`
+    /// Execute a [`StatementBuilder`] and return a vector of `QueryResult`
     fn query_all<S: StatementBuilder>(&self, stmt: &S) -> Result<Vec<QueryResult>, DbErr> {
         let db_backend = self.get_database_backend();
         let stmt = db_backend.build(stmt);
@@ -53,7 +58,9 @@ pub trait ConnectionTrait {
     }
 }
 
-/// Stream query results
+/// Streaming counterpart to [`ConnectionTrait`]: yields query results row by
+/// row rather than collecting them all into a `Vec`. Use this for large
+/// result sets when you don't want to load everything into memory at once.
 #[cfg(feature = "stream")]
 pub trait StreamTrait {
     /// Create a stream for the [QueryResult]
@@ -67,7 +74,7 @@ pub trait StreamTrait {
     /// Execute a [Statement] and return a stream of results
     fn stream_raw<'a>(&'a self, stmt: Statement) -> Result<Self::Stream<'a>, DbErr>;
 
-    /// Execute a [QueryStatement] and return a stream of results
+    /// Execute a [`StatementBuilder`] and return a stream of results
     fn stream<'a, S: StatementBuilder>(&'a self, stmt: &S) -> Result<Self::Stream<'a>, DbErr> {
         let db_backend = self.get_database_backend();
         let stmt = db_backend.build(stmt);
@@ -154,7 +161,13 @@ pub struct TransactionOptions {
     pub sqlite_transaction_mode: Option<SqliteTransactionMode>,
 }
 
-/// Spawn database transaction
+/// Begin a database transaction.
+///
+/// Implemented by [`DatabaseConnection`](crate::DatabaseConnection) and
+/// [`DatabaseTransaction`](crate::DatabaseTransaction) (allowing nested
+/// transactions via SAVEPOINTs). Use [`begin`](Self::begin) for a manually
+/// managed transaction, or [`transaction`](Self::transaction) for a closure
+/// that auto-commits on `Ok` and rolls back on `Err`.
 pub trait TransactionTrait {
     /// The concrete type for the transaction
     type Transaction: ConnectionTrait + TransactionTrait + TransactionSession;

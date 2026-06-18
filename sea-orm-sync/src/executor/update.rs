@@ -5,17 +5,22 @@ use crate::{
 };
 use sea_query::{FromValueTuple, Query, UpdateStatement};
 
-/// Defines an update operation
+/// Lower-level executor that runs a raw `sea_query` [`UpdateStatement`].
+/// Most code shouldn't need it directly — prefer
+/// [`EntityTrait::update`](crate::EntityTrait::update) /
+/// [`update_many`](crate::EntityTrait::update_many), which return
+/// strongly-typed builders.
 #[derive(Clone, Debug)]
 pub struct Updater {
     query: UpdateStatement,
     check_record_exists: bool,
 }
 
-/// The result of an update operation on an ActiveModel
+/// Result of an `UPDATE` that doesn't return rows: how many rows were
+/// modified.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct UpdateResult {
-    /// The rows affected by the update operation
+    /// Number of rows touched by the statement.
     pub rows_affected: u64,
 }
 

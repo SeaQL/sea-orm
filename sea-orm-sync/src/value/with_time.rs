@@ -3,12 +3,12 @@ use crate as sea_orm;
 use crate::{DbErr, TryGetError, prelude::TimeDateTimeWithTimeZone};
 use std::ops::{Deref, DerefMut};
 
-/// A OffsetDateTime mapped to i64 in database
+/// An `OffsetDateTime` stored as a Unix timestamp (seconds) `i64` in the database.
 #[derive(derive_more::Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[debug("{_0:?}")]
 pub struct TimeUnixTimestamp(pub TimeDateTimeWithTimeZone);
 
-/// A OffsetDateTime mapped to i64 in database, but in milliseconds
+/// An `OffsetDateTime` stored as a Unix timestamp in milliseconds (`i64`) in the database.
 #[derive(derive_more::Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[debug("{_0:?}")]
 pub struct TimeUnixTimestampMillis(pub TimeDateTimeWithTimeZone);
