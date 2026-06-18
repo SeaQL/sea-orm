@@ -17,6 +17,12 @@ jobs:
   create-release:
     runs-on: ubuntu-latest
     steps:
+      # `gh release create --notes-from-tag` reads the annotated tag from the
+      # local clone, so the repository and its tags must be checked out.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
       - name: Create draft release (if missing)
         shell: bash
         env:
