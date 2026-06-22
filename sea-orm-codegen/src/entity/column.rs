@@ -110,7 +110,7 @@ impl Column {
             ColumnType::Float => Some("Float".to_owned()),
             ColumnType::Double => Some("Double".to_owned()),
             ColumnType::Decimal(Some((p, s))) => Some(format!("Decimal(Some(({p}, {s})))")),
-            ColumnType::Money(Some((p, s))) => Some(format!("Money(Some({p}, {s}))")),
+            ColumnType::Money(Some((p, s))) => Some(format!("Money(Some(({p}, {s})))")),
             ColumnType::Text => Some("Text".to_owned()),
             ColumnType::JsonBinary => Some("JsonBinary".to_owned()),
             ColumnType::Custom(iden) => {
@@ -580,6 +580,37 @@ mod tests {
             col_def.extend(quote!(.unique()));
             assert_eq!(col.get_def().to_string(), col_def.to_string());
         }
+    }
+
+    #[test]
+    fn test_get_col_type_attrs_money_and_decimal() {
+        let make_col = |col_type| Column {
+            name: "amount".to_owned(),
+            col_type,
+            auto_increment: false,
+            not_null: true,
+            unique: false,
+            unique_key: None,
+        };
+
+        // Money and Decimal both carry an `Option<(precision, scale)>`, so the
+        // generated `column_type` string must keep the inner tuple parentheses.
+        // Without them the emitted `ColumnType::Money(Some(10, 2))` is `Some`
+        // called with two arguments, which does not compile.
+        assert_eq!(
+            make_col(ColumnType::Money(Some((10, 2))))
+                .get_col_type_attrs()
+                .unwrap()
+                .to_string(),
+            quote! { column_type = "Money(Some((10, 2)))" }.to_string()
+        );
+        assert_eq!(
+            make_col(ColumnType::Decimal(Some((10, 2))))
+                .get_col_type_attrs()
+                .unwrap()
+                .to_string(),
+            quote! { column_type = "Decimal(Some((10, 2)))" }.to_string()
+        );
     }
 
     #[test]
