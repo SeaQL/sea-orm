@@ -249,6 +249,7 @@ pub async fn run_generate_command(
                             .filter(|schema| filter_tables(&schema.name))
                             .filter(|schema| filter_hidden_tables(&schema.name))
                             .filter(|schema| filter_skip_tables(&schema.name))
+                            .map(discard_generated_columns)
                             .map(|schema| schema.write())
                             .collect();
                         (None, table_stmts)
@@ -461,6 +462,29 @@ impl From<BannerVersion> for CodegenBannerVersion {
     }
 }
 
+/// Drop SQL generated columns (`GENERATED ALWAYS AS (...) VIRTUAL`/`STORED`) from a
+/// discovered SQLite table before it is reverse-generated into an entity.
+///
+/// Such columns are read-only at the storage layer: SQLite rejects any `INSERT`/`UPDATE`
+/// that targets them. Emitting them as ordinary entity fields makes them part of the
+/// derived `ActiveModel`, so a `Model::into_active_model()` round-trip would try to write
+/// them and fail. They are discovered on purpose (schema sync relies on it — see
+/// SeaQL/sea-schema#161 / #2995), but they must not be reverse-generated as columns.
+#[cfg(feature = "sqlx-sqlite")]
+fn discard_generated_columns(
+    mut table: sea_schema::sqlite::def::TableDef,
+) -> sea_schema::sqlite::def::TableDef {
+    use sea_schema::sqlite::def::ColumnVisibility;
+
+    table.columns.retain(|column| {
+        !matches!(
+            column.hidden,
+            ColumnVisibility::GeneratedVirtual | ColumnVisibility::GeneratedStored
+        )
+    });
+    table
+}
+
 #[cfg(test)]
 mod tests {
     use clap::Parser;
@@ -667,5 +691,42 @@ mod tests {
             result,
             vec!["derive(Debug, Clone)", "derive(Serialize, Deserialize)"]
         );
+    }
+
+    #[cfg(feature = "sqlx-sqlite")]
+    #[test]
+    fn test_discard_generated_columns() {
+        use sea_schema::sea_query::ColumnType;
+        use sea_schema::sqlite::def::{ColumnInfo, ColumnVisibility, DefaultType, TableDef};
+
+        let column = |name: &str, hidden: ColumnVisibility| ColumnInfo {
+            cid: 0,
+            name: name.to_owned(),
+            r#type: ColumnType::Integer,
+            not_null: false,
+            default_value: DefaultType::Unspecified,
+            primary_key: false,
+            hidden,
+        };
+
+        let table = TableDef {
+            name: "photo".to_owned(),
+            columns: vec![
+                column("id", ColumnVisibility::Visible),
+                column("width", ColumnVisibility::Visible),
+                column("pixels_virtual", ColumnVisibility::GeneratedVirtual),
+                column("pixels_stored", ColumnVisibility::GeneratedStored),
+            ],
+            ..Default::default()
+        };
+
+        let kept: Vec<_> = super::discard_generated_columns(table)
+            .columns
+            .into_iter()
+            .map(|column| column.name)
+            .collect();
+
+        // Generated columns are dropped; ordinary columns are preserved in order.
+        assert_eq!(kept, ["id", "width"]);
     }
 }
