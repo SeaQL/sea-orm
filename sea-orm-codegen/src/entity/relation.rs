@@ -208,14 +208,36 @@ impl Relation {
     }
 }
 
+/// Remove duplicated columns while preserving their first-seen order.
+///
+/// A foreign key references each of its columns exactly once on both the local
+/// and the referenced side, so de-duplication is always a no-op for a
+/// well-formed key. It only takes effect to repair malformed input produced by
+/// schema discovery: when a foreign key references a bare unique *index* (rather
+/// than a named unique / primary-key constraint), PostgreSQL's `information_schema`
+/// does not expose the referenced constraint, so `sea-schema` cannot correlate the
+/// columns by ordinal position and falls back to emitting their cartesian product
+/// (e.g. local `[f_a, f_b]` paired with referenced `[a, b, a, b]`). Collapsing both
+/// sides back to their distinct columns restores the intended 1:1 pairing. See
+/// <https://github.com/SeaQL/sea-orm/issues/2662>.
+fn dedup_preserving_order(columns: Vec<String>) -> Vec<String> {
+    let mut deduped: Vec<String> = Vec::with_capacity(columns.len());
+    for column in columns {
+        if !deduped.contains(&column) {
+            deduped.push(column);
+        }
+    }
+    deduped
+}
+
 impl From<&TableForeignKey> for Relation {
     fn from(tbl_fk: &TableForeignKey) -> Self {
         let ref_table = match tbl_fk.get_ref_table() {
             Some(s) => s.sea_orm_table().to_string(),
             None => panic!("RefTable should not be empty"),
         };
-        let columns = tbl_fk.get_columns();
-        let ref_columns = tbl_fk.get_ref_columns();
+        let columns = dedup_preserving_order(tbl_fk.get_columns());
+        let ref_columns = dedup_preserving_order(tbl_fk.get_ref_columns());
         let rel_type = RelationType::BelongsTo;
         let on_delete = tbl_fk.get_on_delete();
         let on_update = tbl_fk.get_on_update();
@@ -338,5 +360,108 @@ mod tests {
         for (rel, ref_col) in relations.into_iter().zip(ref_cols) {
             assert_eq!(rel.get_ref_column_camel_case(), [ref_col]);
         }
+    }
+
+    #[test]
+    fn test_multi_column_foreign_key_dedup() {
+        use sea_query::ForeignKey;
+
+        // A foreign key that references a bare unique index makes schema discovery
+        // emit a cartesian product of the columns: the referenced side arrives
+        // duplicated as `[a, b, a, b]` (issue #2662). Both sides must collapse back
+        // to their distinct columns so the relation maps `f_a -> a` and `f_b -> b`.
+        let fk = ForeignKey::create()
+            .name("fk_ab")
+            .from_tbl("second")
+            .from_col("f_a")
+            .from_col("f_b")
+            .to_tbl("first")
+            .to_col("a")
+            .to_col("b")
+            .to_col("a")
+            .to_col("b")
+            .on_delete(ForeignKeyAction::Cascade)
+            .take();
+        let relation: Relation = fk.get_foreign_key().into();
+        assert_eq!(relation.columns, ["f_a", "f_b"]);
+        assert_eq!(relation.ref_columns, ["a", "b"]);
+
+        // The fully-duplicated form `[f_a, f_a, f_b, f_b]` / `[a, b, a, b]` must also
+        // collapse to the same two pairs.
+        let fk = ForeignKey::create()
+            .name("fk_ab")
+            .from_tbl("second")
+            .from_col("f_a")
+            .from_col("f_a")
+            .from_col("f_b")
+            .from_col("f_b")
+            .to_tbl("first")
+            .to_col("a")
+            .to_col("b")
+            .to_col("a")
+            .to_col("b")
+            .take();
+        let relation: Relation = fk.get_foreign_key().into();
+        assert_eq!(relation.columns, ["f_a", "f_b"]);
+        assert_eq!(relation.ref_columns, ["a", "b"]);
+
+        // The true NxN cartesian product interleaves both sides as
+        // `[f_a, f_b, f_a, f_b]` / `[a, b, a, b]`. This is the shape that would
+        // arrive if `sea-schema` stopped pre-collapsing the local side with
+        // `Vec::dedup`; it must collapse identically.
+        let fk = ForeignKey::create()
+            .name("fk_ab")
+            .from_tbl("second")
+            .from_col("f_a")
+            .from_col("f_b")
+            .from_col("f_a")
+            .from_col("f_b")
+            .to_tbl("first")
+            .to_col("a")
+            .to_col("b")
+            .to_col("a")
+            .to_col("b")
+            .take();
+        let relation: Relation = fk.get_foreign_key().into();
+        assert_eq!(relation.columns, ["f_a", "f_b"]);
+        assert_eq!(relation.ref_columns, ["a", "b"]);
+
+        // A three-column key has non-consecutive duplicates with a period of 3 on
+        // the referenced side (`[a, b, c, a, b, c, a, b, c]`); dedup must still
+        // recover the distinct columns in order.
+        let fk = ForeignKey::create()
+            .name("fk_abc")
+            .from_tbl("second")
+            .from_col("f_a")
+            .from_col("f_b")
+            .from_col("f_c")
+            .to_tbl("first")
+            .to_col("a")
+            .to_col("b")
+            .to_col("c")
+            .to_col("a")
+            .to_col("b")
+            .to_col("c")
+            .to_col("a")
+            .to_col("b")
+            .to_col("c")
+            .take();
+        let relation: Relation = fk.get_foreign_key().into();
+        assert_eq!(relation.columns, ["f_a", "f_b", "f_c"]);
+        assert_eq!(relation.ref_columns, ["a", "b", "c"]);
+
+        // A well-formed multi-column foreign key is left untouched.
+        let fk = ForeignKey::create()
+            .name("fk_ab")
+            .from_tbl("second")
+            .from_col("f_a")
+            .from_col("f_b")
+            .to_tbl("first")
+            .to_col("a")
+            .to_col("b")
+            .take();
+        let relation: Relation = fk.get_foreign_key().into();
+        assert_eq!(relation.columns, ["f_a", "f_b"]);
+        assert_eq!(relation.ref_columns, ["a", "b"]);
     }
 }

@@ -278,7 +278,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
     use sea_orm::{DbBackend, Schema};
-    use sea_query::{ColumnDef, ForeignKey, Table};
+    use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Table};
     use std::{
         error::Error,
         io::{self, BufRead, BufReader},
@@ -468,6 +468,268 @@ mod tests {
 
         let child = entities.get("child").expect("missing entity `child`");
         assert!(child.relations.is_empty());
+
+        Ok(())
+    }
+
+    /// Render an entity's compact code blocks (imports and body) into a single
+    /// string for substring assertions, using the same `gen_compact_code_blocks`
+    /// arguments as the `validate_compact_entities` macro.
+    fn render_compact(entity: &Entity) -> String {
+        EntityWriter::gen_compact_code_blocks(
+            entity,
+            &crate::WithSerde::None,
+            &Default::default(),
+            &None,
+            false,
+            false,
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            false,
+            true,
+        )
+        .into_iter()
+        .fold(TokenStream::new(), |mut acc, tok| {
+            acc.extend(tok);
+            acc
+        })
+        .to_string()
+    }
+
+    /// End-to-end regression for issue #2662: a foreign key referencing a bare
+    /// unique *index* makes schema discovery emit the cartesian product of the
+    /// referenced columns (e.g. `[a, b, a, b]`). The transformer must collapse
+    /// both sides to their distinct columns so the generated `belongs_to` keeps
+    /// `from.len() == to.len()`.
+    #[test]
+    fn multi_column_foreign_key_relation_to_unique_index() -> Result<(), Box<dyn Error>> {
+        let first = Table::create()
+            .table("first")
+            .col(
+                ColumnDef::new("id")
+                    .big_integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(ColumnDef::new("a").string().not_null())
+            .col(ColumnDef::new("b").string().not_null())
+            .to_owned();
+
+        let second = Table::create()
+            .table("second")
+            .col(
+                ColumnDef::new("id")
+                    .big_integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(ColumnDef::new("f_a").string().not_null())
+            .col(ColumnDef::new("f_b").string().not_null())
+            .foreign_key(
+                ForeignKey::create()
+                    .name("fk_ab")
+                    .from("second", "f_a")
+                    .from("second", "f_b")
+                    .to("first", "a")
+                    .to("first", "b")
+                    // The referenced side arrives as a cartesian product because the
+                    // FK targets a bare unique index (issue #2662).
+                    .to("first", "a")
+                    .to("first", "b")
+                    .on_delete(ForeignKeyAction::Cascade),
+            )
+            .to_owned();
+
+        let entities: HashMap<_, _> = EntityTransformer::transform(vec![first, second])?
+            .entities
+            .into_iter()
+            .map(|entity| (entity.table_name.clone(), entity))
+            .collect();
+
+        let second = entities.get("second").expect("missing entity `second`");
+        let relation = second
+            .relations
+            .iter()
+            .find(|rel| rel.ref_table == "first")
+            .expect("missing belongs-to relation to `first`");
+        assert!(matches!(relation.rel_type, RelationType::BelongsTo));
+        assert_eq!(relation.columns, ["f_a", "f_b"]);
+        assert_eq!(relation.ref_columns, ["a", "b"]);
+        assert_eq!(relation.columns.len(), relation.ref_columns.len());
+
+        // The rendered `belongs_to` must list two columns on each side -- never the
+        // pre-fix four-column `to` from the cartesian product.
+        let rendered = render_compact(second);
+        assert!(
+            rendered.contains(r#"from = "(Column::FA, Column::FB)""#),
+            "unexpected `from`: {rendered}"
+        );
+        assert!(
+            rendered.contains(r#"to = "(super::first::Column::A, super::first::Column::B)""#),
+            "unexpected `to`: {rendered}"
+        );
+        assert!(
+            !rendered.contains(
+                "super::first::Column::A, super::first::Column::B, super::first::Column::A"
+            ),
+            "`to` still contains the four-column cartesian product: {rendered}"
+        );
+
+        Ok(())
+    }
+
+    /// The cartesian product also threatens the inverse-relation classification,
+    /// which keys off the *local* column count (`rel.columns.len() ==
+    /// entity.primary_keys.len()`). Deduping the local side to the right length
+    /// must keep that decision correct.
+    #[test]
+    fn inverse_relation_classification_under_cartesian_product() -> Result<(), Box<dyn Error>> {
+        // Build a `parent(a, b)` with composite PK `(a, b)` and a `child` whose FK
+        // references it with a cartesian-product referenced side. `pk_is_fk`
+        // toggles whether the child's own PK is the FK columns or a separate `id`.
+        let build = |pk_is_fk: bool| {
+            let parent = Table::create()
+                .table("parent")
+                .col(ColumnDef::new("a").string().not_null().primary_key())
+                .col(ColumnDef::new("b").string().not_null().primary_key())
+                .to_owned();
+
+            let mut child = Table::create();
+            child.table("child");
+            if pk_is_fk {
+                child
+                    .col(ColumnDef::new("f_a").string().not_null().primary_key())
+                    .col(ColumnDef::new("f_b").string().not_null().primary_key());
+            } else {
+                child
+                    .col(
+                        ColumnDef::new("id")
+                            .big_integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new("f_a").string().not_null())
+                    .col(ColumnDef::new("f_b").string().not_null());
+            }
+            child.foreign_key(
+                ForeignKey::create()
+                    .name("fk_ab")
+                    // The raw cartesian product duplicates *both* sides in lockstep
+                    // (`[f_a, f_a, f_b, f_b]` / `[a, b, a, b]`). The local side must be
+                    // deduped back to `[f_a, f_b]`, otherwise the length-based inverse
+                    // classification below sees four columns and misfires (HasMany
+                    // instead of HasOne when the child's PK *is* the FK).
+                    .from("child", "f_a")
+                    .from("child", "f_a")
+                    .from("child", "f_b")
+                    .from("child", "f_b")
+                    .to("parent", "a")
+                    .to("parent", "b")
+                    .to("parent", "a")
+                    .to("parent", "b"),
+            );
+            vec![parent, child.to_owned()]
+        };
+
+        let inverse_rel_type = |pk_is_fk: bool| -> Result<RelationType, Box<dyn Error>> {
+            let entities: HashMap<_, _> = EntityTransformer::transform(build(pk_is_fk))?
+                .entities
+                .into_iter()
+                .map(|entity| (entity.table_name.clone(), entity))
+                .collect();
+            let parent = entities.get("parent").expect("missing entity `parent`");
+            let rel = parent
+                .relations
+                .iter()
+                .find(|rel| rel.ref_table == "child")
+                .expect("missing inverse relation to `child`");
+            Ok(rel.rel_type)
+        };
+
+        // FK is not a key on the child -> the inverse is a HasMany.
+        assert!(matches!(inverse_rel_type(false)?, RelationType::HasMany));
+        // The child's composite PK *is* the FK -> the inverse is a HasOne.
+        assert!(matches!(inverse_rel_type(true)?, RelationType::HasOne));
+
+        Ok(())
+    }
+
+    /// A three-column composite key is the smallest width at which the cartesian
+    /// product has non-consecutive duplicates with a period > 2 on the referenced
+    /// side (`[a, b, c, a, b, c, a, b, c]`); confirm the fix collapses it and the
+    /// generated `to` lists exactly the three columns in order.
+    #[test]
+    fn three_column_foreign_key_relation_to_unique_index() -> Result<(), Box<dyn Error>> {
+        let first = Table::create()
+            .table("first")
+            .col(
+                ColumnDef::new("id")
+                    .big_integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(ColumnDef::new("a").string().not_null())
+            .col(ColumnDef::new("b").string().not_null())
+            .col(ColumnDef::new("c").string().not_null())
+            .to_owned();
+
+        let mut fk = ForeignKey::create();
+        fk.name("fk_abc")
+            .from("second", "f_a")
+            .from("second", "f_b")
+            .from("second", "f_c");
+        // The referenced side is the 3x3 cartesian product `[a, b, c] x 3`.
+        for _ in 0..3 {
+            fk.to("first", "a").to("first", "b").to("first", "c");
+        }
+
+        let second = Table::create()
+            .table("second")
+            .col(
+                ColumnDef::new("id")
+                    .big_integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(ColumnDef::new("f_a").string().not_null())
+            .col(ColumnDef::new("f_b").string().not_null())
+            .col(ColumnDef::new("f_c").string().not_null())
+            .foreign_key(&mut fk)
+            .to_owned();
+
+        let entities: HashMap<_, _> = EntityTransformer::transform(vec![first, second])?
+            .entities
+            .into_iter()
+            .map(|entity| (entity.table_name.clone(), entity))
+            .collect();
+
+        let second = entities.get("second").expect("missing entity `second`");
+        let relation = second
+            .relations
+            .iter()
+            .find(|rel| rel.ref_table == "first")
+            .expect("missing belongs-to relation to `first`");
+        assert_eq!(relation.columns, ["f_a", "f_b", "f_c"]);
+        assert_eq!(relation.ref_columns, ["a", "b", "c"]);
+        assert_eq!(relation.columns.len(), relation.ref_columns.len());
+
+        let rendered = render_compact(second);
+        assert!(
+            rendered.contains(r#"from = "(Column::FA, Column::FB, Column::FC)""#),
+            "unexpected `from`: {rendered}"
+        );
+        assert!(
+            rendered.contains(
+                r#"to = "(super::first::Column::A, super::first::Column::B, super::first::Column::C)""#
+            ),
+            "unexpected `to`: {rendered}"
+        );
 
         Ok(())
     }
