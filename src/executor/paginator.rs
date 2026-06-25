@@ -89,11 +89,7 @@ where
             Some(res) => res,
             None => return Ok(0),
         };
-        #[allow(clippy::match_single_binding)]
-        let num_items = match self.db.get_database_backend() {
-            _ => result.try_get::<i64>("", "num_items")? as u64,
-        };
-        Ok(num_items)
+        Ok(result.try_get::<i64>("", "num_items")? as u64)
     }
 
     /// Get the total number of pages
@@ -278,14 +274,6 @@ where
 
     /// Paginate the result of a select operation.
     fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, Self::Selector>;
-
-    /// Perform a count on the paginated results
-    async fn count(self, db: &'db C) -> Result<u64, DbErr>
-    where
-        Self: Send + Sized,
-    {
-        self.paginate(db, 1).num_items().await
-    }
 }
 
 impl<'db, C, S> PaginatorTrait<'db, C> for Selector<S>
