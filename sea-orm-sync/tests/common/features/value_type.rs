@@ -69,8 +69,14 @@ where
     }
 }
 
+// Automatically disable vec impl
 #[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
 pub struct StringVec(pub Vec<String>);
+
+// Explicitly disable vec impl
+#[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(no_vec_impl)]
+pub struct StringVecNoImpl(pub Vec<String>);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
 #[sea_orm(value_type = "String")]
