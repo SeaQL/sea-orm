@@ -37,7 +37,7 @@ where
 }
 
 /// Result of inserting many ActiveModels: the primary key of the last row
-/// inserted, or `None` if the iterator was empty.
+/// inserted, or `None` if the iterator was empty or the last insert id is unavailable.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct InsertManyResult<A>
@@ -54,10 +54,6 @@ where
 /// them as errors.
 #[derive(Debug)]
 pub enum TryInsertResult<T> {
-    /// There was nothing to insert, so no SQL was executed.
-    ///
-    /// This typically happens when creating a [`crate::TryInsert`] from an empty iterator or None.
-    Empty,
     /// The statement was executed, but SeaORM could not get the inserted row / insert id.
     ///
     /// This is commonly caused by `ON CONFLICT ... DO NOTHING` (Postgres / SQLite) or the MySQL
@@ -79,15 +75,11 @@ where
 {
     /// Extract the last inserted id.
     ///
-    /// - [`TryInsertResult::Empty`] => `Ok(None)`
-    /// - [`TryInsertResult::Inserted`] => `Ok(Some(last_insert_id))`
+    /// - [`TryInsertResult::Inserted`] => `Ok(last_insert_id)`
     /// - [`TryInsertResult::Conflicted`] => `Err(DbErr::RecordNotInserted)`
-    pub fn last_insert_id(
-        self,
-    ) -> Result<Option<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr> {
+    pub fn last_insert_id(self) -> Result<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType, DbErr> {
         match self {
-            Self::Empty => Ok(None),
-            Self::Inserted(v) => Ok(Some(v.last_insert_id)),
+            Self::Inserted(v) => Ok(v.last_insert_id),
             Self::Conflicted => Err(DbErr::RecordNotInserted),
         }
     }
@@ -102,9 +94,6 @@ where
     where
         C: ConnectionTrait,
     {
-        if self.empty {
-            return Ok(TryInsertResult::Empty);
-        }
         let res = self.insert_struct.exec(db).await;
         match res {
             Ok(res) => Ok(TryInsertResult::Inserted(res)),
@@ -119,9 +108,6 @@ where
     where
         C: ConnectionTrait,
     {
-        if self.empty {
-            return Ok(TryInsertResult::Empty);
-        }
         let res = self.insert_struct.exec_without_returning(db).await;
         match res {
             Ok(res) => Ok(TryInsertResult::Inserted(res)),
@@ -139,9 +125,6 @@ where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
     {
-        if self.empty {
-            return Ok(TryInsertResult::Empty);
-        }
         let res = self.insert_struct.exec_with_returning(db).await;
         match res {
             Ok(res) => Ok(TryInsertResult::Inserted(res)),
@@ -159,10 +142,6 @@ where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
     {
-        if self.empty {
-            return Ok(TryInsertResult::Empty);
-        }
-
         let res = self.insert_struct.exec_with_returning_keys(db).await;
         match res {
             Ok(res) => Ok(TryInsertResult::Inserted(res)),
@@ -180,10 +159,6 @@ where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
     {
-        if self.empty {
-            return Ok(TryInsertResult::Empty);
-        }
-
         let res = self.insert_struct.exec_with_returning_many(db).await;
         match res {
             Ok(res) => Ok(TryInsertResult::Inserted(res)),
@@ -277,7 +252,10 @@ impl<A> InsertMany<A>
 where
     A: ActiveModelTrait,
 {
-    /// Execute an insert operation
+    /// Execute an insert operation.
+    ///
+    /// The returned [`InsertManyResult::last_insert_id`] is `None` if the
+    /// iterator was empty or the last insert id is unavailable.
     pub async fn exec<C>(self, db: &C) -> Result<InsertManyResult<A>, DbErr>
     where
         C: ConnectionTrait,
@@ -291,6 +269,9 @@ where
         match res {
             Ok(r) => Ok(InsertManyResult {
                 last_insert_id: Some(r.last_insert_id),
+            }),
+            Err(DbErr::RecordNotInserted) => Ok(InsertManyResult {
+                last_insert_id: None,
             }),
             Err(err) => Err(err),
         }

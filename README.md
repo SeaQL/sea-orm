@@ -304,7 +304,7 @@ let result = Fruit::insert_many([apple, pear])
     .exec(db)
     .await?;
 
-matches!(result, TryInsertResult::Conflicted);
+result.last_insert_id.is_none();
 ```
 
 ### Update
