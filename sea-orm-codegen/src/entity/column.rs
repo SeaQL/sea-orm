@@ -205,6 +205,15 @@ impl Column {
                     Some(size) => quote! { ColumnType::Vector(Some(#size)) },
                     None => quote! { ColumnType::Vector(None) },
                 },
+                ColumnType::Year => quote! { ColumnType::Year },
+                ColumnType::Bit(s) => match s {
+                    Some(s) => quote! { ColumnType::Bit(Some(#s)) },
+                    None => quote! { ColumnType::Bit(None) },
+                },
+                ColumnType::VarBit(s) => quote! { ColumnType::VarBit(#s) },
+                ColumnType::MacAddr => quote! { ColumnType::MacAddr },
+                ColumnType::LTree => quote! { ColumnType::LTree },
+                ColumnType::Interval(_, _) => quote! { ColumnType::Interval(None, None) },
                 #[allow(unreachable_patterns)]
                 _ => unimplemented!(),
             }
@@ -761,5 +770,39 @@ mod tests {
         assert!(column.auto_increment);
         assert!(column.unique);
         assert!(column.not_null);
+    }
+
+    // Regression test for #3092: these column types are handled by the Rust-type
+    // mapping but used to hit `unimplemented!()` in `write_col_def`, panicking
+    // `generate entity --expanded-format`.
+    #[test]
+    fn test_get_def_extended_column_types() {
+        let col = |col_type| Column {
+            name: "c".to_owned(),
+            col_type,
+            auto_increment: false,
+            not_null: true,
+            unique: false,
+            unique_key: None,
+        };
+        let cases = [
+            (ColumnType::Year, "ColumnType::Year.def()"),
+            (
+                ColumnType::Bit(Some(8)),
+                "ColumnType::Bit(Some(8u32)).def()",
+            ),
+            (ColumnType::Bit(None), "ColumnType::Bit(None).def()"),
+            (ColumnType::VarBit(16), "ColumnType::VarBit(16u32).def()"),
+            (ColumnType::MacAddr, "ColumnType::MacAddr.def()"),
+            (ColumnType::LTree, "ColumnType::LTree.def()"),
+            (
+                ColumnType::Interval(None, None),
+                "ColumnType::Interval(None, None).def()",
+            ),
+        ];
+        for (col_type, expected) in cases {
+            let expected: TokenStream = expected.parse().unwrap();
+            assert_eq!(col(col_type).get_def().to_string(), expected.to_string());
+        }
     }
 }
