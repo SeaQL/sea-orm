@@ -77,6 +77,20 @@ fn process_comma_separated_values(values: Vec<String>) -> Vec<String> {
         .collect()
 }
 
+/// Whether a discovered SQLite column is a generated (computed) column.
+///
+/// Generated columns cannot be inserted or updated, so they are dropped from
+/// generated entities — emitting them as ordinary fields makes every
+/// `INSERT`/`UPDATE` fail with "cannot INSERT/UPDATE a generated column" (#3094).
+#[cfg(feature = "sqlx-sqlite")]
+fn sqlite_column_is_generated(col: &sea_schema::sqlite::def::ColumnInfo) -> bool {
+    use sea_schema::sqlite::def::ColumnVisibility;
+    matches!(
+        col.hidden,
+        ColumnVisibility::GeneratedVirtual | ColumnVisibility::GeneratedStored
+    )
+}
+
 pub async fn run_generate_command(
     command: GenerateSubcommands,
     verbose: bool,
@@ -214,7 +228,11 @@ pub async fn run_generate_command(
                             .filter(|schema| filter_tables(&schema.info.name))
                             .filter(|schema| filter_hidden_tables(&schema.info.name))
                             .filter(|schema| filter_skip_tables(&schema.info.name))
-                            .map(|schema| schema.write())
+                            .map(|mut schema| {
+                                // Skip generated columns (see #3094).
+                                schema.columns.retain(|col| !col.extra.generated);
+                                schema.write()
+                            })
                             .collect();
                         (None, table_stmts)
                     }
@@ -249,7 +267,15 @@ pub async fn run_generate_command(
                             .filter(|schema| filter_tables(&schema.name))
                             .filter(|schema| filter_hidden_tables(&schema.name))
                             .filter(|schema| filter_skip_tables(&schema.name))
-                            .map(|schema| schema.write())
+                            .map(|mut schema| {
+                                // Skip generated columns: codegen can't round-trip them, and
+                                // emitting them as ordinary fields makes INSERT/UPDATE fail
+                                // ("cannot INSERT/UPDATE a generated column"). See #3094.
+                                schema
+                                    .columns
+                                    .retain(|col| !sqlite_column_is_generated(col));
+                                schema.write()
+                            })
                             .collect();
                         (None, table_stmts)
                     }
@@ -282,7 +308,11 @@ pub async fn run_generate_command(
                             .filter(|schema| filter_tables(&schema.info.name))
                             .filter(|schema| filter_hidden_tables(&schema.info.name))
                             .filter(|schema| filter_skip_tables(&schema.info.name))
-                            .map(|schema| schema.write())
+                            .map(|mut schema| {
+                                // Skip generated columns (see #3094).
+                                schema.columns.retain(|col| col.generated.is_none());
+                                schema.write()
+                            })
                             .collect();
                         (database_schema, table_stmts)
                     }
@@ -667,5 +697,57 @@ mod tests {
             result,
             vec!["derive(Debug, Clone)", "derive(Serialize, Deserialize)"]
         );
+    }
+
+    // Regression test for #3094: generated columns must be dropped during
+    // `generate entity`, otherwise they are emitted as ordinary writable fields
+    // and every INSERT/UPDATE fails ("cannot INSERT/UPDATE a generated column").
+    #[cfg(feature = "sqlx-sqlite")]
+    #[test]
+    fn test_generate_entity_skips_sqlite_generated_columns() {
+        use sea_schema::sea_query::ColumnType;
+        use sea_schema::sqlite::def::{ColumnInfo, ColumnVisibility, DefaultType, TableDef};
+
+        let col = |cid, name: &str, hidden| ColumnInfo {
+            cid,
+            name: name.to_owned(),
+            r#type: ColumnType::Integer,
+            not_null: true,
+            default_value: DefaultType::Unspecified,
+            primary_key: cid == 0,
+            hidden,
+        };
+
+        let mut table = TableDef {
+            name: "widget".to_owned(),
+            foreign_keys: vec![],
+            indexes: vec![],
+            constraints: vec![],
+            columns: vec![
+                col(0, "id", ColumnVisibility::Visible),
+                col(1, "w", ColumnVisibility::Visible),
+                col(2, "area", ColumnVisibility::GeneratedVirtual),
+                col(3, "area_stored", ColumnVisibility::GeneratedStored),
+            ],
+            auto_increment: false,
+        };
+
+        // The predicate flags only the generated columns.
+        assert!(!super::sqlite_column_is_generated(&table.columns[0]));
+        assert!(!super::sqlite_column_is_generated(&table.columns[1]));
+        assert!(super::sqlite_column_is_generated(&table.columns[2]));
+        assert!(super::sqlite_column_is_generated(&table.columns[3]));
+
+        // After filtering + write(), generated columns are absent from the DDL.
+        table
+            .columns
+            .retain(|col| !super::sqlite_column_is_generated(col));
+        let stmt = table.write();
+        let names: Vec<String> = stmt
+            .get_columns()
+            .iter()
+            .map(|c| c.get_column_name())
+            .collect();
+        assert_eq!(names, ["id", "w"]);
     }
 }
