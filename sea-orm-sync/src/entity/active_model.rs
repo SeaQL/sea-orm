@@ -1333,14 +1333,12 @@ where
         // insert new junctions
         if db.support_returning() {
             // use the returned value if it is supported
-            let res = J::insert_many(via_models_res)
+            let inserted = J::insert_many(via_models_res)
                 .on_conflict_do_nothing()
-                .exec_with_returning_many(db)?;
+                .exec_with_returning(db)?;
             // run after_save hooks
-            if let TryInsertResult::Inserted(inserted) = res {
-                for model in inserted {
-                    let _ = J::ActiveModel::after_save(model, db, true)?;
-                }
+            for model in inserted {
+                let _ = J::ActiveModel::after_save(model, db, true)?;
             }
         } else {
             // fall back to individual inserts if returning is not supported

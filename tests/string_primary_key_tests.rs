@@ -4,7 +4,7 @@ pub mod common;
 
 pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{DatabaseConnection, TryInsertResult, entity::prelude::*, entity::*};
+use sea_orm::{DatabaseConnection, entity::prelude::*, entity::*};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -120,16 +120,11 @@ pub async fn insert_and_delete_repository(db: &DatabaseConnection) -> Result<(),
             .into_active_model(),
         ])
         .on_conflict_do_nothing()
-        .exec_with_returning_many(db)
+        .exec_with_returning(db)
         .await?;
 
-        match result {
-            TryInsertResult::Inserted(inserted) => {
-                assert_eq!(inserted.len(), 1);
-                assert_eq!(inserted[0].id, "unique-id-003");
-            }
-            _ => panic!("{result:?}"),
-        }
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].id, "unique-id-003");
     }
 
     Ok(())
