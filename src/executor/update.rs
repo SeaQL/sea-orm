@@ -19,6 +19,7 @@ pub struct Updater {
 /// Result of an `UPDATE` that doesn't return rows: how many rows were
 /// modified.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub struct UpdateResult {
     /// Number of rows touched by the statement.
     pub rows_affected: u64,

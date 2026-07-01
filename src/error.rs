@@ -15,6 +15,7 @@ use thiserror::Error;
 
 /// An error from unsuccessful database operations
 #[derive(Error, Debug, Clone)]
+#[non_exhaustive]
 pub enum DbErr {
     /// This error can happen when the connection pool is fully-utilized
     #[error("Failed to acquire connection from pool: {0}")]

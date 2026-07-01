@@ -10,6 +10,7 @@ use core::ops::{Index, IndexMut};
 /// ⚠️ **Unstable:** nested-`ActiveModel` relation mutation is exempt from semver — the
 /// semantics of replacing or removing related records may change in a minor (2.x) release.
 #[derive(Debug, Default, Clone)]
+#[non_exhaustive]
 pub enum HasOneModel<E: EntityTrait> {
     /// Field is absent; the related model is left as-is on save.
     #[default]
@@ -25,6 +26,7 @@ pub enum HasOneModel<E: EntityTrait> {
 /// ⚠️ **Unstable:** nested-`ActiveModel` relation mutation is exempt from semver — the
 /// semantics of replacing or removing related records may change in a minor (2.x) release.
 #[derive(Debug, Default, Clone)]
+#[non_exhaustive]
 pub enum HasManyModel<E: EntityTrait> {
     /// Field is absent; existing related models are left as-is on save.
     #[default]
