@@ -261,6 +261,17 @@ impl SchemaBuilder {
         Ok(())
     }
 
+    // Regression guard for #3100: `sync()` must return a `Send` future, otherwise it
+    // cannot be used from `tokio::spawn` / most async runtimes. Compiled (never called)
+    // whenever `schema-sync` + a backend is on, so a future dep bump that reintroduces a
+    // `!Send` value across an await fails the build here.
+    #[allow(dead_code)]
+    #[cfg(all(feature = "schema-sync", feature = "sqlx-sqlite"))]
+    fn _assert_sync_future_is_send(self, db: &crate::DatabaseConnection) {
+        fn assert_send<T: Send>(_: &T) {}
+        assert_send(&self.sync(db));
+    }
+
     fn sorted_tables(&self) -> Vec<TableName> {
         let mut sorter = TopologicalSort::<TableName>::new();
 
