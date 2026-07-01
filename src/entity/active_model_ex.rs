@@ -6,6 +6,9 @@ use core::ops::{Index, IndexMut};
 /// [`ActiveModelEx`](crate::EntityTrait::ActiveModelEx). Mirrors the
 /// `NotSet` / `Set` shape of [`ActiveValue`](crate::ActiveValue) but for a
 /// related model.
+///
+/// ⚠️ **Unstable:** nested-`ActiveModel` relation mutation is exempt from semver — the
+/// semantics of replacing or removing related records may change in a minor (2.x) release.
 #[derive(Debug, Default, Clone)]
 pub enum HasOneModel<E: EntityTrait> {
     /// Field is absent; the related model is left as-is on save.
@@ -18,6 +21,9 @@ pub enum HasOneModel<E: EntityTrait> {
 /// State carried by a `has_many` (or many-to-many) field on an
 /// [`ActiveModelEx`](crate::EntityTrait::ActiveModelEx). Chooses between
 /// "leave alone", "additive write", and "destructive replace" semantics.
+///
+/// ⚠️ **Unstable:** nested-`ActiveModel` relation mutation is exempt from semver — the
+/// semantics of replacing or removing related records may change in a minor (2.x) release.
 #[derive(Debug, Default, Clone)]
 pub enum HasManyModel<E: EntityTrait> {
     /// Field is absent; existing related models are left as-is on save.

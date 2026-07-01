@@ -76,6 +76,9 @@ impl SchemaBuilder {
 
     /// Synchronize the schema with database, will create missing tables, columns, unique keys, and foreign keys.
     /// This operation is addition only, will not drop any table / columns.
+    ///
+    /// ⚠️ **Unstable:** schema sync is experimental and exempt from semver — its behaviour
+    /// (currently additive-only) and signature may change in a minor (2.x) release.
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
     pub async fn sync<C>(self, db: &C) -> Result<(), DbErr>
