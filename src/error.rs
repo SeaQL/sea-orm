@@ -201,7 +201,13 @@ where
     DbErr::Json(s.to_string())
 }
 
-/// An error from unsuccessful SQL query
+/// A portable, backend-agnostic classification of the most common SQL
+/// constraint violations, produced by [`DbErr::sql_err`].
+///
+/// Only unique-key and foreign-key violations are recognized. For any other
+/// failure, or for backend-specific detail (SQLSTATE, driver error codes,
+/// check constraints, and so on), inspect the underlying driver error instead —
+/// see [`DbErr::sql_err`] for the pattern.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SqlErr {
@@ -215,7 +221,33 @@ pub enum SqlErr {
 
 #[allow(dead_code)]
 impl DbErr {
-    /// Convert generic DbErr by sqlx to SqlErr, return none if the error is not any type of SqlErr
+    /// Classify this error as a portable [`SqlErr`] — a unique-key or
+    /// foreign-key constraint violation — returning `None` if it is neither, or
+    /// if it did not originate from a database driver.
+    ///
+    /// Only the two most common constraint violations are recognized, across
+    /// MySQL, Postgres and SQLite. For anything else (SQLSTATE codes, check
+    /// constraints, other driver-specific detail) match on the underlying
+    /// `RuntimeErr::SqlxError` and inspect the driver error yourself:
+    ///
+    /// ```
+    /// # #[cfg(feature = "sqlx-postgres")]
+    /// # fn example(err: sea_orm::DbErr) {
+    /// use sea_orm::{DbErr, RuntimeErr};
+    /// use std::ops::Deref;
+    ///
+    /// if let Some(sql_err) = err.sql_err() {
+    ///     // Portable across MySQL / Postgres / SQLite.
+    ///     eprintln!("constraint violation: {sql_err}");
+    /// } else if let DbErr::Query(RuntimeErr::SqlxError(e)) | DbErr::Exec(RuntimeErr::SqlxError(e)) =
+    ///     &err
+    ///     && let sea_orm::sqlx::Error::Database(db_err) = e.deref()
+    /// {
+    ///     // Backend-specific: inspect the raw driver error.
+    ///     eprintln!("SQLSTATE: {:?}", db_err.code());
+    /// }
+    /// # }
+    /// ```
     pub fn sql_err(&self) -> Option<SqlErr> {
         #[cfg(any(
             feature = "sqlx-mysql",
