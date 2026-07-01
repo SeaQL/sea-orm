@@ -74,7 +74,7 @@ sea-query = { version = "~1.0.0", default-features = false, features = [
     "sea-orm",
 ] }
 sea-query-sqlx = { version = "0.9", default-features = false, optional = true }
-sea-schema = { version = "0.18.0", default-features = false, features = [
+sea-schema = { version = "0.18.1", default-features = false, features = [
     "discovery",
     "writer",
     "probe",
