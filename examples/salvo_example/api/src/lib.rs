@@ -2,7 +2,7 @@ pub mod service;
 
 use entity::post;
 use migration::{Migrator, MigratorTrait};
-use salvo::affix;
+use salvo::affix_state;
 use salvo::prelude::*;
 use sea_orm::{Database, DatabaseConnection};
 use service::{Mutation, Query};
@@ -21,7 +21,7 @@ struct AppState {
 async fn create(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Result<()> {
     let state = depot
         .obtain::<AppState>()
-        .ok_or_else(StatusError::internal_server_error)?;
+        .map_err(|_| StatusError::internal_server_error())?;
     let conn = &state.conn;
 
     let form = req
@@ -41,7 +41,7 @@ async fn create(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
 async fn list(req: &mut Request, depot: &mut Depot) -> Result<Text<String>> {
     let state = depot
         .obtain::<AppState>()
-        .ok_or_else(StatusError::internal_server_error)?;
+        .map_err(|_| StatusError::internal_server_error())?;
     let conn = &state.conn;
 
     let page = req.query("page").unwrap_or(1);
@@ -70,7 +70,7 @@ async fn list(req: &mut Request, depot: &mut Depot) -> Result<Text<String>> {
 async fn new(depot: &mut Depot) -> Result<Text<String>> {
     let state = depot
         .obtain::<AppState>()
-        .ok_or_else(StatusError::internal_server_error)?;
+        .map_err(|_| StatusError::internal_server_error())?;
     let ctx = tera::Context::new();
     let body = state
         .templates
@@ -83,7 +83,7 @@ async fn new(depot: &mut Depot) -> Result<Text<String>> {
 async fn edit(req: &mut Request, depot: &mut Depot) -> Result<Text<String>> {
     let state = depot
         .obtain::<AppState>()
-        .ok_or_else(StatusError::internal_server_error)?;
+        .map_err(|_| StatusError::internal_server_error())?;
     let conn = &state.conn;
     let id = req.param::<i32>("id").unwrap_or_default();
 
@@ -106,7 +106,7 @@ async fn edit(req: &mut Request, depot: &mut Depot) -> Result<Text<String>> {
 async fn update(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Result<()> {
     let state = depot
         .obtain::<AppState>()
-        .ok_or_else(StatusError::internal_server_error)?;
+        .map_err(|_| StatusError::internal_server_error())?;
     let conn = &state.conn;
     let id = req.param::<i32>("id").unwrap_or_default();
     let form = req
@@ -126,7 +126,7 @@ async fn update(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
 async fn delete(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Result<()> {
     let state = depot
         .obtain::<AppState>()
-        .ok_or_else(StatusError::internal_server_error)?;
+        .map_err(|_| StatusError::internal_server_error())?;
     let conn = &state.conn;
     let id = req.param::<i32>("id").unwrap_or_default();
 
@@ -158,14 +158,14 @@ pub async fn main() {
     println!("Starting server at {server_url}");
 
     let router = Router::new()
-        .hoop(affix::inject(state))
+        .hoop(affix_state::inject(state))
         .post(create)
         .get(list)
         .push(Router::with_path("new").get(new))
-        .push(Router::with_path("<id>").get(edit).post(update))
-        .push(Router::with_path("delete/<id>").post(delete))
+        .push(Router::with_path("{id}").get(edit).post(update))
+        .push(Router::with_path("delete/{id}").post(delete))
         .push(
-            Router::with_path("static/<**>").get(salvo::prelude::StaticDir::new(concat!(
+            Router::with_path("static/{**path}").get(salvo::prelude::StaticDir::new(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/static"
             ))),
