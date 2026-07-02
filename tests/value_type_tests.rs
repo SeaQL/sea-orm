@@ -9,8 +9,8 @@ pub use common::{
     TestContext,
     features::{
         value_type::{
-            MyInteger, StringVec, Tag1, Tag2, Tag3, Tag4, Tag5, value_type_general, value_type_pg,
-            value_type_pk,
+            GoodId, GoodIdArray, MyInteger, StringVec, Tag1, Tag2, Tag3, Tag4, Tag5,
+            value_type_general, value_type_pg, value_type_pk,
         },
         *,
     },
@@ -18,7 +18,7 @@ pub use common::{
 };
 use pretty_assertions::assert_eq;
 use sea_orm::{
-    DatabaseConnection, DbBackend, QuerySelect,
+    DatabaseConnection, DbBackend, FromQueryResult, QuerySelect, Statement,
     entity::{prelude::*, *},
 };
 use sea_query::{ArrayType, ColumnType, PostgresQueryBuilder, Value, ValueType, ValueTypeErr};
@@ -98,6 +98,15 @@ pub async fn insert_value_postgres(db: &DatabaseConnection) -> Result<(), DbErr>
     let row = db.query_one(&query).await?.unwrap();
     let value: u32 = row.try_get("", "number").unwrap();
     assert_eq!(value, 48u32);
+
+    let good_ids = GoodIdArray::find_by_statement(Statement::from_string(
+        DbBackend::Postgres,
+        "SELECT ARRAY[1, 2, 3]::int4[] AS ids",
+    ))
+    .one(db)
+    .await?
+    .unwrap();
+    assert_eq!(good_ids.ids, vec![GoodId(1), GoodId(2), GoodId(3)]);
 
     Ok(())
 }
