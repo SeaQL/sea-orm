@@ -732,3 +732,46 @@ fn test_active_model_ex_film_store() -> Result<(), DbErr> {
 
     Ok(())
 }
+
+#[sea_orm_macros::test]
+fn test_has_one_replace_and_delete() -> Result<(), DbErr> {
+    use common::blogger::*;
+
+    let ctx = TestContext::new("test_has_one_replace_and_delete");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(user::Entity)
+        .register(user_follower::Entity)
+        .register(profile::Entity)
+        .register(post::Entity)
+        .register(post_tag::Entity)
+        .register(tag::Entity)
+        .register(attachment::Entity)
+        .register(comment::Entity)
+        .apply(db)?;
+
+    info!("#3061: replacing a populated HasOne deletes the old record instead of erroring");
+    let user = user::ActiveModel::builder()
+        .set_name("Rick")
+        .set_email("rick@sea-ql.org")
+        .set_profile(profile::ActiveModel::builder().set_picture("first.jpg"))
+        .save(db)?;
+
+    let user = user
+        .set_profile(profile::ActiveModel::builder().set_picture("second.jpg"))
+        .save(db)?;
+
+    let profiles = profile::Entity::find().all(db)?;
+    assert_eq!(profiles.len(), 1);
+    assert_eq!(profiles[0].picture, "second.jpg");
+
+    info!("#3060: delete the HasOne via the generated delete_<field> builder");
+    user.delete_profile().save(db)?;
+
+    assert!(profile::Entity::find().all(db)?.is_empty());
+
+    ctx.delete();
+
+    Ok(())
+}
