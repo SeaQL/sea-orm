@@ -6,19 +6,30 @@ use core::ops::{Index, IndexMut};
 /// [`ActiveModelEx`](crate::EntityTrait::ActiveModelEx). Mirrors the
 /// `NotSet` / `Set` shape of [`ActiveValue`](crate::ActiveValue) but for a
 /// related model.
+///
+/// Unstable: nested-`ActiveModel` relation mutation is exempt from semver — the
+/// semantics of replacing or removing related records may change in a minor (2.x) release.
 #[derive(Debug, Default, Clone)]
+#[non_exhaustive]
 pub enum HasOneModel<E: EntityTrait> {
     /// Field is absent; the related model is left as-is on save.
     #[default]
     NotSet,
-    /// Field is being assigned to this related ActiveModel on save.
+    /// Assign this related ActiveModel on save. Any existing linked record is
+    /// replaced (the old one is deleted or orphaned, then this one is written).
     Set(Box<E::ActiveModelEx>),
+    /// Delete (or orphan, if the foreign key is nullable) the existing linked record on save.
+    Delete,
 }
 
 /// State carried by a `has_many` (or many-to-many) field on an
 /// [`ActiveModelEx`](crate::EntityTrait::ActiveModelEx). Chooses between
 /// "leave alone", "additive write", and "destructive replace" semantics.
+///
+/// Unstable: nested-`ActiveModel` relation mutation is exempt from semver — the
+/// semantics of replacing or removing related records may change in a minor (2.x) release.
 #[derive(Debug, Default, Clone)]
+#[non_exhaustive]
 pub enum HasManyModel<E: EntityTrait> {
     /// Field is absent; existing related models are left as-is on save.
     #[default]
@@ -107,11 +118,39 @@ where
         }
     }
 
+    /// Return true if self is `Delete`
+    pub fn is_delete(&self) -> bool {
+        matches!(self, Self::Delete)
+    }
+
+    /// Borrow the set model as a slice (length 0 or 1); used for type inference
+    /// and primary-key comparison against the live database.
+    #[doc(hidden)]
+    pub fn as_slice(&self) -> &[E::ActiveModelEx] {
+        match self {
+            Self::Set(model) => std::slice::from_ref(model.as_ref()),
+            _ => &[],
+        }
+    }
+
+    /// Return true if the set model's primary key matches `model`.
+    pub fn find(&self, model: &E::Model) -> bool {
+        let pk = model.get_primary_key_value();
+        for item in self.as_slice() {
+            if let Some(pk_item) = item.get_primary_key_value()
+                && pk_item == pk
+            {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Convert into an `Option<ActiveModelEx>`
     pub fn into_option(self) -> Option<E::ActiveModelEx> {
         match self {
             Self::Set(model) => Some(*model),
-            Self::NotSet => None,
+            Self::NotSet | Self::Delete => None,
         }
     }
 
@@ -128,7 +167,7 @@ where
     {
         Ok(match self {
             Self::Set(model) => HasOne::Loaded(Box::new((*model).try_into_model()?)),
-            Self::NotSet => HasOne::Unloaded,
+            Self::NotSet | Self::Delete => HasOne::Unloaded,
         })
     }
 }
@@ -142,6 +181,7 @@ where
         match (self, other) {
             (HasOneModel::NotSet, HasOneModel::NotSet) => true,
             (HasOneModel::Set(a), HasOneModel::Set(b)) => a == b,
+            (HasOneModel::Delete, HasOneModel::Delete) => true,
             _ => false,
         }
     }
