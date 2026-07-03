@@ -84,6 +84,16 @@ where
     }
 }
 
+impl<E> From<HasMany<E>> for ActiveHasMany<E>
+where
+    E: EntityTrait,
+    E::ActiveModelEx: From<E::ModelEx>,
+{
+    fn from(value: HasMany<E>) -> Self {
+        value.into_active_model()
+    }
+}
+
 impl<E: EntityTrait> From<HasMany<E>> for Option<Vec<E::ModelEx>> {
     fn from(value: HasMany<E>) -> Self {
         match value {

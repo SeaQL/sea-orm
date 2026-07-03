@@ -208,6 +208,122 @@ where
 {
 }
 
+/// State carried by a **non-nullable** `belongs_to` field on an
+/// [`ActiveModelEx`](crate::EntityTrait::ActiveModelEx). Like [`ActiveHasOne`], but
+/// with no `Delete` variant: a non-nullable foreign key can't be set to `NULL`, so the
+/// relation can't be detached — that state is simply not representable, making the
+/// "can't delete a non-nullable belongs_to" rule a compile-time guarantee.
+///
+/// Unstable: nested-`ActiveModel` relation mutation is exempt from semver — the
+/// semantics may change in a minor (2.x) release.
+#[derive(Debug, Default, Clone)]
+#[non_exhaustive]
+pub enum ActiveBelongsToNotNull<E: EntityTrait> {
+    /// Field is absent; the related model is left as-is on save.
+    #[default]
+    NotSet,
+    /// Assign this related ActiveModel on save.
+    Set(Box<E::ActiveModelEx>),
+}
+
+impl<E> ActiveBelongsToNotNull<E>
+where
+    E: EntityTrait,
+{
+    /// Construct a `Set`
+    pub fn set<AM: Into<E::ActiveModelEx>>(model: AM) -> Self {
+        Self::Set(Box::new(model.into()))
+    }
+
+    /// Replace the inner model
+    pub fn replace<AM: Into<E::ActiveModelEx>>(&mut self, model: AM) {
+        *self = Self::Set(Box::new(model.into()));
+    }
+
+    /// Take ownership of this model, leaving `NotSet` in place
+    pub fn take(&mut self) -> Option<E::ActiveModelEx> {
+        match std::mem::take(self) {
+            Self::Set(model) => Some(*model),
+            _ => None,
+        }
+    }
+
+    /// Get a reference, if set
+    pub fn as_ref(&self) -> Option<&E::ActiveModelEx> {
+        match self {
+            Self::Set(model) => Some(model),
+            _ => None,
+        }
+    }
+
+    /// Get a mutable reference, if set
+    #[allow(clippy::should_implement_trait)]
+    pub fn as_mut(&mut self) -> Option<&mut E::ActiveModelEx> {
+        match self {
+            Self::Set(model) => Some(model),
+            _ => None,
+        }
+    }
+
+    /// Return true if there is a model
+    pub fn is_set(&self) -> bool {
+        matches!(self, Self::Set(_))
+    }
+
+    /// Return true if self is NotSet
+    pub fn is_not_set(&self) -> bool {
+        matches!(self, Self::NotSet)
+    }
+
+    /// Return true if the containing model is set and changed
+    pub fn is_changed(&self) -> bool {
+        match self {
+            Self::Set(model) => model.is_changed(),
+            _ => false,
+        }
+    }
+
+    /// Convert into an `Option<ActiveModelEx>`
+    pub fn into_option(self) -> Option<E::ActiveModelEx> {
+        match self {
+            Self::Set(model) => Some(*model),
+            Self::NotSet => None,
+        }
+    }
+
+    /// Convert this back to a `ModelEx` container
+    pub fn try_into_model(self) -> Result<HasOne<E>, DbErr>
+    where
+        E::ActiveModelEx: TryIntoModel<E::ModelEx>,
+    {
+        Ok(match self {
+            Self::Set(model) => HasOne::Loaded(Box::new((*model).try_into_model()?)),
+            Self::NotSet => HasOne::Unloaded,
+        })
+    }
+}
+
+impl<E> PartialEq for ActiveBelongsToNotNull<E>
+where
+    E: EntityTrait,
+    E::ActiveModelEx: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::NotSet, Self::NotSet) => true,
+            (Self::Set(a), Self::Set(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl<E> Eq for ActiveBelongsToNotNull<E>
+where
+    E: EntityTrait,
+    E::ActiveModelEx: Eq,
+{
+}
+
 impl<E> ActiveHasMany<E>
 where
     E: EntityTrait,

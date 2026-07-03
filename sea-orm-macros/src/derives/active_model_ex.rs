@@ -1,6 +1,7 @@
 use super::active_model::DeriveActiveModel;
 use super::attributes::compound_attr;
 use super::util::{extract_compound_entity, field_not_ignored_compound, is_compound_field};
+use heck::ToSnakeCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::HashMap;
@@ -25,6 +26,8 @@ pub fn expand_derive_active_model_ex(
     let mut has_many_self_fields = Vec::new();
     let mut has_many_via_fields = Vec::new();
     let mut has_many_via_self_fields = Vec::new();
+    // belongs_to field name -> (self-FK is non-nullable, FK column ident)
+    let mut belongs_to_meta: HashMap<String, (bool, Option<Ident>)> = HashMap::new();
 
     let (async_, await_) = async_await();
 
@@ -44,20 +47,26 @@ pub fn expand_derive_active_model_ex(
         })?;
 
     let mut entity_count = HashMap::new();
+    // Column name -> whether the scalar column is nullable (`Option<_>`). Used to decide
+    // whether a `belongs_to`'s self-FK can be detached (only nullable ones can).
+    let mut column_nullable: HashMap<String, bool> = HashMap::new();
 
     if let Data::Struct(item_struct) = &data {
         if let Fields::Named(fields) = &item_struct.fields {
             for field in fields.named.iter() {
-                if field.ident.is_some() && field_not_ignored_compound(field) {
+                if let Some(ident) = &field.ident {
                     let field_type = &field.ty;
                     let field_type: String = quote! { #field_type }
                         .to_string() // e.g.: "Option < String >"
                         .split_whitespace()
                         .collect(); // Remove all whitespace
 
-                    if is_compound_field(&field_type) {
+                    if field_not_ignored_compound(field) && is_compound_field(&field_type) {
                         let entity_path = extract_compound_entity(&field_type);
                         *entity_count.entry(entity_path.to_owned()).or_insert(0) += 1;
+                    } else {
+                        column_nullable
+                            .insert(ident.to_string(), field_type.starts_with("Option<"));
                     }
                 }
             }
@@ -103,6 +112,25 @@ pub fn expand_derive_active_model_ex(
                                     // can only Related to another Entity once
                                     if compound_attrs.belongs_to.is_some() {
                                         belongs_to_fields.push(ident.clone());
+                                        // `from` may be a Column name (`BakeryId`) or a field
+                                        // name (`user_id`); the FK field is always its snake_case.
+                                        let from_col = compound_attrs
+                                            .from
+                                            .as_ref()
+                                            .map(|f| f.value().to_snake_case());
+                                        let not_null = from_col
+                                            .as_ref()
+                                            .and_then(|c| column_nullable.get(c).copied())
+                                            .map(|nullable| !nullable)
+                                            .unwrap_or(false);
+                                        // Only detach single-column FKs we can resolve to a
+                                        // real scalar column (skip composite / unknown `from`).
+                                        let fk_col = from_col
+                                            .as_deref()
+                                            .filter(|c| column_nullable.contains_key(*c))
+                                            .and_then(|c| syn::parse_str::<Ident>(c).ok());
+                                        belongs_to_meta
+                                            .insert(ident.to_string(), (not_null, fk_col));
                                     } else if compound_attrs.has_one.is_some() {
                                         has_one_fields.push(ident.clone());
                                     } else if compound_attrs.has_many.is_some()
@@ -142,7 +170,17 @@ pub fn expand_derive_active_model_ex(
                             }
 
                             if field_type.starts_with("HasOne<") {
-                                syn::parse_str(&format!("ActiveHasOne < {entity_path} >"))?
+                                let not_null = belongs_to_meta
+                                    .get(&ident.to_string())
+                                    .map(|(nn, _)| *nn)
+                                    .unwrap_or(false);
+                                if not_null {
+                                    syn::parse_str(&format!(
+                                        "ActiveBelongsToNotNull < {entity_path} >"
+                                    ))?
+                                } else {
+                                    syn::parse_str(&format!("ActiveHasOne < {entity_path} >"))?
+                                }
                             } else {
                                 syn::parse_str(&format!("ActiveHasMany < {entity_path} >"))?
                             }
@@ -171,9 +209,10 @@ pub fn expand_derive_active_model_ex(
         &has_many_self_fields,
         &has_many_via_fields,
         &has_many_via_self_fields,
+        &belongs_to_meta,
     );
 
-    let active_model_setters = expand_active_model_setters(data)?;
+    let active_model_setters = expand_active_model_setters(data, &belongs_to_meta)?;
 
     let mut is_changed_expr = quote!(false);
 
@@ -259,7 +298,7 @@ pub fn expand_derive_active_model_ex(
             fn from(m: ModelEx) -> Self {
                 Self {
                     #(#scalar_fields: sea_orm::ActiveValue::Unchanged(m.#scalar_fields),)*
-                    #(#compound_fields: m.#compound_fields.into_active_model(),)*
+                    #(#compound_fields: m.#compound_fields.into(),)*
                 }
             }
         }
@@ -325,6 +364,7 @@ pub fn expand_derive_active_model_ex(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn expand_active_model_action(
     belongs_to: &[Ident],
     belongs_to_self: &[(Ident, LitStr)],
@@ -333,6 +373,7 @@ fn expand_active_model_action(
     has_many_self: &[(Ident, LitStr)],
     has_many_via: &[(Ident, String)],
     has_many_via_self: &[(Ident, String, bool)],
+    belongs_to_meta: &HashMap<String, (bool, Option<Ident>)>,
 ) -> TokenStream {
     let mut belongs_to_action = TokenStream::new();
     let mut belongs_to_after_action = TokenStream::new();
@@ -354,7 +395,27 @@ fn expand_active_model_action(
     };
 
     for field in belongs_to {
+        let (not_null, fk_col) = belongs_to_meta
+            .get(&field.to_string())
+            .cloned()
+            .unwrap_or((false, None));
+        // Non-nullable belongs_to fields are `ActiveBelongsToNotNull` (no `Delete`); nullable
+        // ones are `ActiveHasOne` and support detach (`Delete` -> null the self FK).
+        let ctor = if not_null {
+            quote!(ActiveBelongsToNotNull)
+        } else {
+            quote!(ActiveHasOne)
+        };
+        let detach = match (not_null, &fk_col) {
+            (false, Some(fk)) => quote! {
+                if self.#field.is_delete() {
+                    self.#fk = sea_orm::ActiveValue::Set(None);
+                }
+            },
+            _ => quote!(),
+        };
         belongs_to_action.extend(quote! {
+            #detach
             let #field = if let Some(model) = self.#field.take() {
                 if model.is_update() {
                     // has primary key
@@ -378,7 +439,7 @@ fn expand_active_model_action(
 
         belongs_to_after_action.extend(quote! {
             if let Some(#field) = #field {
-                model.#field = ActiveHasOne::set(#field);
+                model.#field = #ctor::set(#field);
             }
         });
     }
@@ -676,7 +737,10 @@ fn expand_active_model_action(
         where
             C: sea_orm::TransactionTrait,
         {
-            use sea_orm::{ActiveHasOne, ActiveHasMany, IntoActiveModel, TransactionSession};
+            use sea_orm::{
+                ActiveBelongsToNotNull, ActiveHasMany, ActiveHasOne, IntoActiveModel,
+                TransactionSession,
+            };
             let txn = db.begin()#await_?;
             let db = &txn;
             let mut deleted = sea_orm::DeleteResult::empty();
@@ -714,7 +778,10 @@ fn expand_active_model_action(
     }
 }
 
-fn expand_active_model_setters(data: &Data) -> syn::Result<TokenStream> {
+fn expand_active_model_setters(
+    data: &Data,
+    belongs_to_meta: &HashMap<String, (bool, Option<Ident>)>,
+) -> syn::Result<TokenStream> {
     let mut setters = TokenStream::new();
 
     if let Data::Struct(item_struct) = &data {
@@ -757,8 +824,6 @@ fn expand_active_model_setters(data: &Data) -> syn::Result<TokenStream> {
 
                         if field_type_str.starts_with("HasOne<") {
                             let setter = format_ident!("set_{}", ident);
-                            let setter_option = format_ident!("set_{}_option", ident);
-                            let deleter = format_ident!("delete_{}", ident);
 
                             setters.extend(quote! {
                                 #[doc = " Generated by sea-orm-macros"]
@@ -766,22 +831,36 @@ fn expand_active_model_setters(data: &Data) -> syn::Result<TokenStream> {
                                     self.#ident.replace(v.into());
                                     self
                                 }
-
-                                #[doc = " Generated by sea-orm-macros"]
-                                pub fn #setter_option(mut self, v: Option<impl Into<#active_model_type>>) -> Self {
-                                    self.#ident = match v {
-                                        Some(v) => sea_orm::ActiveHasOne::set(v.into()),
-                                        None => sea_orm::ActiveHasOne::Delete,
-                                    };
-                                    self
-                                }
-
-                                #[doc = " Generated by sea-orm-macros"]
-                                pub fn #deleter(mut self) -> Self {
-                                    self.#ident = sea_orm::ActiveHasOne::Delete;
-                                    self
-                                }
                             });
+
+                            // Detach builders (`set_<field>_option`, `delete_<field>`) are only
+                            // valid where the relation can be nulled: has_one, or a nullable
+                            // belongs_to. A non-nullable belongs_to is `ActiveBelongsToNotNull`,
+                            // which has no `Delete`, so we don't emit them.
+                            let not_null = belongs_to_meta
+                                .get(&ident.to_string())
+                                .map(|(nn, _)| *nn)
+                                .unwrap_or(false);
+                            if !not_null {
+                                let setter_option = format_ident!("set_{}_option", ident);
+                                let deleter = format_ident!("delete_{}", ident);
+                                setters.extend(quote! {
+                                    #[doc = " Generated by sea-orm-macros"]
+                                    pub fn #setter_option(mut self, v: Option<impl Into<#active_model_type>>) -> Self {
+                                        self.#ident = match v {
+                                            Some(v) => sea_orm::ActiveHasOne::set(v.into()),
+                                            None => sea_orm::ActiveHasOne::Delete,
+                                        };
+                                        self
+                                    }
+
+                                    #[doc = " Generated by sea-orm-macros"]
+                                    pub fn #deleter(mut self) -> Self {
+                                        self.#ident = sea_orm::ActiveHasOne::Delete;
+                                        self
+                                    }
+                                });
+                            }
                         } else {
                             let setter = format_ident!(
                                 "add_{}",

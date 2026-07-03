@@ -1,4 +1,4 @@
-use crate::{ActiveHasOne, EntityTrait};
+use crate::{ActiveBelongsToNotNull, ActiveHasOne, EntityTrait};
 use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Default, Clone)]
@@ -90,6 +90,33 @@ where
             }
             HasOne::Unloaded => ActiveHasOne::NotSet,
             HasOne::NotFound => ActiveHasOne::NotSet,
+        }
+    }
+}
+
+impl<E> From<HasOne<E>> for ActiveHasOne<E>
+where
+    E: EntityTrait,
+    E::ActiveModelEx: From<E::ModelEx>,
+{
+    fn from(value: HasOne<E>) -> Self {
+        value.into_active_model()
+    }
+}
+
+impl<E> From<HasOne<E>> for ActiveBelongsToNotNull<E>
+where
+    E: EntityTrait,
+    E::ActiveModelEx: From<E::ModelEx>,
+{
+    fn from(value: HasOne<E>) -> Self {
+        match value {
+            HasOne::Loaded(_) => {
+                let model = value.unwrap();
+                let active_model: E::ActiveModelEx = model.into();
+                ActiveBelongsToNotNull::Set(active_model.into())
+            }
+            HasOne::Unloaded | HasOne::NotFound => ActiveBelongsToNotNull::NotSet,
         }
     }
 }
