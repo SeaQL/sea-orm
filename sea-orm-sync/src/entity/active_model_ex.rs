@@ -60,7 +60,7 @@ impl<E> ActiveHasOne<E>
 where
     E: EntityTrait,
 {
-    /// Construct a `ActiveHasOne::Set`
+    /// Construct an `ActiveHasOne::Set`
     pub fn set<AM: Into<E::ActiveModelEx>>(model: AM) -> Self {
         Self::Set(Box::new(model.into()))
     }
