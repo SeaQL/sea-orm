@@ -18,6 +18,7 @@ pub struct Deleter {
 
 /// Result of a `DELETE`: how many rows were removed.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct DeleteResult {
     /// Number of rows removed by the statement.
     pub rows_affected: u64,

@@ -445,6 +445,8 @@ mod tests {
         DbBackend, DbErr, IntoMockRow, MockDatabase, Statement, Transaction, TransactionError,
         TransactionTrait, entity::*, error::*, tests_cfg::*,
     };
+    // In the sync variant `StreamShim` provides `try_next`; `futures_util` isn't a dependency there.
+    #[cfg(not(feature = "sync"))]
     use futures_util::TryStreamExt;
     use pretty_assertions::assert_eq;
 
