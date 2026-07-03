@@ -44,18 +44,18 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(1),
             user_id: Unchanged(1),
             title: Unchanged("post 1".into()),
-            author: HasOneModel::set(user::ActiveModelEx {
+            author: ActiveHasOne::set(user::ActiveModelEx {
                 id: Unchanged(1),
                 name: Unchanged("Alice".into()),
                 email: Unchanged("@1".into()),
-                profile: HasOneModel::NotSet,
-                posts: HasManyModel::NotSet,
-                followers: HasManyModel::NotSet,
-                following: HasManyModel::NotSet,
+                profile: ActiveHasOne::NotSet,
+                posts: ActiveHasMany::NotSet,
+                followers: ActiveHasMany::NotSet,
+                following: ActiveHasMany::NotSet,
             }),
-            comments: HasManyModel::NotSet,
-            attachments: HasManyModel::NotSet,
-            tags: HasManyModel::NotSet,
+            comments: ActiveHasMany::NotSet,
+            attachments: ActiveHasMany::NotSet,
+            tags: ActiveHasMany::NotSet,
         }
     );
 
@@ -68,7 +68,7 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
     if false {
         post::ActiveModelEx {
             title: Set("post 2".into()),
-            author: HasOneModel::set(user::ActiveModelEx {
+            author: ActiveHasOne::set(user::ActiveModelEx {
                 name: Set("Bob".into()),
                 email: Set("@2".into()),
                 ..Default::default()
@@ -83,7 +83,7 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(2),
             user_id: Unchanged(2),
             title: Unchanged("post 2".into()),
-            author: HasOneModel::set(user::ActiveModelEx {
+            author: ActiveHasOne::set(user::ActiveModelEx {
                 id: Unchanged(2),
                 name: Unchanged("Bob".into()),
                 email: Unchanged("@2".into()),
@@ -104,7 +104,7 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
         user::ActiveModelEx {
             name: Set("Sam".into()),
             email: Set("@3".into()),
-            profile: HasOneModel::set(profile::ActiveModelEx {
+            profile: ActiveHasOne::set(profile::ActiveModelEx {
                 picture: Set("Sam.jpg".into()),
                 ..Default::default()
             }),
@@ -118,11 +118,11 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(3),
             name: Unchanged("Sam".into()),
             email: Unchanged("@3".into()),
-            profile: HasOneModel::set(profile::ActiveModelEx {
+            profile: ActiveHasOne::set(profile::ActiveModelEx {
                 id: Unchanged(1),
                 picture: Unchanged("Sam.jpg".into()),
                 user_id: Unchanged(3),
-                user: HasOneModel::NotSet,
+                user: ActiveHasOne::NotSet,
             }),
             ..Default::default()
         }
@@ -143,13 +143,13 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(4),
             name: Unchanged("Alan".into()),
             email: Unchanged("@4".into()),
-            profile: HasOneModel::set(profile::ActiveModelEx {
+            profile: ActiveHasOne::set(profile::ActiveModelEx {
                 id: Unchanged(2),
                 picture: Unchanged("Alan.jpg".into()),
                 user_id: Unchanged(4),
-                user: HasOneModel::NotSet,
+                user: ActiveHasOne::NotSet,
             }),
-            posts: HasManyModel::Append(vec![
+            posts: ActiveHasMany::Append(vec![
                 post::ActiveModelEx {
                     id: Unchanged(3),
                     user_id: Unchanged(4),
@@ -163,8 +163,8 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
                     ..Default::default()
                 },
             ]),
-            followers: HasManyModel::NotSet,
-            following: HasManyModel::NotSet,
+            followers: ActiveHasMany::NotSet,
+            following: ActiveHasMany::NotSet,
         }
     );
 
@@ -174,9 +174,9 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
     assert_eq!(posts[1].id, 4);
 
     info!("replace posts of user: delete 3,4; insert 5 with attachment");
-    user.posts = HasManyModel::Replace(vec![post::ActiveModelEx {
+    user.posts = ActiveHasMany::Replace(vec![post::ActiveModelEx {
         title: Set("post 5".into()),
-        attachments: HasManyModel::Append(vec![attachment::ActiveModelEx {
+        attachments: ActiveHasMany::Append(vec![attachment::ActiveModelEx {
             file: Set("for post 5".into()),
             ..Default::default()
         }]),
@@ -199,9 +199,9 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
         .save(db)?;
 
     info!("add new post to user: insert 6 and attach existing attachment");
-    user.posts = HasManyModel::Append(vec![post::ActiveModelEx {
+    user.posts = ActiveHasMany::Append(vec![post::ActiveModelEx {
         title: Set("post 6".into()),
-        attachments: HasManyModel::Append(vec![attachment_6]),
+        attachments: ActiveHasMany::Append(vec![attachment_6]),
         ..Default::default()
     }]);
 
@@ -229,7 +229,7 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
 
     info!("update user profile and delete all posts");
     user.profile.as_mut().unwrap().picture = Set("Alan2.jpg".into());
-    // user.posts = HasManyModel::Replace(vec![]);
+    // user.posts = ActiveHasMany::Replace(vec![]);
     user.posts.replace_all([]);
     user.save(db)?;
 
@@ -275,10 +275,10 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
         id: NotSet,
         user_id: NotSet,
         title: Set("post 7".into()),
-        author: HasOneModel::set(user.clone().into_active_model()),
-        comments: HasManyModel::NotSet,
-        attachments: HasManyModel::NotSet,
-        tags: HasManyModel::Append(vec![
+        author: ActiveHasOne::set(user.clone().into_active_model()),
+        comments: ActiveHasMany::NotSet,
+        attachments: ActiveHasMany::NotSet,
+        tags: ActiveHasMany::Append(vec![
             day.clone().into_active_model().into(),
             tag::ActiveModel {
                 id: NotSet,
@@ -304,23 +304,23 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(7),
             user_id: Unchanged(4),
             title: Unchanged("post 7".into()),
-            author: HasOneModel::set(user::ActiveModelEx {
+            author: ActiveHasOne::set(user::ActiveModelEx {
                 id: Unchanged(4),
                 name: Unchanged("Alan".into()),
                 email: Unchanged("@4".into()),
-                profile: HasOneModel::set(profile::ActiveModelEx {
+                profile: ActiveHasOne::set(profile::ActiveModelEx {
                     id: Unchanged(2),
                     picture: Unchanged("Alan2.jpg".into()),
                     user_id: Unchanged(4),
-                    user: HasOneModel::NotSet,
+                    user: ActiveHasOne::NotSet,
                 }),
-                posts: HasManyModel::Append(vec![]),
-                followers: HasManyModel::NotSet,
-                following: HasManyModel::NotSet,
+                posts: ActiveHasMany::Append(vec![]),
+                followers: ActiveHasMany::NotSet,
+                following: ActiveHasMany::NotSet,
             }),
-            comments: HasManyModel::NotSet,
-            attachments: HasManyModel::NotSet,
-            tags: HasManyModel::Append(vec![
+            comments: ActiveHasMany::NotSet,
+            attachments: ActiveHasMany::NotSet,
+            tags: ActiveHasMany::Append(vec![
                 tag::ActiveModel {
                     id: Unchanged(1),
                     tag: Unchanged("day".into()),
@@ -386,7 +386,7 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
     );
 
     info!("replace post tags: remove tag 1 add tag 3");
-    post.tags = HasManyModel::Replace(vec![
+    post.tags = ActiveHasMany::Replace(vec![
         tag::ActiveModel {
             id: NotSet, // new tag
             tag: Set("food".into()),
@@ -414,7 +414,7 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
 
     info!("update post title and add new tag");
     post.title = Set("post 7!".into());
-    post.tags = HasManyModel::Append(vec![
+    post.tags = ActiveHasMany::Append(vec![
         tag::ActiveModel {
             id: NotSet, // new tag
             tag: Set("sunny".into()),
@@ -613,7 +613,7 @@ fn test_active_model_ex_film_store() -> Result<(), DbErr> {
     info!("save new films Galaxy with Tom and Sam as actors");
     film::ActiveModelEx {
         title: Set("Galaxy".into()),
-        actors: HasManyModel::Replace(vec![tom.into_active_model(), sam.into_ex()]),
+        actors: ActiveHasMany::Replace(vec![tom.into_active_model(), sam.into_ex()]),
         ..Default::default()
     }
     .save(db)?;

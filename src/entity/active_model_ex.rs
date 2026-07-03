@@ -11,7 +11,7 @@ use core::ops::{Index, IndexMut};
 /// semantics of replacing or removing related records may change in a minor (2.x) release.
 #[derive(Debug, Default, Clone)]
 #[non_exhaustive]
-pub enum HasOneModel<E: EntityTrait> {
+pub enum ActiveHasOne<E: EntityTrait> {
     /// Field is absent; the related model is left as-is on save.
     #[default]
     NotSet,
@@ -30,7 +30,7 @@ pub enum HasOneModel<E: EntityTrait> {
 /// semantics of replacing or removing related records may change in a minor (2.x) release.
 #[derive(Debug, Default, Clone)]
 #[non_exhaustive]
-pub enum HasManyModel<E: EntityTrait> {
+pub enum ActiveHasMany<E: EntityTrait> {
     /// Field is absent; existing related models are left as-is on save.
     #[default]
     NotSet,
@@ -56,11 +56,11 @@ pub enum ActiveModelAction {
     Save,
 }
 
-impl<E> HasOneModel<E>
+impl<E> ActiveHasOne<E>
 where
     E: EntityTrait,
 {
-    /// Construct a `HasOneModel::Set`
+    /// Construct a `ActiveHasOne::Set`
     pub fn set<AM: Into<E::ActiveModelEx>>(model: AM) -> Self {
         Self::Set(Box::new(model.into()))
     }
@@ -172,43 +172,43 @@ where
     }
 }
 
-impl<E> PartialEq for HasOneModel<E>
+impl<E> PartialEq for ActiveHasOne<E>
 where
     E: EntityTrait,
     E::ActiveModelEx: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (HasOneModel::NotSet, HasOneModel::NotSet) => true,
-            (HasOneModel::Set(a), HasOneModel::Set(b)) => a == b,
-            (HasOneModel::Delete, HasOneModel::Delete) => true,
+            (ActiveHasOne::NotSet, ActiveHasOne::NotSet) => true,
+            (ActiveHasOne::Set(a), ActiveHasOne::Set(b)) => a == b,
+            (ActiveHasOne::Delete, ActiveHasOne::Delete) => true,
             _ => false,
         }
     }
 }
 
-impl<E> PartialEq<Option<E::ActiveModelEx>> for HasOneModel<E>
+impl<E> PartialEq<Option<E::ActiveModelEx>> for ActiveHasOne<E>
 where
     E: EntityTrait,
     E::ActiveModelEx: PartialEq,
 {
     fn eq(&self, other: &Option<E::ActiveModelEx>) -> bool {
         match (self, other) {
-            (HasOneModel::NotSet, None) => true,
-            (HasOneModel::Set(a), Some(b)) => a.as_ref() == b,
+            (ActiveHasOne::NotSet, None) => true,
+            (ActiveHasOne::Set(a), Some(b)) => a.as_ref() == b,
             _ => false,
         }
     }
 }
 
-impl<E> Eq for HasOneModel<E>
+impl<E> Eq for ActiveHasOne<E>
 where
     E: EntityTrait,
     E::ActiveModelEx: Eq,
 {
 }
 
-impl<E> HasManyModel<E>
+impl<E> ActiveHasMany<E>
 where
     E: EntityTrait,
 {
@@ -350,76 +350,78 @@ where
     }
 }
 
-impl<E> PartialEq for HasManyModel<E>
+impl<E> PartialEq for ActiveHasMany<E>
 where
     E: EntityTrait,
     E::ActiveModelEx: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (HasManyModel::NotSet, HasManyModel::NotSet) => true,
-            (HasManyModel::Replace(a), HasManyModel::Replace(b)) => a == b,
-            (HasManyModel::Append(a), HasManyModel::Append(b)) => a == b,
+            (ActiveHasMany::NotSet, ActiveHasMany::NotSet) => true,
+            (ActiveHasMany::Replace(a), ActiveHasMany::Replace(b)) => a == b,
+            (ActiveHasMany::Append(a), ActiveHasMany::Append(b)) => a == b,
             _ => false,
         }
     }
 }
 
-impl<E> Eq for HasManyModel<E>
+impl<E> Eq for ActiveHasMany<E>
 where
     E: EntityTrait,
     E::ActiveModelEx: Eq,
 {
 }
 
-impl<E: EntityTrait> From<HasManyModel<E>> for Option<Vec<E::ActiveModelEx>> {
-    fn from(value: HasManyModel<E>) -> Self {
+impl<E: EntityTrait> From<ActiveHasMany<E>> for Option<Vec<E::ActiveModelEx>> {
+    fn from(value: ActiveHasMany<E>) -> Self {
         match value {
-            HasManyModel::NotSet => None,
-            HasManyModel::Replace(models) | HasManyModel::Append(models) => Some(models),
+            ActiveHasMany::NotSet => None,
+            ActiveHasMany::Replace(models) | ActiveHasMany::Append(models) => Some(models),
         }
     }
 }
 
-impl<E: EntityTrait> Index<usize> for HasManyModel<E> {
+impl<E: EntityTrait> Index<usize> for ActiveHasMany<E> {
     type Output = E::ActiveModelEx;
 
     fn index(&self, index: usize) -> &Self::Output {
         match self {
-            HasManyModel::NotSet => {
-                panic!("index out of bounds: the HasManyModel is NotSet (index: {index})")
+            ActiveHasMany::NotSet => {
+                panic!("index out of bounds: the ActiveHasMany is NotSet (index: {index})")
             }
-            HasManyModel::Replace(models) | HasManyModel::Append(models) => models.index(index),
+            ActiveHasMany::Replace(models) | ActiveHasMany::Append(models) => models.index(index),
         }
     }
 }
 
-impl<E: EntityTrait> IndexMut<usize> for HasManyModel<E> {
+impl<E: EntityTrait> IndexMut<usize> for ActiveHasMany<E> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         match self {
-            HasManyModel::NotSet => {
-                panic!("index out of bounds: the HasManyModel is NotSet (index: {index})")
+            ActiveHasMany::NotSet => {
+                panic!("index out of bounds: the ActiveHasMany is NotSet (index: {index})")
             }
-            HasManyModel::Replace(models) | HasManyModel::Append(models) => models.index_mut(index),
+            ActiveHasMany::Replace(models) | ActiveHasMany::Append(models) => {
+                models.index_mut(index)
+            }
         }
     }
 }
 
-impl<E: EntityTrait> IntoIterator for HasManyModel<E> {
+impl<E: EntityTrait> IntoIterator for ActiveHasMany<E> {
     type Item = E::ActiveModelEx;
     type IntoIter = std::vec::IntoIter<E::ActiveModelEx>;
 
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            HasManyModel::Replace(models) | HasManyModel::Append(models) => models.into_iter(),
-            HasManyModel::NotSet => Vec::new().into_iter(),
+            ActiveHasMany::Replace(models) | ActiveHasMany::Append(models) => models.into_iter(),
+            ActiveHasMany::NotSet => Vec::new().into_iter(),
         }
     }
 }
 
 /// Converts from a set of models into `Append`, which performs non-destructive action
-impl<E: EntityTrait> From<Vec<E::ActiveModelEx>> for HasManyModel<E> {
+impl<E: EntityTrait> From<Vec<E::ActiveModelEx>> for ActiveHasMany<E> {
     fn from(value: Vec<E::ActiveModelEx>) -> Self {
-        HasManyModel::Append(value)
+        ActiveHasMany::Append(value)
     }
 }

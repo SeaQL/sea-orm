@@ -309,7 +309,7 @@ mod tests {
             id: Unchanged(12),
             name: Unchanged("".into()),
             vendor_id: Unchanged(None),
-            ingredients: HasManyModel::NotSet,
+            ingredients: ActiveHasMany::NotSet,
         };
 
         assert_eq!(filling_am.into_ex(), filling_ex);
@@ -336,7 +336,7 @@ mod tests {
         let cake_am = cake::ActiveModelEx {
             id: Unchanged(12),
             name: Unchanged("C".into()),
-            fruit: HasOneModel::Set(
+            fruit: ActiveHasOne::Set(
                 fruit::ActiveModelEx {
                     id: Unchanged(13),
                     name: Unchanged("F".into()),
@@ -344,11 +344,11 @@ mod tests {
                 }
                 .into(),
             ),
-            fillings: HasManyModel::Append(vec![filling::ActiveModelEx {
+            fillings: ActiveHasMany::Append(vec![filling::ActiveModelEx {
                 id: Unchanged(14),
                 name: Unchanged("FF".into()),
                 vendor_id: Unchanged(None),
-                ingredients: HasManyModel::NotSet,
+                ingredients: ActiveHasMany::NotSet,
             }]),
         };
 

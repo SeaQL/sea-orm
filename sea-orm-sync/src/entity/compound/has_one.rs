@@ -1,4 +1,4 @@
-use crate::{EntityTrait, HasOneModel};
+use crate::{ActiveHasOne, EntityTrait};
 use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Default, Clone)]
@@ -81,15 +81,15 @@ where
     E: EntityTrait,
     E::ActiveModelEx: From<E::ModelEx>,
 {
-    pub fn into_active_model(self) -> HasOneModel<E> {
+    pub fn into_active_model(self) -> ActiveHasOne<E> {
         match self {
             HasOne::Loaded(_) => {
                 let model = self.unwrap();
                 let active_model: E::ActiveModelEx = model.into();
-                HasOneModel::Set(active_model.into())
+                ActiveHasOne::Set(active_model.into())
             }
-            HasOne::Unloaded => HasOneModel::NotSet,
-            HasOne::NotFound => HasOneModel::NotSet,
+            HasOne::Unloaded => ActiveHasOne::NotSet,
+            HasOne::NotFound => ActiveHasOne::NotSet,
         }
     }
 }
