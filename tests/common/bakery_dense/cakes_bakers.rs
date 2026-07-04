@@ -11,9 +11,9 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub baker_id: i32,
     #[sea_orm(belongs_to, from = "baker_id", to = "id")]
-    pub baker: Option<super::baker::Entity>,
+    pub baker: HasOne<super::baker::Entity>,
     #[sea_orm(belongs_to, from = "cake_id", to = "id")]
-    pub cake: Option<super::cake::Entity>,
+    pub cake: HasOne<super::cake::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

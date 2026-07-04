@@ -791,6 +791,20 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     #[doc(hidden)]
+    fn clear_parent_key_for(
+        &mut self,
+        rel: <Self::Entity as EntityTrait>::Relation,
+    ) -> Result<bool, DbErr> {
+        let rel_def = rel.def();
+
+        if rel_def.is_owner {
+            return Err(DbErr::Type(format!("Relation {rel:?} is not belongs_to")));
+        }
+
+        clear_key_on_active_model(&rel_def.from_col, self)
+    }
+
+    #[doc(hidden)]
     fn clear_parent_key_for_self_rev(
         &mut self,
         rel: <Self::Entity as EntityTrait>::Relation,
@@ -895,16 +909,6 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self::Entity: Related<R>,
     {
         Self::Entity::find_related().belongs_to_active_model(self)
-    }
-
-    /// Like find_related, but infer type from `AM`
-    #[doc(hidden)]
-    fn find_related_of<AM>(&self, _: &[AM]) -> crate::query::Select<AM::Entity>
-    where
-        AM: ActiveModelTrait,
-        Self::Entity: Related<AM::Entity>,
-    {
-        self.find_related(AM::Entity::default())
     }
 
     /// Establish links between self and a related Entity for a many-to-many relation.

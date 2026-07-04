@@ -75,9 +75,9 @@ mod jpost_tag {
         #[sea_orm(primary_key, auto_increment = false)]
         pub tag_id: i32,
         #[sea_orm(belongs_to, from = "post_id", to = "id")]
-        pub post: Option<super::jpost::Entity>,
+        pub post: HasOne<super::jpost::Entity>,
         #[sea_orm(belongs_to, from = "tag_id", to = "id")]
-        pub tag: Option<super::jtag::Entity>,
+        pub tag: HasOne<super::jtag::Entity>,
     }
 
     fn log<C: ConnectionTrait>(

@@ -314,11 +314,11 @@ mod tests {
         let cake_ex = cake::ModelEx {
             id: 12,
             name: "C".into(),
-            fruit: HasOne::loaded(fruit::Model {
+            fruit: HasOne::<Option<fruit::Entity>>::loaded(Some(fruit::Model {
                 id: 13,
                 name: "F".into(),
                 cake_id: Some(12),
-            }),
+            })),
             fillings: HasMany::Loaded(vec![
                 filling::Model {
                     id: 14,
@@ -333,14 +333,14 @@ mod tests {
         let cake_am = cake::ActiveModelEx {
             id: Unchanged(12),
             name: Unchanged("C".into()),
-            fruit: ActiveHasOne::Set(
+            fruit: ActiveHasOne::Set(Some(
                 fruit::ActiveModelEx {
                     id: Unchanged(13),
                     name: Unchanged("F".into()),
                     cake_id: Unchanged(Some(12)),
                 }
                 .into(),
-            ),
+            )),
             fillings: ActiveHasMany::Append(vec![filling::ActiveModelEx {
                 id: Unchanged(14),
                 name: Unchanged("FF".into()),

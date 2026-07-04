@@ -109,10 +109,10 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
         user::ActiveModelEx {
             name: Set("Sam".into()),
             email: Set("@3".into()),
-            profile: ActiveHasOne::set(profile::ActiveModelEx {
+            profile: ActiveHasOne::<Option<profile::Entity>>::set(Some(profile::ActiveModelEx {
                 picture: Set("Sam.jpg".into()),
                 ..Default::default()
-            }),
+            })),
             ..Default::default()
         };
     }
@@ -123,12 +123,12 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(3),
             name: Unchanged("Sam".into()),
             email: Unchanged("@3".into()),
-            profile: ActiveHasOne::set(profile::ActiveModelEx {
+            profile: ActiveHasOne::<Option<profile::Entity>>::set(Some(profile::ActiveModelEx {
                 id: Unchanged(1),
                 picture: Unchanged("Sam.jpg".into()),
                 user_id: Unchanged(3),
                 user: ActiveHasOne::NotSet,
-            }),
+            })),
             ..Default::default()
         }
     );
@@ -149,12 +149,12 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(4),
             name: Unchanged("Alan".into()),
             email: Unchanged("@4".into()),
-            profile: ActiveHasOne::set(profile::ActiveModelEx {
+            profile: ActiveHasOne::<Option<profile::Entity>>::set(Some(profile::ActiveModelEx {
                 id: Unchanged(2),
                 picture: Unchanged("Alan.jpg".into()),
                 user_id: Unchanged(4),
                 user: ActiveHasOne::NotSet,
-            }),
+            })),
             posts: ActiveHasMany::Append(vec![
                 post::ActiveModelEx {
                     id: Unchanged(3),
@@ -255,11 +255,11 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: 4,
             name: "Alan".into(),
             email: "@4".into(),
-            profile: HasOne::loaded(profile::Model {
+            profile: HasOne::<Option<profile::Entity>>::loaded(Some(profile::Model {
                 id: 2,
                 picture: "Alan2.jpg".into(),
                 user_id: 4,
-            }),
+            })),
             posts: HasMany::Loaded(vec![]),
             followers: HasMany::Unloaded,
             following: HasMany::Unloaded,
@@ -317,12 +317,14 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                 id: Unchanged(4),
                 name: Unchanged("Alan".into()),
                 email: Unchanged("@4".into()),
-                profile: ActiveHasOne::set(profile::ActiveModelEx {
-                    id: Unchanged(2),
-                    picture: Unchanged("Alan2.jpg".into()),
-                    user_id: Unchanged(4),
-                    user: ActiveHasOne::NotSet,
-                }),
+                profile: ActiveHasOne::<Option<profile::Entity>>::set(Some(
+                    profile::ActiveModelEx {
+                        id: Unchanged(2),
+                        picture: Unchanged("Alan2.jpg".into()),
+                        user_id: Unchanged(4),
+                        user: ActiveHasOne::NotSet,
+                    },
+                )),
                 posts: ActiveHasMany::Append(vec![]),
                 followers: ActiveHasMany::NotSet,
                 following: ActiveHasMany::NotSet,
@@ -500,11 +502,11 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: 5,
             name: "Bob".into(),
             email: "bob@sea-ql.org".into(),
-            profile: HasOne::loaded(profile::Model {
+            profile: HasOne::<Option<profile::Entity>>::loaded(Some(profile::Model {
                 id: 3,
                 picture: "image.jpg".into(),
                 user_id: 5,
-            }),
+            })),
             posts: HasMany::Loaded(vec![post::ModelEx {
                 id: 8,
                 user_id: 5,
@@ -821,8 +823,8 @@ async fn test_has_one_replace_and_delete() -> Result<(), DbErr> {
     assert_eq!(profiles.len(), 1);
     assert_eq!(profiles[0].picture, "second.jpg");
 
-    info!("#3060: delete the HasOne via the generated delete_<field> builder");
-    user.delete_profile().save(db).await?;
+    info!("#3060: clear the HasOne via the generated clear_<field> builder");
+    user.clear_profile().save(db).await?;
 
     assert!(profile::Entity::find().all(db).await?.is_empty());
 

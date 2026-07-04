@@ -29,7 +29,7 @@ mod user {
         #[sea_orm(unique)]
         pub email: String,
         #[sea_orm(has_one)]
-        pub profile: HasOne<super::profile::Entity>,
+        pub profile: HasOne<Option<super::profile::Entity>>,
         #[sea_orm(has_many)]
         pub posts: HasMany<super::post::Entity>,
     }
@@ -43,7 +43,7 @@ mod user {
 ```rust
 // Has-One
 #[sea_orm(has_one)]
-pub profile: HasOne<super::profile::Entity>,
+pub profile: HasOne<Option<super::profile::Entity>>,
 
 // Has-Many
 #[sea_orm(has_many)]
@@ -74,9 +74,9 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub tag_id: i32,
     #[sea_orm(belongs_to, from = "post_id", to = "id")]
-    pub post: Option<super::post::Entity>,
+    pub post: HasOne<super::post::Entity>,
     #[sea_orm(belongs_to, from = "tag_id", to = "id")]
-    pub tag: Option<super::tag::Entity>,
+    pub tag: HasOne<super::tag::Entity>,
 }
 ```
 

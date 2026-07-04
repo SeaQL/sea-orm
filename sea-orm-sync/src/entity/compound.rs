@@ -11,7 +11,7 @@ mod has_many;
 mod has_one;
 
 pub use has_many::{HasMany, Iter as HasManyIter};
-pub use has_one::HasOne;
+pub use has_one::{HasOne, HasOneCardinality};
 
 pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter + QueryOrder + Clone {
     /// The return type of this loader

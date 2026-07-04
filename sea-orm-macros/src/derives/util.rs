@@ -1,67 +1,240 @@
 use heck::ToUpperCamelCase;
-use syn::{Field, Ident, Meta, MetaNameValue, punctuated::Punctuated, token::Comma};
+use proc_macro2::TokenStream;
+use quote::quote;
+use syn::{
+    Field, GenericArgument, Ident, Meta, MetaNameValue, PathArguments, Type, TypePath,
+    meta::ParseNestedMeta, punctuated::Punctuated, token::Comma,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CardinalityKind {
+    Required,
+    Optional,
+}
+
+impl CardinalityKind {
+    pub(crate) fn is_optional(self) -> bool {
+        matches!(self, Self::Optional)
+    }
+
+    pub(crate) fn has_one_target_type(self, entity: TokenStream) -> TokenStream {
+        match self {
+            Self::Required => quote!(#entity),
+            Self::Optional => quote!(Option<#entity>),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CompoundKind {
+    HasOne(CardinalityKind),
+    HasMany,
+}
+
+#[derive(Clone)]
+pub(crate) struct CompoundType {
+    pub(crate) kind: CompoundKind,
+    pub(crate) entity: TypePath,
+}
+
+impl CompoundType {
+    /// Returns whether the field uses the compound relation wrapper syntax.
+    pub(crate) fn matches_type(type_path: &TypePath) -> bool {
+        last_path_segment(type_path)
+            .is_ok_and(|segment| segment.ident == "HasOne" || segment.ident == "HasMany")
+    }
+
+    /// Parses `HasOne<Entity>`, `HasOne<Option<Entity>>`, and `HasMany<Entity>`.
+    pub(crate) fn from_type(type_path: &TypePath) -> syn::Result<Option<Self>> {
+        let segment = last_path_segment(type_path)?;
+
+        if segment.ident == "HasOne" {
+            let PathArguments::AngleBracketed(args) = &segment.arguments else {
+                return Err(syn::Error::new_spanned(
+                    type_path,
+                    "HasOne requires an Entity or Option<Entity> generic argument",
+                ));
+            };
+            let (entity, cardinality) = has_one_target_arg(&args.args, type_path)?;
+            return Ok(Some(Self {
+                kind: CompoundKind::HasOne(cardinality),
+                entity,
+            }));
+        }
+
+        if segment.ident == "HasMany" {
+            let PathArguments::AngleBracketed(args) = &segment.arguments else {
+                return Err(syn::Error::new_spanned(
+                    type_path,
+                    "HasMany requires an Entity generic argument",
+                ));
+            };
+            let Some(entity) = single_entity_arg(&args.args) else {
+                return Err(syn::Error::new_spanned(
+                    type_path,
+                    "HasMany requires an Entity generic argument",
+                ));
+            };
+            return Ok(Some(Self {
+                kind: CompoundKind::HasMany,
+                entity,
+            }));
+        }
+
+        Ok(None)
+    }
+
+    pub(crate) fn is_has_one(&self) -> bool {
+        matches!(self.kind, CompoundKind::HasOne(_))
+    }
+
+    pub(crate) fn cardinality(&self) -> Option<CardinalityKind> {
+        match self.kind {
+            CompoundKind::HasOne(cardinality) => Some(cardinality),
+            CompoundKind::HasMany => None,
+        }
+    }
+
+    pub(crate) fn is_self_entity(&self) -> bool {
+        self.entity.path.segments.len() == 1
+            && self
+                .entity
+                .path
+                .segments
+                .first()
+                .is_some_and(|segment| segment.ident == "Entity")
+    }
+}
+
+pub(crate) fn consume_meta(meta: ParseNestedMeta<'_>) {
+    let _ = meta.value().and_then(|v| v.parse::<syn::Expr>());
+}
 
 /// Remove ignored fields and compound fields
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
-    let field_type = &field.ty;
-    let field_type: String = quote::quote! { #field_type }
-        .to_string() // e.g.: "Option < String >"
-        .split_whitespace()
-        .collect(); // Remove all whitespace
-
-    if is_compound_field(&field_type) {
+    if let Type::Path(type_path) = &field.ty
+        && CompoundType::matches_type(type_path)
+    {
         return false;
     }
 
-    field_not_ignored_compound(field)
+    !field_ignored(field)
 }
 
-/// Remove ignored fields, compound fields okay
-pub(crate) fn field_not_ignored_compound(field: &Field) -> bool {
-    for attr in field.attrs.iter() {
-        if let Some(ident) = attr.path().get_ident() {
-            if ident != "sea_orm" {
-                continue;
-            }
-        } else {
+fn field_ignored(field: &Field) -> bool {
+    let mut ignored = false;
+
+    for attr in &field.attrs {
+        if !attr.path().is_ident("sea_orm") {
             continue;
         }
 
-        if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
-            for meta in list.iter() {
-                if let Meta::Path(path) = meta {
-                    if let Some(name) = path.get_ident() {
-                        if name == "ignore" {
-                            return false;
-                        }
-                    }
-                }
+        let _ = attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("ignore") {
+                ignored = true;
+            } else {
+                consume_meta(meta);
             }
-        }
+            Ok(())
+        });
     }
 
-    true
+    ignored
 }
 
-pub(crate) fn is_compound_field(field_type: &str) -> bool {
-    // for #[sea_orm::model]
-    ((field_type.starts_with("Option<") || field_type.starts_with("Vec<")) && field_type.ends_with("::Entity>"))
-    // for DeriveModelEx
-    || field_type.starts_with("HasOne<") || field_type.starts_with("HasMany<")
-}
-
-pub(crate) fn extract_compound_entity(ty: &str) -> &str {
-    if ty.starts_with("HasMany<") {
-        &ty["HasMany<".len()..(ty.len() - 1)]
-    } else if ty.starts_with("HasOne<") {
-        &ty["HasOne<".len()..(ty.len() - 1)]
-    } else if ty.starts_with("Option<") {
-        &ty["Option<".len()..(ty.len() - 1)]
-    } else if ty.starts_with("Vec<") {
-        &ty["Vec<".len()..(ty.len() - 1)]
-    } else {
-        panic!("Relation applied to non compound type: {ty}")
+pub(crate) fn validate_has_one_attr(ident: &Ident, compound: &CompoundType) -> syn::Result<()> {
+    match compound.kind {
+        CompoundKind::HasOne(CardinalityKind::Optional) => Ok(()),
+        CompoundKind::HasOne(CardinalityKind::Required) => Err(syn::Error::new_spanned(
+            ident,
+            "has_one must be paired with HasOne<Option<Entity>>",
+        )),
+        CompoundKind::HasMany => Err(syn::Error::new_spanned(
+            ident,
+            "has_one must be paired with HasOne",
+        )),
     }
+}
+
+fn single_entity_arg(args: &Punctuated<GenericArgument, Comma>) -> Option<TypePath> {
+    if args.len() != 1 {
+        return None;
+    }
+    match args.first() {
+        Some(GenericArgument::Type(ty)) if is_entity_type(ty) => type_path(ty).ok().cloned(),
+        _ => None,
+    }
+}
+
+pub(crate) fn type_path(ty: &Type) -> syn::Result<&TypePath> {
+    let Type::Path(type_path) = ty else {
+        return Err(syn::Error::new_spanned(ty, "expected path type"));
+    };
+    Ok(type_path)
+}
+
+fn last_path_segment(type_path: &TypePath) -> syn::Result<&syn::PathSegment> {
+    type_path
+        .path
+        .segments
+        .last()
+        .ok_or_else(|| syn::Error::new_spanned(type_path, "expected path type"))
+}
+
+fn is_entity_type(ty: &Type) -> bool {
+    type_path(ty)
+        .and_then(last_path_segment)
+        .is_ok_and(|segment| segment.ident == "Entity")
+}
+
+fn has_one_target_arg(
+    args: &Punctuated<GenericArgument, Comma>,
+    field_type: &TypePath,
+) -> syn::Result<(TypePath, CardinalityKind)> {
+    if args.len() != 1 {
+        return Err(syn::Error::new_spanned(
+            field_type,
+            "HasOne requires an Entity or Option<Entity> generic argument",
+        ));
+    }
+
+    let Some(GenericArgument::Type(ty)) = args.first() else {
+        return Err(syn::Error::new_spanned(
+            field_type,
+            "HasOne generic argument must be an Entity or Option<Entity>",
+        ));
+    };
+
+    if is_entity_type(ty) {
+        return Ok((type_path(ty)?.clone(), CardinalityKind::Required));
+    }
+
+    let type_path = type_path(ty).map_err(|_| {
+        syn::Error::new_spanned(
+            ty,
+            "HasOne generic argument must be an Entity or Option<Entity>",
+        )
+    })?;
+    let segment = last_path_segment(type_path)?;
+    if segment.ident != "Option" {
+        return Err(syn::Error::new_spanned(
+            ty,
+            "HasOne generic argument must be an Entity or Option<Entity>",
+        ));
+    }
+    let PathArguments::AngleBracketed(args) = &segment.arguments else {
+        return Err(syn::Error::new_spanned(
+            ty,
+            "HasOne generic argument must be an Entity or Option<Entity>",
+        ));
+    };
+    let Some(entity) = single_entity_arg(&args.args) else {
+        return Err(syn::Error::new_spanned(
+            ty,
+            "HasOne optional target must be Option<Entity>",
+        ));
+    };
+    Ok((entity, CardinalityKind::Optional))
 }
 
 pub(crate) fn format_field_ident(field: &Field) -> Ident {

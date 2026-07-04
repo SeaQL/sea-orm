@@ -353,14 +353,11 @@ mod test {
         let mut cake = cake::ModelEx {
             id: 1,
             name: "A".into(),
-            fruit: HasOne::Loaded(
-                fruit::ModelEx {
-                    id: 2,
-                    name: "B".into(),
-                    cake_id: None,
-                }
-                .into(),
-            ),
+            fruit: HasOne::<Option<fruit::Entity>>::loaded(Some(fruit::ModelEx {
+                id: 2,
+                name: "B".into(),
+                cake_id: None,
+            })),
             fillings: HasMany::Unloaded,
         };
 
@@ -378,14 +375,11 @@ mod test {
         let cake = cake::ModelEx {
             id: 1,
             name: "A".into(),
-            fruit: HasOne::Loaded(
-                fruit::ModelEx {
-                    id: 0,
-                    name: "B".into(),
-                    cake_id: None,
-                }
-                .into(),
-            ),
+            fruit: HasOne::<Option<fruit::Entity>>::loaded(Some(fruit::ModelEx {
+                id: 0,
+                name: "B".into(),
+                cake_id: None,
+            })),
             fillings: HasMany::Loaded(vec![
                 filling::Model {
                     id: 2,

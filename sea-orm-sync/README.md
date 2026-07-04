@@ -74,7 +74,7 @@ mod user {
         #[sea_orm(unique)]
         pub email: String,
         #[sea_orm(has_one)]
-        pub profile: HasOne<super::profile::Entity>,
+        pub profile: HasOne<Option<super::profile::Entity>>,
         #[sea_orm(has_many)]
         pub posts: HasMany<super::post::Entity>,
     }
@@ -123,12 +123,9 @@ smart_user
         id: 42,
         name: "Bob".into(),
         email: "bob@sea-ql.org".into(),
-        profile: HasOne::Loaded(
-            profile::ModelEx {
-                picture: "image.jpg".into(),
-            }
-            .into(),
-        ),
+        profile: HasOne::loaded(Some(profile::ModelEx {
+            picture: "image.jpg".into(),
+        })),
         posts: HasMany::Loaded(vec![post::ModelEx {
             title: "Nice weather".into(),
             tags: HasMany::Loaded(vec![tag::ModelEx {

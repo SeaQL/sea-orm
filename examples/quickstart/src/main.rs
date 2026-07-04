@@ -13,7 +13,7 @@ mod user {
         #[sea_orm(unique)]
         pub email: String,
         #[sea_orm(has_one)]
-        pub profile: HasOne<super::profile::Entity>,
+        pub profile: HasOne<Option<super::profile::Entity>>,
         #[sea_orm(has_many)]
         pub posts: HasMany<super::post::Entity>,
         #[sea_orm(self_ref, via = "user_follower", from = "User", to = "Follower")]
@@ -117,9 +117,9 @@ mod post_tag {
         #[sea_orm(primary_key, auto_increment = false)]
         pub tag_id: i32,
         #[sea_orm(belongs_to, from = "post_id", to = "id")]
-        pub post: Option<super::post::Entity>,
+        pub post: HasOne<super::post::Entity>,
         #[sea_orm(belongs_to, from = "tag_id", to = "id")]
-        pub tag: Option<super::tag::Entity>,
+        pub tag: HasOne<super::tag::Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -137,14 +137,14 @@ mod user_follower {
         #[sea_orm(primary_key)]
         pub follower_id: i32,
         #[sea_orm(belongs_to, from = "user_id", to = "id")]
-        pub user: Option<super::user::Entity>,
+        pub user: HasOne<super::user::Entity>,
         #[sea_orm(
             belongs_to,
             relation_enum = "Follower",
             from = "follower_id",
             to = "id"
         )]
-        pub follower: Option<super::user::Entity>,
+        pub follower: HasOne<super::user::Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}

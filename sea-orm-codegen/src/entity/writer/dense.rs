@@ -1,6 +1,149 @@
 use super::*;
-use crate::{Relation, RelationType};
+use crate::{Entity, Relation, RelationType};
 use heck::ToSnakeCase;
+use sea_query::ForeignKeyAction;
+
+fn relation_column_name(a: &syn::Ident) -> String {
+    let a = a.to_string();
+    let b = a.to_snake_case();
+    if a != b.to_upper_camel_case() {
+        // if roundtrip fails, use original
+        a
+    } else {
+        b
+    }
+}
+
+fn relation_column_list(punctuated: Vec<String>) -> String {
+    let len = punctuated.len();
+    let punctuated = punctuated.join(", ");
+    match len {
+        0..=1 => punctuated,
+        _ => format!("({punctuated})"),
+    }
+}
+
+fn foreign_key_action_attr(
+    attr: TokenStream,
+    action: Option<&ForeignKeyAction>,
+) -> Option<TokenStream> {
+    action.map(|action| {
+        let action = Relation::get_foreign_key_action(action);
+        quote!(, #attr = #action)
+    })
+}
+
+struct DenseRelationField<'a> {
+    entity: &'a Entity,
+    rel: &'a Relation,
+    via_entities: &'a [syn::Ident],
+}
+
+impl DenseRelationField<'_> {
+    fn field_tokens(&self) -> Option<TokenStream> {
+        let (field, target_entity) = if self.rel.self_referencing {
+            let table_name = self.entity.get_table_name_snake_case_ident();
+            let suffix = if self.rel.num_suffix > 0 {
+                format!("_{}", self.rel.num_suffix)
+            } else {
+                String::new()
+            };
+            let field = format_ident!("{table_name}{suffix}");
+
+            (field, quote!(Entity))
+        } else {
+            if !self.rel.impl_related {
+                return None;
+            }
+
+            let to_entity = self.rel.get_module_name()?;
+            if self.via_entities.contains(&to_entity) {
+                return None;
+            }
+
+            let field = match self.rel.rel_type {
+                RelationType::HasMany => {
+                    let to_entity = to_entity.to_string();
+                    let pluralized = pluralizer::pluralize(&to_entity, 2, false);
+                    format_ident!("{pluralized}")
+                }
+                RelationType::HasOne | RelationType::BelongsTo => to_entity.clone(),
+            };
+            let field = if self.rel.num_suffix == 0 {
+                field
+            } else {
+                format_ident!("{field}_{}", self.rel.num_suffix)
+            };
+            (field, quote!(super::#to_entity::Entity))
+        };
+
+        let rel_field_type = match self.rel.rel_type {
+            RelationType::HasOne | RelationType::BelongsTo => {
+                if self.is_optional() {
+                    quote!(HasOne<Option<#target_entity>>)
+                } else {
+                    quote!(HasOne<#target_entity>)
+                }
+            }
+            RelationType::HasMany => quote!(HasMany<#target_entity>),
+        };
+        let sea_orm_attr = if self.rel.self_referencing {
+            let (from, to) = self.rel.get_src_ref_columns(
+                relation_column_name,
+                relation_column_name,
+                relation_column_list,
+            );
+            let on_update = foreign_key_action_attr(quote!(on_update), self.rel.on_update.as_ref());
+            let on_delete = foreign_key_action_attr(quote!(on_delete), self.rel.on_delete.as_ref());
+            let relation_enum = self.rel.get_enum_name().to_string();
+
+            quote!(#[sea_orm(self_ref, relation_enum = #relation_enum, from = #from, to = #to #on_update #on_delete)])
+        } else {
+            match self.rel.rel_type {
+                RelationType::HasOne => quote!(#[sea_orm(has_one)]),
+                RelationType::HasMany => quote!(#[sea_orm(has_many)]),
+                RelationType::BelongsTo => {
+                    let (from, to) = self.rel.get_src_ref_columns(
+                        relation_column_name,
+                        relation_column_name,
+                        relation_column_list,
+                    );
+                    let on_update =
+                        foreign_key_action_attr(quote!(on_update), self.rel.on_update.as_ref());
+                    let on_delete =
+                        foreign_key_action_attr(quote!(on_delete), self.rel.on_delete.as_ref());
+                    let relation_enum = if self.rel.num_suffix > 0 {
+                        let relation_enum = self.rel.get_enum_name().to_string();
+                        Some(quote!(relation_enum = #relation_enum,))
+                    } else {
+                        None
+                    };
+
+                    quote!(#[sea_orm(belongs_to, #relation_enum from = #from, to = #to #on_update #on_delete)])
+                }
+            }
+        };
+
+        Some(quote! {
+            #sea_orm_attr
+            pub #field: #rel_field_type
+        })
+    }
+
+    fn is_optional(&self) -> bool {
+        let is_required = matches!(self.rel.rel_type, RelationType::BelongsTo)
+            && !self.rel.columns.is_empty()
+            && self.rel.columns.iter().all(|name| {
+                self.entity
+                    .columns
+                    .iter()
+                    .find(|column| column.name == *name)
+                    .map(|column| column.not_null)
+                    .unwrap_or_default()
+            });
+        !is_required
+    }
+}
 
 impl EntityWriter {
     #[allow(clippy::too_many_arguments)]
@@ -124,111 +267,15 @@ impl EntityWriter {
 
         let mut compound_objects: Punctuated<_, Comma> = Punctuated::new();
 
-        let map_col = |a: &syn::Ident| -> String {
-            let a = a.to_string();
-            let b = a.to_snake_case();
-            if a != b.to_upper_camel_case() {
-                // if roundtrip fails, use original
-                a
-            } else {
-                b
-            }
-        };
-        let map_punctuated = |punctuated: Vec<String>| -> String {
-            let len = punctuated.len();
-            let punctuated = punctuated.join(", ");
-            match len {
-                0..=1 => punctuated,
-                _ => format!("({punctuated})"),
-            }
-        };
-
         let via_entities = entity.get_conjunct_relations_via_snake_case();
         for rel in entity.relations.iter() {
-            if !rel.self_referencing && rel.impl_related {
-                let (rel_type, sea_orm_attr) = match rel.rel_type {
-                    RelationType::HasOne => (format_ident!("HasOne"), quote!(#[sea_orm(has_one)])),
-                    RelationType::HasMany => {
-                        (format_ident!("HasMany"), quote!(#[sea_orm(has_many)]))
-                    }
-                    RelationType::BelongsTo => {
-                        let (from, to) = rel.get_src_ref_columns(map_col, map_col, map_punctuated);
-                        let on_update = if let Some(action) = &rel.on_update {
-                            let action = Relation::get_foreign_key_action(action);
-                            quote!(, on_update = #action)
-                        } else {
-                            quote!()
-                        };
-                        let on_delete = if let Some(action) = &rel.on_delete {
-                            let action = Relation::get_foreign_key_action(action);
-                            quote!(, on_delete = #action)
-                        } else {
-                            quote!()
-                        };
-                        let relation_enum = if rel.num_suffix > 0 {
-                            let relation_enum = rel.get_enum_name().to_string();
-                            quote!(relation_enum = #relation_enum,)
-                        } else {
-                            quote!()
-                        };
-                        (
-                            format_ident!("HasOne"),
-                            quote!(#[sea_orm(belongs_to, #relation_enum from = #from, to = #to #on_update #on_delete)]),
-                        )
-                    }
-                };
-
-                if let Some(to_entity) = rel.get_module_name()
-                    && !via_entities.contains(&to_entity)
-                {
-                    // skip junctions
-                    let field = if matches!(rel.rel_type, RelationType::HasMany) {
-                        format_ident!(
-                            "{}",
-                            pluralizer::pluralize(&to_entity.to_string(), 2, false)
-                        )
-                    } else {
-                        to_entity.clone()
-                    };
-                    let field = if rel.num_suffix == 0 {
-                        field
-                    } else {
-                        format_ident!("{field}_{}", rel.num_suffix)
-                    };
-                    compound_objects.push(quote! {
-                        #sea_orm_attr
-                        pub #field: #rel_type<super::#to_entity::Entity>
-                    });
-                }
-            } else if rel.self_referencing {
-                let (from, to) = rel.get_src_ref_columns(map_col, map_col, map_punctuated);
-                let on_update = if let Some(action) = &rel.on_update {
-                    let action = Relation::get_foreign_key_action(action);
-                    quote!(, on_update = #action)
-                } else {
-                    quote!()
-                };
-                let on_delete = if let Some(action) = &rel.on_delete {
-                    let action = Relation::get_foreign_key_action(action);
-                    quote!(, on_delete = #action)
-                } else {
-                    quote!()
-                };
-                let relation_enum = rel.get_enum_name().to_string();
-                let field = format_ident!(
-                    "{}{}",
-                    entity.get_table_name_snake_case_ident(),
-                    if rel.num_suffix > 0 {
-                        format!("_{}", rel.num_suffix)
-                    } else {
-                        "".into()
-                    }
-                );
-
-                compound_objects.push(quote! {
-                    #[sea_orm(self_ref, relation_enum = #relation_enum, from = #from, to = #to #on_update #on_delete)]
-                    pub #field: HasOne<Entity>
-                });
+            let relation_field = DenseRelationField {
+                entity,
+                rel,
+                via_entities: &via_entities,
+            };
+            if let Some(field) = relation_field.field_tokens() {
+                compound_objects.push(field);
             }
         }
         for (to_entity, via_entity) in entity
