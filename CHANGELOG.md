@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release Candidates
 
+- [2.0.0-rc.42](changelog/2.0.0-rc.42.md) — typed value arrays, `HasOne` replace/delete, `ActiveHasOne`/`ActiveHasMany` rename, codegen `ColumnType` fixes
 - [2.0.0-rc.41](changelog/2.0.0-rc.41.md) — `SelectFourMany`, `update_without_returning`, `cargo binstall sea-orm-cli`, junction `ActiveModelBehavior` & schema-sync PG-schema fixes
 - [2.0.0-rc.40](changelog/2.0.0-rc.40.md) - Restore pgvector binding with SQLx 0.9
 - [2.0.0-rc.39](changelog/2.0.0-rc.39.md) - SeaQuery 1.0, SQLx 0.9, async transaction helpers
