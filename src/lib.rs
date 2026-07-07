@@ -187,7 +187,7 @@
 //!         id: 42,
 //!         name: "Bob".into(),
 //!         email: "bob@sea-ql.org".into(),
-//!         profile: HasOne::<Option<profile::Entity>>::loaded(Some(profile::ModelEx {
+//!         profile: HasOne::loaded(Some(profile::ModelEx {
 //! #           id: 1,
 //!             picture: "image.jpg".into(),
 //! #           user_id: 1,

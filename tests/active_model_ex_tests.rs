@@ -109,7 +109,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
         user::ActiveModelEx {
             name: Set("Sam".into()),
             email: Set("@3".into()),
-            profile: ActiveHasOne::<Option<profile::Entity>>::set(Some(profile::ActiveModelEx {
+            profile: ActiveHasOne::set(Some(profile::ActiveModelEx {
                 picture: Set("Sam.jpg".into()),
                 ..Default::default()
             })),
@@ -123,7 +123,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(3),
             name: Unchanged("Sam".into()),
             email: Unchanged("@3".into()),
-            profile: ActiveHasOne::<Option<profile::Entity>>::set(Some(profile::ActiveModelEx {
+            profile: ActiveHasOne::set(Some(profile::ActiveModelEx {
                 id: Unchanged(1),
                 picture: Unchanged("Sam.jpg".into()),
                 user_id: Unchanged(3),
@@ -149,7 +149,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(4),
             name: Unchanged("Alan".into()),
             email: Unchanged("@4".into()),
-            profile: ActiveHasOne::<Option<profile::Entity>>::set(Some(profile::ActiveModelEx {
+            profile: ActiveHasOne::set(Some(profile::ActiveModelEx {
                 id: Unchanged(2),
                 picture: Unchanged("Alan.jpg".into()),
                 user_id: Unchanged(4),
@@ -255,7 +255,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: 4,
             name: "Alan".into(),
             email: "@4".into(),
-            profile: HasOne::<Option<profile::Entity>>::loaded(Some(profile::Model {
+            profile: HasOne::loaded(Some(profile::Model {
                 id: 2,
                 picture: "Alan2.jpg".into(),
                 user_id: 4,
@@ -317,14 +317,12 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                 id: Unchanged(4),
                 name: Unchanged("Alan".into()),
                 email: Unchanged("@4".into()),
-                profile: ActiveHasOne::<Option<profile::Entity>>::set(Some(
-                    profile::ActiveModelEx {
-                        id: Unchanged(2),
-                        picture: Unchanged("Alan2.jpg".into()),
-                        user_id: Unchanged(4),
-                        user: ActiveHasOne::NotSet,
-                    },
-                )),
+                profile: ActiveHasOne::set(Some(profile::ActiveModelEx {
+                    id: Unchanged(2),
+                    picture: Unchanged("Alan2.jpg".into()),
+                    user_id: Unchanged(4),
+                    user: ActiveHasOne::NotSet,
+                },)),
                 posts: ActiveHasMany::Append(vec![]),
                 followers: ActiveHasMany::NotSet,
                 following: ActiveHasMany::NotSet,
@@ -502,7 +500,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: 5,
             name: "Bob".into(),
             email: "bob@sea-ql.org".into(),
-            profile: HasOne::<Option<profile::Entity>>::loaded(Some(profile::Model {
+            profile: HasOne::loaded(Some(profile::Model {
                 id: 3,
                 picture: "image.jpg".into(),
                 user_id: 5,

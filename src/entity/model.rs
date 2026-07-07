@@ -317,7 +317,7 @@ mod tests {
         let cake_ex = cake::ModelEx {
             id: 12,
             name: "C".into(),
-            fruit: HasOne::<Option<fruit::Entity>>::loaded(Some(fruit::Model {
+            fruit: HasOne::loaded(Some(fruit::Model {
                 id: 13,
                 name: "F".into(),
                 cake_id: Some(12),

@@ -197,7 +197,7 @@ where
 {
     pub fn into_active_model(self) -> ActiveHasOne<E> {
         match self {
-            HasOne::Loaded(model) => ActiveHasOne::<E>::set(*model),
+            HasOne::Loaded(model) => ActiveHasOne::set(*model),
             HasOne::Unloaded => ActiveHasOne::NotSet,
         }
     }
@@ -210,7 +210,7 @@ where
 {
     pub fn into_active_model(self) -> ActiveHasOne<Option<E>> {
         match self {
-            HasOne::Loaded(Some(model)) => ActiveHasOne::<Option<E>>::set(Some(*model)),
+            HasOne::Loaded(Some(model)) => ActiveHasOne::set(Some(*model)),
             HasOne::Unloaded | HasOne::Loaded(None) => ActiveHasOne::NotSet,
         }
     }
