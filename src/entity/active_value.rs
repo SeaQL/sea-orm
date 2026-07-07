@@ -408,18 +408,18 @@ where
     /// let mut notset_value = ActiveValue::NotSet;
     ///
     /// // since `set_value.is_not_set == false`, we leave the existing set value alone
-    /// set_value.set_unset(false);
+    /// set_value.set_if_unset(false);
     /// assert_eq!(set_value, ActiveValue::Set(true));
     ///
     /// // since `set_value.is_not_set == false`, we leave the existing set value alone
-    /// unchanged_value.set_unset(false);
+    /// unchanged_value.set_if_unset(false);
     /// assert_eq!(unchanged_value, ActiveValue::Unchanged(true));
     ///
     /// // since `set_value.is_not_set == true`, we fill with the provided value
-    /// notset_value.set_unset(false);
+    /// notset_value.set_if_unset(false);
     /// assert_eq!(notset_value, ActiveValue::Set(false));
     /// ```
-    pub fn set_unset(&mut self, value: V) {
+    pub fn set_if_unset(&mut self, value: V) {
         match self {
             ActiveValue::NotSet => *self = ActiveValue::Set(value),
             _ => {}
@@ -444,21 +444,21 @@ where
     ///
     /// let mut count = 0;
     /// // since `set_value.is_not_set == false`, we leave the existing set value alone
-    /// set_value.set_unset_with(|| {
+    /// set_value.set_if_unset_with(|| {
     ///     count += 1;
     ///     false
     /// });
     /// assert_eq!(set_value, ActiveValue::Set(true));
     ///
     /// // since `set_value.is_not_set == false`, we leave the existing set value alone
-    /// unchanged_value.set_unset_with(|| {
+    /// unchanged_value.set_if_unset_with(|| {
     ///     count += 1;
     ///     false
     /// });
     /// assert_eq!(unchanged_value, ActiveValue::Unchanged(true));
     ///
     /// // since `set_value.is_not_set == true`, we fill with the result of the provided computation.
-    /// notset_value.set_unset_with(|| {
+    /// notset_value.set_if_unset_with(|| {
     ///     count += 1;
     ///     false
     /// });
@@ -467,7 +467,7 @@ where
     /// // Only the last closure actually executed.
     /// assert_eq!(count, 1);
     /// ```
-    pub fn set_unset_with(&mut self, f: impl FnOnce() -> V) {
+    pub fn set_if_unset_with(&mut self, f: impl FnOnce() -> V) {
         match self {
             ActiveValue::NotSet => *self = ActiveValue::Set(f()),
             _ => {}
@@ -478,7 +478,7 @@ where
     /// Similar to "null coalescing" or [Option#method.get_or_insert_default], but without
     /// returning the inner value if it is set/unchanged.
     ///
-    /// Convenient shorthand for `set_unset(Default::default())`.
+    /// Convenient shorthand for `set_if_unset(Default::default())`.
     ///
     /// ## Examples
     ///
@@ -490,18 +490,18 @@ where
     /// let mut notset_value = ActiveValue::NotSet;
     ///
     /// // since `set_value.is_not_set == false`, we leave the existing set value alone
-    /// set_value.set_unset_default();
+    /// set_value.set_if_unset_default();
     /// assert_eq!(set_value, ActiveValue::Set(100));
     ///
     /// // since `set_value.is_not_set == false`, we leave the existing set value alone
-    /// unchanged_value.set_unset_default();
+    /// unchanged_value.set_if_unset_default();
     /// assert_eq!(unchanged_value, ActiveValue::Unchanged(100));
     ///
     /// // since `set_value.is_not_set == true`, we fill with the default int (0)
-    /// notset_value.set_unset_default();
+    /// notset_value.set_if_unset_default();
     /// assert_eq!(notset_value, ActiveValue::Set(0));
     /// ```
-    pub fn set_unset_default(&mut self)
+    pub fn set_if_unset_default(&mut self)
     where
         V: Default,
     {
