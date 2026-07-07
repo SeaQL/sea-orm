@@ -256,3 +256,62 @@ pub async fn select_only_exclude_option_fields() {
 
     ctx.delete().await;
 }
+
+#[sea_orm_macros::test]
+pub async fn select_except_excludes_option_fields() {
+    let ctx = TestContext::new("select_except_excludes_option_fields").await;
+    create_bakery_table(&ctx.db).await.unwrap();
+    create_baker_table(&ctx.db).await.unwrap();
+
+    let bakery = bakery::ActiveModel {
+        name: Set("Sweet Treats".to_owned()),
+        profit_margin: Set(0.5),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert bakery");
+
+    let _ = baker::ActiveModel {
+        name: Set("Alice".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "phone": "555-1234",
+            "email": "alice@example.com"
+        })),
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert baker");
+
+    let bakers = Baker::find()
+        .select_except([baker::Column::BakeryId])
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(bakers.len(), 1);
+    assert_eq!(bakers[0].name, "Alice");
+    assert_eq!(
+        bakers[0].contact_details,
+        serde_json::json!({
+            "phone": "555-1234",
+            "email": "alice@example.com"
+        })
+    );
+    assert_eq!(bakers[0].bakery_id, None);
+
+    let bakery_id: Option<i32> = Baker::find_by_id(bakers[0].id)
+        .select_only()
+        .column(baker::Column::BakeryId)
+        .into_tuple()
+        .one(&ctx.db)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(bakery_id, Some(bakery.id.unwrap()));
+
+    ctx.delete().await;
+}
