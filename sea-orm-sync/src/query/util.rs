@@ -126,19 +126,14 @@ where
         if !column.def().is_null() {
             return Ok(false);
         }
-        model.set(
-            column,
-            match model.get(column).into_value() {
-                Some(value) => value.as_null(),
-                None => {
-                    return Err(DbErr::AttrNotSet(format!(
-                        "{}.{}",
-                        <ActiveModel::Entity as Default>::default().as_str(),
-                        col_name
-                    )));
-                }
-            },
-        );
+        match model.get(column).into_value() {
+            // The key column carries a value: null it out so the detach is persisted.
+            Some(value) => model.set(column, value.as_null()),
+            // The key column was never set (e.g. a freshly-built ActiveModel): there
+            // is nothing to clear — it will insert as NULL / stay absent on update —
+            // so treat it as already cleared rather than erroring.
+            None => {}
+        }
     }
 
     Ok(true)

@@ -775,3 +775,106 @@ fn test_has_one_replace_and_delete() -> Result<(), DbErr> {
 
     Ok(())
 }
+
+#[sea_orm_macros::test]
+fn test_belongs_to_nullable_detach() -> Result<(), DbErr> {
+    use common::bakery_dense::{bakery, cake};
+
+    let ctx = TestContext::new("test_belongs_to_nullable_detach");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(bakery::Entity)
+        .register(cake::Entity)
+        .apply(db)?;
+
+    info!("attach a cake to a bakery through the nullable belongs_to");
+    let cake = cake::ActiveModel::builder()
+        .set_name("Cheesecake")
+        .set_price(Decimal::from(10))
+        .set_gluten_free(false)
+        .set_serial(Uuid::nil())
+        .set_bakery(
+            bakery::ActiveModel::builder()
+                .set_name("SeaSide")
+                .set_profit_margin(10.0),
+        )
+        .save(db)?;
+    assert!(cake::Entity::find().one(db)?.unwrap().bakery_id.is_some());
+
+    info!("delete_<field> on a nullable belongs_to nulls the FK and keeps both rows");
+    cake.delete_bakery().save(db)?;
+
+    let reloaded = cake::Entity::find().one(db)?.unwrap();
+    assert!(reloaded.bakery_id.is_none());
+    assert_eq!(bakery::Entity::find().all(db)?.len(), 1);
+
+    ctx.delete();
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+fn test_belongs_to_non_null_detach_errors() -> Result<(), DbErr> {
+    use common::blogger::*;
+
+    let ctx = TestContext::new("test_belongs_to_non_null_detach_errors");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(user::Entity)
+        .register(post::Entity)
+        .apply(db)?;
+
+    let user = user::ActiveModel::builder()
+        .set_name("Alice")
+        .set_email("alice@sea-ql.org")
+        .save(db)?;
+    let post = post::ActiveModel::builder()
+        .set_title("post 1")
+        .set_author(user)
+        .save(db)?;
+
+    info!("detaching a non-nullable belongs_to (post.author) returns a clean error");
+    let err = post.delete_author().save(db).unwrap_err();
+    assert!(
+        matches!(err, DbErr::Type(_)),
+        "expected a clean DbErr::Type, got {err:?}"
+    );
+
+    // The row is untouched — nothing was deleted or nulled.
+    assert!(post::Entity::find().one(db)?.is_some());
+
+    ctx.delete();
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+fn test_detach_unset_belongs_to_is_noop() -> Result<(), DbErr> {
+    use common::bakery_dense::{bakery, cake};
+
+    let ctx = TestContext::new("test_detach_unset_belongs_to_is_noop");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(bakery::Entity)
+        .register(cake::Entity)
+        .apply(db)?;
+
+    info!("delete_<field> on a never-set nullable belongs_to is a no-op, not an error");
+    cake::ActiveModel::builder()
+        .set_name("Plain")
+        .set_price(Decimal::from(5))
+        .set_gluten_free(true)
+        .set_serial(Uuid::nil())
+        .delete_bakery()
+        .save(db)?;
+
+    let reloaded = cake::Entity::find().one(db)?.unwrap();
+    assert!(reloaded.bakery_id.is_none());
+
+    ctx.delete();
+
+    Ok(())
+}

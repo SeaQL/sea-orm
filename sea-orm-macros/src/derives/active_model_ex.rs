@@ -102,7 +102,8 @@ pub fn expand_derive_active_model_ex(
                                 } else if *entity_count.get(entity_path).unwrap() == 1 {
                                     // can only Related to another Entity once
                                     if compound_attrs.belongs_to.is_some() {
-                                        belongs_to_fields.push(ident.clone());
+                                        belongs_to_fields
+                                            .push((ident.clone(), entity_path.to_owned()));
                                     } else if compound_attrs.has_one.is_some() {
                                         has_one_fields.push(ident.clone());
                                     } else if compound_attrs.has_many.is_some()
@@ -326,7 +327,7 @@ pub fn expand_derive_active_model_ex(
 }
 
 fn expand_active_model_action(
-    belongs_to: &[Ident],
+    belongs_to: &[(Ident, String)],
     belongs_to_self: &[(Ident, LitStr)],
     has_one: &[Ident],
     has_many: &[Ident],
@@ -353,8 +354,20 @@ fn expand_active_model_action(
         quote!()
     };
 
-    for field in belongs_to {
+    for (field, related_entity) in belongs_to {
+        let related_entity: TokenStream = related_entity.parse().unwrap();
         belongs_to_action.extend(quote! {
+            // Detach: `Delete` on a belongs_to nulls this row's own foreign key.
+            // If the FK is not nullable it cannot be detached — return a clean error
+            // instead of a raw database constraint violation.
+            if self.#field.is_delete() {
+                if !self.clear_parent_key::<#related_entity>()? {
+                    return Err(sea_orm::DbErr::Type(format!(
+                        "Relation `{}` cannot be detached: its foreign key is not nullable",
+                        stringify!(#field)
+                    )));
+                }
+            }
             let #field = if let Some(model) = self.#field.take() {
                 if model.is_update() {
                     // has primary key
