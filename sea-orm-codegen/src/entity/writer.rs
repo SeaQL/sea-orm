@@ -687,7 +687,9 @@ impl EntityWriter {
             .columns
             .iter()
             .map(|col| {
-                if let sea_query::ColumnType::Enum { name, .. } = col.get_inner_col_type()
+                if matches!(&col.col_type, sea_query::ColumnType::Array(_)) {
+                    col.get_rs_type(column_option)
+                } else if let sea_query::ColumnType::Enum { name, .. } = col.get_inner_col_type()
                     && let Some(enum_type_ident) = active_enum_type_idents.get(&name.to_string())
                 {
                     if col.not_null {
@@ -1892,6 +1894,62 @@ mod tests {
             assert!(body.contains(&format!(": {ident}")));
             assert!(body.contains(&format!("{ident} :: db_type")));
         }
+    }
+
+    #[test]
+    fn test_enum_array_column_generates_vec() {
+        let enum_ty = ColumnType::Enum {
+            name: SeaRc::new(Alias::new("subscription_status")),
+            variants: vec![SeaRc::new(Alias::new("ACTIVE"))],
+        };
+        let entity = Entity {
+            table_name: "subscriber".to_owned(),
+            columns: vec![
+                Column {
+                    name: "statuses".to_owned(),
+                    col_type: ColumnType::Array(RcOrArc::new(enum_ty.clone())),
+                    auto_increment: false,
+                    not_null: true,
+                    unique: false,
+                    unique_key: None,
+                },
+                Column {
+                    name: "status".to_owned(),
+                    col_type: enum_ty,
+                    auto_increment: false,
+                    not_null: true,
+                    unique: false,
+                    unique_key: None,
+                },
+            ],
+            relations: vec![],
+            conjunct_relations: vec![],
+            primary_keys: vec![],
+        };
+        let body = EntityWriter::gen_dense_code_blocks(
+            &entity,
+            &WithSerde::None,
+            &default_column_option(),
+            &None,
+            false,
+            false,
+            &TokenStream::new(),
+            &TokenStream::new(),
+            &TokenStream::new(),
+            false,
+            true,
+        )
+        .into_iter()
+        .skip(1)
+        .fold(TokenStream::new(), |mut acc, tok| {
+            acc.extend(tok);
+            acc
+        })
+        .to_string();
+
+        assert!(body.contains("statuses : Vec < SubscriptionStatus >"));
+        assert!(body.contains("status : SubscriptionStatus"));
+        assert!(!body.contains("statuses : SubscriptionStatus"));
     }
 
     #[test]
