@@ -60,6 +60,12 @@ impl<T> ActiveHasOne<T>
 where
     T: HasOneCardinality,
 {
+    /// Construct an `ActiveHasOne::Set`. Accepts a bare active model for a
+    /// required relation, or an `Option<active model>` for an optional one.
+    pub fn set(model: impl IntoActiveHasOneSet<T>) -> Self {
+        model.into_active_has_one_set()
+    }
+
     /// Take ownership of this relation state, leaving `NotSet` in place
     pub fn take(&mut self) -> Self {
         std::mem::take(self)
@@ -76,15 +82,38 @@ where
     }
 }
 
+/// Conversion used by [`ActiveHasOne::set`]. Wraps a bare active model (required
+/// relation) or an `Option<active model>` (optional relation) into the correct
+/// `Set` payload, selected by the relation's cardinality type parameter.
+#[doc(hidden)]
+pub trait IntoActiveHasOneSet<T: HasOneCardinality> {
+    fn into_active_has_one_set(self) -> ActiveHasOne<T>;
+}
+
+impl<E, M> IntoActiveHasOneSet<E> for M
+where
+    E: EntityTrait,
+    M: Into<E::ActiveModelEx>,
+{
+    fn into_active_has_one_set(self) -> ActiveHasOne<E> {
+        ActiveHasOne::Set(Box::new(self.into()))
+    }
+}
+
+impl<E, M> IntoActiveHasOneSet<Option<E>> for Option<M>
+where
+    E: EntityTrait,
+    M: Into<E::ActiveModelEx>,
+{
+    fn into_active_has_one_set(self) -> ActiveHasOne<Option<E>> {
+        ActiveHasOne::Set(self.map(|model| Box::new(model.into())))
+    }
+}
+
 impl<E> ActiveHasOne<E>
 where
     E: EntityTrait,
 {
-    /// Construct an `ActiveHasOne::Set`
-    pub fn set(model: impl Into<E::ActiveModelEx>) -> Self {
-        Self::Set(Box::new(model.into()))
-    }
-
     /// Get a reference, if set
     pub fn as_ref(&self) -> Option<&E::ActiveModelEx> {
         match self {
@@ -134,11 +163,6 @@ impl<E> ActiveHasOne<Option<E>>
 where
     E: EntityTrait,
 {
-    /// Construct an optional `ActiveHasOne::Set`.
-    pub fn set(model: Option<impl Into<E::ActiveModelEx>>) -> Self {
-        Self::Set(model.map(|model| Box::new(model.into())))
-    }
-
     /// Get a reference, if set
     pub fn as_ref(&self) -> Option<&E::ActiveModelEx> {
         match self {

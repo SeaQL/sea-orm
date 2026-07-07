@@ -41,6 +41,12 @@ impl<T> HasOne<T>
 where
     T: HasOneCardinality,
 {
+    /// Construct a `HasOne::Loaded` value. Accepts a bare model for a required
+    /// relation, or an `Option<model>` for an optional one.
+    pub fn loaded(model: impl IntoHasOneLoaded<T>) -> Self {
+        model.into_has_one_loaded()
+    }
+
     /// Return true if variant is `Unloaded`
     pub fn is_unloaded(&self) -> bool {
         matches!(self, HasOne::Unloaded)
@@ -52,15 +58,38 @@ where
     }
 }
 
+/// Conversion used by [`HasOne::loaded`]. Wraps a bare model (required relation)
+/// or an `Option<model>` (optional relation) into the correct `Loaded` payload,
+/// selected by the relation's cardinality type parameter.
+#[doc(hidden)]
+pub trait IntoHasOneLoaded<T: HasOneCardinality> {
+    fn into_has_one_loaded(self) -> HasOne<T>;
+}
+
+impl<E, M> IntoHasOneLoaded<E> for M
+where
+    E: EntityTrait,
+    M: Into<E::ModelEx>,
+{
+    fn into_has_one_loaded(self) -> HasOne<E> {
+        HasOne::Loaded(Box::new(self.into()))
+    }
+}
+
+impl<E, M> IntoHasOneLoaded<Option<E>> for Option<M>
+where
+    E: EntityTrait,
+    M: Into<E::ModelEx>,
+{
+    fn into_has_one_loaded(self) -> HasOne<Option<E>> {
+        HasOne::Loaded(self.map(|model| Box::new(model.into())))
+    }
+}
+
 impl<E> HasOne<E>
 where
     E: EntityTrait,
 {
-    /// Construct a `HasOne::Loaded` value
-    pub fn loaded(model: impl Into<E::ModelEx>) -> Self {
-        Self::Loaded(Box::new(model.into()))
-    }
-
     /// Required relations only have no value when they are unloaded.
     pub fn is_none(&self) -> bool {
         matches!(self, HasOne::Unloaded)
@@ -110,11 +139,6 @@ impl<E> HasOne<Option<E>>
 where
     E: EntityTrait,
 {
-    /// Construct a loaded optional relation.
-    pub fn loaded(model: Option<impl Into<E::ModelEx>>) -> Self {
-        Self::Loaded(model.map(|model| Box::new(model.into())))
-    }
-
     /// Return true if this optional relation was loaded and no model was found.
     pub fn is_not_found(&self) -> bool {
         matches!(self, HasOne::Loaded(None))
