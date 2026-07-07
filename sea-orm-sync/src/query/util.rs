@@ -126,13 +126,12 @@ where
         if !column.def().is_null() {
             return Ok(false);
         }
-        match model.get(column).into_value() {
-            // The key column carries a value: null it out so the detach is persisted.
-            Some(value) => model.set(column, value.as_null()),
-            // The key column was never set (e.g. a freshly-built ActiveModel): there
-            // is nothing to clear — it will insert as NULL / stay absent on update —
-            // so treat it as already cleared rather than erroring.
-            None => {}
+        // Null out the key column so the detach is persisted. If it was never set
+        // (a freshly-built ActiveModel) there is nothing to clear — it will insert as
+        // NULL / stay absent on update — so treat it as already cleared rather than
+        // erroring.
+        if let Some(value) = model.get(column).into_value() {
+            model.set(column, value.as_null());
         }
     }
 
