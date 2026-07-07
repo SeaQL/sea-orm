@@ -243,7 +243,7 @@ where
     /// Check if the [ActiveValue] is [ActiveValue::Set] and that the inner value
     /// matches a given predicate.
     pub fn is_set_and(&self, f: impl FnOnce(&V) -> bool) -> bool {
-        matches!(self, Self::Set(v) && f(v))
+        matches!(self, Self::Set(v) if f(v))
     }
 
     /// Create an [ActiveValue::Unchanged]
@@ -259,7 +259,7 @@ where
     /// Check if the [ActiveValue] is [ActiveValue::Unchanged] and that the inner
     /// value matches a given predicate.
     pub fn is_unchanged_and(&self, f: impl FnOnce(&V) -> bool) -> bool {
-        matches!(self, Self::Unchanged(v) && f(v))
+        matches!(self, Self::Unchanged(v) if f(v))
     }
 
     /// Create an [ActiveValue::NotSet]
