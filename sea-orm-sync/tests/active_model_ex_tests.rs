@@ -777,3 +777,78 @@ fn test_has_one_replace_and_delete() -> Result<(), DbErr> {
 
     Ok(())
 }
+
+#[sea_orm_macros::test]
+fn test_belongs_to_duplicate_target() -> Result<(), DbErr> {
+    use common::blogger::*;
+
+    let ctx = TestContext::new("test_belongs_to_duplicate_target");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(user::Entity)
+        .register(user_follower::Entity)
+        .apply(db)?;
+
+    // `user_follower` has two belongs_to fields — `user` and `follower` — both
+    // targeting `user::Entity`. Nested writes on such duplicate-target relations
+    // used to be silently skipped; now each writes its own FK, disambiguated by
+    // relation (`follower` via its `relation_enum`, `user` via the default).
+    let alice = user::ActiveModel::builder()
+        .set_name("Alice")
+        .set_email("alice@sea-ql.org")
+        .save(db)?;
+    let bob = user::ActiveModel::builder()
+        .set_name("Bob")
+        .set_email("bob@sea-ql.org")
+        .save(db)?;
+
+    info!("link the two users through the disambiguated nested belongs_to");
+    let follow = user_follower::ActiveModelEx {
+        user: ActiveHasOne::set(alice),
+        follower: ActiveHasOne::set(bob),
+        ..Default::default()
+    }
+    .insert(db)?;
+
+    // Each belongs_to wrote its own FK (previously a silent no-op).
+    assert_eq!(follow.user_id, 1);
+    assert_eq!(follow.follower_id, 2);
+
+    let row = user_follower::Entity::find().one(db)?.expect("row");
+    assert_eq!(row.user_id, 1);
+    assert_eq!(row.follower_id, 2);
+
+    ctx.delete();
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+fn test_clear_unset_belongs_to_is_noop() -> Result<(), DbErr> {
+    use common::bakery_dense::{bakery, cake};
+
+    let ctx = TestContext::new("test_clear_unset_belongs_to_is_noop");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(bakery::Entity)
+        .register(cake::Entity)
+        .apply(db)?;
+
+    // Clearing a nullable belongs_to whose FK was never set (a freshly-built
+    // ActiveModel) is a no-op rather than an `AttrNotSet` error.
+    let cake = cake::ActiveModel::builder()
+        .set_name("Plain")
+        .set_price(Decimal::from(5))
+        .set_gluten_free(true)
+        .set_serial(Uuid::nil())
+        .clear_bakery()
+        .insert(db)?;
+
+    assert!(cake.bakery_id.is_none());
+
+    ctx.delete();
+
+    Ok(())
+}

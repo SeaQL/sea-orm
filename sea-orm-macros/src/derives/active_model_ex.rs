@@ -1,7 +1,9 @@
 use super::active_model::DeriveActiveModel;
 use super::attributes::compound_attr;
+use super::model_ex::infer_relation_name_from_entity;
 use super::util::{CardinalityKind, CompoundKind, CompoundType, consume_meta};
-use proc_macro2::{Ident, TokenStream};
+use heck::ToUpperCamelCase;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::HashMap;
 use syn::{Attribute, Data, Field, Fields, LitStr, PathArguments, Type, TypePath, Visibility};
@@ -17,6 +19,10 @@ fn async_await() -> (TokenStream, TokenStream) {
 enum ActiveModelExRelationAttr {
     BelongsTo {
         cardinality: CardinalityKind,
+        /// Explicit relation disambiguator, present when more than one relation
+        /// targets the same entity. Routes the FK write through the
+        /// relation-keyed `*_parent_key_for` helpers instead of the entity-keyed ones.
+        relation_enum: Option<LitStr>,
     },
     BelongsToSelf {
         relation_enum: LitStr,
@@ -79,17 +85,20 @@ impl ActiveModelExRelationAttrs {
                 relation_enum: relation_enum.clone(),
             }),
             compound_attr::SeaOrm {
-                relation_enum: Some(_),
-                ..
-            } => None,
-            compound_attr::SeaOrm {
                 belongs_to: Some(_),
                 ..
             } => Some(ActiveModelExRelationAttr::BelongsTo {
                 cardinality: compound.cardinality().ok_or_else(|| {
                     syn::Error::new_spanned(ident, "belongs_to must be paired with HasOne")
                 })?,
+                // Captured so multiple belongs_to targeting the same entity can be
+                // disambiguated via their relation enum on save.
+                relation_enum: attrs.relation_enum.clone(),
             }),
+            compound_attr::SeaOrm {
+                relation_enum: Some(_),
+                ..
+            } => None,
             compound_attr::SeaOrm {
                 has_one: Some(_), ..
             } => {
@@ -399,13 +408,31 @@ impl ActiveModelActionTokens {
                             relation_enum: relation_enum.clone(),
                         }))
                     }
-                    Some(ActiveModelExRelationAttr::BelongsTo { cardinality })
-                        if is_unique_entity =>
-                    {
+                    Some(ActiveModelExRelationAttr::BelongsTo {
+                        cardinality,
+                        relation_enum,
+                    }) => {
+                        // Always generate. Pick the FK-write path: an explicit
+                        // relation_enum, or a non-unique target, is keyed by relation
+                        // variant (there is no canonical `Related<E>` to key by);
+                        // a unique target with no explicit enum uses the entity-keyed path.
+                        let relation_variant = match (relation_enum, is_unique_entity) {
+                            (Some(relation_enum), _) => Some(Ident::new(
+                                &relation_enum.value().to_upper_camel_case(),
+                                relation_enum.span(),
+                            )),
+                            (None, false) => Some(Ident::new(
+                                &infer_relation_name_from_entity(&compound.entity)
+                                    .to_upper_camel_case(),
+                                Span::call_site(),
+                            )),
+                            (None, true) => None,
+                        };
                         Some(ActiveModelExRelation::BelongsTo(ActiveHasOneField {
                             ident,
                             entity: &compound.entity,
                             cardinality: *cardinality,
+                            relation_enum: relation_variant,
                         }))
                     }
                     Some(ActiveModelExRelationAttr::HasOne { cardinality }) if is_unique_entity => {
@@ -413,6 +440,7 @@ impl ActiveModelActionTokens {
                             ident,
                             entity: &compound.entity,
                             cardinality: *cardinality,
+                            relation_enum: None,
                         }))
                     }
                     Some(ActiveModelExRelationAttr::HasMany) if is_unique_entity => {
@@ -742,6 +770,10 @@ struct ActiveHasOneField<'a> {
     ident: &'a Ident,
     entity: &'a TypePath,
     cardinality: CardinalityKind,
+    /// The relation-enum variant to key FK writes by (`*_parent_key_for`) when this
+    /// relation shares its target entity with another. `None` uses the entity-keyed
+    /// path (`*_parent_key`), valid only when the target has a unique `Related<E>`.
+    relation_enum: Option<Ident>,
 }
 
 impl ActiveHasOneField<'_> {
@@ -762,17 +794,30 @@ impl ActiveHasOneField<'_> {
         } else {
             quote!()
         };
+        // Disambiguate the FK write: a relation that shares its target entity with
+        // another relation is keyed by its relation enum; otherwise by entity (the
+        // canonical `Related<E>`).
+        let (set_parent_key, clear_parent_key) = match &self.relation_enum {
+            Some(relation_enum) => (
+                quote!(self.set_parent_key_for(&model, Relation::#relation_enum)?),
+                quote!(self.clear_parent_key_for(Relation::#relation_enum)?),
+            ),
+            None => (
+                quote!(self.set_parent_key(&model)?),
+                quote!(self.clear_parent_key::<#related_entity>()?),
+            ),
+        };
         let replace_model = quote! {
             ActiveHasOne::Set(#optional(model)) => {
                 let mut model = *model;
                 if model.is_update() {
-                    self.set_parent_key(&model)?;
+                    #set_parent_key;
                     if model.is_changed() {
                         model = #box_pin(model.action(action, db))#await_?;
                     }
                 } else {
                     model = #box_pin(model.action(action, db))#await_?;
-                    self.set_parent_key(&model)?;
+                    #set_parent_key;
                 }
                 ActiveHasOne::<#has_one_target>::set(#optional(model))
             }
@@ -780,7 +825,7 @@ impl ActiveHasOneField<'_> {
         let clear_optional = if self.cardinality.is_optional() {
             quote! {
                 ActiveHasOne::Set(None) => {
-                    if !self.clear_parent_key::<#related_entity>()? {
+                    if !#clear_parent_key {
                         return Err(sea_orm::DbErr::Type(format!(
                             "Relation {} cannot be cleared",
                             stringify!(#ident)

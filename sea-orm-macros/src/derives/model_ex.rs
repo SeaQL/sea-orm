@@ -836,7 +836,7 @@ fn get_related<'a>(
     (related_entity, relation_enum)
 }
 
-fn infer_relation_name_from_entity(entity: &TypePath) -> String {
+pub(crate) fn infer_relation_name_from_entity(entity: &TypePath) -> String {
     let mut segments = entity.path.segments.iter().rev();
     let Some(last) = segments.next() else {
         return String::new();
