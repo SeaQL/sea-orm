@@ -20,7 +20,7 @@ async-trait = "0.1"
 serde       = { version = "1", features = ["derive"] }
 serde_json  = "1"
 
-axum          = { version = "0.7", default-features = false, features = ["macros"] }
+axum          = { version = "0.8", default-features = false, features = ["macros"] }
 tower-service = "0.3.2"
 worker        = { version = "0.7.5", features = ['http', 'axum', "d1"] }
 worker-macros = { version = "0.7.5", features = ['http'] }

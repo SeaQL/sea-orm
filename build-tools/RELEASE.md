@@ -51,15 +51,7 @@ The first commit bumps the publishable crate manifests:
 
 The second commit bumps example `sea-orm` / `sea-orm-migration` dependency comments.
 
-### macOS Note
-
-`bump.sh` currently uses GNU `sed -i` syntax. On macOS BSD `sed`, it can fail with:
-
-```text
-sed: 1: "Cargo.toml": invalid command code C
-```
-
-Use GNU sed, or manually apply the same changes and keep the same two-commit structure.
+`bump.sh` detects GNU vs BSD `sed`, so it runs on both Linux and macOS.
 
 ## 4. Write Changelog
 
@@ -139,6 +131,25 @@ git push origin 2.0.0-rc.N
 ```
 
 Create a GitHub Release using `changelog/2.0.0-rc.N.md` as the release body.
+
+## 8b. Release prebuilt `sea-orm-cli` binaries
+
+The `.github/workflows/sea-orm-cli-release.yml` workflow builds prebuilt
+`sea-orm-cli` binaries and powers `cargo binstall sea-orm-cli`. It triggers on a
+**separate** tag namespace, `sea-orm-cli@<version>`, not the `2.0.0-rc.N` release
+tag — so it does nothing unless that tag is pushed.
+
+Create the tag as **annotated**, because the workflow's `gh release create
+--notes-from-tag` reads the tag's message (a lightweight tag yields empty notes):
+
+```sh
+git tag -a "sea-orm-cli@2.0.0-rc.N" -m "sea-orm-cli 2.0.0-rc.N"
+git push origin "sea-orm-cli@2.0.0-rc.N"
+```
+
+The workflow then builds the 5 targets, attaches the archives to a draft release,
+and publishes it. Confirm the assets appear on the `sea-orm-cli@2.0.0-rc.N`
+release and that `cargo binstall sea-orm-cli` resolves.
 
 ## 9. Verify
 

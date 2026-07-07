@@ -8,28 +8,40 @@ pub use sea_query::Value;
 use sea_query::{ArrayType, ValueTuple};
 use std::fmt::Debug;
 
-/// The interface for Model, implemented by data structs
+/// The interface implemented by every Model — an instance of an
+/// [`EntityTrait`], roughly an OOP "object" whose fields are the table's
+/// columns.
+///
+/// Implemented automatically by `#[derive(DeriveEntityModel)]` /
+/// `#[derive(DeriveModel)]`. Pairs with an [`ActiveModelTrait`] type for
+/// mutations.
 #[async_trait::async_trait]
 pub trait ModelTrait: Clone + Send + Debug {
-    #[allow(missing_docs)]
+    /// The [`EntityTrait`] this model belongs to.
     type Entity: EntityTrait;
 
-    /// Get the [Value] of a column from a Model
+    /// Read the value of one column.
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> Value;
 
-    /// Get the Value Type of a column from the Model
+    /// Type of the value stored by a column, used by reflection helpers
+    /// such as Arrow conversion.
     fn get_value_type(c: <Self::Entity as EntityTrait>::Column) -> ArrayType;
 
-    /// Set the Value of a Model field, panic if failed
+    /// Write a value to one column. Panics if the value's type doesn't match
+    /// the column; prefer [`try_set`](Self::try_set) when the value comes
+    /// from untrusted input.
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) {
         self.try_set(c, v)
             .unwrap_or_else(|e| panic!("Failed to set value for {:?}: {e:?}", c.as_column_ref()))
     }
 
-    /// Set the Value of a Model field, return error if failed
+    /// Write a value to one column, returning an error if the value's type
+    /// does not match the column.
     fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
 
-    /// Find related Models belonging to self
+    /// Build a [`Select`] for models related to `self` via the
+    /// `Self::Entity: Related<R>` relation. Use it together with `.one(db)` /
+    /// `.all(db)` to fetch the related rows.
     fn find_related<R>(&self, _: R) -> Select<R>
     where
         R: EntityTrait,
@@ -38,7 +50,8 @@ pub trait ModelTrait: Clone + Send + Debug {
         <Self::Entity as Related<R>>::find_related().belongs_to(self)
     }
 
-    /// Find linked Models belonging to self
+    /// Build a [`Select`] that follows a multi-hop link out of `self`. The
+    /// hops are described by a [`Linked`] implementation.
     fn find_linked<L>(&self, l: L) -> Select<L::ToEntity>
     where
         L: Linked<FromEntity = Self::Entity>,
@@ -105,7 +118,13 @@ pub trait ModelTrait: Clone + Send + Debug {
     }
 }
 
-/// A Trait for implementing a [QueryResult]
+/// Construct a value from a [`QueryResult`] row.
+///
+/// Implemented for every Model via `#[derive(DeriveModel)]`, and can be
+/// derived on any custom struct with `#[derive(FromQueryResult)]` to read
+/// an arbitrary shape out of a `SELECT`. See
+/// [`find_by_statement`](Self::find_by_statement) for executing a raw SQL
+/// query that materialises into the type.
 pub trait FromQueryResult: Sized {
     /// Instantiate a Model from a [QueryResult]
     ///
@@ -219,12 +238,18 @@ impl<T: FromQueryResult> FromQueryResult for Option<T> {
     }
 }
 
-/// A Trait for any type that can be converted into an Model
+/// Fallible conversion into a [`ModelTrait`] value.
+///
+/// Implemented for [`ActiveModelTrait`] so a partially-filled `ActiveModel`
+/// can be turned into a full `Model` once every column is `Set` or
+/// `Unchanged`; returns [`DbErr::AttrNotSet`](crate::DbErr::AttrNotSet)
+/// otherwise.
 pub trait TryIntoModel<M>
 where
     M: ModelTrait,
 {
-    /// Method to call to perform the conversion
+    /// Attempt the conversion, returning an error if a required column is
+    /// not set.
     fn try_into_model(self) -> Result<M, DbErr>;
 }
 
@@ -284,7 +309,7 @@ mod tests {
             id: Unchanged(12),
             name: Unchanged("".into()),
             vendor_id: Unchanged(None),
-            ingredients: HasManyModel::NotSet,
+            ingredients: ActiveHasMany::NotSet,
         };
 
         assert_eq!(filling_am.into_ex(), filling_ex);
@@ -311,7 +336,7 @@ mod tests {
         let cake_am = cake::ActiveModelEx {
             id: Unchanged(12),
             name: Unchanged("C".into()),
-            fruit: HasOneModel::Set(
+            fruit: ActiveHasOne::Set(
                 fruit::ActiveModelEx {
                     id: Unchanged(13),
                     name: Unchanged("F".into()),
@@ -319,11 +344,11 @@ mod tests {
                 }
                 .into(),
             ),
-            fillings: HasManyModel::Append(vec![filling::ActiveModelEx {
+            fillings: ActiveHasMany::Append(vec![filling::ActiveModelEx {
                 id: Unchanged(14),
                 name: Unchanged("FF".into()),
                 vendor_id: Unchanged(None),
-                ingredients: HasManyModel::NotSet,
+                ingredients: ActiveHasMany::NotSet,
             }]),
         };
 

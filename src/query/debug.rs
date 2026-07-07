@@ -1,11 +1,14 @@
 use crate::{QueryTrait, Statement, database::*};
 
-/// This structure provides debug capabilities
+/// Glue type used by the [`debug_query!`](crate::debug_query) /
+/// [`debug_query_stmt!`](crate::debug_query_stmt) macros to render a query
+/// for a specific backend or connection. Most code should use those macros
+/// rather than naming this type directly.
 #[derive(Debug)]
 pub struct DebugQuery<'a, Q, T> {
-    /// The query to debug
+    /// The query to render.
     pub query: &'a Q,
-    /// The value of the query
+    /// Either a [`DbBackend`] or a connection to take the backend from.
     pub value: T,
 }
 

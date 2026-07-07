@@ -1,4 +1,4 @@
-use super::{Schema, TopologicalSort};
+use super::{Schema, TopologicalSort, entity::index_table_ref};
 use crate::{ConnectionTrait, DbBackend, DbErr, EntityTrait, Statement};
 use sea_query::{
     ForeignKeyCreateStatement, Index, IndexCreateStatement, IntoIden, TableAlterStatement,
@@ -74,8 +74,17 @@ impl SchemaBuilder {
         self.entities.push(entity);
     }
 
-    /// Synchronize the schema with database, will create missing tables, columns, unique keys, and foreign keys.
-    /// This operation is addition only, will not drop any table / columns.
+    /// Synchronize the schema with the database: creates any missing tables, columns,
+    /// unique keys, and foreign keys.
+    ///
+    /// Non-destructive by design. Sync only adds — it never drops or alters existing tables
+    /// or columns. If a column already exists but its type or constraints differ from the
+    /// entity, sync leaves it untouched and logs a warning; apply such changes with a
+    /// migration. Destructive operations (ALTER / DROP) are intentionally out of scope and
+    /// would be a separate, explicitly-named API.
+    ///
+    /// Unstable: schema sync is experimental and exempt from semver — its behaviour and
+    /// signature may change in a minor (2.x) release.
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
     pub async fn sync<C>(self, db: &C) -> Result<(), DbErr>
@@ -242,8 +251,9 @@ impl SchemaBuilder {
         Ok(())
     }
 
-    /// Apply this schema to a database, will create all registered tables, columns, unique keys, and foreign keys.
-    /// Will fail if any table already exists. Use [`sync`] if you want an incremental version that can perform schema diff.
+    /// Create all registered tables, columns, unique keys, and foreign keys.
+    /// Fails if any table already exists. Use `sync` (feature `schema-sync`)
+    /// instead for an incremental version that diffs against the live schema.
     pub async fn apply<C: ConnectionTrait>(self, db: &C) -> Result<(), DbErr> {
         let mut created_enums: Vec<Statement> = Default::default();
 
@@ -258,6 +268,17 @@ impl SchemaBuilder {
         }
 
         Ok(())
+    }
+
+    // Regression guard for #3100: `sync()` must return a `Send` future, otherwise it
+    // cannot be used from `tokio::spawn` / most async runtimes. Compiled (never called)
+    // whenever `schema-sync` + a backend is on, so a future dep bump that reintroduces a
+    // `!Send` value across an await fails the build here.
+    #[allow(dead_code)]
+    #[cfg(all(feature = "schema-sync", feature = "sqlx-sqlite"))]
+    fn _assert_sync_future_is_send(self, db: &crate::DatabaseConnection) {
+        fn assert_send<T: Send>(_: &T) {}
+        assert_send(&self.sync(db));
     }
 
     fn sorted_tables(&self) -> Vec<TableName> {
@@ -400,14 +421,11 @@ impl EntitySchemaInfo {
         let existing_table = existing.find_table(self.schema_name.as_deref(), &table_name);
         if let Some(existing_table) = existing_table {
             for column_def in self.table.get_columns() {
-                let mut column_exists = false;
-                for existing_column in existing_table.get_columns() {
-                    if column_def.get_column_name() == existing_column.get_column_name() {
-                        column_exists = true;
-                        break;
-                    }
-                }
-                if !column_exists {
+                let existing_column = existing_table
+                    .get_columns()
+                    .iter()
+                    .find(|c| c.get_column_name() == column_def.get_column_name());
+                let Some(existing_column) = existing_column else {
                     let mut renamed_from = "";
                     if let Some(comment) = &column_def.get_column_spec().comment
                         && let Some((_, suffix)) = comment.rsplit_once("renamed_from \"")
@@ -432,6 +450,28 @@ impl EntitySchemaInfo {
                                 ),
                         )
                         .await?;
+                    }
+                    continue;
+                };
+                // The column already exists. Sync is non-destructive and will not alter it,
+                // but warn on a type divergence so the change isn't silently ignored (#3106).
+                if let (Some(desired), Some(current)) = (
+                    column_def.get_column_type(),
+                    existing_column.get_column_type(),
+                ) {
+                    let backend = db.get_database_backend();
+                    let desired_sql = render_column_type(backend, desired);
+                    let current_sql = render_column_type(backend, current);
+                    if desired_sql != current_sql {
+                        tracing::warn!(
+                            "schema sync: column `{}`.`{}` is `{}` in the database but the entity \
+                             defines `{}`; sync is non-destructive and will not alter it (apply the \
+                             change with a migration)",
+                            table_name.1.to_string(),
+                            column_def.get_column_name(),
+                            current_sql,
+                            desired_sql,
+                        );
                     }
                 }
             }
@@ -497,7 +537,7 @@ impl EntitySchemaInfo {
                         let table_name =
                             self.table.get_table_name().expect("table must have a name");
                         let tbl_str = table_name.sea_orm_table().to_string();
-                        let table_ref = table_name.clone();
+                        let table_ref = index_table_ref(table_name.clone(), db_backend);
                         db.execute(
                             Index::create()
                                 .name(format!("idx-{tbl_str}-{col_name}"))
@@ -605,6 +645,24 @@ fn get_table_name(table_ref: Option<&TableRef>) -> TableName {
         None => panic!("Expect TableCreateStatement is properly built"),
         _ => unreachable!("Unexpected {table_ref:?}"),
     }
+}
+
+/// Render a `ColumnType` to its backend-specific SQL type string. Used to compare an
+/// entity's column type against the live database (equal renderings mean no divergence,
+/// so e.g. SQLite `Integer`/`BigInteger` — both `integer` — don't false-alarm).
+// Always compiled, like `EntitySchemaInfo::sync` which calls it.
+#[allow(dead_code)]
+fn render_column_type(backend: DbBackend, col_type: &sea_query::ColumnType) -> String {
+    use sea_query::backend::TableBuilder;
+    let mut sql = String::new();
+    match backend {
+        DbBackend::MySql => sea_query::MysqlQueryBuilder.prepare_column_type(col_type, &mut sql),
+        DbBackend::Postgres => {
+            sea_query::PostgresQueryBuilder.prepare_column_type(col_type, &mut sql)
+        }
+        DbBackend::Sqlite => sea_query::SqliteQueryBuilder.prepare_column_type(col_type, &mut sql),
+    }
+    sql
 }
 
 fn compare_foreign_key(a: &ForeignKeyCreateStatement, b: &ForeignKeyCreateStatement) -> bool {

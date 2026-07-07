@@ -1,4 +1,4 @@
-use crate::HasManyModel;
+use crate::ActiveHasMany;
 use core::ops::Index;
 use std::hash::{Hash, Hasher};
 use std::slice;
@@ -74,12 +74,12 @@ where
     E: EntityTrait,
     E::ActiveModelEx: From<E::ModelEx>,
 {
-    pub fn into_active_model(self) -> HasManyModel<E> {
+    pub fn into_active_model(self) -> ActiveHasMany<E> {
         match self {
             HasMany::Loaded(models) => {
-                HasManyModel::Append(models.into_iter().map(Into::into).collect())
+                ActiveHasMany::Append(models.into_iter().map(Into::into).collect())
             }
-            HasMany::Unloaded => HasManyModel::NotSet,
+            HasMany::Unloaded => ActiveHasMany::NotSet,
         }
     }
 }

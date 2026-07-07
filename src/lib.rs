@@ -217,6 +217,7 @@
 //! Persist an entire object graph: user, profile (1-1), posts (1-N), and tags (M-N)
 //! in a single operation using a fluent builder API. SeaORM automatically determines
 //! the dependencies and inserts or deletes objects in the correct order.
+//! This requires the SeaORM 2.0 dense entity format.
 //!
 //! ```
 //! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
@@ -703,22 +704,18 @@ mod database;
 mod docs;
 mod driver;
 pub mod dynamic;
-/// Module for the Entity type and operations
 pub mod entity;
-/// Error types for all database operations
+/// Error types returned by SeaORM operations.
 pub mod error;
-/// This module performs execution of queries on a Model or ActiveModel
 mod executor;
-/// Types and methods to perform metric collection
+/// Per-query metric collection hooks.
 pub mod metric;
-/// Types and methods to perform queries
 pub mod query;
 #[cfg(feature = "rbac")]
 #[cfg_attr(docsrs, doc(cfg(feature = "rbac")))]
 pub mod rbac;
-/// Types that defines the schemas of an Entity
 pub mod schema;
-/// Helpers for working with Value
+/// Helpers for working with [`sea_query::Value`].
 pub mod value;
 
 #[doc(hidden)]

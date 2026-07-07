@@ -3,12 +3,12 @@ use crate as sea_orm;
 use crate::{DbErr, TryGetError, prelude::ChronoDateTimeUtc};
 use std::ops::{Deref, DerefMut};
 
-/// A DataTime<Utc> mapped to i64 in database
+/// A `DateTime<Utc>` stored as a Unix timestamp (seconds) `i64` in the database.
 #[derive(derive_more::Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[debug("{_0:?}")]
 pub struct ChronoUnixTimestamp(pub ChronoDateTimeUtc);
 
-/// A DataTime<Utc> mapped to i64 in database, but in milliseconds
+/// A `DateTime<Utc>` stored as a Unix timestamp in milliseconds (`i64`) in the database.
 #[derive(derive_more::Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[debug("{_0:?}")]
 pub struct ChronoUnixTimestampMillis(pub ChronoDateTimeUtc);

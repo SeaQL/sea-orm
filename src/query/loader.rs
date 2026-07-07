@@ -9,9 +9,12 @@ use std::{collections::HashMap, str::FromStr};
 
 // TODO: Replace DynIden::inner with a better API that without clone
 
-/// Entity, or a Select<Entity>; to be used as parameters in [`LoaderTrait`]
+/// Either an `Entity` or a `Select<Entity>`; accepted by [`LoaderTrait`] so
+/// you can pass the entity directly when no filtering is needed, or a
+/// pre-filtered [`Select`] when it is.
 pub trait EntityOrSelect<E: EntityTrait>: Send {
-    /// If self is Entity, use Entity::find()
+    /// Lift `self` into a [`Select<E>`]. For an entity, this is `E::find()`;
+    /// for an existing `Select<E>`, the value is returned as-is.
     fn select(self) -> Select<E>;
 }
 
@@ -20,7 +23,13 @@ type LoaderModel<T> = <<<T as LoaderTrait>::Model as ModelTrait>::Entity as Enti
 type LoaderRelation<T> =
     <<<T as LoaderTrait>::Model as ModelTrait>::Entity as EntityTrait>::Relation;
 
-/// This trait implements the Data Loader API
+/// Batch-load related entities for a slice of parent models, avoiding the
+/// N+1 query problem.
+///
+/// Given a `Vec<Parent>`, [`load_one`](Self::load_one) /
+/// [`load_many`](Self::load_many) / [`load_many_to_many`](Self::load_many_to_many)
+/// issue a single `WHERE … IN (…)` query for each relation hop and
+/// reassemble the results, grouped per parent.
 #[async_trait::async_trait]
 pub trait LoaderTrait {
     /// Source model

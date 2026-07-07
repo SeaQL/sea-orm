@@ -4,7 +4,7 @@ use std::fmt::Debug;
 
 pub use ActiveValue::{NotSet, Set, Unchanged};
 
-/// The state of a field in an [ActiveModel][ActiveModelTrait].
+/// The state of a field in an [ActiveModel][crate::ActiveModelTrait].
 ///
 /// There are three possible states represented by three enum variants:
 ///
@@ -62,20 +62,20 @@ where
     ///
     /// When editing an existing value, you can use [set_ne][ActiveValue::set_ne]
     /// to preserve the [Unchanged] state when the new value is the same as the old one.
-    /// Then you can meaningfully use methods like [ActiveModelTrait::is_changed].
+    /// Then you can meaningfully use methods like [crate::ActiveModelTrait::is_changed].
     Set(V),
     /// An existing, unchanged [Value] from the database.
     ///
     /// You get these when you query an existing [Model][crate::ModelTrait]
-    /// from the database and convert it into an [ActiveModel][ActiveModelTrait].
+    /// from the database and convert it into an [ActiveModel][crate::ActiveModelTrait].
     ///
     /// When you edit it, you can use [set_ne][ActiveValue::set_ne]
     /// to preserve this "unchanged" state if the new value is the same as the old one.
-    /// Then you can meaningfully use methods like [ActiveModelTrait::is_changed].
+    /// Then you can meaningfully use methods like [crate::ActiveModelTrait::is_changed].
     Unchanged(V),
     /// An undefined [Value]. Nothing is sent to the database.
     ///
-    /// When you create a new [ActiveModel][ActiveModelTrait],
+    /// When you create a new [ActiveModel][crate::ActiveModelTrait],
     /// its fields are [NotSet][ActiveValue::NotSet] by default.
     ///
     /// This can be useful when:
@@ -314,7 +314,7 @@ where
     /// and then use [`.is_unchanged()`][ActiveValue#method.is_unchanged] to see whether it has *actually* changed.
     ///
     /// The same nice effect applies to the entire `ActiveModel`.
-    /// You can now meaningfully use [ActiveModelTrait::is_changed][ActiveModelTrait#method.is_changed]
+    /// You can now meaningfully use [crate::ActiveModelTrait::is_changed][crate::ActiveModelTrait#method.is_changed]
     /// to see whether are any changes that need to be saved to the database.
     ///
     /// ## Examples

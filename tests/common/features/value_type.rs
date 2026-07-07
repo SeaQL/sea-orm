@@ -72,6 +72,19 @@ where
 #[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
 pub struct StringVec(pub Vec<String>);
 
+#[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
+#[sea_orm(try_getable_array)]
+pub struct GoodId(pub i32);
+
+#[cfg(feature = "postgres-array")]
+use sea_orm::FromQueryResult;
+
+#[cfg(feature = "postgres-array")]
+#[derive(Debug, FromQueryResult)]
+pub struct GoodIdArray {
+    pub ids: Vec<GoodId>,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, DeriveValueType)]
 #[sea_orm(value_type = "String")]
 pub enum Tag1 {

@@ -1,101 +1,131 @@
-/// This modules contains types and traits for an  Entity, ActiveMode, Model, PrimaryKey, ForeignKey and Relations.
-///
-/// // An Entity
-/// A unit struct implements [EntityTrait](crate::EntityTrait) representing a table in the database.
-///
-/// This trait contains the properties of an entity including
-///
-/// - The Table Name which is implemented by [EntityName](crate::EntityName)
-/// - The Column which is implemented by [ColumnTrait](crate::ColumnTrait)
-/// - A Relation which is implemented by [RelationTrait](crate::RelationTrait)
-/// - The Primary Key which is implemented by [PrimaryKeyTrait](crate::PrimaryKeyTrait)
-///   and [PrimaryKeyToColumn](crate::PrimaryKeyToColumn)
-///
-/// This trait also provides an API for CRUD actions
-///
-/// #### Example for creating an Entity, Model and ActiveModel
-/// ```
-/// #[cfg(feature = "macros")]
-/// # use sea_orm::entity::prelude::*;
-/// use sea_orm::ActiveModelBehavior;
-/// use sea_orm::ColumnDef;
-/// use sea_orm::ColumnTrait;
-/// use sea_orm::ColumnType;
-/// use sea_orm::EntityName;
-/// use sea_orm::PrimaryKeyTrait;
-/// use sea_orm::RelationDef;
-/// use sea_orm::RelationTrait;
-///
-/// // Use [DeriveEntity] to derive the EntityTrait automatically
-/// #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-/// pub struct Entity;
-///
-/// /// The [EntityName] describes the name of a table
-/// impl EntityName for Entity {
-///     fn table_name(&self) -> &'static str {
-///         "filling"
-///     }
-/// }
-///
-/// // Create a Model for the Entity through [DeriveModel].
-/// // The `Model` handles `READ` operations on a table in a database.
-/// // The [DeriveActiveModel] creates a way to perform `CREATE` , `READ` and `UPDATE` operations
-/// // in a database
-/// #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
-/// pub struct Model {
-///     pub id: i32,
-///     pub name: String,
-/// }
-///
-/// // Use the [DeriveColumn] to create a Column for an the table called Entity
-/// // The [EnumIter] which creates a new type that iterates of the variants of a Column.
-/// #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
-/// pub enum Column {
-///     Id,
-///     Name,
-/// }
-///
-/// // Create a PrimaryKey for the Entity using the [PrimaryKeyTrait]
-/// // The [EnumIter] which creates a new type that iterates of the variants of a PrimaryKey.
-/// #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
-/// pub enum PrimaryKey {
-///     Id,
-/// }
-///
-/// // Or implement the [PrimaryKeyTrait] manually instead of using the macro [DerivePrimaryKey]
-/// impl PrimaryKeyTrait for PrimaryKey {
-///     type ValueType = i32;
-///
-///     fn auto_increment() -> bool {
-///         true
-///     }
-/// }
-///
-/// #[derive(Copy, Clone, Debug, EnumIter)]
-/// pub enum Relation {}
-///
-/// impl ColumnTrait for Column {
-///     type EntityName = Entity;
-///
-///     fn def(&self) -> ColumnDef {
-///         match self {
-///             Self::Id => ColumnType::Integer.def(),
-///             Self::Name => ColumnType::String(StringLen::None).def(),
-///         }
-///     }
-/// }
-///
-/// // Create a Relation for the Entity
-/// impl RelationTrait for Relation {
-///     fn def(&self) -> RelationDef {
-///         unimplemented!()
-///     }
-/// }
-///
-/// // Implement user defined operations for CREATE, UPDATE and DELETE operations
-/// // to create an ActiveModel using the [ActiveModelBehavior]
-/// impl ActiveModelBehavior for ActiveModel {}
-/// ```
+//! Entities and the types and traits that describe them.
+//!
+//! In SeaORM, every database table is represented by an **Entity** — a unit
+//! struct implementing [`EntityTrait`]. The Entity ties together:
+//!
+//! - the table's **name** (via [`EntityName`]),
+//! - its **columns** (via [`ColumnTrait`] and the strongly-typed `COLUMN` constant),
+//! - its **primary key** (via [`PrimaryKeyTrait`] / [`PrimaryKeyToColumn`]),
+//! - its **relations** to other entities (via [`RelationTrait`]; in 2.0,
+//!   relations can also be declared directly on the `Model` struct as
+//!   [`HasOne`](compound::HasOne) / [`HasMany`](compound::HasMany) fields).
+//!
+//! Each Entity has two companion types:
+//!
+//! - **[`Model`](ModelTrait)** — a plain struct mirroring a row of the table,
+//!   used for reads.
+//! - **[`ActiveModel`](ActiveModelTrait)** — a struct where every field is
+//!   wrapped in [`ActiveValue`], used for inserts and partial updates.
+//!
+//! From an Entity you can build select, insert, update, and delete queries
+//! via [`EntityTrait::find`], [`EntityTrait::insert`], [`EntityTrait::update`],
+//! and [`EntityTrait::delete`] (plus their `_many` / `_by_id` siblings).
+//!
+//! # Defining an Entity (2.0 dense format)
+//!
+//! The recommended way to define an entity in SeaORM 2.0 is the dense entity
+//! format, where the relations live directly on the `Model` struct as
+//! [`HasOne`](compound::HasOne) / [`HasMany`](compound::HasMany) fields:
+//!
+//! ```
+//! # #[cfg(feature = "macros")]
+//! # mod entities {
+//! # mod fruit {
+//! #     use sea_orm::entity::prelude::*;
+//! #     #[sea_orm::model]
+//! #     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+//! #     #[sea_orm(table_name = "fruit")]
+//! #     pub struct Model {
+//! #         #[sea_orm(primary_key)]
+//! #         pub id: i32,
+//! #         pub cake_id: Option<i32>,
+//! #         #[sea_orm(belongs_to, from = "cake_id", to = "id")]
+//! #         pub cake: HasOne<super::cake::Entity>,
+//! #     }
+//! #     impl ActiveModelBehavior for ActiveModel {}
+//! # }
+//! mod cake {
+//!     use sea_orm::entity::prelude::*;
+//!
+//!     #[sea_orm::model]
+//!     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+//!     #[sea_orm(table_name = "cake")]
+//!     pub struct Model {
+//!         #[sea_orm(primary_key)]
+//!         pub id: i32,
+//!         pub name: String,
+//!         #[sea_orm(has_many)]
+//!         pub fruits: HasMany<super::fruit::Entity>,
+//!     }
+//!
+//!     impl ActiveModelBehavior for ActiveModel {}
+//! }
+//! # }
+//! ```
+//!
+//! # Defining an Entity (1.0 compact format)
+//!
+//! The 1.0 compact format remains supported. Here relations are declared as a
+//! separate `Relation` enum implementing [`RelationTrait`], plus an explicit
+//! [`Related`] impl per foreign entity:
+//!
+//! ```
+//! # #[cfg(feature = "macros")]
+//! # mod entities {
+//! # mod fruit {
+//! #     use sea_orm::entity::prelude::*;
+//! #     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+//! #     #[sea_orm(table_name = "fruit")]
+//! #     pub struct Model {
+//! #         #[sea_orm(primary_key)]
+//! #         pub id: i32,
+//! #         pub cake_id: Option<i32>,
+//! #     }
+//! #     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+//! #     pub enum Relation {
+//! #         #[sea_orm(
+//! #             belongs_to = "super::cake::Entity",
+//! #             from = "Column::CakeId",
+//! #             to = "super::cake::Column::Id"
+//! #         )]
+//! #         Cake,
+//! #     }
+//! #     impl Related<super::cake::Entity> for Entity {
+//! #         fn to() -> RelationDef { Relation::Cake.def() }
+//! #     }
+//! #     impl ActiveModelBehavior for ActiveModel {}
+//! # }
+//! mod cake {
+//!     use sea_orm::entity::prelude::*;
+//!
+//!     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+//!     #[sea_orm(table_name = "cake")]
+//!     pub struct Model {
+//!         #[sea_orm(primary_key)]
+//!         pub id: i32,
+//!         pub name: String,
+//!     }
+//!
+//!     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+//!     pub enum Relation {
+//!         #[sea_orm(has_many = "super::fruit::Entity")]
+//!         Fruit,
+//!     }
+//!
+//!     impl Related<super::fruit::Entity> for Entity {
+//!         fn to() -> RelationDef {
+//!             Relation::Fruit.def()
+//!         }
+//!     }
+//!
+//!     impl ActiveModelBehavior for ActiveModel {}
+//! }
+//! # }
+//! ```
+//!
+//! Entity files are usually generated for you with `sea-orm-cli` against an
+//! existing database. See the [crate-level documentation](crate) for a
+//! walkthrough of the most common operations.
 mod active_enum;
 mod active_model;
 mod active_model_ex;
@@ -110,7 +140,8 @@ mod identity;
 mod link;
 mod model;
 mod partial_model;
-/// Re-export common types from the entity
+/// Re-exports the types and traits most commonly needed to define and use
+/// entities. Glob-import this module in entity files: `use sea_orm::entity::prelude::*;`.
 pub mod prelude;
 mod primary_key;
 #[cfg(feature = "entity-registry")]

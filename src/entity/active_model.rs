@@ -2,7 +2,7 @@ use super::{ActiveValue, ActiveValue::*};
 use crate::{
     ColumnTrait, Condition, ConnectionTrait, DbBackend, DeleteResult, EntityName, EntityTrait,
     IdenStatic, Iterable, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter,
-    Related, RelatedSelfVia, RelationDef, RelationTrait, Value,
+    Related, RelatedSelfVia, RelationDef, RelationTrait, TryInsertResult, UpdateResult, Value,
     error::*,
     query::{
         clear_key_on_active_model, column_tuple_in_condition, get_key_from_active_model,
@@ -12,58 +12,67 @@ use crate::{
 use sea_query::ValueTuple;
 use std::fmt::Debug;
 
-/// `ActiveModel` is a type for constructing `INSERT` and `UPDATE` statements for a particular table.
+/// The editable counterpart of a [`Model`](crate::ModelTrait), used to build
+/// `INSERT` and `UPDATE` statements.
 ///
-/// Like [Model][ModelTrait], it represents a database record and each field represents a column.
+/// Each field of an ActiveModel is wrapped in an [`ActiveValue`], so it can
+/// be one of:
 ///
-/// But unlike [Model][ModelTrait], it also stores [additional state][ActiveValue] for every field,
-/// and fields are not guaranteed to have a value.
+/// - [`Set(v)`](ActiveValue::Set) — a new value to write,
+/// - [`Unchanged(v)`](ActiveValue::Unchanged) — the value already in the
+///   database, will not be sent in `UPDATE`,
+/// - [`NotSet`](ActiveValue::NotSet) — value is absent; the column is
+///   omitted from `INSERT` (letting the database supply a default) and
+///   from `UPDATE`.
 ///
-/// This allows you to:
-///
-/// - omit columns from the query,
-/// - know which columns have changed after editing a record.
+/// This makes ActiveModel ideal for partial updates: only the columns you
+/// touch end up in the generated `UPDATE`.
 #[async_trait::async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
-    /// The Entity this ActiveModel belongs to
+    /// The [`EntityTrait`] this ActiveModel belongs to.
     type Entity: EntityTrait;
 
-    /// Get a mutable [ActiveValue] from an ActiveModel
+    /// Take the [`ActiveValue`] of a column, leaving it as `NotSet`.
     fn take(&mut self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
 
-    /// Get a immutable [ActiveValue] from an ActiveModel
+    /// Read the [`ActiveValue`] of a column.
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
 
-    /// Set the Value of a ActiveModel field, panic if failed
+    /// Set one column to `Set(v)`. Panics on type mismatch; prefer
+    /// [`try_set`](Self::try_set) when the value comes from untrusted input.
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) {
         self.try_set(c, v)
             .unwrap_or_else(|e| panic!("Failed to set value for {:?}: {e:?}", c.as_column_ref()))
     }
 
-    /// Set the Value of a ActiveModel field if value is different, panic if failed
+    /// Set one column to `Set(v)` only if `v` differs from the current value,
+    /// avoiding spurious `UPDATE` rewrites. Panics on type mismatch.
     fn set_if_not_equals(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
 
-    /// Set the Value of a ActiveModel field, return error if failed
+    /// Set one column to `Set(v)`, returning an error on type mismatch.
     fn try_set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value) -> Result<(), DbErr>;
 
-    /// Set the state of an [ActiveValue] to the not set state
+    /// Mark a column as `NotSet` so it is omitted from the next `INSERT` or
+    /// `UPDATE`.
     fn not_set(&mut self, c: <Self::Entity as EntityTrait>::Column);
 
-    /// Check the state of a [ActiveValue]
+    /// `true` if the column is currently in the `NotSet` state.
     fn is_not_set(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
 
-    /// Create an ActiveModel with all fields to NotSet
+    /// A fresh ActiveModel with every column `NotSet`.
     fn default() -> Self;
 
-    /// Create an ActiveModel with all fields to Set(default_value) if Default is implemented, NotSet otherwise
+    /// A fresh ActiveModel pre-populated with `Set(default_value)` for each
+    /// column that has a `Default` impl; other columns remain `NotSet`.
     fn default_values() -> Self;
 
-    /// Reset the value from [ActiveValue::Unchanged] to [ActiveValue::Set],
-    /// leaving [ActiveValue::NotSet] untouched.
+    /// Promote one column from [`Unchanged`](ActiveValue::Unchanged) to
+    /// [`Set`](ActiveValue::Set) so it will be included in the next
+    /// `UPDATE`. Leaves [`NotSet`](ActiveValue::NotSet) untouched.
     fn reset(&mut self, c: <Self::Entity as EntityTrait>::Column);
 
-    /// Reset all values from [ActiveValue::Unchanged] to [ActiveValue::Set],
-    /// leaving [ActiveValue::NotSet] untouched.
+    /// Apply [`reset`](Self::reset) to every column, forcing the next
+    /// `UPDATE` to write all non-`NotSet` columns.
     fn reset_all(mut self) -> Self {
         for col in <Self::Entity as EntityTrait>::Column::iter() {
             self.reset(col);
@@ -71,7 +80,8 @@ pub trait ActiveModelTrait: Clone + Debug {
         self
     }
 
-    /// Get the primary key of the ActiveModel, only if it's fully specified.
+    /// The primary key as a `ValueTuple`, or `None` if any primary-key
+    /// column is still `NotSet`.
     fn get_primary_key_value(&self) -> Option<ValueTuple> {
         let mut cols = <Self::Entity as EntityTrait>::PrimaryKey::iter();
         macro_rules! next {
@@ -345,6 +355,23 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self::after_save(model, db, false).await
     }
 
+    /// Update an ActiveModel without a RETURNING clause, yielding an
+    /// [`UpdateResult`] instead of the updated model. Useful on backends without
+    /// RETURNING support, or when the updated model is not needed.
+    ///
+    /// Unlike [`ActiveModelTrait::update`], this runs
+    /// [`ActiveModelBehavior::before_save`] but does **not** run
+    /// [`ActiveModelBehavior::after_save`] (there is no returned model to pass to
+    /// it). Returns [`DbErr::RecordNotUpdated`] if no row matches.
+    async fn update_without_returning<'a, C>(self, db: &'a C) -> Result<UpdateResult, DbErr>
+    where
+        Self: ActiveModelBehavior,
+        C: ConnectionTrait,
+    {
+        let am = ActiveModelBehavior::before_save(self, db, false).await?;
+        Self::Entity::update(am).exec_without_returning(db).await
+    }
+
     /// Insert the model if primary key is `NotSet`, update otherwise.
     /// Only works if the entity has auto increment primary key.
     async fn save<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
@@ -465,7 +492,7 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     /// Create ActiveModel from a JSON value
     #[cfg(feature = "with-json")]
-    fn from_json(mut json: serde_json::Value) -> Result<Self, DbErr>
+    fn from_json(json: serde_json::Value) -> Result<Self, DbErr>
     where
         Self: crate::TryIntoModel<<Self::Entity as EntityTrait>::Model>,
         <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
@@ -474,43 +501,39 @@ pub trait ActiveModelTrait: Clone + Debug {
     {
         use crate::{IdenStatic, Iterable};
 
-        let serde_json::Value::Object(obj) = &json else {
+        let serde_json::Value::Object(mut input) = json else {
             return Err(DbErr::Json(format!(
                 "invalid type: expected JSON object for {}",
                 <<Self as ActiveModelTrait>::Entity as IdenStatic>::as_str(&Default::default())
             )));
         };
 
+        let dummy_am = Self::default_values();
+        let len = <<Self::Entity as EntityTrait>::Column>::iter().len();
         // Mark down which attribute exists in the JSON object
-        let mut json_keys: Vec<(<Self::Entity as EntityTrait>::Column, bool)> = Vec::new();
+        let mut json_keys = Vec::with_capacity(len);
+        let mut merged = serde_json::Map::with_capacity(len);
 
         for col in <<Self::Entity as EntityTrait>::Column>::iter() {
             let key = col.json_key();
-            let has_key = obj.contains_key(key);
+            let has_key = input.contains_key(key);
             json_keys.push((col, has_key));
+            match dummy_am.get(col) {
+                ActiveValue::Unchanged(value) | ActiveValue::Set(value) => {
+                    merged.insert(key.to_owned(), sea_query::sea_value_to_json_value(&value));
+                }
+                _ => {}
+            }
         }
 
-        // Create dummy model with dummy values
-        let dummy_model = Self::default_values();
-        if let Ok(dummy_model) = dummy_model.try_into_model()
-            && let Ok(mut dummy_json) = serde_json::to_value(&dummy_model)
-        {
-            let serde_json::Value::Object(merged) = &mut dummy_json else {
-                unreachable!();
-            };
-            let serde_json::Value::Object(obj) = json else {
-                unreachable!();
-            };
-            // overwrite dummy values with input values
-            for (key, value) in obj {
-                merged.insert(key, value);
-            }
-            json = dummy_json;
-        }
+        merged.append(&mut input);
+        let _ = input;
+
+        let json_value = serde_json::Value::Object(merged);
 
         // Convert JSON object into ActiveModel via Model
         let model: <Self::Entity as EntityTrait>::Model =
-            serde_json::from_value(json).map_err(json_err)?;
+            serde_json::from_value(json_value).map_err(json_err)?;
         let mut am = model.into_active_model();
 
         // Transform attribute that exists in JSON object into ActiveValue::Set, otherwise ActiveValue::NotSet
@@ -1022,39 +1045,36 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 }
 
-/// A Trait for overriding the ActiveModel behavior
+/// Lifecycle hooks for an [`ActiveModelTrait`].
 ///
-/// ### Example
+/// Every entity must have an impl of this trait — even the empty
+/// `impl ActiveModelBehavior for ActiveModel {}` you see in the examples is
+/// required so that the default `new` / `before_save` / `after_save` /
+/// `before_delete` / `after_delete` implementations are wired up. Override
+/// the hooks to enforce invariants, populate computed columns, or run side
+/// effects around saves and deletes.
+///
 /// ```ignore
 /// use sea_orm::entity::prelude::*;
 ///
-///  // Use [DeriveEntity] to derive the EntityTrait automatically
-/// #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-/// pub struct Entity;
-///
-/// /// The [EntityName] describes the name of a table
-/// impl EntityName for Entity {
-///     fn table_name(&self) -> &'static str {
-///         "cake"
+/// impl ActiveModelBehavior for ActiveModel {
+///     async fn before_save<C>(mut self, _db: &C, insert: bool) -> Result<Self, DbErr>
+///     where
+///         C: ConnectionTrait,
+///     {
+///         if insert && self.created_at.is_not_set() {
+///             self.created_at = Set(chrono::Utc::now());
+///         }
+///         self.updated_at = Set(chrono::Utc::now());
+///         Ok(self)
 ///     }
 /// }
-///
-/// // Derive the ActiveModel
-/// #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
-/// pub struct Model {
-///     pub id: i32,
-///     pub name: String,
-/// }
-///
-/// impl ActiveModelBehavior for ActiveModel {}
 /// ```
-/// See module level docs [crate::entity] for a full example
 #[allow(unused_variables)]
 #[async_trait::async_trait]
 pub trait ActiveModelBehavior: ActiveModelTrait {
-    /// Create a new ActiveModel with default values. This is also called by `Default::default()`.
-    ///
-    /// You can override it like the following:
+    /// Build a fresh ActiveModel. Defaults to [`ActiveModelTrait::default`]
+    /// (every column `NotSet`); override to pre-fill columns:
     ///
     /// ```ignore
     /// fn new() -> Self {
@@ -1068,7 +1088,8 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         <Self as ActiveModelTrait>::default()
     }
 
-    /// Will be called before `ActiveModel::insert`, `ActiveModel::update`, and `ActiveModel::save`
+    /// Hook invoked before `insert`, `update`, and `save`. `insert` is `true`
+    /// for inserts. Return an error to abort the operation.
     async fn before_save<C>(self, db: &C, insert: bool) -> Result<Self, DbErr>
     where
         C: ConnectionTrait,
@@ -1076,7 +1097,8 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         Ok(self)
     }
 
-    /// Will be called after `ActiveModel::insert`, `ActiveModel::update`, and `ActiveModel::save`
+    /// Hook invoked after `insert`, `update`, and `save` succeed. Receives
+    /// (and may transform) the resulting `Model`.
     async fn after_save<C>(
         model: <Self::Entity as EntityTrait>::Model,
         db: &C,
@@ -1088,7 +1110,7 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         Ok(model)
     }
 
-    /// Will be called before `ActiveModel::delete`
+    /// Hook invoked before `delete`. Return an error to abort.
     async fn before_delete<C>(self, db: &C) -> Result<Self, DbErr>
     where
         C: ConnectionTrait,
@@ -1096,7 +1118,7 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         Ok(self)
     }
 
-    /// Will be called after `ActiveModel::delete`
+    /// Hook invoked after `delete` succeeds.
     async fn after_delete<C>(self, db: &C) -> Result<Self, DbErr>
     where
         C: ConnectionTrait,
@@ -1219,7 +1241,7 @@ where
     RM: ActiveModelTrait,
     J: EntityTrait,
     J::Model: IntoActiveModel<J::ActiveModel>,
-    J::ActiveModel: ActiveModelBehavior,
+    J::ActiveModel: ActiveModelBehavior + Send,
     C: ConnectionTrait,
 {
     let mut require_leftover = true;
@@ -1275,6 +1297,7 @@ where
 
     if delete_leftover {
         let mut to_delete = Vec::new();
+        let mut to_delete_am = Vec::new();
         for (leftover, key) in leftover {
             if !all_keys.contains(&key) {
                 to_delete.push(
@@ -1282,22 +1305,70 @@ where
                         .get_primary_key_value()
                         .expect("item is a full model"),
                 );
+                to_delete_am.push(leftover);
             }
         }
         if !to_delete.is_empty() {
-            J::delete_many()
-                .filter_by_value_tuples(&to_delete, db.get_database_backend())
-                .exec(db)
-                .await?;
+            // run before_delete hooks
+            for am in to_delete_am.clone() {
+                am.before_delete(db).await?;
+            }
+            if db.support_returning() {
+                let deleted = J::delete_many()
+                    .filter_by_value_tuples(&to_delete, db.get_database_backend())
+                    .exec_with_returning(db)
+                    .await?;
+                // run after_delete hooks with the returned value if possible
+                for am in deleted {
+                    let am = am.into_active_model();
+                    let _ = am.after_delete(db).await?;
+                }
+            } else {
+                J::delete_many()
+                    .filter_by_value_tuples(&to_delete, db.get_database_backend())
+                    .exec(db)
+                    .await?;
+                // fall back to the saved values if returning is not supported
+                for am in to_delete_am {
+                    let _ = am.after_delete(db).await?;
+                }
+            }
         }
     }
 
     if !via_models.is_empty() {
+        // run the before_save hooks
+        let mut via_models_res = Vec::with_capacity(via_models.len());
+        for am in via_models {
+            let am = am.before_save(db, true).await?;
+            via_models_res.push(am);
+        }
+
         // insert new junctions
-        J::insert_many(via_models)
-            .on_conflict_do_nothing()
-            .exec(db)
-            .await?;
+        if db.support_returning() {
+            // use the returned value if it is supported
+            let res = J::insert_many(via_models_res)
+                .on_conflict_do_nothing()
+                .exec_with_returning_many(db)
+                .await?;
+            // run after_save hooks
+            if let TryInsertResult::Inserted(inserted) = res {
+                for model in inserted {
+                    let _ = J::ActiveModel::after_save(model, db, true).await?;
+                }
+            }
+        } else {
+            // fall back to individual inserts if returning is not supported
+            for model in via_models_res {
+                let res = J::insert(model)
+                    .on_conflict_do_nothing()
+                    .exec_with_returning(db)
+                    .await?;
+                if let TryInsertResult::Inserted(model) = res {
+                    let _ = J::ActiveModel::after_save(model, db, true).await?;
+                }
+            }
+        }
     }
 
     Ok(())

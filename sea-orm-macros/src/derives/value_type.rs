@@ -16,6 +16,8 @@ struct DeriveValueTypeStruct {
     column_type: TokenStream,
     array_type: TokenStream,
     can_try_from_u64: bool,
+    /// Opt-in `#[sea_orm(try_getable_array)]`: also implement `TryGetableArray`.
+    try_getable_array: bool,
 }
 
 #[derive(Default)]
@@ -23,6 +25,7 @@ struct DeriveValueTypeStructAttrs {
     column_type: Option<TokenStream>,
     array_type: Option<TokenStream>,
     try_from_u64: bool,
+    try_getable_array: bool,
 }
 
 impl TryFrom<value_type_attr::SeaOrm> for DeriveValueTypeStructAttrs {
@@ -33,6 +36,7 @@ impl TryFrom<value_type_attr::SeaOrm> for DeriveValueTypeStructAttrs {
             column_type: attrs.column_type.map(|s| s.parse()).transpose()?,
             array_type: attrs.array_type.map(|s| s.parse()).transpose()?,
             try_from_u64: attrs.try_from_u64.is_some(),
+            try_getable_array: attrs.try_getable_array.is_some(),
         })
     }
 }
@@ -159,6 +163,7 @@ impl DeriveValueTypeStruct {
             column_type,
             array_type,
             can_try_from_u64,
+            try_getable_array: attrs.try_getable_array,
         })
     }
 
@@ -190,6 +195,23 @@ impl DeriveValueTypeStruct {
             quote!(
                 #[automatically_derived]
                 impl sea_orm::sea_query::postgres_array::NotU8 for #name {}
+            )
+        } else {
+            quote!()
+        };
+
+        let impl_try_getable_array = if cfg!(feature = "postgres-array") && self.try_getable_array {
+            quote!(
+                #[automatically_derived]
+                impl sea_orm::TryGetableArray for #name {
+                    fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, index: I)
+                        -> std::result::Result<Vec<Self>, sea_orm::TryGetError> {
+                        Ok(<Vec<#field_type> as sea_orm::TryGetable>::try_get_by(res, index)?
+                            .into_iter()
+                            .map(#name)
+                            .collect())
+                    }
+                }
             )
         } else {
             quote!()
@@ -247,6 +269,8 @@ impl DeriveValueTypeStruct {
             #try_from_u64_impl
 
             #impl_not_u8
+
+            #impl_try_getable_array
         )
     }
 }

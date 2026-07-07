@@ -19,10 +19,17 @@ use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 #[cfg(feature = "stream")]
 use crate::{StreamTrait, TransactionStream};
 
-/// Defines a database transaction, whether it is an open transaction and the type of
-/// backend to use.
-/// Under the hood, a Transaction is just a wrapper for a connection where
-/// START TRANSACTION has been executed.
+/// A live database transaction.
+///
+/// Obtain one with
+/// [`TransactionTrait::begin`](crate::TransactionTrait::begin) (manual
+/// commit/rollback) or
+/// [`TransactionTrait::transaction`](crate::TransactionTrait::transaction)
+/// (auto commit on `Ok`, auto rollback on `Err`). Like
+/// [`DatabaseConnection`](crate::DatabaseConnection) it implements
+/// [`ConnectionTrait`](crate::ConnectionTrait), so SeaORM's query and
+/// mutation methods work against it transparently. Calling `begin` on a
+/// transaction starts a nested transaction via `SAVEPOINT`.
 pub struct DatabaseTransaction {
     conn: Arc<Mutex<InnerConnection>>,
     backend: DbBackend,
@@ -722,12 +729,14 @@ impl TransactionTrait for DatabaseTransaction {
     }
 }
 
-/// Defines errors for handling transaction failures
+/// Error returned by [`TransactionTrait::transaction`](crate::TransactionTrait::transaction):
+/// either the database itself failed, or the user closure returned an `Err`
+/// (causing a rollback).
 #[derive(Debug)]
 pub enum TransactionError<E> {
-    /// A Database connection error
+    /// Failure issuing `BEGIN`, `COMMIT`, or `ROLLBACK`.
     Connection(DbErr),
-    /// An error occurring when doing database transactions
+    /// The closure returned an `Err` (the transaction has been rolled back).
     Transaction(E),
 }
 

@@ -5,25 +5,36 @@ use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, SqliteQueryBuilder, inj
 pub use sea_query::{Value, Values};
 use std::fmt;
 
-/// Defines an SQL statement
+/// A SQL string together with its bound parameters, ready to send to a
+/// connection. Build one yourself with
+/// [`from_sql_and_values`](Self::from_sql_and_values) (or the
+/// [`raw_sql!`](crate::raw_sql) macro), or get one out of any query builder
+/// via [`QueryTrait::build`](crate::QueryTrait::build).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Statement {
-    /// The SQL query
+    /// The SQL text, with backend-specific placeholders for the values.
     pub sql: String,
-    /// The values for the SQL statement's parameters
+    /// Bound parameter values, in the order they appear in `sql`. `None`
+    /// means the statement has no parameters.
     pub values: Option<Values>,
-    /// The database backend this statement is constructed for.
-    /// The SQL dialect and values should be valid for the DbBackend.
+    /// Backend this statement was built for; both the SQL dialect and the
+    /// placeholder style must match.
     pub db_backend: DbBackend,
 }
 
-/// Any type that can build a [Statement]
+/// Anything that can be rendered to a backend-specific [`Statement`].
+///
+/// Implemented by the `sea_query` statement types (`SelectStatement`,
+/// `InsertStatement`, etc.) so they can be passed to
+/// [`ConnectionTrait::execute`](crate::ConnectionTrait::execute) /
+/// [`query_all`](crate::ConnectionTrait::query_all) directly.
 pub trait StatementBuilder {
-    /// Method to build a [Statement]
+    /// Render `self` into a [`Statement`] for `db_backend`.
     fn build(&self, db_backend: &DbBackend) -> Statement;
 
     #[cfg(feature = "rbac")]
-    /// Method to audit access request of query
+    /// Inspect the statement and produce the access request that
+    /// [`RbacEngine`](crate::rbac::RbacEngine) needs to authorise it.
     fn audit(&self) -> Result<QueryAccessAudit, AuditError>;
 }
 

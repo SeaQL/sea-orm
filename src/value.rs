@@ -76,24 +76,24 @@ mod text_uuid;
 #[cfg(feature = "with-uuid")]
 pub use text_uuid::*;
 
-/// Default value for T
+/// Default value for `T`.
 pub trait DefaultActiveValue {
-    /// `Default::default()` if implemented, dummy value otherwise
+    /// `Default::default()` if implemented, dummy value otherwise.
     fn default_value(&self) -> Self;
 }
 
-/// Default value for Option<T>
+/// Default value for `Option<T>`.
 pub trait DefaultActiveValueNone {
-    /// Always `None`
+    /// Always `None`.
     fn default_value(&self) -> Self;
 }
 
-/// Default value for types that's not nullable
+/// Default value for non-nullable types.
 pub trait DefaultActiveValueNotSet {
-    /// The owned value type
+    /// The owned value type.
     type Value;
 
-    /// Always `NotSet`
+    /// Always `NotSet`.
     fn default_value(&self) -> Self::Value;
 }
 

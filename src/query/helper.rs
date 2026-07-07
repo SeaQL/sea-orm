@@ -13,9 +13,12 @@ use sea_query::IntoColumnRef;
 // LINT: when the column does not appear in tables selected from
 // LINT: when there is a group by clause, but some columns don't have aggregate functions
 // LINT: when the join table or column does not exists
-/// Abstract API for performing queries
+/// Methods for narrowing a query's projection, joining other tables, and
+/// adding `GROUP BY` / `HAVING` clauses. Implemented for
+/// [`Select`](crate::Select), [`SelectTwo`](crate::SelectTwo),
+/// [`SelectTwoMany`](crate::SelectTwoMany), and the higher-arity selects.
 pub trait QuerySelect: Sized {
-    #[allow(missing_docs)]
+    /// The underlying `sea_query` statement type (typically [`SelectStatement`]).
     type QueryStatement;
 
     /// Add the select SQL statement
@@ -552,9 +555,9 @@ pub trait QuerySelect: Sized {
 }
 
 // LINT: when the column does not appear in tables selected from
-/// Performs ORDER BY operations
+/// Methods for adding `ORDER BY` clauses to a query.
 pub trait QueryOrder: Sized {
-    #[allow(missing_docs)]
+    /// The underlying `sea_query` statement type.
     type QueryStatement: OrderedStatement;
 
     /// Add the query to perform an ORDER BY operation
@@ -647,9 +650,10 @@ pub trait QueryOrder: Sized {
 }
 
 // LINT: when the column does not appear in tables selected from
-/// Perform a FILTER opertation on a statement
+/// Methods for adding `WHERE` / `AND` / `OR` conditions to a query. The
+/// entry point most code uses is [`filter`](Self::filter).
 pub trait QueryFilter: Sized {
-    #[allow(missing_docs)]
+    /// The underlying `sea_query` statement type.
     type QueryStatement: ConditionalStatement;
 
     /// Add the query to perform a FILTER on

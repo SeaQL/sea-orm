@@ -146,6 +146,11 @@ fn derive_active_enum_from_value() {
         TestEnum::try_from_value(&"CuStOmStRiNgVaLuE".to_string()),
         Ok(TestEnum::CustomStringValue)
     );
+    assert_eq!(
+        <TestEnum as TryFrom<&str>>::try_from("defaultVariant"),
+        Ok(TestEnum::DefaultVariant)
+    );
+    assert!(<TestEnum as TryFrom<&str>>::try_from("other").is_err());
 }
 
 #[test]
@@ -186,6 +191,11 @@ fn derive_database_enum_rs_type_enum() {
         <TestEnumWithEnumValue as ActiveEnum>::try_from_value(&value),
         Ok(TestEnumWithEnumValue::DefaultVariant)
     );
+    assert_eq!(
+        <TestEnumWithEnumValue as TryFrom<&str>>::try_from("defaultVariant"),
+        Ok(TestEnumWithEnumValue::DefaultVariant)
+    );
+    assert!(<TestEnumWithEnumValue as TryFrom<&str>>::try_from("other").is_err());
     let value: Value = value.into();
     assert_eq!(
         value,

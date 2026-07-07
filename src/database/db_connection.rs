@@ -20,51 +20,61 @@ use crate::StreamTrait;
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use std::sync::Arc;
 
-/// Handle a database connection depending on the backend enabled by the feature
-/// flags. This creates a connection pool internally (for SQLx connections),
-/// and so is cheap to clone.
+/// A handle to a database — implements [`ConnectionTrait`](crate::ConnectionTrait)
+/// and [`TransactionTrait`](crate::TransactionTrait) so it works with every
+/// query and mutation method in SeaORM.
+///
+/// Behind the scenes this is a connection pool (for SQLx-backed drivers) or
+/// a shared connection (for `rusqlite` / mocks / proxies), so it is cheap
+/// to clone — pass `&DbConn` around or `db.clone()` into spawned tasks.
+/// Obtain one via [`Database::connect`](crate::Database::connect).
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct DatabaseConnection {
-    /// `DatabaseConnection` used to be a enum. Now it's moved into inner,
-    /// because we have to attach other contexts.
+    /// Driver-specific connection or pool. Held in a field so we can attach
+    /// orthogonal state (e.g. RBAC) alongside.
     pub inner: DatabaseConnectionType,
     #[cfg(feature = "rbac")]
     pub(crate) rbac: crate::RbacEngineMount,
 }
 
-/// The underlying database connection type.
+/// The driver-specific connection or pool wrapped by [`DatabaseConnection`].
+///
+/// Which variants are available depends on enabled feature flags. End users
+/// rarely match on this directly; use [`DatabaseConnection`]'s methods
+/// instead.
 #[derive(Clone)]
 pub enum DatabaseConnectionType {
-    /// MySql database connection pool
+    /// MySQL connection pool (`sqlx-mysql`).
     #[cfg(feature = "sqlx-mysql")]
     SqlxMySqlPoolConnection(crate::SqlxMySqlPoolConnection),
 
-    /// PostgreSQL database connection pool
+    /// PostgreSQL connection pool (`sqlx-postgres`).
     #[cfg(feature = "sqlx-postgres")]
     SqlxPostgresPoolConnection(crate::SqlxPostgresPoolConnection),
 
-    /// SQLite database connection pool
+    /// SQLite connection pool (`sqlx-sqlite`).
     #[cfg(feature = "sqlx-sqlite")]
     SqlxSqlitePoolConnection(crate::SqlxSqlitePoolConnection),
 
-    /// SQLite database connection sharable across threads
+    /// SQLite connection shared across threads (`rusqlite`).
     #[cfg(feature = "rusqlite")]
     RusqliteSharedConnection(RusqliteSharedConnection),
 
-    /// Mock database connection useful for testing
+    /// In-memory mock connection used for testing (`mock`).
     #[cfg(feature = "mock")]
     MockDatabaseConnection(Arc<crate::MockDatabaseConnection>),
 
-    /// Proxy database connection
+    /// Proxy connection that forwards statements to a user callback (`proxy`).
     #[cfg(feature = "proxy")]
     ProxyDatabaseConnection(Arc<crate::ProxyDatabaseConnection>),
 
-    /// The connection has never been established
+    /// Sentinel for an unconnected [`DatabaseConnection`] (default value);
+    /// any query against it returns an error.
     Disconnected,
 }
 
-/// The same as a [DatabaseConnection]
+/// Short alias for [`DatabaseConnection`].
 pub type DbConn = DatabaseConnection;
 
 impl Default for DatabaseConnection {
@@ -83,20 +93,22 @@ impl From<DatabaseConnectionType> for DatabaseConnection {
     }
 }
 
-/// The type of database backend for real world databases.
-/// This is enabled by feature flags as specified in the crate documentation
+/// Identifies which SQL dialect is in use. Passed around so that
+/// `sea_query`-built statements can be rendered with the right placeholders,
+/// quoting, and feature support. Available variants are gated by feature
+/// flags — see the [crate-level documentation](crate).
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum DatabaseBackend {
-    /// A MySQL backend
+    /// MySQL / MariaDB.
     MySql,
-    /// A PostgreSQL backend
+    /// PostgreSQL.
     Postgres,
-    /// A SQLite backend
+    /// SQLite.
     Sqlite,
 }
 
-/// A shorthand for [DatabaseBackend].
+/// Short alias for [`DatabaseBackend`].
 pub type DbBackend = DatabaseBackend;
 
 #[derive(Debug)]
