@@ -1,7 +1,9 @@
 use super::active_model::DeriveActiveModel;
 use super::attributes::compound_attr;
+use super::model_ex::infer_relation_name_from_entity;
 use super::util::{extract_compound_entity, field_not_ignored_compound, is_compound_field};
-use proc_macro2::{Ident, TokenStream};
+use heck::ToUpperCamelCase;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::HashMap;
 use syn::{Attribute, Data, Expr, Fields, LitStr, Type, Visibility};
@@ -98,11 +100,29 @@ pub fn expand_derive_active_model_ex(
                                     {
                                         has_many_self_fields
                                             .push((ident.clone(), relation_enum.clone()));
+                                    } else if compound_attrs.belongs_to.is_some() {
+                                        // A belongs_to sharing its target entity with another
+                                        // relation, disambiguated by an explicit relation_enum:
+                                        // key the FK write by that relation variant.
+                                        let variant = Ident::new(
+                                            &relation_enum.value().to_upper_camel_case(),
+                                            relation_enum.span(),
+                                        );
+                                        belongs_to_fields.push((
+                                            ident.clone(),
+                                            entity_path.to_owned(),
+                                            Some(variant),
+                                        ));
                                     }
                                 } else if *entity_count.get(entity_path).unwrap() == 1 {
                                     // can only Related to another Entity once
                                     if compound_attrs.belongs_to.is_some() {
-                                        belongs_to_fields.push(ident.clone());
+                                        // Unique target: key the FK write by entity.
+                                        belongs_to_fields.push((
+                                            ident.clone(),
+                                            entity_path.to_owned(),
+                                            None,
+                                        ));
                                     } else if compound_attrs.has_one.is_some() {
                                         has_one_fields.push(ident.clone());
                                     } else if compound_attrs.has_many.is_some()
@@ -117,6 +137,20 @@ pub fn expand_derive_active_model_ex(
                                             compound_attrs.via.as_ref().unwrap().value(),
                                         ));
                                     }
+                                } else if compound_attrs.belongs_to.is_some() {
+                                    // A belongs_to sharing its target entity with another
+                                    // relation but without an explicit relation_enum: key the
+                                    // FK write by the inferred (default) relation variant.
+                                    let variant = Ident::new(
+                                        &infer_relation_name_from_entity(entity_path)
+                                            .to_upper_camel_case(),
+                                        Span::call_site(),
+                                    );
+                                    belongs_to_fields.push((
+                                        ident.clone(),
+                                        entity_path.to_owned(),
+                                        Some(variant),
+                                    ));
                                 }
                                 if compound_attrs.self_ref.is_some()
                                     && compound_attrs.via.is_some()
@@ -326,7 +360,7 @@ pub fn expand_derive_active_model_ex(
 }
 
 fn expand_active_model_action(
-    belongs_to: &[Ident],
+    belongs_to: &[(Ident, String, Option<Ident>)],
     belongs_to_self: &[(Ident, LitStr)],
     has_one: &[Ident],
     has_many: &[Ident],
@@ -353,12 +387,35 @@ fn expand_active_model_action(
         quote!()
     };
 
-    for field in belongs_to {
+    for (field, related_entity, relation_variant) in belongs_to {
+        let related_entity: TokenStream = related_entity.parse().unwrap();
+        // Disambiguate the FK write. A relation sharing its target entity with another
+        // is keyed by its relation variant (there is no unique `Related<E>` to key by);
+        // a unique target is keyed by entity.
+        let (set_parent_key, clear_parent_key) = match relation_variant {
+            Some(variant) => (
+                quote!(self.set_parent_key_for(&model, Relation::#variant)?),
+                quote!(self.clear_parent_key_for(Relation::#variant)?),
+            ),
+            None => (
+                quote!(self.set_parent_key(&model)?),
+                quote!(self.clear_parent_key::<#related_entity>()?),
+            ),
+        };
         belongs_to_action.extend(quote! {
+            // Detach: `Delete` on a belongs_to nulls this row's own foreign key.
+            // If the FK is not nullable it cannot be detached — return a clean error
+            // instead of a raw database constraint violation.
+            if self.#field.is_delete() && !#clear_parent_key {
+                return Err(sea_orm::DbErr::Type(format!(
+                    "Relation `{}` cannot be detached: its foreign key is not nullable",
+                    stringify!(#field)
+                )));
+            }
             let #field = if let Some(model) = self.#field.take() {
                 if model.is_update() {
                     // has primary key
-                    self.set_parent_key(&model)?;
+                    #set_parent_key;
                     if model.is_changed() {
                         let model = #box_pin(model.action(action, db))#await_?;
                         Some(model)
@@ -368,7 +425,7 @@ fn expand_active_model_action(
                 } else {
                     // new model
                     let model = #box_pin(model.action(action, db))#await_?;
-                    self.set_parent_key(&model)?;
+                    #set_parent_key;
                     Some(model)
                 }
             } else {
