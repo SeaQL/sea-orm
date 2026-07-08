@@ -319,10 +319,7 @@ where
     }
 
     /// Select all columns of this entity except the given ones.
-    pub fn select_except<I>(mut self, except: I) -> Self
-    where
-        I: IntoIterator<Item = E::Column>,
-    {
+    pub fn select_except(mut self, except: impl IntoIterator<Item = E::Column>) -> Self {
         let except: Vec<&str> = except.into_iter().map(|col| col.as_str()).collect();
         self.query.clear_selects();
         for col in E::Column::iter() {
