@@ -6,6 +6,22 @@ use syn::{
     meta::ParseNestedMeta, punctuated::Punctuated, token::Comma,
 };
 
+pub(crate) fn async_token() -> TokenStream {
+    if cfg!(feature = "async") {
+        quote!(async)
+    } else {
+        quote!()
+    }
+}
+
+pub(crate) fn await_token() -> TokenStream {
+    if cfg!(feature = "async") {
+        quote!(.await)
+    } else {
+        quote!()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CardinalityKind {
     Required,

@@ -6,6 +6,24 @@ use crate::common::TestContext;
 use sea_orm::{Database, DbConn, DbErr, entity::*, prelude::*, query::*};
 use tracing::info;
 
+mod optional_self_ref {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "optional_self_ref")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        #[sea_orm(enum_name = "ParentId")]
+        pub parent_ref: Option<i32>,
+        #[sea_orm(self_ref, relation_enum = "Parent", from = "ParentId", to = "id")]
+        pub parent: HasOne<Option<Entity>>,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 #[sea_orm_macros::test]
 async fn test_active_model_ex_blog() -> Result<(), DbErr> {
     use common::blogger::*;
@@ -882,10 +900,10 @@ async fn test_belongs_to_duplicate_target() -> Result<(), DbErr> {
 }
 
 #[sea_orm_macros::test]
-async fn test_clear_unset_belongs_to_is_noop() -> Result<(), DbErr> {
+async fn test_clear_belongs_to_clears_unset_fk() -> Result<(), DbErr> {
     use common::bakery_dense::{bakery, cake};
 
-    let ctx = TestContext::new("test_clear_unset_belongs_to_is_noop").await;
+    let ctx = TestContext::new("test_clear_belongs_to_clears_unset_fk").await;
     let db = &ctx.db;
 
     db.get_schema_builder()
@@ -894,18 +912,104 @@ async fn test_clear_unset_belongs_to_is_noop() -> Result<(), DbErr> {
         .apply(db)
         .await?;
 
-    // Clearing a nullable belongs_to whose FK was never set (a freshly-built
-    // ActiveModel) is a no-op rather than an `AttrNotSet` error.
+    let bakery = bakery::ActiveModel::builder()
+        .set_name("Sea")
+        .set_profit_margin(0.0)
+        .insert(db)
+        .await?;
+    let bakery_id = bakery.id;
     let cake = cake::ActiveModel::builder()
         .set_name("Plain")
         .set_price(Decimal::from(5))
         .set_gluten_free(true)
         .set_serial(Uuid::nil())
-        .clear_bakery()
+        .set_bakery(bakery.clone())
+        .insert(db)
+        .await?;
+    let cake_with_option = cake::ActiveModel::builder()
+        .set_name("Option")
+        .set_price(Decimal::from(6))
+        .set_gluten_free(true)
+        .set_serial(Uuid::nil())
+        .set_bakery(bakery.clone())
         .insert(db)
         .await?;
 
-    assert!(cake.bakery_id.is_none());
+    assert_eq!(cake.bakery_id, Some(bakery_id));
+    assert_eq!(cake_with_option.bakery_id, Some(bakery_id));
+
+    let partial_cake = |id| cake::ActiveModelEx {
+        id: Unchanged(id),
+        name: NotSet,
+        price: NotSet,
+        bakery_id: NotSet,
+        gluten_free: NotSet,
+        serial: NotSet,
+        bakery: ActiveHasOne::NotSet,
+        lineitems: ActiveHasMany::NotSet,
+        bakers: ActiveHasMany::NotSet,
+    };
+
+    let cleared = partial_cake(cake.id).clear_bakery().update(db).await?;
+
+    assert!(cleared.bakery_id.is_none());
+    let row = cake::Entity::find_by_id(cake.id)
+        .one(db)
+        .await?
+        .expect("cake");
+    assert!(row.bakery_id.is_none());
+
+    let cleared = partial_cake(cake_with_option.id)
+        .set_bakery_option(None::<bakery::ActiveModelEx>)
+        .update(db)
+        .await?;
+
+    assert!(cleared.bakery_id.is_none());
+    let row = cake::Entity::find_by_id(cake_with_option.id)
+        .one(db)
+        .await?
+        .expect("cake");
+    assert!(row.bakery_id.is_none());
+
+    ctx.delete().await;
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+async fn test_clear_self_ref_belongs_to_clears_unset_fk() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_clear_self_ref_belongs_to_clears_unset_fk").await;
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(optional_self_ref::Entity)
+        .apply(db)
+        .await?;
+
+    let parent = optional_self_ref::ActiveModel::builder().insert(db).await?;
+    let parent_id = parent.id;
+    let child = optional_self_ref::ActiveModel::builder()
+        .set_parent(parent)
+        .insert(db)
+        .await?;
+
+    assert_eq!(child.parent_ref, Some(parent_id));
+
+    let cleared = optional_self_ref::ActiveModelEx {
+        id: Unchanged(child.id),
+        parent_ref: NotSet,
+        parent: ActiveHasOne::NotSet,
+    }
+    .clear_parent()
+    .update(db)
+    .await?;
+
+    assert!(cleared.parent_ref.is_none());
+    let row = optional_self_ref::Entity::find_by_id(child.id)
+        .one(db)
+        .await?
+        .expect("child");
+    assert!(row.parent_ref.is_none());
 
     ctx.delete().await;
 
