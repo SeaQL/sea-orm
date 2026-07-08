@@ -730,7 +730,7 @@ fn get_related<'a>(attr: &compound_attr::SeaOrm, ty: &'a str) -> (&'a str, Ident
     (related_entity, relation_enum)
 }
 
-fn infer_relation_name_from_entity(s: &str) -> &str {
+pub(crate) fn infer_relation_name_from_entity(s: &str) -> &str {
     let s = s.trim_end_matches("::Entity");
     if let Some((_, suffix)) = s.rsplit_once("::") {
         return suffix;

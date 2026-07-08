@@ -878,3 +878,49 @@ fn test_detach_unset_belongs_to_is_noop() -> Result<(), DbErr> {
 
     Ok(())
 }
+
+#[sea_orm_macros::test]
+fn test_belongs_to_duplicate_target() -> Result<(), DbErr> {
+    use common::blogger::*;
+
+    let ctx = TestContext::new("test_belongs_to_duplicate_target");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(user::Entity)
+        .register(user_follower::Entity)
+        .apply(db)?;
+
+    // `user_follower` has two belongs_to fields — `user` and `follower` — both
+    // targeting `user::Entity`. Nested writes on such duplicate-target relations
+    // used to be silently dropped; each now writes its own FK, disambiguated by
+    // relation (`follower` via its `relation_enum`, `user` via the default).
+    let alice = user::ActiveModel::builder()
+        .set_name("Alice")
+        .set_email("alice@sea-ql.org")
+        .save(db)?;
+    let bob = user::ActiveModel::builder()
+        .set_name("Bob")
+        .set_email("bob@sea-ql.org")
+        .save(db)?;
+
+    info!("link the two users through the disambiguated nested belongs_to");
+    let follow = user_follower::ActiveModelEx {
+        user: ActiveHasOne::set(alice),
+        follower: ActiveHasOne::set(bob),
+        ..Default::default()
+    }
+    .insert(db)?;
+
+    // Each belongs_to wrote its own FK (previously a silent no-op).
+    assert_eq!(follow.user_id, 1);
+    assert_eq!(follow.follower_id, 2);
+
+    let row = user_follower::Entity::find().one(db)?.expect("row");
+    assert_eq!(row.user_id, 1);
+    assert_eq!(row.follower_id, 2);
+
+    ctx.delete();
+
+    Ok(())
+}
