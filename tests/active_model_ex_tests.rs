@@ -18,7 +18,7 @@ mod optional_self_ref {
         #[sea_orm(enum_name = "ParentId")]
         pub parent_ref: Option<i32>,
         #[sea_orm(self_ref, relation_enum = "Parent", from = "ParentId", to = "id")]
-        pub parent: HasOne<Option<Entity>>,
+        pub parent: BelongsTo<Option<Entity>>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -65,7 +65,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(1),
             user_id: Unchanged(1),
             title: Unchanged("post 1".into()),
-            author: ActiveHasOne::set(user::ActiveModelEx {
+            author: ActiveBelongsTo::set(user::ActiveModelEx {
                 id: Unchanged(1),
                 name: Unchanged("Alice".into()),
                 email: Unchanged("@1".into()),
@@ -90,7 +90,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
     if false {
         post::ActiveModelEx {
             title: Set("post 2".into()),
-            author: ActiveHasOne::set(user::ActiveModelEx {
+            author: ActiveBelongsTo::set(user::ActiveModelEx {
                 name: Set("Bob".into()),
                 email: Set("@2".into()),
                 ..Default::default()
@@ -105,7 +105,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(2),
             user_id: Unchanged(2),
             title: Unchanged("post 2".into()),
-            author: ActiveHasOne::set(user::ActiveModelEx {
+            author: ActiveBelongsTo::set(user::ActiveModelEx {
                 id: Unchanged(2),
                 name: Unchanged("Bob".into()),
                 email: Unchanged("@2".into()),
@@ -145,7 +145,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                 id: Unchanged(1),
                 picture: Unchanged("Sam.jpg".into()),
                 user_id: Unchanged(3),
-                user: ActiveHasOne::NotSet,
+                user: ActiveBelongsTo::NotSet,
             })),
             ..Default::default()
         }
@@ -171,7 +171,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                 id: Unchanged(2),
                 picture: Unchanged("Alan.jpg".into()),
                 user_id: Unchanged(4),
-                user: ActiveHasOne::NotSet,
+                user: ActiveBelongsTo::NotSet,
             })),
             posts: ActiveHasMany::Append(vec![
                 post::ActiveModelEx {
@@ -302,7 +302,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
         id: NotSet,
         user_id: NotSet,
         title: Set("post 7".into()),
-        author: ActiveHasOne::set(user.clone().into_active_model()),
+        author: ActiveBelongsTo::set(user.clone().into_active_model()),
         comments: ActiveHasMany::NotSet,
         attachments: ActiveHasMany::NotSet,
         tags: ActiveHasMany::Append(vec![
@@ -331,7 +331,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(7),
             user_id: Unchanged(4),
             title: Unchanged("post 7".into()),
-            author: ActiveHasOne::set(user::ActiveModelEx {
+            author: ActiveBelongsTo::set(user::ActiveModelEx {
                 id: Unchanged(4),
                 name: Unchanged("Alan".into()),
                 email: Unchanged("@4".into()),
@@ -339,7 +339,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                     id: Unchanged(2),
                     picture: Unchanged("Alan2.jpg".into()),
                     user_id: Unchanged(4),
-                    user: ActiveHasOne::NotSet,
+                    user: ActiveBelongsTo::NotSet,
                 },)),
                 posts: ActiveHasMany::Append(vec![]),
                 followers: ActiveHasMany::NotSet,
@@ -527,7 +527,7 @@ async fn test_active_model_ex_blog() -> Result<(), DbErr> {
                 id: 8,
                 user_id: 5,
                 title: "Nice weather".into(),
-                author: HasOne::Unloaded,
+                author: BelongsTo::Unloaded,
                 attachments: HasMany::Unloaded,
                 comments: HasMany::Unloaded,
                 tags: HasMany::Loaded(vec![tag::ModelEx {
@@ -879,8 +879,8 @@ async fn test_belongs_to_duplicate_target() -> Result<(), DbErr> {
 
     info!("link the two users through the disambiguated nested belongs_to");
     let follow = user_follower::ActiveModelEx {
-        user: ActiveHasOne::set(alice),
-        follower: ActiveHasOne::set(bob),
+        user: ActiveBelongsTo::set(alice),
+        follower: ActiveBelongsTo::set(bob),
         ..Default::default()
     }
     .insert(db)
@@ -945,7 +945,7 @@ async fn test_clear_belongs_to_clears_unset_fk() -> Result<(), DbErr> {
         bakery_id: NotSet,
         gluten_free: NotSet,
         serial: NotSet,
-        bakery: ActiveHasOne::NotSet,
+        bakery: ActiveBelongsTo::NotSet,
         lineitems: ActiveHasMany::NotSet,
         bakers: ActiveHasMany::NotSet,
     };
@@ -998,7 +998,7 @@ async fn test_clear_self_ref_belongs_to_clears_unset_fk() -> Result<(), DbErr> {
     let cleared = optional_self_ref::ActiveModelEx {
         id: Unchanged(child.id),
         parent_ref: NotSet,
-        parent: ActiveHasOne::NotSet,
+        parent: ActiveBelongsTo::NotSet,
     }
     .clear_parent()
     .update(db)

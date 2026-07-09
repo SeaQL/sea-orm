@@ -3,7 +3,7 @@ use super::attributes::compound_attr;
 use super::model_ex::infer_relation_name_from_entity;
 use super::util::{
     CardinalityKind, CompoundKind, CompoundType, async_token, await_token, consume_meta,
-    escape_rust_keyword, trim_starting_raw_identifier,
+    escape_rust_keyword, is_self_entity, trim_starting_raw_identifier,
 };
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
@@ -27,9 +27,7 @@ enum RelationAttr {
         cardinality: CardinalityKind,
         from: LitStr,
     },
-    HasOne {
-        cardinality: CardinalityKind,
-    },
+    HasOne,
     HasMany,
     HasManySelf {
         relation_enum: LitStr,
@@ -55,7 +53,7 @@ impl RelationAttr {
                 via: Some(via),
                 ..
             } => {
-                if compound.kind != CompoundKind::HasMany || !compound.is_self_entity() {
+                if compound.kind != CompoundKind::HasMany || !is_self_entity(&compound.entity) {
                     return Err(syn::Error::new_spanned(
                         via,
                         "self_ref + via field type must be `HasMany<Entity>`",
@@ -73,13 +71,19 @@ impl RelationAttr {
                 from: Some(from),
                 to: Some(_),
                 ..
-            } => Ok(Some(Self::BelongsToSelf {
-                relation_enum: relation_enum.clone(),
-                cardinality: compound.cardinality().ok_or_else(|| {
-                    syn::Error::new_spanned(ident, "self_ref belongs_to must be paired with HasOne")
-                })?,
-                from: from.clone(),
-            })),
+            } => {
+                let CompoundKind::BelongsTo(cardinality) = compound.kind else {
+                    return Err(syn::Error::new_spanned(
+                        ident,
+                        "self_ref belongs_to must be paired with BelongsTo",
+                    ));
+                };
+                Ok(Some(Self::BelongsToSelf {
+                    relation_enum: relation_enum.clone(),
+                    cardinality,
+                    from: from.clone(),
+                }))
+            }
             compound_attr::SeaOrm {
                 relation_enum: Some(relation_enum),
                 self_ref: Some(_),
@@ -89,7 +93,7 @@ impl RelationAttr {
                 to: None,
                 ..
             } => {
-                if compound.kind != CompoundKind::HasMany || !compound.is_self_entity() {
+                if compound.kind != CompoundKind::HasMany || !is_self_entity(&compound.entity) {
                     return Err(syn::Error::new_spanned(
                         ident,
                         "self_ref has_many field type must be `HasMany<Entity>`",
@@ -114,17 +118,23 @@ impl RelationAttr {
             compound_attr::SeaOrm {
                 belongs_to: Some(_),
                 ..
-            } => Ok(Some(Self::BelongsTo {
-                cardinality: compound.cardinality().ok_or_else(|| {
-                    syn::Error::new_spanned(ident, "belongs_to must be paired with HasOne")
-                })?,
-                from: attrs.from.clone().ok_or_else(|| {
-                    syn::Error::new_spanned(ident, "belongs_to must specify `from`")
-                })?,
-                // Captured so multiple belongs_to targeting the same entity can be
-                // disambiguated via their relation enum on save.
-                relation_enum: attrs.relation_enum.clone(),
-            })),
+            } => {
+                let CompoundKind::BelongsTo(cardinality) = compound.kind else {
+                    return Err(syn::Error::new_spanned(
+                        ident,
+                        "belongs_to must be paired with BelongsTo",
+                    ));
+                };
+                Ok(Some(Self::BelongsTo {
+                    cardinality,
+                    from: attrs.from.clone().ok_or_else(|| {
+                        syn::Error::new_spanned(ident, "belongs_to must specify `from`")
+                    })?,
+                    // Captured so multiple belongs_to targeting the same entity can be
+                    // disambiguated via their relation enum on save.
+                    relation_enum: attrs.relation_enum.clone(),
+                }))
+            }
             compound_attr::SeaOrm {
                 relation_enum: Some(_),
                 ..
@@ -132,22 +142,13 @@ impl RelationAttr {
             compound_attr::SeaOrm {
                 has_one: Some(_), ..
             } => {
-                let cardinality = match compound.kind {
-                    CompoundKind::HasOne(CardinalityKind::Optional) => CardinalityKind::Optional,
-                    CompoundKind::HasOne(CardinalityKind::Required) => {
-                        return Err(syn::Error::new_spanned(
-                            ident,
-                            "#[sea_orm(has_one)] must be paired with HasOne<Option<Entity>>",
-                        ));
-                    }
-                    CompoundKind::HasMany => {
-                        return Err(syn::Error::new_spanned(
-                            ident,
-                            "#[sea_orm(has_one)] must be paired with HasOne<Option<Entity>>",
-                        ));
-                    }
-                };
-                Ok(Some(Self::HasOne { cardinality }))
+                if compound.kind != CompoundKind::HasOne {
+                    return Err(syn::Error::new_spanned(
+                        ident,
+                        "#[sea_orm(has_one)] must be paired with HasOne<Entity>",
+                    ));
+                }
+                Ok(Some(Self::HasOne))
             }
             compound_attr::SeaOrm {
                 has_many: Some(_),
@@ -209,17 +210,6 @@ impl<'a> ScalarField<'a> {
             ty: &field.ty,
             column,
         })
-    }
-
-    fn is_optional(&self) -> bool {
-        let Type::Path(type_path) = self.ty else {
-            return false;
-        };
-        type_path
-            .path
-            .segments
-            .last()
-            .is_some_and(|segment| segment.ident == "Option")
     }
 }
 
@@ -334,10 +324,14 @@ impl<'a> Field<'a> {
         let ident = self.ident;
         let entity_type = &compound.entity;
         let field_type = match compound.kind {
-            CompoundKind::HasOne(cardinality) => {
-                let target_type = cardinality.has_one_target_type(quote!(#entity_type));
-                quote!(ActiveHasOne<#target_type>)
+            CompoundKind::BelongsTo(cardinality) => {
+                let target_type = match cardinality {
+                    CardinalityKind::Required => quote!(#entity_type),
+                    CardinalityKind::Optional => quote!(Option<#entity_type>),
+                };
+                quote!(ActiveBelongsTo<#target_type>)
             }
+            CompoundKind::HasOne => quote!(ActiveHasOne<#entity_type>),
             CompoundKind::HasMany => quote!(ActiveHasMany<#entity_type>),
         };
         output.model_field_defs.push(quote! {
@@ -423,7 +417,13 @@ impl<'a> Fields<'a> {
                         format!("unknown `from` column `{column}`"),
                     )
                 })?;
-            if scalar.is_optional() {
+            if let Type::Path(type_path) = scalar.ty
+                && type_path
+                    .path
+                    .segments
+                    .last()
+                    .is_some_and(|segment| segment.ident == "Option")
+            {
                 fields.push(field);
             }
             Ok(fields)
@@ -480,41 +480,39 @@ impl<'a> ActiveModelSetter<'a> {
     ) -> syn::Result<TokenStream> {
         let field_ident = self.field.ident;
         let entity_path = &compound.entity;
-        let mut active_model_path = entity_path.path.clone();
-        let Some(segment) = active_model_path.segments.last_mut() else {
+        let mut active_model_type = entity_path.path.clone();
+        let Some(segment) = active_model_type.segments.last_mut() else {
             return Err(syn::Error::new_spanned(entity_path, "expected entity path"));
         };
         segment.ident = format_ident!("ActiveModelEx");
         segment.arguments = PathArguments::None;
 
         match compound.kind {
-            CompoundKind::HasOne(cardinality) => {
-                let has_one_target = cardinality.has_one_target_type(quote!(#entity_path));
-                let setter = format_ident!("set_{}", field_ident);
-                let optional = if cardinality.is_optional() {
-                    quote!(Some)
-                } else {
-                    quote!()
+            CompoundKind::BelongsTo(cardinality) => {
+                let (target_entity, optional) = match cardinality {
+                    CardinalityKind::Required => (quote!(#entity_path), quote!()),
+                    CardinalityKind::Optional => (quote!(Option<#entity_path>), quote!(Some)),
                 };
-                let optional_setters = if cardinality.is_optional() {
+                let setter = format_ident!("set_{}", field_ident);
+                let optional_setters = if matches!(cardinality, CardinalityKind::Optional) {
                     let optional_setter = format_ident!("set_{}_option", field_ident);
                     let clear_method = format_ident!("clear_{}", field_ident);
                     let clear_parent_keys = self.clear_parent_key_setters(relation)?;
 
                     quote! {
                         #[doc = " Generated by sea-orm-macros"]
-                        pub fn #optional_setter(mut self, v: Option<impl Into<#active_model_path>>) -> Self {
+                        pub fn #optional_setter(mut self, v: Option<impl Into<#active_model_type>>) -> Self {
                             if v.is_none() {
                                 #clear_parent_keys
                             }
-                            self.#field_ident = sea_orm::ActiveHasOne::<#has_one_target>::set(v);
+                            self.#field_ident = sea_orm::ActiveBelongsTo::<#target_entity>::set(v);
                             self
                         }
 
                         #[doc = " Generated by sea-orm-macros"]
                         pub fn #clear_method(mut self) -> Self {
                             #clear_parent_keys
-                            self.#field_ident = sea_orm::ActiveHasOne::Set(None);
+                            self.#field_ident = sea_orm::ActiveBelongsTo::Set(None);
                             self
                         }
                     }
@@ -524,12 +522,38 @@ impl<'a> ActiveModelSetter<'a> {
 
                 Ok(quote! {
                     #[doc = " Generated by sea-orm-macros"]
-                    pub fn #setter(mut self, v: impl Into<#active_model_path>) -> Self {
-                        self.#field_ident = sea_orm::ActiveHasOne::<#has_one_target>::set(#optional(v.into()));
+                    pub fn #setter(mut self, v: impl Into<#active_model_type>) -> Self {
+                        self.#field_ident = sea_orm::ActiveBelongsTo::<#target_entity>::set(#optional(v.into()));
                         self
                     }
 
                     #optional_setters
+                })
+            }
+            CompoundKind::HasOne => {
+                let setter = format_ident!("set_{}", field_ident);
+                let optional_setter = format_ident!("set_{}_option", field_ident);
+                let clear_method = format_ident!("clear_{}", field_ident);
+
+                Ok(quote! {
+                    #[doc = " Generated by sea-orm-macros"]
+                    pub fn #setter(mut self, v: impl Into<#active_model_type>) -> Self {
+                        self.#field_ident = sea_orm::ActiveHasOne::<#entity_path>::set(Some(v.into()));
+                        self
+                    }
+
+                    #[doc = " Generated by sea-orm-macros"]
+                    pub fn #optional_setter(mut self, v: Option<impl Into<#active_model_type>>) -> Self {
+                        self.#field_ident = sea_orm::ActiveHasOne::<#entity_path>::set(v);
+                        self
+                    }
+
+                    #[doc = " Generated by sea-orm-macros"]
+                    pub fn #clear_method(mut self) -> Self {
+                        self.#field_ident = sea_orm::ActiveHasOne::Set(None);
+                        self
+                    }
+
                 })
             }
             CompoundKind::HasMany => {
@@ -540,7 +564,7 @@ impl<'a> ActiveModelSetter<'a> {
 
                 Ok(quote! {
                     #[doc = " Generated by sea-orm-macros"]
-                    pub fn #setter(mut self, v: impl Into<#active_model_path>) -> Self {
+                    pub fn #setter(mut self, v: impl Into<#active_model_type>) -> Self {
                         self.#field_ident.push(v.into());
                         self
                     }
@@ -569,7 +593,7 @@ impl<'a> ActiveModelSetter<'a> {
 
 enum Relation<'a> {
     BelongsTo(BelongsToField<'a>),
-    BelongsToSelf(SelfHasOneField<'a>),
+    BelongsToSelf(BelongsToSelfField<'a>),
     HasOne(HasOneField<'a>),
     HasMany(HasManyField<'a>),
     HasManySelf(SelfRelationField<'a>),
@@ -613,7 +637,7 @@ impl ActiveModelActionTokens {
                         relation_enum,
                         cardinality,
                         from,
-                    } => Some(Relation::BelongsToSelf(SelfHasOneField {
+                    } => Some(Relation::BelongsToSelf(BelongsToSelfField {
                         ident,
                         relation_enum: relation_enum.clone(),
                         cardinality: *cardinality,
@@ -654,11 +678,10 @@ impl ActiveModelActionTokens {
                             nullable_from_fields: fields.get_nullable_from_fields(from)?,
                         }))
                     }
-                    RelationAttr::HasOne { cardinality } if is_unique_entity => {
+                    RelationAttr::HasOne if is_unique_entity => {
                         Some(Relation::HasOne(HasOneField {
                             ident,
                             entity: &compound.entity,
-                            cardinality: *cardinality,
                         }))
                     }
                     RelationAttr::HasMany if is_unique_entity => {
@@ -767,7 +790,7 @@ impl ActiveModelActionTokens {
             where
                 C: sea_orm::TransactionTrait,
             {
-                use sea_orm::{ActiveHasOne, ActiveHasMany, IntoActiveModel, TransactionSession};
+                use sea_orm::{ActiveBelongsTo, ActiveHasOne, ActiveHasMany, IntoActiveModel, TransactionSession};
                 let txn = db.begin()#await_?;
                 let db = &txn;
                 let mut deleted = sea_orm::DeleteResult::empty();
@@ -1005,13 +1028,9 @@ impl BelongsToField<'_> {
         };
         let ident = self.ident;
         let related_entity = self.entity;
-        let has_one_target = self
-            .cardinality
-            .has_one_target_type(quote!(#related_entity));
-        let optional = if self.cardinality.is_optional() {
-            quote!(Some)
-        } else {
-            quote!()
+        let (belongs_to_target, optional) = match self.cardinality {
+            CardinalityKind::Required => (quote!(#related_entity), quote!()),
+            CardinalityKind::Optional => (quote!(Option<#related_entity>), quote!(Some)),
         };
         let nullable_from_fields = &self.nullable_from_fields;
         // Disambiguate the FK write: a relation that shares its target entity with
@@ -1028,7 +1047,7 @@ impl BelongsToField<'_> {
             ),
         };
         let replace_model = quote! {
-            ActiveHasOne::Set(#optional(model)) => {
+            ActiveBelongsTo::Set(#optional(model)) => {
                 let mut model = *model;
                 if model.is_update() {
                     #set_parent_key;
@@ -1039,12 +1058,12 @@ impl BelongsToField<'_> {
                     model = #box_pin(model.action(action, db))#await_?;
                     #set_parent_key;
                 }
-                ActiveHasOne::<#has_one_target>::set(#optional(model))
+                ActiveBelongsTo::<#belongs_to_target>::set(#optional(model))
             }
         };
-        let clear_optional = if self.cardinality.is_optional() {
+        let clear_optional = if matches!(self.cardinality, CardinalityKind::Optional) {
             quote! {
-                ActiveHasOne::Set(None) => {
+                ActiveBelongsTo::Set(None) => {
                     #(self.#nullable_from_fields = sea_orm::Set(None);)*
                     if !#clear_parent_key {
                         return Err(sea_orm::DbErr::Type(format!(
@@ -1052,7 +1071,7 @@ impl BelongsToField<'_> {
                             stringify!(#ident)
                         )));
                     }
-                    ActiveHasOne::Set(None)
+                    ActiveBelongsTo::Set(None)
                 }
             }
         } else {
@@ -1061,7 +1080,7 @@ impl BelongsToField<'_> {
 
         quote! {
             let #ident = match self.#ident.take() {
-                ActiveHasOne::NotSet => ActiveHasOne::NotSet,
+                ActiveBelongsTo::NotSet => ActiveBelongsTo::NotSet,
                 #replace_model
                 #clear_optional
             };
@@ -1088,7 +1107,6 @@ impl BelongsToField<'_> {
 struct HasOneField<'a> {
     ident: &'a Ident,
     entity: &'a TypePath,
-    cardinality: CardinalityKind,
 }
 
 impl HasOneField<'_> {
@@ -1116,15 +1134,6 @@ impl HasOneField<'_> {
         };
         let ident = self.ident;
         let related_entity = self.entity;
-        let has_one_target = self
-            .cardinality
-            .has_one_target_type(quote!(#related_entity));
-
-        let optional = if self.cardinality.is_optional() {
-            quote!(Some)
-        } else {
-            quote!()
-        };
 
         let delete_existing_child = quote! {
             if let Some(item) = model.find_related(#related_entity).one(db)#await_? {
@@ -1143,10 +1152,12 @@ impl HasOneField<'_> {
             } else {
                 child
             };
-            model.#ident = ActiveHasOne::<#has_one_target>::set(#optional(child));
+            model.#ident = ActiveHasOne::<#related_entity>::set(Some(child));
         };
-        let set_relation_action = if self.cardinality.is_optional() {
-            quote! {
+
+        quote! {
+            match #ident {
+                ActiveHasOne::NotSet => {}
                 ActiveHasOne::Set(Some(child)) => {
                     let mut child = *child;
                     #set_child_action
@@ -1157,20 +1168,6 @@ impl HasOneField<'_> {
                     }
                     model.#ident = ActiveHasOne::Set(None);
                 }
-            }
-        } else {
-            quote! {
-                ActiveHasOne::Set(child) => {
-                    let mut child = *child;
-                    #set_child_action
-                }
-            }
-        };
-
-        quote! {
-            match #ident {
-                ActiveHasOne::NotSet => {}
-                #set_relation_action
             }
         }
     }
@@ -1203,14 +1200,14 @@ impl HasOneField<'_> {
     }
 }
 
-struct SelfHasOneField<'a> {
+struct BelongsToSelfField<'a> {
     ident: &'a Ident,
     relation_enum: LitStr,
     cardinality: CardinalityKind,
     nullable_from_fields: Vec<&'a Ident>,
 }
 
-impl SelfHasOneField<'_> {
+impl BelongsToSelfField<'_> {
     fn belongs_to_action(&self) -> TokenStream {
         let await_ = await_token();
         let box_pin = if cfg!(feature = "async") {
@@ -1221,18 +1218,16 @@ impl SelfHasOneField<'_> {
         let ident = self.ident;
         let relation_enum = Ident::new(&self.relation_enum.value(), self.relation_enum.span());
         let relation_enum = quote!(Relation::#relation_enum);
-        let has_one_target = self.cardinality.has_one_target_type(quote!(Entity));
-        let optional = if self.cardinality.is_optional() {
-            quote!(Some)
-        } else {
-            quote!()
+        let (belongs_to_target, optional) = match self.cardinality {
+            CardinalityKind::Required => (quote!(Entity), quote!()),
+            CardinalityKind::Optional => (quote!(Option<Entity>), quote!(Some)),
         };
         let nullable_from_fields = &self.nullable_from_fields;
         let clear_parent_key_fields = quote! {
             #(self.#nullable_from_fields = sea_orm::Set(None);)*
         };
         let replace_model = quote! {
-            ActiveHasOne::Set(#optional(model)) => {
+            ActiveBelongsTo::Set(#optional(model)) => {
                 let mut model = *model;
                 if model.is_update() {
                     self.set_parent_key_for(&model, #relation_enum)?;
@@ -1243,12 +1238,12 @@ impl SelfHasOneField<'_> {
                     model = #box_pin(model.action(action, db))#await_?;
                     self.set_parent_key_for(&model, #relation_enum)?;
                 }
-                ActiveHasOne::<#has_one_target>::set(#optional(model))
+                ActiveBelongsTo::<#belongs_to_target>::set(#optional(model))
             }
         };
-        let clear_optional = if self.cardinality.is_optional() {
+        let clear_optional = if matches!(self.cardinality, CardinalityKind::Optional) {
             quote! {
-                ActiveHasOne::Set(None) => {
+                ActiveBelongsTo::Set(None) => {
                     #clear_parent_key_fields
                     if !self.clear_parent_key_for(#relation_enum)? {
                         return Err(sea_orm::DbErr::Type(format!(
@@ -1256,7 +1251,7 @@ impl SelfHasOneField<'_> {
                             stringify!(#ident)
                         )));
                     }
-                    ActiveHasOne::Set(None)
+                    ActiveBelongsTo::Set(None)
                 }
             }
         } else {
@@ -1265,7 +1260,7 @@ impl SelfHasOneField<'_> {
 
         quote! {
             let #ident = match self.#ident.take() {
-                ActiveHasOne::NotSet => ActiveHasOne::NotSet,
+                ActiveBelongsTo::NotSet => ActiveBelongsTo::NotSet,
                 #replace_model
                 #clear_optional
             };

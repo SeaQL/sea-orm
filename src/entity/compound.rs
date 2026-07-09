@@ -7,11 +7,13 @@ use crate::{
 use sea_query::{IntoValueTuple, Order, TableRef};
 use std::marker::PhantomData;
 
+mod belongs_to;
 mod has_many;
 mod has_one;
 
+pub use belongs_to::{BelongsTo, BelongsToCardinality};
 pub use has_many::{HasMany, Iter as HasManyIter};
-pub use has_one::{HasOne, HasOneCardinality};
+pub use has_one::HasOne;
 
 #[async_trait::async_trait]
 pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter + QueryOrder + Clone {

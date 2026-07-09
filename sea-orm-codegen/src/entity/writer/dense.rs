@@ -78,13 +78,22 @@ impl DenseRelationField<'_> {
         };
 
         let rel_field_type = match self.rel.rel_type {
-            RelationType::HasOne | RelationType::BelongsTo => {
-                if self.is_optional() {
-                    quote!(HasOne<Option<#target_entity>>)
+            RelationType::BelongsTo => {
+                let is_optional = !self.rel.columns.is_empty()
+                    && self.rel.columns.iter().all(|name| {
+                        self.entity
+                            .columns
+                            .iter()
+                            .find(|column| column.name == *name)
+                            .is_some_and(|column| column.not_null)
+                    });
+                if is_optional {
+                    quote!(BelongsTo<#target_entity>)
                 } else {
-                    quote!(HasOne<#target_entity>)
+                    quote!(BelongsTo<Option<#target_entity>>)
                 }
             }
+            RelationType::HasOne => quote!(HasOne<#target_entity>),
             RelationType::HasMany => quote!(HasMany<#target_entity>),
         };
         let sea_orm_attr = if self.rel.self_referencing {
@@ -128,20 +137,6 @@ impl DenseRelationField<'_> {
             #sea_orm_attr
             pub #field: #rel_field_type
         })
-    }
-
-    fn is_optional(&self) -> bool {
-        let is_required = matches!(self.rel.rel_type, RelationType::BelongsTo)
-            && !self.rel.columns.is_empty()
-            && self.rel.columns.iter().all(|name| {
-                self.entity
-                    .columns
-                    .iter()
-                    .find(|column| column.name == *name)
-                    .map(|column| column.not_null)
-                    .unwrap_or_default()
-            });
-        !is_required
     }
 }
 

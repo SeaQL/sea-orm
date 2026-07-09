@@ -29,7 +29,7 @@ mod user {
         #[sea_orm(unique)]
         pub email: String,
         #[sea_orm(has_one)]
-        pub profile: HasOne<Option<super::profile::Entity>>,
+        pub profile: HasOne<super::profile::Entity>,
         #[sea_orm(has_many)]
         pub posts: HasMany<super::post::Entity>,
     }
@@ -43,7 +43,7 @@ mod user {
 ```rust
 // Has-One
 #[sea_orm(has_one)]
-pub profile: HasOne<Option<super::profile::Entity>>,
+pub profile: HasOne<super::profile::Entity>,
 
 // Has-Many
 #[sea_orm(has_many)]
@@ -51,7 +51,7 @@ pub posts: HasMany<super::post::Entity>,
 
 // Belongs-To (explicit foreign key mapping)
 #[sea_orm(belongs_to, from = "user_id", to = "id")]
-pub user: HasOne<super::user::Entity>,
+pub user: BelongsTo<super::user::Entity>,
 
 // Many-to-Many via junction table
 #[sea_orm(has_many, via = "post_tag")]
@@ -74,9 +74,9 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub tag_id: i32,
     #[sea_orm(belongs_to, from = "post_id", to = "id")]
-    pub post: HasOne<super::post::Entity>,
+    pub post: BelongsTo<super::post::Entity>,
     #[sea_orm(belongs_to, from = "tag_id", to = "id")]
-    pub tag: HasOne<super::tag::Entity>,
+    pub tag: BelongsTo<super::tag::Entity>,
 }
 ```
 

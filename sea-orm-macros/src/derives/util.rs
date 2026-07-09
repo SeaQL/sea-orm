@@ -28,22 +28,10 @@ pub(crate) enum CardinalityKind {
     Optional,
 }
 
-impl CardinalityKind {
-    pub(crate) fn is_optional(self) -> bool {
-        matches!(self, Self::Optional)
-    }
-
-    pub(crate) fn has_one_target_type(self, entity: TokenStream) -> TokenStream {
-        match self {
-            Self::Required => quote!(#entity),
-            Self::Optional => quote!(Option<#entity>),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CompoundKind {
-    HasOne(CardinalityKind),
+    BelongsTo(CardinalityKind),
+    HasOne,
     HasMany,
 }
 
@@ -56,70 +44,124 @@ pub(crate) struct CompoundType {
 impl CompoundType {
     /// Returns whether the field uses the compound relation wrapper syntax.
     pub(crate) fn matches_type(type_path: &TypePath) -> bool {
-        last_path_segment(type_path)
-            .is_ok_and(|segment| segment.ident == "HasOne" || segment.ident == "HasMany")
+        last_path_segment(type_path).is_ok_and(|segment| {
+            matches!(
+                segment.ident.to_string().as_str(),
+                "BelongsTo" | "HasOne" | "HasMany"
+            )
+        })
     }
 
-    /// Parses `HasOne<Entity>`, `HasOne<Option<Entity>>`, and `HasMany<Entity>`.
+    /// Parses `BelongsTo<Entity>`, `BelongsTo<Option<Entity>>`, `HasOne<Entity>`, and `HasMany<Entity>`.
     pub(crate) fn from_type(type_path: &TypePath) -> syn::Result<Option<Self>> {
         let segment = last_path_segment(type_path)?;
 
-        if segment.ident == "HasOne" {
-            let PathArguments::AngleBracketed(args) = &segment.arguments else {
-                return Err(syn::Error::new_spanned(
-                    type_path,
-                    "HasOne requires an Entity or Option<Entity> generic argument",
-                ));
-            };
-            let (entity, cardinality) = has_one_target_arg(&args.args, type_path)?;
-            return Ok(Some(Self {
-                kind: CompoundKind::HasOne(cardinality),
-                entity,
-            }));
+        match segment.ident.to_string().as_str() {
+            "BelongsTo" => {
+                let PathArguments::AngleBracketed(args) = &segment.arguments else {
+                    return Err(syn::Error::new_spanned(
+                        type_path,
+                        "BelongsTo requires an Entity or Option<Entity> generic argument",
+                    ));
+                };
+                let mut args = args.args.iter();
+                let Some(GenericArgument::Type(ty)) = args.next() else {
+                    return Err(syn::Error::new_spanned(
+                        type_path,
+                        "BelongsTo generic argument must be an Entity or Option<Entity>",
+                    ));
+                };
+                if args.next().is_some() {
+                    return Err(syn::Error::new_spanned(
+                        type_path,
+                        "BelongsTo requires an Entity or Option<Entity> generic argument",
+                    ));
+                }
+                let Type::Path(ty_path) = ty else {
+                    return Err(syn::Error::new_spanned(
+                        ty,
+                        "BelongsTo generic argument must be an Entity or Option<Entity>",
+                    ));
+                };
+                let target_segment = last_path_segment(ty_path)?;
+                match (
+                    target_segment.ident.to_string().as_str(),
+                    &target_segment.arguments,
+                ) {
+                    ("Entity", _) => Ok(Some(Self {
+                        kind: CompoundKind::BelongsTo(CardinalityKind::Required),
+                        entity: ty_path.clone(),
+                    })),
+                    ("Option", PathArguments::AngleBracketed(args)) => {
+                        let Some(entity) = entity_generic_arg(&args.args) else {
+                            return Err(syn::Error::new_spanned(
+                                ty,
+                                "BelongsTo optional target must be Option<Entity>",
+                            ));
+                        };
+                        Ok(Some(Self {
+                            kind: CompoundKind::BelongsTo(CardinalityKind::Optional),
+                            entity,
+                        }))
+                    }
+                    _ => Err(syn::Error::new_spanned(
+                        ty,
+                        "BelongsTo generic argument must be an Entity or Option<Entity>",
+                    )),
+                }
+            }
+            "HasOne" => {
+                let PathArguments::AngleBracketed(args) = &segment.arguments else {
+                    return Err(syn::Error::new_spanned(
+                        type_path,
+                        "HasOne requires an Entity generic argument",
+                    ));
+                };
+                let Some(entity) = entity_generic_arg(&args.args) else {
+                    return Err(syn::Error::new_spanned(
+                        type_path,
+                        "HasOne requires an Entity generic argument",
+                    ));
+                };
+                Ok(Some(Self {
+                    kind: CompoundKind::HasOne,
+                    entity,
+                }))
+            }
+            "HasMany" => {
+                let PathArguments::AngleBracketed(args) = &segment.arguments else {
+                    return Err(syn::Error::new_spanned(
+                        type_path,
+                        "HasMany requires an Entity generic argument",
+                    ));
+                };
+                let Some(entity) = entity_generic_arg(&args.args) else {
+                    return Err(syn::Error::new_spanned(
+                        type_path,
+                        "HasMany requires an Entity generic argument",
+                    ));
+                };
+                Ok(Some(Self {
+                    kind: CompoundKind::HasMany,
+                    entity,
+                }))
+            }
+            _ => Ok(None),
         }
-
-        if segment.ident == "HasMany" {
-            let PathArguments::AngleBracketed(args) = &segment.arguments else {
-                return Err(syn::Error::new_spanned(
-                    type_path,
-                    "HasMany requires an Entity generic argument",
-                ));
-            };
-            let Some(entity) = single_entity_arg(&args.args) else {
-                return Err(syn::Error::new_spanned(
-                    type_path,
-                    "HasMany requires an Entity generic argument",
-                ));
-            };
-            return Ok(Some(Self {
-                kind: CompoundKind::HasMany,
-                entity,
-            }));
-        }
-
-        Ok(None)
     }
+}
 
-    pub(crate) fn is_has_one(&self) -> bool {
-        matches!(self.kind, CompoundKind::HasOne(_))
-    }
+fn last_path_segment(type_path: &TypePath) -> syn::Result<&syn::PathSegment> {
+    type_path
+        .path
+        .segments
+        .last()
+        .ok_or_else(|| syn::Error::new_spanned(type_path, "expected path type"))
+}
 
-    pub(crate) fn cardinality(&self) -> Option<CardinalityKind> {
-        match self.kind {
-            CompoundKind::HasOne(cardinality) => Some(cardinality),
-            CompoundKind::HasMany => None,
-        }
-    }
-
-    pub(crate) fn is_self_entity(&self) -> bool {
-        self.entity.path.segments.len() == 1
-            && self
-                .entity
-                .path
-                .segments
-                .first()
-                .is_some_and(|segment| segment.ident == "Entity")
-    }
+pub(crate) fn is_self_entity(entity: &TypePath) -> bool {
+    entity.path.segments.len() == 1
+        && last_path_segment(entity).is_ok_and(|segment| segment.ident == "Entity")
 }
 
 pub(crate) fn consume_meta(meta: ParseNestedMeta<'_>) {
@@ -158,103 +200,20 @@ fn field_ignored(field: &Field) -> bool {
     ignored
 }
 
-pub(crate) fn validate_has_one_attr(ident: &Ident, compound: &CompoundType) -> syn::Result<()> {
-    match compound.kind {
-        CompoundKind::HasOne(CardinalityKind::Optional) => Ok(()),
-        CompoundKind::HasOne(CardinalityKind::Required) => Err(syn::Error::new_spanned(
-            ident,
-            "has_one must be paired with HasOne<Option<Entity>>",
-        )),
-        CompoundKind::HasMany => Err(syn::Error::new_spanned(
-            ident,
-            "has_one must be paired with HasOne",
-        )),
-    }
-}
-
-fn single_entity_arg(args: &Punctuated<GenericArgument, Comma>) -> Option<TypePath> {
+fn entity_generic_arg(args: &Punctuated<GenericArgument, Comma>) -> Option<TypePath> {
     if args.len() != 1 {
         return None;
     }
     match args.first() {
-        Some(GenericArgument::Type(ty)) if is_entity_type(ty) => type_path(ty).ok().cloned(),
+        Some(GenericArgument::Type(Type::Path(type_path))) if is_entity_type(type_path) => {
+            Some(type_path.clone())
+        }
         _ => None,
     }
 }
 
-pub(crate) fn type_path(ty: &Type) -> syn::Result<&TypePath> {
-    let Type::Path(type_path) = ty else {
-        return Err(syn::Error::new_spanned(ty, "expected path type"));
-    };
-    Ok(type_path)
-}
-
-fn last_path_segment(type_path: &TypePath) -> syn::Result<&syn::PathSegment> {
-    type_path
-        .path
-        .segments
-        .last()
-        .ok_or_else(|| syn::Error::new_spanned(type_path, "expected path type"))
-}
-
-fn is_entity_type(ty: &Type) -> bool {
-    type_path(ty)
-        .and_then(last_path_segment)
-        .is_ok_and(|segment| segment.ident == "Entity")
-}
-
-fn has_one_target_arg(
-    args: &Punctuated<GenericArgument, Comma>,
-    field_type: &TypePath,
-) -> syn::Result<(TypePath, CardinalityKind)> {
-    if args.len() != 1 {
-        return Err(syn::Error::new_spanned(
-            field_type,
-            "HasOne requires an Entity or Option<Entity> generic argument",
-        ));
-    }
-
-    let Some(GenericArgument::Type(ty)) = args.first() else {
-        return Err(syn::Error::new_spanned(
-            field_type,
-            "HasOne generic argument must be an Entity or Option<Entity>",
-        ));
-    };
-
-    if is_entity_type(ty) {
-        return Ok((type_path(ty)?.clone(), CardinalityKind::Required));
-    }
-
-    let type_path = type_path(ty).map_err(|_| {
-        syn::Error::new_spanned(
-            ty,
-            "HasOne generic argument must be an Entity or Option<Entity>",
-        )
-    })?;
-    let segment = last_path_segment(type_path)?;
-    if segment.ident != "Option" {
-        return Err(syn::Error::new_spanned(
-            ty,
-            "HasOne generic argument must be an Entity or Option<Entity>",
-        ));
-    }
-    let PathArguments::AngleBracketed(args) = &segment.arguments else {
-        return Err(syn::Error::new_spanned(
-            ty,
-            "HasOne generic argument must be an Entity or Option<Entity>",
-        ));
-    };
-    let Some(entity) = single_entity_arg(&args.args) else {
-        return Err(syn::Error::new_spanned(
-            ty,
-            "HasOne optional target must be Option<Entity>",
-        ));
-    };
-    Ok((entity, CardinalityKind::Optional))
-}
-
-pub(crate) fn format_field_ident(field: &Field) -> Ident {
-    field.ident.clone().unwrap()
+fn is_entity_type(type_path: &TypePath) -> bool {
+    last_path_segment(type_path).is_ok_and(|segment| segment.ident == "Entity")
 }
 
 pub(crate) fn trim_starting_raw_identifier<T>(string: T) -> String
@@ -446,6 +405,14 @@ impl GetMeta for Meta {
                 .ok(),
             _ => None,
         }
+    }
+}
+
+pub(crate) fn combine_error(acc: &mut Option<syn::Error>, error: syn::Error) {
+    if let Some(acc) = acc {
+        acc.combine(error);
+    } else {
+        *acc = Some(error)
     }
 }
 

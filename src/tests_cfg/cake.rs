@@ -13,7 +13,7 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     #[sea_orm(has_one)]
-    pub fruit: HasOne<Option<super::fruit::Entity>>,
+    pub fruit: HasOne<super::fruit::Entity>,
     #[sea_orm(has_many, via = "cake_filling")]
     pub fillings: HasMany<super::filling::Entity>,
 }

@@ -1,8 +1,6 @@
 use crate::derives::util::consume_meta;
 
-use super::util::{
-    CompoundType, escape_rust_keyword, format_field_ident, trim_starting_raw_identifier, type_path,
-};
+use super::util::{CompoundType, escape_rust_keyword, trim_starting_raw_identifier};
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
@@ -60,13 +58,19 @@ pub fn expand_typed_column(
                 })?;
             }
 
-            if ignore || CompoundType::matches_type(type_path(field_ty)?) {
+            let compound = if let syn::Type::Path(type_path) = field_ty {
+                CompoundType::matches_type(type_path)
+            } else {
+                false
+            };
+
+            if ignore || compound {
                 continue;
             }
 
             field_name = Ident::new(&escape_rust_keyword(field_name), ident.span());
 
-            column_fields.push(format_field_ident(field));
+            column_fields.push(ident.clone());
             let wrapper =
                 super::value_type_match::column_type_wrapper(&column_type, field_ty, field.span());
             column_types.push(if let Some(wrapper) = &wrapper {

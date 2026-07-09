@@ -1,25 +1,42 @@
-use super::compound::{HasMany, HasOne, HasOneCardinality};
+use super::compound::{BelongsTo, BelongsToCardinality, HasMany, HasOne};
 use crate::{ActiveModelTrait, DbErr, EntityTrait, ModelTrait, TryIntoModel};
 use core::ops::{Index, IndexMut};
 
-/// State carried by a `belongs_to` or `has_one` field on an
+/// State carried by a `belongs_to` field on an
 /// [`ActiveModelEx`](crate::EntityTrait::ActiveModelEx). Mirrors the
 /// `NotSet` / `Set` shape of [`ActiveValue`](crate::ActiveValue) but for a
 /// related model.
 ///
 /// Unstable: nested-`ActiveModel` relation mutation is exempt from semver — the
 /// semantics of setting or removing related records may change in a minor (2.x) release.
-#[derive_where::derive_where(Debug, Clone; <T as HasOneCardinality>::ActiveModelEx)]
+#[derive_where::derive_where(Debug, Clone; <T as BelongsToCardinality>::Set)]
 #[derive(Default)]
-pub enum ActiveHasOne<T>
+pub enum ActiveBelongsTo<T>
 where
-    T: HasOneCardinality,
+    T: BelongsToCardinality,
 {
     /// Field is absent; the related model is left as-is on save.
     #[default]
     NotSet,
     /// Set the related ActiveModel on save.
-    Set(<T as HasOneCardinality>::ActiveModelEx),
+    Set(<T as BelongsToCardinality>::Set),
+}
+
+/// State carried by a `has_one` field on an
+/// [`ActiveModelEx`](crate::EntityTrait::ActiveModelEx).
+///
+/// Unstable: nested-`ActiveModel` relation mutation is exempt from semver — the
+/// semantics of setting or removing related records may change in a minor (2.x) release.
+#[derive(Debug, Default, Clone)]
+pub enum ActiveHasOne<E>
+where
+    E: EntityTrait,
+{
+    /// Field is absent; the related model is left as-is on save.
+    #[default]
+    NotSet,
+    /// Set or clear the related ActiveModel on save.
+    Set(Option<Box<E::ActiveModelEx>>),
 }
 
 /// State carried by a `has_many` (or many-to-many) field on an
@@ -56,14 +73,17 @@ pub enum ActiveModelAction {
     Save,
 }
 
-impl<T> ActiveHasOne<T>
+impl<T> ActiveBelongsTo<T>
 where
-    T: HasOneCardinality,
+    T: BelongsToCardinality,
 {
-    /// Construct an `ActiveHasOne::Set`. Accepts a bare active model for a
+    /// Construct an `ActiveBelongsTo::Set`. Accepts a bare active model for a
     /// required relation, or an `Option<active model>` for an optional one.
-    pub fn set(model: impl IntoActiveHasOneSet<T>) -> Self {
-        model.into_active_has_one_set()
+    pub fn set<M>(model: T::Value<M>) -> Self
+    where
+        M: Into<<<T as BelongsToCardinality>::Entity as EntityTrait>::ActiveModelEx>,
+    {
+        Self::Set(T::into_set(model))
     }
 
     /// Take ownership of this relation state, leaving `NotSet` in place
@@ -82,35 +102,7 @@ where
     }
 }
 
-/// Conversion used by [`ActiveHasOne::set`]. Wraps a bare active model (required
-/// relation) or an `Option<active model>` (optional relation) into the correct
-/// `Set` payload, selected by the relation's cardinality type parameter.
-#[doc(hidden)]
-pub trait IntoActiveHasOneSet<T: HasOneCardinality> {
-    fn into_active_has_one_set(self) -> ActiveHasOne<T>;
-}
-
-impl<E, M> IntoActiveHasOneSet<E> for M
-where
-    E: EntityTrait,
-    M: Into<E::ActiveModelEx>,
-{
-    fn into_active_has_one_set(self) -> ActiveHasOne<E> {
-        ActiveHasOne::Set(Box::new(self.into()))
-    }
-}
-
-impl<E, M> IntoActiveHasOneSet<Option<E>> for Option<M>
-where
-    E: EntityTrait,
-    M: Into<E::ActiveModelEx>,
-{
-    fn into_active_has_one_set(self) -> ActiveHasOne<Option<E>> {
-        ActiveHasOne::Set(self.map(|model| Box::new(model.into())))
-    }
-}
-
-impl<E> ActiveHasOne<E>
+impl<E> ActiveBelongsTo<E>
 where
     E: EntityTrait,
 {
@@ -148,18 +140,18 @@ where
     }
 
     /// Convert this back to a `ModelEx` container
-    pub fn try_into_model(self) -> Result<HasOne<E>, DbErr>
+    pub fn try_into_model(self) -> Result<BelongsTo<E>, DbErr>
     where
         E::ActiveModelEx: TryIntoModel<E::ModelEx>,
     {
         Ok(match self {
-            Self::Set(model) => HasOne::Loaded(Box::new((*model).try_into_model()?)),
-            Self::NotSet => HasOne::Unloaded,
+            Self::Set(model) => BelongsTo::Loaded(Box::new((*model).try_into_model()?)),
+            Self::NotSet => BelongsTo::Unloaded,
         })
     }
 }
 
-impl<E> ActiveHasOne<Option<E>>
+impl<E> ActiveBelongsTo<Option<E>>
 where
     E: EntityTrait,
 {
@@ -198,7 +190,109 @@ where
     }
 
     /// Convert this back to a `ModelEx` container
-    pub fn try_into_model(self) -> Result<HasOne<Option<E>>, DbErr>
+    pub fn try_into_model(self) -> Result<BelongsTo<Option<E>>, DbErr>
+    where
+        E::ActiveModelEx: TryIntoModel<E::ModelEx>,
+    {
+        Ok(match self {
+            Self::Set(Some(model)) => BelongsTo::Loaded(Some(Box::new((*model).try_into_model()?))),
+            Self::Set(None) => BelongsTo::Loaded(None),
+            Self::NotSet => BelongsTo::Unloaded,
+        })
+    }
+}
+
+impl<T> PartialEq for ActiveBelongsTo<T>
+where
+    T: BelongsToCardinality,
+    <T as BelongsToCardinality>::Set: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::NotSet, Self::NotSet) => true,
+            (Self::Set(a), Self::Set(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl<E> PartialEq<Option<E::ActiveModelEx>> for ActiveBelongsTo<Option<E>>
+where
+    E: EntityTrait,
+    E::ActiveModelEx: PartialEq,
+{
+    fn eq(&self, other: &Option<E::ActiveModelEx>) -> bool {
+        match (self, other) {
+            (Self::NotSet, None) => true,
+            (Self::Set(Some(a)), Some(b)) => a.as_ref() == b,
+            (Self::Set(None), None) => true,
+            _ => false,
+        }
+    }
+}
+
+impl<T> Eq for ActiveBelongsTo<T>
+where
+    T: BelongsToCardinality,
+    <T as BelongsToCardinality>::Set: Eq,
+{
+}
+
+impl<E> ActiveHasOne<E>
+where
+    E: EntityTrait,
+{
+    /// Construct an `ActiveHasOne::Set` from an optional related active model.
+    pub fn set(model: Option<impl Into<E::ActiveModelEx>>) -> Self {
+        Self::Set(model.map(|model| Box::new(model.into())))
+    }
+
+    /// Return true if self is NotSet
+    pub fn is_not_set(&self) -> bool {
+        matches!(self, Self::NotSet)
+    }
+
+    /// Return true if there is a set value
+    pub fn is_set(&self) -> bool {
+        matches!(self, Self::Set(_))
+    }
+
+    /// Get a reference, if set
+    pub fn as_ref(&self) -> Option<&E::ActiveModelEx> {
+        match self {
+            Self::Set(Some(model)) => Some(model),
+            _ => None,
+        }
+    }
+
+    /// Get a mutable reference, if set
+    #[allow(clippy::should_implement_trait)]
+    pub fn as_mut(&mut self) -> Option<&mut E::ActiveModelEx> {
+        match self {
+            Self::Set(Some(model)) => Some(model),
+            _ => None,
+        }
+    }
+
+    /// Return true if the containing model is set and changed
+    pub fn is_changed(&self) -> bool {
+        match self {
+            Self::Set(Some(model)) => model.is_changed(),
+            Self::Set(None) => true,
+            Self::NotSet => false,
+        }
+    }
+
+    /// Convert into an `Option<ActiveModelEx>`
+    pub fn into_option(self) -> Option<E::ActiveModelEx> {
+        match self {
+            Self::Set(Some(model)) => Some(*model),
+            Self::Set(None) | Self::NotSet => None,
+        }
+    }
+
+    /// Convert this back to a `ModelEx` container
+    pub fn try_into_model(self) -> Result<HasOne<E>, DbErr>
     where
         E::ActiveModelEx: TryIntoModel<E::ModelEx>,
     {
@@ -210,39 +304,39 @@ where
     }
 }
 
-impl<T> PartialEq for ActiveHasOne<T>
+impl<E> PartialEq for ActiveHasOne<E>
 where
-    T: HasOneCardinality,
-    <T as HasOneCardinality>::ActiveModelEx: PartialEq,
+    E: EntityTrait,
+    E::ActiveModelEx: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (ActiveHasOne::NotSet, ActiveHasOne::NotSet) => true,
-            (ActiveHasOne::Set(a), ActiveHasOne::Set(b)) => a == b,
+            (Self::NotSet, Self::NotSet) => true,
+            (Self::Set(a), Self::Set(b)) => a == b,
             _ => false,
         }
     }
 }
 
-impl<E> PartialEq<Option<E::ActiveModelEx>> for ActiveHasOne<Option<E>>
+impl<E> PartialEq<Option<E::ActiveModelEx>> for ActiveHasOne<E>
 where
     E: EntityTrait,
     E::ActiveModelEx: PartialEq,
 {
     fn eq(&self, other: &Option<E::ActiveModelEx>) -> bool {
         match (self, other) {
-            (ActiveHasOne::NotSet, None) => true,
-            (ActiveHasOne::Set(Some(a)), Some(b)) => a.as_ref() == b,
-            (ActiveHasOne::Set(None), None) => true,
+            (Self::NotSet, None) => true,
+            (Self::Set(Some(a)), Some(b)) => a.as_ref() == b,
+            (Self::Set(None), None) => true,
             _ => false,
         }
     }
 }
 
-impl<T> Eq for ActiveHasOne<T>
+impl<E> Eq for ActiveHasOne<E>
 where
-    T: HasOneCardinality,
-    <T as HasOneCardinality>::ActiveModelEx: Eq,
+    E: EntityTrait,
+    E::ActiveModelEx: Eq,
 {
 }
 
