@@ -1,6 +1,4 @@
-use super::util::{
-    escape_rust_keyword, field_not_ignored, format_field_ident, trim_starting_raw_identifier,
-};
+use super::util::{escape_rust_keyword, field_not_ignored, trim_starting_raw_identifier};
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
@@ -34,9 +32,10 @@ impl DeriveActiveModel {
         let mut types = Vec::new();
 
         for field in all_fields.iter().filter(|f| field_not_ignored(f)) {
-            fields.push(format_field_ident(field));
+            let field_ident = field.ident.as_ref().expect("named fields have identifiers");
+            fields.push(field_ident.clone());
 
-            let ident = field.ident.as_ref().unwrap().to_string();
+            let ident = field_ident.to_string();
             let ident = trim_starting_raw_identifier(ident).to_upper_camel_case();
             let ident = escape_rust_keyword(ident);
             let mut ident = format_ident!("{}", &ident);
@@ -233,10 +232,13 @@ fn derive_into_model(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
     let active_model_field: Vec<Ident> = model_fields
         .iter()
         .filter(|f| field_not_ignored(f))
-        .map(format_field_ident)
+        .map(|field| field.ident.clone().expect("named fields have identifiers"))
         .collect();
 
-    let model_field: Vec<Ident> = model_fields.iter().map(format_field_ident).collect();
+    let model_field: Vec<Ident> = model_fields
+        .iter()
+        .map(|field| field.ident.clone().expect("named fields have identifiers"))
+        .collect();
 
     let ignore_attr: Vec<bool> = model_fields.iter().map(|f| !field_not_ignored(f)).collect();
 

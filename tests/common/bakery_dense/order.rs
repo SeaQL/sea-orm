@@ -14,9 +14,9 @@ pub struct Model {
     pub customer_id: i32,
     pub placed_at: DateTimeWithTimeZone,
     #[sea_orm(belongs_to, from = "bakery_id", to = "id")]
-    pub bakery: HasOne<super::bakery::Entity>,
+    pub bakery: BelongsTo<super::bakery::Entity>,
     #[sea_orm(belongs_to, from = "customer_id", to = "id")]
-    pub customer: HasOne<super::customer::Entity>,
+    pub customer: BelongsTo<super::customer::Entity>,
     #[sea_orm(has_many)]
     pub lineitems: HasMany<super::lineitem::Entity>,
 }

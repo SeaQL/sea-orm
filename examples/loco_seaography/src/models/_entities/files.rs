@@ -14,5 +14,5 @@ pub struct Model {
     pub notes_id: i32,
     pub file_path: String,
     #[sea_orm(belongs_to, from = "notes_id", to = "id")]
-    pub notes: HasOne<super::notes::Entity>,
+    pub notes: BelongsTo<super::notes::Entity>,
 }

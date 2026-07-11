@@ -1,25 +1,42 @@
-use super::compound::{HasMany, HasOne};
+use super::compound::{BelongsTo, BelongsToCardinality, HasMany, HasOne};
 use crate::{ActiveModelTrait, DbErr, EntityTrait, ModelTrait, TryIntoModel};
 use core::ops::{Index, IndexMut};
 
-/// State carried by a `belongs_to` or `has_one` field on an
+/// State carried by a `belongs_to` field on an
 /// [`ActiveModelEx`](crate::EntityTrait::ActiveModelEx). Mirrors the
 /// `NotSet` / `Set` shape of [`ActiveValue`](crate::ActiveValue) but for a
 /// related model.
 ///
 /// Unstable: nested-`ActiveModel` relation mutation is exempt from semver — the
-/// semantics of replacing or removing related records may change in a minor (2.x) release.
-#[derive(Debug, Default, Clone)]
-#[non_exhaustive]
-pub enum ActiveHasOne<E: EntityTrait> {
+/// semantics of setting or removing related records may change in a minor (2.x) release.
+#[derive_where::derive_where(Debug, Clone; <T as BelongsToCardinality>::Set)]
+#[derive(Default)]
+pub enum ActiveBelongsTo<T>
+where
+    T: BelongsToCardinality,
+{
     /// Field is absent; the related model is left as-is on save.
     #[default]
     NotSet,
-    /// Assign this related ActiveModel on save. Any existing linked record is
-    /// replaced (the old one is deleted or orphaned, then this one is written).
-    Set(Box<E::ActiveModelEx>),
-    /// Delete (or orphan, if the foreign key is nullable) the existing linked record on save.
-    Delete,
+    /// Set the related ActiveModel on save.
+    Set(<T as BelongsToCardinality>::Set),
+}
+
+/// State carried by a `has_one` field on an
+/// [`ActiveModelEx`](crate::EntityTrait::ActiveModelEx).
+///
+/// Unstable: nested-`ActiveModel` relation mutation is exempt from semver — the
+/// semantics of setting or removing related records may change in a minor (2.x) release.
+#[derive(Debug, Default, Clone)]
+pub enum ActiveHasOne<E>
+where
+    E: EntityTrait,
+{
+    /// Field is absent; the related model is left as-is on save.
+    #[default]
+    NotSet,
+    /// Set or clear the related ActiveModel on save.
+    Set(Option<Box<E::ActiveModelEx>>),
 }
 
 /// State carried by a `has_many` (or many-to-many) field on an
@@ -56,28 +73,39 @@ pub enum ActiveModelAction {
     Save,
 }
 
-impl<E> ActiveHasOne<E>
+impl<T> ActiveBelongsTo<T>
+where
+    T: BelongsToCardinality,
+{
+    /// Construct an `ActiveBelongsTo::Set`. Accepts a bare active model for a
+    /// required relation, or an `Option<active model>` for an optional one.
+    pub fn set<M>(model: T::Value<M>) -> Self
+    where
+        M: Into<<<T as BelongsToCardinality>::Entity as EntityTrait>::ActiveModelEx>,
+    {
+        Self::Set(T::into_set(model))
+    }
+
+    /// Take ownership of this relation state, leaving `NotSet` in place
+    pub fn take(&mut self) -> Self {
+        std::mem::take(self)
+    }
+
+    /// Return true if self is NotSet
+    pub fn is_not_set(&self) -> bool {
+        matches!(self, Self::NotSet)
+    }
+
+    /// Return true if there is a set value
+    pub fn is_set(&self) -> bool {
+        matches!(self, Self::Set(_))
+    }
+}
+
+impl<E> ActiveBelongsTo<E>
 where
     E: EntityTrait,
 {
-    /// Construct a `ActiveHasOne::Set`
-    pub fn set<AM: Into<E::ActiveModelEx>>(model: AM) -> Self {
-        Self::Set(Box::new(model.into()))
-    }
-
-    /// Replace the inner Model
-    pub fn replace<AM: Into<E::ActiveModelEx>>(&mut self, model: AM) {
-        *self = Self::Set(Box::new(model.into()));
-    }
-
-    /// Take ownership of this model, leaving `NotSet` in place
-    pub fn take(&mut self) -> Option<E::ActiveModelEx> {
-        match std::mem::take(self) {
-            Self::Set(model) => Some(*model),
-            _ => None,
-        }
-    }
-
     /// Get a reference, if set
     pub fn as_ref(&self) -> Option<&E::ActiveModelEx> {
         match self {
@@ -95,21 +123,6 @@ where
         }
     }
 
-    /// Return true if there is a model
-    pub fn is_set(&self) -> bool {
-        matches!(self, Self::Set(_))
-    }
-
-    /// Return true if self is NotSet
-    pub fn is_not_set(&self) -> bool {
-        matches!(self, Self::NotSet)
-    }
-
-    /// Return true if self is NotSet
-    pub fn is_none(&self) -> bool {
-        matches!(self, Self::NotSet)
-    }
-
     /// Return true if the containing model is set and changed
     pub fn is_changed(&self) -> bool {
         match self {
@@ -118,46 +131,164 @@ where
         }
     }
 
-    /// Return true if self is `Delete`
-    pub fn is_delete(&self) -> bool {
-        matches!(self, Self::Delete)
-    }
-
-    /// Borrow the set model as a slice (length 0 or 1); used for type inference
-    /// and primary-key comparison against the live database.
-    #[doc(hidden)]
-    pub fn as_slice(&self) -> &[E::ActiveModelEx] {
+    /// Convert into an `Option<ActiveModelEx>`
+    pub fn into_option(self) -> Option<E::ActiveModelEx> {
         match self {
-            Self::Set(model) => std::slice::from_ref(model.as_ref()),
-            _ => &[],
+            Self::Set(model) => Some(*model),
+            Self::NotSet => None,
         }
     }
 
-    /// Return true if the set model's primary key matches `model`.
-    pub fn find(&self, model: &E::Model) -> bool {
-        let pk = model.get_primary_key_value();
-        for item in self.as_slice() {
-            if let Some(pk_item) = item.get_primary_key_value()
-                && pk_item == pk
-            {
-                return true;
-            }
+    /// Convert this back to a `ModelEx` container
+    pub fn try_into_model(self) -> Result<BelongsTo<E>, DbErr>
+    where
+        E::ActiveModelEx: TryIntoModel<E::ModelEx>,
+    {
+        Ok(match self {
+            Self::Set(model) => BelongsTo::Loaded(Box::new((*model).try_into_model()?)),
+            Self::NotSet => BelongsTo::Unloaded,
+        })
+    }
+}
+
+impl<E> ActiveBelongsTo<Option<E>>
+where
+    E: EntityTrait,
+{
+    /// Get a reference, if set
+    pub fn as_ref(&self) -> Option<&E::ActiveModelEx> {
+        match self {
+            Self::Set(Some(model)) => Some(model),
+            _ => None,
         }
-        false
+    }
+
+    /// Get a mutable reference, if set
+    #[allow(clippy::should_implement_trait)]
+    pub fn as_mut(&mut self) -> Option<&mut E::ActiveModelEx> {
+        match self {
+            Self::Set(Some(model)) => Some(model),
+            _ => None,
+        }
+    }
+
+    /// Return true if the containing model is set and changed
+    pub fn is_changed(&self) -> bool {
+        match self {
+            Self::Set(Some(model)) => model.is_changed(),
+            Self::Set(None) => true,
+            Self::NotSet => false,
+        }
     }
 
     /// Convert into an `Option<ActiveModelEx>`
     pub fn into_option(self) -> Option<E::ActiveModelEx> {
         match self {
-            Self::Set(model) => Some(*model),
-            Self::NotSet | Self::Delete => None,
+            Self::Set(Some(model)) => Some(*model),
+            Self::Set(None) | Self::NotSet => None,
         }
     }
 
-    /// For type inference purpose
-    #[doc(hidden)]
-    pub fn empty_slice(&self) -> &[E::ActiveModelEx] {
-        &[]
+    /// Convert this back to a `ModelEx` container
+    pub fn try_into_model(self) -> Result<BelongsTo<Option<E>>, DbErr>
+    where
+        E::ActiveModelEx: TryIntoModel<E::ModelEx>,
+    {
+        Ok(match self {
+            Self::Set(Some(model)) => BelongsTo::Loaded(Some(Box::new((*model).try_into_model()?))),
+            Self::Set(None) => BelongsTo::Loaded(None),
+            Self::NotSet => BelongsTo::Unloaded,
+        })
+    }
+}
+
+impl<T> PartialEq for ActiveBelongsTo<T>
+where
+    T: BelongsToCardinality,
+    <T as BelongsToCardinality>::Set: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::NotSet, Self::NotSet) => true,
+            (Self::Set(a), Self::Set(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl<E> PartialEq<Option<E::ActiveModelEx>> for ActiveBelongsTo<Option<E>>
+where
+    E: EntityTrait,
+    E::ActiveModelEx: PartialEq,
+{
+    fn eq(&self, other: &Option<E::ActiveModelEx>) -> bool {
+        match (self, other) {
+            (Self::NotSet, None) => true,
+            (Self::Set(Some(a)), Some(b)) => a.as_ref() == b,
+            (Self::Set(None), None) => true,
+            _ => false,
+        }
+    }
+}
+
+impl<T> Eq for ActiveBelongsTo<T>
+where
+    T: BelongsToCardinality,
+    <T as BelongsToCardinality>::Set: Eq,
+{
+}
+
+impl<E> ActiveHasOne<E>
+where
+    E: EntityTrait,
+{
+    /// Construct an `ActiveHasOne::Set` from an optional related active model.
+    pub fn set(model: Option<impl Into<E::ActiveModelEx>>) -> Self {
+        Self::Set(model.map(|model| Box::new(model.into())))
+    }
+
+    /// Return true if self is NotSet
+    pub fn is_not_set(&self) -> bool {
+        matches!(self, Self::NotSet)
+    }
+
+    /// Return true if there is a set value
+    pub fn is_set(&self) -> bool {
+        matches!(self, Self::Set(_))
+    }
+
+    /// Get a reference, if set
+    pub fn as_ref(&self) -> Option<&E::ActiveModelEx> {
+        match self {
+            Self::Set(Some(model)) => Some(model),
+            _ => None,
+        }
+    }
+
+    /// Get a mutable reference, if set
+    #[allow(clippy::should_implement_trait)]
+    pub fn as_mut(&mut self) -> Option<&mut E::ActiveModelEx> {
+        match self {
+            Self::Set(Some(model)) => Some(model),
+            _ => None,
+        }
+    }
+
+    /// Return true if the containing model is set and changed
+    pub fn is_changed(&self) -> bool {
+        match self {
+            Self::Set(Some(model)) => model.is_changed(),
+            Self::Set(None) => true,
+            Self::NotSet => false,
+        }
+    }
+
+    /// Convert into an `Option<ActiveModelEx>`
+    pub fn into_option(self) -> Option<E::ActiveModelEx> {
+        match self {
+            Self::Set(Some(model)) => Some(*model),
+            Self::Set(None) | Self::NotSet => None,
+        }
     }
 
     /// Convert this back to a `ModelEx` container
@@ -166,8 +297,9 @@ where
         E::ActiveModelEx: TryIntoModel<E::ModelEx>,
     {
         Ok(match self {
-            Self::Set(model) => HasOne::Loaded(Box::new((*model).try_into_model()?)),
-            Self::NotSet | Self::Delete => HasOne::Unloaded,
+            Self::Set(Some(model)) => HasOne::Loaded(Some(Box::new((*model).try_into_model()?))),
+            Self::Set(None) => HasOne::Loaded(None),
+            Self::NotSet => HasOne::Unloaded,
         })
     }
 }
@@ -179,9 +311,8 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (ActiveHasOne::NotSet, ActiveHasOne::NotSet) => true,
-            (ActiveHasOne::Set(a), ActiveHasOne::Set(b)) => a == b,
-            (ActiveHasOne::Delete, ActiveHasOne::Delete) => true,
+            (Self::NotSet, Self::NotSet) => true,
+            (Self::Set(a), Self::Set(b)) => a == b,
             _ => false,
         }
     }
@@ -194,8 +325,9 @@ where
 {
     fn eq(&self, other: &Option<E::ActiveModelEx>) -> bool {
         match (self, other) {
-            (ActiveHasOne::NotSet, None) => true,
-            (ActiveHasOne::Set(a), Some(b)) => a.as_ref() == b,
+            (Self::NotSet, None) => true,
+            (Self::Set(Some(a)), Some(b)) => a.as_ref() == b,
+            (Self::Set(None), None) => true,
             _ => false,
         }
     }

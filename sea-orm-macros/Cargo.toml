@@ -30,6 +30,7 @@ syn = { version = "2", default-features = false, features = [
     "proc-macro",
     "derive",
     "printing",
+    "extra-traits",
 ] }
 unicode-ident = { version = "1" }
 

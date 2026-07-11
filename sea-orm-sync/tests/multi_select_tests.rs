@@ -20,9 +20,9 @@ mod one {
         #[sea_orm(primary_key)]
         pub id: i32,
         #[sea_orm(has_one)]
-        pub two: Option<super::two::Entity>,
+        pub two: HasOne<super::two::Entity>,
         #[sea_orm(has_one)]
-        pub six: Option<super::six::Entity>,
+        pub six: HasOne<super::six::Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -40,9 +40,9 @@ mod two {
         pub one_id: i32,
         pub three_id: i32,
         #[sea_orm(belongs_to, from = "one_id", to = "id")]
-        pub one: Option<super::one::Entity>,
+        pub one: BelongsTo<super::one::Entity>,
         #[sea_orm(belongs_to, from = "three_id", to = "id")]
-        pub three: Option<super::three::Entity>,
+        pub three: BelongsTo<super::three::Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -58,7 +58,7 @@ mod three {
         #[sea_orm(primary_key)]
         pub id: i32,
         #[sea_orm(has_one)]
-        pub four: Option<super::four::Entity>,
+        pub four: HasOne<super::four::Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -75,9 +75,9 @@ mod four {
         pub id: i32,
         pub three_id: Option<i32>,
         #[sea_orm(belongs_to, from = "three_id", to = "id")]
-        pub three: Option<super::three::Entity>,
+        pub three: BelongsTo<Option<super::three::Entity>>,
         #[sea_orm(has_one)]
-        pub five: Option<super::five::Entity>,
+        pub five: HasOne<super::five::Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -94,9 +94,9 @@ mod five {
         pub id: i32,
         pub four_id: i32,
         #[sea_orm(belongs_to, from = "four_id", to = "id")]
-        pub four: Option<super::four::Entity>,
+        pub four: BelongsTo<super::four::Entity>,
         #[sea_orm(has_one)]
-        pub six: Option<super::six::Entity>,
+        pub six: HasOne<super::six::Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -114,9 +114,9 @@ mod six {
         pub one_id: i32,
         pub five_id: i32,
         #[sea_orm(belongs_to, from = "one_id", to = "id")]
-        pub one: Option<super::one::Entity>,
+        pub one: BelongsTo<super::one::Entity>,
         #[sea_orm(belongs_to, from = "five_id", to = "id")]
-        pub five: Option<super::five::Entity>,
+        pub five: BelongsTo<super::five::Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -136,7 +136,7 @@ mod composite_a {
         #[sea_orm(unique_key = "pair")]
         pub right_id: i32,
         #[sea_orm(has_one)]
-        pub b: Option<super::composite_b::Entity>,
+        pub b: HasOne<super::composite_b::Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -154,7 +154,7 @@ mod composite_b {
         pub left_id: i32,
         pub right_id: i32,
         #[sea_orm(belongs_to, from = "(left_id, right_id)", to = "(left_id, right_id)")]
-        pub a: Option<super::composite_a::Entity>,
+        pub a: BelongsTo<super::composite_a::Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
