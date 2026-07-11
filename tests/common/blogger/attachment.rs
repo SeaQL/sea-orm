@@ -9,7 +9,7 @@ pub struct Model {
     pub post_id: Option<i32>,
     pub file: String,
     #[sea_orm(belongs_to, from = "post_id", to = "id")]
-    pub post: BelongsTo<super::post::Entity>,
+    pub post: BelongsTo<Option<super::post::Entity>>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

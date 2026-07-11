@@ -10,10 +10,14 @@ pub struct EntityLoaderSchema {
 
 pub enum EntityLoaderFieldKind {
     HasOne,
-    HasMany { via: Option<syn::LitStr> },
-    SelfHasOne,
-    SelfHasMany,
-    SelfHasManyVia { via: syn::LitStr, reverse: bool },
+    HasOneSelf,
+    HasMany,
+    HasManySelf,
+    ManyToMany,
+    ManyToManySelf {
+        junction_module: Ident,
+        reverse: bool,
+    },
 }
 
 pub struct EntityLoaderField {
@@ -55,7 +59,9 @@ impl EntityLoaderField {
     fn expand_loader_nest_field_into(&self, output: &mut EntityLoaderOutput) {
         let field = &self.field;
         let nest_type = match &self.kind {
-            EntityLoaderFieldKind::HasOne | EntityLoaderFieldKind::HasMany { .. } => {
+            EntityLoaderFieldKind::HasOne
+            | EntityLoaderFieldKind::HasMany
+            | EntityLoaderFieldKind::ManyToMany => {
                 let mut entity_module = self.entity.path.clone();
                 entity_module.segments.pop();
                 entity_module
@@ -63,9 +69,9 @@ impl EntityLoaderField {
                     .push(syn::parse_quote!(EntityLoaderWith));
                 quote!(#entity_module)
             }
-            EntityLoaderFieldKind::SelfHasOne
-            | EntityLoaderFieldKind::SelfHasMany
-            | EntityLoaderFieldKind::SelfHasManyVia { .. } => quote!(EntityLoaderWith),
+            EntityLoaderFieldKind::HasOneSelf
+            | EntityLoaderFieldKind::HasManySelf
+            | EntityLoaderFieldKind::ManyToManySelf { .. } => quote!(EntityLoaderWith),
         };
 
         output.loader_nest_fields.push(quote! {
@@ -103,29 +109,28 @@ impl EntityLoaderField {
         });
     }
 
-    fn expand_self_via_with_param_into(
+    fn expand_many_to_many_self_with_param_into(
         &self,
         output: &mut EntityLoaderOutput,
-        via: &syn::LitStr,
+        junction_module: &Ident,
         reverse: bool,
     ) {
-        let via = Ident::new(&via.value(), via.span());
         let target_type = if !reverse {
-            Ident::new("TableRef", via.span())
+            Ident::new("TableRef", junction_module.span())
         } else {
-            Ident::new("TableRefRev", via.span())
+            Ident::new("TableRefRev", junction_module.span())
         };
 
         let target_entity = if !reverse {
-            quote!(super::#via::Entity)
+            quote!(super::#junction_module::Entity)
         } else {
-            quote!(super::#via::EntityReverse)
+            quote!(super::#junction_module::EntityReverse)
         };
 
         output.with_param_impls.extend(quote! {
             impl EntityLoaderWithParam for #target_entity {
                 fn into_with_param(self) -> (sea_orm::compound::LoadTarget, Option<sea_orm::compound::LoadTarget>) {
-                    (sea_orm::compound::LoadTarget::#target_type(super::#via::Entity.table_ref()), None)
+                    (sea_orm::compound::LoadTarget::#target_type(super::#junction_module::Entity.table_ref()), None)
                 }
             }
 
@@ -136,7 +141,7 @@ impl EntityLoaderField {
             {
                 fn into_with_param(self) -> (sea_orm::compound::LoadTarget, Option<sea_orm::compound::LoadTarget>) {
                     (
-                        sea_orm::compound::LoadTarget::#target_type(super::#via::Entity.table_ref()),
+                        sea_orm::compound::LoadTarget::#target_type(super::#junction_module::Entity.table_ref()),
                         Some(sea_orm::compound::LoadTarget::TableRef(self.1.table_ref())),
                     )
                 }
@@ -153,7 +158,9 @@ impl EntityLoaderField {
         let entity = &self.entity;
 
         match &self.kind {
-            EntityLoaderFieldKind::HasOne | EntityLoaderFieldKind::HasMany { .. } => {
+            EntityLoaderFieldKind::HasOne
+            | EntityLoaderFieldKind::HasMany
+            | EntityLoaderFieldKind::ManyToMany => {
                 if !duplicate_entity {
                     output.loader_with_set_impl.extend(quote! {
                         if target == sea_orm::compound::LoadTarget::TableRef(#entity.table_ref()) {
@@ -170,9 +177,9 @@ impl EntityLoaderField {
                     });
                 }
             }
-            EntityLoaderFieldKind::SelfHasOne
-            | EntityLoaderFieldKind::SelfHasMany
-            | EntityLoaderFieldKind::SelfHasManyVia { .. } => {
+            EntityLoaderFieldKind::HasOneSelf
+            | EntityLoaderFieldKind::HasManySelf
+            | EntityLoaderFieldKind::ManyToManySelf { .. } => {
                 if let Some(relation_enum) = &self.relation_enum {
                     output.loader_with_set_impl.extend(quote! {
                         if let sea_orm::compound::LoadTarget::Relation(relation_enum) = &target {
@@ -183,16 +190,19 @@ impl EntityLoaderField {
                     });
                 }
 
-                if let EntityLoaderFieldKind::SelfHasManyVia { via, reverse } = &self.kind {
-                    let via = Ident::new(&via.value(), via.span());
+                if let EntityLoaderFieldKind::ManyToManySelf {
+                    junction_module,
+                    reverse,
+                } = &self.kind
+                {
                     let target_type = if !reverse {
-                        Ident::new("TableRef", via.span())
+                        Ident::new("TableRef", junction_module.span())
                     } else {
-                        Ident::new("TableRefRev", via.span())
+                        Ident::new("TableRefRev", junction_module.span())
                     };
 
                     output.loader_with_set_impl.extend(quote! {
-                        if target == sea_orm::compound::LoadTarget::#target_type(super::#via::Entity.table_ref()) {
+                        if target == sea_orm::compound::LoadTarget::#target_type(super::#junction_module::Entity.table_ref()) {
                             self.#field = true;
                         }
                     });
@@ -210,7 +220,9 @@ impl EntityLoaderField {
         let entity = &self.entity;
 
         match &self.kind {
-            EntityLoaderFieldKind::HasOne | EntityLoaderFieldKind::HasMany { .. } => {
+            EntityLoaderFieldKind::HasOne
+            | EntityLoaderFieldKind::HasMany
+            | EntityLoaderFieldKind::ManyToMany => {
                 if !duplicate_entity {
                     output.loader_with_2_impl.extend(quote! {
                         if left == sea_orm::compound::LoadTarget::TableRef(#entity.table_ref()) {
@@ -231,17 +243,19 @@ impl EntityLoaderField {
                     });
                 }
             }
-            EntityLoaderFieldKind::SelfHasOne | EntityLoaderFieldKind::SelfHasMany => {}
-            EntityLoaderFieldKind::SelfHasManyVia { via, reverse } => {
-                let via = Ident::new(&via.value(), via.span());
+            EntityLoaderFieldKind::HasOneSelf | EntityLoaderFieldKind::HasManySelf => {}
+            EntityLoaderFieldKind::ManyToManySelf {
+                junction_module,
+                reverse,
+            } => {
                 let target_type = if !reverse {
-                    Ident::new("TableRef", via.span())
+                    Ident::new("TableRef", junction_module.span())
                 } else {
-                    Ident::new("TableRefRev", via.span())
+                    Ident::new("TableRefRev", junction_module.span())
                 };
 
                 output.loader_with_2_impl.extend(quote! {
-                    if left == sea_orm::compound::LoadTarget::#target_type(super::#via::Entity.table_ref()) {
+                    if left == sea_orm::compound::LoadTarget::#target_type(super::#junction_module::Entity.table_ref()) {
                         self.with.#field = true;
                         self.nest.#field.set(right);
                         return self;
@@ -490,7 +504,7 @@ impl EntityLoaderField {
         });
     }
 
-    fn expand_load_self_one_into(
+    fn expand_load_one_self_into(
         &self,
         output: &mut EntityLoaderOutput,
         relation_enum: &syn::LitStr,
@@ -515,7 +529,7 @@ impl EntityLoaderField {
         });
     }
 
-    fn expand_load_self_many_into(
+    fn expand_load_many_self_into(
         &self,
         output: &mut EntityLoaderOutput,
         relation_enum: &syn::LitStr,
@@ -540,14 +554,13 @@ impl EntityLoaderField {
         });
     }
 
-    fn expand_load_self_many_via_into(
+    fn expand_load_many_to_many_self_into(
         &self,
         output: &mut EntityLoaderOutput,
-        via: &syn::LitStr,
+        junction_module: &Ident,
         reverse: bool,
     ) {
         let field = &self.field;
-        let via = Ident::new(&via.value(), via.span());
         let await_ = if cfg!(feature = "async") {
             quote!(.await)
         } else {
@@ -556,7 +569,7 @@ impl EntityLoaderField {
 
         output.load_many.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_self_via_ex(super::#via::Entity, #reverse, db)#await_?;
+                let #field = models.as_slice().load_self_via_ex(super::#junction_module::Entity, #reverse, db)#await_?;
                 let #field = EntityLoader::load_nest_nest(#field, &nest.#field, db)#await_?;
 
                 for (model, #field) in models.iter_mut().zip(#field) {
@@ -566,7 +579,7 @@ impl EntityLoaderField {
         });
         output.load_many_nest.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_self_via_ex(super::#via::Entity, #reverse, db)#await_?;
+                let #field = models.as_slice().load_self_via_ex(super::#junction_module::Entity, #reverse, db)#await_?;
 
                 for (model, #field) in models.iter_mut().zip(#field) {
                     if let Some(model) = model.as_mut() {
@@ -577,7 +590,7 @@ impl EntityLoaderField {
         });
         output.load_many_nest_nest.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_self_via_ex(super::#via::Entity, #reverse, db)#await_?;
+                let #field = models.as_slice().load_self_via_ex(super::#junction_module::Entity, #reverse, db)#await_?;
 
                 for (models, #field) in models.iter_mut().zip(#field) {
                     for (model, #field) in models.iter_mut().zip(#field) {
@@ -598,30 +611,35 @@ impl EntityLoaderField {
                     self.expand_load_one_with_rel_into(output, relation_enum);
                 }
             }
-            EntityLoaderFieldKind::HasMany { .. } if !duplicate_entity => {
+            EntityLoaderFieldKind::HasMany | EntityLoaderFieldKind::ManyToMany
+                if !duplicate_entity =>
+            {
                 self.expand_load_many_into(output);
             }
-            EntityLoaderFieldKind::HasMany { via: None } => {
+            EntityLoaderFieldKind::HasMany => {
                 if let Some(relation_enum) = &self.relation_enum {
                     self.expand_load_many_with_rel_into(output, relation_enum);
                 }
             }
-            EntityLoaderFieldKind::HasMany { via: Some(_) } => {}
-            EntityLoaderFieldKind::SelfHasOne => {
+            EntityLoaderFieldKind::ManyToMany => {}
+            EntityLoaderFieldKind::HasOneSelf => {
                 if let Some(relation_enum) = &self.relation_enum {
-                    self.expand_load_self_one_into(output, relation_enum);
+                    self.expand_load_one_self_into(output, relation_enum);
                 }
             }
-            EntityLoaderFieldKind::SelfHasMany => {
+            EntityLoaderFieldKind::HasManySelf => {
                 if let Some(relation_enum) = &self.relation_enum {
-                    self.expand_load_self_many_into(output, relation_enum);
+                    self.expand_load_many_self_into(output, relation_enum);
                 }
             }
-            EntityLoaderFieldKind::SelfHasManyVia { via, reverse } => {
+            EntityLoaderFieldKind::ManyToManySelf {
+                junction_module,
+                reverse,
+            } => {
                 if let Some(relation_enum) = &self.relation_enum {
-                    self.expand_load_self_many_into(output, relation_enum);
+                    self.expand_load_many_self_into(output, relation_enum);
                 }
-                self.expand_load_self_many_via_into(output, via, *reverse);
+                self.expand_load_many_to_many_self_into(output, junction_module, *reverse);
             }
         }
     }
@@ -650,12 +668,22 @@ impl EntityLoaderOutput {
             field.expand_loader_nest_field_into(&mut output);
             field.expand_loader_with_set_impl_into(&mut output, duplicate_entity);
             field.expand_loader_with_2_impl_into(&mut output, duplicate_entity);
-            if let EntityLoaderFieldKind::SelfHasManyVia { via, reverse } = &field.kind {
-                field.expand_self_via_with_param_into(&mut output, via, *reverse);
+            if let EntityLoaderFieldKind::ManyToManySelf {
+                junction_module,
+                reverse,
+            } = &field.kind
+            {
+                field.expand_many_to_many_self_with_param_into(
+                    &mut output,
+                    junction_module,
+                    *reverse,
+                );
             }
             if matches!(
                 &field.kind,
-                EntityLoaderFieldKind::HasOne | EntityLoaderFieldKind::HasMany { .. }
+                EntityLoaderFieldKind::HasOne
+                    | EntityLoaderFieldKind::HasMany
+                    | EntityLoaderFieldKind::ManyToMany
             ) && duplicate_entity
                 && field.relation_enum.is_some()
                 && relation_tuple_impls.insert(&field.entity)

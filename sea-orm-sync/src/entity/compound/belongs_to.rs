@@ -104,11 +104,6 @@ impl<E> BelongsTo<E>
 where
     E: EntityTrait,
 {
-    /// Required relations only have no value when they are unloaded.
-    pub fn is_none(&self) -> bool {
-        matches!(self, Self::Unloaded)
-    }
-
     /// Get a reference, if loaded
     pub fn as_ref(&self) -> Option<&E::ModelEx> {
         match self {
@@ -151,11 +146,6 @@ where
     /// Return true if this optional relation was loaded and no model was found.
     pub fn is_not_found(&self) -> bool {
         matches!(self, Self::Loaded(None))
-    }
-
-    /// True if variant is `Unloaded` or `Loaded(None)`
-    pub fn is_none(&self) -> bool {
-        matches!(self, Self::Unloaded | Self::Loaded(None))
     }
 
     /// Get a reference, if loaded with a model

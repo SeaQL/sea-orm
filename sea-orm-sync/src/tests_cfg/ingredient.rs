@@ -15,14 +15,14 @@ pub struct Model {
     pub filling_id: Option<i32>,
     pub ingredient_id: Option<i32>,
     #[sea_orm(belongs_to, from = "filling_id", to = "id")]
-    pub filling: BelongsTo<super::filling::Entity>,
+    pub filling: BelongsTo<Option<super::filling::Entity>>,
     #[sea_orm(
         self_ref,
         relation_enum = "Ingredient",
         from = "IngredientId",
         to = "Id"
     )]
-    pub ingredient: BelongsTo<Entity>,
+    pub ingredient: BelongsTo<Option<Entity>>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

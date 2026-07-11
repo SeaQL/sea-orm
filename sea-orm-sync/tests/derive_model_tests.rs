@@ -1,4 +1,4 @@
-use sea_orm::prelude::{HasMany, HasOne};
+use sea_orm::prelude::{BelongsTo, HasMany};
 
 mod cake {
     use sea_orm::prelude::*;
@@ -35,7 +35,7 @@ mod fruit {
         pub id: i32,
         pub cake_id: Option<i32>,
         #[sea_orm(belongs_to, from = "cake_id", to = "id")]
-        pub cake: BelongsTo<super::cake::Entity>,
+        pub cake: BelongsTo<Option<super::cake::Entity>>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}

@@ -1,8 +1,8 @@
 use heck::ToUpperCamelCase;
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{
-    Field, GenericArgument, Ident, Meta, MetaNameValue, PathArguments, Type, TypePath,
+    Field, GenericArgument, LitStr, Meta, MetaNameValue, PathArguments, Type, TypePath,
     meta::ParseNestedMeta, punctuated::Punctuated, token::Comma,
 };
 
@@ -19,6 +19,85 @@ pub(crate) fn await_token() -> TokenStream {
         quote!(.await)
     } else {
         quote!()
+    }
+}
+
+pub(crate) struct RelationColumns {
+    pub(crate) columns: Vec<Ident>,
+    pub(crate) span: Span,
+}
+
+impl RelationColumns {
+    /// Parse relation columns in a `from` or `to` attribute.
+    /// For example:
+    /// `cake_id` or `Column::CakeId` -> `CakeId`;
+    /// `(user_id, post_id)` -> `UserId`, `PostId`.
+    pub(crate) fn from_lit(lit: LitStr) -> syn::Result<Self> {
+        let paths = if lit.value().starts_with('(') {
+            lit.parse_with(|input: syn::parse::ParseStream<'_>| {
+                let content;
+                syn::parenthesized!(content in input);
+                content.parse_terminated(syn::Path::parse_mod_style, Comma)
+            })?
+        } else {
+            let mut paths = Punctuated::new();
+            paths.push(lit.parse()?);
+            paths
+        };
+        if paths.is_empty() {
+            return Err(syn::Error::new(lit.span(), "expected at least one column"));
+        }
+
+        let columns = paths
+            .into_iter()
+            .map(|path| {
+                let Some(segment) = path.segments.last() else {
+                    return Err(syn::Error::new_spanned(path, "expected column path"));
+                };
+                Ok(Ident::new(
+                    &escape_rust_keyword(segment.ident.to_string().to_upper_camel_case()),
+                    segment.ident.span(),
+                ))
+            })
+            .collect::<syn::Result<Vec<_>>>()?;
+
+        Ok(Self {
+            columns,
+            span: lit.span(),
+        })
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct Junction {
+    pub(crate) module: Ident,
+    pub(crate) relation: Option<Ident>,
+}
+
+impl Junction {
+    /// Parse the junction module and optional relation variant in a `via` attribute.
+    /// For example: `post_tag` -> module `post_tag`;
+    /// `cakes_bakers::Baker` -> module `cakes_bakers`, relation `Baker`.
+    pub(crate) fn from_lit(lit: &LitStr) -> syn::Result<Self> {
+        let path = lit.parse::<syn::Path>()?;
+        if path.leading_colon.is_some()
+            || !(1..=2).contains(&path.segments.len())
+            || path
+                .segments
+                .iter()
+                .any(|segment| !matches!(segment.arguments, PathArguments::None))
+        {
+            return Err(syn::Error::new(
+                lit.span(),
+                "`via` must be `junction` or `junction::Relation`",
+            ));
+        }
+
+        let mut segments = path.segments.into_iter();
+        let module = segments.next().expect("validated junction path").ident;
+        let relation = segments.next().map(|segment| segment.ident);
+
+        Ok(Self { module, relation })
     }
 }
 
