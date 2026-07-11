@@ -85,7 +85,7 @@
 //! #     #[sea_orm(unique)]
 //! #     pub user_id: i32,
 //! #     #[sea_orm(belongs_to, from = "user_id", to = "id")]
-//! #     pub user: HasOne<super::user::Entity>,
+//! #     pub user: BelongsTo<super::user::Entity>,
 //! # }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! # }
@@ -113,9 +113,9 @@
 //! #     #[sea_orm(primary_key, auto_increment = false)]
 //! #     pub tag_id: i32,
 //! #     #[sea_orm(belongs_to, from = "post_id", to = "id")]
-//! #     pub post: Option<super::post::Entity>,
+//! #     pub post: BelongsTo<super::post::Entity>,
 //! #     #[sea_orm(belongs_to, from = "tag_id", to = "id")]
-//! #     pub tag: Option<super::tag::Entity>,
+//! #     pub tag: BelongsTo<super::tag::Entity>,
 //! # }
 //! # impl ActiveModelBehavior for ActiveModel {}
 //! # }
@@ -150,7 +150,7 @@
 //!         pub user_id: i32,
 //!         pub title: String,
 //!         #[sea_orm(belongs_to, from = "user_id", to = "id")]
-//!         pub author: HasOne<super::user::Entity>,
+//!         pub author: BelongsTo<super::user::Entity>,
 //!         #[sea_orm(has_many, via = "post_tag")] // M-N relation with junction
 //!         pub tags: HasMany<super::tag::Entity>,
 //!     }
@@ -187,20 +187,17 @@
 //!         id: 42,
 //!         name: "Bob".into(),
 //!         email: "bob@sea-ql.org".into(),
-//!         profile: HasOne::Loaded(
-//!             profile::ModelEx {
+//!         profile: HasOne::loaded(Some(profile::ModelEx {
 //! #           id: 1,
-//!                 picture: "image.jpg".into(),
+//!             picture: "image.jpg".into(),
 //! #           user_id: 1,
-//! #           user: HasOne::Unloaded,
-//!             }
-//!             .into(),
-//!         ),
+//! #           user: BelongsTo::Unloaded,
+//!         })),
 //!         posts: HasMany::Loaded(vec![post::ModelEx {
 //! #           id: 2,
 //! #           user_id: 1,
 //!             title: "Nice weather".into(),
-//! #           author: HasOne::Unloaded,
+//! #           author: BelongsTo::Unloaded,
 //! #           comments: HasMany::Unloaded,
 //!             tags: HasMany::Loaded(vec![tag::ModelEx {
 //! #               id: 3,

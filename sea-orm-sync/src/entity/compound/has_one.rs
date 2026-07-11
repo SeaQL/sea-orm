@@ -1,77 +1,76 @@
 use crate::{ActiveHasOne, EntityTrait};
-use std::hash::{Hash, Hasher};
 
-#[derive(Debug, Default, Clone)]
-pub enum HasOne<E: EntityTrait> {
+#[derive_where::derive_where(Debug, Clone, PartialEq, Eq, Hash; E::ModelEx)]
+#[derive(Default)]
+pub enum HasOne<E>
+where
+    E: EntityTrait,
+{
     #[default]
     Unloaded,
-    NotFound,
-    Loaded(Box<E::ModelEx>),
+    Loaded(Option<Box<E::ModelEx>>),
 }
 
-impl<E: EntityTrait> HasOne<E> {
-    /// Construct a `HasOne::Loaded` value
-    pub fn loaded<M: Into<E::ModelEx>>(model: M) -> Self {
-        Self::Loaded(Box::new(model.into()))
+impl<E> HasOne<E>
+where
+    E: EntityTrait,
+{
+    pub fn loaded(model: Option<impl Into<E::ModelEx>>) -> Self {
+        Self::Loaded(model.map(|model| Box::new(model.into())))
     }
 
     /// Return true if variant is `Unloaded`
     pub fn is_unloaded(&self) -> bool {
-        matches!(self, HasOne::Unloaded)
-    }
-
-    /// Return true if variant is `NotFound`
-    pub fn is_not_found(&self) -> bool {
-        matches!(self, HasOne::NotFound)
+        matches!(self, Self::Unloaded)
     }
 
     /// Return true if variant is `Loaded`
     pub fn is_loaded(&self) -> bool {
-        matches!(self, HasOne::Loaded(_))
+        matches!(self, Self::Loaded(_))
     }
 
-    /// True if variant is `Unloaded` or `NotFound`
+    /// Return true if this relation was loaded and no model was found.
+    pub fn is_not_found(&self) -> bool {
+        matches!(self, Self::Loaded(None))
+    }
+
+    /// True if variant is `Unloaded` or `Loaded(None)`
     pub fn is_none(&self) -> bool {
-        matches!(self, HasOne::Unloaded | HasOne::NotFound)
+        matches!(self, Self::Unloaded | Self::Loaded(None))
     }
 
-    /// Get a reference, if loaded
+    /// Get a reference, if loaded with a model
     pub fn as_ref(&self) -> Option<&E::ModelEx> {
         match self {
-            HasOne::Loaded(model) => Some(model.as_ref()),
-            HasOne::Unloaded | HasOne::NotFound => None,
+            Self::Loaded(Some(model)) => Some(model.as_ref()),
+            Self::Unloaded | Self::Loaded(None) => None,
         }
     }
 
-    /// Get a mutable reference, if loaded
+    /// Get a mutable reference, if loaded with a model
     pub fn as_mut(&mut self) -> Option<&mut E::ModelEx> {
         match self {
-            HasOne::Loaded(model) => Some(model),
-            HasOne::Unloaded | HasOne::NotFound => None,
+            Self::Loaded(Some(model)) => Some(model),
+            Self::Unloaded | Self::Loaded(None) => None,
         }
     }
 
     /// Convert into an `Option<ModelEx>`
     pub fn into_option(self) -> Option<E::ModelEx> {
         match self {
-            HasOne::Loaded(model) => Some(*model),
-            HasOne::Unloaded | HasOne::NotFound => None,
+            Self::Loaded(Some(model)) => Some(*model),
+            Self::Unloaded | Self::Loaded(None) => None,
         }
-    }
-
-    /// Take ownership of the contained Model, leaving `Unloaded` in place.
-    pub fn take(&mut self) -> Option<E::ModelEx> {
-        std::mem::take(self).into_option()
     }
 
     /// # Panics
     ///
-    /// Panics if called on `Unloaded` or `NotFound` values.
+    /// Panics if called on an `Unloaded` or `Loaded(None)` value.
     pub fn unwrap(self) -> E::ModelEx {
         match self {
-            HasOne::Loaded(model) => *model,
-            HasOne::Unloaded => panic!("called `HasOne::unwrap()` on an `Unloaded` value"),
-            HasOne::NotFound => panic!("called `HasOne::unwrap()` on a `NotFound` value"),
+            Self::Loaded(Some(model)) => *model,
+            Self::Unloaded => panic!("called `HasOne::unwrap()` on an `Unloaded` value"),
+            Self::Loaded(None) => panic!("called `HasOne::unwrap()` on a `Loaded(None)` value"),
         }
     }
 }
@@ -83,55 +82,24 @@ where
 {
     pub fn into_active_model(self) -> ActiveHasOne<E> {
         match self {
-            HasOne::Loaded(_) => {
-                let model = self.unwrap();
-                let active_model: E::ActiveModelEx = model.into();
-                ActiveHasOne::Set(active_model.into())
-            }
-            HasOne::Unloaded => ActiveHasOne::NotSet,
-            HasOne::NotFound => ActiveHasOne::NotSet,
+            Self::Loaded(Some(model)) => ActiveHasOne::set(Some(*model)),
+            Self::Unloaded | Self::Loaded(None) => ActiveHasOne::NotSet,
         }
     }
 }
 
-impl<E> PartialEq for HasOne<E>
-where
-    E: EntityTrait,
-    E::ModelEx: PartialEq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (HasOne::Unloaded, HasOne::Unloaded) => true,
-            (HasOne::NotFound, HasOne::NotFound) => true,
-            (HasOne::Loaded(a), HasOne::Loaded(b)) => a == b,
-            _ => false,
-        }
-    }
-}
-
-impl<E> Eq for HasOne<E>
-where
-    E: EntityTrait,
-    E::ModelEx: Eq,
-{
-}
-
-// Option<Box<ModelEx<E>>> <-> HasOne<E> conversions and comparisons
 impl<E: EntityTrait> From<HasOne<E>> for Option<Box<E::ModelEx>> {
     fn from(value: HasOne<E>) -> Self {
         match value {
-            HasOne::Loaded(model) => Some(model),
-            HasOne::Unloaded | HasOne::NotFound => None,
+            HasOne::Loaded(model) => model,
+            HasOne::Unloaded => None,
         }
     }
 }
 
 impl<E: EntityTrait> From<Option<Box<E::ModelEx>>> for HasOne<E> {
     fn from(value: Option<Box<E::ModelEx>>) -> Self {
-        match value {
-            Some(model) => HasOne::Loaded(model),
-            None => HasOne::NotFound,
-        }
+        Self::Loaded(value)
     }
 }
 
@@ -142,8 +110,8 @@ where
 {
     fn eq(&self, other: &Option<Box<E::ModelEx>>) -> bool {
         match (self, other) {
-            (HasOne::Loaded(a), Some(b)) => a.as_ref() == b.as_ref(),
-            (HasOne::Unloaded | HasOne::NotFound, None) => true,
+            (Self::Loaded(a), b) => a == b,
+            (Self::Unloaded, None) => true,
             _ => false,
         }
     }
@@ -159,21 +127,6 @@ where
     }
 }
 
-impl<E> Hash for HasOne<E>
-where
-    E: EntityTrait,
-    E::ModelEx: Hash,
-{
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        std::mem::discriminant(self).hash(state);
-        match self {
-            Self::Loaded(model) => model.hash(state),
-            Self::Unloaded => {}
-            Self::NotFound => {}
-        }
-    }
-}
-
 #[cfg(feature = "with-json")]
 impl<E> serde::Serialize for HasOne<E>
 where
@@ -186,8 +139,7 @@ where
     {
         match self {
             HasOne::Unloaded => None,
-            HasOne::NotFound => None,
-            HasOne::Loaded(model) => Some(model),
+            HasOne::Loaded(model) => model.as_ref(),
         }
         .serialize(serializer)
     }
@@ -204,7 +156,7 @@ where
         D: serde::Deserializer<'de>,
     {
         match <Option<E::ModelEx>>::deserialize(deserializer)? {
-            Some(model) => Ok(HasOne::Loaded(Box::new(model))),
+            Some(model) => Ok(HasOne::Loaded(Some(Box::new(model)))),
             None => Ok(HasOne::Unloaded),
         }
     }

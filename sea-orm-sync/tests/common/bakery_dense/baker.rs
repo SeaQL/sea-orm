@@ -18,7 +18,7 @@ pub struct Model {
         on_update = "Cascade",
         on_delete = "SetNull"
     )]
-    pub bakery: HasOne<super::bakery::Entity>,
+    pub bakery: BelongsTo<Option<super::bakery::Entity>>,
     #[sea_orm(has_many, via = "cakes_bakers::Baker")]
     pub cakes: HasMany<super::cake::Entity>,
 }

@@ -11,9 +11,9 @@ pub struct Model {
     pub manager_id: i32,
     pub cashier_id: i32,
     #[sea_orm(belongs_to, relation_enum = "Manager", from = "manager_id", to = "id")]
-    pub manager: HasOne<super::worker::Entity>,
+    pub manager: BelongsTo<super::worker::Entity>,
     #[sea_orm(belongs_to, relation_enum = "Cashier", from = "cashier_id", to = "id")]
-    pub cashier: HasOne<super::worker::Entity>,
+    pub cashier: BelongsTo<super::worker::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

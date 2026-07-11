@@ -7,9 +7,11 @@ use crate::{
 use sea_query::{IntoValueTuple, Order, TableRef};
 use std::marker::PhantomData;
 
+mod belongs_to;
 mod has_many;
 mod has_one;
 
+pub use belongs_to::{BelongsTo, BelongsToCardinality};
 pub use has_many::{HasMany, Iter as HasManyIter};
 pub use has_one::HasOne;
 
@@ -70,7 +72,7 @@ pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter + QueryOrder + Clone {
     }
 
     #[doc(hidden)]
-    fn fetch<C: ConnectionTrait>(
+    async fn fetch<C: ConnectionTrait>(
         self,
         db: &C,
         page: u64,
@@ -78,7 +80,7 @@ pub trait EntityLoaderTrait<E: EntityTrait>: QueryFilter + QueryOrder + Clone {
     ) -> Result<Vec<Self::ModelEx>, DbErr>;
 
     #[doc(hidden)]
-    fn num_items<C: ConnectionTrait>(self, db: &C, page_size: u64) -> Result<u64, DbErr>;
+    async fn num_items<C: ConnectionTrait>(self, db: &C, page_size: u64) -> Result<u64, DbErr>;
 }
 
 #[derive(Debug)]
@@ -122,30 +124,30 @@ where
     L: EntityLoaderTrait<E>,
 {
     /// Fetch a specific page; page index starts from zero
-    pub fn fetch_page(&self, page: u64) -> Result<Vec<L::ModelEx>, DbErr> {
-        self.loader.clone().fetch(self.db, page, self.page_size)
+    pub async fn fetch_page(&self, page: u64) -> Result<Vec<L::ModelEx>, DbErr> {
+        self.loader.clone().fetch(self.db, page, self.page_size).await
     }
 
     /// Fetch the current page
-    pub fn fetch(&self) -> Result<Vec<L::ModelEx>, DbErr> {
-        self.fetch_page(self.page)
+    pub async fn fetch(&self) -> Result<Vec<L::ModelEx>, DbErr> {
+        self.fetch_page(self.page).await
     }
 
     /// Get the total number of items
-    pub fn num_items(&self) -> Result<u64, DbErr> {
-        self.loader.clone().num_items(self.db, self.page_size)
+    pub async fn num_items(&self) -> Result<u64, DbErr> {
+        self.loader.clone().num_items(self.db, self.page_size).await
     }
 
     /// Get the total number of pages
-    pub fn num_pages(&self) -> Result<u64, DbErr> {
-        let num_items = self.num_items()?;
+    pub async fn num_pages(&self) -> Result<u64, DbErr> {
+        let num_items = self.num_items().await?;
         let num_pages = self.compute_pages_number(num_items);
         Ok(num_pages)
     }
 
     /// Get the total number of items and pages
-    pub fn num_items_and_pages(&self) -> Result<ItemsAndPagesNumber, DbErr> {
-        let number_of_items = self.num_items()?;
+    pub async fn num_items_and_pages(&self) -> Result<ItemsAndPagesNumber, DbErr> {
+        let number_of_items = self.num_items().await?;
         let number_of_pages = self.compute_pages_number(number_of_items);
 
         Ok(ItemsAndPagesNumber {
@@ -171,8 +173,8 @@ where
     }
 
     /// Fetch one page and increment the page counter
-    pub fn fetch_and_next(&mut self) -> Result<Option<Vec<L::ModelEx>>, DbErr> {
-        let vec = self.fetch()?;
+    pub async fn fetch_and_next(&mut self) -> Result<Option<Vec<L::ModelEx>>, DbErr> {
+        let vec = self.fetch().await?;
         self.next();
         let opt = if !vec.is_empty() { Some(vec) } else { None };
         Ok(opt)

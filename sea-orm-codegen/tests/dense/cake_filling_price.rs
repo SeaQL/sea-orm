@@ -16,7 +16,7 @@ pub struct Model {
         from = "(cake_id, filling_id)",
         to = "(cake_id, filling_id)"
     )]
-    pub cake_filling: HasOne<super::cake_filling::Entity> ,
+    pub cake_filling: BelongsTo<super::cake_filling::Entity> ,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
