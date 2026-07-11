@@ -14,13 +14,13 @@ mod event_log {
 }
 
 #[test]
-fn no_primary_key_uses_all_columns() {
-    use sea_orm::{Iterable, PrimaryKeyToColumn, PrimaryKeyTrait};
+fn no_primary_key_uses_fake_primary_key() {
+    use sea_orm::{Iterable, PrimaryKeyTrait};
 
     let pks: Vec<_> = event_log::PrimaryKey::iter()
-        .map(|pk| format!("{:?}", pk.into_column()))
+        .map(|pk| format!("{:?}", pk))
         .collect();
-    assert_eq!(pks, vec!["Kind", "Payload", "Level"]);
+    assert_eq!(pks, vec!["FakePrimaryKey"]);
 
     assert!(!event_log::PrimaryKey::auto_increment());
 }

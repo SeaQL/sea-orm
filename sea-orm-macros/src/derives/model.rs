@@ -230,12 +230,14 @@ impl DeriveModel {
                 fn get(&self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) -> sea_orm::Value {
                     match c {
                         #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents => self.#field_idents.clone().into(),)*
+                        _ => panic!(#missing_field_msg),
                     }
                 }
 
                 fn get_value_type(c: <Self::Entity as EntityTrait>::Column) -> sea_orm::sea_query::ArrayType {
                     match c {
                         #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents => #get_field_type,)*
+                        _ => panic!("Unknown column type"),
                     }
                 }
 

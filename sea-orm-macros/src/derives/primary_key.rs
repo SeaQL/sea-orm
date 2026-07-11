@@ -1,7 +1,7 @@
 use super::impl_iden;
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{Data, DataEnum, Fields, Variant};
+use syn::{Data, DataEnum, Fields};
 
 fn impl_primary_key_to_column(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
     let variants = match data {
@@ -19,14 +19,33 @@ fn impl_primary_key_to_column(ident: &Ident, data: &Data) -> syn::Result<TokenSt
         });
     }
 
-    let variant: Vec<TokenStream> = variants
-        .iter()
-        .map(|Variant { ident, fields, .. }| match fields {
-            Fields::Named(_) => quote! { #ident{..} },
-            Fields::Unnamed(_) => quote! { #ident(..) },
-            Fields::Unit => quote! { #ident },
-        })
-        .collect();
+    let mut into_column_arms = Vec::new();
+    let mut from_column_arms = Vec::new();
+
+    for variant in variants {
+        let variant_ident = &variant.ident;
+        let ident_str = variant_ident.to_string();
+        let is_fake_pk = ident_str == "FakePrimaryKey";
+
+        let field_pattern = match &variant.fields {
+            Fields::Named(_) => quote! { #variant_ident{..} },
+            Fields::Unnamed(_) => quote! { #variant_ident(..) },
+            Fields::Unit => quote! { #variant_ident },
+        };
+
+        if is_fake_pk {
+            // FakePrimaryKey is intentionally not added to columns_enum/all_columns, as it should not
+            // be exposed for querying, and exists only as a primary key for the trait
+            // when a relation has no primary keys defined
+        } else {
+            into_column_arms.push(quote! {
+                Self::#field_pattern => Self::Column::#variant_ident
+            });
+            from_column_arms.push(quote! {
+                Self::Column::#variant_ident => Some(Self::#variant_ident)
+            });
+        }
+    }
 
     Ok(quote!(
         #[automatically_derived]
@@ -35,13 +54,14 @@ fn impl_primary_key_to_column(ident: &Ident, data: &Data) -> syn::Result<TokenSt
 
             fn into_column(self) -> Self::Column {
                 match self {
-                    #(Self::#variant => Self::Column::#variant,)*
+                    #(#into_column_arms,)*
+                    _ => panic!("FakePrimaryKey cannot be converted to a Column as it is a shadow primary key"),
                 }
             }
 
             fn from_column(col: Self::Column) -> Option<Self> {
                 match col {
-                    #(Self::Column::#variant => Some(Self::#variant),)*
+                    #(#from_column_arms,)*
                     _ => None,
                 }
             }

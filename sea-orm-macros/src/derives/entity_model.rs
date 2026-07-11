@@ -541,10 +541,18 @@ pub fn expand_derive_entity_model(
         columns_save_as.push_punct(Comma::default());
     }
 
-    if primary_keys.is_empty() {
-        primary_keys = all_columns;
-        primary_key_types = all_column_types;
+    // FakePrimaryKey is intentionally not added to columns_enum/all_columns, as it should not
+    // be exposed for querying, and exists only as a primary key for the trait
+    // when a relation has no primary keys defined
+    let has_explicit_primary_key = !primary_keys.is_empty();
+    if !has_explicit_primary_key {
+        let fake_pk_ident = Ident::new("FakePrimaryKey", Span::call_site());
+        primary_keys.push(quote! { #fake_pk_ident });
+
+        let bool_type: syn::Type = syn::parse_str("bool").expect("bool type parse error");
+        primary_key_types.push(bool_type);
         auto_increment = Some(false);
+
     }
 
     let primary_key = {
