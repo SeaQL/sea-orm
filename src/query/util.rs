@@ -111,7 +111,7 @@ where
     Ok(())
 }
 
-/// Set null on the key columns. Return true if succeeded, false if column is not nullable.
+/// Set key columns to null. Return false if any column is not nullable.
 pub fn clear_key_on_active_model<ActiveModel>(
     columns: &Identity,
     model: &mut ActiveModel,
@@ -119,6 +119,7 @@ pub fn clear_key_on_active_model<ActiveModel>(
 where
     ActiveModel: ActiveModelTrait,
 {
+    let mut parsed_columns = Vec::new();
     for col in columns.iter() {
         let col_name = col.inner();
         let column = <<ActiveModel::Entity as EntityTrait>::Column as FromStr>::from_str(&col_name)
@@ -126,11 +127,26 @@ where
         if !column.def().is_null() {
             return Ok(false);
         }
-        if let Some(value) = model.get(column).into_value() {
-            model.set(column, value.as_null());
-        }
+        parsed_columns.push((col_name, column));
     }
 
+    let values = parsed_columns
+        .into_iter()
+        .map(|(col_name, column)| {
+            let value = model.get(column).into_value().ok_or_else(|| {
+                DbErr::AttrNotSet(format!(
+                    "{}.{}",
+                    <ActiveModel::Entity as Default>::default().as_str(),
+                    col_name
+                ))
+            })?;
+            Ok((column, value.as_null()))
+        })
+        .collect::<Result<Vec<_>, DbErr>>()?;
+
+    for (column, value) in values {
+        model.set(column, value);
+    }
     Ok(true)
 }
 
