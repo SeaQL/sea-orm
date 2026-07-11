@@ -171,8 +171,6 @@ pub fn expand_derive_entity_model(
     let mut columns_save_as: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_keys: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_key_types: Punctuated<_, Comma> = Punctuated::new();
-    let mut all_columns: Punctuated<_, Comma> = Punctuated::new();
-    let mut all_column_types: Punctuated<_, Comma> = Punctuated::new();
     let mut auto_increment: Option<bool> = None;
     #[cfg(feature = "with-json")]
     let mut columns_json_keys: Punctuated<_, Comma> = Punctuated::new();
@@ -419,11 +417,6 @@ pub fn expand_derive_entity_model(
                             #variant_attrs
                             #field_name
                         });
-                        all_columns.push(quote! {
-                            #variant_attrs
-                            #field_name
-                        });
-                        all_column_types.push(field.ty.clone());
                         #[cfg(feature = "with-json")]
                         columns_json_keys.push(quote! {
                             Self::#field_name => #json_key_name
