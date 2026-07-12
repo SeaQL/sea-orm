@@ -180,7 +180,7 @@ impl FromStr for WithPrelude {
             "all" => Self::All,
             v => {
                 return Err(crate::Error::TransformError(format!(
-                    "Unsupported enum variant '{v}'"
+                    "Unsupported enum variant '{v}' (possible variant: none, all-allow-unused-imports, all)"
                 )));
             }
         })
@@ -198,7 +198,7 @@ impl FromStr for EntityFormat {
             "dense" => Self::Dense,
             v => {
                 return Err(crate::Error::TransformError(format!(
-                    "Unsupported enum variant '{v}'"
+                    "Unsupported enum variant '{v}' (possible variant: compact, expanded, frontend, dense)"
                 )));
             }
         })
@@ -216,7 +216,7 @@ impl FromStr for WithSerde {
             "both" => Self::Both,
             v => {
                 return Err(crate::Error::TransformError(format!(
-                    "Unsupported enum variant '{v}'"
+                    "Unsupported enum variant '{v}' (possible variant: none, serialize, deserialize, both)"
                 )));
             }
         })
