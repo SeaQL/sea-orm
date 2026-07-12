@@ -27,6 +27,16 @@ enum RelationAttr {
         cardinality: CardinalityKind,
         from: LitStr,
     },
+    /// Legacy `belongs_to` declared with the `HasOne<E>` field type instead of
+    /// `BelongsTo<E>`. Backward-compatible path; `BelongsTo` is recommended.
+    BelongsToLegacy {
+        /// Explicit relation disambiguator (see `BelongsTo::relation_enum`).
+        relation_enum: Option<LitStr>,
+    },
+    /// Legacy self-referential `belongs_to` declared with `HasOne<Entity>`.
+    BelongsToSelfLegacy {
+        relation_enum: LitStr,
+    },
     HasOne,
     HasMany,
     HasManySelf {
@@ -72,17 +82,21 @@ impl RelationAttr {
                 to: Some(_),
                 ..
             } => {
-                let CompoundKind::BelongsTo(cardinality) = compound.kind else {
-                    return Err(syn::Error::new_spanned(
+                match compound.kind {
+                    CompoundKind::BelongsTo(cardinality) => Ok(Some(Self::BelongsToSelf {
+                        relation_enum: relation_enum.clone(),
+                        cardinality,
+                        from: from.clone(),
+                    })),
+                    // Legacy: self-referential belongs_to with a `HasOne<Entity>` field type.
+                    CompoundKind::HasOne => Ok(Some(Self::BelongsToSelfLegacy {
+                        relation_enum: relation_enum.clone(),
+                    })),
+                    _ => Err(syn::Error::new_spanned(
                         ident,
-                        "self_ref belongs_to must be paired with BelongsTo",
-                    ));
-                };
-                Ok(Some(Self::BelongsToSelf {
-                    relation_enum: relation_enum.clone(),
-                    cardinality,
-                    from: from.clone(),
-                }))
+                        "self_ref belongs_to must be paired with BelongsTo or HasOne",
+                    )),
+                }
             }
             compound_attr::SeaOrm {
                 relation_enum: Some(relation_enum),
@@ -118,14 +132,8 @@ impl RelationAttr {
             compound_attr::SeaOrm {
                 belongs_to: Some(_),
                 ..
-            } => {
-                let CompoundKind::BelongsTo(cardinality) = compound.kind else {
-                    return Err(syn::Error::new_spanned(
-                        ident,
-                        "belongs_to must be paired with BelongsTo",
-                    ));
-                };
-                Ok(Some(Self::BelongsTo {
+            } => match compound.kind {
+                CompoundKind::BelongsTo(cardinality) => Ok(Some(Self::BelongsTo {
                     cardinality,
                     from: attrs.from.clone().ok_or_else(|| {
                         syn::Error::new_spanned(ident, "belongs_to must specify `from`")
@@ -133,8 +141,17 @@ impl RelationAttr {
                     // Captured so multiple belongs_to targeting the same entity can be
                     // disambiguated via their relation enum on save.
                     relation_enum: attrs.relation_enum.clone(),
-                }))
-            }
+                })),
+                // Legacy: belongs_to declared with a `HasOne<Entity>` field type instead of
+                // `BelongsTo<Entity>`. Backward compatible; `BelongsTo` is recommended.
+                CompoundKind::HasOne => Ok(Some(Self::BelongsToLegacy {
+                    relation_enum: attrs.relation_enum.clone(),
+                })),
+                _ => Err(syn::Error::new_spanned(
+                    ident,
+                    "belongs_to must be paired with BelongsTo or HasOne",
+                )),
+            },
             compound_attr::SeaOrm {
                 relation_enum: Some(_),
                 ..
@@ -594,6 +611,7 @@ impl<'a> ActiveModelSetter<'a> {
 enum Relation<'a> {
     BelongsTo(BelongsToField<'a>),
     BelongsToSelf(BelongsToSelfField<'a>),
+    BelongsToLegacy(LegacyBelongsToField<'a>),
     HasOne(HasOneField<'a>),
     HasMany(HasManyField<'a>),
     HasManySelf(SelfRelationField<'a>),
@@ -676,6 +694,36 @@ impl ActiveModelActionTokens {
                             cardinality: *cardinality,
                             relation_enum: relation_variant,
                             nullable_from_fields: fields.get_nullable_from_fields(from)?,
+                        }))
+                    }
+                    RelationAttr::BelongsToLegacy { relation_enum } => {
+                        // Same FK-write keying as `BelongsTo`: explicit relation_enum, or a
+                        // non-unique target, is keyed by relation variant; a unique target
+                        // uses the entity-keyed path.
+                        let relation_variant = match (relation_enum.as_ref(), is_unique_entity) {
+                            (Some(relation_enum), _) => Some(Ident::new(
+                                &relation_enum.value().to_upper_camel_case(),
+                                relation_enum.span(),
+                            )),
+                            (None, false) => Some(Ident::new(
+                                &infer_relation_name_from_entity(&compound.entity)
+                                    .to_upper_camel_case(),
+                                Span::call_site(),
+                            )),
+                            (None, true) => None,
+                        };
+                        Some(Relation::BelongsToLegacy(LegacyBelongsToField {
+                            ident,
+                            relation_enum: relation_variant,
+                        }))
+                    }
+                    RelationAttr::BelongsToSelfLegacy { relation_enum } => {
+                        Some(Relation::BelongsToLegacy(LegacyBelongsToField {
+                            ident,
+                            relation_enum: Some(Ident::new(
+                                &relation_enum.value().to_upper_camel_case(),
+                                relation_enum.span(),
+                            )),
                         }))
                     }
                     RelationAttr::HasOne if is_unique_entity => {
@@ -802,7 +850,18 @@ impl ActiveModelActionTokens {
 
                 let model: ActiveModel = self.into();
 
-                let mut model: Self = if model.is_changed() {
+                // A genuinely new row (no primary key set yet) must reach the database even
+                // when no column was explicitly `Set` — e.g. a row with only an auto-increment
+                // primary key — so the generated key is returned. An unchanged model that
+                // already has a primary key (e.g. re-saving an existing parent only to attach
+                // relations) is left untouched, as before, so it is not re-inserted.
+                let will_insert = !model.is_update()
+                    && matches!(
+                        action,
+                        sea_orm::ActiveModelAction::Insert | sea_orm::ActiveModelAction::Save
+                    );
+
+                let mut model: Self = if model.is_changed() || will_insert {
                     match action {
                         sea_orm::ActiveModelAction::Insert => model.insert(db)#await_,
                         sea_orm::ActiveModelAction::Update => model.update(db)#await_,
@@ -1092,6 +1151,71 @@ impl BelongsToField<'_> {
         quote! {
             if #ident.is_set() {
                 model.#ident = #ident;
+            }
+        }
+    }
+
+    fn expand_into(&self, output: &mut ActiveModelActionTokens) {
+        output.belongs_to_action.extend(self.belongs_to_action());
+        output
+            .belongs_to_after_action
+            .extend(self.belongs_to_after_action());
+    }
+}
+
+/// Legacy `belongs_to` whose field type is `HasOne<E>` (wrapped by `ActiveHasOne`), kept
+/// for backward compatibility. Writes this row's own foreign key from the related model,
+/// mirroring the pre-`BelongsTo` behavior. Setting the relation to `Set(None)` leaves the
+/// foreign key untouched (the legacy no-op); use `BelongsTo<Option<E>>` for clear/detach.
+struct LegacyBelongsToField<'a> {
+    ident: &'a Ident,
+    /// Key the FK write by relation variant (`set_parent_key_for`) when the target entity
+    /// is shared with another relation; `None` uses the entity-keyed path (`set_parent_key`).
+    relation_enum: Option<Ident>,
+}
+
+impl LegacyBelongsToField<'_> {
+    fn belongs_to_action(&self) -> TokenStream {
+        let await_ = await_token();
+        let box_pin = if cfg!(feature = "async") {
+            quote!(Box::pin)
+        } else {
+            quote!()
+        };
+        let ident = self.ident;
+        let set_parent_key = match &self.relation_enum {
+            Some(relation_enum) => {
+                quote!(self.set_parent_key_for(&model, Relation::#relation_enum)?)
+            }
+            None => quote!(self.set_parent_key(&model)?),
+        };
+
+        quote! {
+            let #ident = match std::mem::take(&mut self.#ident) {
+                ActiveHasOne::Set(Some(model)) => {
+                    let mut model = *model;
+                    if model.is_update() {
+                        #set_parent_key;
+                        if model.is_changed() {
+                            model = #box_pin(model.action(action, db))#await_?;
+                        }
+                    } else {
+                        model = #box_pin(model.action(action, db))#await_?;
+                        #set_parent_key;
+                    }
+                    Some(model)
+                }
+                // `NotSet` or `Set(None)`: leave the foreign key as-is (legacy no-op).
+                ActiveHasOne::NotSet | ActiveHasOne::Set(None) => None,
+            };
+        }
+    }
+
+    fn belongs_to_after_action(&self) -> TokenStream {
+        let ident = self.ident;
+        quote! {
+            if let Some(#ident) = #ident {
+                model.#ident = ActiveHasOne::set(Some(#ident));
             }
         }
     }
@@ -1545,6 +1669,7 @@ impl Relation<'_> {
         match self {
             Self::BelongsTo(field) => field.expand_into(output),
             Self::BelongsToSelf(field) => field.expand_into(output),
+            Self::BelongsToLegacy(field) => field.expand_into(output),
             Self::HasOne(field) => field.expand_into(output),
             Self::HasMany(field) => field.expand_into(output),
             Self::HasManySelf(field) => field.expand_into(output),

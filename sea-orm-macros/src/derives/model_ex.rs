@@ -380,8 +380,24 @@ impl CompoundField {
         }
 
         let is_self_entity = is_self_entity(&compound.entity);
+        // A `belongs_to` relation may keep the legacy `HasOne<E>` field type instead of
+        // opting into `BelongsTo<E>`. Detect that so it is routed through the belongs_to
+        // codegen (emitting a `belongs_to` relation); only the wrapper type differs.
+        // `BelongsTo` remains the recommended type.
+        let declares_belongs_to = attrs.as_ref().is_some_and(|attrs| {
+            attrs.belongs_to.is_some()
+                || (attrs.self_ref.is_some()
+                    && attrs.via.is_none()
+                    && attrs.from.is_some()
+                    && attrs.to.is_some())
+        });
         let kind = match compound.kind {
             CompoundKind::BelongsTo(_) => CompoundFieldKind::BelongsTo(
+                attrs
+                    .map(|attrs| BelongsToAttr::from_attr(attrs, field))
+                    .transpose()?,
+            ),
+            CompoundKind::HasOne if declares_belongs_to => CompoundFieldKind::BelongsTo(
                 attrs
                     .map(|attrs| BelongsToAttr::from_attr(attrs, field))
                     .transpose()?,
