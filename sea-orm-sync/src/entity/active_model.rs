@@ -783,22 +783,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     #[doc(hidden)]
-    /// Clear a specific belongs_to relation, keyed by relation (to disambiguate
-    /// multiple relations to the same entity), if it is optional; return true.
-    fn clear_parent_key_for(
-        &mut self,
-        rel: <Self::Entity as EntityTrait>::Relation,
-    ) -> Result<bool, DbErr> {
-        let rel_def = rel.def();
-
-        if rel_def.is_owner {
-            return Err(DbErr::Type(format!("Relation {rel:?} is not belongs_to")));
-        }
-
-        clear_key_on_active_model(&rel_def.from_col, self)
-    }
-
-    #[doc(hidden)]
     fn clear_parent_key_for_self_rev(
         &mut self,
         rel: <Self::Entity as EntityTrait>::Relation,
