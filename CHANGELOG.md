@@ -34,6 +34,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
+* Split `belongs_to` from `has_one` with a new `BelongsTo` relation type https://github.com/SeaQL/sea-orm/pull/3118
+
+  A `belongs_to` relation can now be typed `BelongsTo<Entity>` (required) or
+  `BelongsTo<Option<Entity>>` (optional), encoding the foreign-key cardinality in the type,
+  paired with the write-side companion `ActiveBelongsTo`. `BelongsTo` is the recommended
+  type for `belongs_to`; the legacy `HasOne<Entity>` field type remains supported for
+  backward compatibility.
+
 * Role Based Access Control https://github.com/SeaQL/sea-orm/pull/2683
 
   1. a hierarchical RBAC engine that is table scoped
