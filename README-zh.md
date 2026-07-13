@@ -91,7 +91,7 @@ mod post {
         pub user_id: i32,
         pub title: String,
         #[sea_orm(belongs_to, from = "user_id", to = "id")]
-        pub author: HasOne<super::user::Entity>,
+        pub author: BelongsTo<super::user::Entity>,
         #[sea_orm(has_many, via = "post_tag")] // 多对多关系，使用中间表
         pub tags: HasMany<super::tag::Entity>,
     }
@@ -124,12 +124,9 @@ smart_user
         id: 42,
         name: "Bob".into(),
         email: "bob@sea-ql.org".into(),
-        profile: HasOne::Loaded(
-            profile::ModelEx {
-                picture: "image.jpg".into(),
-            }
-            .into(),
-        ),
+        profile: HasOne::loaded(Some(profile::ModelEx {
+            picture: "image.jpg".into(),
+        })),
         posts: HasMany::Loaded(vec![post::ModelEx {
             title: "Nice weather".into(),
             tags: HasMany::Loaded(vec![tag::ModelEx {

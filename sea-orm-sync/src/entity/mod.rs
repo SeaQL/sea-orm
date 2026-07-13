@@ -40,7 +40,7 @@
 //! #         pub id: i32,
 //! #         pub cake_id: Option<i32>,
 //! #         #[sea_orm(belongs_to, from = "cake_id", to = "id")]
-//! #         pub cake: HasOne<super::cake::Entity>,
+//! #         pub cake: BelongsTo<Option<super::cake::Entity>>,
 //! #     }
 //! #     impl ActiveModelBehavior for ActiveModel {}
 //! # }
@@ -159,7 +159,7 @@ pub use arrow_schema::*;
 pub use base_entity::*;
 pub use column::*;
 pub use column_def::*;
-pub use compound::EntityLoaderTrait;
+pub use compound::{BelongsToCardinality, EntityLoaderTrait};
 pub use identity::*;
 pub use link::*;
 pub use model::*;

@@ -9,14 +9,14 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub follower_id: i32,
     #[sea_orm(belongs_to, from = "user_id", to = "id")]
-    pub user: Option<super::user::Entity>,
+    pub user: BelongsTo<super::user::Entity>,
     #[sea_orm(
         belongs_to,
         relation_enum = "Follower",
         from = "follower_id",
         to = "id"
     )]
-    pub follower: Option<super::user::Entity>,
+    pub follower: BelongsTo<super::user::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

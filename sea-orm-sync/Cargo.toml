@@ -40,6 +40,7 @@ bigdecimal = { version = "0.4", default-features = false, features = [
     "std",
 ], optional = true }
 chrono = { version = "0.4.30", default-features = false, optional = true }
+derive-where = "1.6.1"
 derive_more = { version = "2", features = ["debug"] }
 inventory = { version = "0.3", optional = true }
 ipnetwork = { version = "0.21", default-features = false, optional = true, features = [

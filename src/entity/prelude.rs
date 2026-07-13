@@ -16,8 +16,8 @@ pub use crate::{
     DeriveRelatedEntity, DeriveRelation, DeriveValueType, FromJsonQueryResult,
 };
 
-pub use super::active_model_ex::{ActiveHasMany, ActiveHasOne};
-pub use super::compound::{HasMany, HasOne};
+pub use super::active_model_ex::{ActiveBelongsTo, ActiveHasMany, ActiveHasOne};
+pub use super::compound::{BelongsTo, HasMany, HasOne};
 
 #[cfg(not(feature = "sync"))]
 pub use async_trait;

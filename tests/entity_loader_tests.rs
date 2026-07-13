@@ -118,7 +118,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             .unwrap(),
         {
             let mut cake_2 = cake_2.clone().into_ex();
-            cake_2.bakery = HasOne::loaded(bakery_1.clone());
+            cake_2.bakery = BelongsTo::loaded(Some(bakery_1.clone()));
             cake_2
         }
     );
@@ -304,8 +304,8 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: HasOne::Unloaded,
-            customer: HasOne::loaded(customer::Model {
+            bakery: BelongsTo::Unloaded,
+            customer: BelongsTo::loaded(customer::Model {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
@@ -332,12 +332,12 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: HasOne::loaded(bakery::Model {
+            bakery: BelongsTo::loaded(bakery::Model {
                 id: 42,
                 name: "cool little bakery".into(),
                 profit_margin: 4.1,
             }),
-            customer: HasOne::loaded(customer::ModelEx {
+            customer: BelongsTo::loaded(customer::ModelEx {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
@@ -365,8 +365,8 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: HasOne::Unloaded,
-            customer: HasOne::loaded(customer::ModelEx {
+            bakery: BelongsTo::Unloaded,
+            customer: BelongsTo::loaded(customer::ModelEx {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
@@ -379,8 +379,8 @@ async fn entity_loader_join_three() {
                     quantity: 2,
                     order_id: 101,
                     cake_id: 13,
-                    order: HasOne::Unloaded,
-                    cake: HasOne::Unloaded,
+                    order: BelongsTo::Unloaded,
+                    cake: BelongsTo::Unloaded,
                 },
                 lineitem::ModelEx {
                     id: 2,
@@ -388,8 +388,8 @@ async fn entity_loader_join_three() {
                     quantity: 2,
                     order_id: 101,
                     cake_id: 15,
-                    order: HasOne::Unloaded,
-                    cake: HasOne::Unloaded,
+                    order: BelongsTo::Unloaded,
+                    cake: BelongsTo::Unloaded,
                 }
             ]),
         }
@@ -413,8 +413,8 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: HasOne::Unloaded,
-            customer: HasOne::loaded(customer::Model {
+            bakery: BelongsTo::Unloaded,
+            customer: BelongsTo::loaded(customer::Model {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
@@ -426,8 +426,8 @@ async fn entity_loader_join_three() {
                     quantity: 2,
                     order_id: 101,
                     cake_id: 13,
-                    order: HasOne::Unloaded,
-                    cake: HasOne::loaded(cake_13),
+                    order: BelongsTo::Unloaded,
+                    cake: BelongsTo::loaded(cake_13),
                 },
                 lineitem::ModelEx {
                     id: 2,
@@ -435,8 +435,8 @@ async fn entity_loader_join_three() {
                     quantity: 2,
                     order_id: 101,
                     cake_id: 15,
-                    order: HasOne::Unloaded,
-                    cake: HasOne::loaded(cake_15),
+                    order: BelongsTo::Unloaded,
+                    cake: BelongsTo::loaded(cake_15),
                 }
             ]),
         }

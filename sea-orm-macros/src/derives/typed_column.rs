@@ -1,10 +1,10 @@
-use super::util::{
-    escape_rust_keyword, format_field_ident, is_compound_field, trim_starting_raw_identifier,
-};
+use crate::derives::util::consume_meta;
+
+use super::util::{CompoundType, escape_rust_keyword, trim_starting_raw_identifier};
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{Data, Expr, Fields, Lit, Visibility, spanned::Spanned};
+use syn::{Data, Fields, Lit, Visibility, spanned::Spanned};
 
 /// First is `struct TypedColumn`, second is the `const COLUMN`
 pub fn expand_typed_column(
@@ -15,85 +15,74 @@ pub fn expand_typed_column(
     let mut column_types = Vec::new();
     let mut column_values = Vec::new();
 
-    if let Data::Struct(item_struct) = &data {
-        if let Fields::Named(fields) = &item_struct.fields {
-            for field in &fields.named {
-                if let Some(ident) = &field.ident {
-                    let field_name = trim_starting_raw_identifier(ident);
-                    let mut field_name =
-                        Ident::new(&field_name.to_upper_camel_case(), ident.span());
+    if let Data::Struct(item_struct) = &data
+        && let Fields::Named(fields) = &item_struct.fields
+    {
+        for field in &fields.named {
+            let Some(ident) = &field.ident else { continue };
+            let field_name = trim_starting_raw_identifier(ident);
+            let mut field_name = Ident::new(&field_name.to_upper_camel_case(), ident.span());
 
-                    let field_type = &field.ty;
-                    let field_type: String = quote! { #field_type }
-                        .to_string() // e.g.: "Option < String >"
-                        .split_whitespace()
-                        .collect(); // Remove all whitespace
+            let field_ty = &field.ty;
 
-                    let mut ignore = false;
-                    let mut column_type = None;
+            let mut ignore = false;
+            let mut column_type = None;
 
-                    for attr in field.attrs.iter() {
-                        if attr.path().is_ident("sea_orm") {
-                            attr.parse_nested_meta(|meta| {
-                                if meta.path.is_ident("column_type") {
-                                    let lit = meta.value()?.parse()?;
-                                    if let Lit::Str(litstr) = lit {
-                                        column_type = Some(litstr.value());
-                                    } else {
-                                        return Err(
-                                            meta.error(format!("Invalid column_type {lit:?}"))
-                                        );
-                                    }
-                                } else if meta.path.is_ident("enum_name") {
-                                    let lit = meta.value()?.parse()?;
-                                    if let Lit::Str(litstr) = lit {
-                                        let ty: Ident = syn::parse_str(&litstr.value())?;
-                                        field_name = ty;
-                                    } else {
-                                        return Err(
-                                            meta.error(format!("Invalid enum_name {lit:?}"))
-                                        );
-                                    }
-                                } else if meta.path.is_ident("ignore") {
-                                    ignore = true;
-                                } else {
-                                    // Reads the value expression to advance the parse stream.
-                                    let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
-                                }
-
-                                Ok(())
-                            })?;
-                        }
-                    }
-
-                    if ignore {
-                        continue;
-                    }
-
-                    if is_compound_field(&field_type) {
-                        continue;
-                    }
-
-                    field_name = Ident::new(&escape_rust_keyword(field_name), ident.span());
-
-                    column_fields.push(format_field_ident(field));
-                    let wrapper = super::value_type_match::column_type_wrapper(
-                        &column_type,
-                        &field_type,
-                        field.span(),
-                    );
-                    column_types.push(if let Some(wrapper) = &wrapper {
-                        quote!(sea_orm::#wrapper<Entity>)
-                    } else {
-                        quote!(Column)
-                    });
-                    column_values.push(if let Some(wrapper) = &wrapper {
-                        quote!(sea_orm::#wrapper(Column::#field_name))
-                    } else {
-                        quote!(Column::#field_name)
-                    });
+            for attr in &field.attrs {
+                if !attr.path().is_ident("sea_orm") {
+                    continue;
                 }
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("column_type") {
+                        let lit = meta.value()?.parse()?;
+                        if let Lit::Str(litstr) = lit {
+                            column_type = Some(litstr.value());
+                        } else {
+                            return Err(meta.error(format!("Invalid column_type {lit:?}")));
+                        }
+                    } else if meta.path.is_ident("enum_name") {
+                        let lit = meta.value()?.parse()?;
+                        if let Lit::Str(litstr) = lit {
+                            let ty: Ident = syn::parse_str(&litstr.value())?;
+                            field_name = ty;
+                        } else {
+                            return Err(meta.error(format!("Invalid enum_name {lit:?}")));
+                        }
+                    } else if meta.path.is_ident("ignore") {
+                        ignore = true;
+                    } else {
+                        consume_meta(meta);
+                    }
+
+                    Ok(())
+                })?;
             }
+
+            let compound = if let syn::Type::Path(type_path) = field_ty {
+                CompoundType::matches_type(type_path)
+            } else {
+                false
+            };
+
+            if ignore || compound {
+                continue;
+            }
+
+            field_name = Ident::new(&escape_rust_keyword(field_name), ident.span());
+
+            column_fields.push(ident.clone());
+            let wrapper =
+                super::value_type_match::column_type_wrapper(&column_type, field_ty, field.span());
+            column_types.push(if let Some(wrapper) = &wrapper {
+                quote!(sea_orm::#wrapper<Entity>)
+            } else {
+                quote!(Column)
+            });
+            column_values.push(if let Some(wrapper) = &wrapper {
+                quote!(sea_orm::#wrapper(Column::#field_name))
+            } else {
+                quote!(Column::#field_name)
+            });
         }
     }
 

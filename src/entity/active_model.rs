@@ -791,8 +791,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     #[doc(hidden)]
-    /// Clear a specific belongs_to relation, keyed by relation (to disambiguate
-    /// multiple relations to the same entity), if it is optional; return true.
     fn clear_parent_key_for(
         &mut self,
         rel: <Self::Entity as EntityTrait>::Relation,
@@ -911,16 +909,6 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self::Entity: Related<R>,
     {
         Self::Entity::find_related().belongs_to_active_model(self)
-    }
-
-    /// Like find_related, but infer type from `AM`
-    #[doc(hidden)]
-    fn find_related_of<AM>(&self, _: &[AM]) -> crate::query::Select<AM::Entity>
-    where
-        AM: ActiveModelTrait,
-        Self::Entity: Related<AM::Entity>,
-    {
-        self.find_related(AM::Entity::default())
     }
 
     /// Establish links between self and a related Entity for a many-to-many relation.

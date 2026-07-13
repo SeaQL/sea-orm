@@ -45,7 +45,7 @@ macro_rules! leaf {
                 pub center_id: i32,
                 pub label: String,
                 #[sea_orm(belongs_to, from = "center_id", to = "id")]
-                pub center: HasOne<super::center::Entity>,
+                pub center: BelongsTo<super::center::Entity>,
             }
 
             impl ActiveModelBehavior for ActiveModel {}

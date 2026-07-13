@@ -1,14 +1,18 @@
+use crate::derives::util::consume_meta;
+
 use super::attributes::compound_attr;
-use super::entity_loader::{EntityLoaderField, EntityLoaderSchema, expand_entity_loader};
-use super::util::{extract_compound_entity, format_field_ident, is_compound_field};
+use super::entity_loader::{
+    EntityLoaderField, EntityLoaderFieldKind, EntityLoaderSchema, expand_entity_loader,
+};
+use super::util::{CardinalityKind, CompoundKind, CompoundType, combine_error, is_self_entity};
 use super::{expand_typed_column, model::DeriveModel};
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::{BTreeMap, HashMap};
 use syn::{
-    Attribute, Data, Expr, Fields, ItemStruct, Lit, Meta, Type, Visibility, parse_quote,
-    punctuated::Punctuated, token::Comma,
+    Attribute, Data, Expr, Field, Fields, ItemStruct, Lit, LitStr, Meta, Type, TypePath,
+    Visibility, parse_quote, punctuated::Punctuated, token::Comma,
 };
 
 pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<TokenStream> {
@@ -76,29 +80,34 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
         model_attrs.push(parse_quote!(#[derive(DeriveArrowSchema)]));
     }
 
-    let model_ex = Ident::new(&format!("{model}Ex"), model.span());
+    let model_ex = format_ident!("{model}Ex");
+
     for attr in &mut model_ex_attrs {
-        if attr.path().is_ident("derive") {
-            if let Meta::List(list) = &mut attr.meta {
-                let mut new_list: Punctuated<_, Comma> = Punctuated::new();
-
-                list.parse_nested_meta(|meta| {
-                    if meta.path.is_ident("Eq") {
-                        // skip
-                    } else if meta.path.is_ident("DeriveEntityModel") {
-                        // replace macro
-                        new_list.push(parse_quote!(DeriveModelEx));
-                        new_list.push(parse_quote!(DeriveActiveModelEx));
-                    } else {
-                        new_list.push(meta.path);
-                    }
-
-                    Ok(())
-                })?;
-
-                *attr = parse_quote!(#[derive( #new_list )]);
-            }
+        if !attr.path().is_ident("derive") {
+            continue;
         }
+
+        let Meta::List(list) = &mut attr.meta else {
+            continue;
+        };
+
+        let mut new_list: Punctuated<_, Comma> = Punctuated::new();
+
+        list.parse_nested_meta(|meta| {
+            if meta.path.is_ident("Eq") {
+                // skip
+            } else if meta.path.is_ident("DeriveEntityModel") {
+                // replace macro
+                new_list.push(parse_quote!(DeriveModelEx));
+                new_list.push(parse_quote!(DeriveActiveModelEx));
+            } else {
+                new_list.push(meta.path);
+            }
+
+            Ok(())
+        })?;
+
+        *attr = parse_quote!(#[derive( #new_list )]);
     }
 
     let compact_model = if compact {
@@ -109,19 +118,26 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
 
     let mut model_fields = Vec::new();
 
-    for field in all_fields.iter_mut() {
-        let field_type = &field.ty;
-        let field_type: String = quote! { #field_type }
-            .to_string() // e.g.: "Option < String >"
-            .split_whitespace()
-            .collect(); // Remove all whitespace
-
-        if is_compound_field(&field_type) {
-            let entity_path = extract_compound_entity(&field_type);
-            if field_type.starts_with("Option<") || field_type.starts_with("HasOne<") {
-                field.ty = syn::parse_str(&format!("HasOne < {entity_path} >"))?;
-            } else {
-                field.ty = syn::parse_str(&format!("HasMany < {entity_path} >"))?;
+    for field in &mut all_fields {
+        if let Type::Path(type_path) = &field.ty
+            && let Some(compound) = CompoundType::from_type(type_path)?
+        {
+            match compound.kind {
+                CompoundKind::BelongsTo(cardinality) => {
+                    let entity_type = &compound.entity;
+                    field.ty = match cardinality {
+                        CardinalityKind::Required => parse_quote!(BelongsTo<#entity_type>),
+                        CardinalityKind::Optional => parse_quote!(BelongsTo<Option<#entity_type>>),
+                    };
+                }
+                CompoundKind::HasOne => {
+                    let entity_type = &compound.entity;
+                    field.ty = parse_quote!(HasOne<#entity_type>);
+                }
+                CompoundKind::HasMany => {
+                    let entity_type = &compound.entity;
+                    field.ty = parse_quote!(HasMany<#entity_type>);
+                }
             }
         } else {
             model_fields.push(field);
@@ -141,148 +157,1084 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
     })
 }
 
+struct ScalarField<'a> {
+    ty: &'a Type,
+    unique: bool,
+    unique_keys: Vec<Ident>,
+}
+
+impl<'a> ScalarField<'a> {
+    fn from_field(field: &'a Field) -> syn::Result<Self> {
+        let mut unique = false;
+        let mut unique_keys = Vec::new();
+
+        for attr in &field.attrs {
+            if !attr.path().is_ident("sea_orm") {
+                continue;
+            }
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("unique") {
+                    unique = true;
+                }
+                if meta.path.is_ident("unique_key") {
+                    let lit = meta.value()?.parse()?;
+                    if let Lit::Str(litstr) = lit {
+                        unique_keys.push(litstr.parse()?);
+                    } else {
+                        return Err(meta.error(format!("Invalid unique_key {lit:?}")));
+                    }
+                } else {
+                    consume_meta(meta);
+                }
+                Ok(())
+            })?;
+        }
+
+        Ok(Self {
+            ty: &field.ty,
+            unique,
+            unique_keys,
+        })
+    }
+}
+
+struct ModelExField<'a> {
+    ident: &'a Ident,
+    kind: ModelExFieldKind<'a>,
+}
+
+enum ModelExFieldKind<'a> {
+    Scalar(ScalarField<'a>),
+    Compound(CompoundField),
+}
+
+impl<'a> ModelExField<'a> {
+    fn from_field(field: &'a Field, compact: bool) -> syn::Result<Self> {
+        let Some(ident) = &field.ident else {
+            return Err(syn::Error::new_spanned(field, "expected named field"));
+        };
+        let kind = if let Type::Path(type_path) = &field.ty
+            && let Some(compound) = CompoundType::from_type(type_path)?
+        {
+            ModelExFieldKind::Compound(CompoundField::from_field(field, compound, compact)?)
+        } else {
+            ModelExFieldKind::Scalar(ScalarField::from_field(field)?)
+        };
+
+        Ok(Self { ident, kind })
+    }
+}
+
+enum RelationVariants {
+    Inferred,
+    Named(LitStr),
+    SelfRef {
+        forward_variant: LitStr,
+        reverse_variant: Option<LitStr>,
+    },
+}
+
+impl RelationVariants {
+    fn from_attr(
+        relation_enum: Option<LitStr>,
+        relation_reverse: Option<LitStr>,
+        self_ref: Option<()>,
+        field: &Field,
+    ) -> syn::Result<Self> {
+        if self_ref.is_some() {
+            Ok(Self::SelfRef {
+                forward_variant: relation_enum.ok_or_else(|| {
+                    syn::Error::new_spanned(field, "self_ref must specify `relation_enum`")
+                })?,
+                reverse_variant: relation_reverse,
+            })
+        } else if let Some(relation_enum) = relation_enum {
+            Ok(Self::Named(relation_enum))
+        } else {
+            Ok(Self::Inferred)
+        }
+    }
+
+    fn explicit_name(&self) -> Option<&LitStr> {
+        match self {
+            Self::Named(name)
+            | Self::SelfRef {
+                forward_variant: name,
+                ..
+            } => Some(name),
+            Self::Inferred => None,
+        }
+    }
+
+    fn forward_ident(&self, entity: &TypePath) -> Ident {
+        if let Some(name) = self.explicit_name() {
+            Ident::new(&name.value().to_upper_camel_case(), name.span())
+        } else {
+            Ident::new(
+                &infer_relation_name_from_entity(entity).to_upper_camel_case(),
+                Span::call_site(),
+            )
+        }
+    }
+
+    fn reverse_ident(&self, forward: &Ident) -> Option<Ident> {
+        if let Self::SelfRef {
+            reverse_variant, ..
+        } = self
+        {
+            Some(if let Some(reverse_variant) = reverse_variant {
+                Ident::new(&reverse_variant.value(), reverse_variant.span())
+            } else {
+                Ident::new(&format!("{forward}Reverse"), forward.span())
+            })
+        } else {
+            None
+        }
+    }
+
+    fn is_self_ref(&self) -> bool {
+        matches!(self, Self::SelfRef { .. })
+    }
+}
+
+#[derive(Default)]
+struct ModelExRelationOutput {
+    relation_enum_variants: Punctuated<TokenStream, Comma>,
+    related_entity_enum_variants: Punctuated<TokenStream, Comma>,
+    impl_related_trait: TokenStream,
+}
+
+impl ModelExRelationOutput {
+    fn from_schema(schema: &ModelExSchema<'_>) -> Self {
+        let fields = schema
+            .fields
+            .iter()
+            .filter_map(|field| {
+                let ModelExFieldKind::Compound(compound) = &field.kind else {
+                    return None;
+                };
+                if matches!(
+                    &compound.kind,
+                    CompoundFieldKind::BelongsTo(Some(_))
+                        | CompoundFieldKind::HasOne(Some(_))
+                        | CompoundFieldKind::HasMany(Some(_))
+                ) {
+                    Some(compound)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        let mut entity_count = HashMap::<&TypePath, usize>::new();
+        for field in &fields {
+            *entity_count.entry(&field.entity).or_default() += 1;
+        }
+
+        let mut output = Self::default();
+        for field in fields {
+            let is_unique_entity = entity_count
+                .get(&field.entity)
+                .is_some_and(|count| *count == 1);
+            match &field.kind {
+                CompoundFieldKind::BelongsTo(Some(attr)) => {
+                    expand_belongs_to_into(&mut output, &field.entity, attr, is_unique_entity);
+                }
+                CompoundFieldKind::HasOne(Some(attr)) => {
+                    expand_has_one_into(&mut output, &field.entity, attr, is_unique_entity);
+                }
+                CompoundFieldKind::HasMany(Some(attr)) => {
+                    expand_has_many_into(&mut output, &field.entity, attr, is_unique_entity);
+                }
+                CompoundFieldKind::BelongsTo(None)
+                | CompoundFieldKind::HasOne(None)
+                | CompoundFieldKind::HasMany(None) => {}
+            }
+        }
+        output
+    }
+}
+
+enum CompoundFieldKind {
+    BelongsTo(Option<BelongsToAttr>),
+    HasOne(Option<HasOneAttr>),
+    HasMany(Option<HasManyAttr>),
+}
+
+struct CompoundField {
+    entity: TypePath,
+    kind: CompoundFieldKind,
+}
+
+impl CompoundField {
+    fn from_field(field: &Field, compound: CompoundType, compact: bool) -> syn::Result<Self> {
+        let attrs = compound_attr::SeaOrm::try_from_attributes(&field.attrs)?;
+        if compact
+            && attrs.as_ref().is_some_and(|attrs| {
+                attrs.has_one.is_some() || attrs.has_many.is_some() || attrs.belongs_to.is_some()
+            })
+        {
+            return Err(syn::Error::new_spanned(
+                field,
+                "You cannot use #[has_one / has_many / belongs_to] on #[sea_orm::compact_model], please use #[sea_orm::model] instead.",
+            ));
+        }
+
+        let is_self_entity = is_self_entity(&compound.entity);
+        // A `belongs_to` relation may keep the legacy `HasOne<E>` field type instead of
+        // opting into `BelongsTo<E>`. Detect that so it is routed through the belongs_to
+        // codegen (emitting a `belongs_to` relation); only the wrapper type differs.
+        // `BelongsTo` remains the recommended type.
+        let declares_belongs_to = attrs.as_ref().is_some_and(|attrs| {
+            attrs.belongs_to.is_some()
+                || (attrs.self_ref.is_some()
+                    && attrs.via.is_none()
+                    && attrs.from.is_some()
+                    && attrs.to.is_some())
+        });
+        let kind = match compound.kind {
+            CompoundKind::BelongsTo(_) => CompoundFieldKind::BelongsTo(
+                attrs
+                    .map(|attrs| BelongsToAttr::from_attr(attrs, field))
+                    .transpose()?,
+            ),
+            CompoundKind::HasOne if declares_belongs_to => CompoundFieldKind::BelongsTo(
+                attrs
+                    .map(|attrs| BelongsToAttr::from_attr(attrs, field))
+                    .transpose()?,
+            ),
+            CompoundKind::HasOne => CompoundFieldKind::HasOne(
+                attrs
+                    .map(|attrs| HasOneAttr::from_attr(attrs, field))
+                    .transpose()?,
+            ),
+            CompoundKind::HasMany => CompoundFieldKind::HasMany(
+                attrs
+                    .map(|attrs| HasManyAttr::from_attr(attrs, field, is_self_entity))
+                    .transpose()?,
+            ),
+        };
+        Ok(Self {
+            entity: compound.entity,
+            kind,
+        })
+    }
+}
+
+fn entity_loader_field(field: &Ident, compound: &CompoundField) -> EntityLoaderField {
+    let self_entity = is_self_entity(&compound.entity);
+    let (relation_enum, kind) = match &compound.kind {
+        CompoundFieldKind::BelongsTo(attr) => (
+            attr.as_ref()
+                .and_then(|attr| attr.relation_variants.explicit_name())
+                .cloned(),
+            if self_entity {
+                EntityLoaderFieldKind::SelfHasOne
+            } else {
+                EntityLoaderFieldKind::HasOne
+            },
+        ),
+        CompoundFieldKind::HasOne(attr) => (
+            attr.as_ref()
+                .and_then(|attr| attr.relation_variants.explicit_name())
+                .cloned(),
+            if self_entity {
+                EntityLoaderFieldKind::SelfHasOne
+            } else {
+                EntityLoaderFieldKind::HasOne
+            },
+        ),
+        CompoundFieldKind::HasMany(attr) => {
+            let (relation_enum, via, reverse) = match attr {
+                None => (None, None, false),
+                Some(HasManyAttr::Standard {
+                    relation_variants,
+                    via,
+                    reverse,
+                    ..
+                }) => (
+                    relation_variants.explicit_name().cloned(),
+                    via.clone(),
+                    *reverse,
+                ),
+                Some(HasManyAttr::SelfVia {
+                    relation_enum,
+                    via,
+                    direction,
+                }) => (
+                    relation_enum.clone(),
+                    Some(via.clone()),
+                    matches!(direction, SelfViaDirection::Reverse),
+                ),
+            };
+            let kind = if self_entity {
+                if let Some(via) = via {
+                    EntityLoaderFieldKind::SelfHasManyVia { via, reverse }
+                } else {
+                    EntityLoaderFieldKind::SelfHasMany
+                }
+            } else {
+                EntityLoaderFieldKind::HasMany { via }
+            };
+            (relation_enum, kind)
+        }
+    };
+    EntityLoaderField {
+        field: field.clone(),
+        entity: compound.entity.clone(),
+        relation_enum,
+        kind,
+    }
+}
+
+impl EntityLoaderSchema {
+    fn from_model_ex_schema(schema: &ModelExSchema<'_>) -> Self {
+        Self {
+            fields: schema
+                .fields
+                .iter()
+                .filter_map(|field| {
+                    let ModelExFieldKind::Compound(compound) = &field.kind else {
+                        return None;
+                    };
+                    Some(entity_loader_field(field.ident, compound))
+                })
+                .collect(),
+        }
+    }
+}
+
+fn expand_related_entity_variants_into(
+    entity: &TypePath,
+    relation_variants: &RelationVariants,
+    output: &mut ModelExRelationOutput,
+) {
+    let relation_enum = relation_variants.forward_ident(entity);
+    let related_entity_lit = entity
+        .path
+        .segments
+        .iter()
+        .map(|segment| segment.ident.to_string())
+        .collect::<Vec<_>>()
+        .join("::");
+    let extra = if relation_variants.explicit_name().is_some() {
+        let relation_def = format!("Relation::{relation_enum}.def()");
+        quote!(, def = #relation_def)
+    } else {
+        quote!()
+    };
+    output.related_entity_enum_variants.push(quote! {
+        #[doc = " Generated by sea-orm-macros"]
+        #[sea_orm(entity = #related_entity_lit #extra)]
+        #relation_enum
+    });
+
+    if let Some(relation_enum_ref) = relation_variants.reverse_ident(&relation_enum) {
+        let relation_def = format!("Relation::{relation_enum}.def().rev()");
+        output.related_entity_enum_variants.push(quote! {
+            #[doc = " Generated by sea-orm-macros"]
+            #[sea_orm(entity = #related_entity_lit def = #relation_def)]
+            #relation_enum_ref
+        });
+    }
+}
+
+fn expand_related_trait(entity: &TypePath, relation_variants: &RelationVariants) -> TokenStream {
+    let relation_enum = relation_variants.forward_ident(entity);
+    quote! {
+        #[doc = " Generated by sea-orm-macros"]
+        impl Related<#entity> for Entity {
+            fn to() -> RelationDef {
+                Relation::#relation_enum.def()
+            }
+        }
+    }
+}
+
+fn expand_related_via_trait(
+    entity: &TypePath,
+    relation_variants: &RelationVariants,
+    via: &LitStr,
+) -> TokenStream {
+    let relation_enum = relation_variants.forward_ident(entity);
+    let value = via.value();
+    let mut junction = value.as_str();
+    let mut via_related = "";
+    if let Some((prefix, suffix)) = value.split_once("::") {
+        junction = prefix;
+        via_related = suffix;
+    }
+    let junction = Ident::new(junction, via.span());
+    let relation_def = quote!(super::#junction::Relation::#relation_enum.def());
+    let via_relation_def = if via_related.is_empty() {
+        quote!(<super::#junction::Entity as Related<Entity>>::to().rev())
+    } else {
+        let via_related = Ident::new(via_related, via.span());
+        quote!(super::#junction::Relation::#via_related.def().rev())
+    };
+    quote! {
+        #[doc = " Generated by sea-orm-macros"]
+        impl Related<#entity> for Entity {
+            fn to() -> RelationDef {
+                #relation_def
+            }
+            fn via() -> Option<RelationDef> {
+                Some(#via_relation_def)
+            }
+        }
+    }
+}
+
+fn expand_related_into(
+    output: &mut ModelExRelationOutput,
+    entity: &TypePath,
+    relation_variants: &RelationVariants,
+    via: Option<&LitStr>,
+    impl_related: bool,
+) {
+    expand_related_entity_variants_into(entity, relation_variants, output);
+    if impl_related {
+        output.impl_related_trait.extend(if let Some(via) = via {
+            expand_related_via_trait(entity, relation_variants, via)
+        } else {
+            expand_related_trait(entity, relation_variants)
+        });
+    }
+}
+
+struct RelationColumns(Vec<Ident>);
+
+impl RelationColumns {
+    fn from_lit(lit: LitStr) -> syn::Result<Self> {
+        let paths = if lit.value().starts_with('(') {
+            lit.parse_with(|input: syn::parse::ParseStream<'_>| {
+                let content;
+                syn::parenthesized!(content in input);
+                content.parse_terminated(syn::Path::parse_mod_style, Comma)
+            })?
+        } else {
+            let mut paths = Punctuated::new();
+            paths.push(lit.parse()?);
+            paths
+        };
+        if paths.is_empty() {
+            return Err(syn::Error::new(lit.span(), "expected at least one column"));
+        }
+
+        paths
+            .into_iter()
+            .map(|path| {
+                let Some(segment) = path.segments.last() else {
+                    return Err(syn::Error::new_spanned(path, "expected column path"));
+                };
+                Ok(Ident::new(
+                    &segment.ident.to_string().to_upper_camel_case(),
+                    segment.ident.span(),
+                ))
+            })
+            .collect::<syn::Result<Vec<_>>>()
+            .map(Self)
+    }
+}
+
+struct BelongsToRelationAttr {
+    declared: bool,
+    via: Option<LitStr>,
+    from: RelationColumns,
+    to: RelationColumns,
+    on_update: Option<LitStr>,
+    on_delete: Option<LitStr>,
+    skip_fk: bool,
+}
+
+struct BelongsToAttr {
+    relation_variants: RelationVariants,
+    relation: Option<BelongsToRelationAttr>,
+}
+
+impl BelongsToAttr {
+    fn from_attr(attrs: compound_attr::SeaOrm, field: &Field) -> syn::Result<Self> {
+        let compound_attr::SeaOrm {
+            has_one,
+            has_many,
+            belongs_to,
+            self_ref,
+            skip_fk,
+            via,
+            from,
+            to,
+            relation_enum,
+            relation_reverse,
+            on_update,
+            on_delete,
+            ..
+        } = attrs;
+
+        let is_self_ref = self_ref.is_some();
+        let mut error = None;
+
+        if has_one.is_some() {
+            combine_error(
+                &mut error,
+                syn::Error::new_spanned(&field.ty, "has_one must be paired with HasOne"),
+            );
+        }
+        if has_many.is_some() {
+            combine_error(
+                &mut error,
+                syn::Error::new_spanned(&field.ty, "has_many must be paired with HasMany"),
+            );
+        }
+        if is_self_ref && via.is_some() {
+            combine_error(
+                &mut error,
+                syn::Error::new_spanned(
+                    &field.ty,
+                    "self_ref + via field type must be `HasMany<Entity>`",
+                ),
+            );
+        }
+
+        let relation_variants = if is_self_ref && via.is_some() {
+            None
+        } else {
+            match RelationVariants::from_attr(relation_enum, relation_reverse, self_ref, field) {
+                Ok(relation_variants) => Some(relation_variants),
+                Err(err) => {
+                    combine_error(&mut error, err);
+                    None
+                }
+            }
+        };
+
+        let from = if belongs_to.is_some() && from.is_none() {
+            combine_error(
+                &mut error,
+                syn::Error::new_spanned(
+                    field,
+                    "#[sea_orm(belongs_to)] must include `from = \"...\"` to name the local foreign key column",
+                ),
+            );
+            None
+        } else {
+            from
+        };
+        let to = if belongs_to.is_some() && to.is_none() {
+            combine_error(
+                &mut error,
+                syn::Error::new_spanned(
+                    field,
+                    "#[sea_orm(belongs_to)] must include `to = \"...\"` to name the related primary key column",
+                ),
+            );
+            None
+        } else {
+            to
+        };
+
+        let from = match from.map(RelationColumns::from_lit).transpose() {
+            Ok(from) => from,
+            Err(err) => {
+                combine_error(&mut error, err);
+                None
+            }
+        };
+        let to = match to.map(RelationColumns::from_lit).transpose() {
+            Ok(to) => to,
+            Err(err) => {
+                combine_error(&mut error, err);
+                None
+            }
+        };
+
+        if let Some(err) = error {
+            return Err(err);
+        }
+
+        let relation_variants = relation_variants.expect("validated");
+        let relation = if belongs_to.is_some() {
+            Some(BelongsToRelationAttr {
+                declared: true,
+                via,
+                from: from.expect("validated"),
+                to: to.expect("validated"),
+                on_update,
+                on_delete,
+                skip_fk: skip_fk.is_some(),
+            })
+        } else if relation_variants.is_self_ref()
+            && let (Some(from), Some(to)) = (from, to)
+        {
+            Some(BelongsToRelationAttr {
+                declared: false,
+                via: None,
+                from,
+                to,
+                on_update,
+                on_delete,
+                skip_fk: skip_fk.is_some(),
+            })
+        } else {
+            None
+        };
+        Ok(Self {
+            relation_variants,
+            relation,
+        })
+    }
+}
+
+fn expand_belongs_to_into(
+    output: &mut ModelExRelationOutput,
+    entity: &TypePath,
+    attr: &BelongsToAttr,
+    unique_entity: bool,
+) {
+    let relation_variants = &attr.relation_variants;
+    if let Some(relation) = &attr.relation {
+        let relation_enum = relation_variants.forward_ident(entity);
+        let related_entity_lit = entity
+            .path
+            .segments
+            .iter()
+            .map(|segment| segment.ident.to_string())
+            .collect::<Vec<_>>()
+            .join("::");
+        let belongs_to = Ident::new("belongs_to", Span::call_site());
+        let format_columns = |columns: &RelationColumns, prefix: &str| {
+            let columns = columns
+                .0
+                .iter()
+                .map(|column| {
+                    if prefix.is_empty() {
+                        format!("Column::{column}")
+                    } else {
+                        format!("{prefix}::Column::{column}")
+                    }
+                })
+                .collect::<Vec<_>>();
+            if columns.len() > 1 {
+                format!("({})", columns.join(", "))
+            } else {
+                columns[0].clone()
+            }
+        };
+        let from = format_columns(&relation.from, "");
+        let (related_entity, to) = if relation_variants.is_self_ref() {
+            ("Entity", format_columns(&relation.to, ""))
+        } else {
+            (
+                related_entity_lit.as_str(),
+                format_columns(
+                    &relation.to,
+                    related_entity_lit.trim_end_matches("::Entity"),
+                ),
+            )
+        };
+        let mut extra: Punctuated<_, Comma> = Punctuated::new();
+        if let Some(on_update) = &relation.on_update {
+            let tag = Ident::new("on_update", on_update.span());
+            extra.push(quote!(#tag = #on_update));
+        }
+        if let Some(on_delete) = &relation.on_delete {
+            let tag = Ident::new("on_delete", on_delete.span());
+            extra.push(quote!(#tag = #on_delete));
+        }
+        if relation.skip_fk {
+            extra.push(quote!(skip_fk));
+        }
+        output.relation_enum_variants.push(quote! {
+            #[doc = " Generated by sea-orm-macros"]
+            #[sea_orm(#belongs_to = #related_entity, from = #from, to = #to, #extra)]
+            #relation_enum
+        });
+    }
+
+    let (declared, via) = attr
+        .relation
+        .as_ref()
+        .map(|relation| (relation.declared, relation.via.as_ref()))
+        .unwrap_or_default();
+    expand_related_into(
+        output,
+        entity,
+        relation_variants,
+        via,
+        unique_entity && declared,
+    );
+}
+
+struct HasOneAttr {
+    relation_variants: RelationVariants,
+    /// Whether `#[sea_orm(has_one)]` is present.
+    has_one: bool,
+    via: Option<LitStr>,
+    via_rel: Option<LitStr>,
+}
+
+impl HasOneAttr {
+    fn from_attr(attrs: compound_attr::SeaOrm, field: &Field) -> syn::Result<Self> {
+        let compound_attr::SeaOrm {
+            has_one,
+            has_many,
+            belongs_to,
+            self_ref,
+            via,
+            via_rel,
+            from,
+            to,
+            relation_enum,
+            relation_reverse,
+            ..
+        } = attrs;
+
+        let is_self_ref = self_ref.is_some();
+        let mut error = None;
+
+        if belongs_to.is_some() {
+            combine_error(
+                &mut error,
+                syn::Error::new_spanned(&field.ty, "belongs_to must be paired with BelongsTo"),
+            );
+        }
+        if has_many.is_some() {
+            combine_error(
+                &mut error,
+                syn::Error::new_spanned(&field.ty, "has_many must be paired with HasMany"),
+            );
+        }
+        if is_self_ref && via.is_some() {
+            combine_error(
+                &mut error,
+                syn::Error::new_spanned(
+                    &field.ty,
+                    "self_ref + via field type must be `HasMany<Entity>`",
+                ),
+            );
+        }
+
+        let relation_variants = if is_self_ref && via.is_some() {
+            None
+        } else {
+            match RelationVariants::from_attr(relation_enum, relation_reverse, self_ref, field) {
+                Ok(relation_variants) => Some(relation_variants),
+                Err(err) => {
+                    combine_error(&mut error, err);
+                    None
+                }
+            }
+        };
+        if is_self_ref && from.is_some() && to.is_some() {
+            combine_error(
+                &mut error,
+                syn::Error::new_spanned(
+                    &field.ty,
+                    "self_ref belongs_to must be paired with BelongsTo",
+                ),
+            );
+        }
+
+        if let Some(err) = error {
+            return Err(err);
+        }
+
+        let relation_variants = relation_variants.expect("validated relation variants");
+        Ok(Self {
+            relation_variants,
+            has_one: has_one.is_some(),
+            via,
+            via_rel,
+        })
+    }
+}
+
+fn expand_has_one_into(
+    output: &mut ModelExRelationOutput,
+    entity: &TypePath,
+    attr: &HasOneAttr,
+    unique_entity: bool,
+) {
+    let relation_variants = &attr.relation_variants;
+    if attr.has_one {
+        let relation_enum = relation_variants.forward_ident(entity);
+        let related_entity_lit = entity
+            .path
+            .segments
+            .iter()
+            .map(|segment| segment.ident.to_string())
+            .collect::<Vec<_>>()
+            .join("::");
+        let has_one = Ident::new("has_one", Span::call_site());
+        let mut extra: Punctuated<_, Comma> = Punctuated::new();
+        if let Some(via_rel) = &attr.via_rel {
+            let tag = Ident::new("via_rel", via_rel.span());
+            let via_rel = format!("Relation::{}", via_rel.value());
+            extra.push(quote!(#tag = #via_rel));
+        }
+        output.relation_enum_variants.push(quote! {
+            #[doc = " Generated by sea-orm-macros"]
+            #[sea_orm(#has_one = #related_entity_lit, #extra)]
+            #relation_enum
+        });
+    }
+
+    expand_related_into(
+        output,
+        entity,
+        relation_variants,
+        attr.via.as_ref(),
+        unique_entity && attr.has_one,
+    );
+}
+
+enum HasManyAttr {
+    Standard {
+        relation_variants: RelationVariants,
+        has_many: bool,
+        via: Option<LitStr>,
+        via_rel: Option<LitStr>,
+        reverse: bool,
+    },
+    SelfVia {
+        relation_enum: Option<LitStr>,
+        via: LitStr,
+        direction: SelfViaDirection,
+    },
+}
+
+enum SelfViaDirection {
+    Forward { from: LitStr, to: LitStr },
+    Reverse,
+    Manual,
+}
+
+impl HasManyAttr {
+    fn from_attr(
+        attrs: compound_attr::SeaOrm,
+        field: &Field,
+        is_self_entity: bool,
+    ) -> syn::Result<Self> {
+        let compound_attr::SeaOrm {
+            has_one,
+            has_many,
+            belongs_to,
+            self_ref,
+            via,
+            via_rel,
+            from,
+            to,
+            relation_enum,
+            relation_reverse,
+            reverse,
+            ..
+        } = attrs;
+
+        let is_self_ref = self_ref.is_some();
+        let mut error = None;
+
+        if belongs_to.is_some() {
+            combine_error(
+                &mut error,
+                syn::Error::new_spanned(&field.ty, "belongs_to must be paired with BelongsTo"),
+            );
+        }
+        if has_one.is_some() {
+            combine_error(
+                &mut error,
+                syn::Error::new_spanned(&field.ty, "has_one must be paired with HasOne"),
+            );
+        }
+        if is_self_ref && let Some(via) = via {
+            if !is_self_entity {
+                combine_error(
+                    &mut error,
+                    syn::Error::new_spanned(
+                        &field.ty,
+                        "self_ref + via field type must be `HasMany<Entity>`",
+                    ),
+                );
+            }
+
+            if let Some(err) = error {
+                return Err(err);
+            }
+
+            let direction = if reverse.is_some() {
+                SelfViaDirection::Reverse
+            } else if let (Some(from), Some(to)) = (from, to) {
+                SelfViaDirection::Forward { from, to }
+            } else {
+                SelfViaDirection::Manual
+            };
+            return Ok(Self::SelfVia {
+                relation_enum,
+                via,
+                direction,
+            });
+        }
+
+        let relation_variants =
+            match RelationVariants::from_attr(relation_enum, relation_reverse, self_ref, field) {
+                Ok(relation_variants) => Some(relation_variants),
+                Err(err) => {
+                    combine_error(&mut error, err);
+                    None
+                }
+            };
+        if is_self_ref && from.is_some() && to.is_some() {
+            combine_error(
+                &mut error,
+                syn::Error::new_spanned(
+                    &field.ty,
+                    "self_ref belongs_to must be paired with BelongsTo",
+                ),
+            );
+        }
+
+        if let Some(err) = error {
+            return Err(err);
+        }
+        let relation_variants = relation_variants.expect("validated relation variants");
+        Ok(Self::Standard {
+            relation_variants,
+            has_many: has_many.is_some(),
+            via,
+            via_rel,
+            reverse: has_many.is_none() && reverse.is_some(),
+        })
+    }
+}
+
+fn expand_has_many_into(
+    output: &mut ModelExRelationOutput,
+    entity: &TypePath,
+    attr: &HasManyAttr,
+    unique_entity: bool,
+) {
+    let (relation_variants, has_many, via, via_rel) = match attr {
+        HasManyAttr::Standard {
+            relation_variants,
+            has_many,
+            via,
+            via_rel,
+            ..
+        } => (relation_variants, *has_many, via, via_rel),
+        HasManyAttr::SelfVia { via, direction, .. } => {
+            output
+                .impl_related_trait
+                .extend(expand_impl_related_self_via(via, direction));
+            return;
+        }
+    };
+    let relation_enum = relation_variants.forward_ident(entity);
+    if let RelationVariants::SelfRef {
+        reverse_variant: Some(relation_reverse),
+        ..
+    } = relation_variants
+    {
+        let has_many = Ident::new("has_many", Span::call_site());
+        let via_rel = format!("Relation::{}", relation_reverse.value());
+        output.relation_enum_variants.push(quote! {
+            #[doc = " Generated by sea-orm-macros"]
+            #[sea_orm(#has_many = "Entity", via_rel = #via_rel)]
+            #relation_enum
+        });
+    } else if has_many && via.is_none() {
+        let related_entity_lit = entity
+            .path
+            .segments
+            .iter()
+            .map(|segment| segment.ident.to_string())
+            .collect::<Vec<_>>()
+            .join("::");
+        let has_many = Ident::new("has_many", Span::call_site());
+        let mut extra: Punctuated<_, Comma> = Punctuated::new();
+        if let Some(via_rel) = via_rel {
+            let tag = Ident::new("via_rel", via_rel.span());
+            let via_rel = format!("Relation::{}", via_rel.value());
+            extra.push(quote!(#tag = #via_rel));
+        }
+        output.relation_enum_variants.push(quote! {
+            #[doc = " Generated by sea-orm-macros"]
+            #[sea_orm(#has_many = #related_entity_lit, #extra)]
+            #relation_enum
+        });
+    }
+
+    if relation_variants.is_self_ref() {
+        return;
+    }
+    expand_related_into(
+        output,
+        entity,
+        relation_variants,
+        via.as_ref(),
+        unique_entity && has_many,
+    );
+}
+
+struct ModelExSchema<'a> {
+    compact: bool,
+    fields: Vec<ModelExField<'a>>,
+}
+
+impl<'a> ModelExSchema<'a> {
+    fn from_data(data: &'a Data, attrs: &[Attribute], ident: &Ident) -> syn::Result<Self> {
+        let mut compact = false;
+        attrs
+            .iter()
+            .filter(|attr| attr.path().is_ident("sea_orm"))
+            .try_for_each(|attr| {
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("compact_model") {
+                        compact = true;
+                    } else {
+                        consume_meta(meta);
+                    }
+                    Ok(())
+                })
+            })?;
+
+        let fields = if let Data::Struct(r#struct) = data
+            && let Fields::Named(fields) = &r#struct.fields
+        {
+            fields
+                .named
+                .iter()
+                .map(|field| ModelExField::from_field(field, compact))
+                .collect::<syn::Result<Vec<_>>>()?
+        } else {
+            return Err(syn::Error::new_spanned(
+                ident,
+                "You can only derive DeriveModelEx on structs",
+            ));
+        };
+
+        Ok(Self { compact, fields })
+    }
+}
+
 pub fn expand_derive_model_ex(
     vis: &Visibility,
     ident: Ident,
     data: Data,
     attrs: Vec<Attribute>,
 ) -> syn::Result<TokenStream> {
-    let mut compact = false;
-    let mut model_fields: Vec<Ident> = Vec::new();
-    let mut compound_fields: Vec<Ident> = Vec::new();
-    let mut impl_related = Vec::new();
-    let mut entity_loader_schema = EntityLoaderSchema::default();
-    let mut unique_keys = BTreeMap::new();
-
-    attrs
+    let schema = ModelExSchema::from_data(&data, &attrs, &ident)?;
+    let compact = schema.compact;
+    let model_fields = schema
+        .fields
         .iter()
-        .filter(|attr| attr.path().is_ident("sea_orm"))
-        .try_for_each(|attr| {
-            attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident("compact_model") {
-                    compact = true;
-                } else {
-                    // Reads the value expression to advance the parse stream.
-                    let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
-                }
-                Ok(())
-            })
-        })?;
-
-    if let Data::Struct(item_struct) = &data {
-        if let Fields::Named(fields) = &item_struct.fields {
-            for field in &fields.named {
-                if let Some(ident) = &field.ident {
-                    let field_type = &field.ty;
-                    let field_type: String = quote! { #field_type }
-                        .to_string() // e.g.: "Option < String >"
-                        .split_whitespace()
-                        .collect(); // Remove all whitespace
-
-                    if is_compound_field(&field_type) {
-                        let compound_attrs =
-                            compound_attr::SeaOrm::from_attributes(&field.attrs).ok();
-                        let is_reverse = compound_attrs
-                            .as_ref()
-                            .map(|r| r.reverse.is_some())
-                            .unwrap_or_default();
-                        let relation_enum = compound_attrs
-                            .as_ref()
-                            .and_then(|r| r.relation_enum.clone());
-                        if field_type.starts_with("HasOne<") {
-                            entity_loader_schema.fields.push(EntityLoaderField {
-                                is_one: true,
-                                is_self: field_type == "HasOne<Entity>",
-                                is_reverse,
-                                field: ident.clone(),
-                                entity: extract_compound_entity(&field_type).to_owned(),
-                                relation_enum,
-                                via: None,
-                            });
-                        } else if field_type.starts_with("HasMany<") {
-                            entity_loader_schema.fields.push(EntityLoaderField {
-                                is_one: false,
-                                is_self: field_type == "HasMany<Entity>",
-                                is_reverse,
-                                field: ident.clone(),
-                                entity: extract_compound_entity(&field_type).to_owned(),
-                                relation_enum,
-                                via: compound_attrs.as_ref().and_then(|r| r.via.clone()),
-                            });
-                        }
-                        if let Some(attrs) = compound_attrs {
-                            if compact
-                                && (attrs.has_one.is_some()
-                                    || attrs.has_many.is_some()
-                                    || attrs.belongs_to.is_some())
-                            {
-                                return Err(syn::Error::new_spanned(
-                                    ident,
-                                    "You cannot use #[has_one / has_many / belongs_to] on #[sea_orm::compact_model], please use #[sea_orm::model] instead.",
-                                ));
-                            } else if attrs.belongs_to.is_some()
-                                && !field_type.starts_with("HasOne<")
-                            {
-                                return Err(syn::Error::new_spanned(
-                                    ident,
-                                    "belongs_to must be paired with HasOne",
-                                ));
-                            } else if attrs.has_one.is_some() && !field_type.starts_with("HasOne<")
-                            {
-                                return Err(syn::Error::new_spanned(
-                                    ident,
-                                    "has_one must be paired with HasOne",
-                                ));
-                            } else if attrs.has_many.is_some()
-                                && !field_type.starts_with("HasMany<")
-                            {
-                                return Err(syn::Error::new_spanned(
-                                    ident,
-                                    "has_many must be paired with HasMany",
-                                ));
-                            }
-                            impl_related.push((attrs, field_type));
-                        }
-                        compound_fields.push(format_field_ident(field));
-                    } else {
-                        // scalar field
-                        for attr in field.attrs.iter() {
-                            // still have to parse column attributes to extract unique keys
-                            if attr.path().is_ident("sea_orm") {
-                                attr.parse_nested_meta(|meta| {
-                                    if meta.path.is_ident("unique") {
-                                        unique_keys.insert(
-                                            ident.clone(),
-                                            vec![(ident.clone(), field.ty.clone())],
-                                        );
-                                    } else if meta.path.is_ident("unique_key") {
-                                        let lit = meta.value()?.parse()?;
-                                        if let Lit::Str(litstr) = lit {
-                                            unique_keys
-                                                .entry(litstr.parse()?)
-                                                .or_default()
-                                                .push((ident.clone(), field.ty.clone()));
-                                        } else {
-                                            return Err(
-                                                meta.error(format!("Invalid unique_key {lit:?}"))
-                                            );
-                                        }
-                                    } else {
-                                        // Reads the value expression to advance the parse stream.
-                                        let _: Option<Expr> =
-                                            meta.value().and_then(|v| v.parse()).ok();
-                                    }
-
-                                    Ok(())
-                                })?;
-                            }
-                        }
-                        model_fields.push(format_field_ident(field));
-                    }
-                }
-            }
-        }
-    }
+        .filter_map(|field| {
+            matches!(&field.kind, ModelExFieldKind::Scalar(_)).then_some(field.ident)
+        })
+        .collect::<Vec<_>>();
+    let compound_fields = schema
+        .fields
+        .iter()
+        .filter_map(|field| {
+            matches!(&field.kind, ModelExFieldKind::Compound(_)).then_some(field.ident)
+        })
+        .collect::<Vec<_>>();
 
     let impl_model_trait = DeriveModel::new(&ident, &data, &attrs)?.impl_model_trait();
 
@@ -328,50 +1280,11 @@ pub fn expand_derive_model_ex(
         }
     };
 
-    let mut relation_enum_variants: Punctuated<_, Comma> = Punctuated::new();
-    let mut related_entity_enum_variants: Punctuated<_, Comma> = Punctuated::new();
-
-    let impl_related_trait = {
-        let mut ts = TokenStream::new();
-        let mut seen_entity = HashMap::new();
-        for (_, field_type) in impl_related.iter() {
-            let entity_path = extract_compound_entity(field_type);
-            *seen_entity.entry(entity_path).or_insert(0) += 1;
-        }
-
-        for (attrs, field_type) in impl_related.iter() {
-            if attrs.self_ref.is_some() && attrs.via.is_some() {
-                ts.extend(expand_impl_related_self_via(attrs, field_type)?);
-            } else {
-                if attrs.self_ref.is_some() && attrs.relation_enum.is_none() {
-                    return Err(syn::Error::new_spanned(
-                        ident,
-                        "Please specify `relation_enum` for `self_ref`",
-                    ));
-                }
-                if let Some(var) = relation_enum_variant(attrs, field_type) {
-                    relation_enum_variants.push(var);
-                }
-                if attrs.self_ref.is_some() && field_type.starts_with("HasMany<") {
-                    // related entity is already provided by the HasOne item
-                    // so self_ref HasMany has to be skipped
-                    continue;
-                }
-                let (first, second) = related_entity_enum_variant(attrs, field_type);
-                related_entity_enum_variants.push(first);
-                if let Some(second) = second {
-                    related_entity_enum_variants.push(second);
-                }
-                let entity_path = extract_compound_entity(field_type);
-                if *seen_entity.get(entity_path).unwrap() == 1 {
-                    // prevent impl trait for same entity twice
-                    ts.extend(expand_impl_related_trait(attrs, field_type)?);
-                }
-            }
-        }
-
-        ts
-    };
+    let ModelExRelationOutput {
+        relation_enum_variants,
+        related_entity_enum_variants,
+        impl_related_trait,
+    } = ModelExRelationOutput::from_schema(&schema);
 
     let relation_enum = if !compact {
         quote! {
@@ -401,9 +1314,10 @@ pub fn expand_derive_model_ex(
 
     let (typed_column, typed_column_const) = expand_typed_column(vis, &data)?;
 
-    let (entity_find_by_key, loader_filter_by_key) = expand_find_by_unique_key(unique_keys);
+    let (entity_find_by_key, loader_filter_by_key) = expand_find_by_unique_key(&schema);
 
-    let entity_loader = expand_entity_loader(vis, entity_loader_schema);
+    let entity_loader =
+        expand_entity_loader(vis, EntityLoaderSchema::from_model_ex_schema(&schema));
 
     Ok(quote! {
         #typed_column
@@ -435,312 +1349,71 @@ pub fn expand_derive_model_ex(
     })
 }
 
-fn relation_enum_variant(attr: &compound_attr::SeaOrm, ty: &str) -> Option<TokenStream> {
-    let (related_entity, relation_enum) = get_related(attr, ty);
-    if attr.belongs_to.is_some() {
-        let belongs_to = Ident::new("belongs_to", Span::call_site());
+fn expand_impl_related_self_via(via: &LitStr, direction: &SelfViaDirection) -> TokenStream {
+    match direction {
+        SelfViaDirection::Forward { from, to } => {
+            let junction = Ident::new(&via.value(), via.span());
+            let from = Ident::new(&from.value(), from.span());
+            let to = Ident::new(&to.value(), to.span());
 
-        let from = format_tuple(
-            "",
-            "Column",
-            &attr
-                .from
-                .as_ref()
-                .expect("Must specify `from` and `to` on belongs_to relation")
-                .value(),
-        );
-        let to = format_tuple(
-            related_entity.trim_end_matches("::Entity"),
-            "Column",
-            &attr
-                .to
-                .as_ref()
-                .expect("Must specify `from` and `to` on belongs_to relation")
-                .value(),
-        );
-        let mut extra: Punctuated<_, Comma> = Punctuated::new();
-        if let Some(on_update) = &attr.on_update {
-            let tag = Ident::new("on_update", on_update.span());
-            extra.push(quote!(#tag = #on_update))
+            quote! {
+                #[doc = " Generated by sea-orm-macros"]
+                impl RelatedSelfVia<super::#junction::Entity> for Entity {
+                    fn to() -> RelationDef {
+                        super::#junction::Relation::#to.def()
+                    }
+                    fn via() -> RelationDef {
+                        super::#junction::Relation::#from.def().rev()
+                    }
+                }
+            }
+
+            // #[sea_orm(self_ref, via = "user_follower", from = "User", to = "Follower")]
+            // impl RelatedSelfVia<super::user_follower::Entity> for Entity {
+            //     fn to() -> RelationDef {
+            //         super::user_follower::Relation::Follower.def()
+            //     }
+
+            //     fn via() -> RelationDef {
+            //         super::user_follower::Relation::User.def().rev()
+            //     }
+            // }
         }
-        if let Some(on_delete) = &attr.on_delete {
-            let tag = Ident::new("on_delete", on_delete.span());
-            extra.push(quote!(#tag = #on_delete))
-        }
-        if let Some(()) = &attr.skip_fk {
-            extra.push(quote!(skip_fk))
-        }
-
-        Some(quote! {
-            #[doc = " Generated by sea-orm-macros"]
-            #[sea_orm(#belongs_to = #related_entity, from = #from, to = #to, #extra)]
-            #relation_enum
-        })
-    } else if attr.self_ref.is_some()
-        && attr.via.is_none()
-        && attr.from.is_some()
-        && attr.to.is_some()
-    {
-        let belongs_to = Ident::new("belongs_to", Span::call_site());
-
-        let from = format_tuple("", "Column", &attr.from.as_ref().unwrap().value());
-        let to = format_tuple("", "Column", &attr.to.as_ref().unwrap().value());
-        let mut extra: Punctuated<_, Comma> = Punctuated::new();
-        if let Some(on_update) = &attr.on_update {
-            let tag = Ident::new("on_update", on_update.span());
-            extra.push(quote!(#tag = #on_update))
-        }
-        if let Some(on_delete) = &attr.on_delete {
-            let tag = Ident::new("on_delete", on_delete.span());
-            extra.push(quote!(#tag = #on_delete))
-        }
-        if let Some(()) = &attr.skip_fk {
-            extra.push(quote!(skip_fk))
-        }
-
-        Some(quote! {
-            #[doc = " Generated by sea-orm-macros"]
-            #[sea_orm(#belongs_to = "Entity", from = #from, to = #to, #extra)]
-            #relation_enum
-        })
-    } else if attr.self_ref.is_some()
-        && attr.via.is_none()
-        && attr.relation_reverse.is_some()
-        && ty.starts_with("HasMany<")
-    {
-        let has_many = Ident::new("has_many", Span::call_site());
-
-        #[allow(clippy::unnecessary_unwrap)]
-        let via_rel = format!(
-            "Relation::{}",
-            attr.relation_reverse.as_ref().unwrap().value()
-        );
-
-        Some(quote! {
-            #[doc = " Generated by sea-orm-macros"]
-            #[sea_orm(#has_many = "Entity", via_rel = #via_rel)]
-            #relation_enum
-        })
-    } else if attr.has_many.is_some() && attr.via.is_none() {
-        // skip junction relation
-
-        let has_many = Ident::new("has_many", Span::call_site());
-        let mut extra: Punctuated<_, Comma> = Punctuated::new();
-        if let Some(via_rel) = &attr.via_rel {
-            let tag = Ident::new("via_rel", via_rel.span());
-            let via_rel = format!("Relation::{}", via_rel.value());
-            extra.push(quote!(#tag = #via_rel))
-        }
-
-        Some(quote! {
-            #[doc = " Generated by sea-orm-macros"]
-            #[sea_orm(#has_many = #related_entity, #extra)]
-            #relation_enum
-        })
-    } else if attr.has_one.is_some() {
-        let has_one = Ident::new("has_one", Span::call_site());
-        let mut extra: Punctuated<_, Comma> = Punctuated::new();
-        if let Some(via_rel) = &attr.via_rel {
-            let tag = Ident::new("via_rel", via_rel.span());
-            let via_rel = format!("Relation::{}", via_rel.value());
-            extra.push(quote!(#tag = #via_rel))
-        }
-
-        Some(quote! {
-            #[doc = " Generated by sea-orm-macros"]
-            #[sea_orm(#has_one = #related_entity, #extra)]
-            #relation_enum
-        })
-    } else {
-        None
+        SelfViaDirection::Reverse | SelfViaDirection::Manual => quote!(),
     }
 }
 
-fn related_entity_enum_variant(
-    attr: &compound_attr::SeaOrm,
-    ty: &str,
-) -> (TokenStream, Option<TokenStream>) {
-    let (related_entity, relation_enum) = get_related(attr, ty);
-
-    let extra = if attr.relation_enum.is_some() {
-        let relation_def = format!("Relation::{relation_enum}.def()");
-        quote!(, def = #relation_def)
-    } else {
-        quote!()
+pub(crate) fn infer_relation_name_from_entity(entity: &TypePath) -> String {
+    let mut segments = entity.path.segments.iter().rev();
+    let Some(last) = segments.next() else {
+        return String::new();
     };
+    segments
+        .next()
+        .map(|segment| segment.ident.to_string())
+        .unwrap_or_else(|| last.ident.to_string())
+}
 
-    let first = quote! {
-        #[doc = " Generated by sea-orm-macros"]
-        #[sea_orm(entity = #related_entity #extra)]
-        #relation_enum
-    };
-    let second = if attr.self_ref.is_some() {
-        let relation_def = format!("Relation::{relation_enum}.def().rev()");
-        let relation_enum_ref = if let Some(relation_reverse) = &attr.relation_reverse {
-            Ident::new(&relation_reverse.value(), relation_reverse.span())
-        } else {
-            Ident::new(&format!("{relation_enum}Reverse"), relation_enum.span())
+fn expand_find_by_unique_key(schema: &ModelExSchema<'_>) -> (TokenStream, TokenStream) {
+    let mut unique_keys = BTreeMap::<Ident, Vec<(Ident, Type)>>::new();
+    for field in &schema.fields {
+        let ModelExFieldKind::Scalar(scalar) = &field.kind else {
+            continue;
         };
-        Some(quote! {
-            #[doc = " Generated by sea-orm-macros"]
-            #[sea_orm(entity = #related_entity def = #relation_def)]
-            #relation_enum_ref
-        })
-    } else {
-        None
-    };
-
-    (first, second)
-}
-
-fn expand_impl_related_trait(attr: &compound_attr::SeaOrm, ty: &str) -> syn::Result<TokenStream> {
-    if attr.has_one.is_some() || attr.has_many.is_some() || attr.belongs_to.is_some() {
-        let (related_entity, relation_enum) = get_related(attr, ty);
-        let related_entity: TokenStream = related_entity.parse().unwrap();
-
-        if let Some(via_lit) = &attr.via {
-            let via = via_lit.value();
-            let mut junction = via.as_str();
-            let mut via_related = "";
-            if let Some((prefix, suffix)) = via.split_once("::") {
-                junction = prefix;
-                via_related = suffix;
-            }
-            let junction = Ident::new(junction, via_lit.span());
-            let relation_def = quote!(super::#junction::Relation::#relation_enum.def());
-            let via_relation_def: TokenStream = if !via_related.is_empty() {
-                let via_related = Ident::new(via_related, via_lit.span());
-                quote!(super::#junction::Relation::#via_related.def().rev())
-            } else {
-                quote!(<super::#junction::Entity as Related<Entity>>::to().rev())
-            };
-
-            Ok(quote! {
-                #[doc = " Generated by sea-orm-macros"]
-                impl Related<#related_entity> for Entity {
-                    fn to() -> RelationDef {
-                        #relation_def
-                    }
-                    fn via() -> Option<RelationDef> {
-                        Some(#via_relation_def)
-                    }
-                }
-            })
-
-            // #[sea_orm(relation, via = "cakes_bakers::Cake")]
-            // impl Related<super::baker::Entity> for Entity {
-            //     fn to() -> RelationDef {
-            //         super::cakes_bakers::Relation::Baker.def()
-            //     }
-            //     fn via() -> Option<RelationDef> {
-            //         Some(super::cakes_bakers::Relation::Cake.def().rev())
-            //     }
-            // }
-        } else {
-            let relation_def = quote!(Relation::#relation_enum.def());
-
-            Ok(quote! {
-                #[doc = " Generated by sea-orm-macros"]
-                impl Related<#related_entity> for Entity {
-                    fn to() -> RelationDef {
-                        #relation_def
-                    }
-                }
-            })
-
-            // #[sea_orm(relation)]
-            // impl Related<super::bakery::Entity> for Entity {
-            //     fn to() -> RelationDef {
-            //         Relation::Bakery.def()
-            //     }
-            // }
+        if scalar.unique {
+            unique_keys.insert(
+                field.ident.clone(),
+                vec![(field.ident.clone(), scalar.ty.clone())],
+            );
         }
-    } else {
-        Ok(quote!())
-    }
-}
-
-fn expand_impl_related_self_via(
-    attr: &compound_attr::SeaOrm,
-    ty: &str,
-) -> syn::Result<TokenStream> {
-    let Some(via) = &attr.via else {
-        return Err(syn::Error::new(
-            Span::call_site(),
-            "Please specify the junction Entity `via` for `self_ref`.",
-        ));
-    };
-
-    if ty != "HasMany<Entity>" {
-        return Err(syn::Error::new_spanned(
-            via,
-            "self_ref + via field type must be `HasMany<Entity>`",
-        ));
+        for unique_key in &scalar.unique_keys {
+            unique_keys
+                .entry(unique_key.clone())
+                .or_default()
+                .push((field.ident.clone(), scalar.ty.clone()));
+        }
     }
 
-    if attr.reverse.is_some() {
-        return Ok(quote!());
-    }
-
-    if let (Some(from), Some(to)) = (&attr.from, &attr.to) {
-        let junction = Ident::new(&via.value(), via.span());
-        let from = Ident::new(&from.value(), from.span());
-        let to = Ident::new(&to.value(), to.span());
-
-        Ok(quote! {
-            #[doc = " Generated by sea-orm-macros"]
-            impl RelatedSelfVia<super::#junction::Entity> for Entity {
-                fn to() -> RelationDef {
-                    super::#junction::Relation::#to.def()
-                }
-                fn via() -> RelationDef {
-                    super::#junction::Relation::#from.def().rev()
-                }
-            }
-        })
-
-        // #[sea_orm(self_ref, via = "user_follower", from = "User", to = "Follower")]
-        // impl RelatedSelfVia<super::user_follower::Entity> for Entity {
-        //     fn to() -> RelationDef {
-        //         super::user_follower::Relation::Follower.def()
-        //     }
-
-        //     fn via() -> RelationDef {
-        //         super::user_follower::Relation::User.def().rev()
-        //     }
-        // }
-    } else {
-        Ok(quote!())
-    }
-}
-
-fn get_related<'a>(attr: &compound_attr::SeaOrm, ty: &'a str) -> (&'a str, Ident) {
-    let related_entity = extract_compound_entity(ty);
-    let relation_enum = if let Some(relation_enum) = &attr.relation_enum {
-        Ident::new(
-            &relation_enum.value().to_upper_camel_case(),
-            relation_enum.span(),
-        )
-    } else {
-        Ident::new(
-            &infer_relation_name_from_entity(related_entity).to_upper_camel_case(),
-            Span::call_site(),
-        )
-    };
-    (related_entity, relation_enum)
-}
-
-pub(crate) fn infer_relation_name_from_entity(s: &str) -> &str {
-    let s = s.trim_end_matches("::Entity");
-    if let Some((_, suffix)) = s.rsplit_once("::") {
-        return suffix;
-    }
-    s
-}
-
-fn expand_find_by_unique_key(
-    unique_keys: BTreeMap<Ident, Vec<(Ident, Type)>>,
-) -> (TokenStream, TokenStream) {
     let mut entity_find_by_key = TokenStream::new();
     let mut loader_filter_by_key = TokenStream::new();
 
@@ -756,7 +1429,7 @@ fn expand_find_by_unique_key(
                 .enumerate()
                 .map(|(i, (col, _))| {
                     let i = syn::Index::from(i);
-                    let col = to_upper_camel_case(col);
+                    let col = Ident::new(&col.to_string().to_upper_camel_case(), col.span());
                     quote!(Column::#col.eq(v.#i))
                 })
                 .collect::<Vec<_>>();
@@ -782,7 +1455,8 @@ fn expand_find_by_unique_key(
                 }
             });
         } else {
-            let col = to_upper_camel_case(&columns[0].0);
+            let col = &columns[0].0;
+            let col = Ident::new(&col.to_string().to_upper_camel_case(), col.span());
             let key_type = &columns[0].1;
             entity_find_by_key.extend(quote! {
                 #[doc = " Generated by sea-orm-macros"]
@@ -807,65 +1481,4 @@ fn expand_find_by_unique_key(
     }
 
     (entity_find_by_key, loader_filter_by_key)
-}
-
-fn format_tuple(prefix: &str, middle: &str, suffix: &str) -> String {
-    use std::fmt::Write;
-
-    let parts = if suffix.starts_with('(') && suffix.ends_with(')') {
-        suffix[1..suffix.len() - 1]
-            .split(',')
-            .map(|s| s.trim())
-            .collect()
-    } else {
-        vec![suffix]
-    };
-
-    let mut output = String::new();
-    if parts.len() > 1 {
-        output.write_char('(').unwrap();
-    }
-    for (i, suffix) in parts.iter().enumerate() {
-        let mut part = String::new();
-        part.write_str(prefix).unwrap();
-        if !part.is_empty() {
-            part.write_str("::").unwrap();
-        }
-        part.write_str(middle).unwrap();
-        part.write_str("::").unwrap();
-        part.write_str(&suffix.to_upper_camel_case()).unwrap();
-
-        if i > 0 {
-            output.write_str(", ").unwrap();
-        }
-        output.write_str(&part).unwrap();
-    }
-    if parts.len() > 1 {
-        output.write_char(')').unwrap();
-    }
-
-    output
-}
-
-fn to_upper_camel_case(i: &Ident) -> Ident {
-    Ident::new(&i.to_string().to_upper_camel_case(), Span::call_site())
-}
-
-#[cfg(test)]
-mod test {
-    use super::format_tuple;
-
-    #[test]
-    fn test_format_tuple() {
-        assert_eq!(format_tuple("", "Column", "Id"), "Column::Id");
-        assert_eq!(format_tuple("super", "Column", "Id"), "super::Column::Id");
-        assert_eq!(
-            format_tuple("", "Column", "(A, B)"),
-            "(Column::A, Column::B)"
-        );
-        assert_eq!(
-            format_tuple("super", "Column", "(A, B)"),
-            "(super::Column::A, super::Column::B)"
-        );
-    }
 }

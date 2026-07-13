@@ -1,4 +1,4 @@
-use sea_orm::prelude::{HasMany, HasOne};
+use sea_orm::prelude::{BelongsTo, HasMany};
 
 mod cake {
     use sea_orm::prelude::*;
@@ -35,7 +35,7 @@ mod fruit {
         pub id: i32,
         pub cake_id: Option<i32>,
         #[sea_orm(belongs_to, from = "cake_id", to = "id")]
-        pub cake: HasOne<super::cake::Entity>,
+        pub cake: BelongsTo<super::cake::Entity>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -67,7 +67,7 @@ fn main() -> Result<(), serde_json::Error> {
         serde_json::to_string(&fruit::ModelEx {
             id: 2,
             cake_id: Some(1),
-            cake: HasOne::Unloaded,
+            cake: BelongsTo::Unloaded,
         })?,
         "{\"Id\":2,\"CakeId\":1,\"Cake\":null}"
     );
