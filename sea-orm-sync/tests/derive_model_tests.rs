@@ -1,4 +1,4 @@
-use sea_orm::prelude::{HasMany, HasOne};
+use sea_orm::prelude::{BelongsTo, HasMany};
 
 mod cake {
     use sea_orm::prelude::*;

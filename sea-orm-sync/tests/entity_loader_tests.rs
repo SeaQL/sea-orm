@@ -111,7 +111,7 @@ fn cake_entity_loader() -> Result<(), DbErr> {
             .unwrap(),
         {
             let mut cake_2 = cake_2.clone().into_ex();
-            cake_2.bakery = HasOne::loaded(Some(bakery_1.clone()));
+            cake_2.bakery = BelongsTo::loaded(Some(bakery_1.clone()));
             cake_2
         }
     );

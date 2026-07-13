@@ -86,10 +86,10 @@ impl fmt::Display for Statement {
                         inject_parameters(&self.sql, &values.0, &SqliteQueryBuilder)
                     }
                 };
-                write!(f, "{}", &string)
+                write!(f, "{string}")
             }
             None => {
-                write!(f, "{}", &self.sql)
+                write!(f, "{}", self.sql)
             }
         }
     }

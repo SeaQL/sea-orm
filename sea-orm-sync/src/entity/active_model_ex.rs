@@ -9,7 +9,7 @@ use core::ops::{Index, IndexMut};
 ///
 /// Unstable: nested-`ActiveModel` relation mutation is exempt from semver — the
 /// semantics of setting or removing related records may change in a minor (2.x) release.
-#[derive_where::derive_where(Debug, Clone; <T as BelongsToCardinality>::Set)]
+#[derive_where::derive_where(Debug, Clone, PartialEq, Eq; <T as BelongsToCardinality>::Set)]
 #[derive(Default)]
 pub enum ActiveBelongsTo<T>
 where
@@ -27,7 +27,8 @@ where
 ///
 /// Unstable: nested-`ActiveModel` relation mutation is exempt from semver — the
 /// semantics of setting or removing related records may change in a minor (2.x) release.
-#[derive(Debug, Default, Clone)]
+#[derive_where::derive_where(Debug, Clone, PartialEq, Eq; E::ActiveModelEx)]
+#[derive(Default)]
 pub enum ActiveHasOne<E>
 where
     E: EntityTrait,
@@ -45,7 +46,8 @@ where
 ///
 /// Unstable: nested-`ActiveModel` relation mutation is exempt from semver — the
 /// semantics of replacing or removing related records may change in a minor (2.x) release.
-#[derive(Debug, Default, Clone)]
+#[derive_where::derive_where(Debug, Clone, PartialEq, Eq; E::ActiveModelEx)]
+#[derive(Default)]
 #[non_exhaustive]
 pub enum ActiveHasMany<E: EntityTrait> {
     /// Field is absent; existing related models are left as-is on save.
@@ -202,20 +204,6 @@ where
     }
 }
 
-impl<T> PartialEq for ActiveBelongsTo<T>
-where
-    T: BelongsToCardinality,
-    <T as BelongsToCardinality>::Set: PartialEq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::NotSet, Self::NotSet) => true,
-            (Self::Set(a), Self::Set(b)) => a == b,
-            _ => false,
-        }
-    }
-}
-
 impl<E> PartialEq<Option<E::ActiveModelEx>> for ActiveBelongsTo<Option<E>>
 where
     E: EntityTrait,
@@ -229,13 +217,6 @@ where
             _ => false,
         }
     }
-}
-
-impl<T> Eq for ActiveBelongsTo<T>
-where
-    T: BelongsToCardinality,
-    <T as BelongsToCardinality>::Set: Eq,
-{
 }
 
 impl<E> ActiveHasOne<E>
@@ -304,20 +285,6 @@ where
     }
 }
 
-impl<E> PartialEq for ActiveHasOne<E>
-where
-    E: EntityTrait,
-    E::ActiveModelEx: PartialEq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::NotSet, Self::NotSet) => true,
-            (Self::Set(a), Self::Set(b)) => a == b,
-            _ => false,
-        }
-    }
-}
-
 impl<E> PartialEq<Option<E::ActiveModelEx>> for ActiveHasOne<E>
 where
     E: EntityTrait,
@@ -331,13 +298,6 @@ where
             _ => false,
         }
     }
-}
-
-impl<E> Eq for ActiveHasOne<E>
-where
-    E: EntityTrait,
-    E::ActiveModelEx: Eq,
-{
 }
 
 impl<E> ActiveHasMany<E>
@@ -480,28 +440,6 @@ where
             Self::NotSet => HasMany::Unloaded,
         })
     }
-}
-
-impl<E> PartialEq for ActiveHasMany<E>
-where
-    E: EntityTrait,
-    E::ActiveModelEx: PartialEq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (ActiveHasMany::NotSet, ActiveHasMany::NotSet) => true,
-            (ActiveHasMany::Replace(a), ActiveHasMany::Replace(b)) => a == b,
-            (ActiveHasMany::Append(a), ActiveHasMany::Append(b)) => a == b,
-            _ => false,
-        }
-    }
-}
-
-impl<E> Eq for ActiveHasMany<E>
-where
-    E: EntityTrait,
-    E::ActiveModelEx: Eq,
-{
 }
 
 impl<E: EntityTrait> From<ActiveHasMany<E>> for Option<Vec<E::ActiveModelEx>> {
