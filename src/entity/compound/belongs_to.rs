@@ -243,54 +243,6 @@ impl<E: EntityTrait> From<Option<Box<E::ModelEx>>> for BelongsTo<Option<E>> {
     }
 }
 
-impl<E> PartialEq<Option<Box<E::ModelEx>>> for BelongsTo<E>
-where
-    E: EntityTrait,
-    E::ModelEx: PartialEq,
-{
-    fn eq(&self, other: &Option<Box<E::ModelEx>>) -> bool {
-        match (self, other) {
-            (Self::Loaded(a), Some(b)) => a.as_ref() == b.as_ref(),
-            (Self::Unloaded, None) => true,
-            _ => false,
-        }
-    }
-}
-
-impl<E> PartialEq<Option<Box<E::ModelEx>>> for BelongsTo<Option<E>>
-where
-    E: EntityTrait,
-    E::ModelEx: PartialEq,
-{
-    fn eq(&self, other: &Option<Box<E::ModelEx>>) -> bool {
-        match (self, other) {
-            (Self::Loaded(a), b) => a == b,
-            (Self::Unloaded, None) => true,
-            _ => false,
-        }
-    }
-}
-
-impl<E> PartialEq<BelongsTo<E>> for Option<Box<E::ModelEx>>
-where
-    E: EntityTrait,
-    E::ModelEx: PartialEq,
-{
-    fn eq(&self, other: &BelongsTo<E>) -> bool {
-        other == self
-    }
-}
-
-impl<E> PartialEq<BelongsTo<Option<E>>> for Option<Box<E::ModelEx>>
-where
-    E: EntityTrait,
-    E::ModelEx: PartialEq,
-{
-    fn eq(&self, other: &BelongsTo<Option<E>>) -> bool {
-        other == self
-    }
-}
-
 #[cfg(feature = "with-json")]
 impl<T> serde::Serialize for BelongsTo<T>
 where

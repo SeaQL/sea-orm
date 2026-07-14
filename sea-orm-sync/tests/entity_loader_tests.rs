@@ -77,7 +77,7 @@ fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[0].bakery.as_ref().unwrap(), &bakery_1);
     assert_eq!(cakes[1].bakery.as_ref().unwrap(), &bakery_1);
     assert_eq!(cakes[2].bakery.as_ref().unwrap(), &bakery_2);
-    assert_eq!(cakes[3].bakery, None);
+    assert!(cakes[3].bakery.is_not_found());
 
     // low-level API
     assert_eq!(
@@ -129,7 +129,7 @@ fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[0].bakery.as_ref().unwrap(), &bakery_1);
     assert_eq!(cakes[1].bakery.as_ref().unwrap(), &bakery_1);
     assert_eq!(cakes[2].bakery.as_ref().unwrap(), &bakery_2);
-    assert_eq!(cakes[3].bakery, None);
+    assert!(cakes[3].bakery.is_not_found());
     assert_eq!(cakes[0].bakers, [baker_1.clone()]);
     assert_eq!(cakes[1].bakers, [baker_1.clone(), baker_2.clone()]);
     assert_eq!(cakes[2].bakers, [baker_2.clone()]);
@@ -194,7 +194,7 @@ fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[0].bakery.as_ref().unwrap().name, bakery_1.name);
     assert_eq!(cakes[1].bakery.as_ref().unwrap().name, bakery_1.name);
     assert_eq!(cakes[2].bakery.as_ref().unwrap().name, bakery_2.name);
-    assert_eq!(cakes[3].bakery, None);
+    assert!(cakes[3].bakery.is_not_found());
     assert_eq!(
         cakes[0].bakery.as_ref().unwrap().bakers,
         [baker_1.clone(), baker_2.clone()]
