@@ -148,6 +148,12 @@ where
         matches!(self, Self::Loaded(None))
     }
 
+    /// Return true if this optional relation holds no model — i.e. it is either
+    /// `Unloaded` or was loaded with no match (`is_not_found`).
+    pub fn is_unloaded_or_not_found(&self) -> bool {
+        matches!(self, Self::Unloaded | Self::Loaded(None))
+    }
+
     /// Get a reference, if loaded with a model
     pub fn as_ref(&self) -> Option<&E::ModelEx> {
         match self {
@@ -240,54 +246,6 @@ impl<E: EntityTrait> From<Option<Box<E::ModelEx>>> for BelongsTo<E> {
 impl<E: EntityTrait> From<Option<Box<E::ModelEx>>> for BelongsTo<Option<E>> {
     fn from(value: Option<Box<E::ModelEx>>) -> Self {
         Self::Loaded(value)
-    }
-}
-
-impl<E> PartialEq<Option<Box<E::ModelEx>>> for BelongsTo<E>
-where
-    E: EntityTrait,
-    E::ModelEx: PartialEq,
-{
-    fn eq(&self, other: &Option<Box<E::ModelEx>>) -> bool {
-        match (self, other) {
-            (Self::Loaded(a), Some(b)) => a.as_ref() == b.as_ref(),
-            (Self::Unloaded, None) => true,
-            _ => false,
-        }
-    }
-}
-
-impl<E> PartialEq<Option<Box<E::ModelEx>>> for BelongsTo<Option<E>>
-where
-    E: EntityTrait,
-    E::ModelEx: PartialEq,
-{
-    fn eq(&self, other: &Option<Box<E::ModelEx>>) -> bool {
-        match (self, other) {
-            (Self::Loaded(a), b) => a == b,
-            (Self::Unloaded, None) => true,
-            _ => false,
-        }
-    }
-}
-
-impl<E> PartialEq<BelongsTo<E>> for Option<Box<E::ModelEx>>
-where
-    E: EntityTrait,
-    E::ModelEx: PartialEq,
-{
-    fn eq(&self, other: &BelongsTo<E>) -> bool {
-        other == self
-    }
-}
-
-impl<E> PartialEq<BelongsTo<Option<E>>> for Option<Box<E::ModelEx>>
-where
-    E: EntityTrait,
-    E::ModelEx: PartialEq,
-{
-    fn eq(&self, other: &BelongsTo<Option<E>>) -> bool {
-        other == self
     }
 }
 

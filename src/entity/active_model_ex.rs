@@ -204,21 +204,6 @@ where
     }
 }
 
-impl<E> PartialEq<Option<E::ActiveModelEx>> for ActiveBelongsTo<Option<E>>
-where
-    E: EntityTrait,
-    E::ActiveModelEx: PartialEq,
-{
-    fn eq(&self, other: &Option<E::ActiveModelEx>) -> bool {
-        match (self, other) {
-            (Self::NotSet, None) => true,
-            (Self::Set(Some(a)), Some(b)) => a.as_ref() == b,
-            (Self::Set(None), None) => true,
-            _ => false,
-        }
-    }
-}
-
 impl<E> ActiveHasOne<E>
 where
     E: EntityTrait,
@@ -282,21 +267,6 @@ where
             Self::Set(None) => HasOne::Loaded(None),
             Self::NotSet => HasOne::Unloaded,
         })
-    }
-}
-
-impl<E> PartialEq<Option<E::ActiveModelEx>> for ActiveHasOne<E>
-where
-    E: EntityTrait,
-    E::ActiveModelEx: PartialEq,
-{
-    fn eq(&self, other: &Option<E::ActiveModelEx>) -> bool {
-        match (self, other) {
-            (Self::NotSet, None) => true,
-            (Self::Set(Some(a)), Some(b)) => a.as_ref() == b,
-            (Self::Set(None), None) => true,
-            _ => false,
-        }
     }
 }
 

@@ -9,7 +9,7 @@ pub struct Model {
     pub uuid_ref: Option<Uuid>,
     pub time: Option<Time>,
     #[sea_orm(self_ref, relation_enum = "SelfRef", from = "uuid_ref", to = "uuid")]
-    pub other: BelongsTo<Entity>,
+    pub other: BelongsTo<Option<Entity>>,
 }
 
 pub struct SelfReferencingLink;

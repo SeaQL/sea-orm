@@ -108,30 +108,6 @@ impl<E: EntityTrait> From<Option<Box<E::ModelEx>>> for HasOne<E> {
     }
 }
 
-impl<E> PartialEq<Option<Box<E::ModelEx>>> for HasOne<E>
-where
-    E: EntityTrait,
-    E::ModelEx: PartialEq,
-{
-    fn eq(&self, other: &Option<Box<E::ModelEx>>) -> bool {
-        match (self, other) {
-            (Self::Loaded(a), b) => a == b,
-            (Self::Unloaded, None) => true,
-            _ => false,
-        }
-    }
-}
-
-impl<E> PartialEq<HasOne<E>> for Option<Box<E::ModelEx>>
-where
-    E: EntityTrait,
-    E::ModelEx: PartialEq,
-{
-    fn eq(&self, other: &HasOne<E>) -> bool {
-        other == self
-    }
-}
-
 #[cfg(feature = "with-json")]
 impl<E> serde::Serialize for HasOne<E>
 where

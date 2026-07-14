@@ -4,7 +4,10 @@ use super::attributes::compound_attr;
 use super::entity_loader::{
     EntityLoaderField, EntityLoaderFieldKind, EntityLoaderSchema, expand_entity_loader,
 };
-use super::util::{CardinalityKind, CompoundKind, CompoundType, combine_error, is_self_entity};
+use super::util::{
+    CardinalityKind, CompoundKind, CompoundType, Junction, RelationColumns, combine_error,
+    is_self_entity,
+};
 use super::{expand_typed_column, model::DeriveModel};
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
@@ -203,6 +206,7 @@ struct ModelExField<'a> {
     kind: ModelExFieldKind<'a>,
 }
 
+#[expect(clippy::large_enum_variant)]
 enum ModelExFieldKind<'a> {
     Scalar(ScalarField<'a>),
     Compound(CompoundField),
@@ -306,63 +310,138 @@ struct ModelExRelationOutput {
 
 impl ModelExRelationOutput {
     fn from_schema(schema: &ModelExSchema<'_>) -> Self {
-        let fields = schema
+        let entity_count = schema
             .fields
             .iter()
             .filter_map(|field| {
-                let ModelExFieldKind::Compound(compound) = &field.kind else {
-                    return None;
-                };
-                if matches!(
-                    &compound.kind,
-                    CompoundFieldKind::BelongsTo(Some(_))
-                        | CompoundFieldKind::HasOne(Some(_))
-                        | CompoundFieldKind::HasMany(Some(_))
-                ) {
-                    Some(compound)
+                if let ModelExFieldKind::Compound(compound) = &field.kind
+                    && compound.relation.is_some()
+                {
+                    Some(&compound.compound_type.entity)
                 } else {
                     None
                 }
             })
-            .collect::<Vec<_>>();
-        let mut entity_count = HashMap::<&TypePath, usize>::new();
-        for field in &fields {
-            *entity_count.entry(&field.entity).or_default() += 1;
-        }
+            .fold(
+                HashMap::<&TypePath, usize>::new(),
+                |mut entity_count, entity| {
+                    *entity_count.entry(entity).or_default() += 1;
+                    entity_count
+                },
+            );
 
         let mut output = Self::default();
-        for field in fields {
-            let is_unique_entity = entity_count
-                .get(&field.entity)
-                .is_some_and(|count| *count == 1);
-            match &field.kind {
-                CompoundFieldKind::BelongsTo(Some(attr)) => {
-                    expand_belongs_to_into(&mut output, &field.entity, attr, is_unique_entity);
+        for (field, relation) in schema.fields.iter().filter_map(|field| {
+            if let ModelExFieldKind::Compound(compound) = &field.kind
+                && let Some(relation) = &compound.relation
+            {
+                Some((compound, relation))
+            } else {
+                None
+            }
+        }) {
+            let entity = &field.compound_type.entity;
+            let is_unique_entity = entity_count.get(entity).is_some_and(|count| *count == 1);
+            match relation {
+                RelationAttr::BelongsTo(attr) => {
+                    expand_belongs_to_into(&mut output, entity, attr, is_unique_entity);
                 }
-                CompoundFieldKind::HasOne(Some(attr)) => {
-                    expand_has_one_into(&mut output, &field.entity, attr, is_unique_entity);
+                RelationAttr::HasOne(attr) => {
+                    expand_has_one_into(&mut output, entity, attr, is_unique_entity);
                 }
-                CompoundFieldKind::HasMany(Some(attr)) => {
-                    expand_has_many_into(&mut output, &field.entity, attr, is_unique_entity);
+                RelationAttr::HasMany(attr) => {
+                    expand_has_many_into(&mut output, entity, attr, is_unique_entity);
                 }
-                CompoundFieldKind::BelongsTo(None)
-                | CompoundFieldKind::HasOne(None)
-                | CompoundFieldKind::HasMany(None) => {}
             }
         }
         output
     }
 }
 
-enum CompoundFieldKind {
-    BelongsTo(Option<BelongsToAttr>),
-    HasOne(Option<HasOneAttr>),
-    HasMany(Option<HasManyAttr>),
+enum RelationAttr {
+    BelongsTo(BelongsToAttr),
+    HasOne(HasOneAttr),
+    HasMany(HasManyAttr),
+}
+
+impl RelationAttr {
+    fn from_attr(
+        attrs: compound_attr::SeaOrm,
+        field: &Field,
+        compound_type: &CompoundType,
+    ) -> syn::Result<Self> {
+        match &attrs {
+            compound_attr::SeaOrm {
+                belongs_to: Some(_),
+                ..
+            }
+            | compound_attr::SeaOrm {
+                self_ref: Some(_),
+                via: None,
+                from: Some(_),
+                to: Some(_),
+                ..
+            } => {
+                let attr = BelongsToAttr::from_attr(attrs, field)?;
+                if !matches!(
+                    compound_type.kind,
+                    CompoundKind::BelongsTo(_) | CompoundKind::HasOne
+                ) {
+                    return Err(syn::Error::new_spanned(
+                        &field.ty,
+                        "belongs_to must be paired with BelongsTo or HasOne",
+                    ));
+                }
+                Ok(Self::BelongsTo(attr))
+            }
+            compound_attr::SeaOrm {
+                has_one: Some(_), ..
+            } => {
+                let attr = HasOneAttr::from_attr(attrs, field)?;
+                if compound_type.kind != CompoundKind::HasOne {
+                    return Err(syn::Error::new_spanned(
+                        &field.ty,
+                        "has_one must be paired with HasOne",
+                    ));
+                }
+                Ok(Self::HasOne(attr))
+            }
+            compound_attr::SeaOrm {
+                has_many: Some(_), ..
+            }
+            | compound_attr::SeaOrm {
+                self_ref: Some(_),
+                via: Some(_),
+                ..
+            } => {
+                let attr =
+                    HasManyAttr::from_attr(attrs, field, is_self_entity(&compound_type.entity))?;
+                if compound_type.kind != CompoundKind::HasMany {
+                    return Err(syn::Error::new_spanned(
+                        &field.ty,
+                        "has_many must be paired with HasMany",
+                    ));
+                }
+                Ok(Self::HasMany(attr))
+            }
+            _ => match compound_type.kind {
+                CompoundKind::BelongsTo(_) => {
+                    Ok(Self::BelongsTo(BelongsToAttr::from_attr(attrs, field)?))
+                }
+                CompoundKind::HasOne => Ok(Self::HasOne(HasOneAttr::from_attr(attrs, field)?)),
+                CompoundKind::HasMany => Ok(Self::HasMany(HasManyAttr::from_attr(
+                    attrs,
+                    field,
+                    is_self_entity(&compound_type.entity),
+                )?)),
+            },
+        }
+    }
 }
 
 struct CompoundField {
-    entity: TypePath,
-    kind: CompoundFieldKind,
+    compound_type: CompoundType,
+    relation: Option<RelationAttr>,
 }
 
 impl CompoundField {
@@ -379,108 +458,89 @@ impl CompoundField {
             ));
         }
 
-        let is_self_entity = is_self_entity(&compound.entity);
-        // A `belongs_to` relation may keep the legacy `HasOne<E>` field type instead of
-        // opting into `BelongsTo<E>`. Detect that so it is routed through the belongs_to
-        // codegen (emitting a `belongs_to` relation); only the wrapper type differs.
-        // `BelongsTo` remains the recommended type.
-        let declares_belongs_to = attrs.as_ref().is_some_and(|attrs| {
-            attrs.belongs_to.is_some()
-                || (attrs.self_ref.is_some()
-                    && attrs.via.is_none()
-                    && attrs.from.is_some()
-                    && attrs.to.is_some())
-        });
-        let kind = match compound.kind {
-            CompoundKind::BelongsTo(_) => CompoundFieldKind::BelongsTo(
-                attrs
-                    .map(|attrs| BelongsToAttr::from_attr(attrs, field))
-                    .transpose()?,
-            ),
-            CompoundKind::HasOne if declares_belongs_to => CompoundFieldKind::BelongsTo(
-                attrs
-                    .map(|attrs| BelongsToAttr::from_attr(attrs, field))
-                    .transpose()?,
-            ),
-            CompoundKind::HasOne => CompoundFieldKind::HasOne(
-                attrs
-                    .map(|attrs| HasOneAttr::from_attr(attrs, field))
-                    .transpose()?,
-            ),
-            CompoundKind::HasMany => CompoundFieldKind::HasMany(
-                attrs
-                    .map(|attrs| HasManyAttr::from_attr(attrs, field, is_self_entity))
-                    .transpose()?,
-            ),
-        };
+        let relation = attrs
+            .map(|attrs| RelationAttr::from_attr(attrs, field, &compound))
+            .transpose()?;
         Ok(Self {
-            entity: compound.entity,
-            kind,
+            compound_type: compound,
+            relation,
         })
     }
 }
 
 fn entity_loader_field(field: &Ident, compound: &CompoundField) -> EntityLoaderField {
-    let self_entity = is_self_entity(&compound.entity);
-    let (relation_enum, kind) = match &compound.kind {
-        CompoundFieldKind::BelongsTo(attr) => (
-            attr.as_ref()
-                .and_then(|attr| attr.relation_variants.explicit_name())
-                .cloned(),
+    let entity = &compound.compound_type.entity;
+    let self_entity = is_self_entity(entity);
+    let (relation_enum, kind) = match &compound.relation {
+        Some(RelationAttr::BelongsTo(attr)) => (
+            attr.relation_variants.explicit_name().cloned(),
             if self_entity {
-                EntityLoaderFieldKind::SelfHasOne
+                EntityLoaderFieldKind::HasOneSelf
             } else {
                 EntityLoaderFieldKind::HasOne
             },
         ),
-        CompoundFieldKind::HasOne(attr) => (
-            attr.as_ref()
-                .and_then(|attr| attr.relation_variants.explicit_name())
-                .cloned(),
+        Some(RelationAttr::HasOne(attr)) => (
+            attr.relation_variants.explicit_name().cloned(),
             if self_entity {
-                EntityLoaderFieldKind::SelfHasOne
+                EntityLoaderFieldKind::HasOneSelf
             } else {
                 EntityLoaderFieldKind::HasOne
             },
         ),
-        CompoundFieldKind::HasMany(attr) => {
-            let (relation_enum, via, reverse) = match attr {
-                None => (None, None, false),
-                Some(HasManyAttr::Standard {
+        Some(RelationAttr::HasMany(attr)) => {
+            let (relation_enum, junction_module, reverse) = match attr {
+                HasManyAttr::Standard {
                     relation_variants,
                     via,
                     reverse,
                     ..
-                }) => (
+                } => (
                     relation_variants.explicit_name().cloned(),
-                    via.clone(),
+                    via.as_ref().map(|junction| junction.module.clone()),
                     *reverse,
                 ),
-                Some(HasManyAttr::SelfVia {
+                HasManyAttr::ManyToManySelf {
                     relation_enum,
-                    via,
+                    junction_module,
                     direction,
-                }) => (
+                } => (
                     relation_enum.clone(),
-                    Some(via.clone()),
-                    matches!(direction, SelfViaDirection::Reverse),
+                    Some(junction_module.clone()),
+                    matches!(direction, ManyToManySelfDirection::Reverse),
                 ),
             };
             let kind = if self_entity {
-                if let Some(via) = via {
-                    EntityLoaderFieldKind::SelfHasManyVia { via, reverse }
+                if let Some(junction_module) = junction_module {
+                    EntityLoaderFieldKind::ManyToManySelf {
+                        junction_module,
+                        reverse,
+                    }
                 } else {
-                    EntityLoaderFieldKind::SelfHasMany
+                    EntityLoaderFieldKind::HasManySelf
                 }
+            } else if junction_module.is_some() {
+                EntityLoaderFieldKind::ManyToMany
             } else {
-                EntityLoaderFieldKind::HasMany { via }
+                EntityLoaderFieldKind::HasMany
             };
             (relation_enum, kind)
         }
+        None => (
+            None,
+            match compound.compound_type.kind {
+                CompoundKind::BelongsTo(_) | CompoundKind::HasOne if self_entity => {
+                    EntityLoaderFieldKind::HasOneSelf
+                }
+                CompoundKind::BelongsTo(_) | CompoundKind::HasOne => EntityLoaderFieldKind::HasOne,
+                CompoundKind::HasMany if self_entity => EntityLoaderFieldKind::HasManySelf,
+                CompoundKind::HasMany => EntityLoaderFieldKind::HasMany,
+            },
+        ),
     };
     EntityLoaderField {
         field: field.clone(),
-        entity: compound.entity.clone(),
+        entity: entity.clone(),
         relation_enum,
         kind,
     }
@@ -553,23 +613,15 @@ fn expand_related_trait(entity: &TypePath, relation_variants: &RelationVariants)
 fn expand_related_via_trait(
     entity: &TypePath,
     relation_variants: &RelationVariants,
-    via: &LitStr,
+    junction: &Junction,
 ) -> TokenStream {
     let relation_enum = relation_variants.forward_ident(entity);
-    let value = via.value();
-    let mut junction = value.as_str();
-    let mut via_related = "";
-    if let Some((prefix, suffix)) = value.split_once("::") {
-        junction = prefix;
-        via_related = suffix;
-    }
-    let junction = Ident::new(junction, via.span());
-    let relation_def = quote!(super::#junction::Relation::#relation_enum.def());
-    let via_relation_def = if via_related.is_empty() {
-        quote!(<super::#junction::Entity as Related<Entity>>::to().rev())
+    let module = &junction.module;
+    let relation_def = quote!(super::#module::Relation::#relation_enum.def());
+    let via_relation_def = if let Some(relation) = &junction.relation {
+        quote!(super::#module::Relation::#relation.def().rev())
     } else {
-        let via_related = Ident::new(via_related, via.span());
-        quote!(super::#junction::Relation::#via_related.def().rev())
+        quote!(<super::#module::Entity as Related<Entity>>::to().rev())
     };
     quote! {
         #[doc = " Generated by sea-orm-macros"]
@@ -588,7 +640,7 @@ fn expand_related_into(
     output: &mut ModelExRelationOutput,
     entity: &TypePath,
     relation_variants: &RelationVariants,
-    via: Option<&LitStr>,
+    via: Option<&Junction>,
     impl_related: bool,
 ) {
     expand_related_entity_variants_into(entity, relation_variants, output);
@@ -601,44 +653,9 @@ fn expand_related_into(
     }
 }
 
-struct RelationColumns(Vec<Ident>);
-
-impl RelationColumns {
-    fn from_lit(lit: LitStr) -> syn::Result<Self> {
-        let paths = if lit.value().starts_with('(') {
-            lit.parse_with(|input: syn::parse::ParseStream<'_>| {
-                let content;
-                syn::parenthesized!(content in input);
-                content.parse_terminated(syn::Path::parse_mod_style, Comma)
-            })?
-        } else {
-            let mut paths = Punctuated::new();
-            paths.push(lit.parse()?);
-            paths
-        };
-        if paths.is_empty() {
-            return Err(syn::Error::new(lit.span(), "expected at least one column"));
-        }
-
-        paths
-            .into_iter()
-            .map(|path| {
-                let Some(segment) = path.segments.last() else {
-                    return Err(syn::Error::new_spanned(path, "expected column path"));
-                };
-                Ok(Ident::new(
-                    &segment.ident.to_string().to_upper_camel_case(),
-                    segment.ident.span(),
-                ))
-            })
-            .collect::<syn::Result<Vec<_>>>()
-            .map(Self)
-    }
-}
-
 struct BelongsToRelationAttr {
     declared: bool,
-    via: Option<LitStr>,
+    via: Option<Junction>,
     from: RelationColumns,
     to: RelationColumns,
     on_update: Option<LitStr>,
@@ -745,6 +762,13 @@ impl BelongsToAttr {
                 None
             }
         };
+        let via = match via.map(|via| Junction::from_lit(&via)).transpose() {
+            Ok(via) => via,
+            Err(err) => {
+                combine_error(&mut error, err);
+                None
+            }
+        };
 
         if let Some(err) = error {
             return Err(err);
@@ -802,7 +826,7 @@ fn expand_belongs_to_into(
         let belongs_to = Ident::new("belongs_to", Span::call_site());
         let format_columns = |columns: &RelationColumns, prefix: &str| {
             let columns = columns
-                .0
+                .columns
                 .iter()
                 .map(|column| {
                     if prefix.is_empty() {
@@ -867,7 +891,7 @@ struct HasOneAttr {
     relation_variants: RelationVariants,
     /// Whether `#[sea_orm(has_one)]` is present.
     has_one: bool,
-    via: Option<LitStr>,
+    via: Option<Junction>,
     via_rel: Option<LitStr>,
 }
 
@@ -932,6 +956,13 @@ impl HasOneAttr {
                 ),
             );
         }
+        let via = match via.map(|via| Junction::from_lit(&via)).transpose() {
+            Ok(via) => via,
+            Err(err) => {
+                combine_error(&mut error, err);
+                None
+            }
+        };
 
         if let Some(err) = error {
             return Err(err);
@@ -990,18 +1021,18 @@ enum HasManyAttr {
     Standard {
         relation_variants: RelationVariants,
         has_many: bool,
-        via: Option<LitStr>,
+        via: Option<Junction>,
         via_rel: Option<LitStr>,
         reverse: bool,
     },
-    SelfVia {
+    ManyToManySelf {
         relation_enum: Option<LitStr>,
-        via: LitStr,
-        direction: SelfViaDirection,
+        junction_module: Ident,
+        direction: ManyToManySelfDirection,
     },
 }
 
-enum SelfViaDirection {
+enum ManyToManySelfDirection {
     Forward { from: LitStr, to: LitStr },
     Reverse,
     Manual,
@@ -1043,7 +1074,14 @@ impl HasManyAttr {
                 syn::Error::new_spanned(&field.ty, "has_one must be paired with HasOne"),
             );
         }
-        if is_self_ref && let Some(via) = via {
+        let junction = match via.as_ref().map(Junction::from_lit).transpose() {
+            Ok(junction) => junction,
+            Err(err) => {
+                combine_error(&mut error, err);
+                None
+            }
+        };
+        if is_self_ref && let Some(via) = &via {
             if !is_self_entity {
                 combine_error(
                     &mut error,
@@ -1054,20 +1092,29 @@ impl HasManyAttr {
                 );
             }
 
+            if junction
+                .as_ref()
+                .is_some_and(|junction| junction.relation.is_some())
+            {
+                combine_error(
+                    &mut error,
+                    syn::Error::new(via.span(), "`self_ref` via must name a junction entity"),
+                );
+            }
             if let Some(err) = error {
                 return Err(err);
             }
 
             let direction = if reverse.is_some() {
-                SelfViaDirection::Reverse
+                ManyToManySelfDirection::Reverse
             } else if let (Some(from), Some(to)) = (from, to) {
-                SelfViaDirection::Forward { from, to }
+                ManyToManySelfDirection::Forward { from, to }
             } else {
-                SelfViaDirection::Manual
+                ManyToManySelfDirection::Manual
             };
-            return Ok(Self::SelfVia {
+            return Ok(Self::ManyToManySelf {
                 relation_enum,
-                via,
+                junction_module: junction.expect("validated junction").module,
                 direction,
             });
         }
@@ -1097,7 +1144,7 @@ impl HasManyAttr {
         Ok(Self::Standard {
             relation_variants,
             has_many: has_many.is_some(),
-            via,
+            via: junction,
             via_rel,
             reverse: has_many.is_none() && reverse.is_some(),
         })
@@ -1118,10 +1165,17 @@ fn expand_has_many_into(
             via_rel,
             ..
         } => (relation_variants, *has_many, via, via_rel),
-        HasManyAttr::SelfVia { via, direction, .. } => {
+        HasManyAttr::ManyToManySelf {
+            junction_module,
+            direction,
+            ..
+        } => {
             output
                 .impl_related_trait
-                .extend(expand_impl_related_self_via(via, direction));
+                .extend(expand_impl_related_many_to_many_self(
+                    junction_module,
+                    direction,
+                ));
             return;
         }
     };
@@ -1349,21 +1403,23 @@ pub fn expand_derive_model_ex(
     })
 }
 
-fn expand_impl_related_self_via(via: &LitStr, direction: &SelfViaDirection) -> TokenStream {
+fn expand_impl_related_many_to_many_self(
+    junction_module: &Ident,
+    direction: &ManyToManySelfDirection,
+) -> TokenStream {
     match direction {
-        SelfViaDirection::Forward { from, to } => {
-            let junction = Ident::new(&via.value(), via.span());
+        ManyToManySelfDirection::Forward { from, to } => {
             let from = Ident::new(&from.value(), from.span());
             let to = Ident::new(&to.value(), to.span());
 
             quote! {
                 #[doc = " Generated by sea-orm-macros"]
-                impl RelatedSelfVia<super::#junction::Entity> for Entity {
+                impl RelatedSelfVia<super::#junction_module::Entity> for Entity {
                     fn to() -> RelationDef {
-                        super::#junction::Relation::#to.def()
+                        super::#junction_module::Relation::#to.def()
                     }
                     fn via() -> RelationDef {
-                        super::#junction::Relation::#from.def().rev()
+                        super::#junction_module::Relation::#from.def().rev()
                     }
                 }
             }
@@ -1379,7 +1435,7 @@ fn expand_impl_related_self_via(via: &LitStr, direction: &SelfViaDirection) -> T
             //     }
             // }
         }
-        SelfViaDirection::Reverse | SelfViaDirection::Manual => quote!(),
+        ManyToManySelfDirection::Reverse | ManyToManySelfDirection::Manual => quote!(),
     }
 }
 

@@ -24,6 +24,40 @@ mod optional_self_ref {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+mod mixed_composite_parent {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "mixed_composite_parent")]
+    pub struct Model {
+        #[sea_orm(primary_key, auto_increment = false)]
+        pub id1: i32,
+        #[sea_orm(primary_key, auto_increment = false)]
+        pub id2: i32,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+mod mixed_composite_child {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "mixed_composite_child")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub parent_id1: i32,
+        pub parent_id2: Option<i32>,
+        #[sea_orm(belongs_to, from = "(parent_id1, parent_id2)", to = "(id1, id2)")]
+        pub parent: BelongsTo<Option<super::mixed_composite_parent::Entity>>,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 #[sea_orm_macros::test]
 async fn test_active_model_ex_blog() -> Result<(), DbErr> {
     use common::blogger::*;
@@ -771,7 +805,7 @@ async fn test_active_model_ex_film_store() -> Result<(), DbErr> {
         .await?;
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
     assert_eq!(staff[0].manages[0].name, "Ben");
     assert_eq!(staff[0].manages[1].name, "Alice");
 
@@ -784,7 +818,7 @@ async fn test_active_model_ex_film_store() -> Result<(), DbErr> {
     assert!(staff[2].manages.is_empty());
 
     assert_eq!(staff[3].name, "Elle");
-    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].reports_to.is_unloaded_or_not_found());
     assert!(staff[3].manages.is_empty());
 
     info!("delete alan, reports_to should be cleared");
@@ -950,7 +984,9 @@ async fn test_clear_belongs_to_clears_unset_fk() -> Result<(), DbErr> {
         bakers: ActiveHasMany::NotSet,
     };
 
-    let cleared = partial_cake(cake.id).clear_bakery().update(db).await?;
+    let active_model: cake::ActiveModel = partial_cake(cake.id).clear_bakery().into();
+    assert_eq!(active_model.bakery_id, Set(None));
+    let cleared = active_model.update(db).await?;
 
     assert!(cleared.bakery_id.is_none());
     let row = cake::Entity::find_by_id(cake.id)
@@ -959,10 +995,11 @@ async fn test_clear_belongs_to_clears_unset_fk() -> Result<(), DbErr> {
         .expect("cake");
     assert!(row.bakery_id.is_none());
 
-    let cleared = partial_cake(cake_with_option.id)
+    let active_model: cake::ActiveModel = partial_cake(cake_with_option.id)
         .set_bakery_option(None::<bakery::ActiveModelEx>)
-        .update(db)
-        .await?;
+        .into();
+    assert_eq!(active_model.bakery_id, Set(None));
+    let cleared = active_model.update(db).await?;
 
     assert!(cleared.bakery_id.is_none());
     let row = cake::Entity::find_by_id(cake_with_option.id)
@@ -1010,6 +1047,46 @@ async fn test_clear_self_ref_belongs_to_clears_unset_fk() -> Result<(), DbErr> {
         .await?
         .expect("child");
     assert!(row.parent_ref.is_none());
+
+    ctx.delete().await;
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+async fn test_clear_mixed_nullable_composite_belongs_to() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_clear_mixed_nullable_composite_belongs_to").await;
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(mixed_composite_parent::Entity)
+        .register(mixed_composite_child::Entity)
+        .apply(db)
+        .await?;
+
+    mixed_composite_parent::ActiveModel::builder()
+        .set_id1(1)
+        .set_id2(2)
+        .insert(db)
+        .await?;
+    let child = mixed_composite_child::ActiveModel::builder()
+        .set_parent_id1(1)
+        .set_parent_id2(Some(2))
+        .insert(db)
+        .await?;
+
+    let cleared = mixed_composite_child::ActiveModelEx {
+        id: Unchanged(child.id),
+        parent_id1: NotSet,
+        parent_id2: NotSet,
+        parent: ActiveBelongsTo::NotSet,
+    }
+    .clear_parent()
+    .update(db)
+    .await?;
+
+    assert_eq!(cleared.parent_id1, 1);
+    assert_eq!(cleared.parent_id2, None);
 
     ctx.delete().await;
 

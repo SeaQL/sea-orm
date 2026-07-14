@@ -77,7 +77,7 @@ fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[0].bakery.as_ref().unwrap(), &bakery_1);
     assert_eq!(cakes[1].bakery.as_ref().unwrap(), &bakery_1);
     assert_eq!(cakes[2].bakery.as_ref().unwrap(), &bakery_2);
-    assert_eq!(cakes[3].bakery, None);
+    assert!(cakes[3].bakery.is_not_found());
 
     // low-level API
     assert_eq!(
@@ -129,7 +129,7 @@ fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[0].bakery.as_ref().unwrap(), &bakery_1);
     assert_eq!(cakes[1].bakery.as_ref().unwrap(), &bakery_1);
     assert_eq!(cakes[2].bakery.as_ref().unwrap(), &bakery_2);
-    assert_eq!(cakes[3].bakery, None);
+    assert!(cakes[3].bakery.is_not_found());
     assert_eq!(cakes[0].bakers, [baker_1.clone()]);
     assert_eq!(cakes[1].bakers, [baker_1.clone(), baker_2.clone()]);
     assert_eq!(cakes[2].bakers, [baker_2.clone()]);
@@ -194,7 +194,7 @@ fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[0].bakery.as_ref().unwrap().name, bakery_1.name);
     assert_eq!(cakes[1].bakery.as_ref().unwrap().name, bakery_1.name);
     assert_eq!(cakes[2].bakery.as_ref().unwrap().name, bakery_2.name);
-    assert_eq!(cakes[3].bakery, None);
+    assert!(cakes[3].bakery.is_not_found());
     assert_eq!(
         cakes[0].bakery.as_ref().unwrap().bakers,
         [baker_1.clone(), baker_2.clone()]
@@ -467,7 +467,7 @@ fn entity_loader_self_join() -> Result<(), DbErr> {
         .all(db)?;
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
 
     assert_eq!(staff[1].name, "Ben");
     assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
@@ -476,7 +476,7 @@ fn entity_loader_self_join() -> Result<(), DbErr> {
     assert_eq!(staff[2].reports_to.as_ref().unwrap().name, "Alan");
 
     assert_eq!(staff[3].name, "Elle");
-    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].reports_to.is_unloaded_or_not_found());
 
     // load belongs_to reverse
 
@@ -505,7 +505,7 @@ fn entity_loader_self_join() -> Result<(), DbErr> {
         .all(db)?;
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
     assert_eq!(staff[0].manages[0].name, "Ben");
     assert_eq!(staff[0].manages[1].name, "Alice");
 
@@ -518,7 +518,7 @@ fn entity_loader_self_join() -> Result<(), DbErr> {
     assert!(staff[2].manages.is_empty());
 
     assert_eq!(staff[3].name, "Elle");
-    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].reports_to.is_unloaded_or_not_found());
     assert!(staff[3].manages.is_empty());
 
     // test self_ref on model without reverse relation (not dual)
@@ -543,7 +543,7 @@ fn entity_loader_self_join() -> Result<(), DbErr> {
         .all(db)?;
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
     assert_eq!(staff[0].manages[0].name, "Ben");
     assert_eq!(staff[0].manages[1].name, "Alice");
 
@@ -556,7 +556,7 @@ fn entity_loader_self_join() -> Result<(), DbErr> {
     assert!(staff[2].manages.is_empty());
 
     assert_eq!(staff[3].name, "Elle");
-    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].reports_to.is_unloaded_or_not_found());
     assert!(staff[3].manages.is_empty());
 
     // test pagination on loader
@@ -569,7 +569,7 @@ fn entity_loader_self_join() -> Result<(), DbErr> {
     let staff = pager.fetch_and_next()?.unwrap();
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
 
     assert_eq!(staff[1].name, "Ben");
     assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
@@ -580,7 +580,7 @@ fn entity_loader_self_join() -> Result<(), DbErr> {
     assert_eq!(staff[0].reports_to.as_ref().unwrap().name, "Alan");
 
     assert_eq!(staff[1].name, "Elle");
-    assert_eq!(staff[1].reports_to, None);
+    assert!(staff[1].reports_to.is_unloaded_or_not_found());
 
     assert!(pager.fetch_and_next()?.is_none());
 

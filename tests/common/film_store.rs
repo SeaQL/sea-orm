@@ -74,7 +74,7 @@ pub mod staff {
             from = "reports_to_id",
             to = "id"
         )]
-        pub reports_to: BelongsTo<Entity>,
+        pub reports_to: BelongsTo<Option<Entity>>,
         #[sea_orm(self_ref, relation_enum = "Manages", relation_reverse = "ReportsTo")]
         pub manages: HasMany<Entity>,
     }
@@ -99,7 +99,7 @@ pub mod staff_mono {
             from = "reports_to_id",
             to = "id"
         )]
-        pub reports_to: BelongsTo<Entity>,
+        pub reports_to: BelongsTo<Option<Entity>>,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -117,7 +117,7 @@ pub mod staff_compact {
         pub name: String,
         pub reports_to_id: Option<i32>,
         #[sea_orm(self_ref, relation_enum = "ReportsTo")]
-        pub reports_to: BelongsTo<Entity>,
+        pub reports_to: BelongsTo<Option<Entity>>,
         #[sea_orm(self_ref, relation_enum = "Manages")]
         pub manages: HasMany<Entity>,
     }
