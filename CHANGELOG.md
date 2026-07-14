@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release Candidates
 
+- [2.0.0-rc.43](changelog/2.0.0-rc.43.md) — `BelongsTo` relation type (opt-in, compile-time FK cardinality), CLI generation-option errors, `has_related` `Condition::any()` & PG enum-array codegen fixes
 - [2.0.0-rc.42](changelog/2.0.0-rc.42.md) — typed value arrays, `HasOne` replace/delete, `ActiveHasOne`/`ActiveHasMany` rename, codegen `ColumnType` fixes
 - [2.0.0-rc.41](changelog/2.0.0-rc.41.md) — `SelectFourMany`, `update_without_returning`, `cargo binstall sea-orm-cli`, junction `ActiveModelBehavior` & schema-sync PG-schema fixes
 - [2.0.0-rc.40](changelog/2.0.0-rc.40.md) - Restore pgvector binding with SQLx 0.9
