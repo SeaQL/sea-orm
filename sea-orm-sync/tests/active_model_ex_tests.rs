@@ -754,7 +754,7 @@ fn test_active_model_ex_film_store() -> Result<(), DbErr> {
         .all(db)?;
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
     assert_eq!(staff[0].manages[0].name, "Ben");
     assert_eq!(staff[0].manages[1].name, "Alice");
 
@@ -767,7 +767,7 @@ fn test_active_model_ex_film_store() -> Result<(), DbErr> {
     assert!(staff[2].manages.is_empty());
 
     assert_eq!(staff[3].name, "Elle");
-    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].reports_to.is_unloaded_or_not_found());
     assert!(staff[3].manages.is_empty());
 
     info!("delete alan, reports_to should be cleared");

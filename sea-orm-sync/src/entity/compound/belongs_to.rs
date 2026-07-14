@@ -148,6 +148,12 @@ where
         matches!(self, Self::Loaded(None))
     }
 
+    /// Return true if this optional relation holds no model — i.e. it is either
+    /// `Unloaded` or was loaded with no match (`is_not_found`).
+    pub fn is_unloaded_or_not_found(&self) -> bool {
+        matches!(self, Self::Unloaded | Self::Loaded(None))
+    }
+
     /// Get a reference, if loaded with a model
     pub fn as_ref(&self) -> Option<&E::ModelEx> {
         match self {

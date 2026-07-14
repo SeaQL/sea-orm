@@ -495,7 +495,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
         .await?;
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
 
     assert_eq!(staff[1].name, "Ben");
     assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
@@ -504,7 +504,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     assert_eq!(staff[2].reports_to.as_ref().unwrap().name, "Alan");
 
     assert_eq!(staff[3].name, "Elle");
-    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].reports_to.is_unloaded_or_not_found());
 
     // load belongs_to reverse
 
@@ -535,7 +535,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
         .await?;
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
     assert_eq!(staff[0].manages[0].name, "Ben");
     assert_eq!(staff[0].manages[1].name, "Alice");
 
@@ -548,7 +548,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     assert!(staff[2].manages.is_empty());
 
     assert_eq!(staff[3].name, "Elle");
-    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].reports_to.is_unloaded_or_not_found());
     assert!(staff[3].manages.is_empty());
 
     // test self_ref on model without reverse relation (not dual)
@@ -578,7 +578,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
         .await?;
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
     assert_eq!(staff[0].manages[0].name, "Ben");
     assert_eq!(staff[0].manages[1].name, "Alice");
 
@@ -591,7 +591,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     assert!(staff[2].manages.is_empty());
 
     assert_eq!(staff[3].name, "Elle");
-    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].reports_to.is_unloaded_or_not_found());
     assert!(staff[3].manages.is_empty());
 
     // test pagination on loader
@@ -604,7 +604,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     let staff = pager.fetch_and_next().await?.unwrap();
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
 
     assert_eq!(staff[1].name, "Ben");
     assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
@@ -615,7 +615,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     assert_eq!(staff[0].reports_to.as_ref().unwrap().name, "Alan");
 
     assert_eq!(staff[1].name, "Elle");
-    assert_eq!(staff[1].reports_to, None);
+    assert!(staff[1].reports_to.is_unloaded_or_not_found());
 
     assert!(pager.fetch_and_next().await?.is_none());
 
