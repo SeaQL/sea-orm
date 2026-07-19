@@ -4,7 +4,6 @@ use crate::{
 };
 use sea_query::{Expr, SelectStatement};
 
-// TODO: Move count here
 /// Helper trait for selectors with convenient methods
 pub trait SelectExt {
     /// This method is unstable and is only used for internal testing.
