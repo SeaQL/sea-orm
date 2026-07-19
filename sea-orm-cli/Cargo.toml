@@ -55,7 +55,7 @@ glob = { version = "0.3", default-features = false }
 indoc = "2.0.6"
 regex = { version = "1.11.2" }
 sea-orm-codegen = { version = "=2.0.0-rc.43", path = "../sea-orm-codegen", default-features = false, optional = true }
-sea-schema = { version = "0.18.0", default-features = false, features = [
+sea-schema = { version = "0.18.1", default-features = false, features = [
     "discovery",
     "writer",
     "probe",
