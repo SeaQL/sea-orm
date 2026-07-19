@@ -1,6 +1,6 @@
 use crate::{
-    ConnectionTrait, DbErr, EntityTrait, QueryTrait, Select, SelectFive, SelectFour, SelectSix,
-    SelectThree, SelectTwo, Selector, SelectorRaw, SelectorTrait, Statement, Topology,
+    ConnectionTrait, DbErr, EntityTrait, Select, SelectFive, SelectFour, SelectSix, SelectThree,
+    SelectTwo, Selector, SelectorRaw, SelectorTrait, Topology,
 };
 use sea_query::{Expr, SelectStatement};
 
@@ -22,15 +22,6 @@ pub trait SelectExt {
     }
 }
 
-#[async_trait::async_trait]
-/// Helper trait for counting rows selected by a query.
-pub trait CountTrait {
-    /// Count the number of rows selected by this query.
-    async fn count(self, db: &impl ConnectionTrait) -> Result<u64, DbErr>
-    where
-        Self: Send + Sized;
-}
-
 fn into_exists_query(mut stmt: SelectStatement) -> SelectStatement {
     stmt.clear_selects();
     // Expr::Custom has fewer branches, but this may not have any significant impact on performance.
@@ -41,56 +32,12 @@ fn into_exists_query(mut stmt: SelectStatement) -> SelectStatement {
     stmt
 }
 
-fn build_count_query(stmt: SelectStatement) -> SelectStatement {
-    SelectStatement::new()
-        .expr(Expr::cust("COUNT(*) AS count"))
-        .from_subquery(stmt, "sub_query")
-        .to_owned()
-}
-
-fn build_count_query_raw(stmt: Statement) -> SelectStatement {
-    let sub_query_sql = stmt.sql.trim().trim_end_matches(';').trim();
-    let count_sql = format!("COUNT(*) AS count FROM ({sub_query_sql}) AS sub_query");
-
-    let mut query = SelectStatement::new();
-    query.expr(if let Some(values) = stmt.values {
-        Expr::cust_with_values(count_sql, values.0)
-    } else {
-        Expr::cust(count_sql)
-    });
-    query
-}
-
-async fn exec_count<C>(db: &C, stmt: SelectStatement) -> Result<u64, DbErr>
-where
-    C: ConnectionTrait,
-{
-    let result = match db.query_one(&stmt).await? {
-        Some(res) => res,
-        None => return Ok(0),
-    };
-    Ok(result.try_get::<i64>("", "count")? as u64)
-}
-
 impl<S> SelectExt for Selector<S>
 where
     S: SelectorTrait,
 {
     fn exists_query(self) -> SelectStatement {
         into_exists_query(self.query)
-    }
-}
-
-#[async_trait::async_trait]
-impl<S> CountTrait for Selector<S>
-where
-    S: SelectorTrait,
-{
-    async fn count(self, db: &impl ConnectionTrait) -> Result<u64, DbErr>
-    where
-        Self: Send + Sized,
-    {
-        exec_count(db, build_count_query(self.query)).await
     }
 }
 
@@ -111,19 +58,6 @@ where
             Expr::cust(exists_sql)
         });
         query
-    }
-}
-
-#[async_trait::async_trait]
-impl<S> CountTrait for SelectorRaw<S>
-where
-    S: SelectorTrait,
-{
-    async fn count(self, db: &impl ConnectionTrait) -> Result<u64, DbErr>
-    where
-        Self: Send + Sized,
-    {
-        exec_count(db, build_count_query_raw(self.stmt)).await
     }
 }
 
@@ -197,19 +131,6 @@ where
 {
     fn exists_query(self) -> SelectStatement {
         into_exists_query(self.query)
-    }
-}
-
-#[async_trait::async_trait]
-impl<T> CountTrait for T
-where
-    T: QueryTrait<QueryStatement = SelectStatement> + Send,
-{
-    async fn count(self, db: &impl ConnectionTrait) -> Result<u64, DbErr>
-    where
-        Self: Send + Sized,
-    {
-        exec_count(db, build_count_query(self.into_query())).await
     }
 }
 

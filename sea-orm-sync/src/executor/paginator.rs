@@ -267,6 +267,32 @@ where
 
     /// Paginate the result of a select operation.
     fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, Self::Selector>;
+
+    /// Count the number of rows this query selects, honoring any `limit` and
+    /// `offset` set on it.
+    ///
+    /// This differs from [`Paginator::num_items`], which resets `limit`/`offset`
+    /// to report the grand total for pagination. `count` wraps the query as-is in
+    /// a `SELECT COUNT(*) FROM (..)` subquery, so a query with a `limit` counts at
+    /// most that many rows.
+    fn count(self, db: &'db C) -> Result<u64, DbErr>
+    where
+        Self: Sized,
+    {
+        let paginator = self.paginate(db, 1);
+        let query = SelectStatement::new()
+            .expr(Expr::cust("COUNT(*) AS num_items"))
+            .from_subquery(
+                paginator.query.clone().clear_order_by().to_owned(),
+                "sub_query",
+            )
+            .to_owned();
+        let result = match db.query_one(&query)? {
+            Some(res) => res,
+            None => return Ok(0),
+        };
+        Ok(result.try_get::<i64>("", "num_items")? as u64)
+    }
 }
 
 impl<'db, C, S> PaginatorTrait<'db, C> for Selector<S>

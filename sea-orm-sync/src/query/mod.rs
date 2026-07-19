@@ -47,7 +47,7 @@ pub use update::*;
 pub(crate) use util::*;
 
 pub use crate::{
-    ConnectionTrait, CountTrait, CursorTrait, InsertResult, PaginatorTrait, SelectExt, Statement,
+    ConnectionTrait, CursorTrait, InsertResult, PaginatorTrait, SelectExt, Statement,
     TransactionTrait, UpdateResult, Value, Values,
 };
 pub use sea_query::ExprTrait;
