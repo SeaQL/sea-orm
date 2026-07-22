@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, EntityTrait, Iterable, Order, PrimaryKeyToColumn, QueryFilter, QueryOrder,
-    QuerySelect, QueryTrait,
+    ColumnTrait, EntityTrait, IdenStatic, Iterable, Order, PrimaryKeyToColumn, QueryFilter,
+    QueryOrder, QuerySelect, QueryTrait,
 };
 use core::fmt::Debug;
 use core::marker::PhantomData;
@@ -314,6 +314,18 @@ where
             let col = key.into_column();
             self.query
                 .order_by_expr(col.into_simple_expr(), order.clone());
+        }
+        self
+    }
+
+    /// Select all columns of this entity except the given ones.
+    pub fn select_except(mut self, except: impl IntoIterator<Item = E::Column>) -> Self {
+        let except: Vec<&str> = except.into_iter().map(|col| col.as_str()).collect();
+        self.query.clear_selects();
+        for col in E::Column::iter() {
+            if !except.contains(&col.as_str()) {
+                self.query.expr(col.select_as(col.into_expr()));
+            }
         }
         self
     }
