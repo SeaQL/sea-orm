@@ -505,6 +505,23 @@ impl ConnectOptions {
     /// It composes with a per-backend [`map_sqlx_postgres_before_acquire`] callback (and its
     /// MySQL / SQLite counterparts): the idle-ping runs first, then your callback.
     ///
+    /// # Expands to
+    /// With no per-backend callback set, this is exactly the following configuration on the
+    /// underlying [`sqlx::pool::PoolOptions`]:
+    ///
+    /// ```ignore
+    /// pool_options
+    ///     .test_before_acquire(false)
+    ///     .before_acquire(move |conn, meta| {
+    ///         Box::pin(async move {
+    ///             if meta.idle_for >= idle {
+    ///                 conn.ping().await?;
+    ///             }
+    ///             Ok(true)
+    ///         })
+    ///     })
+    /// ```
+    ///
     /// Applies only to pools built through [`Database::connect`]. Pools adopted via
     /// `SqlxPostgresConnector::from_sqlx_postgres_pool` (and the MySQL / SQLite equivalents)
     /// bypass [`ConnectOptions`] entirely — configure `before_acquire` on your own
