@@ -47,6 +47,77 @@ async fn main() -> Result<(), DbErr> {
 
     run_transaction_test(url, "sea_orm_migration_txn", "public").await?;
 
+    run_read_only_test(
+        url,
+        default::Migrator,
+        "sea_orm_migration_read_only",
+        "public",
+    )
+    .await?;
+
+    Ok(())
+}
+
+/// Coverage for the read-only migration-status API (discussion #3141): querying status must
+/// not run `CREATE TABLE`, so it works for a database user without DDL privileges. Runs on
+/// every backend the suite is pointed at.
+async fn run_read_only_test<M>(
+    url: &str,
+    migrator: M,
+    db_name: &str,
+    schema: &str,
+) -> Result<(), DbErr>
+where
+    M: MigratorTraitSelf,
+{
+    let db = &create_db(url, db_name, schema).await?;
+    let manager = SchemaManager::new(db);
+    let table = migrator.migration_table_name().to_string();
+    let total = migrator.get_migration_files().len();
+
+    // Fresh database: the migration table does not exist yet.
+    assert!(!manager.has_table(table.as_str()).await?);
+
+    // Read-only queries report every migration as pending, WITHOUT creating the table.
+    assert_eq!(
+        migrator.get_pending_migrations_read_only(db).await?.len(),
+        total
+    );
+    assert!(
+        migrator
+            .get_applied_migrations_read_only(db)
+            .await?
+            .is_empty()
+    );
+    assert!(
+        migrator
+            .get_migration_with_status_read_only(db)
+            .await?
+            .iter()
+            .all(|m| m.status() == MigrationStatus::Pending)
+    );
+    assert!(!manager.has_table(table.as_str()).await?);
+
+    // With the table present but empty (created here by the installing path), the read-only
+    // queries still work and report everything pending.
+    migrator.install(db).await?;
+    assert!(manager.has_table(table.as_str()).await?);
+    assert_eq!(
+        migrator.get_pending_migrations_read_only(db).await?.len(),
+        total
+    );
+
+    // After applying one migration, the read-only queries reflect the applied state.
+    migrator.up(db, Some(1)).await?;
+    assert_eq!(
+        migrator.get_applied_migrations_read_only(db).await?.len(),
+        1
+    );
+    assert_eq!(
+        migrator.get_pending_migrations_read_only(db).await?.len(),
+        total - 1
+    );
+
     Ok(())
 }
 
