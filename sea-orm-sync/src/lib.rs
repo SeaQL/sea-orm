@@ -383,7 +383,7 @@
 //! ### Insert (advanced)
 //! You can take advantage of database specific features to perform upsert and idempotent insert.
 //! ```
-//! # use sea_orm::{DbConn, TryInsertResult, DbErr, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, DbErr, entity::*, query::*, tests_cfg::*};
 //! # fn function_1(db: &DbConn) -> Result<(), DbErr> {
 //! # let apple = fruit::ActiveModel {
 //! #     name: Set("Apple".to_owned()),
@@ -418,7 +418,7 @@
 //!     .on_conflict_do_nothing()
 //!     .exec(db)?;
 //!
-//! matches!(result, TryInsertResult::Conflicted);
+//! result.last_insert_id.is_none();
 //! # Ok(())
 //! # }
 //! ```
