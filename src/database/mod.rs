@@ -127,6 +127,9 @@ pub struct ConnectOptions {
     /// Statement timeout (PostgreSQL only)
     pub(crate) statement_timeout: Option<Duration>,
     pub(crate) test_before_acquire: bool,
+    /// If set, a pooled connection is pinged before being handed out only when it has been
+    /// idle for at least this long (see [`ConnectOptions::test_before_acquire_if_idle_for`]).
+    pub(crate) test_before_acquire_if_idle_for: Option<Duration>,
     /// Only establish connections to the DB as needed. If set to `true`, the db connection will
     /// be created using SQLx's [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy)
     /// method.
@@ -155,6 +158,16 @@ pub struct ConnectOptions {
     #[debug(skip)]
     pub(crate) sqlite_opts_fn:
         Option<Arc<dyn Fn(SqliteConnectOptions) -> SqliteConnectOptions + Send + Sync>>,
+
+    #[cfg(feature = "sqlx-mysql")]
+    #[debug(skip)]
+    pub(crate) mysql_before_acquire_fn: Option<crate::driver::BeforeAcquireFn<sqlx::MySql>>,
+    #[cfg(feature = "sqlx-postgres")]
+    #[debug(skip)]
+    pub(crate) pg_before_acquire_fn: Option<crate::driver::BeforeAcquireFn<sqlx::Postgres>>,
+    #[cfg(feature = "sqlx-sqlite")]
+    #[debug(skip)]
+    pub(crate) sqlite_before_acquire_fn: Option<crate::driver::BeforeAcquireFn<sqlx::Sqlite>>,
 }
 
 impl Database {
@@ -264,6 +277,7 @@ impl ConnectOptions {
             application_name: None,
             statement_timeout: None,
             test_before_acquire: true,
+            test_before_acquire_if_idle_for: None,
             connect_lazy: false,
             after_connect: None,
             #[cfg(feature = "sqlx-mysql")]
@@ -278,6 +292,12 @@ impl ConnectOptions {
             pg_opts_fn: None,
             #[cfg(feature = "sqlx-sqlite")]
             sqlite_opts_fn: None,
+            #[cfg(feature = "sqlx-mysql")]
+            mysql_before_acquire_fn: None,
+            #[cfg(feature = "sqlx-postgres")]
+            pg_before_acquire_fn: None,
+            #[cfg(feature = "sqlx-sqlite")]
+            sqlite_before_acquire_fn: None,
         }
     }
 
@@ -457,9 +477,59 @@ impl ConnectOptions {
     }
 
     /// If true, the connection will be pinged upon acquiring from the pool (default true).
+    ///
+    /// See [`test_before_acquire_if_idle_for`](Self::test_before_acquire_if_idle_for) for the
+    /// cheaper "only ping stale connections" variant.
     pub fn test_before_acquire(&mut self, value: bool) -> &mut Self {
         self.test_before_acquire = value;
         self
+    }
+
+    /// Get whether a pooled connection is pinged on every acquire (default true).
+    pub fn get_test_before_acquire(&self) -> bool {
+        self.test_before_acquire
+    }
+
+    /// Ping a pooled connection before handing it out, but only once it has been idle for at
+    /// least `idle`.
+    ///
+    /// [`test_before_acquire`](Self::test_before_acquire) pings on *every* acquire, which adds
+    /// a round-trip to each checkout. This shorthand instead pings only connections that have
+    /// been idle long enough to plausibly have been dropped by the server, a proxy, or a
+    /// firewall — the common failure mode — while letting hot connections through untouched.
+    ///
+    /// Calling this sets [`test_before_acquire`](Self::test_before_acquire) to `false` (SQLx
+    /// runs the per-acquire ping *and* this hook, so leaving it enabled would ping on every
+    /// acquire regardless and defeat the threshold).
+    ///
+    /// It composes with a per-backend [`map_sqlx_postgres_before_acquire`] callback (and its
+    /// MySQL / SQLite counterparts): the idle-ping runs first, then your callback.
+    ///
+    /// Applies only to pools built through [`Database::connect`]. Pools adopted via
+    /// `SqlxPostgresConnector::from_sqlx_postgres_pool` (and the MySQL / SQLite equivalents)
+    /// bypass [`ConnectOptions`] entirely — configure `before_acquire` on your own
+    /// [`sqlx::pool::PoolOptions`] in that case.
+    ///
+    /// # Example
+    /// ```
+    /// # use sea_orm::ConnectOptions;
+    /// # use std::time::Duration;
+    /// let mut opt = ConnectOptions::new("postgres://localhost/db");
+    /// opt.test_before_acquire_if_idle_for(Duration::from_secs(30));
+    /// assert_eq!(opt.get_test_before_acquire(), false);
+    /// ```
+    ///
+    /// [`map_sqlx_postgres_before_acquire`]: Self::map_sqlx_postgres_before_acquire
+    pub fn test_before_acquire_if_idle_for(&mut self, idle: Duration) -> &mut Self {
+        self.test_before_acquire = false;
+        self.test_before_acquire_if_idle_for = Some(idle);
+        self
+    }
+
+    /// Get the idle threshold set by
+    /// [`test_before_acquire_if_idle_for`](Self::test_before_acquire_if_idle_for), if any.
+    pub fn get_test_before_acquire_if_idle_for(&self) -> Option<Duration> {
+        self.test_before_acquire_if_idle_for
     }
 
     /// If set to `true`, the db connection pool will be created using SQLx's
@@ -562,6 +632,106 @@ impl ConnectOptions {
             + 'static,
     {
         self.sqlite_pool_opts_fn = Some(Arc::new(f));
+        self
+    }
+
+    #[cfg(feature = "sqlx-mysql")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "sqlx-mysql")))]
+    /// Set a `before_acquire` callback run on an idle pooled MySQL connection before it is
+    /// handed out.
+    ///
+    /// Return `Ok(true)` to use the connection, or `Ok(false)`/`Err(_)` to discard it and let
+    /// the pool try another (opening a fresh one if needed). Composes after the idle-ping
+    /// installed by
+    /// [`test_before_acquire_if_idle_for`](Self::test_before_acquire_if_idle_for) — that runs
+    /// first, then this callback.
+    ///
+    /// Applies only to pools built through [`Database::connect`], not to pools adopted via
+    /// `SqlxMySqlConnector::from_sqlx_mysql_pool`.
+    pub fn map_sqlx_mysql_before_acquire<F>(&mut self, f: F) -> &mut Self
+    where
+        F: for<'c> Fn(
+                &'c mut sqlx::mysql::MySqlConnection,
+                sqlx::pool::PoolConnectionMetadata,
+            )
+                -> futures_util::future::BoxFuture<'c, Result<bool, sqlx::Error>>
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.mysql_before_acquire_fn = Some(Arc::new(f));
+        self
+    }
+
+    #[cfg(feature = "sqlx-postgres")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "sqlx-postgres")))]
+    /// Set a `before_acquire` callback run on an idle pooled PostgreSQL connection before it
+    /// is handed out.
+    ///
+    /// Return `Ok(true)` to use the connection, or `Ok(false)`/`Err(_)` to discard it and let
+    /// the pool try another (opening a fresh one if needed). Composes after the idle-ping
+    /// installed by
+    /// [`test_before_acquire_if_idle_for`](Self::test_before_acquire_if_idle_for) — that runs
+    /// first, then this callback.
+    ///
+    /// Applies only to pools built through [`Database::connect`], not to pools adopted via
+    /// `SqlxPostgresConnector::from_sqlx_postgres_pool`.
+    ///
+    /// # Example
+    /// ```
+    /// # use sea_orm::ConnectOptions;
+    /// # use std::time::Duration;
+    /// use sea_orm::sqlx::Connection;
+    ///
+    /// let mut opt = ConnectOptions::new("postgres://localhost/db");
+    /// opt.test_before_acquire_if_idle_for(Duration::from_secs(30))
+    ///     .map_sqlx_postgres_before_acquire(|conn, _meta| {
+    ///         Box::pin(async move {
+    ///             conn.ping().await?;
+    ///             Ok(true)
+    ///         })
+    ///     });
+    /// ```
+    pub fn map_sqlx_postgres_before_acquire<F>(&mut self, f: F) -> &mut Self
+    where
+        F: for<'c> Fn(
+                &'c mut sqlx::postgres::PgConnection,
+                sqlx::pool::PoolConnectionMetadata,
+            )
+                -> futures_util::future::BoxFuture<'c, Result<bool, sqlx::Error>>
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.pg_before_acquire_fn = Some(Arc::new(f));
+        self
+    }
+
+    #[cfg(feature = "sqlx-sqlite")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "sqlx-sqlite")))]
+    /// Set a `before_acquire` callback run on an idle pooled SQLite connection before it is
+    /// handed out.
+    ///
+    /// Return `Ok(true)` to use the connection, or `Ok(false)`/`Err(_)` to discard it and let
+    /// the pool try another (opening a fresh one if needed). Composes after the idle-ping
+    /// installed by
+    /// [`test_before_acquire_if_idle_for`](Self::test_before_acquire_if_idle_for) — that runs
+    /// first, then this callback.
+    ///
+    /// Applies only to pools built through [`Database::connect`], not to pools adopted via
+    /// `SqlxSqliteConnector::from_sqlx_sqlite_pool`.
+    pub fn map_sqlx_sqlite_before_acquire<F>(&mut self, f: F) -> &mut Self
+    where
+        F: for<'c> Fn(
+                &'c mut sqlx::sqlite::SqliteConnection,
+                sqlx::pool::PoolConnectionMetadata,
+            )
+                -> futures_util::future::BoxFuture<'c, Result<bool, sqlx::Error>>
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.sqlite_before_acquire_fn = Some(Arc::new(f));
         self
     }
 }

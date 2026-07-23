@@ -89,7 +89,14 @@ impl SqlxMySqlConnector {
         let after_connect = options.after_connect.clone();
         let connect_lazy = options.connect_lazy;
         let mysql_pool_opts_fn = options.mysql_pool_opts_fn.clone();
+        let mysql_before_acquire = options.mysql_before_acquire_fn.clone();
+        let ping_after_idle = options.test_before_acquire_if_idle_for;
         let mut pool_options = options.sqlx_pool_options();
+        pool_options = crate::ConnectOptions::apply_before_acquire::<sqlx::MySql>(
+            pool_options,
+            ping_after_idle,
+            mysql_before_acquire,
+        );
         if let Some(f) = &mysql_pool_opts_fn {
             pool_options = f(pool_options);
         }
