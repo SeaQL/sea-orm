@@ -413,6 +413,74 @@ where
             ActiveValue::NotSet => None,
         }
     }
+    
+    /// Flattens `&ActiveValue<Option<T>>` into an `Option<&T>`, folding [NotSet][ActiveValue::NotSet]
+    /// and [None][Option::None] together, and [Set][ActiveValue::Set], [Unchanged][ActiveValue::Unchanged],
+    /// and [Some][Option::Some] together. This can replace `model.field.try_as_ref().and_then(Option::as_ref)`.
+    ///
+    /// For a version on owned [ActiveValue]s, see [ActiveValue::flatten].
+    ///
+    /// ```
+    /// use sea_orm::ActiveValue;
+    ///
+    /// let x: &ActiveValue<Option<i32>> = &ActiveValue::Set(Some(0));
+    /// let y: &ActiveValue<Option<i32>> = &ActiveValue::Set(None);
+    /// let z: &ActiveValue<Option<i32>> = &ActiveValue::NotSet;
+    ///
+    /// assert_eq!(x.flatten_ref(), Some(&0));
+    /// assert_eq!(y.flatten_ref(), None);
+    /// assert_eq!(z.flatten_ref(), None);
+    /// ```
+    pub fn flatten_ref<'a, T>(&self) -> Option<&'a T>
+    where V: AsRefOption<'a, T> {
+        match self {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value.as_ref_opt().as_ref(),
+            ActiveValue::NotSet  => None,
+        }
+    }
+
+    /// Flattens `ActiveValue<Option<T>>` into an `Option<T>`, folding [NotSet][ActiveValue::NotSet]
+    /// and [None][Option::None] together, and [Set][ActiveValue::Set], [Unchanged][ActiveValue::Unchanged],
+    /// and [Some][Option::Some] together. This can replace `model.field.take().flatten()`.
+    ///
+    /// For a version on owned [ActiveValue]s, see [ActiveValue::flatten].
+    ///
+    /// ```
+    /// use sea_orm::ActiveValue;
+    ///
+    /// let x: ActiveValue<Option<i32>> = ActiveValue::Set(Some(0));
+    /// let y: ActiveValue<Option<i32>> = ActiveValue::Set(None);
+    /// let z: ActiveValue<Option<i32>> = ActiveValue::NotSet;
+    ///
+    /// assert_eq!(x.flatten(), Some(0));
+    /// assert_eq!(y.flatten(), None);
+    /// assert_eq!(z.flatten(), None);
+    /// ```
+    pub fn flatten<'a, T>(&self) -> Option<T>
+    where V: AsOwnedOption<T> {
+        match self {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value.as_opt().as_ref(),
+            ActiveValue::NotSet  => None,
+        }
+    }
+}
+
+trait AsRefOption<'a, T> {
+    fn as_ref_opt(self) -> &'a Option<T>;
+}
+impl<'a, T> AsRefOption<T> for &'a Option<T> {
+    fn as_ref_opt(self) -> &'a Option<T> {
+        self
+    }
+}
+
+trait AsOwnedOption<T> {
+    fn as_opt(self) -> Option<T>;
+}
+impl<T> AsOwnedOption<T> for Option<T> {
+    fn as_opt(self) -> Option<T> {
+        self
+    }
 }
 
 impl<V> std::convert::AsRef<V> for ActiveValue<V>
