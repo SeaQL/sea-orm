@@ -117,7 +117,14 @@ impl SqlxPostgresConnector {
         let lazy = options.connect_lazy;
         let after_connect = options.after_connect.clone();
         let pg_pool_opts_fn = options.pg_pool_opts_fn.clone();
+        let pg_before_acquire = options.pg_before_acquire_fn.clone();
+        let ping_after_idle = options.test_before_acquire_if_idle_for;
         let mut pool_options = options.sqlx_pool_options();
+        pool_options = crate::ConnectOptions::apply_before_acquire::<sqlx::Postgres>(
+            pool_options,
+            ping_after_idle,
+            pg_before_acquire,
+        );
 
         if let Some(sql) = set_search_path_sql {
             pool_options = pool_options.after_connect(move |conn, _| {

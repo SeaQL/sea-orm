@@ -99,7 +99,14 @@ impl SqlxSqliteConnector {
         let after_conn = options.after_connect.clone();
         let connect_lazy = options.connect_lazy;
         let sqlite_pool_opts_fn = options.sqlite_pool_opts_fn.clone();
+        let sqlite_before_acquire = options.sqlite_before_acquire_fn.clone();
+        let ping_after_idle = options.test_before_acquire_if_idle_for;
         let mut pool_options = options.sqlx_pool_options();
+        pool_options = crate::ConnectOptions::apply_before_acquire::<sqlx::Sqlite>(
+            pool_options,
+            ping_after_idle,
+            sqlite_before_acquire,
+        );
 
         if let Some(f) = &sqlite_pool_opts_fn {
             pool_options = f(pool_options);

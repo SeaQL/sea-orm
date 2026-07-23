@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `ConnectOptions::test_before_acquire_if_idle_for(Duration)` — ping a pooled connection before it is handed out only once it has been idle for at least the given duration, instead of on every acquire (`test_before_acquire`). Setting it disables `test_before_acquire`.
+- `ConnectOptions::map_sqlx_postgres_before_acquire` / `map_sqlx_mysql_before_acquire` / `map_sqlx_sqlite_before_acquire` — install a per-backend SQLx `before_acquire` callback. Composes with the idle-ping shorthand above: the idle-ping runs first, then the callback.
+- `ConnectOptions::get_test_before_acquire` / `get_test_before_acquire_if_idle_for` getters.
+
 ## 2.0.0 - 2026-07-19
 
 ### Release Candidates
