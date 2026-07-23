@@ -681,16 +681,14 @@ impl ConnectOptions {
     /// ```
     /// # use sea_orm::ConnectOptions;
     /// # use std::time::Duration;
-    /// use sea_orm::sqlx::Connection;
-    ///
     /// let mut opt = ConnectOptions::new("postgres://localhost/db");
-    /// opt.test_before_acquire_if_idle_for(Duration::from_secs(30))
-    ///     .map_sqlx_postgres_before_acquire(|conn, _meta| {
-    ///         Box::pin(async move {
-    ///             conn.ping().await?;
-    ///             Ok(true)
-    ///         })
-    ///     });
+    /// opt.map_sqlx_postgres_before_acquire(|_conn, meta| {
+    ///     Box::pin(async move {
+    ///         // Discard (and transparently replace) connections older than 10 minutes,
+    ///         // rather than pinging on every acquire.
+    ///         Ok(meta.age < Duration::from_secs(600))
+    ///     })
+    /// });
     /// ```
     pub fn map_sqlx_postgres_before_acquire<F>(&mut self, f: F) -> &mut Self
     where
