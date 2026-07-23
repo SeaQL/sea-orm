@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `ConnectOptions::test_before_acquire_if_idle_for(Duration)` — ping a pooled connection before it is handed out only once it has been idle for at least the given duration, instead of on every acquire (`test_before_acquire`). Setting it disables `test_before_acquire`.
 - `ConnectOptions::map_sqlx_postgres_before_acquire` / `map_sqlx_mysql_before_acquire` / `map_sqlx_sqlite_before_acquire` — install a per-backend SQLx `before_acquire` callback. Composes with the idle-ping shorthand above: the idle-ping runs first, then the callback.
 - `ConnectOptions::get_test_before_acquire` / `get_test_before_acquire_if_idle_for` getters.
+- `MigratorTrait::get_pending_migrations_read_only` / `get_applied_migrations_read_only` / `get_migration_with_status_read_only` (and the `with-self` equivalents) — query migration status without running `CREATE TABLE`, so a database user without DDL privileges can check pending migrations. If the migration table does not exist, all migrations are reported as pending. ([#3141])
+
+[#3141]: https://github.com/SeaQL/sea-orm/discussions/3141
 
 ## 2.0.0 - 2026-07-19
 

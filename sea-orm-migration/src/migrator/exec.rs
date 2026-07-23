@@ -33,6 +33,22 @@ where
         .collect()
 }
 
+pub async fn get_migration_models_read_only<C>(
+    db: &C,
+    migration_table_name: DynIden,
+) -> Result<Vec<seaql_migrations::Model>, DbErr>
+where
+    C: ConnectionTrait,
+{
+    // Unlike `get_migration_models`, this never issues `CREATE TABLE` (see `install`), so it
+    // works for a database user without DDL privileges. Existence is probed with a read-only
+    // information-schema query; a missing table means nothing has been recorded yet.
+    if !crate::manager::has_table(db, migration_table_name.to_string()).await? {
+        return Ok(Vec::new());
+    }
+    get_migration_models(db, migration_table_name).await
+}
+
 pub fn get_migration_with_status(
     migration_files: Vec<Migration>,
     migration_models: Vec<seaql_migrations::Model>,
