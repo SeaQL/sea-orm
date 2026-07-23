@@ -4,6 +4,10 @@
 //!
 //! Run: cargo test --features sqlx-sqlite,runtime-tokio-rustls --test read_only
 
+// Uses an in-memory SQLite connection, so it only applies when the SQLite driver is built in.
+// The MySQL/Postgres CI jobs run the migrator tests with only their own backend feature.
+#![cfg(feature = "sqlx-sqlite")]
+
 use sea_orm::Database;
 use sea_orm_migration::{MigratorTraitSelf, async_trait, migrator::MigrationStatus, prelude::*};
 
