@@ -466,8 +466,8 @@ where
 }
 
 mod private {
-    trait RefOptSealed {}
-    trait OwnedOptSealed {}
+    pub trait RefOptSealed {}
+    pub trait OwnedOptSealed {}
 }
 pub trait AsRefOption<'a, T>: private::RefOptSealed {
     fn as_ref_opt(self) -> &'a Option<T>;
