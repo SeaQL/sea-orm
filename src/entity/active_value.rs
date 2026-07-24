@@ -459,24 +459,30 @@ where
     pub fn flatten<'a, T>(&self) -> Option<T>
     where V: AsOwnedOption<T> {
         match self {
-            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value.as_opt().as_ref(),
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value.as_opt(),
             ActiveValue::NotSet  => None,
         }
     }
 }
 
-trait AsRefOption<'a, T> {
+mod private {
+    trait RefOptSealed {}
+    trait OwnedOptSealed {}
+}
+pub trait AsRefOption<'a, T>: private::RefOptSealed {
     fn as_ref_opt(self) -> &'a Option<T>;
 }
+impl<'a, T> private::RefOptSealed for &'a Option<T> {}
 impl<'a, T> AsRefOption<T> for &'a Option<T> {
     fn as_ref_opt(self) -> &'a Option<T> {
         self
     }
 }
 
-trait AsOwnedOption<T> {
+pub trait AsOwnedOption<T>: OwnedOptSealed {
     fn as_opt(self) -> Option<T>;
 }
+impl<T> private::OwnedOptSealed for Option<T> {}
 impl<T> AsOwnedOption<T> for Option<T> {
     fn as_opt(self) -> Option<T> {
         self
