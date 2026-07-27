@@ -1204,6 +1204,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive-where"
+version = "1.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d08b3a0bcc0d079199cd476b2cae8435016ec11d1c0986c6901c5ac223041534"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "derive_more"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2418,7 +2429,7 @@ dependencies = [
 [[package]]
 name = "loco-gen"
 version = "0.16.4"
-source = "git+https://github.com/SeaQL/loco?branch=master#a2a8299df7ad980c97a3c1bebd5c86279da46967"
+source = "git+https://github.com/SeaQL/loco?branch=master#e2aadbab565c05475a032e9382e90ad5e54585be"
 dependencies = [
  "chrono",
  "clap",
@@ -2439,7 +2450,7 @@ dependencies = [
 [[package]]
 name = "loco-rs"
 version = "0.16.4"
-source = "git+https://github.com/SeaQL/loco?branch=master#a2a8299df7ad980c97a3c1bebd5c86279da46967"
+source = "git+https://github.com/SeaQL/loco?branch=master#e2aadbab565c05475a032e9382e90ad5e54585be"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3743,12 +3754,13 @@ dependencies = [
 
 [[package]]
 name = "sea-orm"
-version = "2.0.0-rc.38"
+version = "2.0.0"
 dependencies = [
  "async-stream",
  "async-trait",
  "bigdecimal",
  "chrono",
+ "derive-where",
  "derive_more",
  "futures-util",
  "itertools",
@@ -3786,7 +3798,7 @@ dependencies = [
 
 [[package]]
 name = "sea-orm-cli"
-version = "2.0.0-rc.38"
+version = "2.0.0"
 dependencies = [
  "chrono",
  "clap",
@@ -3804,7 +3816,7 @@ dependencies = [
 
 [[package]]
 name = "sea-orm-macros"
-version = "2.0.0-rc.38"
+version = "2.0.0"
 dependencies = [
  "heck 0.5.0",
  "itertools",
@@ -3818,7 +3830,7 @@ dependencies = [
 
 [[package]]
 name = "sea-orm-migration"
-version = "2.0.0-rc.38"
+version = "2.0.0"
 dependencies = [
  "async-trait",
  "clap",
@@ -3871,9 +3883,9 @@ dependencies = [
 
 [[package]]
 name = "sea-schema"
-version = "0.18.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f88267b43c127956a079895d864fc8318ee37c7f280a7aa33805b714c31995f0"
+checksum = "3553c77dceed56e95bece9ea876c4dd67ca879ef51055a0b97a7bb89a8ae4fed"
 dependencies = [
  "async-trait",
  "sea-query",
