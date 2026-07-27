@@ -502,17 +502,6 @@ SeaORM 2.0 将是我们迄今最重要的版本——包含一些破坏性变更
 
 [SeaQL.org](https://www.sea-ql.org/) 是一个由热情的开发者运营的独立开源组织。如果你愿意，通过 [GitHub Sponsor](https://github.com/sponsors/SeaQL) 进行小额捐赠将不胜感激，并将大大有助于维持组织的运营。
 
-### 金牌赞助商
-
-<table><tr>
-<td><a href="https://qdx.co/">
-  <img src="https://www.sea-ql.org/static/sponsors/QDX.svg" width="138"/>
-</a></td>
-</tr></table>
-
-[QDX](https://qdx.co/) 开创了量子动力学驱动的药物发现，利用人工智能和超级计算加速分子建模。
-我们非常感谢 QDX 赞助 SeaORM 的开发，这是为其数据密集型应用提供支持的 SQL 工具包。
-
 ### 银牌赞助商
 
 我们感谢银牌赞助商：Digital Ocean 赞助我们的服务器，以及 JetBrains 赞助我们的 IDE。
