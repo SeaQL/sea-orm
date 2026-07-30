@@ -8,4 +8,4 @@ Cargo.lock
 .env.local
 .DS_Store
 .codex
-.cluade
+.claude
