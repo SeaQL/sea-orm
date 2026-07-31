@@ -168,9 +168,15 @@ pub struct TransactionOptions {
 /// transactions via SAVEPOINTs). Use [`begin`](Self::begin) for a manually
 /// managed transaction, or [`transaction`](Self::transaction) for a closure
 /// that auto-commits on `Ok` and rolls back on `Err`.
+///
+/// [`Self::Transaction`] must be a fixed point — its own transaction type is
+/// itself — because the `ActiveModelEx` mutation methods recurse through it
+/// (see <https://github.com/SeaQL/sea-orm/issues/3147>).
 pub trait TransactionTrait {
     /// The concrete type for the transaction
-    type Transaction: ConnectionTrait + TransactionTrait + TransactionSession;
+    type Transaction: ConnectionTrait
+        + TransactionTrait<Transaction = Self::Transaction>
+        + TransactionSession;
 
     /// Execute SQL `BEGIN` transaction.
     /// Returns a Transaction that can be committed or rolled back
