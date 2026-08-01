@@ -420,10 +420,9 @@ where
     /// assert_eq!(notset_value, ActiveValue::Set(false));
     /// ```
     pub fn set_if_unset(&mut self, value: V) {
-        match self {
-            ActiveValue::NotSet => *self = ActiveValue::Set(value),
-            _ => {}
-        };
+        if let ActiveValue::NotSet = self {
+            *self = ActiveValue::Set(value);
+        }
     }
 
     /// `Set(f())` if [`self.is_not_set()`][ActiveValue#method.is_not_set], no-op otherwise.
@@ -468,10 +467,9 @@ where
     /// assert_eq!(count, 1);
     /// ```
     pub fn set_if_unset_with(&mut self, f: impl FnOnce() -> V) {
-        match self {
-            ActiveValue::NotSet => *self = ActiveValue::Set(f()),
-            _ => {}
-        };
+        if let ActiveValue::NotSet = self {
+            *self = ActiveValue::Set(f());
+        }
     }
 
     /// `Set(V::default())` if [`self.is_not_set()`][ActiveValue#method.is_not_set], no-op otherwise.
@@ -505,10 +503,9 @@ where
     where
         V: Default,
     {
-        match self {
-            ActiveValue::NotSet => *self = ActiveValue::Set(V::default()),
-            _ => {}
-        };
+        if let ActiveValue::NotSet = self {
+            *self = ActiveValue::Set(V::default());
+        }
     }
 
     /// Get the inner value, unless `self` is [NotSet][ActiveValue::NotSet].
