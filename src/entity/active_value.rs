@@ -541,6 +541,62 @@ where
     }
 }
 
+impl<V> ActiveValue<Option<V>>
+where
+    V: Into<Value> + Nullable,
+{
+    /// Flatten an `&ActiveValue<Option<V>>` into an `Option<&V>`, folding
+    /// [NotSet][ActiveValue::NotSet] together with the inner [None][Option::None],
+    /// and [Set][ActiveValue::Set] / [Unchanged][ActiveValue::Unchanged] together
+    /// with the inner [Some][Option::Some].
+    ///
+    /// Shorthand for `self.try_as_ref().and_then(Option::as_ref)`. For the owned
+    /// version, see [ActiveValue::into_option].
+    ///
+    /// ```
+    /// use sea_orm::ActiveValue;
+    ///
+    /// let x: ActiveValue<Option<i32>> = ActiveValue::Set(Some(1));
+    /// let y: ActiveValue<Option<i32>> = ActiveValue::Set(None);
+    /// let z: ActiveValue<Option<i32>> = ActiveValue::NotSet;
+    ///
+    /// assert_eq!(x.as_option(), Some(&1));
+    /// assert_eq!(y.as_option(), None);
+    /// assert_eq!(z.as_option(), None);
+    ///
+    /// // composes cleanly with a predicate, on a single line
+    /// assert!(x.as_option().is_some_and(|v| *v == 1));
+    /// ```
+    pub fn as_option(&self) -> Option<&V> {
+        self.try_as_ref().and_then(Option::as_ref)
+    }
+
+    /// Flatten an `ActiveValue<Option<V>>` into an `Option<V>`, folding
+    /// [NotSet][ActiveValue::NotSet] together with the inner [None][Option::None],
+    /// and [Set][ActiveValue::Set] / [Unchanged][ActiveValue::Unchanged] together
+    /// with the inner [Some][Option::Some].
+    ///
+    /// For a borrowing version, see [ActiveValue::as_option].
+    ///
+    /// ```
+    /// use sea_orm::ActiveValue;
+    ///
+    /// let x: ActiveValue<Option<i32>> = ActiveValue::Set(Some(1));
+    /// let y: ActiveValue<Option<i32>> = ActiveValue::Set(None);
+    /// let z: ActiveValue<Option<i32>> = ActiveValue::NotSet;
+    ///
+    /// assert_eq!(x.into_option(), Some(1));
+    /// assert_eq!(y.into_option(), None);
+    /// assert_eq!(z.into_option(), None);
+    /// ```
+    pub fn into_option(self) -> Option<V> {
+        match self {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
+            ActiveValue::NotSet => None,
+        }
+    }
+}
+
 impl<V> std::convert::AsRef<V> for ActiveValue<V>
 where
     V: Into<Value>,
