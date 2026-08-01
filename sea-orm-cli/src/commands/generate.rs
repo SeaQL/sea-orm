@@ -750,4 +750,70 @@ mod tests {
             .collect();
         assert_eq!(names, ["id", "w"]);
     }
+
+    // Discovery-backed companion to the regression test above. The test above
+    // hand-builds `ColumnVisibility`, so it proves the filter but not that real
+    // `GENERATED ALWAYS AS (...)` DDL actually surfaces as `Generated*` from
+    // `PRAGMA table_xinfo`. This exercises the discovery -> filter contract end
+    // to end against an in-memory SQLite database, which is the whole premise of
+    // the #3094 fix.
+    #[cfg(all(feature = "sqlx-sqlite", feature = "tokio"))]
+    #[tokio::test]
+    async fn test_sqlite_discovery_reports_generated_columns() {
+        use sea_schema::sqlite::discovery::SchemaDiscovery;
+        use sqlx::sqlite::SqlitePoolOptions;
+
+        // `sqlite::memory:` gives each connection its own private database, so
+        // pin the pool to a single connection or CREATE TABLE and discovery
+        // would run against different in-memory databases.
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .expect("open in-memory sqlite");
+
+        sqlx::query(
+            "CREATE TABLE widget ( \
+                 id INTEGER PRIMARY KEY, \
+                 w INTEGER NOT NULL, \
+                 h INTEGER NOT NULL, \
+                 area_virtual INTEGER GENERATED ALWAYS AS (w * h) VIRTUAL, \
+                 area_stored INTEGER GENERATED ALWAYS AS (w * h) STORED \
+             )",
+        )
+        .execute(&pool)
+        .await
+        .expect("create table");
+
+        let schema = SchemaDiscovery::new(pool)
+            .discover()
+            .await
+            .expect("discover schema");
+
+        let table = schema
+            .tables
+            .iter()
+            .find(|table| table.name == "widget")
+            .expect("widget table discovered");
+
+        // Real generated DDL is discovered as `Generated*` visibility — the
+        // fact the hand-built unit test has to assume.
+        let generated: Vec<&str> = table
+            .columns
+            .iter()
+            .filter(|col| super::sqlite_column_is_generated(col))
+            .map(|col| col.name.as_str())
+            .collect();
+        assert_eq!(generated, ["area_virtual", "area_stored"]);
+
+        // After the retain performed by `generate entity`, only the base
+        // (writable) columns survive.
+        let kept: Vec<&str> = table
+            .columns
+            .iter()
+            .filter(|col| !super::sqlite_column_is_generated(col))
+            .map(|col| col.name.as_str())
+            .collect();
+        assert_eq!(kept, ["id", "w", "h"]);
+    }
 }
