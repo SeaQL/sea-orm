@@ -319,6 +319,14 @@ where
     }
 
     /// Select all columns of this entity except the given ones.
+    ///
+    /// Clears any prior selection (`clear_selects`) and then rebuilds the query,
+    /// this overrides earlier [`QuerySelect::select_only`] / [`QuerySelect::column`] calls
+    /// and is not composable with them
+    ///
+    /// Rows still hydrate into the full `Model`. Only `Option<_>` columns can be excluded,
+    /// excluding a non-nullable column results in a runtime error,
+    /// `Missing value for column`.
     pub fn select_except(mut self, except: impl IntoIterator<Item = E::Column>) -> Self {
         let except: Vec<&str> = except.into_iter().map(|col| col.as_str()).collect();
         self.query.clear_selects();

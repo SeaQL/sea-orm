@@ -315,3 +315,45 @@ pub async fn select_except_excludes_option_fields() {
 
     ctx.delete().await;
 }
+
+#[sea_orm_macros::test]
+pub async fn select_except_non_nullable_column_fails() {
+    let ctx = TestContext::new("select_except_non_nullable_column_fails").await;
+    create_bakery_table(&ctx.db).await.unwrap();
+    create_baker_table(&ctx.db).await.unwrap();
+
+    let bakery = bakery::ActiveModel {
+        name: Set("Sweet Treats".to_owned()),
+        profit_margin: Set(0.5),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert bakery");
+
+    let _ = baker::ActiveModel {
+        name: Set("Alice".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "phone": "555-1234",
+            "email": "alice@example.com"
+        })),
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert baker");
+
+    let err = Baker::find()
+        .select_except([baker::Column::Name])
+        .all(&ctx.db)
+        .await
+        .unwrap_err();
+
+    assert!(matches!(
+        err,
+        sea_orm::DbErr::Type(msg) if msg == "Missing value for column 'name'"
+    ));
+
+    ctx.delete().await;
+}
