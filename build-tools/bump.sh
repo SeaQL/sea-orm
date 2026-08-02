@@ -60,8 +60,9 @@ git commit -am "$1"
 
 # Bump examples' dependency version
 cd examples
-find . -depth -type f -name '*.toml' -exec "${SI[@]}" 's/^version = ".*" # sea-orm version$/version = "'~$1'" # sea-orm version/' {} \;
-find . -depth -type f -name '*.toml' -exec "${SI[@]}" 's/^version = ".*" # sea-orm-migration version$/version = "'~$1'" # sea-orm-migration version/' {} \;
+# Tolerate taplo align_entries padding around `=` and before the comment.
+find . -depth -type f -name '*.toml' -exec "${SI[@]}" 's/^version *= ".*" *# sea-orm version$/version = "'~$1'" # sea-orm version/' {} \;
+find . -depth -type f -name '*.toml' -exec "${SI[@]}" 's/^version *= ".*" *# sea-orm-migration version$/version = "'~$1'" # sea-orm-migration version/' {} \;
 # Re-align comments the sed above may have shifted (align_entries) so CI Taplo passes.
 taplo fmt .
 git add .
