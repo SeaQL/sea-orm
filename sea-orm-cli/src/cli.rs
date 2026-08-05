@@ -275,6 +275,13 @@ pub enum GenerateSubcommands {
         #[arg(
             long,
             default_value = "false",
+            help = "Include generated columns in entity files. These fields must remain unset when inserting or updating rows"
+        )]
+        include_generated_columns: bool,
+
+        #[arg(
+            long,
+            default_value = "false",
             long_help = "Automatically derive the Copy trait on generated enums.\n\
             Enums generated from a database don't have associated data by default, and as such can \
             derive Copy.
