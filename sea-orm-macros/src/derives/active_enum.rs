@@ -556,7 +556,7 @@ impl ActiveEnum {
                 impl std::convert::TryFrom<&str> for #ident {
                     type Error = sea_orm::DbErr;
 
-                    fn try_from(source: &str) -> std::result::Result<Self, <Self as std::convert::TryFrom<&str>>::Error> {
+                    fn try_from(source: &str) -> std::result::Result<Self, sea_orm::DbErr> {
                         match source {
                             #( #variant_values => Ok(Self::#variant_idents), )*
                             _ => Err(sea_orm::DbErr::Type(format!(
