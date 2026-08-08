@@ -293,6 +293,11 @@ pub fn date_time_uniq<T: IntoIden>(col: T) -> ColumnDef {
     date_time(col).unique_key().take()
 }
 
+/// A date time column with a server-side default of 'now'.
+pub fn date_time_default_now<T: IntoIden>(col: T) -> ColumnDef {
+    date_time(col).default(Expr::current_timestamp()).take()
+}
+
 pub fn interval<T: IntoIden>(
     col: T,
     fields: Option<PgInterval>,
