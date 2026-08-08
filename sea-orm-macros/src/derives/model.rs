@@ -125,8 +125,8 @@ impl DeriveModel {
             } else {
                 let reader = quote! {
                     let #field_ident =
-                        __sea_orm_row.try_get_nullable::<Option<#field_type>>(
-                            __sea_orm_pre,
+                        row.try_get_nullable::<Option<#field_type>>(
+                            pre,
                             sea_orm::IdenStatic::as_str(
                                 &<<Self as sea_orm::ModelTrait>::Entity
                                     as sea_orm::entity::EntityTrait>::Column::#column_ident
@@ -169,11 +169,11 @@ impl DeriveModel {
         quote!(
             #[automatically_derived]
             impl sea_orm::FromQueryResult for #ident {
-                fn from_query_result(__sea_orm_row: &sea_orm::QueryResult, __sea_orm_pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
-                    Self::from_query_result_nullable(__sea_orm_row, __sea_orm_pre).map_err(Into::into)
+                fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
+                    Self::from_query_result_nullable(row, pre).map_err(Into::into)
                 }
 
-                fn from_query_result_nullable(__sea_orm_row: &sea_orm::QueryResult, __sea_orm_pre: &str) -> std::result::Result<Self, sea_orm::TryGetError> {
+                fn from_query_result_nullable(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::TryGetError> {
                     #(#field_readers)*
 
                     if #all_null_check {

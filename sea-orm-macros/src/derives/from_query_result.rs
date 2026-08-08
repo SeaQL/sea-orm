@@ -47,7 +47,7 @@ impl ToTokens for TryFromQueryResultCheck<'_> {
                     .to_owned()
                     .unwrap_or_else(|| ident.unraw().to_string());
                 tokens.extend(quote! {
-                    let #ident = match __sea_orm_row.try_get_nullable(__sea_orm_pre, #name) {
+                    let #ident = match row.try_get_nullable(pre, #name) {
                         Err(v @ sea_orm::TryGetError::DbErr(_)) => {
                             return Err(v);
                         }
@@ -62,16 +62,16 @@ impl ToTokens for TryFromQueryResultCheck<'_> {
             }
             ItemType::Nested { prefix } => {
                 let prefix = match (self.0, prefix) {
-                    (_, Some(p)) => quote! { &format!("{}{}", __sea_orm_pre, #p) },
+                    (_, Some(p)) => quote! { &format!("{pre}{}", #p) },
                     (true, None) => {
                         let name = ident.unraw().to_string();
-                        quote! { &format!("{}{}_", __sea_orm_pre, #name) }
+                        quote! { &format!("{pre}{}_", #name) }
                     }
-                    (false, None) => quote! { __sea_orm_pre },
+                    (false, None) => quote! { pre },
                 };
 
                 tokens.extend(quote! {
-                    let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(__sea_orm_row, #prefix) {
+                    let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(row, #prefix) {
                         Err(v @ sea_orm::TryGetError::DbErr(_)) => {
                             return Err(v);
                         }
@@ -223,11 +223,11 @@ impl DeriveFromQueryResult {
         quote!(
             #[automatically_derived]
             impl #impl_generics sea_orm::FromQueryResult for #ident #ty_generics #where_clause {
-                fn from_query_result(__sea_orm_row: &sea_orm::QueryResult, __sea_orm_pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
-                    Ok(Self::from_query_result_nullable(__sea_orm_row, __sea_orm_pre)?)
+                fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
+                    Ok(Self::from_query_result_nullable(row, pre)?)
                 }
 
-                fn from_query_result_nullable(__sea_orm_row: &sea_orm::QueryResult, __sea_orm_pre: &str) -> std::result::Result<Self, sea_orm::TryGetError> {
+                fn from_query_result_nullable(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::TryGetError> {
                     #(#ident_try_init)*
 
                     Ok(Self {
