@@ -28,6 +28,12 @@ type PinBoxStream<'b, S> = std::pin::Pin<Box<dyn Stream<Item = Result<S, DbErr>>
 #[cfg(feature = "sync")]
 type PinBoxStream<'b, S> = Box<dyn Iterator<Item = Result<S, DbErr>> + 'b>;
 
+/// The error returned by the `require_one` family when a query that must match a
+/// row matches none.
+fn record_not_found() -> DbErr {
+    DbErr::RecordNotFound("None of the models match the query".to_owned())
+}
+
 /// A ready-to-execute `SELECT` query backed by a [`SelectStatement`]. The
 /// type parameter `S` (a [`SelectorTrait`]) determines what each row is
 /// decoded into. Build one via
@@ -535,6 +541,49 @@ where
         self.into_model().one(db)
     }
 
+    /// Get exactly one Model from the SELECT query, returning
+    /// [`DbErr::RecordNotFound`] when nothing matches. The non-optional
+    /// counterpart to [`one`](Self::one): use it when a missing row is an error,
+    /// so the call site can use `?` instead of unwrapping an `Option`.
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[cfg(feature = "mock")]
+    /// # pub fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results([
+    /// #         vec![cake::Model {
+    /// #             id: 1,
+    /// #             name: "New York Cheese".to_owned(),
+    /// #         }],
+    /// #         vec![],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, tests_cfg::cake};
+    ///
+    /// // A matching row is returned directly — no `Option` to unwrap.
+    /// let cake = cake::Entity::find_by_id(1).require_one(&db)?;
+    /// assert_eq!(cake.name, "New York Cheese");
+    ///
+    /// // No matching row is a `RecordNotFound` error.
+    /// assert!(matches!(
+    ///     cake::Entity::find_by_id(2).require_one(&db),
+    ///     Err(DbErr::RecordNotFound(_))
+    /// ));
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn require_one<C>(self, db: &C) -> Result<E::Model, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().require_one(db)
+    }
+
     /// Get all Models from the SELECT query
     pub fn all<C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
     where
@@ -613,6 +662,16 @@ where
         C: ConnectionTrait,
     {
         self.into_model().one(db)
+    }
+
+    /// Get exactly one row from the Select query, returning
+    /// [`DbErr::RecordNotFound`] when nothing matches. The non-optional
+    /// counterpart to [`one`](Self::one).
+    pub fn require_one<C>(self, db: &C) -> Result<(E::Model, Option<F::Model>), DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().require_one(db)
     }
 
     /// Get all Models from the Select query
@@ -741,6 +800,16 @@ where
         self.into_model().one(db)
     }
 
+    /// Get exactly one row from the Select query, returning
+    /// [`DbErr::RecordNotFound`] when nothing matches. The non-optional
+    /// counterpart to [`one`](Self::one).
+    pub fn require_one<C>(self, db: &C) -> Result<(E::Model, F::Model), DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().require_one(db)
+    }
+
     /// Get all Models from the Select query
     pub fn all<C>(self, db: &C) -> Result<Vec<(E::Model, F::Model)>, DbErr>
     where
@@ -796,6 +865,19 @@ where
             Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
             None => Ok(None),
         }
+    }
+
+    /// Get exactly one item from the Select query, returning
+    /// [`DbErr::RecordNotFound`] when no row matches.
+    ///
+    /// This is the non-optional counterpart to [`one`](Self::one): reach for it
+    /// when a missing row is an error rather than an expected `None`, so the
+    /// call site can use `?` instead of unwrapping an `Option`.
+    pub fn require_one<C>(self, db: &C) -> Result<S::Item, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.one(db)?.ok_or(record_not_found())
     }
 
     /// Get all items from the Select query
@@ -1036,6 +1118,15 @@ where
             Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
             None => Ok(None),
         }
+    }
+
+    /// Get exactly one item from the query, returning [`DbErr::RecordNotFound`]
+    /// when no row matches. The non-optional counterpart to [`one`](Self::one).
+    pub fn require_one<C>(self, db: &C) -> Result<S::Item, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.one(db)?.ok_or(record_not_found())
     }
 
     /// Get all items from the Select query
