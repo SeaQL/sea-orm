@@ -74,6 +74,13 @@ pub enum TestEnum3 {
     HelloWorld,
 }
 
+#[derive(Debug, EnumIter, DeriveActiveEnum, Eq, PartialEq)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "error_variant")]
+enum ErrorVariantEnum {
+    #[sea_orm(string_value = "error")]
+    Error,
+}
+
 #[test]
 fn derive_active_enum_value() {
     assert_eq!(TestEnum::DefaultVariant.to_value(), "defaultVariant");
@@ -94,6 +101,14 @@ fn derive_active_enum_value() {
     );
     assert_eq!(TestEnum::VariantPascalCase.to_value(), "VariantPascalCase");
     assert_eq!(TestEnum::CustomStringValue.to_value(), "CuStOmStRiNgVaLuE");
+}
+
+#[test]
+fn derive_active_enum_with_error_variant() {
+    assert_eq!(
+        <ErrorVariantEnum as TryFrom<&str>>::try_from("error"),
+        Ok(ErrorVariantEnum::Error)
+    );
 }
 
 #[test]

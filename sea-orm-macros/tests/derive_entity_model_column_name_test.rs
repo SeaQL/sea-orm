@@ -56,3 +56,29 @@ fn test_column_names() {
         Column::from_str("lAsTnAmE").expect("column from str should recognize column_name attr");
     assert!(matches!(col, Column::LastName));
 }
+
+#[allow(dead_code)]
+mod query_parameter_name_collisions {
+    use sea_orm::entity::prelude::*;
+    use sea_orm_macros::{DeriveEntityModel, FromQueryResult};
+
+    #[derive(FromQueryResult)]
+    struct QueryResultProjection {
+        row: String,
+        pre: String,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "query_parameter_name_collision")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        id: i32,
+        row: String,
+        pre: String,
+    }
+
+    #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+    pub enum Relation {}
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
