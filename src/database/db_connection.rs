@@ -916,11 +916,14 @@ impl DbBackend {
 mod tests {
     use crate::DatabaseConnection;
 
-    #[cfg(not(feature = "sync"))]
     #[test]
     fn assert_database_connection_traits() {
-        fn assert_send_sync<T: Send + Sync>() {}
+        // Split into single-bound helpers: make-sync.sh strips multi-bound
+        // `Send`/`Sync` clauses when generating sea-orm-sync.
+        fn assert_send<T: Send>() {}
+        fn assert_sync<T: Sync>() {}
 
-        assert_send_sync::<DatabaseConnection>();
+        assert_send::<DatabaseConnection>();
+        assert_sync::<DatabaseConnection>();
     }
 }

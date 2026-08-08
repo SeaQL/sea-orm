@@ -60,7 +60,12 @@ replace_rs 's/Send + Sync + //' src
 replace_rs 's/ + Sync//' src
 replace_rs 's/ + Send//' src
 replace_rs 's/Send + //' src
+# the blanket strip above targets future/executor bounds; restore the bounds on trait
+# objects that are stored inside DatabaseConnection, so it stays Send + Sync like sea-orm
 replace_rs 's/Arc<dyn std::error::Error>/Arc<dyn std::error::Error + Send + Sync>/' src
+replace_rs "s/Arc<dyn Fn(&Info<'_>)>/Arc<dyn Fn(\&Info<'_>) + Send + Sync>/" src
+replace_rs "s/F: Fn(&crate::metric::Info<'_>) + 'static/F: Fn(\&crate::metric::Info<'_>) + Send + Sync + 'static/" src
+replace_rs 's/pub trait MockDatabaseTrait: Debug/pub trait MockDatabaseTrait: Send + Debug/' src
 replace_rs '/T: Send,/d' src
 replace_rs '/R::Model: Send,/d' src
 replace_rs '/S::Item: Send,/d' src
