@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.0.2](changelog/2.0.2.md) - 2026-08-12
+
+`require_one` query helper, `date_time_default_now` / `timestamp_default_now` schema helpers, entity-merge duplicate-import fix
+
 ## [2.0.1](changelog/2.0.1.md) - 2026-08-02
 
 `ActiveValue` helpers (`set_unset`, `is_set_and`, `as_option`), `Paginator::set_page`, `before_acquire` pool hooks, read-only migration status queries, nested-transaction recursion fix
