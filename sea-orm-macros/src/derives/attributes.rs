@@ -1,5 +1,5 @@
-use darling::ast::NestedMeta;
 use darling::FromMeta;
+use darling::ast::NestedMeta;
 use syn::punctuated::Punctuated;
 use syn::{Attribute, Meta, MetaList, MetaNameValue, Token};
 
@@ -24,8 +24,8 @@ fn meta_ident(meta: &NestedMeta) -> Option<String> {
     path.get_ident().map(|ident| ident.to_string())
 }
 
-// Pre-filter the parsed metas before handing them to darling: 
-// drop any that aren't a known field, and drop bare words on value fields 
+// Pre-filter the parsed metas before handing them to darling:
+// drop any that aren't a known field, and drop bare words on value fields
 // (only flag fields accept a bare word). Otherwise darling rejects the whole list.
 fn filter_metas(metas: Vec<NestedMeta>, known: &[&str], flags: &[&str]) -> Vec<NestedMeta> {
     metas
@@ -50,7 +50,11 @@ fn darling_err(e: darling::Error) -> syn::Error {
     syn::Error::new(e.span(), e)
 }
 
-fn try_from_attrs<T: FromMeta>(attrs: &[Attribute], known: &[&str], flags: &[&str]) -> syn::Result<Option<T>> {
+fn try_from_attrs<T: FromMeta>(
+    attrs: &[Attribute],
+    known: &[&str],
+    flags: &[&str],
+) -> syn::Result<Option<T>> {
     let metas = filter_metas(parse_sea_orm_attrs(attrs)?, known, flags);
     if metas.is_empty() {
         Ok(None)

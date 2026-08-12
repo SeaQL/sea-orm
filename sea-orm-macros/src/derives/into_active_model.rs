@@ -141,7 +141,7 @@ impl DeriveIntoActiveModel {
 
         let mut active_model_ident = active_model
             .clone()
-            .unwrap_or_else(|| syn::parse_str::<syn::Type>("ActiveModel").unwrap());
+            .unwrap_or_else(|| syn::parse_quote!(ActiveModel));
 
         // Create a type alias for qualified types
         let type_alias_definition = if is_qualified_type(&active_model_ident) {

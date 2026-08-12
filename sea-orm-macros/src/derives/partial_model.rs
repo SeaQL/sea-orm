@@ -69,7 +69,6 @@ impl DerivePartialModel {
         };
 
         let mut entity = None;
-        let mut entity_string = String::new();
         let mut active_model = None;
         let mut model_alias = None;
         let mut from_query_result = true;
@@ -84,7 +83,6 @@ impl DerivePartialModel {
                 for meta in list {
                     if let Some(s) = meta.get_as_kv("entity") {
                         entity = Some(syn::parse_str::<syn::Type>(&s).map_err(Error::Syn)?);
-                        entity_string = s;
                     } else if let Some(s) = meta.get_as_kv("alias") {
                         model_alias = Some(s);
                     } else if let Some(s) = meta.get_as_kv("from_query_result") {
@@ -99,12 +97,9 @@ impl DerivePartialModel {
         }
 
         if into_active_model {
-            active_model = Some(
-                syn::parse_str::<syn::Type>(&format!(
-                    "<{entity_string} as EntityTrait>::ActiveModel"
-                ))
-                .map_err(Error::Syn)?,
-            );
+            if let Some(entity) = &entity {
+                active_model = Some(syn::parse_quote!(<#entity as EntityTrait>::ActiveModel));
+            }
         }
 
         let mut column_as_list = Vec::with_capacity(fields.len());

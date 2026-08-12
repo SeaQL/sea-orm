@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use std::collections::{HashMap, HashSet};
 use syn::{Ident, TypePath, Visibility, punctuated::Punctuated, token::Comma};
 
@@ -18,6 +18,16 @@ pub enum EntityLoaderFieldKind {
         junction_module: Ident,
         reverse: bool,
     },
+}
+
+/// Ident for the `LoadTarget` variant used by a self-referential many-to-many
+/// junction: `TableRef` for the forward direction, `TableRefRev` for the reverse.
+fn table_ref_ident(reverse: bool) -> Ident {
+    if reverse {
+        format_ident!("TableRefRev")
+    } else {
+        format_ident!("TableRef")
+    }
 }
 
 pub struct EntityLoaderField {
@@ -115,11 +125,7 @@ impl EntityLoaderField {
         junction_module: &Ident,
         reverse: bool,
     ) {
-        let target_type = if !reverse {
-            Ident::new("TableRef", junction_module.span())
-        } else {
-            Ident::new("TableRefRev", junction_module.span())
-        };
+        let target_type = table_ref_ident(reverse);
 
         let target_entity = if !reverse {
             quote!(super::#junction_module::Entity)
@@ -195,11 +201,7 @@ impl EntityLoaderField {
                     reverse,
                 } = &self.kind
                 {
-                    let target_type = if !reverse {
-                        Ident::new("TableRef", junction_module.span())
-                    } else {
-                        Ident::new("TableRefRev", junction_module.span())
-                    };
+                    let target_type = table_ref_ident(*reverse);
 
                     output.loader_with_set_impl.extend(quote! {
                         if target == sea_orm::compound::LoadTarget::#target_type(super::#junction_module::Entity.table_ref()) {
@@ -248,11 +250,7 @@ impl EntityLoaderField {
                 junction_module,
                 reverse,
             } => {
-                let target_type = if !reverse {
-                    Ident::new("TableRef", junction_module.span())
-                } else {
-                    Ident::new("TableRefRev", junction_module.span())
-                };
+                let target_type = table_ref_ident(*reverse);
 
                 output.loader_with_2_impl.extend(quote! {
                     if left == sea_orm::compound::LoadTarget::#target_type(super::#junction_module::Entity.table_ref()) {
@@ -339,7 +337,7 @@ impl EntityLoaderField {
     ) {
         let field = &self.field;
         let entity = &self.entity;
-        let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
+        let relation_enum = format_ident!("{}", relation_enum.value());
         let await_ = if cfg!(feature = "async") {
             quote!(.await)
         } else {
@@ -448,7 +446,7 @@ impl EntityLoaderField {
     ) {
         let field = &self.field;
         let entity = &self.entity;
-        let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
+        let relation_enum = format_ident!("{}", relation_enum.value());
         let await_ = if cfg!(feature = "async") {
             quote!(.await)
         } else {
@@ -511,7 +509,7 @@ impl EntityLoaderField {
     ) {
         let field = &self.field;
         let entity = &self.entity;
-        let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
+        let relation_enum = format_ident!("{}", relation_enum.value());
         let await_ = if cfg!(feature = "async") {
             quote!(.await)
         } else {
@@ -536,7 +534,7 @@ impl EntityLoaderField {
     ) {
         let field = &self.field;
         let entity = &self.entity;
-        let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
+        let relation_enum = format_ident!("{}", relation_enum.value());
         let await_ = if cfg!(feature = "async") {
             quote!(.await)
         } else {

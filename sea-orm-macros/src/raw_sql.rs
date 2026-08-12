@@ -28,11 +28,11 @@ pub fn expand(input: proc_macro::TokenStream) -> syn::Result<TokenStream> {
         ..
     } = syn::parse(input)?;
 
-    let builder = match backend.to_string().as_str() {
-        "MySql" => quote!(MysqlQueryBuilder),
-        "Postgres" => quote!(PostgresQueryBuilder),
-        "Sqlite" => quote!(SqliteQueryBuilder),
-        backend => panic!("Unsupported backend {backend}"),
+    let builder = match &backend {
+        id if *id == "MySql" => quote!(MysqlQueryBuilder),
+        id if *id == "Postgres" => quote!(PostgresQueryBuilder),
+        id if *id == "Sqlite" => quote!(SqliteQueryBuilder),
+        _ => panic!("Unsupported backend {backend}"),
     };
 
     Ok(quote! {{
