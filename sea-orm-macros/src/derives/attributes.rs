@@ -156,25 +156,57 @@ pub mod relation_attr {
 }
 
 pub mod compound_attr {
-    use bae::FromAttributes;
+    use super::*;
+    use syn::LitStr;
+
+    const KNOWN: &[&str] = &[
+        "has_one",
+        "has_many",
+        "belongs_to",
+        "self_ref",
+        "skip_fk",
+        "via",
+        "via_rel",
+        "from",
+        "to",
+        "relation_enum",
+        "relation_reverse",
+        "reverse",
+        "on_update",
+        "on_delete",
+    ];
+    const FLAGS: &[&str] = &[
+        "has_one",
+        "has_many",
+        "belongs_to",
+        "self_ref",
+        "skip_fk",
+        "reverse",
+    ];
 
     /// Attributes for compound model fields
-    #[derive(Default, FromAttributes)]
+    #[derive(Default, FromMeta)]
     pub struct SeaOrm {
         pub has_one: Option<()>,
         pub has_many: Option<()>,
         pub belongs_to: Option<()>,
         pub self_ref: Option<()>,
         pub skip_fk: Option<()>,
-        pub via: Option<syn::LitStr>,
-        pub via_rel: Option<syn::LitStr>,
-        pub from: Option<syn::LitStr>,
-        pub to: Option<syn::LitStr>,
-        pub relation_enum: Option<syn::LitStr>,
-        pub relation_reverse: Option<syn::LitStr>,
+        pub via: Option<LitStr>,
+        pub via_rel: Option<LitStr>,
+        pub from: Option<LitStr>,
+        pub to: Option<LitStr>,
+        pub relation_enum: Option<LitStr>,
+        pub relation_reverse: Option<LitStr>,
         pub reverse: Option<()>,
-        pub on_update: Option<syn::LitStr>,
-        pub on_delete: Option<syn::LitStr>,
+        pub on_update: Option<LitStr>,
+        pub on_delete: Option<LitStr>,
+    }
+
+    impl SeaOrm {
+        pub fn try_from_attributes(attrs: &[Attribute]) -> syn::Result<Option<Self>> {
+            try_from_attrs::<Self>(attrs, KNOWN, FLAGS)
+        }
     }
 }
 
@@ -214,10 +246,14 @@ pub mod value_type_attr {
 
 #[cfg(feature = "seaography")]
 pub mod related_attr {
-    use bae::FromAttributes;
+    use super::*;
+    use syn::Lit;
+
+    const KNOWN: &[&str] = &["entity", "def"];
+    const FLAGS: &[&str] = &[];
 
     /// Attributes for RelatedEntity enum
-    #[derive(Default, FromAttributes)]
+    #[derive(Default, FromMeta)]
     pub struct SeaOrm {
         ///
         /// Allows to modify target entity
@@ -227,7 +263,7 @@ pub mod related_attr {
         /// If used on enumeration attributes
         /// it allows to specify different
         /// Entity ident
-        pub entity: Option<syn::Lit>,
+        pub entity: Option<Lit>,
         ///
         /// Allows to specify RelationDef
         ///
@@ -235,6 +271,15 @@ pub mod related_attr {
         ///
         /// If not supplied the generated code
         /// will utilize `impl Related` trait
-        pub def: Option<syn::Lit>,
+        pub def: Option<Lit>,
+    }
+
+    impl SeaOrm {
+        pub fn try_from_attributes(attrs: &[Attribute]) -> syn::Result<Option<Self>> {
+            try_from_attrs::<Self>(attrs, KNOWN, FLAGS)
+        }
+        pub fn from_attributes(attrs: &[Attribute]) -> syn::Result<Self> {
+            from_attrs::<Self>(attrs, KNOWN, FLAGS)
+        }
     }
 }
