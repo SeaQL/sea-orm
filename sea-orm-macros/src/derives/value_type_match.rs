@@ -1,6 +1,6 @@
-use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote_spanned};
-use syn::{GenericArgument, Ident, LitStr, PathArguments, Type, TypePath};
+use proc_macro2::{Ident, Span, TokenStream};
+use quote::quote_spanned;
+use syn::{GenericArgument, LitStr, PathArguments, Type, TypePath};
 
 pub fn column_type_expr(
     column_type: Option<TokenStream>,
@@ -62,7 +62,7 @@ pub fn column_type_wrapper(column_type: &Option<String>, field_type: &Type) -> O
             "Array" => Some("GenericArrayColumn"),
             _ => None,
         }
-        .map(|ty| format_ident!("{}", ty));
+        .map(|ty| Ident::new(ty, Span::call_site()));
 
         if value_type.is_some() {
             return value_type;
@@ -119,7 +119,7 @@ pub fn column_type_wrapper(column_type: &Option<String>, field_type: &Type) -> O
         None
     };
 
-    value_type.map(|ty| format_ident!("{}", ty))
+    value_type.map(|ty| Ident::new(ty, Span::call_site()))
 }
 
 fn generic_type_arg<'a>(type_path: &'a TypePath, ident: &str) -> Option<&'a Type> {

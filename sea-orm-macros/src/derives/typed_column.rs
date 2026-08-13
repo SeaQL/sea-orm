@@ -3,7 +3,7 @@ use crate::derives::util::consume_meta;
 use super::util::{CompoundType, escape_rust_keyword, trim_starting_raw_identifier};
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, TokenStream};
-use quote::{format_ident, quote};
+use quote::quote;
 use syn::{Data, Fields, Lit, Visibility};
 
 /// First is `struct TypedColumn`, second is the `const COLUMN`
@@ -21,7 +21,7 @@ pub fn expand_typed_column(
         for field in &fields.named {
             let Some(ident) = &field.ident else { continue };
             let field_name = trim_starting_raw_identifier(ident);
-            let mut field_name = format_ident!("{}", field_name.to_upper_camel_case());
+            let mut field_name = Ident::new(&field_name.to_upper_camel_case(), ident.span());
 
             let field_ty = &field.ty;
 
@@ -68,7 +68,7 @@ pub fn expand_typed_column(
                 continue;
             }
 
-            field_name = format_ident!("{}", escape_rust_keyword(field_name));
+            field_name = Ident::new(&escape_rust_keyword(field_name), ident.span());
 
             column_fields.push(ident.clone());
             let wrapper = super::value_type_match::column_type_wrapper(&column_type, field_ty);

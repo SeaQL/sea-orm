@@ -1,102 +1,56 @@
-use darling::FromMeta;
-use darling::ast::NestedMeta;
-use syn::punctuated::Punctuated;
-use syn::{Attribute, Meta, MetaList, MetaNameValue, Token};
+ use darling::{FromAttributes, FromMeta, Result};
+ use syn::{Attribute, Expr, Ident, Lit};
 
-fn parse_sea_orm_attrs(attrs: &[Attribute]) -> syn::Result<Vec<NestedMeta>> {
-    let parser = Punctuated::<NestedMeta, Token![,]>::parse_terminated;
-    let mut metas = Vec::new();
-    for attr in attrs {
-        if attr.path().is_ident("sea_orm") {
-            metas.extend(attr.parse_args_with(parser)?);
-        }
+/// An optional `syn::Ident` attribute value.
+///
+/// Darling has no `from_word` for `syn::Ident`, so a bare-word usage such as
+/// `#[sea_orm(model_ex)]` would be rejected for an `Option<Ident>` field. Several
+/// `sea_orm` attributes are emitted both as bare words (e.g. `#[sea_orm(model_ex)]`)
+/// and as name-value paths (e.g. `#[sea_orm(model_ex = ModelEx)]`); this wrapper
+/// treats the bare-word form as absent so both usages parse cleanly.
+#[derive(Debug, Clone, Default)]
+pub struct OptionalIdent(pub Option<Ident>);
+
+impl FromMeta for OptionalIdent {
+    fn from_word() -> Result<Self> {
+        Ok(Self(None))
     }
-    Ok(metas)
+    fn from_value(value: &Lit) -> Result<Self> {
+        Ident::from_value(value).map(|id| Self(Some(id)))
+    }
+    fn from_expr(expr: &Expr) -> Result<Self> {
+        Ident::from_expr(expr).map(|id| Self(Some(id)))
+    }
 }
 
-fn meta_ident(meta: &NestedMeta) -> Option<String> {
-    let path = match meta {
-        NestedMeta::Meta(Meta::Path(path))
-        | NestedMeta::Meta(Meta::List(MetaList { path, .. }))
-        | NestedMeta::Meta(Meta::NameValue(MetaNameValue { path, .. })) => path,
-        _ => return None,
-    };
-    path.get_ident().map(|ident| ident.to_string())
-}
-
-// Pre-filter the parsed metas before handing them to darling:
-// drop any that aren't a known field, and drop bare words on value fields
-// (only flag fields accept a bare word). Otherwise darling rejects the whole list.
-fn filter_metas(metas: Vec<NestedMeta>, known: &[&str], flags: &[&str]) -> Vec<NestedMeta> {
-    metas
-        .into_iter()
-        .filter(|meta| {
-            let Some(name) = meta_ident(meta) else {
-                return false;
-            };
-            if !known.contains(&name.as_str()) {
-                return false;
-            }
-            let is_bare = matches!(meta, NestedMeta::Meta(Meta::Path(_)));
-            if is_bare && !flags.contains(&name.as_str()) {
-                return false;
-            }
-            true
-        })
-        .collect()
-}
-
-fn darling_err(e: darling::Error) -> syn::Error {
-    syn::Error::new(e.span(), e)
-}
-
-fn try_from_attrs<T: FromMeta>(
-    attrs: &[Attribute],
-    known: &[&str],
-    flags: &[&str],
-) -> syn::Result<Option<T>> {
-    let metas = filter_metas(parse_sea_orm_attrs(attrs)?, known, flags);
-    if metas.is_empty() {
-        Ok(None)
+fn try_from_attributes<T: FromAttributes>(attrs: &[Attribute]) -> syn::Result<Option<T>> {
+    if attrs.iter().any(|a| a.path().is_ident("sea_orm")) {
+        T::from_attributes(attrs)
+            .map(Some)
+            .map_err(syn::Error::from)
     } else {
-        T::from_list(&metas).map(Some).map_err(darling_err)
+        Ok(None)
     }
 }
 
-fn from_attrs<T: FromMeta>(attrs: &[Attribute], known: &[&str], flags: &[&str]) -> syn::Result<T> {
-    let metas = filter_metas(parse_sea_orm_attrs(attrs)?, known, flags);
-    T::from_list(&metas).map_err(darling_err)
+fn from_attributes<T: FromAttributes>(attrs: &[Attribute]) -> syn::Result<T> {
+    T::from_attributes(attrs).map_err(syn::Error::from)
 }
 
 pub mod derive_attr {
     use super::*;
     use syn::{Ident, LitStr};
 
-    const KNOWN: &[&str] = &[
-        "column",
-        "entity",
-        "model",
-        "model_ex",
-        "active_model",
-        "active_model_ex",
-        "primary_key",
-        "relation",
-        "schema_name",
-        "table_name",
-        "comment",
-        "rename_all",
-        "table_iden",
-    ];
-    const FLAGS: &[&str] = &["table_iden"];
-
     /// Attributes for Models and ActiveModels
-    #[derive(Default, FromMeta)]
+    #[derive(Default, FromAttributes)]
+    #[darling(attributes(sea_orm), allow_unknown_fields)]
     #[allow(dead_code)]
     pub struct SeaOrm {
         pub column: Option<Ident>,
         pub entity: Option<Ident>,
         pub model: Option<Ident>,
-        pub model_ex: Option<Ident>,
+        #[darling(default)]
+        pub model_ex: OptionalIdent,
         pub active_model: Option<Ident>,
         pub active_model_ex: Option<Ident>,
         pub primary_key: Option<Ident>,
@@ -110,7 +64,7 @@ pub mod derive_attr {
 
     impl SeaOrm {
         pub fn try_from_attributes(attrs: &[Attribute]) -> syn::Result<Option<Self>> {
-            try_from_attrs::<Self>(attrs, KNOWN, FLAGS)
+            super::try_from_attributes(attrs)
         }
     }
 }
@@ -119,24 +73,9 @@ pub mod relation_attr {
     use super::*;
     use syn::Lit;
 
-    const KNOWN: &[&str] = &[
-        "belongs_to",
-        "has_one",
-        "has_many",
-        "via_rel",
-        "on_update",
-        "on_delete",
-        "on_condition",
-        "from",
-        "to",
-        "fk_name",
-        "skip_fk",
-        "condition_type",
-    ];
-    const FLAGS: &[&str] = &["skip_fk"];
-
     /// Attributes for Relation enum
-    #[derive(Default, FromMeta)]
+    #[derive(Default, FromAttributes)]
+    #[darling(attributes(sea_orm), allow_unknown_fields)]
     pub struct SeaOrm {
         pub belongs_to: Option<Lit>,
         pub has_one: Option<Lit>,
@@ -154,7 +93,7 @@ pub mod relation_attr {
 
     impl SeaOrm {
         pub fn from_attributes(attrs: &[Attribute]) -> syn::Result<Self> {
-            from_attrs::<Self>(attrs, KNOWN, FLAGS)
+            super::from_attributes(attrs)
         }
     }
 }
@@ -163,33 +102,9 @@ pub mod compound_attr {
     use super::*;
     use syn::LitStr;
 
-    const KNOWN: &[&str] = &[
-        "has_one",
-        "has_many",
-        "belongs_to",
-        "self_ref",
-        "skip_fk",
-        "via",
-        "via_rel",
-        "from",
-        "to",
-        "relation_enum",
-        "relation_reverse",
-        "reverse",
-        "on_update",
-        "on_delete",
-    ];
-    const FLAGS: &[&str] = &[
-        "has_one",
-        "has_many",
-        "belongs_to",
-        "self_ref",
-        "skip_fk",
-        "reverse",
-    ];
-
     /// Attributes for compound model fields
-    #[derive(Default, FromMeta)]
+    #[derive(Default, FromAttributes)]
+    #[darling(attributes(sea_orm), allow_unknown_fields)]
     pub struct SeaOrm {
         pub has_one: Option<()>,
         pub has_many: Option<()>,
@@ -209,7 +124,7 @@ pub mod compound_attr {
 
     impl SeaOrm {
         pub fn try_from_attributes(attrs: &[Attribute]) -> syn::Result<Option<Self>> {
-            try_from_attrs::<Self>(attrs, KNOWN, FLAGS)
+            super::try_from_attributes(attrs)
         }
     }
 }
@@ -218,19 +133,9 @@ pub mod value_type_attr {
     use super::*;
     use syn::LitStr;
 
-    const KNOWN: &[&str] = &[
-        "column_type",
-        "array_type",
-        "value_type",
-        "from_str",
-        "to_str",
-        "try_from_u64",
-        "try_getable_array",
-    ];
-    const FLAGS: &[&str] = &["try_from_u64", "try_getable_array"];
-
     /// Attributes for compound model fields
-    #[derive(Default, FromMeta)]
+    #[derive(Default, FromAttributes)]
+    #[darling(attributes(sea_orm), allow_unknown_fields)]
     pub struct SeaOrm {
         pub column_type: Option<LitStr>,
         pub array_type: Option<LitStr>,
@@ -243,7 +148,7 @@ pub mod value_type_attr {
 
     impl SeaOrm {
         pub fn try_from_attributes(attrs: &[Attribute]) -> syn::Result<Option<Self>> {
-            try_from_attrs::<Self>(attrs, KNOWN, FLAGS)
+            super::try_from_attributes(attrs)
         }
     }
 }
@@ -253,11 +158,9 @@ pub mod related_attr {
     use super::*;
     use syn::Lit;
 
-    const KNOWN: &[&str] = &["entity", "def"];
-    const FLAGS: &[&str] = &[];
-
     /// Attributes for RelatedEntity enum
-    #[derive(Default, FromMeta)]
+    #[derive(Default, FromAttributes)]
+    #[darling(attributes(sea_orm), allow_unknown_fields)]
     pub struct SeaOrm {
         ///
         /// Allows to modify target entity
@@ -280,10 +183,10 @@ pub mod related_attr {
 
     impl SeaOrm {
         pub fn try_from_attributes(attrs: &[Attribute]) -> syn::Result<Option<Self>> {
-            try_from_attrs::<Self>(attrs, KNOWN, FLAGS)
+            super::try_from_attributes(attrs)
         }
         pub fn from_attributes(attrs: &[Attribute]) -> syn::Result<Self> {
-            from_attrs::<Self>(attrs, KNOWN, FLAGS)
+            super::from_attributes(attrs)
         }
     }
 }

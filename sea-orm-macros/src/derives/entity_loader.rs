@@ -1,5 +1,6 @@
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use proc_macro2::Span;
+use quote::quote;
 use std::collections::{HashMap, HashSet};
 use syn::{Ident, TypePath, Visibility, punctuated::Punctuated, token::Comma};
 
@@ -22,11 +23,11 @@ pub enum EntityLoaderFieldKind {
 
 /// Ident for the `LoadTarget` variant used by a self-referential many-to-many
 /// junction: `TableRef` for the forward direction, `TableRefRev` for the reverse.
-fn table_ref_ident(reverse: bool) -> Ident {
+fn table_ref_ident(reverse: bool, span: Span) -> Ident {
     if reverse {
-        format_ident!("TableRefRev")
+        Ident::new("TableRefRev", span)
     } else {
-        format_ident!("TableRef")
+        Ident::new("TableRef", span)
     }
 }
 
@@ -125,7 +126,7 @@ impl EntityLoaderField {
         junction_module: &Ident,
         reverse: bool,
     ) {
-        let target_type = table_ref_ident(reverse);
+        let target_type = table_ref_ident(reverse, junction_module.span());
 
         let target_entity = if !reverse {
             quote!(super::#junction_module::Entity)
@@ -201,7 +202,7 @@ impl EntityLoaderField {
                     reverse,
                 } = &self.kind
                 {
-                    let target_type = table_ref_ident(*reverse);
+                    let target_type = table_ref_ident(*reverse, junction_module.span());
 
                     output.loader_with_set_impl.extend(quote! {
                         if target == sea_orm::compound::LoadTarget::#target_type(super::#junction_module::Entity.table_ref()) {
@@ -250,7 +251,7 @@ impl EntityLoaderField {
                 junction_module,
                 reverse,
             } => {
-                let target_type = table_ref_ident(*reverse);
+                let target_type = table_ref_ident(*reverse, junction_module.span());
 
                 output.loader_with_2_impl.extend(quote! {
                     if left == sea_orm::compound::LoadTarget::#target_type(super::#junction_module::Entity.table_ref()) {
@@ -337,7 +338,7 @@ impl EntityLoaderField {
     ) {
         let field = &self.field;
         let entity = &self.entity;
-        let relation_enum = format_ident!("{}", relation_enum.value());
+        let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
         let await_ = if cfg!(feature = "async") {
             quote!(.await)
         } else {
@@ -446,7 +447,7 @@ impl EntityLoaderField {
     ) {
         let field = &self.field;
         let entity = &self.entity;
-        let relation_enum = format_ident!("{}", relation_enum.value());
+        let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
         let await_ = if cfg!(feature = "async") {
             quote!(.await)
         } else {
@@ -509,7 +510,7 @@ impl EntityLoaderField {
     ) {
         let field = &self.field;
         let entity = &self.entity;
-        let relation_enum = format_ident!("{}", relation_enum.value());
+        let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
         let await_ = if cfg!(feature = "async") {
             quote!(.await)
         } else {
@@ -534,7 +535,7 @@ impl EntityLoaderField {
     ) {
         let field = &self.field;
         let entity = &self.entity;
-        let relation_enum = format_ident!("{}", relation_enum.value());
+        let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
         let await_ = if cfg!(feature = "async") {
             quote!(.await)
         } else {

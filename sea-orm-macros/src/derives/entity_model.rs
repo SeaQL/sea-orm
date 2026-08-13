@@ -190,7 +190,7 @@ pub fn expand_derive_entity_model(
                 if let Some(ident) = &field.ident {
                     let original_field_name = trim_starting_raw_identifier(ident);
                     let mut field_name =
-                        format_ident!("{}", original_field_name.to_upper_camel_case());
+                        Ident::new(&original_field_name.to_upper_camel_case(), ident.span());
 
                     let mut nullable = false;
                     let mut default_value = None;
@@ -387,7 +387,7 @@ pub fn expand_derive_entity_model(
                         field_name = enum_name;
                     }
 
-                    field_name = format_ident!("{}", escape_rust_keyword(field_name));
+                    field_name = Ident::new(&escape_rust_keyword(field_name), ident.span());
 
                     let variant_attrs = match &column_name {
                         Some(column_name) => quote! {

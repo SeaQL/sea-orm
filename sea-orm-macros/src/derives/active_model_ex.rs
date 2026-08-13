@@ -192,7 +192,7 @@ struct ScalarField<'a> {
 impl<'a> ScalarField<'a> {
     fn from_field(field: &'a syn::Field, ident: &Ident) -> syn::Result<Self> {
         let column = trim_starting_raw_identifier(ident).to_upper_camel_case();
-        let mut column = format_ident!("{}", escape_rust_keyword(column));
+        let mut column = Ident::new(&escape_rust_keyword(column), ident.span());
 
         for attr in &field.attrs {
             if !attr.path().is_ident("sea_orm") {
@@ -612,9 +612,10 @@ impl ActiveModelActionTokens {
                         // variant (there is no canonical `Related<E>` to key by);
                         // a unique target with no explicit enum uses the entity-keyed path.
                         let relation_lookup = match relation_enum {
-                            Some(relation_enum) => RelationLookup::ByRelationVariant(
-                                format_ident!("{}", relation_enum.value().to_upper_camel_case()),
-                            ),
+                            Some(relation_enum) => RelationLookup::ByRelationVariant(Ident::new(
+                                &relation_enum.value().to_upper_camel_case(),
+                                relation_enum.span(),
+                            )),
                             None => {
                                 if is_unique_relation_target {
                                     RelationLookup::ByRelatedEntity
@@ -1215,7 +1216,7 @@ impl HasManySelfField<'_> {
             quote!()
         };
         let ident = self.ident;
-        let relation_variant = format_ident!("{}", self.relation_variant.value());
+        let relation_variant = Ident::new(&self.relation_variant.value(), self.relation_variant.span());
         let relation_variant = quote!(Relation::#relation_variant);
 
         let delete_associated_model = quote! {
@@ -1295,8 +1296,8 @@ impl ManyToManyField<'_> {
                 ("establish_links_self_rev", "delete_links_self")
             }
         };
-        let establish_links = format_ident!("{}", establish_links);
-        let delete_links = format_ident!("{}", delete_links);
+        let establish_links = Ident::new(establish_links, ident.span());
+        let delete_links = Ident::new(delete_links, ident.span());
 
         let many_to_many_before_action = quote! {
             let #ident = self.#ident.take();
