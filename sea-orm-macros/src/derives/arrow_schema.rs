@@ -92,7 +92,7 @@ pub fn expand_derive_arrow_schema(
 
                     fields_info.push(ArrowFieldInfo {
                         name: resolved_name,
-                        field_type: field_type.clone(),
+                        field_type: syn::parse_quote!(#field_type),
                         column_type_str,
                         nullable,
                         arrow_attrs,

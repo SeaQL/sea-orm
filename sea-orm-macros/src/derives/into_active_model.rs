@@ -140,7 +140,8 @@ impl DeriveIntoActiveModel {
         } = self;
 
         let mut active_model_ident = active_model
-            .clone()
+            .as_ref()
+            .map(|am| syn::parse_quote!(#am))
             .unwrap_or_else(|| syn::parse_str::<syn::Type>("ActiveModel").unwrap());
 
         // Create a type alias for qualified types
@@ -148,6 +149,7 @@ impl DeriveIntoActiveModel {
             let type_alias = format_ident!("ActiveModelFor{ident}");
             let type_def = quote!( type #type_alias = #active_model_ident; );
             active_model_ident = syn::Type::Path(syn::TypePath {
+                attrs: Vec::new(),
                 qself: None,
                 path: syn::Path {
                     leading_colon: None,
@@ -180,7 +182,10 @@ impl DeriveIntoActiveModel {
         });
 
         // Add custom field assignments from #[sea_orm(set(field = expr))]
-        let (set_idents, set_exprs): (Vec<_>, Vec<_>) = set_fields.iter().cloned().unzip();
+        let (set_idents, set_exprs): (Vec<_>, Vec<_>) = set_fields
+            .iter()
+            .map(|(id, expr)| (id.clone(), expr))
+            .unzip();
         let expanded_sets = set_exprs.iter().map(|expr| {
             quote!(
                 sea_orm::ActiveValue::Set(#expr)

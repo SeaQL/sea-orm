@@ -8,7 +8,7 @@ use super::util::{
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{Attribute, Data, LitStr, PathArguments, Type, TypePath, Visibility};
+use syn::{Attribute, Data, LitStr, PathArguments, Type, TypePath, Visibility, parse_quote};
 
 enum RelationAttr {
     BelongsTo {
@@ -79,8 +79,8 @@ impl RelationAttr {
                     ));
                 }
                 Ok(Some(Self::BelongsTo {
-                    from: RelationColumns::from_lit(from.clone())?,
-                    relation_enum: Some(relation_enum.clone()),
+                    from: RelationColumns::from_lit(from)?,
+                    relation_enum: Some(parse_quote!(#relation_enum)),
                 }))
             }
             compound_attr::SeaOrm {
@@ -101,7 +101,7 @@ impl RelationAttr {
                     ));
                 }
                 Ok(Some(Self::HasManySelf {
-                    relation_enum: relation_enum.clone(),
+                    relation_enum: parse_quote!(#relation_enum),
                 }))
             }
             compound_attr::SeaOrm {
@@ -130,10 +130,10 @@ impl RelationAttr {
                     ));
                 }
                 Ok(Some(Self::BelongsTo {
-                    from: RelationColumns::from_lit(attrs.from.clone().ok_or_else(|| {
+                    from: RelationColumns::from_lit(attrs.from.as_ref().ok_or_else(|| {
                         syn::Error::new_spanned(field_ident, "belongs_to must specify `from`")
                     })?)?,
-                    relation_enum: attrs.relation_enum.clone(),
+                    relation_enum: attrs.relation_enum.as_ref().map(|lit| parse_quote!(#lit)),
                 }))
             }
             compound_attr::SeaOrm {
@@ -446,7 +446,8 @@ impl<'a> ActiveModelSetter<'a> {
     fn expand_compound(&self, compound_type: &CompoundType) -> syn::Result<TokenStream> {
         let field_ident = self.field.ident;
         let entity_path = &compound_type.entity;
-        let mut active_model_type = entity_path.path.clone();
+        let entity_path_path = &entity_path.path;
+        let mut active_model_type: syn::Path = parse_quote!(#entity_path_path);
         let Some(segment) = active_model_type.segments.last_mut() else {
             return Err(syn::Error::new_spanned(entity_path, "expected entity path"));
         };
@@ -600,7 +601,7 @@ impl ActiveModelActionTokens {
                     RelationAttr::HasManySelf { relation_enum } => {
                         Some(Relation::HasManySelf(HasManySelfField {
                             ident,
-                            relation_variant: relation_enum.clone(),
+                            relation_variant: parse_quote!(#relation_enum),
                         }))
                     }
                     RelationAttr::BelongsTo {

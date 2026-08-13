@@ -4,16 +4,16 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use syn::{Data, DataStruct, Expr, Fields, LitStr, Type, Visibility};
 
-pub(crate) struct DeriveActiveModel {
+pub(crate) struct DeriveActiveModel<'a> {
     model: Ident,
-    vis: Visibility,
+    vis: &'a Visibility,
     fields: Vec<Ident>,
     names: Vec<Ident>,
-    types: Vec<Type>,
+    types: Vec<&'a Type>,
 }
 
-impl DeriveActiveModel {
-    pub fn new(vis: &Visibility, ident: &Ident, data: &Data) -> syn::Result<Self> {
+impl<'a> DeriveActiveModel<'a> {
+    pub fn new(vis: &'a Visibility, ident: &Ident, data: &'a Data) -> syn::Result<Self> {
         let all_fields = match data {
             Data::Struct(DataStruct {
                 fields: Fields::Named(named),
@@ -60,12 +60,12 @@ impl DeriveActiveModel {
                 })?;
 
             names.push(ident);
-            types.push(field.ty.clone());
+            types.push(&field.ty);
         }
 
         Ok(DeriveActiveModel {
             model: ident.clone(),
-            vis: vis.clone(),
+            vis,
             fields,
             names,
             types,
@@ -73,9 +73,9 @@ impl DeriveActiveModel {
     }
 }
 
-impl DeriveActiveModel {
+impl<'a> DeriveActiveModel<'a> {
     fn define_active_model(&self) -> TokenStream {
-        let vis = &self.vis;
+        let vis = self.vis;
         let fields = &self.fields;
         let types = &self.types;
         quote!(

@@ -176,7 +176,8 @@ impl DerivePartialModel {
                 },
                 (None, None, true) => {
                     if let Some(prefix) = &nested_prefix {
-                        let key = (field.ty.clone(), Some(prefix.clone()));
+                        let field_ty = &field.ty;
+                        let key = (syn::parse_quote!(#field_ty), Some(prefix.clone()));
                         match seen_nested.entry(key) {
                             Entry::Occupied(e) => {
                                 let msg = format!(
@@ -265,7 +266,7 @@ impl DerivePartialModel {
         let impl_into_active_model = if self.into_active_model {
             DeriveIntoActiveModel {
                 ident: self.ident.clone(),
-                active_model: self.active_model.clone(),
+                active_model: self.active_model.as_ref().map(|t| syn::parse_quote!(#t)),
                 fields: self
                     .fields
                     .iter()

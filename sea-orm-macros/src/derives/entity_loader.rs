@@ -47,6 +47,11 @@ struct EntityLoaderOutput {
 }
 
 impl EntityLoaderField {
+    fn entity_path(&self) -> syn::Path {
+        let path = &self.entity.path;
+        syn::parse_quote!(#path)
+    }
+
     fn expand_loader_with_field_into(&self, output: &mut EntityLoaderOutput) {
         let field = &self.field;
 
@@ -62,7 +67,7 @@ impl EntityLoaderField {
             EntityLoaderFieldKind::HasOne
             | EntityLoaderFieldKind::HasMany
             | EntityLoaderFieldKind::ManyToMany => {
-                let mut entity_module = self.entity.path.clone();
+                let mut entity_module = self.entity_path();
                 entity_module.segments.pop();
                 entity_module
                     .segments
@@ -81,9 +86,12 @@ impl EntityLoaderField {
     }
 
     fn expand_relation_tuple_with_param_into(&self, output: &mut EntityLoaderOutput) {
-        let mut entity_module = self.entity.path.clone();
+        let mut entity_module = self.entity_path();
         entity_module.segments.pop();
-        let mut related_entity = entity_module.clone();
+        // syn 3 leaves a dangling trailing `::` after `pop()`; drop it before
+        // re-parsing the path, otherwise `parse_quote!` fails.
+        entity_module.segments.pop_punct();
+        let mut related_entity: syn::Path = syn::parse_quote!(#entity_module);
         related_entity.segments.push(syn::parse_quote!(Entity));
         let mut related_relation = entity_module;
         related_relation.segments.push(syn::parse_quote!(Relation));
@@ -294,7 +302,7 @@ impl EntityLoaderField {
         } else {
             quote!()
         };
-        let mut entity_module = self.entity.path.clone();
+        let mut entity_module = self.entity_path();
         entity_module.segments.pop();
         entity_module.segments.push(syn::parse_quote!(EntityLoader));
 
@@ -345,7 +353,7 @@ impl EntityLoaderField {
         } else {
             quote!()
         };
-        let mut entity_module = self.entity.path.clone();
+        let mut entity_module = self.entity_path();
         entity_module.segments.pop();
         entity_module.segments.push(syn::parse_quote!(EntityLoader));
 
@@ -403,7 +411,7 @@ impl EntityLoaderField {
         } else {
             quote!()
         };
-        let mut entity_module = self.entity.path.clone();
+        let mut entity_module = self.entity_path();
         entity_module.segments.pop();
         entity_module.segments.push(syn::parse_quote!(EntityLoader));
 
@@ -454,7 +462,7 @@ impl EntityLoaderField {
         } else {
             quote!()
         };
-        let mut entity_module = self.entity.path.clone();
+        let mut entity_module = self.entity_path();
         entity_module.segments.pop();
         entity_module.segments.push(syn::parse_quote!(EntityLoader));
 

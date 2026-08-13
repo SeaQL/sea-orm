@@ -9,17 +9,17 @@ use quote::{format_ident, quote};
 use std::iter::FromIterator;
 use syn::{Attribute, Data, Expr, Ident, LitStr, Type};
 
-pub(crate) struct DeriveModel {
+pub(crate) struct DeriveModel<'a> {
     column_idents: Vec<Ident>,
     entity_ident: Ident,
     field_idents: Vec<Ident>,
-    field_types: Vec<syn::Type>,
+    field_types: Vec<&'a syn::Type>,
     ident: Ident,
     ignore_attrs: Vec<bool>,
 }
 
-impl DeriveModel {
-    pub fn new(ident: &Ident, data: &Data, attrs: &[Attribute]) -> syn::Result<Self> {
+impl<'a> DeriveModel<'a> {
+    pub fn new(ident: &Ident, data: &'a Data, attrs: &[Attribute]) -> syn::Result<Self> {
         let fields = match data {
             syn::Data::Struct(syn::DataStruct {
                 fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
@@ -42,7 +42,7 @@ impl DeriveModel {
             .map(|field| field.ident.as_ref().unwrap().clone())
             .collect();
 
-        let field_types = fields.iter().map(|field| field.ty.clone()).collect();
+        let field_types = fields.iter().map(|field| &field.ty).collect();
 
         let column_idents = fields
             .iter()
@@ -188,11 +188,11 @@ impl DeriveModel {
         )
     }
 
-    pub fn impl_model_trait<'a>(&'a self) -> TokenStream {
+    pub fn impl_model_trait<'b>(&'b self) -> TokenStream {
         let ident = &self.ident;
         let entity_ident = &self.entity_ident;
         let ignore_attrs = &self.ignore_attrs;
-        let ignore = |(ident, ignore): (&'a Ident, &bool)| -> Option<&'a Ident> {
+        let ignore = |(ident, ignore): (&'b Ident, &bool)| -> Option<&'b Ident> {
             if *ignore { None } else { Some(ident) }
         };
         let field_idents: Vec<&Ident> = self
