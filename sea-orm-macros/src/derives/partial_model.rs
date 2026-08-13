@@ -97,9 +97,8 @@ impl DerivePartialModel {
         }
 
         if into_active_model {
-            if let Some(entity) = &entity {
-                active_model = Some(syn::parse_quote!(<#entity as EntityTrait>::ActiveModel));
-            }
+            let entity = entity.clone().ok_or(Error::EntityNotSpecified)?;
+            active_model = Some(syn::parse_quote!(<#entity as EntityTrait>::ActiveModel));
         }
 
         let mut column_as_list = Vec::with_capacity(fields.len());
@@ -557,6 +556,21 @@ mod test {
     #[test]
     fn test_duplicate_prefix_error() {
         let input: DeriveInput = parse_str(CODE_SNIPPET_4).unwrap();
+        assert!(DerivePartialModel::new(input).is_err());
+    }
+
+    #[test]
+    fn test_into_active_model_requires_entity() {
+        let input: DeriveInput = parse_str(
+            r#"
+            #[sea_orm(into_active_model)]
+            struct PartialModel {
+                #[sea_orm(from_expr = "Expr::val(1).add(1)")]
+                total: i32,
+            }
+            "#,
+        )
+        .unwrap();
         assert!(DerivePartialModel::new(input).is_err());
     }
 
