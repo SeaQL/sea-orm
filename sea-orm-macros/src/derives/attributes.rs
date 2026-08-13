@@ -1,5 +1,5 @@
- use darling::{FromAttributes, FromMeta, Result};
- use syn::{Attribute, Expr, Ident, Lit};
+use darling::{FromAttributes, FromMeta, Result};
+use syn::{Attribute, Expr, Ident, Lit};
 
 /// An optional `syn::Ident` attribute value.
 ///

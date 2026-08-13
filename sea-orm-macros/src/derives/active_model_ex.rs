@@ -1216,7 +1216,8 @@ impl HasManySelfField<'_> {
             quote!()
         };
         let ident = self.ident;
-        let relation_variant = Ident::new(&self.relation_variant.value(), self.relation_variant.span());
+        let relation_variant =
+            Ident::new(&self.relation_variant.value(), self.relation_variant.span());
         let relation_variant = quote!(Relation::#relation_variant);
 
         let delete_associated_model = quote! {

@@ -20,7 +20,11 @@ pub fn column_type_expr(
     }
 }
 
-pub fn column_type_wrapper(column_type: &Option<String>, field_type: &Type) -> Option<Ident> {
+pub fn column_type_wrapper(
+    column_type: &Option<String>,
+    field_type: &Type,
+    field_span: Span,
+) -> Option<Ident> {
     let (nullable, field_type) = if let Type::Path(type_path) = field_type
         && let Some(inner) = generic_type_arg(type_path, "Option")
     {
@@ -62,7 +66,7 @@ pub fn column_type_wrapper(column_type: &Option<String>, field_type: &Type) -> O
             "Array" => Some("GenericArrayColumn"),
             _ => None,
         }
-        .map(|ty| Ident::new(ty, Span::call_site()));
+        .map(|ty| Ident::new(ty, field_span));
 
         if value_type.is_some() {
             return value_type;
@@ -119,7 +123,7 @@ pub fn column_type_wrapper(column_type: &Option<String>, field_type: &Type) -> O
         None
     };
 
-    value_type.map(|ty| Ident::new(ty, Span::call_site()))
+    value_type.map(|ty| Ident::new(ty, field_span))
 }
 
 fn generic_type_arg<'a>(type_path: &'a TypePath, ident: &str) -> Option<&'a Type> {

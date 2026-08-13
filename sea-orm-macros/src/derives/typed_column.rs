@@ -71,7 +71,8 @@ pub fn expand_typed_column(
             field_name = Ident::new(&escape_rust_keyword(field_name), ident.span());
 
             column_fields.push(ident.clone());
-            let wrapper = super::value_type_match::column_type_wrapper(&column_type, field_ty);
+            let wrapper =
+                super::value_type_match::column_type_wrapper(&column_type, field_ty, ident.span());
             column_types.push(if let Some(wrapper) = &wrapper {
                 quote!(sea_orm::#wrapper<Entity>)
             } else {

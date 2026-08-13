@@ -1,5 +1,5 @@
-use proc_macro2::TokenStream;
 use proc_macro2::Span;
+use proc_macro2::TokenStream;
 use quote::quote;
 use std::collections::{HashMap, HashSet};
 use syn::{Ident, TypePath, Visibility, punctuated::Punctuated, token::Comma};
