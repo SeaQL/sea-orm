@@ -88,10 +88,8 @@ impl EntityLoaderField {
     fn expand_relation_tuple_with_param_into(&self, output: &mut EntityLoaderOutput) {
         let mut entity_module = self.entity_path();
         entity_module.segments.pop();
-        // syn 3 leaves a dangling trailing `::` after `pop()`; drop it before
-        // re-parsing the path, otherwise `parse_quote!` fails.
-        entity_module.segments.pop_punct();
-        let mut related_entity: syn::Path = syn::parse_quote!(#entity_module);
+        // syn 3's `pop()` leaves a trailing `::`, which `push` reuses as the separator.
+        let mut related_entity: syn::Path = entity_module.clone();
         related_entity.segments.push(syn::parse_quote!(Entity));
         let mut related_relation = entity_module;
         related_relation.segments.push(syn::parse_quote!(Relation));
@@ -1010,13 +1008,9 @@ mod test {
     use syn::parse_quote;
 
     #[test]
-    fn expand_relation_tuple_drops_trailing_colon() {
-        // Regression test for the syn 3 migration: `Punctuated::pop()` leaves a
-        // dangling trailing `::` on the entity module path. Without the
-        // `pop_punct()` call in `expand_relation_tuple_with_param_into`, the
-        // subsequent `parse_quote!` would fail to parse `crate::entities::cake::`
-        // (and the generated impl would be malformed). This guards against
-        // future syn version changes that alter `pop()` semantics.
+    fn expand_relation_tuple_multi_segment_entity_path() {
+        // Verifies the multi-segment entity module path is extended correctly
+        // (syn 3 `pop()` leaves a trailing `::`, reused as the separator).
         let field = EntityLoaderField {
             field: syn::Ident::new("cakes", Span::call_site()),
             entity: parse_quote!(crate::entities::cake::Entity),
