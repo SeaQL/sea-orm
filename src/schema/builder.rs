@@ -231,6 +231,13 @@ impl EntitySchemaInfo {
         &self.indexes
     }
 
+    /// Returns the entity's `schema_name` (e.g. `#[sea_orm(schema_name = "sys")]`).
+    /// `None` means the entity uses the database's current/default schema
+    #[cfg(feature = "schema-sync")]
+    pub(crate) fn schema_name(&self) -> Option<&str> {
+        self.schema_name.as_deref()
+    }
+
     async fn apply<C: ConnectionTrait>(
         &self,
         db: &C,

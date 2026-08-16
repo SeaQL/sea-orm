@@ -46,6 +46,10 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 name = "entity_first"
 required-features = ["entity-first", "sqlx-sqlite", "runtime-tokio-native-tls"]
 
+[[test]]
+name = "entity_first_multi_schema"
+required-features = ["entity-first", "sqlx-postgres", "runtime-tokio-native-tls"]
+
 [features]
 cli = ["clap", "dotenvy", "sea-orm-cli/cli"]
 default = ["cli"]

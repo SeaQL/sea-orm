@@ -9,11 +9,28 @@ pub(crate) struct DiscoveredSchema {
     pub(crate) enums: Vec<TypeCreateStatement>,
 }
 
-pub(crate) async fn discover_existing_schema<C>(db: &C) -> Result<DiscoveredSchema, DbErr>
+/// Re-point a `TableCreateStatement`'s table ref at an explicit schema, so it
+/// matches the schema-qualified `TableRef` produced by `EntityName::table_ref`
+/// for entities with `#[sea_orm(schema_name = "...")]`. Discovered tables come
+/// back unqualified (bare table name) regardless of which schema they were
+/// queried from, since sea-schema's writers only ever use `Alias::new(&name)`.
+#[cfg(any(feature = "sqlx-postgres", feature = "sqlx-mysql"))]
+fn qualify_table(mut stmt: TableCreateStatement, schema: &str) -> TableCreateStatement {
+    use sea_query::{IntoTableRef, TableName, TableRef};
+
+    if let Some(TableRef::Table(TableName(_, table), _)) = stmt.get_table_name().cloned() {
+        stmt.table((schema.to_owned(), table).into_table_ref());
+    }
+    stmt
+}
+
+pub(crate) async fn discover_existing_schema<C>(
+    db: &C,
+    extra_schemas: &[String],
+) -> Result<DiscoveredSchema, DbErr>
 where
     C: ConnectionTrait + sea_schema::Connection,
 {
-    //TODO: discover ONLY existing schema
     match db.get_database_backend() {
         #[cfg(feature = "sqlx-mysql")]
         DbBackend::MySql => {
@@ -34,8 +51,28 @@ where
                 .await
                 .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
 
+            // TODO: This multi-scheme discovery should be part of sea-schema instead
+            let mut tables: Vec<TableCreateStatement> =
+                schema.tables.iter().map(|table| table.write()).collect();
+
+            for extra_schema in extra_schemas {
+                if extra_schema == &current_schema {
+                    continue;
+                }
+                let schema = SchemaDiscovery::new_no_exec(extra_schema)
+                    .discover_with(db)
+                    .await
+                    .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
+                tables.extend(
+                    schema
+                        .tables
+                        .iter()
+                        .map(|table| qualify_table(table.write(), extra_schema)),
+                );
+            }
+
             Ok(DiscoveredSchema {
-                tables: schema.tables.iter().map(|table| table.write()).collect(),
+                tables,
                 enums: vec![],
             })
         }
@@ -58,14 +95,35 @@ where
                 .await
                 .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
 
-            Ok(DiscoveredSchema {
-                tables: schema.tables.iter().map(|table| table.write()).collect(),
-                enums: schema.enums.iter().map(|def| def.write()).collect(),
-            })
+            // TODO: This multi-scheme discovery should be part of sea-schema instead
+            let mut tables: Vec<TableCreateStatement> =
+                schema.tables.iter().map(|table| table.write()).collect();
+            let mut enums: Vec<TypeCreateStatement> =
+                schema.enums.iter().map(|def| def.write()).collect();
+
+            for extra_schema in extra_schemas {
+                if extra_schema == &current_schema {
+                    continue;
+                }
+                let schema = SchemaDiscovery::new_no_exec(extra_schema)
+                    .discover_with(db)
+                    .await
+                    .map_err(|err| DbErr::Query(crate::RuntimeErr::SqlxError(err.into())))?;
+                tables.extend(
+                    schema
+                        .tables
+                        .iter()
+                        .map(|table| qualify_table(table.write(), extra_schema)),
+                );
+                enums.extend(schema.enums.iter().map(|def| def.write()));
+            }
+
+            Ok(DiscoveredSchema { tables, enums })
         }
         #[cfg(feature = "sqlx-sqlite")]
         DbBackend::Sqlite => {
             use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
+            let _ = extra_schemas; // Doesn't have schemes
             let schema = SchemaDiscovery::discover_with(db)
                 .await
                 .map_err(|err| {

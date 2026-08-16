@@ -29,7 +29,15 @@ pub(crate) async fn discover<C>(
 where
     C: ConnectionTrait + sea_schema::Connection,
 {
-    let existing = schema::discover_existing_schema(db).await?;
+    // Multi scheme
+    let mut extra_schemas: Vec<String> = new_entities
+        .iter()
+        .filter_map(|e| e.schema_name().map(str::to_owned))
+        .collect();
+    extra_schemas.sort_unstable();
+    extra_schemas.dedup();
+
+    let existing = schema::discover_existing_schema(db, &extra_schemas).await?;
     let db_backend = db.get_database_backend();
 
     let mut change_set = ChangeSet::default();
