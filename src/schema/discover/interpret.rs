@@ -10,7 +10,7 @@ use sea_query::TableAlterStatement;
 
 use super::changes::{
     ChangeId, ChangeSet, ColumnChange, ColumnChangeKind, ConstraintChange, ConstraintChangeKind,
-    EnumChange, EnumChangeKind, TableChange, TableChangeKind,
+    EnumChange, EnumChangeKind, SchemaChange, TableChange, TableChangeKind,
 };
 use super::resolver::{self, AddedColumn, RemovedColumn};
 use super::suggestion::{DiscoverSuggestion, SuggestionKind};
@@ -125,14 +125,16 @@ pub fn interpret(change_set: ChangeSet, config: &InterpretConfig) -> InterpretRe
     let mut unresolved: Vec<resolver::AmbiguousRename> = Vec::new();
 
     // Ordered to satisfy FK / type constraints:
-    // 1. CREATE TYPE  — enum types must exist before tables that reference them
-    // 2. CREATE TABLE — parents before children (ChangeSet records in sorted_tables order)
-    // 3. ADD COLUMN
-    // 4. ADD FK / ADD INDEX / ADD UNIQUE
-    // 5. DROP FK / DROP UNIQUE
-    // 6. DROP COLUMN
-    // 7. DROP TABLE   — children before parents (ChangeSet records via sorted_table_drops)
-    // 8. DROP TYPE    — after tables that referenced the type are gone
+    // 1. CREATE SCHEMA — namespaces must exist before anything created inside them
+    // 2. CREATE TYPE  — enum types must exist before tables that reference them
+    // 3. CREATE TABLE — parents before children (ChangeSet records in sorted_tables order)
+    // 4. ADD COLUMN
+    // 5. ADD FK / ADD INDEX / ADD UNIQUE
+    // 6. DROP FK / DROP UNIQUE
+    // 7. DROP COLUMN
+    // 8. DROP TABLE   — children before parents (ChangeSet records via sorted_table_drops)
+    // 9. DROP TYPE    — after tables that referenced the type are gone
+    interpret_schema_creates(&change_set.schemas, &mut statements);
     interpret_enum_creates(&change_set.enums, &mut statements);
     interpret_table_creates(&change_set.tables, &mut statements);
     interpret_column_adds(
@@ -157,6 +159,14 @@ pub fn interpret(change_set: ChangeSet, config: &InterpretConfig) -> InterpretRe
     }
 }
 
+/// Emit CREATE SCHEMA statements — always first, so nothing created inside a
+/// namespace can run before the namespace itself exists.
+fn interpret_schema_creates(schemas: &[SchemaChange], statements: &mut Vec<(ChangeId, Statement)>) {
+    for sc in schemas {
+        statements.push((sc.id, sc.stmt.clone()));
+    }
+}
+
 /// Emit CREATE TABLE statements (parents before children via ChangeSet recording order).
 fn interpret_table_creates(tables: &[TableChange], statements: &mut Vec<(ChangeId, Statement)>) {
     for tc in tables {
@@ -178,7 +188,7 @@ fn interpret_table_drops(
                 tc.id,
                 config.db_backend.build(
                     sea_query::Table::drop()
-                        .table(sea_query::Alias::new(table.1.to_string()))
+                        .table(sea_query::TableRef::Table(table.clone(), None))
                         .if_exists(),
                 ),
             ));

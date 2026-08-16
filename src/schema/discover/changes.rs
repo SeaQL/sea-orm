@@ -6,6 +6,19 @@ use sea_query::{ColumnType, TableName, TableRef};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ChangeId(pub usize);
 
+// ── Schema (namespace) changes ───────────────────────────────────────────
+
+/// A missing PostgreSQL schema (namespace) referenced by a registered
+/// entity's `schema_name`. Carries the pre-built `CREATE SCHEMA IF NOT
+/// EXISTS` statement.
+#[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
+#[derive(Debug, Clone)]
+pub struct SchemaChange {
+    pub id: ChangeId,
+    pub schema: String,
+    pub stmt: Statement,
+}
+
 // ── Table-level changes ──────────────────────────────────────────────────
 
 /// A table-level change detected during schema discovery.
@@ -140,6 +153,8 @@ pub enum EnumChangeKind {
 #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
 #[derive(Debug, Clone, Default)]
 pub struct ChangeSet {
+    /// Schema (namespace) changes: missing PostgreSQL schemas that need creating.
+    pub schemas: Vec<SchemaChange>,
     /// Table-level changes: creates and drops of entire tables.
     pub tables: Vec<TableChange>,
     /// Column-level changes: adds, drops, explicit renames, and CHECK constraint flags.
@@ -159,6 +174,17 @@ impl ChangeSet {
         let id = ChangeId(self.next_id);
         self.next_id += 1;
         id
+    }
+
+    /// Record a missing schema, deduplicating by name.
+    /// Returns `Some(ChangeId)` if recorded, `None` if already seen.
+    pub fn record_schema(&mut self, schema: String, stmt: Statement) -> Option<ChangeId> {
+        if self.schemas.iter().any(|s| s.schema == schema) {
+            return None;
+        }
+        let id = self.next_id();
+        self.schemas.push(SchemaChange { id, schema, stmt });
+        Some(id)
     }
 
     pub fn record_table(&mut self, kind: TableChangeKind) -> ChangeId {
@@ -200,6 +226,9 @@ impl ChangeSet {
     pub fn statements(self) -> Vec<Statement> {
         let mut stmts = Vec::new();
 
+        for sc in self.schemas {
+            stmts.push(sc.stmt);
+        }
         for ec in self.enums {
             match ec.kind {
                 EnumChangeKind::Create { stmt } => stmts.push(stmt),

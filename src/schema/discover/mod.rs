@@ -25,22 +25,45 @@ pub(crate) async fn discover<C>(
     db: &C,
     allow_dangerous: bool,
     excluded_tables: &[String],
+    excluded_schemas: &[String],
 ) -> Result<ChangeSet, DbErr>
 where
     C: ConnectionTrait + sea_schema::Connection,
 {
+    let db_backend = db.get_database_backend();
+    // Only read by the Postgres/MySQL branches below.
+    let _ = excluded_schemas;
+
     // Multi scheme
     let mut extra_schemas: Vec<String> = new_entities
         .iter()
         .filter_map(|e| e.schema_name().map(str::to_owned))
         .collect();
+
+    // Orphan detection (allow_dangerous) needs to see every schema, not just
+    // ones a current entity references — otherwise a schema no entity
+    // references anymore (e.g. after a `schema_name` rename) is invisible,
+    // and its now-orphaned tables can never be reported.
+    #[cfg(feature = "sqlx-postgres")]
+    if allow_dangerous && db_backend == crate::DbBackend::Postgres {
+        extra_schemas.extend(schema::pg_list_all_schemas(db, excluded_schemas).await?);
+    }
+    #[cfg(feature = "sqlx-mysql")]
+    if allow_dangerous && db_backend == crate::DbBackend::MySql {
+        extra_schemas.extend(schema::mysql_list_all_schemas(db, excluded_schemas).await?);
+    }
+
     extra_schemas.sort_unstable();
     extra_schemas.dedup();
 
     let existing = schema::discover_existing_schema(db, &extra_schemas).await?;
-    let db_backend = db.get_database_backend();
 
     let mut change_set = ChangeSet::default();
+
+    for missing_schema in &existing.missing_schemas {
+        let stmt = crate::schema::builder::create_schema_stmt(db_backend, missing_schema);
+        change_set.record_schema(missing_schema.clone(), stmt);
+    }
 
     let tabl_ref: Vec<&TableCreateStatement> = new_entities.iter().map(|e| e.table()).collect();
     for table_name in sorted_tables(&tabl_ref, TableSortOrder::ParentsFirst) {

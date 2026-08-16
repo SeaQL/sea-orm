@@ -225,13 +225,6 @@ pub enum EntitySubcommands {
         #[arg(long, help = "Name for the generated migration (e.g. add_users)")]
         name: Option<String>,
 
-        #[arg(
-            long,
-            default_value_t = true,
-            help = "Allow dangerous operations (e.g. dropping tables) in diff"
-        )]
-        allow_dangerous: bool,
-
         /// Pre-supply rename decisions: `table.old_col:new_col`.
         /// May be repeated for multiple renames. If any unresolved rename is
         /// not covered by a --rename flag the command will exit with an error.
@@ -628,7 +621,6 @@ pub async fn main() {
                 database_url,
                 database_schema,
                 name,
-                allow_dangerous,
                 renames,
                 no_confirm,
             } => {
@@ -638,7 +630,6 @@ pub async fn main() {
                     name.as_deref(),
                     database_url.as_deref(),
                     database_schema.as_deref(),
-                    allow_dangerous,
                     &renames,
                     no_confirm,
                 ) {

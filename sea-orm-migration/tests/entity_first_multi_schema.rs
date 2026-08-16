@@ -155,6 +155,42 @@ async fn fresh_multi_schema_db(db_name: &str) -> Result<DatabaseConnection, DbEr
     Ok(db)
 }
 
+/// Connects to a fresh, empty database (dropped + recreated) with *no*
+/// schemas pre-created — used to verify `discover`/`sync` provision the
+/// namespaces themselves rather than assuming they already exist.
+async fn fresh_db_no_schemas(db_name: &str) -> Result<DatabaseConnection, DbErr> {
+    let url = std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
+    let base_url = match url.rfind('/') {
+        Some(pos) if pos > "postgres://".len() => url[..pos].to_owned(),
+        _ => url.clone(),
+    };
+
+    let root = Database::connect(ConnectOptions::new(url.clone())).await?;
+    root.execute_unprepared(&format!(r#"DROP DATABASE IF EXISTS "{db_name}""#))
+        .await?;
+    root.execute_unprepared(&format!(r#"CREATE DATABASE "{db_name}""#))
+        .await?;
+
+    Database::connect(ConnectOptions::new(format!("{base_url}/{db_name}"))).await
+}
+
+async fn schema_exists(db: &DatabaseConnection, schema: &str) -> Result<bool, DbErr> {
+    use sea_orm::ExprTrait;
+    use sea_orm::sea_query::{Expr, Query};
+
+    let row = db
+        .query_one(
+            &Query::select()
+                .expr(Expr::cust("COUNT(*) > 0"))
+                .from(("information_schema", "schemata"))
+                .and_where(Expr::col("schema_name").eq(schema))
+                .to_owned(),
+        )
+        .await?
+        .unwrap();
+    row.try_get_by_index(0).map_err(DbErr::from)
+}
+
 async fn table_exists_in_schema(
     db: &DatabaseConnection,
     schema: &str,
@@ -324,6 +360,223 @@ async fn test_discover_no_cross_schema_name_collision() -> Result<(), DbErr> {
         stmts.is_empty(),
         "same-named tables in different schemas must not produce a spurious diff, got: {:?}",
         stmts.iter().map(|s| &s.sql).collect::<Vec<_>>()
+    );
+
+    Ok(())
+}
+
+/// Regression test: `discover`/`sync` must provision a missing non-default
+/// PostgreSQL schema themselves — `entity schema` / `discover` previously
+/// never emitted `CREATE SCHEMA`, so `sync` on a brand new database (where
+/// the target schema doesn't exist yet) failed with
+/// `ERROR: schema "entity_first_schema_a" does not exist`.
+#[tokio::test]
+#[cfg(feature = "sqlx-postgres")]
+async fn test_discover_and_sync_create_missing_schema_from_scratch() -> Result<(), DbErr> {
+    let db = fresh_db_no_schemas("entity_first_multi_schema_missing_schema").await?;
+
+    assert!(!schema_exists(&db, "entity_first_schema_a").await?);
+    assert!(!schema_exists(&db, "entity_first_schema_b").await?);
+
+    let builder = FullSet.register(Schema::new(db.get_database_backend()).builder());
+    let change_set = builder.discover(&db, false).await?;
+    let stmts = change_set.statements();
+    assert!(
+        stmts
+            .first()
+            .is_some_and(|s| s.sql.to_uppercase().contains("CREATE SCHEMA")),
+        "discover should lead with CREATE SCHEMA statements, got: {:?}",
+        stmts.iter().map(|s| &s.sql).collect::<Vec<_>>()
+    );
+    let sql_all: String = stmts
+        .iter()
+        .map(|s| s.sql.clone())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        sql_all.contains(r#"CREATE SCHEMA IF NOT EXISTS "entity_first_schema_a""#),
+        "should create schema_a: {sql_all}"
+    );
+    assert!(
+        sql_all.contains(r#"CREATE SCHEMA IF NOT EXISTS "entity_first_schema_b""#),
+        "should create schema_b: {sql_all}"
+    );
+
+    // Must not error with "schema does not exist".
+    FullSet
+        .register(Schema::new(db.get_database_backend()).builder())
+        .sync(&db)
+        .await?;
+
+    assert!(schema_exists(&db, "entity_first_schema_a").await?);
+    assert!(schema_exists(&db, "entity_first_schema_b").await?);
+    assert!(table_exists_in_schema(&db, "entity_first_schema_a", "widget").await?);
+    assert!(table_exists_in_schema(&db, "entity_first_schema_b", "gadget").await?);
+
+    Ok(())
+}
+
+/// Regression test: `entity diff` / `entity generate` (the CLI commands a
+/// user actually runs) go through `interpret_changes`, a completely separate
+/// code path from `ChangeSet::statements()` used by `sync()`. That path
+/// didn't know about the new schema-creation changes at all, so `entity
+/// diff` never listed "Created schema: ..." and the migration file
+/// `entity generate` writes never contained the `CREATE SCHEMA` statement —
+/// even though `sync()` itself worked. This exercises that exact path.
+#[tokio::test]
+#[cfg(feature = "sqlx-postgres")]
+async fn test_interpret_changes_includes_missing_schema() -> Result<(), DbErr> {
+    use sea_orm::{InterpretConfig, interpret_changes};
+    use sea_orm_migration::summary::summarize;
+
+    let db = fresh_db_no_schemas("entity_first_multi_schema_interpret").await?;
+
+    let builder = FullSet.register(Schema::new(db.get_database_backend()).builder());
+    let change_set = builder.discover(&db, false).await?;
+    let result = interpret_changes(
+        change_set,
+        &InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: true,
+            allow_dangerous: false,
+        },
+    );
+
+    let stmts: Vec<sea_orm::Statement> = result.statements.iter().map(|(_, s)| s.clone()).collect();
+    let sql_all: String = stmts
+        .iter()
+        .map(|s| s.sql.clone())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        sql_all.contains(r#"CREATE SCHEMA IF NOT EXISTS "entity_first_schema_a""#),
+        "interpret_changes() must include CREATE SCHEMA for schema_a: {sql_all}"
+    );
+    assert!(
+        sql_all.contains(r#"CREATE SCHEMA IF NOT EXISTS "entity_first_schema_b""#),
+        "interpret_changes() must include CREATE SCHEMA for schema_b: {sql_all}"
+    );
+    assert!(
+        stmts
+            .first()
+            .is_some_and(|s| s.sql.to_uppercase().contains("CREATE SCHEMA")),
+        "CREATE SCHEMA must be the first statement, got: {:?}",
+        stmts.iter().map(|s| &s.sql).collect::<Vec<_>>()
+    );
+
+    let changes = summarize(&stmts);
+    assert!(
+        changes.contains(&"Created schema: entity_first_schema_a".to_string()),
+        "the 'Changes' summary shown by `entity diff` must list the schema creation, got: {changes:?}"
+    );
+    assert!(
+        changes.contains(&"Created schema: entity_first_schema_b".to_string()),
+        "got: {changes:?}"
+    );
+
+    Ok(())
+}
+
+/// Regression test: renaming an entity's `schema_name` (schema_a -> schema_b)
+/// leaves a table behind that no registered entity references anymore.
+/// Dangerous discovery must scan every schema in the database — not just
+/// ones a *current* entity references — so it can still find and flag that
+/// orphan for a DROP TABLE.
+#[tokio::test]
+#[cfg(feature = "sqlx-postgres")]
+async fn test_discover_dangerous_detects_orphan_after_schema_rename() -> Result<(), DbErr> {
+    use sea_orm::{InterpretConfig, interpret_changes};
+
+    let db = fresh_multi_schema_db("entity_first_multi_schema_rename").await?;
+
+    // widget starts out in schema_a.
+    Schema::new(db.get_database_backend())
+        .builder()
+        .register(widget_v1::Entity)
+        .sync(&db)
+        .await?;
+    assert!(table_exists_in_schema(&db, "entity_first_schema_a", "widget").await?);
+
+    // The entity now points at schema_b instead (same table name, simulating
+    // a `schema_name` rename) — schema_a's copy is no longer referenced by
+    // any entity.
+    let builder = Schema::new(db.get_database_backend())
+        .builder()
+        .register(widget_in_schema_b::Entity);
+    let change_set = builder.discover(&db, true).await?;
+    let result = interpret_changes(
+        change_set,
+        &InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: true,
+            allow_dangerous: true,
+        },
+    );
+    let sql_all: String = result
+        .statements
+        .iter()
+        .map(|(_, s)| s.sql.clone())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    assert!(
+        sql_all.to_uppercase().contains("DROP TABLE")
+            && sql_all.contains("entity_first_schema_a")
+            && sql_all.contains("widget"),
+        "should detect the orphaned schema_a.widget and propose dropping it, got: {sql_all}"
+    );
+
+    Ok(())
+}
+
+/// `.exclude_schema(...)` must keep dangerous discovery from ever scanning
+/// (and therefore proposing drops for) a schema that belongs to another
+/// application/tenant sharing the same database.
+#[tokio::test]
+#[cfg(feature = "sqlx-postgres")]
+async fn test_exclude_schema_protects_foreign_schema_from_orphan_scan() -> Result<(), DbErr> {
+    let db = fresh_multi_schema_db("entity_first_multi_schema_exclude").await?;
+
+    db.execute_unprepared("CREATE SCHEMA IF NOT EXISTS entity_first_foreign_schema")
+        .await?;
+    db.execute_unprepared(
+        r#"CREATE TABLE entity_first_foreign_schema.foreign_table ("id" integer NOT NULL)"#,
+    )
+    .await?;
+
+    // Without exclude_schema: the foreign app's table is scanned and shows up as an orphan.
+    let change_set = Schema::new(db.get_database_backend())
+        .builder()
+        .register(thing::Entity)
+        .discover(&db, true)
+        .await?;
+    let sql_all: String = change_set
+        .tables
+        .iter()
+        .map(|tc| format!("{:?}", tc.kind))
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        sql_all.contains("entity_first_foreign_schema") && sql_all.contains("foreign_table"),
+        "sanity check: without exclude_schema, the foreign table should be seen at all, got: {sql_all}"
+    );
+
+    // With exclude_schema: the foreign schema must never be scanned at all.
+    let change_set = Schema::new(db.get_database_backend())
+        .builder()
+        .register(thing::Entity)
+        .exclude_schema("entity_first_foreign_schema")
+        .discover(&db, true)
+        .await?;
+    let sql_all: String = change_set
+        .tables
+        .iter()
+        .map(|tc| format!("{:?}", tc.kind))
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        !sql_all.contains("entity_first_foreign_schema") && !sql_all.contains("foreign_table"),
+        "excluded schema must never be scanned or proposed for drops, got: {sql_all}"
     );
 
     Ok(())

@@ -15,16 +15,12 @@ pub fn run_entity_sync(
     name: Option<&str>,
     database_url: Option<&str>,
     database_schema: Option<&str>,
-    allow_dangerous: bool,
     renames: &[String],
     no_confirm: bool,
 ) -> Result<(), Box<dyn Error>> {
     let manifest = manifest_path(dir);
 
-    let mut diff_args = vec!["diff"];
-    if !allow_dangerous {
-        diff_args.push("--allow-dangerous=false");
-    }
+    let diff_args = ["diff"];
 
     let (_, diff) =
         run_subprocess_json::<DiffData>(&manifest, &diff_args, database_url, database_schema)
@@ -48,9 +44,6 @@ pub fn run_entity_sync(
                 format!("--migration-dir={migration_dir}"),
                 format!("--schema-hash={schema_hash}"),
             ];
-            if !allow_dangerous {
-                gen_args.push("--allow-dangerous=false".to_string());
-            }
             for (table, old, new) in &resolved_renames {
                 gen_args.push(format!("--rename={table}.{old}:{new}"));
             }

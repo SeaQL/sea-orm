@@ -53,12 +53,9 @@ enum Commands {
     ///
     /// Returns JSON with discovered SQL statements, warnings, suggestions, and
     /// any ambiguous renames that must be resolved before calling `generate`.
-    /// Never writes any files.
-    Diff {
-        /// Allow dangerous operations (e.g. dropping tables) in the diff
-        #[arg(long, default_value_t = true)]
-        allow_dangerous: bool,
-    },
+    /// Never writes any files. Always includes dangerous operations (dropped
+    /// tables/columns, etc.) — review the output before generating.
+    Diff,
 
     /// Generate a migration file from entity definitions.
     ///
@@ -94,10 +91,6 @@ enum Commands {
             display_order = 1002
         )]
         local_time: bool,
-
-        /// Allow dangerous operations (must match the value used in `diff`)
-        #[arg(long, default_value_t = true)]
-        allow_dangerous: bool,
 
         /// Resolve an ambiguous rename in the format TABLE.OLD_COL:NEW_COL
         #[arg(long = "rename", value_name = "TABLE.OLD:NEW")]
@@ -205,7 +198,7 @@ where
 
     match cli.command {
         Some(Commands::Schema { .. }) => unreachable!("handled above"),
-        Some(Commands::Diff { allow_dangerous }) => {
+        Some(Commands::Diff) => {
             let meta = build_meta(&migrator, None);
             let pending = match migrator.get_pending_migrations(&db).await {
                 Ok(p) => p,
@@ -226,7 +219,7 @@ where
                 );
                 std::process::exit(1);
             }
-            match run_diff(entity_set, &db, allow_dangerous, &migration_table).await {
+            match run_diff(entity_set, &db, &migration_table).await {
                 Ok(data) => println!(
                     "{}",
                     serde_json::to_string(&ApiResponse::ok(meta, data)).unwrap()
@@ -244,7 +237,6 @@ where
             schema_hash,
             local_time,
             universal_time: _,
-            allow_dangerous,
             renames,
         }) => {
             let meta = build_meta(&migrator, None);
@@ -255,7 +247,6 @@ where
                 &name,
                 &schema_hash,
                 local_time,
-                allow_dangerous,
                 &renames,
                 &migration_table,
             )
@@ -345,7 +336,7 @@ where
                         std::process::exit(1);
                     }
                 },
-                Some(Commands::Diff { .. })
+                Some(Commands::Diff)
                 | Some(Commands::Generate { .. })
                 | Some(Commands::Schema { .. }) => unreachable!(),
             }
@@ -357,7 +348,6 @@ where
 async fn run_diff<E: EntitySet>(
     entity_set: E,
     db: &sea_orm::DatabaseConnection,
-    dangerous: bool,
     protected_table: &str,
 ) -> Result<DiffData, Box<dyn std::error::Error>> {
     let backend = db.get_database_backend();
@@ -366,13 +356,13 @@ async fn run_diff<E: EntitySet>(
         .register(schema.builder())
         .exclude(protected_table);
 
-    let change_set = builder.discover(db, dangerous).await?;
+    let change_set = builder.discover(db, true).await?;
     let result = interpret_changes(
         change_set,
         &InterpretConfig {
             db_backend: backend,
             assumptions: true,
-            allow_dangerous: dangerous,
+            allow_dangerous: true,
         },
     );
 
@@ -462,7 +452,6 @@ async fn run_generate<E: EntitySet>(
     name: &str,
     expected_schema_hash: &str,
     local_time: bool,
-    dangerous: bool,
     renames: &[String],
     protected_table: &str,
 ) -> Result<GenerateData, Box<dyn std::error::Error>> {
@@ -476,13 +465,13 @@ async fn run_generate<E: EntitySet>(
         .register(schema.builder())
         .exclude(protected_table);
 
-    let change_set = builder.discover(db, dangerous).await?;
+    let change_set = builder.discover(db, true).await?;
     let mut result = interpret_changes(
         change_set,
         &InterpretConfig {
             db_backend: backend,
             assumptions: true,
-            allow_dangerous: dangerous,
+            allow_dangerous: true,
         },
     );
 

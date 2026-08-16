@@ -70,6 +70,28 @@ mod summary_tests {
     }
 
     #[test]
+    fn test_create_schema() {
+        assert_eq!(
+            summarize(&[stmt(r#"CREATE SCHEMA IF NOT EXISTS "sys""#)]),
+            vec!["Created schema: sys"]
+        );
+    }
+
+    /// A schema-qualified `CREATE TABLE` must summarize as `schema.table`, not
+    /// just the schema name (regression: the summarizer used to grab only the
+    /// first quoted identifier after `CREATE TABLE`, which for
+    /// `CREATE TABLE "sys"."widget"` is the schema, not the table).
+    #[test]
+    fn test_create_table_schema_qualified() {
+        assert_eq!(
+            summarize(&[stmt(
+                r#"CREATE TABLE "sys"."widget" ( "id" integer NOT NULL )"#
+            )]),
+            vec!["Created table: sys.widget"]
+        );
+    }
+
+    #[test]
     fn test_add_column() {
         assert_eq!(
             summarize(&[stmt(r#"ALTER TABLE "cake" ADD COLUMN "description" text"#)]),

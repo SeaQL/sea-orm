@@ -7,6 +7,104 @@ use sea_query::{TableCreateStatement, extension::postgres::TypeCreateStatement};
 pub(crate) struct DiscoveredSchema {
     pub(crate) tables: Vec<TableCreateStatement>,
     pub(crate) enums: Vec<TypeCreateStatement>,
+    /// Schemas (namespaces) referenced by a registered entity's `schema_name`
+    /// that do not yet exist in the database. Postgres only — MySQL treats
+    /// `schema_name` as a database name (creating one is out of scope for a
+    /// table-sync tool) and SQLite has no schema namespaces at all.
+    pub(crate) missing_schemas: Vec<String>,
+}
+
+/// Whether a PostgreSQL schema (namespace) already exists.
+#[cfg(feature = "sqlx-postgres")]
+async fn pg_schema_exists<C: ConnectionTrait>(db: &C, schema: &str) -> Result<bool, DbErr> {
+    use sea_query::{Expr, ExprTrait};
+
+    let row = db
+        .query_one(
+            sea_query::SelectStatement::new()
+                .expr(Expr::cust("COUNT(*) > 0"))
+                .from(("information_schema", "schemata"))
+                .and_where(Expr::col("schema_name").eq(schema)),
+        )
+        .await?
+        .ok_or_else(|| DbErr::RecordNotFound("Can't check schema existence".into()))?;
+    row.try_get_by_index(0).map_err(DbErr::from)
+}
+
+/// Every schema/database name visible via `information_schema.schemata`,
+/// minus `system_schemas` and `excluded`. Shared by Postgres (schemas) and
+/// MySQL (databases) — both expose the same view with a `schema_name` column.
+///
+/// Used to power orphan-table discovery (`allow_dangerous`) across the whole
+/// server: a schema no longer referenced by any registered entity (e.g.
+/// after a `schema_name` rename) would otherwise never be looked at, so its
+/// now-orphaned tables could never be reported.
+#[cfg(any(feature = "sqlx-postgres", feature = "sqlx-mysql"))]
+async fn list_schemas_excluding<C: ConnectionTrait>(
+    db: &C,
+    system_schemas: &[&str],
+    like_patterns: &[&str],
+    excluded: &[String],
+) -> Result<Vec<String>, DbErr> {
+    use sea_query::{Alias, Condition, Expr, ExprTrait, Query};
+
+    let mut cond = Condition::all();
+    for sys in system_schemas {
+        cond = cond.add(Expr::col("schema_name").ne(*sys));
+    }
+    for pattern in like_patterns {
+        cond = cond.add(Expr::cust(format!("schema_name NOT LIKE '{pattern}'")));
+    }
+    for schema in excluded {
+        cond = cond.add(Expr::col("schema_name").ne(schema.as_str()));
+    }
+
+    let rows = db
+        .query_all(
+            Query::select()
+                .column(Alias::new("schema_name"))
+                .from(("information_schema", "schemata"))
+                .cond_where(cond),
+        )
+        .await?;
+
+    rows.iter()
+        .map(|row| row.try_get_by_index::<String>(0).map_err(DbErr::from))
+        .collect()
+}
+
+/// Every non-system PostgreSQL schema in the database, minus `excluded`.
+/// Always skips the built-in `pg_catalog`, `information_schema`, `pg_toast`,
+/// and temp schemas.
+#[cfg(feature = "sqlx-postgres")]
+pub(crate) async fn pg_list_all_schemas<C: ConnectionTrait>(
+    db: &C,
+    excluded: &[String],
+) -> Result<Vec<String>, DbErr> {
+    list_schemas_excluding(
+        db,
+        &["pg_catalog", "information_schema", "pg_toast"],
+        &["pg_temp_%", "pg_toast_temp_%"],
+        excluded,
+    )
+    .await
+}
+
+/// Every non-system MySQL database ("schema" == "database" in MySQL), minus
+/// `excluded`. Always skips `information_schema`, `mysql`,
+/// `performance_schema`, and `sys`.
+#[cfg(feature = "sqlx-mysql")]
+pub(crate) async fn mysql_list_all_schemas<C: ConnectionTrait>(
+    db: &C,
+    excluded: &[String],
+) -> Result<Vec<String>, DbErr> {
+    list_schemas_excluding(
+        db,
+        &["information_schema", "mysql", "performance_schema", "sys"],
+        &[],
+        excluded,
+    )
+    .await
 }
 
 /// Re-point a `TableCreateStatement`'s table ref at an explicit schema, so it
@@ -74,6 +172,7 @@ where
             Ok(DiscoveredSchema {
                 tables,
                 enums: vec![],
+                missing_schemas: vec![],
             })
         }
         #[cfg(feature = "sqlx-postgres")]
@@ -100,10 +199,14 @@ where
                 schema.tables.iter().map(|table| table.write()).collect();
             let mut enums: Vec<TypeCreateStatement> =
                 schema.enums.iter().map(|def| def.write()).collect();
+            let mut missing_schemas = Vec::new();
 
             for extra_schema in extra_schemas {
                 if extra_schema == &current_schema {
                     continue;
+                }
+                if !pg_schema_exists(db, extra_schema).await? {
+                    missing_schemas.push(extra_schema.clone());
                 }
                 let schema = SchemaDiscovery::new_no_exec(extra_schema)
                     .discover_with(db)
@@ -118,7 +221,11 @@ where
                 enums.extend(schema.enums.iter().map(|def| def.write()));
             }
 
-            Ok(DiscoveredSchema { tables, enums })
+            Ok(DiscoveredSchema {
+                tables,
+                enums,
+                missing_schemas,
+            })
         }
         #[cfg(feature = "sqlx-sqlite")]
         DbBackend::Sqlite => {
@@ -138,6 +245,7 @@ where
             Ok(DiscoveredSchema {
                 tables: schema.tables.iter().map(|table| table.write()).collect(),
                 enums: vec![],
+                missing_schemas: vec![],
             })
         }
         #[cfg(feature = "rusqlite")]
@@ -156,6 +264,7 @@ where
             Ok(DiscoveredSchema {
                 tables: schema.tables.iter().map(|table| table.write()).collect(),
                 enums: vec![],
+                missing_schemas: vec![],
             })
         }
         #[allow(unreachable_patterns)]

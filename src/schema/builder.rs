@@ -19,6 +19,8 @@ pub struct SchemaBuilder {
     entities: Vec<EntitySchemaInfo>,
     #[cfg(feature = "schema-sync")]
     excluded_tables: Vec<String>,
+    #[cfg(feature = "schema-sync")]
+    excluded_schemas: Vec<String>,
 }
 
 /// Schema info for Entity. Can be used to re-create schema in database.
@@ -60,6 +62,8 @@ impl SchemaBuilder {
             entities: Default::default(),
             #[cfg(feature = "schema-sync")]
             excluded_tables: Default::default(),
+            #[cfg(feature = "schema-sync")]
+            excluded_schemas: Default::default(),
         }
     }
 
@@ -94,6 +98,21 @@ impl SchemaBuilder {
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
     pub fn exclude(mut self, table: impl Into<String>) -> Self {
         self.excluded_tables.push(table.into());
+        self
+    }
+
+    /// Exclude a PostgreSQL schema (namespace) from orphan-table discovery.
+    ///
+    /// When `discover`/`sync` run with dangerous operations enabled, every
+    /// non-system schema in the database is scanned for orphaned tables —
+    /// otherwise a schema no entity references anymore (e.g. after a
+    /// `schema_name` rename) would be invisible to that scan. Use this to
+    /// protect schemas that belong to other applications/tenants sharing the
+    /// same database from being scanned at all.
+    #[cfg(feature = "schema-sync")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
+    pub fn exclude_schema(mut self, schema: impl Into<String>) -> Self {
+        self.excluded_schemas.push(schema.into());
         self
     }
 
@@ -138,17 +157,45 @@ impl SchemaBuilder {
     where
         C: ConnectionTrait + sea_schema::Connection,
     {
-        super::discover::discover(&self.entities, db, allow_dangerous, &self.excluded_tables).await
+        super::discover::discover(
+            &self.entities,
+            db,
+            allow_dangerous,
+            &self.excluded_tables,
+            &self.excluded_schemas,
+        )
+        .await
     }
 
-    /// Returns the SQL DDL statements (CREATE TABLE, CREATE TYPE, CREATE INDEX) for all
-    /// registered entities, rendered for the builder's backend.
+    /// Distinct, sorted `schema_name`s referenced by registered entities.
+    fn distinct_schema_names(&self) -> Vec<&str> {
+        let mut names: Vec<&str> = self
+            .entities
+            .iter()
+            .filter_map(|e| e.schema_name.as_deref())
+            .collect();
+        names.sort_unstable();
+        names.dedup();
+        names
+    }
+
+    /// Returns the SQL DDL statements (CREATE SCHEMA, CREATE TABLE, CREATE TYPE,
+    /// CREATE INDEX) for all registered entities, rendered for the builder's backend.
     ///
     /// Tables are ordered topologically (parents before children). Useful for previewing
     /// the schema without connecting to a database.
+    ///
+    /// A `CREATE SCHEMA IF NOT EXISTS` statement is emitted for each distinct
+    /// `schema_name` on PostgreSQL; other backends don't have this concept of
+    /// a namespace separate from the table itself, so none is emitted.
     pub fn schema_statements(&self) -> Vec<Statement> {
         let backend = self.helper.backend;
         let mut stmts: Vec<Statement> = Vec::new();
+        if backend == DbBackend::Postgres {
+            for schema in self.distinct_schema_names() {
+                stmts.push(create_schema_stmt(backend, schema));
+            }
+        }
         let table_refs: Vec<&TableCreateStatement> =
             self.entities.iter().map(|e| &e.table).collect();
         for table_name in sorted_tables(&table_refs, TableSortOrder::ParentsFirst) {
@@ -172,8 +219,18 @@ impl SchemaBuilder {
     /// Create all registered tables, columns, unique keys, and foreign keys.
     /// Fails if any table already exists. Use `sync` (feature `schema-sync`)
     /// instead for an incremental version that diffs against the live schema.
+    ///
+    /// On PostgreSQL, also creates (`IF NOT EXISTS`) every namespace referenced
+    /// by a registered entity's `schema_name`, before any table.
     pub async fn apply<C: ConnectionTrait>(self, db: &C) -> Result<(), DbErr> {
         let mut created_enums: Vec<Statement> = Default::default();
+
+        if self.helper.backend == DbBackend::Postgres {
+            for schema in self.distinct_schema_names() {
+                db.execute_raw(create_schema_stmt(self.helper.backend, schema))
+                    .await?;
+            }
+        }
 
         let table_refs: Vec<&TableCreateStatement> =
             self.entities.iter().map(|entity| &entity.table).collect();
@@ -284,6 +341,12 @@ impl EntitySchemaInfo {
     }
 }
 
+/// Builds a `CREATE SCHEMA IF NOT EXISTS "..."` statement for a PostgreSQL namespace.
+pub(crate) fn create_schema_stmt(backend: DbBackend, schema: &str) -> Statement {
+    let quoted = schema.replace('"', "\"\"");
+    Statement::from_string(backend, format!(r#"CREATE SCHEMA IF NOT EXISTS "{quoted}""#))
+}
+
 /// Panics if the table reference is not a table name
 pub(crate) fn get_table_name(table_ref: Option<&TableRef>) -> TableName {
     //TODO: either rewrite TableCreateStatement or move to something else that is not a builder with options
@@ -352,4 +415,119 @@ pub(crate) fn sorted_tables(
         }
     }
     sorted
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{DbBackend, Schema};
+
+    mod widget {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(schema_name = "sys", table_name = "widget")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            pub name: String,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    mod gadget {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(schema_name = "sys", table_name = "gadget")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    mod thing {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "thing")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    /// `schema_statements()` (used by the `entity schema` preview, which never
+    /// connects to a database) must include a `CREATE SCHEMA IF NOT EXISTS` for
+    /// every distinct non-default `schema_name`, deduplicated, and ordered
+    /// before any table targeting it — otherwise the previewed DDL fails to
+    /// apply against a fresh database.
+    #[test]
+    fn test_schema_statements_includes_create_schema_on_postgres() {
+        let builder = Schema::new(DbBackend::Postgres)
+            .builder()
+            .register(widget::Entity)
+            .register(gadget::Entity)
+            .register(thing::Entity);
+        let stmts = builder.schema_statements();
+        let sql: Vec<String> = stmts.iter().map(|s| s.sql.clone()).collect();
+
+        let create_schema_count = sql
+            .iter()
+            .filter(|s| s.contains("CREATE SCHEMA") && s.contains(r#""sys""#))
+            .count();
+        assert_eq!(
+            create_schema_count, 1,
+            "CREATE SCHEMA for `sys` should appear exactly once, got: {sql:?}"
+        );
+
+        let schema_pos = sql
+            .iter()
+            .position(|s| s.contains("CREATE SCHEMA"))
+            .expect("should have a CREATE SCHEMA statement");
+        let widget_pos = sql
+            .iter()
+            .position(|s| s.contains("CREATE TABLE") && s.contains("widget"))
+            .expect("should have a CREATE TABLE for widget");
+        assert!(
+            schema_pos < widget_pos,
+            "CREATE SCHEMA must come before CREATE TABLE targeting it: {sql:?}"
+        );
+
+        assert!(
+            !sql.iter().any(|s| s.contains("CREATE SCHEMA") && s.contains("thing")),
+            "no CREATE SCHEMA should be emitted for the default-schema `thing` table: {sql:?}"
+        );
+    }
+
+    /// Non-Postgres backends have no separate namespace-creation step —
+    /// `schema_name` there is just a qualifier baked into the table name.
+    #[test]
+    fn test_schema_statements_no_create_schema_on_sqlite() {
+        let builder = Schema::new(DbBackend::Sqlite)
+            .builder()
+            .register(widget::Entity);
+        let stmts = builder.schema_statements();
+        assert!(
+            !stmts.iter().any(|s| s.sql.contains("CREATE SCHEMA")),
+            "SQLite should never emit CREATE SCHEMA: {:?}",
+            stmts.iter().map(|s| &s.sql).collect::<Vec<_>>()
+        );
+    }
 }
