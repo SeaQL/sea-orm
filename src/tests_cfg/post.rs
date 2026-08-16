@@ -10,7 +10,7 @@ pub struct Model {
     pub user_id: i32,
     pub title: String,
     #[sea_orm(belongs_to, from = "user_id", to = "id")]
-    pub author: HasOne<super::user::Entity>,
+    pub author: BelongsTo<super::user::Entity>,
     #[sea_orm(has_many)]
     pub comments: HasMany<super::comment::Entity>,
     #[sea_orm(has_many, via = "post_tag")]

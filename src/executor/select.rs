@@ -1,15 +1,21 @@
 use super::{
-    consolidate_query_result, consolidate_query_result_chain, consolidate_query_result_tee,
+    consolidate_query_result, consolidate_query_result_chain, consolidate_query_result_quad_star,
+    consolidate_query_result_tee,
 };
 use crate::{
     ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, PartialModelTrait,
     QueryResult, QuerySelect, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
-    SelectTwoRequired, Statement, StreamTrait, TryGetableMany, error::*,
+    SelectTwoRequired, Statement, TryGetableMany, error::*,
 };
+
+#[cfg(feature = "stream")]
+pub use crate::StreamTrait;
+#[cfg(feature = "stream")]
 use futures_util::{Stream, TryStreamExt};
+
 use itertools::Itertools;
 use sea_query::SelectStatement;
-use std::{marker::PhantomData, pin::Pin};
+use std::marker::PhantomData;
 
 mod five;
 mod four;
@@ -19,12 +25,23 @@ mod three;
 #[cfg(feature = "with-json")]
 use crate::JsonValue;
 
-#[cfg(not(feature = "sync"))]
-type PinBoxStream<'b, S> = Pin<Box<dyn Stream<Item = Result<S, DbErr>> + 'b + Send>>;
+#[cfg(all(not(feature = "sync"), feature = "stream"))]
+type PinBoxStream<'b, S> = std::pin::Pin<Box<dyn Stream<Item = Result<S, DbErr>> + 'b + Send>>;
 #[cfg(feature = "sync")]
 type PinBoxStream<'b, S> = Box<dyn Iterator<Item = Result<S, DbErr>> + 'b + Send>;
 
-/// Defines a type to do `SELECT` operations through a [SelectStatement] on a Model
+/// The error returned by the `require_one` family when a query that must match a
+/// row matches none.
+fn record_not_found() -> DbErr {
+    DbErr::RecordNotFound("None of the models match the query".to_owned())
+}
+
+/// A ready-to-execute `SELECT` query backed by a [`SelectStatement`]. The
+/// type parameter `S` (a [`SelectorTrait`]) determines what each row is
+/// decoded into. Build one via
+/// [`Select::into_model`](crate::Select::into_model) or
+/// [`Select::into_partial_model`](crate::Select::into_partial_model), then
+/// call `.one(db)` / `.all(db)` / `.paginate(db, n)`.
 #[derive(Clone, Debug)]
 pub struct Selector<S>
 where
@@ -34,7 +51,8 @@ where
     selector: PhantomData<S>,
 }
 
-/// Performs a raw `SELECT` operation on a model
+/// Like [`Selector`] but executes a raw [`Statement`] (e.g. built with the
+/// [`raw_sql!`](crate::raw_sql) macro) instead of a `sea_query` query.
 #[derive(Clone, Debug)]
 pub struct SelectorRaw<S>
 where
@@ -44,16 +62,19 @@ where
     pub(super) selector: PhantomData<S>,
 }
 
-/// A Trait for any type that can perform SELECT queries
+/// Decodes one row of a [`Selector`] / [`SelectorRaw`] result into a value of
+/// type [`Item`](Self::Item). Implemented by the `SelectModel*` types below;
+/// you usually never name this trait directly.
 pub trait SelectorTrait {
-    #[allow(missing_docs)]
+    /// Type produced for each row.
     type Item: Sized;
 
-    /// The method to perform a query on a Model
+    /// Decode one row.
     fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr>;
 }
 
-/// Get tuple from query result based on a list of column identifiers
+/// [`SelectorTrait`] adapter that decodes each row as a tuple `T` whose
+/// columns are addressed by the iden enum `C` (rather than positionally).
 #[derive(Debug)]
 pub struct SelectGetableValue<T, C>
 where
@@ -64,7 +85,8 @@ where
     model: PhantomData<T>,
 }
 
-/// Get tuple from query result based on column index
+/// [`SelectorTrait`] adapter that decodes each row positionally into the
+/// tuple type `T`.
 #[derive(Debug)]
 pub struct SelectGetableTuple<T>
 where
@@ -73,7 +95,7 @@ where
     model: PhantomData<T>,
 }
 
-/// Helper class to handle query result for 1 Model
+/// [`SelectorTrait`] for a query that yields a single model per row.
 #[derive(Debug)]
 pub struct SelectModel<M>
 where
@@ -82,7 +104,8 @@ where
     model: PhantomData<M>,
 }
 
-/// Defines a type to get two Models, with the second being optional
+/// [`SelectorTrait`] for a join that yields `(M, Option<N>)` per row — the
+/// right side is `None` for outer-join rows with no match.
 #[derive(Clone, Debug)]
 pub struct SelectTwoModel<M, N>
 where
@@ -92,7 +115,8 @@ where
     model: PhantomData<(M, N)>,
 }
 
-/// Defines a type to get two Models
+/// [`SelectorTrait`] for a join that yields `(M, N)` per row (both sides
+/// required, e.g. an inner join).
 #[derive(Clone, Debug)]
 pub struct SelectTwoRequiredModel<M, N>
 where
@@ -102,7 +126,7 @@ where
     model: PhantomData<(M, N)>,
 }
 
-/// Helper class to handle query result for 3 Models
+/// [`SelectorTrait`] for a three-way join that yields `(M, Option<N>, Option<O>)`.
 #[derive(Clone, Debug)]
 pub struct SelectThreeModel<M, N, O>
 where
@@ -113,7 +137,8 @@ where
     model: PhantomData<(M, N, O)>,
 }
 
-/// Helper class to handle query result for 4 Models
+/// [`SelectorTrait`] for a four-way join that yields
+/// `(M, Option<N>, Option<O>, Option<P>)`.
 #[derive(Clone, Debug)]
 pub struct SelectFourModel<M, N, O, P>
 where
@@ -125,7 +150,8 @@ where
     model: PhantomData<(M, N, O, P)>,
 }
 
-/// Helper class to handle query result for 5 Models
+/// [`SelectorTrait`] for a five-way join that yields
+/// `(M, Option<N>, Option<O>, Option<P>, Option<Q>)`.
 #[derive(Clone, Debug)]
 pub struct SelectFiveModel<M, N, O, P, Q>
 where
@@ -138,7 +164,8 @@ where
     model: PhantomData<(M, N, O, P, Q)>,
 }
 
-/// Helper class to handle query result for 6 Models
+/// [`SelectorTrait`] for a six-way join that yields
+/// `(M, Option<N>, Option<O>, Option<P>, Option<Q>, Option<R>)`.
 #[derive(Clone, Debug)]
 pub struct SelectSixModel<M, N, O, P, Q, R>
 where
@@ -524,6 +551,50 @@ where
         self.into_model().one(db).await
     }
 
+    /// Get exactly one Model from the SELECT query, returning
+    /// [`DbErr::RecordNotFound`] when nothing matches. The non-optional
+    /// counterpart to [`one`](Self::one): use it when a missing row is an error,
+    /// so the call site can use `?` instead of unwrapping an `Option`.
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results([
+    /// #         vec![cake::Model {
+    /// #             id: 1,
+    /// #             name: "New York Cheese".to_owned(),
+    /// #         }],
+    /// #         vec![],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, tests_cfg::cake};
+    ///
+    /// // A matching row is returned directly — no `Option` to unwrap.
+    /// let cake = cake::Entity::find_by_id(1).require_one(&db).await?;
+    /// assert_eq!(cake.name, "New York Cheese");
+    ///
+    /// // No matching row is a `RecordNotFound` error.
+    /// assert!(matches!(
+    ///     cake::Entity::find_by_id(2).require_one(&db).await,
+    ///     Err(DbErr::RecordNotFound(_))
+    /// ));
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn require_one<C>(self, db: &C) -> Result<E::Model, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().require_one(db).await
+    }
+
     /// Get all Models from the SELECT query
     pub async fn all<C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
     where
@@ -533,6 +604,7 @@ where
     }
 
     /// Stream the results of a SELECT operation on a Model
+    #[cfg(feature = "stream")]
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -544,6 +616,7 @@ where
     }
 
     /// Stream the result of the operation with PartialModel
+    #[cfg(feature = "stream")]
     pub async fn stream_partial_model<'a: 'b, 'b, C, M>(
         self,
         db: &'a C,
@@ -602,6 +675,16 @@ where
         self.into_model().one(db).await
     }
 
+    /// Get exactly one row from the Select query, returning
+    /// [`DbErr::RecordNotFound`] when nothing matches. The non-optional
+    /// counterpart to [`one`](Self::one).
+    pub async fn require_one<C>(self, db: &C) -> Result<(E::Model, Option<F::Model>), DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().require_one(db).await
+    }
+
     /// Get all Models from the Select query
     pub async fn all<C>(self, db: &C) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
     where
@@ -611,6 +694,7 @@ where
     }
 
     /// Stream the results of a Select operation on a Model
+    #[cfg(feature = "stream")]
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -622,6 +706,7 @@ where
     }
 
     /// Stream the result of the operation with PartialModel
+    #[cfg(feature = "stream")]
     pub async fn stream_partial_model<'a: 'b, 'b, C, M, N>(
         self,
         db: &'a C,
@@ -652,14 +737,16 @@ where
         }
     }
 
-    /// Get all Models from the select operation and consolidate result based on left Model.
+    /// Run the select and return all matching parent models, each paired
+    /// with its related models (rows are deduplicated and grouped by left
+    /// model).
     ///
     /// > `SelectTwoMany::one()` method has been dropped (#486)
     /// >
     /// > You can get `(Entity, Vec<relatedEntity>)` by first querying a single model from Entity,
-    /// > then use [`ModelTrait::find_related`] on the model.
+    /// > then use [`ModelTrait::find_related`](crate::ModelTrait::find_related) on the model.
     /// >
-    /// > See https://www.sea-ql.org/SeaORM/docs/basic-crud/select#lazy-loading for details.
+    /// > See <https://www.sea-ql.org/SeaORM/docs/basic-crud/select#lazy-loading> for details.
     pub async fn all<C>(self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
     where
         C: ConnectionTrait,
@@ -724,6 +811,16 @@ where
         self.into_model().one(db).await
     }
 
+    /// Get exactly one row from the Select query, returning
+    /// [`DbErr::RecordNotFound`] when nothing matches. The non-optional
+    /// counterpart to [`one`](Self::one).
+    pub async fn require_one<C>(self, db: &C) -> Result<(E::Model, F::Model), DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().require_one(db).await
+    }
+
     /// Get all Models from the Select query
     pub async fn all<C>(self, db: &C) -> Result<Vec<(E::Model, F::Model)>, DbErr>
     where
@@ -733,6 +830,7 @@ where
     }
 
     /// Stream the results of a Select operation on a Model
+    #[cfg(feature = "stream")]
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -744,6 +842,7 @@ where
     }
 
     /// Stream the result of the operation with PartialModel
+    #[cfg(feature = "stream")]
     pub async fn stream_partial_model<'a: 'b, 'b, C, M, N>(
         self,
         db: &'a C,
@@ -779,6 +878,19 @@ where
         }
     }
 
+    /// Get exactly one item from the Select query, returning
+    /// [`DbErr::RecordNotFound`] when no row matches.
+    ///
+    /// This is the non-optional counterpart to [`one`](Self::one): reach for it
+    /// when a missing row is an error rather than an expected `None`, so the
+    /// call site can use `?` instead of unwrapping an `Option`.
+    pub async fn require_one<C>(self, db: &C) -> Result<S::Item, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.one(db).await?.ok_or(record_not_found())
+    }
+
     /// Get all items from the Select query
     pub async fn all<C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
     where
@@ -792,6 +904,7 @@ where
     }
 
     /// Stream the results of the Select operation
+    #[cfg(feature = "stream")]
     pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<PinBoxStream<'b, S::Item>, DbErr>
     where
         C: ConnectionTrait + StreamTrait + Send,
@@ -1025,6 +1138,15 @@ where
         }
     }
 
+    /// Get exactly one item from the query, returning [`DbErr::RecordNotFound`]
+    /// when no row matches. The non-optional counterpart to [`one`](Self::one).
+    pub async fn require_one<C>(self, db: &C) -> Result<S::Item, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.one(db).await?.ok_or(record_not_found())
+    }
+
     /// Get all items from the Select query
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
@@ -1076,6 +1198,7 @@ where
     }
 
     /// Stream the results of the Select operation
+    #[cfg(feature = "stream")]
     pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<PinBoxStream<'b, S::Item>, DbErr>
     where
         C: ConnectionTrait + StreamTrait + Send,

@@ -184,7 +184,7 @@ where
         C: IntoCondition,
     {
         let mut to = None;
-        let mut condition = condition.into_condition();
+        let mut condition = Condition::all().add(condition.into_condition());
         condition = condition.add(if let Some(via) = E::via() {
             to = Some(E::to());
             via

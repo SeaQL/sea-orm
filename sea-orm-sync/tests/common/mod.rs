@@ -1,6 +1,7 @@
 pub mod bakery_chain;
 pub mod bakery_dense;
 pub mod blogger;
+pub mod blogger_legacy;
 pub mod features;
 pub mod film_store;
 #[cfg(not(feature = "sync"))]

@@ -8,7 +8,9 @@ use std::borrow::Cow;
 
 macro_rules! select_def {
     ( $ident: ident, $str: expr ) => {
-        /// Implements the traits [Iden] for select alias
+        /// Iden used to alias one side of a multi-table `SELECT`, so column
+        /// names from each joined table can be prefixed without clashing
+        /// (e.g. `select_a_id`, `select_b_id`).
         #[derive(Debug, Clone, Copy)]
         pub struct $ident;
 

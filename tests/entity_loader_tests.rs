@@ -2,6 +2,9 @@
 
 pub mod common;
 
+#[path = "partial_model_nested/local/mod.rs"]
+mod local;
+
 pub use common::{
     TestContext,
     bakery_chain::{create_tables, seed_data},
@@ -78,7 +81,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[0].bakery.as_ref().unwrap(), &bakery_1);
     assert_eq!(cakes[1].bakery.as_ref().unwrap(), &bakery_1);
     assert_eq!(cakes[2].bakery.as_ref().unwrap(), &bakery_2);
-    assert_eq!(cakes[3].bakery, None);
+    assert!(cakes[3].bakery.is_not_found());
 
     // low-level API
     assert_eq!(
@@ -115,7 +118,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
             .unwrap(),
         {
             let mut cake_2 = cake_2.clone().into_ex();
-            cake_2.bakery = HasOne::loaded(bakery_1.clone());
+            cake_2.bakery = BelongsTo::loaded(Some(bakery_1.clone()));
             cake_2
         }
     );
@@ -133,7 +136,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[0].bakery.as_ref().unwrap(), &bakery_1);
     assert_eq!(cakes[1].bakery.as_ref().unwrap(), &bakery_1);
     assert_eq!(cakes[2].bakery.as_ref().unwrap(), &bakery_2);
-    assert_eq!(cakes[3].bakery, None);
+    assert!(cakes[3].bakery.is_not_found());
     assert_eq!(cakes[0].bakers, [baker_1.clone()]);
     assert_eq!(cakes[1].bakers, [baker_1.clone(), baker_2.clone()]);
     assert_eq!(cakes[2].bakers, [baker_2.clone()]);
@@ -201,7 +204,7 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     assert_eq!(cakes[0].bakery.as_ref().unwrap().name, bakery_1.name);
     assert_eq!(cakes[1].bakery.as_ref().unwrap().name, bakery_1.name);
     assert_eq!(cakes[2].bakery.as_ref().unwrap().name, bakery_2.name);
-    assert_eq!(cakes[3].bakery, None);
+    assert!(cakes[3].bakery.is_not_found());
     assert_eq!(
         cakes[0].bakery.as_ref().unwrap().bakers,
         [baker_1.clone(), baker_2.clone()]
@@ -301,8 +304,8 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: HasOne::Unloaded,
-            customer: HasOne::loaded(customer::Model {
+            bakery: BelongsTo::Unloaded,
+            customer: BelongsTo::loaded(customer::Model {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
@@ -329,12 +332,12 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: HasOne::loaded(bakery::Model {
+            bakery: BelongsTo::loaded(bakery::Model {
                 id: 42,
                 name: "cool little bakery".into(),
                 profit_margin: 4.1,
             }),
-            customer: HasOne::loaded(customer::ModelEx {
+            customer: BelongsTo::loaded(customer::ModelEx {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
@@ -362,8 +365,8 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: HasOne::Unloaded,
-            customer: HasOne::loaded(customer::ModelEx {
+            bakery: BelongsTo::Unloaded,
+            customer: BelongsTo::loaded(customer::ModelEx {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
@@ -376,8 +379,8 @@ async fn entity_loader_join_three() {
                     quantity: 2,
                     order_id: 101,
                     cake_id: 13,
-                    order: HasOne::Unloaded,
-                    cake: HasOne::Unloaded,
+                    order: BelongsTo::Unloaded,
+                    cake: BelongsTo::Unloaded,
                 },
                 lineitem::ModelEx {
                     id: 2,
@@ -385,8 +388,8 @@ async fn entity_loader_join_three() {
                     quantity: 2,
                     order_id: 101,
                     cake_id: 15,
-                    order: HasOne::Unloaded,
-                    cake: HasOne::Unloaded,
+                    order: BelongsTo::Unloaded,
+                    cake: BelongsTo::Unloaded,
                 }
             ]),
         }
@@ -410,8 +413,8 @@ async fn entity_loader_join_three() {
             bakery_id: 42,
             customer_id: 11,
             placed_at: "2020-01-01 00:00:00Z".parse().unwrap(),
-            bakery: HasOne::Unloaded,
-            customer: HasOne::loaded(customer::Model {
+            bakery: BelongsTo::Unloaded,
+            customer: BelongsTo::loaded(customer::Model {
                 id: 11,
                 name: "Bob".to_owned(),
                 notes: Some("Sweet tooth".into()),
@@ -423,8 +426,8 @@ async fn entity_loader_join_three() {
                     quantity: 2,
                     order_id: 101,
                     cake_id: 13,
-                    order: HasOne::Unloaded,
-                    cake: HasOne::loaded(cake_13),
+                    order: BelongsTo::Unloaded,
+                    cake: BelongsTo::loaded(cake_13),
                 },
                 lineitem::ModelEx {
                     id: 2,
@@ -432,8 +435,8 @@ async fn entity_loader_join_three() {
                     quantity: 2,
                     order_id: 101,
                     cake_id: 15,
-                    order: HasOne::Unloaded,
-                    cake: HasOne::loaded(cake_15),
+                    order: BelongsTo::Unloaded,
+                    cake: BelongsTo::loaded(cake_15),
                 }
             ]),
         }
@@ -492,7 +495,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
         .await?;
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
 
     assert_eq!(staff[1].name, "Ben");
     assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
@@ -501,7 +504,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     assert_eq!(staff[2].reports_to.as_ref().unwrap().name, "Alan");
 
     assert_eq!(staff[3].name, "Elle");
-    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].reports_to.is_unloaded_or_not_found());
 
     // load belongs_to reverse
 
@@ -532,7 +535,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
         .await?;
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
     assert_eq!(staff[0].manages[0].name, "Ben");
     assert_eq!(staff[0].manages[1].name, "Alice");
 
@@ -545,7 +548,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     assert!(staff[2].manages.is_empty());
 
     assert_eq!(staff[3].name, "Elle");
-    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].reports_to.is_unloaded_or_not_found());
     assert!(staff[3].manages.is_empty());
 
     // test self_ref on model without reverse relation (not dual)
@@ -575,7 +578,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
         .await?;
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
     assert_eq!(staff[0].manages[0].name, "Ben");
     assert_eq!(staff[0].manages[1].name, "Alice");
 
@@ -588,7 +591,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     assert!(staff[2].manages.is_empty());
 
     assert_eq!(staff[3].name, "Elle");
-    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].reports_to.is_unloaded_or_not_found());
     assert!(staff[3].manages.is_empty());
 
     // test pagination on loader
@@ -601,7 +604,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     let staff = pager.fetch_and_next().await?.unwrap();
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
 
     assert_eq!(staff[1].name, "Ben");
     assert_eq!(staff[1].reports_to.as_ref().unwrap().name, "Alan");
@@ -612,7 +615,7 @@ async fn entity_loader_self_join() -> Result<(), DbErr> {
     assert_eq!(staff[0].reports_to.as_ref().unwrap().name, "Alan");
 
     assert_eq!(staff[1].name, "Elle");
-    assert_eq!(staff[1].reports_to, None);
+    assert!(staff[1].reports_to.is_unloaded_or_not_found());
 
     assert!(pager.fetch_and_next().await?.is_none());
 
@@ -851,6 +854,97 @@ async fn entity_loader_self_join_via() -> Result<(), DbErr> {
         sam_profile.user.as_ref().unwrap().following[1].name,
         bob.name
     );
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+async fn entity_loader_diamond_relations() -> Result<(), DbErr> {
+    use local::{bakery as diamond_bakery, create_tables, worker};
+
+    let ctx = TestContext::new("entity_loader_diamond_relations").await;
+    create_tables(&ctx.db).await?;
+
+    let db = &ctx.db;
+
+    let bob = worker::ActiveModel {
+        name: Set("Bob".to_owned()),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    let alice = worker::ActiveModel {
+        name: Set("Alice".to_owned()),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    let yum = diamond_bakery::ActiveModel {
+        name: Set("YumBakery".to_owned()),
+        profit_margin: Set(4.1),
+        manager_id: Set(bob.id),
+        cashier_id: Set(alice.id),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    let yum = diamond_bakery::Entity::load()
+        .filter_by_id(yum.id)
+        .with(diamond_bakery::Relation::Manager)
+        .with(diamond_bakery::Relation::Cashier)
+        .one(db)
+        .await?
+        .unwrap();
+
+    assert_eq!(yum.name, "YumBakery");
+    assert_eq!(yum.manager.as_ref().unwrap().name, "Bob");
+    assert_eq!(yum.cashier.as_ref().unwrap().name, "Alice");
+
+    let workers = worker::Entity::load()
+        .order_by_asc(worker::Column::Id)
+        .with(worker::Relation::BakeryManager)
+        .with(worker::Relation::BakeryCashier)
+        .all(db)
+        .await?;
+
+    assert_eq!(workers[0].name, "Bob");
+    assert_eq!(workers[0].manager_of.len(), 1);
+    assert_eq!(workers[0].manager_of[0].name, "YumBakery");
+    assert!(workers[0].cashier_of.is_empty());
+
+    assert_eq!(workers[1].name, "Alice");
+    assert!(workers[1].manager_of.is_empty());
+    assert_eq!(workers[1].cashier_of.len(), 1);
+    assert_eq!(workers[1].cashier_of[0].name, "YumBakery");
+
+    let yum = diamond_bakery::Entity::load()
+        .filter_by_id(yum.id)
+        .with((
+            diamond_bakery::Relation::Manager,
+            worker::Relation::BakeryManager,
+        ))
+        .with((
+            diamond_bakery::Relation::Cashier,
+            worker::Relation::BakeryCashier,
+        ))
+        .one(db)
+        .await?
+        .unwrap();
+
+    let manager = yum.manager.as_ref().unwrap();
+    assert_eq!(manager.name, "Bob");
+    assert_eq!(manager.manager_of.len(), 1);
+    assert_eq!(manager.manager_of[0].name, "YumBakery");
+    assert!(manager.cashier_of.is_empty());
+
+    let cashier = yum.cashier.as_ref().unwrap();
+    assert_eq!(cashier.name, "Alice");
+    assert!(cashier.manager_of.is_empty());
+    assert_eq!(cashier.cashier_of.len(), 1);
+    assert_eq!(cashier.cashier_of[0].name, "YumBakery");
 
     Ok(())
 }

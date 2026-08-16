@@ -1,8 +1,10 @@
-/// Defines the result of executing an operation
+/// Result of a non-`SELECT` statement: an `INSERT`, `UPDATE`, `DELETE`, or
+/// DDL execution. Carries the row count
+/// ([`rows_affected`](Self::rows_affected)) and, where the backend supports
+/// it, the last auto-generated primary key
+/// ([`last_insert_id`](Self::last_insert_id)).
 #[derive(Debug)]
 pub struct ExecResult {
-    /// The type of result from the execution depending on the feature flag enabled
-    /// to choose a database backend
     pub(crate) result: ExecResultHolder,
 }
 
@@ -33,11 +35,13 @@ pub(crate) enum ExecResultHolder {
 // ExecResult //
 
 impl ExecResult {
-    /// Get the last id after `AUTOINCREMENT` is done on the primary key
+    /// The auto-increment primary key value assigned by the database on the
+    /// most recent `INSERT`.
     ///
     /// # Panics
     ///
-    /// Postgres does not support retrieving last insert id this way except through `RETURNING` clause
+    /// PostgreSQL does not expose `last_insert_id` directly — use
+    /// `exec_with_returning` / `exec_with_returning_keys` instead.
     pub fn last_insert_id(&self) -> u64 {
         match &self.result {
             #[cfg(feature = "sqlx-mysql")]
@@ -73,7 +77,7 @@ impl ExecResult {
         }
     }
 
-    /// Get the number of rows affected by the operation
+    /// Number of rows affected by the statement.
     pub fn rows_affected(&self) -> u64 {
         match &self.result {
             #[cfg(feature = "sqlx-mysql")]

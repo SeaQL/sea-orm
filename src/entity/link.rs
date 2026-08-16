@@ -3,21 +3,28 @@ use sea_query::{
     Alias, CommonTableExpression, Condition, IntoIden, IntoTableRef, JoinType, UnionType,
 };
 
-/// Same as [RelationDef]
+/// One hop in a multi-hop [`Linked`] chain. Alias for [`RelationDef`].
 pub type LinkDef = RelationDef;
 
-/// A Trait for links between Entities
+/// A multi-hop traversal between two entities: a chain of [`LinkDef`] hops
+/// from `FromEntity` to `ToEntity`.
+///
+/// Use this when a single [`Related`](crate::Related) edge can't express
+/// the path (for example, "user → post → comment → author"). Implement
+/// [`link`](Self::link) to return the ordered list of hops; SeaORM joins
+/// them when [`ModelTrait::find_linked`](crate::ModelTrait::find_linked) is
+/// called.
 pub trait Linked {
-    #[allow(missing_docs)]
+    /// Entity at the start of the chain.
     type FromEntity: EntityTrait;
 
-    #[allow(missing_docs)]
+    /// Entity reached at the end of the chain.
     type ToEntity: EntityTrait;
 
-    /// Link for an Entity
+    /// Ordered chain of hops from `FromEntity` to `ToEntity`.
     fn link(&self) -> Vec<LinkDef>;
 
-    /// Find all the Entities that are linked to the Entity
+    /// Build a [`Select<ToEntity>`] that follows the chain.
     fn find_linked(&self) -> Select<Self::ToEntity> {
         find_linked(self.link().into_iter().rev(), JoinType::InnerJoin)
     }

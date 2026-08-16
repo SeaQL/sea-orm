@@ -110,7 +110,7 @@ impl Column {
             ColumnType::Float => Some("Float".to_owned()),
             ColumnType::Double => Some("Double".to_owned()),
             ColumnType::Decimal(Some((p, s))) => Some(format!("Decimal(Some(({p}, {s})))")),
-            ColumnType::Money(Some((p, s))) => Some(format!("Money(Some({p}, {s}))")),
+            ColumnType::Money(Some((p, s))) => Some(format!("Money(Some(({p}, {s})))")),
             ColumnType::Text => Some("Text".to_owned()),
             ColumnType::JsonBinary => Some("JsonBinary".to_owned()),
             ColumnType::Custom(iden) => {
@@ -130,8 +130,8 @@ impl Column {
         col_type.map(|ty| quote! { column_type = #ty })
     }
 
-    pub fn get_def(&self) -> TokenStream {
-        fn write_col_def(col_type: &ColumnType) -> TokenStream {
+    fn get_def_inner(&self, enum_type_ident: Option<&Ident>) -> TokenStream {
+        fn write_col_def(col_type: &ColumnType, enum_type_ident: Option<&Ident>) -> TokenStream {
             match col_type {
                 ColumnType::Char(s) => match s {
                     Some(s) => quote! { ColumnType::Char(Some(#s)) },
@@ -188,7 +188,9 @@ impl Column {
                     quote! { ColumnType::custom(#s) }
                 }
                 ColumnType::Enum { name, .. } => {
-                    let enum_ident = format_ident!("{}", name.to_string().to_upper_camel_case());
+                    let enum_ident = enum_type_ident.cloned().unwrap_or_else(|| {
+                        format_ident!("{}", name.to_string().to_upper_camel_case())
+                    });
                     quote! {
                         #enum_ident::db_type()
                             .get_column_type()
@@ -196,18 +198,27 @@ impl Column {
                     }
                 }
                 ColumnType::Array(column_type) => {
-                    let column_type = write_col_def(column_type);
+                    let column_type = write_col_def(column_type, enum_type_ident);
                     quote! { ColumnType::Array(RcOrArc::new(#column_type)) }
                 }
                 ColumnType::Vector(size) => match size {
                     Some(size) => quote! { ColumnType::Vector(Some(#size)) },
                     None => quote! { ColumnType::Vector(None) },
                 },
+                ColumnType::Year => quote! { ColumnType::Year },
+                ColumnType::Bit(s) => match s {
+                    Some(s) => quote! { ColumnType::Bit(Some(#s)) },
+                    None => quote! { ColumnType::Bit(None) },
+                },
+                ColumnType::VarBit(s) => quote! { ColumnType::VarBit(#s) },
+                ColumnType::MacAddr => quote! { ColumnType::MacAddr },
+                ColumnType::LTree => quote! { ColumnType::LTree },
+                ColumnType::Interval(_, _) => quote! { ColumnType::Interval(None, None) },
                 #[allow(unreachable_patterns)]
                 _ => unimplemented!(),
             }
         }
-        let mut col_def = write_col_def(&self.col_type);
+        let mut col_def = write_col_def(&self.col_type, enum_type_ident);
         col_def.extend(quote! {
             .def()
         });
@@ -222,6 +233,14 @@ impl Column {
             });
         }
         col_def
+    }
+
+    pub fn get_def(&self) -> TokenStream {
+        self.get_def_inner(None)
+    }
+
+    pub fn get_def_with_enum_type_ident(&self, enum_type_ident: &Ident) -> TokenStream {
+        self.get_def_inner(Some(enum_type_ident))
     }
 
     pub fn get_info(&self, opt: &ColumnOption) -> String {
@@ -573,6 +592,37 @@ mod tests {
     }
 
     #[test]
+    fn test_get_col_type_attrs_money_and_decimal() {
+        let make_col = |col_type| Column {
+            name: "amount".to_owned(),
+            col_type,
+            auto_increment: false,
+            not_null: true,
+            unique: false,
+            unique_key: None,
+        };
+
+        // Money and Decimal both carry an `Option<(precision, scale)>`, so the
+        // generated `column_type` string must keep the inner tuple parentheses.
+        // Without them the emitted `ColumnType::Money(Some(10, 2))` is `Some`
+        // called with two arguments, which does not compile.
+        assert_eq!(
+            make_col(ColumnType::Money(Some((10, 2))))
+                .get_col_type_attrs()
+                .unwrap()
+                .to_string(),
+            quote! { column_type = "Money(Some((10, 2)))" }.to_string()
+        );
+        assert_eq!(
+            make_col(ColumnType::Decimal(Some((10, 2))))
+                .get_col_type_attrs()
+                .unwrap()
+                .to_string(),
+            quote! { column_type = "Decimal(Some((10, 2)))" }.to_string()
+        );
+    }
+
+    #[test]
     fn test_get_info() {
         let column: Column = ColumnDef::new(Alias::new("id")).string().to_owned().into();
         assert_eq!(
@@ -751,5 +801,39 @@ mod tests {
         assert!(column.auto_increment);
         assert!(column.unique);
         assert!(column.not_null);
+    }
+
+    // Regression test for #3092: these column types are handled by the Rust-type
+    // mapping but used to hit `unimplemented!()` in `write_col_def`, panicking
+    // `generate entity --expanded-format`.
+    #[test]
+    fn test_get_def_extended_column_types() {
+        let col = |col_type| Column {
+            name: "c".to_owned(),
+            col_type,
+            auto_increment: false,
+            not_null: true,
+            unique: false,
+            unique_key: None,
+        };
+        let cases = [
+            (ColumnType::Year, "ColumnType::Year.def()"),
+            (
+                ColumnType::Bit(Some(8)),
+                "ColumnType::Bit(Some(8u32)).def()",
+            ),
+            (ColumnType::Bit(None), "ColumnType::Bit(None).def()"),
+            (ColumnType::VarBit(16), "ColumnType::VarBit(16u32).def()"),
+            (ColumnType::MacAddr, "ColumnType::MacAddr.def()"),
+            (ColumnType::LTree, "ColumnType::LTree.def()"),
+            (
+                ColumnType::Interval(None, None),
+                "ColumnType::Interval(None, None).def()",
+            ),
+        ];
+        for (col_type, expected) in cases {
+            let expected: TokenStream = expected.parse().unwrap();
+            assert_eq!(col(col_type).get_def().to_string(), expected.to_string());
+        }
     }
 }

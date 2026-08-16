@@ -1,20 +1,27 @@
 use crate::{DbBackend, Statement, StatementBuilder};
 
-/// A Trait for any type performing queries on a Model or ActiveModel
+/// Common operations on a SeaORM query builder: borrow the underlying
+/// `sea_query` statement, build it into a backend-specific [`Statement`], or
+/// apply optional modifications via [`apply_if`](Self::apply_if).
+///
+/// Implemented by [`Select`](crate::Select), [`Insert`](crate::Insert),
+/// [`Update`](crate::Update), [`Delete`](crate::Delete), and their multi-row
+/// variants.
 pub trait QueryTrait {
-    /// Constrain the QueryStatement to [StatementBuilder] trait
+    /// The underlying `sea_query` statement type this builder produces.
     type QueryStatement: StatementBuilder;
 
-    /// Get a mutable ref to the query builder
+    /// Mutable access to the underlying statement.
     fn query(&mut self) -> &mut Self::QueryStatement;
 
-    /// Get an immutable ref to the query builder
+    /// Shared access to the underlying statement.
     fn as_query(&self) -> &Self::QueryStatement;
 
-    /// Take ownership of the query builder
+    /// Consume the builder and return the underlying statement.
     fn into_query(self) -> Self::QueryStatement;
 
-    /// Build the query as [`Statement`]
+    /// Render the query for `db_backend` as a [`Statement`] (SQL + bound
+    /// parameters). Useful for inspecting generated SQL in tests.
     fn build(&self, db_backend: DbBackend) -> Statement {
         StatementBuilder::build(self.as_query(), &db_backend)
     }

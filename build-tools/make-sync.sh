@@ -33,14 +33,17 @@ replace_rs "s/Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>/Result<T, 
 replace_rs "s/Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>/Result<T, E>/" src
 replace_rs 's/Box::pin(async move {/({/' src
 replace_rs 's/Box::pin(async move {/({/' tests
+replace_rs 's/AsyncFnOnce/FnOnce/g' src
+replace_rs 's/transaction_with_config_async/transaction_with_config/g' src tests
+replace_rs 's/transaction_async/transaction/g' src tests
 replace_rs 's/async //' src
 replace_rs 's/async //' tests
 replace_rs 's/async //' examples
 replace_rs 's/\.await//' src
 replace_rs 's/\.await//' tests
 replace_rs 's/\.await//' examples
-replace_rs '/#\[async_trait::async_trait\]/d' src
-replace_rs '/#\[async_trait::async_trait\]/d' tests
+replace_rs '/#\[async_trait::async_trait/d' src
+replace_rs '/#\[async_trait::async_trait/d' tests
 replace_rs 's/#\[smol_potat::test\]/#\[test\]/' src
 replace_rs '/#\[smol_potat::main\]/d' src
 replace_rs '/#\[tokio::main\]/d' examples
@@ -75,6 +78,9 @@ replace_rs '/use std::{pin::Pin};/d' src
 replace_rs '/use std::{task::Poll};/d' src
 replace_rs '/use std::{future::Future};/d' src
 replace_rs 's/, future::Future//' src
+# delete a `#[cfg(feature = "stream")]` together with the `use futures_util` line it gates,
+# so the attribute does not attach to the following item once the import is removed
+replace_rs '/^#\[cfg(feature = "stream")\]$/{N;/use futures_util/d;}' src
 replace_rs '/use futures_util::Stream/d' src
 replace_rs '/use futures_util::{Stream/d' src
 replace_rs '/use futures_util::{TryStreamExt,/d' src

@@ -5,7 +5,10 @@ use crate::{
 use core::marker::PhantomData;
 use sea_query::{Expr, IntoIden, SimpleExpr, UpdateStatement};
 
-/// Defines a structure to perform UPDATE query operations on a ActiveModel
+/// Type-level entry point for `UPDATE` builders, e.g.
+/// `Update::one(model)` and `Update::many(Entity)`. You normally call
+/// [`EntityTrait::update`](crate::EntityTrait::update) /
+/// [`update_many`](crate::EntityTrait::update_many) instead.
 #[derive(Clone, Debug)]
 pub struct Update;
 
@@ -43,7 +46,10 @@ impl<A: ActiveModelTrait> UpdateOne<A> {
     }
 }
 
-/// Defines an UPDATE operation on multiple ActiveModels
+/// Multi-row `UPDATE` builder, returned by
+/// [`EntityTrait::update_many`](crate::EntityTrait::update_many). Add
+/// `.col_expr(...)` to set columns and `.filter(...)` to scope which rows
+/// are updated.
 #[derive(Clone, Debug)]
 pub struct UpdateMany<E>
 where

@@ -1,12 +1,11 @@
 use super::case_style::{CaseStyle, CaseStyleHelpers};
-use super::util::{escape_rust_keyword, trim_starting_raw_identifier};
+use super::util::{consume_meta, escape_rust_keyword, trim_starting_raw_identifier};
 use heck::{
     ToKebabCase, ToLowerCamelCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase, ToUpperCamelCase,
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use std::str::FromStr;
-use syn::meta::ParseNestedMeta;
 use syn::{
     Attribute, Data, Fields, Lit, LitStr, Visibility, punctuated::Punctuated, spanned::Spanned,
     token::Comma,
@@ -54,10 +53,6 @@ fn serde_deserialize_name(
     } else {
         orig.to_string()
     }
-}
-
-fn consume_meta(meta: ParseNestedMeta<'_>) {
-    let _ = meta.value().and_then(|v| v.parse::<syn::Expr>());
 }
 
 /// Method to derive an Model

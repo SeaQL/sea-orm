@@ -2,21 +2,26 @@ use crate::{ColumnTrait, EntityTrait, IdenStatic};
 use sea_query::{Alias, DynIden, Iden, IntoIden, SeaRc};
 use std::{borrow::Cow, fmt::Write};
 
-/// List of column identifier
+/// A one-or-many column identifier — the abstraction SeaORM uses to refer
+/// to either a single column or a composite (e.g. a composite primary key
+/// or foreign key).
+///
+/// Specialized variants exist for the common arities (1/2/3 columns) to
+/// avoid heap allocation; longer composites fall back to [`Identity::Many`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Identity {
-    /// Column identifier consists of 1 column
+    /// A single column.
     Unary(DynIden),
-    /// Column identifier consists of 2 columns
+    /// Two columns (composite).
     Binary(DynIden, DynIden),
-    /// Column identifier consists of 3 columns
+    /// Three columns (composite).
     Ternary(DynIden, DynIden, DynIden),
-    /// Column identifier consists of more than 3 columns
+    /// Four or more columns (composite).
     Many(Vec<DynIden>),
 }
 
 impl Identity {
-    /// Get arity for this value
+    /// Number of columns in this identifier.
     pub fn arity(&self) -> usize {
         match self {
             Self::Unary(_) => 1,
@@ -26,7 +31,7 @@ impl Identity {
         }
     }
 
-    /// Iterate components of Identity
+    /// Iterate over each column iden in order.
     pub fn iter(&self) -> BorrowedIdentityIter<'_> {
         BorrowedIdentityIter {
             identity: self,
@@ -34,12 +39,12 @@ impl Identity {
         }
     }
 
-    /// Check if this identity contains a component column
+    /// `true` if `col` is one of the columns making up this identifier.
     pub fn contains(&self, col: &DynIden) -> bool {
         self.iter().any(|c| c == col)
     }
 
-    /// Check if this identity is a superset of another identity
+    /// `true` if every column of `other` also appears in `self`.
     pub fn fully_contains(&self, other: &Identity) -> bool {
         for col in other.iter() {
             if !self.contains(col) {
@@ -90,14 +95,15 @@ impl Iden for Identity {
     }
 }
 
-/// Iterator for [`Identity`]
+/// Borrowing iterator over the columns of an [`Identity`].
 #[derive(Debug)]
 pub struct BorrowedIdentityIter<'a> {
     identity: &'a Identity,
     index: usize,
 }
 
-/// Iterator for [`Identity`]
+/// Owning iterator over the columns of an [`Identity`]
+/// (returned by `IntoIterator for Identity`).
 #[derive(Debug)]
 pub struct OwnedIdentityIter {
     identity: Identity,
@@ -164,18 +170,22 @@ impl Iterator for OwnedIdentityIter {
     }
 }
 
-/// Performs a conversion into an [Identity]
+/// Conversion into an [`Identity`]. Implemented for `&str`/`String`, a single
+/// column iden, and tuples of column idens (for composites up to 12 columns).
 pub trait IntoIdentity {
-    /// Method to perform the conversion
+    /// Build the [`Identity`].
     fn into_identity(self) -> Identity;
 }
 
-/// Check the [Identity] of an Entity
+/// Conversion into an [`Identity`] whose columns are guaranteed to belong to
+/// entity `E`. Used by [`RelationBuilder::from`](crate::RelationBuilder::from) /
+/// [`to`](crate::RelationBuilder::to) so the type system enforces that
+/// relation columns reference the right table.
 pub trait IdentityOf<E>
 where
     E: EntityTrait,
 {
-    /// Method to call to perform this check
+    /// Build the [`Identity`].
     fn identity_of(self) -> Identity;
 }
 

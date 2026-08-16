@@ -11,7 +11,7 @@ pub struct Model {
     #[sea_orm(unique)]
     pub user_id: i32,
     #[sea_orm(belongs_to, from = "user_id", to = "id")]
-    pub user: HasOne<super::user::Entity>,
+    pub user: BelongsTo<super::user::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

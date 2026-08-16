@@ -9,3 +9,5 @@ Cargo.lock
 */.zed/*
 .env.local
 .DS_Store
+.codex
+.claude

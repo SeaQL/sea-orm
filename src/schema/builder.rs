@@ -13,9 +13,6 @@ pub use super::discover::{
     SchemaChangeId, SuggestionKind, WarningKind, interpret::interpret as interpret_changes,
 };
 
-#[cfg(feature = "schema-sync")]
-use sea_query::{ForeignKeyCreateStatement, Index, IntoIden, TableAlterStatement};
-
 /// A schema builder that can take a registry of Entities and synchronize it with database.
 pub struct SchemaBuilder {
     helper: Schema,
@@ -100,8 +97,17 @@ impl SchemaBuilder {
         self
     }
 
-    /// Synchronize the schema with database, will create missing tables, columns, unique keys, and foreign keys.
-    /// This operation is addition only, will not drop any table / columns.
+    /// Synchronize the schema with the database: creates any missing tables, columns,
+    /// unique keys, and foreign keys.
+    ///
+    /// Non-destructive by design. Sync only adds — it never drops or alters existing tables
+    /// or columns. If a column already exists but its type or constraints differ from the
+    /// entity, sync leaves it untouched and logs a warning; apply such changes with a
+    /// migration. Destructive operations (ALTER / DROP) are intentionally out of scope and
+    /// would be a separate, explicitly-named API.
+    ///
+    /// Unstable: schema sync is experimental and exempt from semver — its behaviour and
+    /// signature may change in a minor (2.x) release.
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
     pub async fn sync<C>(self, db: &C) -> Result<(), DbErr>
@@ -163,8 +169,9 @@ impl SchemaBuilder {
         stmts
     }
 
-    /// Apply this schema to a database, will create all registered tables, columns, unique keys, and foreign keys.
-    /// Will fail if any table already exists. Use [`sync`] if you want an incremental version that can perform schema diff.
+    /// Create all registered tables, columns, unique keys, and foreign keys.
+    /// Fails if any table already exists. Use `sync` (feature `schema-sync`)
+    /// instead for an incremental version that diffs against the live schema.
     pub async fn apply<C: ConnectionTrait>(self, db: &C) -> Result<(), DbErr> {
         let mut created_enums: Vec<Statement> = Default::default();
 
@@ -182,50 +189,16 @@ impl SchemaBuilder {
 
         Ok(())
     }
-}
 
-/// Stores the discovered schema from the database, including tables and enums
-#[cfg(feature = "schema-sync")]
-#[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
-struct DiscoveredSchema {
-    /// The current/default schema of the database connection (e.g., "public" for Postgres).
-    current_schema: String,
-    /// Tables discovered from the database, grouped by schema name.
-    tables_by_schema: std::collections::HashMap<String, Vec<TableCreateStatement>>,
-    /// Enums discovered from the database, grouped by schema name.
-    enums_by_schema: std::collections::HashMap<String, Vec<TypeCreateStatement>>,
-}
-
-impl DiscoveredSchema {
-    /// Find an existing table in the discovered schema that matches the given entity.
-    ///
-    /// `entity_schema` is the entity's explicit schema_name (from `#[sea_orm(schema_name = "...")]`).
-    /// If `None`, the entity uses the database's current/default schema.
-    ///
-    /// The comparison uses bare table names (without schema qualifiers) because
-    /// `sea-schema` discovery results do not include schema information in the
-    /// `TableCreateStatement`.
-    fn find_table(
-        &self,
-        entity_schema: Option<&str>,
-        entity_table_name: &TableName,
-    ) -> Option<&TableCreateStatement> {
-        let schema = entity_schema.unwrap_or(&self.current_schema);
-        let schema_tables = self.tables_by_schema.get(schema)?;
-        // Strip schema from entity table name for comparison, because discovered
-        // tables from sea-schema do not carry schema qualifiers.
-        let bare_entity_name = TableName(None, entity_table_name.1.clone());
-        schema_tables
-            .iter()
-            .find(|tbl| get_table_name(tbl.get_table_name()) == bare_entity_name)
-    }
-
-    fn find_enums(&self, entity_schema: Option<&str>) -> &[TypeCreateStatement] {
-        let schema = entity_schema.unwrap_or(&self.current_schema);
-        self.enums_by_schema
-            .get(schema)
-            .map(|v| v.as_slice())
-            .unwrap_or(&[])
+    // Regression guard for #3100: `sync()` must return a `Send` future, otherwise it
+    // cannot be used from `tokio::spawn` / most async runtimes. Compiled (never called)
+    // whenever `schema-sync` + a backend is on, so a future dep bump that reintroduces a
+    // `!Send` value across an await fails the build here.
+    #[allow(dead_code)]
+    #[cfg(all(feature = "schema-sync", feature = "sqlx-sqlite"))]
+    fn _assert_sync_future_is_send(self, db: &crate::DatabaseConnection) {
+        fn assert_send<T: Send>(_: &T) {}
+        assert_send(&self.sync(db));
     }
 }
 

@@ -547,11 +547,33 @@ impl ActiveEnum {
 
     fn convert_impls(&self) -> TokenStream {
         let ident = &self.ident;
+        let variant_idents = &self.variant_idents;
+        let variant_values = &self.variant_values;
+
+        let try_from_str_impl = if self.db_type.is_enum() {
+            quote! {
+                #[automatically_derived]
+                impl std::convert::TryFrom<&str> for #ident {
+                    type Error = sea_orm::DbErr;
+
+                    fn try_from(source: &str) -> std::result::Result<Self, Self::Error> {
+                        match source {
+                            #( #variant_values => Ok(Self::#variant_idents), )*
+                            _ => Err(sea_orm::DbErr::Type(format!(
+                                "unexpected value for {} enum: {}",
+                                stringify!(#ident),
+                                source
+                            ))),
+                        }
+                    }
+                }
+            }
+        } else {
+            quote!()
+        };
 
         if self.generate_enum_impls() {
             let enum_name = &self.enum_name;
-            let variant_idents = &self.variant_idents;
-            let variant_values = &self.variant_values;
 
             quote! {
                 #[automatically_derived]
@@ -574,6 +596,8 @@ impl ActiveEnum {
                         sea_orm::sea_query::Value::from(enum_value)
                     }
                 }
+
+                #try_from_str_impl
             }
         } else {
             quote! {
@@ -583,6 +607,8 @@ impl ActiveEnum {
                         <#ident as sea_orm::ActiveEnum>::to_value(&source).into()
                     }
                 }
+
+                #try_from_str_impl
             }
         }
     }

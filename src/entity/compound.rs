@@ -7,9 +7,11 @@ use crate::{
 use sea_query::{IntoValueTuple, Order, TableRef};
 use std::marker::PhantomData;
 
+mod belongs_to;
 mod has_many;
 mod has_one;
 
+pub use belongs_to::{BelongsTo, BelongsToCardinality};
 pub use has_many::{HasMany, Iter as HasManyIter};
 pub use has_one::HasOne;
 
@@ -159,6 +161,7 @@ where
     }
 
     /// Compute the number of pages for the current page
+    #[allow(clippy::manual_is_multiple_of)]
     fn compute_pages_number(&self, num_items: u64) -> u64 {
         (num_items / self.page_size) + (num_items % self.page_size > 0) as u64
     }

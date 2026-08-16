@@ -5,7 +5,10 @@ use crate::{
 use core::marker::PhantomData;
 use sea_query::{Expr, InsertStatement, Keyword, OnConflict, SimpleExpr, Value, ValueTuple};
 
-/// Performs INSERT operations on a ActiveModel
+/// Single-row `INSERT` builder, returned by
+/// [`EntityTrait::insert`](crate::EntityTrait::insert). Chain `.on_conflict(...)`
+/// or `.on_empty_returning(...)` then dispatch with `.exec(db)` or
+/// `.exec_with_returning(db)`.
 #[derive(Debug)]
 pub struct Insert<A>
 where
@@ -16,7 +19,10 @@ where
     pub(crate) model: PhantomData<A>,
 }
 
-/// Performs INSERT operations on many ActiveModels
+/// Multi-row `INSERT` builder, returned by
+/// [`EntityTrait::insert_many`](crate::EntityTrait::insert_many). Adds
+/// `.exec_with_returning_many` and `.exec_with_returning_keys` for batch
+/// inserts that need the resulting rows or primary keys.
 #[derive(Debug)]
 pub struct InsertMany<A>
 where

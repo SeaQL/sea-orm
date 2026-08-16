@@ -293,6 +293,11 @@ pub fn date_time_uniq<T: IntoIden>(col: T) -> ColumnDef {
     date_time(col).unique_key().take()
 }
 
+/// A date time column with a server-side default of 'now'.
+pub fn date_time_default_now<T: IntoIden>(col: T) -> ColumnDef {
+    date_time(col).default(Expr::current_timestamp()).take()
+}
+
 pub fn interval<T: IntoIden>(
     col: T,
     fields: Option<PgInterval>,
@@ -335,6 +340,11 @@ pub fn timestamp_uniq<T: IntoIden>(col: T) -> ColumnDef {
     timestamp(col).unique_key().take()
 }
 
+/// A timestamp column with a server-side default of 'now'.
+pub fn timestamp_default_now<T: IntoIden>(col: T) -> ColumnDef {
+    timestamp(col).default(Expr::current_timestamp()).take()
+}
+
 pub fn timestamp_with_time_zone<T: IntoIden>(col: T) -> ColumnDef {
     ColumnDef::new(col)
         .timestamp_with_time_zone()
@@ -348,6 +358,13 @@ pub fn timestamp_with_time_zone_null<T: IntoIden>(col: T) -> ColumnDef {
 
 pub fn timestamp_with_time_zone_uniq<T: IntoIden>(col: T) -> ColumnDef {
     timestamp_with_time_zone(col).unique_key().take()
+}
+
+/// A timestamp with time zone column with a server-side default of 'now'.
+pub fn timestamp_with_time_zone_default_now<T: IntoIden>(col: T) -> ColumnDef {
+    timestamp_with_time_zone(col)
+        .default(Expr::current_timestamp())
+        .take()
 }
 
 pub fn time<T: IntoIden>(col: T) -> ColumnDef {

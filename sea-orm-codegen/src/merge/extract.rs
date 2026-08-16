@@ -22,10 +22,10 @@ pub(super) fn extract_top_level_uses(file: &File) -> impl Iterator<Item = &ItemU
 
 pub(super) fn find_model_struct(file: &File) -> Option<&ItemStruct> {
     file.items.iter().find_map(|item| {
-        if let Item::Struct(item_struct) = item {
-            if item_struct.ident == "Model" {
-                return Some(item_struct);
-            }
+        if let Item::Struct(item_struct) = item
+            && item_struct.ident == "Model"
+        {
+            return Some(item_struct);
         }
         None
     })
@@ -33,10 +33,10 @@ pub(super) fn find_model_struct(file: &File) -> Option<&ItemStruct> {
 
 pub(super) fn find_relation_enum(file: &File) -> Option<&ItemEnum> {
     file.items.iter().find_map(|item| {
-        if let Item::Enum(item_enum) = item {
-            if item_enum.ident == "Relation" {
-                return Some(item_enum);
-            }
+        if let Item::Enum(item_enum) = item
+            && item_enum.ident == "Relation"
+        {
+            return Some(item_enum);
         }
         None
     })

@@ -174,9 +174,7 @@ use sea_orm_migration::{EntitySet, SchemaBuilder};
 pub struct FullSchema;
 impl EntitySet for FullSchema {
     fn register(self, builder: SchemaBuilder) -> SchemaBuilder {
-        builder
-            .register(cake::Entity)
-            .register(fruit::Entity)
+        builder.register(cake::Entity).register(fruit::Entity)
     }
 }
 
@@ -192,9 +190,7 @@ impl EntitySet for CakeV1Only {
 pub struct CakeV2FruitV1;
 impl EntitySet for CakeV2FruitV1 {
     fn register(self, builder: SchemaBuilder) -> SchemaBuilder {
-        builder
-            .register(cake_v2::Entity)
-            .register(fruit_v1::Entity)
+        builder.register(cake_v2::Entity).register(fruit_v1::Entity)
     }
 }
 
@@ -202,9 +198,7 @@ impl EntitySet for CakeV2FruitV1 {
 pub struct CakeV1FruitV2;
 impl EntitySet for CakeV1FruitV2 {
     fn register(self, builder: SchemaBuilder) -> SchemaBuilder {
-        builder
-            .register(cake_v1::Entity)
-            .register(fruit_v2::Entity)
+        builder.register(cake_v1::Entity).register(fruit_v2::Entity)
     }
 }
 

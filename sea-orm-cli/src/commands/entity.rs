@@ -105,7 +105,10 @@ fn run_sync(
     no_confirm: bool,
 ) -> Result<SyncDecision, Box<dyn Error>> {
     if diff.statements.is_empty() {
-        println!("{}", "No schema changes detected. Nothing to migrate.".green());
+        println!(
+            "{}",
+            "No schema changes detected. Nothing to migrate.".green()
+        );
         return Ok(SyncDecision::Quit);
     }
 
@@ -115,14 +118,22 @@ fn run_sync(
     }
 
     println!();
-    println!("{}", format!("SQL statements ({}):", diff.statements.len()).bold());
+    println!(
+        "{}",
+        format!("SQL statements ({}):", diff.statements.len()).bold()
+    );
     for stmt in &diff.statements {
         println!("  {}", stmt.dimmed());
     }
 
     if !diff.warnings.is_empty() {
         println!();
-        println!("{}", format!("Warnings ({}):", diff.warnings.len()).yellow().bold());
+        println!(
+            "{}",
+            format!("Warnings ({}):", diff.warnings.len())
+                .yellow()
+                .bold()
+        );
         for w in &diff.warnings {
             println!("  {} {}", format!("[{}]", w.kind).yellow(), w.message);
         }
@@ -130,7 +141,12 @@ fn run_sync(
 
     if !diff.suggestions.is_empty() {
         println!();
-        println!("{}", format!("Suggestions ({}):", diff.suggestions.len()).blue().bold());
+        println!(
+            "{}",
+            format!("Suggestions ({}):", diff.suggestions.len())
+                .blue()
+                .bold()
+        );
         for s in &diff.suggestions {
             println!("  {} {}", format!("[{}]", s.kind).blue(), s.message);
         }
@@ -289,7 +305,10 @@ fn print_generate_result(result: &GenerateData) {
     );
     println!("  File: {}", result.filepath.dimmed());
     if !result.changes.is_empty() {
-        println!("  {}", format!("Changes ({}):", result.changes.len()).bold());
+        println!(
+            "  {}",
+            format!("Changes ({}):", result.changes.len()).bold()
+        );
         for change in &result.changes {
             println!("    {} {change}", "+".green());
         }

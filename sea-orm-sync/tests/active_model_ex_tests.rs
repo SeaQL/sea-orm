@@ -6,6 +6,58 @@ use crate::common::TestContext;
 use sea_orm::{Database, DbConn, DbErr, entity::*, prelude::*, query::*};
 use tracing::info;
 
+mod optional_self_ref {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "optional_self_ref")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        #[sea_orm(enum_name = "ParentId")]
+        pub parent_ref: Option<i32>,
+        #[sea_orm(self_ref, relation_enum = "Parent", from = "ParentId", to = "id")]
+        pub parent: BelongsTo<Option<Entity>>,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+mod mixed_composite_parent {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "mixed_composite_parent")]
+    pub struct Model {
+        #[sea_orm(primary_key, auto_increment = false)]
+        pub id1: i32,
+        #[sea_orm(primary_key, auto_increment = false)]
+        pub id2: i32,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+mod mixed_composite_child {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "mixed_composite_child")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub parent_id1: i32,
+        pub parent_id2: Option<i32>,
+        #[sea_orm(belongs_to, from = "(parent_id1, parent_id2)", to = "(id1, id2)")]
+        pub parent: BelongsTo<Option<super::mixed_composite_parent::Entity>>,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 #[sea_orm_macros::test]
 fn test_active_model_ex_blog() -> Result<(), DbErr> {
     use common::blogger::*;
@@ -44,18 +96,18 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(1),
             user_id: Unchanged(1),
             title: Unchanged("post 1".into()),
-            author: HasOneModel::set(user::ActiveModelEx {
+            author: ActiveBelongsTo::set(user::ActiveModelEx {
                 id: Unchanged(1),
                 name: Unchanged("Alice".into()),
                 email: Unchanged("@1".into()),
-                profile: HasOneModel::NotSet,
-                posts: HasManyModel::NotSet,
-                followers: HasManyModel::NotSet,
-                following: HasManyModel::NotSet,
+                profile: ActiveHasOne::NotSet,
+                posts: ActiveHasMany::NotSet,
+                followers: ActiveHasMany::NotSet,
+                following: ActiveHasMany::NotSet,
             }),
-            comments: HasManyModel::NotSet,
-            attachments: HasManyModel::NotSet,
-            tags: HasManyModel::NotSet,
+            comments: ActiveHasMany::NotSet,
+            attachments: ActiveHasMany::NotSet,
+            tags: ActiveHasMany::NotSet,
         }
     );
 
@@ -68,7 +120,7 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
     if false {
         post::ActiveModelEx {
             title: Set("post 2".into()),
-            author: HasOneModel::set(user::ActiveModelEx {
+            author: ActiveBelongsTo::set(user::ActiveModelEx {
                 name: Set("Bob".into()),
                 email: Set("@2".into()),
                 ..Default::default()
@@ -83,7 +135,7 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(2),
             user_id: Unchanged(2),
             title: Unchanged("post 2".into()),
-            author: HasOneModel::set(user::ActiveModelEx {
+            author: ActiveBelongsTo::set(user::ActiveModelEx {
                 id: Unchanged(2),
                 name: Unchanged("Bob".into()),
                 email: Unchanged("@2".into()),
@@ -104,10 +156,10 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
         user::ActiveModelEx {
             name: Set("Sam".into()),
             email: Set("@3".into()),
-            profile: HasOneModel::set(profile::ActiveModelEx {
+            profile: ActiveHasOne::set(Some(profile::ActiveModelEx {
                 picture: Set("Sam.jpg".into()),
                 ..Default::default()
-            }),
+            })),
             ..Default::default()
         };
     }
@@ -118,12 +170,12 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(3),
             name: Unchanged("Sam".into()),
             email: Unchanged("@3".into()),
-            profile: HasOneModel::set(profile::ActiveModelEx {
+            profile: ActiveHasOne::set(Some(profile::ActiveModelEx {
                 id: Unchanged(1),
                 picture: Unchanged("Sam.jpg".into()),
                 user_id: Unchanged(3),
-                user: HasOneModel::NotSet,
-            }),
+                user: ActiveBelongsTo::NotSet,
+            })),
             ..Default::default()
         }
     );
@@ -143,13 +195,13 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(4),
             name: Unchanged("Alan".into()),
             email: Unchanged("@4".into()),
-            profile: HasOneModel::set(profile::ActiveModelEx {
+            profile: ActiveHasOne::set(Some(profile::ActiveModelEx {
                 id: Unchanged(2),
                 picture: Unchanged("Alan.jpg".into()),
                 user_id: Unchanged(4),
-                user: HasOneModel::NotSet,
-            }),
-            posts: HasManyModel::Append(vec![
+                user: ActiveBelongsTo::NotSet,
+            })),
+            posts: ActiveHasMany::Append(vec![
                 post::ActiveModelEx {
                     id: Unchanged(3),
                     user_id: Unchanged(4),
@@ -163,8 +215,8 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
                     ..Default::default()
                 },
             ]),
-            followers: HasManyModel::NotSet,
-            following: HasManyModel::NotSet,
+            followers: ActiveHasMany::NotSet,
+            following: ActiveHasMany::NotSet,
         }
     );
 
@@ -174,9 +226,9 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
     assert_eq!(posts[1].id, 4);
 
     info!("replace posts of user: delete 3,4; insert 5 with attachment");
-    user.posts = HasManyModel::Replace(vec![post::ActiveModelEx {
+    user.posts = ActiveHasMany::Replace(vec![post::ActiveModelEx {
         title: Set("post 5".into()),
-        attachments: HasManyModel::Append(vec![attachment::ActiveModelEx {
+        attachments: ActiveHasMany::Append(vec![attachment::ActiveModelEx {
             file: Set("for post 5".into()),
             ..Default::default()
         }]),
@@ -199,9 +251,9 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
         .save(db)?;
 
     info!("add new post to user: insert 6 and attach existing attachment");
-    user.posts = HasManyModel::Append(vec![post::ActiveModelEx {
+    user.posts = ActiveHasMany::Append(vec![post::ActiveModelEx {
         title: Set("post 6".into()),
-        attachments: HasManyModel::Append(vec![attachment_6]),
+        attachments: ActiveHasMany::Append(vec![attachment_6]),
         ..Default::default()
     }]);
 
@@ -229,7 +281,7 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
 
     info!("update user profile and delete all posts");
     user.profile.as_mut().unwrap().picture = Set("Alan2.jpg".into());
-    // user.posts = HasManyModel::Replace(vec![]);
+    // user.posts = ActiveHasMany::Replace(vec![]);
     user.posts.replace_all([]);
     user.save(db)?;
 
@@ -247,11 +299,11 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: 4,
             name: "Alan".into(),
             email: "@4".into(),
-            profile: HasOne::loaded(profile::Model {
+            profile: HasOne::loaded(Some(profile::Model {
                 id: 2,
                 picture: "Alan2.jpg".into(),
                 user_id: 4,
-            }),
+            })),
             posts: HasMany::Loaded(vec![]),
             followers: HasMany::Unloaded,
             following: HasMany::Unloaded,
@@ -275,10 +327,10 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
         id: NotSet,
         user_id: NotSet,
         title: Set("post 7".into()),
-        author: HasOneModel::set(user.clone().into_active_model()),
-        comments: HasManyModel::NotSet,
-        attachments: HasManyModel::NotSet,
-        tags: HasManyModel::Append(vec![
+        author: ActiveBelongsTo::set(user.clone().into_active_model()),
+        comments: ActiveHasMany::NotSet,
+        attachments: ActiveHasMany::NotSet,
+        tags: ActiveHasMany::Append(vec![
             day.clone().into_active_model().into(),
             tag::ActiveModel {
                 id: NotSet,
@@ -304,23 +356,23 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: Unchanged(7),
             user_id: Unchanged(4),
             title: Unchanged("post 7".into()),
-            author: HasOneModel::set(user::ActiveModelEx {
+            author: ActiveBelongsTo::set(user::ActiveModelEx {
                 id: Unchanged(4),
                 name: Unchanged("Alan".into()),
                 email: Unchanged("@4".into()),
-                profile: HasOneModel::set(profile::ActiveModelEx {
+                profile: ActiveHasOne::set(Some(profile::ActiveModelEx {
                     id: Unchanged(2),
                     picture: Unchanged("Alan2.jpg".into()),
                     user_id: Unchanged(4),
-                    user: HasOneModel::NotSet,
-                }),
-                posts: HasManyModel::Append(vec![]),
-                followers: HasManyModel::NotSet,
-                following: HasManyModel::NotSet,
+                    user: ActiveBelongsTo::NotSet,
+                },)),
+                posts: ActiveHasMany::Append(vec![]),
+                followers: ActiveHasMany::NotSet,
+                following: ActiveHasMany::NotSet,
             }),
-            comments: HasManyModel::NotSet,
-            attachments: HasManyModel::NotSet,
-            tags: HasManyModel::Append(vec![
+            comments: ActiveHasMany::NotSet,
+            attachments: ActiveHasMany::NotSet,
+            tags: ActiveHasMany::Append(vec![
                 tag::ActiveModel {
                     id: Unchanged(1),
                     tag: Unchanged("day".into()),
@@ -386,7 +438,7 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
     );
 
     info!("replace post tags: remove tag 1 add tag 3");
-    post.tags = HasManyModel::Replace(vec![
+    post.tags = ActiveHasMany::Replace(vec![
         tag::ActiveModel {
             id: NotSet, // new tag
             tag: Set("food".into()),
@@ -414,7 +466,7 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
 
     info!("update post title and add new tag");
     post.title = Set("post 7!".into());
-    post.tags = HasManyModel::Append(vec![
+    post.tags = ActiveHasMany::Append(vec![
         tag::ActiveModel {
             id: NotSet, // new tag
             tag: Set("sunny".into()),
@@ -478,16 +530,16 @@ fn test_active_model_ex_blog() -> Result<(), DbErr> {
             id: 5,
             name: "Bob".into(),
             email: "bob@sea-ql.org".into(),
-            profile: HasOne::loaded(profile::Model {
+            profile: HasOne::loaded(Some(profile::Model {
                 id: 3,
                 picture: "image.jpg".into(),
                 user_id: 5,
-            }),
+            })),
             posts: HasMany::Loaded(vec![post::ModelEx {
                 id: 8,
                 user_id: 5,
                 title: "Nice weather".into(),
-                author: HasOne::Unloaded,
+                author: BelongsTo::Unloaded,
                 attachments: HasMany::Unloaded,
                 comments: HasMany::Unloaded,
                 tags: HasMany::Loaded(vec![tag::ModelEx {
@@ -613,7 +665,7 @@ fn test_active_model_ex_film_store() -> Result<(), DbErr> {
     info!("save new films Galaxy with Tom and Sam as actors");
     film::ActiveModelEx {
         title: Set("Galaxy".into()),
-        actors: HasManyModel::Replace(vec![tom.into_active_model(), sam.into_ex()]),
+        actors: ActiveHasMany::Replace(vec![tom.into_active_model(), sam.into_ex()]),
         ..Default::default()
     }
     .save(db)?;
@@ -702,7 +754,7 @@ fn test_active_model_ex_film_store() -> Result<(), DbErr> {
         .all(db)?;
 
     assert_eq!(staff[0].name, "Alan");
-    assert_eq!(staff[0].reports_to, None);
+    assert!(staff[0].reports_to.is_unloaded_or_not_found());
     assert_eq!(staff[0].manages[0].name, "Ben");
     assert_eq!(staff[0].manages[1].name, "Alice");
 
@@ -715,7 +767,7 @@ fn test_active_model_ex_film_store() -> Result<(), DbErr> {
     assert!(staff[2].manages.is_empty());
 
     assert_eq!(staff[3].name, "Elle");
-    assert_eq!(staff[3].reports_to, None);
+    assert!(staff[3].reports_to.is_unloaded_or_not_found());
     assert!(staff[3].manages.is_empty());
 
     info!("delete alan, reports_to should be cleared");
@@ -729,6 +781,239 @@ fn test_active_model_ex_film_store() -> Result<(), DbErr> {
             .reports_to_id
             .is_none()
     );
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+fn test_has_one_replace_and_delete() -> Result<(), DbErr> {
+    use common::blogger::*;
+
+    let ctx = TestContext::new("test_has_one_replace_and_delete");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(user::Entity)
+        .register(user_follower::Entity)
+        .register(profile::Entity)
+        .register(post::Entity)
+        .register(post_tag::Entity)
+        .register(tag::Entity)
+        .register(attachment::Entity)
+        .register(comment::Entity)
+        .apply(db)?;
+
+    info!("#3061: replacing a populated HasOne deletes the old record instead of erroring");
+    let user = user::ActiveModel::builder()
+        .set_name("Rick")
+        .set_email("rick@sea-ql.org")
+        .set_profile(profile::ActiveModel::builder().set_picture("first.jpg"))
+        .save(db)?;
+
+    let user = user
+        .set_profile(profile::ActiveModel::builder().set_picture("second.jpg"))
+        .save(db)?;
+
+    let profiles = profile::Entity::find().all(db)?;
+    assert_eq!(profiles.len(), 1);
+    assert_eq!(profiles[0].picture, "second.jpg");
+
+    info!("#3060: clear the HasOne via the generated clear_<field> builder");
+    user.clear_profile().save(db)?;
+
+    assert!(profile::Entity::find().all(db)?.is_empty());
+
+    ctx.delete();
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+fn test_belongs_to_duplicate_target() -> Result<(), DbErr> {
+    use common::blogger::*;
+
+    let ctx = TestContext::new("test_belongs_to_duplicate_target");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(user::Entity)
+        .register(user_follower::Entity)
+        .apply(db)?;
+
+    // `user_follower` has two belongs_to fields — `user` and `follower` — both
+    // targeting `user::Entity`. Nested writes on such duplicate-target relations
+    // used to be silently skipped; now each writes its own FK, disambiguated by
+    // relation (`follower` via its `relation_enum`, `user` via the default).
+    let alice = user::ActiveModel::builder()
+        .set_name("Alice")
+        .set_email("alice@sea-ql.org")
+        .save(db)?;
+    let bob = user::ActiveModel::builder()
+        .set_name("Bob")
+        .set_email("bob@sea-ql.org")
+        .save(db)?;
+
+    info!("link the two users through the disambiguated nested belongs_to");
+    let follow = user_follower::ActiveModelEx {
+        user: ActiveBelongsTo::set(alice),
+        follower: ActiveBelongsTo::set(bob),
+        ..Default::default()
+    }
+    .insert(db)?;
+
+    // Each belongs_to wrote its own FK (previously a silent no-op).
+    assert_eq!(follow.user_id, 1);
+    assert_eq!(follow.follower_id, 2);
+
+    let row = user_follower::Entity::find().one(db)?.expect("row");
+    assert_eq!(row.user_id, 1);
+    assert_eq!(row.follower_id, 2);
+
+    ctx.delete();
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+fn test_clear_belongs_to_clears_unset_fk() -> Result<(), DbErr> {
+    use common::bakery_dense::{bakery, cake};
+
+    let ctx = TestContext::new("test_clear_belongs_to_clears_unset_fk");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(bakery::Entity)
+        .register(cake::Entity)
+        .apply(db)?;
+
+    let bakery = bakery::ActiveModel::builder()
+        .set_name("Sea")
+        .set_profit_margin(0.0)
+        .insert(db)?;
+    let bakery_id = bakery.id;
+    let cake = cake::ActiveModel::builder()
+        .set_name("Plain")
+        .set_price(Decimal::from(5))
+        .set_gluten_free(true)
+        .set_serial(Uuid::nil())
+        .set_bakery(bakery.clone())
+        .insert(db)?;
+    let cake_with_option = cake::ActiveModel::builder()
+        .set_name("Option")
+        .set_price(Decimal::from(6))
+        .set_gluten_free(true)
+        .set_serial(Uuid::nil())
+        .set_bakery(bakery.clone())
+        .insert(db)?;
+
+    assert_eq!(cake.bakery_id, Some(bakery_id));
+    assert_eq!(cake_with_option.bakery_id, Some(bakery_id));
+
+    let partial_cake = |id| cake::ActiveModelEx {
+        id: Unchanged(id),
+        name: NotSet,
+        price: NotSet,
+        bakery_id: NotSet,
+        gluten_free: NotSet,
+        serial: NotSet,
+        bakery: ActiveBelongsTo::NotSet,
+        lineitems: ActiveHasMany::NotSet,
+        bakers: ActiveHasMany::NotSet,
+    };
+
+    let active_model: cake::ActiveModel = partial_cake(cake.id).clear_bakery().into();
+    assert_eq!(active_model.bakery_id, Set(None));
+    let cleared = active_model.update(db)?;
+
+    assert!(cleared.bakery_id.is_none());
+    let row = cake::Entity::find_by_id(cake.id).one(db)?.expect("cake");
+    assert!(row.bakery_id.is_none());
+
+    let active_model: cake::ActiveModel = partial_cake(cake_with_option.id)
+        .set_bakery_option(None::<bakery::ActiveModelEx>)
+        .into();
+    assert_eq!(active_model.bakery_id, Set(None));
+    let cleared = active_model.update(db)?;
+
+    assert!(cleared.bakery_id.is_none());
+    let row = cake::Entity::find_by_id(cake_with_option.id)
+        .one(db)?
+        .expect("cake");
+    assert!(row.bakery_id.is_none());
+
+    ctx.delete();
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+fn test_clear_self_ref_belongs_to_clears_unset_fk() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_clear_self_ref_belongs_to_clears_unset_fk");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(optional_self_ref::Entity)
+        .apply(db)?;
+
+    let parent = optional_self_ref::ActiveModel::builder().insert(db)?;
+    let parent_id = parent.id;
+    let child = optional_self_ref::ActiveModel::builder()
+        .set_parent(parent)
+        .insert(db)?;
+
+    assert_eq!(child.parent_ref, Some(parent_id));
+
+    let cleared = optional_self_ref::ActiveModelEx {
+        id: Unchanged(child.id),
+        parent_ref: NotSet,
+        parent: ActiveBelongsTo::NotSet,
+    }
+    .clear_parent()
+    .update(db)?;
+
+    assert!(cleared.parent_ref.is_none());
+    let row = optional_self_ref::Entity::find_by_id(child.id)
+        .one(db)?
+        .expect("child");
+    assert!(row.parent_ref.is_none());
+
+    ctx.delete();
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+fn test_clear_mixed_nullable_composite_belongs_to() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_clear_mixed_nullable_composite_belongs_to");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(mixed_composite_parent::Entity)
+        .register(mixed_composite_child::Entity)
+        .apply(db)?;
+
+    mixed_composite_parent::ActiveModel::builder()
+        .set_id1(1)
+        .set_id2(2)
+        .insert(db)?;
+    let child = mixed_composite_child::ActiveModel::builder()
+        .set_parent_id1(1)
+        .set_parent_id2(Some(2))
+        .insert(db)?;
+
+    let cleared = mixed_composite_child::ActiveModelEx {
+        id: Unchanged(child.id),
+        parent_id1: NotSet,
+        parent_id2: NotSet,
+        parent: ActiveBelongsTo::NotSet,
+    }
+    .clear_parent()
+    .update(db)?;
+
+    assert_eq!(cleared.parent_id1, 1);
+    assert_eq!(cleared.parent_id2, None);
+
+    ctx.delete();
 
     Ok(())
 }

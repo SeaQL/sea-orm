@@ -7,7 +7,14 @@ use sea_query::{Value, ValueType, Values};
 use std::{collections::BTreeMap, sync::Arc};
 use tracing::instrument;
 
-/// Defines a Mock database suitable for testing
+/// Scripted in-memory database for unit tests.
+///
+/// Queue up exec and query results with [`append_exec_results`](Self::append_exec_results)
+/// / [`append_query_results`](Self::append_query_results), call
+/// [`into_connection`](Self::into_connection) to get a [`DatabaseConnection`]
+/// you can pass to your code, then inspect what was executed via
+/// [`into_transaction_log`](crate::MockDatabaseConnection::into_transaction_log)
+/// on the connection.
 #[derive(Debug)]
 pub struct MockDatabase {
     db_backend: DbBackend,
@@ -17,37 +24,43 @@ pub struct MockDatabase {
     query_results: Vec<Result<Vec<MockRow>, DbErr>>,
 }
 
-/// Defines the results obtained from a [MockDatabase]
+/// Canned [`ExecResult`](crate::ExecResult)-equivalent returned by a
+/// [`MockDatabase`] for non-`SELECT` statements.
 #[derive(Clone, Debug, Default)]
 pub struct MockExecResult {
-    /// The last inserted id on auto-increment
+    /// Value reported by [`ExecResult::last_insert_id`](crate::ExecResult::last_insert_id).
     pub last_insert_id: u64,
-    /// The number of rows affected by the database operation
+    /// Value reported by [`ExecResult::rows_affected`](crate::ExecResult::rows_affected).
     pub rows_affected: u64,
 }
 
-/// Defines the structure of a test Row for the [MockDatabase]
-/// which is just a [BTreeMap]<[String], [Value]>
+/// A single canned row returned by a [`MockDatabase`] — a name → value map
+/// matching the columns the query selected.
 #[derive(Clone, Debug)]
 pub struct MockRow {
-    /// The values of the single row
+    /// Cell values keyed by column name.
     pub(crate) values: BTreeMap<String, Value>,
 }
 
-/// A trait to get a [MockRow] from a type useful for testing in the [MockDatabase]
+/// Conversion into a [`MockRow`]. Implemented for `Model` (via
+/// `#[derive(DeriveModel)]`) and for `BTreeMap<String, Value>` so you can
+/// hand either to [`MockDatabase::append_query_results`].
 pub trait IntoMockRow {
-    /// The method to perform this operation
+    /// Build the row.
     fn into_mock_row(self) -> MockRow;
 }
 
-/// Defines a transaction that is has not been committed
+/// An in-progress transaction recorded by a [`MockDatabase`]. Once committed
+/// or rolled back, it becomes a [`Transaction`] in the transaction log.
 #[derive(Debug)]
 pub struct OpenTransaction {
     stmts: Vec<Statement>,
     transaction_depth: usize,
 }
 
-/// Defines a database transaction as it holds a Vec<[Statement]>
+/// A completed transaction recorded by a [`MockDatabase`] — the ordered list
+/// of statements executed against it. Compare against expected SQL in tests
+/// via [`Transaction::from_sql_and_values`](crate::Transaction::from_sql_and_values).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transaction {
     stmts: Vec<Statement>,
@@ -115,7 +128,7 @@ impl MockDatabase {
 }
 
 impl MockDatabaseTrait for MockDatabase {
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(statement))]
     fn execute(&mut self, counter: usize, statement: Statement) -> Result<ExecResult, DbErr> {
         if let Some(transaction) = &mut self.transaction {
             transaction.push(statement);
@@ -137,7 +150,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(statement))]
     fn query(&mut self, counter: usize, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         if let Some(transaction) = &mut self.transaction {
             transaction.push(statement);
@@ -432,7 +445,9 @@ mod tests {
         DbBackend, DbErr, IntoMockRow, MockDatabase, Statement, Transaction, TransactionError,
         TransactionTrait, entity::*, error::*, tests_cfg::*,
     };
-    use futures_util::{TryStreamExt, stream::TryNext};
+    // In the sync variant `StreamShim` provides `try_next`; `futures_util` isn't a dependency there.
+    #[cfg(not(feature = "sync"))]
+    use futures_util::TryStreamExt;
     use pretty_assertions::assert_eq;
 
     #[derive(Debug, PartialEq, Eq)]
@@ -450,13 +465,11 @@ mod tests {
     async fn test_transaction_1() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
-        db.transaction::<_, (), DbErr>(|txn| {
-            Box::pin(async move {
-                let _1 = cake::Entity::find().one(txn).await;
-                let _2 = fruit::Entity::find().all(txn).await;
+        db.transaction_async::<_, (), DbErr>(async |txn| {
+            let _1 = cake::Entity::find().one(txn).await;
+            let _2 = fruit::Entity::find().all(txn).await;
 
-                Ok(())
-            })
+            Ok(())
         })
         .await
         .unwrap();
@@ -494,11 +507,9 @@ mod tests {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
         let result = db
-            .transaction::<_, (), MyErr>(|txn| {
-                Box::pin(async move {
-                    let _ = cake::Entity::find().one(txn).await;
-                    Err(MyErr("test".to_owned()))
-                })
+            .transaction_async::<_, (), MyErr>(async |txn| {
+                let _ = cake::Entity::find().one(txn).await;
+                Err(MyErr("test".to_owned()))
             })
             .await;
 
@@ -527,22 +538,18 @@ mod tests {
     async fn test_nested_transaction_1() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
-        db.transaction::<_, (), DbErr>(|txn| {
-            Box::pin(async move {
-                let _ = cake::Entity::find().one(txn).await;
+        db.transaction_async::<_, (), DbErr>(async |txn| {
+            let _ = cake::Entity::find().one(txn).await;
 
-                txn.transaction::<_, (), DbErr>(|txn| {
-                    Box::pin(async move {
-                        let _ = fruit::Entity::find().all(txn).await;
-
-                        Ok(())
-                    })
-                })
-                .await
-                .unwrap();
+            txn.transaction_async::<_, (), DbErr>(async |txn| {
+                let _ = fruit::Entity::find().all(txn).await;
 
                 Ok(())
             })
+            .await
+            .unwrap();
+
+            Ok(())
         })
         .await
         .unwrap();
@@ -572,32 +579,26 @@ mod tests {
     async fn test_nested_transaction_2() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
-        db.transaction::<_, (), DbErr>(|txn| {
-            Box::pin(async move {
-                let _ = cake::Entity::find().one(txn).await;
+        db.transaction_async::<_, (), DbErr>(async |txn| {
+            let _ = cake::Entity::find().one(txn).await;
 
-                txn.transaction::<_, (), DbErr>(|txn| {
-                    Box::pin(async move {
-                        let _ = fruit::Entity::find().all(txn).await;
+            txn.transaction_async::<_, (), DbErr>(async |txn| {
+                let _ = fruit::Entity::find().all(txn).await;
 
-                        txn.transaction::<_, (), DbErr>(|txn| {
-                            Box::pin(async move {
-                                let _ = cake::Entity::find().all(txn).await;
+                txn.transaction_async::<_, (), DbErr>(async |txn| {
+                    let _ = cake::Entity::find().all(txn).await;
 
-                                Ok(())
-                            })
-                        })
-                        .await
-                        .unwrap();
-
-                        Ok(())
-                    })
+                    Ok(())
                 })
                 .await
                 .unwrap();
 
                 Ok(())
             })
+            .await
+            .unwrap();
+
+            Ok(())
         })
         .await
         .unwrap();
@@ -631,6 +632,7 @@ mod tests {
     }
 
     #[smol_potat::test]
+    #[cfg(feature = "stream")]
     async fn test_stream_1() -> Result<(), DbErr> {
         let apple = fruit::Model {
             id: 1,
@@ -660,6 +662,7 @@ mod tests {
     }
 
     #[smol_potat::test]
+    #[cfg(feature = "stream")]
     async fn test_stream_2() -> Result<(), DbErr> {
         use fruit::Entity as Fruit;
         let db = MockDatabase::new(DbBackend::Postgres)
@@ -676,6 +679,7 @@ mod tests {
     }
 
     #[smol_potat::test]
+    #[cfg(feature = "stream")]
     async fn test_stream_in_transaction() -> Result<(), DbErr> {
         let apple = fruit::Model {
             id: 1,

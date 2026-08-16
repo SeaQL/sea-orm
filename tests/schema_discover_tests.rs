@@ -7,9 +7,9 @@ pub mod common;
 
 use crate::common::TestContext;
 use crate::common::fixtures::*;
-use crate::common::helpers::{column_exists, table_exists};
 #[cfg(feature = "schema-sync")]
 use crate::common::helpers::discover_interpret_and_apply;
+use crate::common::helpers::{column_exists, table_exists};
 use sea_orm::{DatabaseConnection, DbErr, entity::*, query::*};
 
 // ---------------------------------------------------------------------------
@@ -25,51 +25,51 @@ async fn test_discover_creates_enum_type() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_discover_creates_enum_type").await;
     let db = &ctx.db;
 
-        let builder = db.get_schema_builder().register(enum_v1::Entity);
-        let change_set = builder.discover(db, false).await?;
-        let result = sea_orm::interpret_changes(
-            change_set,
-            &sea_orm::InterpretConfig {
-                db_backend: db.get_database_backend(),
-                assumptions: false,
-                allow_dangerous: false,
-            },
-        );
+    let builder = db.get_schema_builder().register(enum_v1::Entity);
+    let change_set = builder.discover(db, false).await?;
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: false,
+            allow_dangerous: false,
+        },
+    );
 
-        let has_create_type = result
-            .statements
-            .iter()
-            .any(|(_, s)| s.sql.to_uppercase().contains("CREATE TYPE"));
-        assert!(
-            has_create_type,
-            "discover() must include CREATE TYPE for Postgres enum; got: {:?}",
-            result.statements
-        );
+    let has_create_type = result
+        .statements
+        .iter()
+        .any(|(_, s)| s.sql.to_uppercase().contains("CREATE TYPE"));
+    assert!(
+        has_create_type,
+        "discover() must include CREATE TYPE for Postgres enum; got: {:?}",
+        result.statements
+    );
 
-        let has_create_table = result
-            .statements
-            .iter()
-            .any(|(_, s)| s.sql.to_uppercase().contains("CREATE TABLE"));
-        assert!(
-            has_create_table,
-            "discover() must include CREATE TABLE; got: {:?}",
-            result.statements
-        );
+    let has_create_table = result
+        .statements
+        .iter()
+        .any(|(_, s)| s.sql.to_uppercase().contains("CREATE TABLE"));
+    assert!(
+        has_create_table,
+        "discover() must include CREATE TABLE; got: {:?}",
+        result.statements
+    );
 
-        let type_pos = result
-            .statements
-            .iter()
-            .position(|(_, s)| s.sql.to_uppercase().contains("CREATE TYPE"))
-            .unwrap();
-        let table_pos = result
-            .statements
-            .iter()
-            .position(|(_, s)| s.sql.to_uppercase().contains("CREATE TABLE"))
-            .unwrap();
-        assert!(
-            type_pos < table_pos,
-            "CREATE TYPE must precede CREATE TABLE; type at {type_pos}, table at {table_pos}"
-        );
+    let type_pos = result
+        .statements
+        .iter()
+        .position(|(_, s)| s.sql.to_uppercase().contains("CREATE TYPE"))
+        .unwrap();
+    let table_pos = result
+        .statements
+        .iter()
+        .position(|(_, s)| s.sql.to_uppercase().contains("CREATE TABLE"))
+        .unwrap();
+    assert!(
+        type_pos < table_pos,
+        "CREATE TYPE must precede CREATE TABLE; type at {type_pos}, table at {table_pos}"
+    );
 
     ctx.delete().await;
     Ok(())
@@ -177,34 +177,33 @@ async fn test_discover_enum_rename_warning() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_discover_enum_rename_warning").await;
     let db = &ctx.db;
 
-        db.get_schema_builder()
-            .register(enum_v1::Entity)
-            .sync(db)
-            .await?;
+    db.get_schema_builder()
+        .register(enum_v1::Entity)
+        .sync(db)
+        .await?;
 
-        let change_set = db
-            .get_schema_builder()
-            .register(enum_renamed::Entity)
-            .discover(db, true)
-            .await?;
-        let result = sea_orm::interpret_changes(
-            change_set,
-            &sea_orm::InterpretConfig {
-                db_backend: db.get_database_backend(),
-                assumptions: true,
-                allow_dangerous: true,
-            },
-        );
+    let change_set = db
+        .get_schema_builder()
+        .register(enum_renamed::Entity)
+        .discover(db, true)
+        .await?;
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: true,
+            allow_dangerous: true,
+        },
+    );
 
-        assert!(
-            result
-                .suggestions
-                .iter()
-                .any(|s| s.kind == sea_orm::schema::SuggestionKind::EnumRename),
-            "expected EnumRename suggestion when enum type is renamed; got: {:?}",
-            result.suggestions
-        );
-
+    assert!(
+        result
+            .suggestions
+            .iter()
+            .any(|s| s.kind == sea_orm::schema::SuggestionKind::EnumRename),
+        "expected EnumRename suggestion when enum type is renamed; got: {:?}",
+        result.suggestions
+    );
 
     ctx.delete().await;
     Ok(())
@@ -218,33 +217,33 @@ async fn test_discover_safe_no_enum_warnings() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_discover_safe_no_enum_warnings").await;
     let db = &ctx.db;
 
-        db.get_schema_builder()
-            .register(enum_v1::Entity)
-            .sync(db)
-            .await?;
+    db.get_schema_builder()
+        .register(enum_v1::Entity)
+        .sync(db)
+        .await?;
 
-        let change_set = db
-            .get_schema_builder()
-            .register(enum_v2::Entity)
-            .discover(db, false)
-            .await?;
-        let result = sea_orm::interpret_changes(
-            change_set,
-            &sea_orm::InterpretConfig {
-                db_backend: db.get_database_backend(),
-                assumptions: false,
-                allow_dangerous: false,
-            },
-        );
+    let change_set = db
+        .get_schema_builder()
+        .register(enum_v2::Entity)
+        .discover(db, false)
+        .await?;
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: false,
+            allow_dangerous: false,
+        },
+    );
 
-        assert!(
-            result
-                .suggestions
-                .iter()
-                .all(|s| s.kind != sea_orm::schema::SuggestionKind::EnumVariantChange),
-            "safe discover should not suggest enum changes; got: {:?}",
-            result.suggestions
-        );
+    assert!(
+        result
+            .suggestions
+            .iter()
+            .all(|s| s.kind != sea_orm::schema::SuggestionKind::EnumVariantChange),
+        "safe discover should not suggest enum changes; got: {:?}",
+        result.suggestions
+    );
 
     ctx.delete().await;
     Ok(())
@@ -349,27 +348,25 @@ async fn test_sync_dangerous_drops_column() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_sync_dangerous_drops_column").await;
     let db = &ctx.db;
 
-
-        db.get_schema_builder()
-            .register(widget_v1::Entity)
-            .sync(db)
-            .await?;
-        assert!(column_exists(db, "sync_widget", "weight").await?);
-
-        discover_interpret_and_apply(
-            db,
-            db.get_schema_builder().register(widget_v2::Entity),
-            sea_orm::InterpretConfig {
-                db_backend: db.get_database_backend(),
-                assumptions: false,
-                allow_dangerous: true,
-            },
-        )
+    db.get_schema_builder()
+        .register(widget_v1::Entity)
+        .sync(db)
         .await?;
+    assert!(column_exists(db, "sync_widget", "weight").await?);
 
-        assert!(!column_exists(db, "sync_widget", "weight").await?);
-        assert!(column_exists(db, "sync_widget", "label").await?);
+    discover_interpret_and_apply(
+        db,
+        db.get_schema_builder().register(widget_v2::Entity),
+        sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: false,
+            allow_dangerous: true,
+        },
+    )
+    .await?;
 
+    assert!(!column_exists(db, "sync_widget", "weight").await?);
+    assert!(column_exists(db, "sync_widget", "label").await?);
 
     ctx.delete().await;
     Ok(())
@@ -386,40 +383,38 @@ async fn test_discover_drop_table() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_discover_drop_table").await;
     let db = &ctx.db;
 
+    db.get_schema_builder()
+        .register(tag_v1::Entity)
+        .register(widget_v1::Entity)
+        .sync(db)
+        .await?;
 
-        db.get_schema_builder()
-            .register(tag_v1::Entity)
-            .register(widget_v1::Entity)
-            .sync(db)
-            .await?;
+    let change_set = db
+        .get_schema_builder()
+        .register(widget_v1::Entity)
+        .discover(db, true)
+        .await?;
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: false,
+            allow_dangerous: true,
+        },
+    );
 
-        let change_set = db
-            .get_schema_builder()
-            .register(widget_v1::Entity)
-            .discover(db, true)
-            .await?;
-        let result = sea_orm::interpret_changes(
-            change_set,
-            &sea_orm::InterpretConfig {
-                db_backend: db.get_database_backend(),
-                assumptions: false,
-                allow_dangerous: true,
-            },
-        );
-
-        assert!(
-            result
-                .statements
-                .iter()
-                .any(|(_, s)| s.sql.to_uppercase().contains("DROP TABLE")),
-            "discover(dangerous=true) must include DROP TABLE for `sync_tag`; got: {:?}",
-            result.statements
-        );
-        assert!(
-            table_exists(db, "sync_tag").await?,
-            "discover() must not apply changes; `sync_tag` should still exist"
-        );
-
+    assert!(
+        result
+            .statements
+            .iter()
+            .any(|(_, s)| s.sql.to_uppercase().contains("DROP TABLE")),
+        "discover(dangerous=true) must include DROP TABLE for `sync_tag`; got: {:?}",
+        result.statements
+    );
+    assert!(
+        table_exists(db, "sync_tag").await?,
+        "discover() must not apply changes; `sync_tag` should still exist"
+    );
 
     ctx.delete().await;
     Ok(())
@@ -432,28 +427,26 @@ async fn test_sync_dangerous_drops_table() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_sync_dangerous_drops_table").await;
     let db = &ctx.db;
 
-
-        db.get_schema_builder()
-            .register(tag_v1::Entity)
-            .register(widget_v1::Entity)
-            .sync(db)
-            .await?;
-        assert!(table_exists(db, "sync_tag").await?);
-
-        discover_interpret_and_apply(
-            db,
-            db.get_schema_builder().register(widget_v1::Entity),
-            sea_orm::InterpretConfig {
-                db_backend: db.get_database_backend(),
-                assumptions: false,
-                allow_dangerous: true,
-            },
-        )
+    db.get_schema_builder()
+        .register(tag_v1::Entity)
+        .register(widget_v1::Entity)
+        .sync(db)
         .await?;
+    assert!(table_exists(db, "sync_tag").await?);
 
-        assert!(!table_exists(db, "sync_tag").await?);
-        assert!(table_exists(db, "sync_widget").await?);
+    discover_interpret_and_apply(
+        db,
+        db.get_schema_builder().register(widget_v1::Entity),
+        sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: false,
+            allow_dangerous: true,
+        },
+    )
+    .await?;
 
+    assert!(!table_exists(db, "sync_tag").await?);
+    assert!(table_exists(db, "sync_widget").await?);
 
     ctx.delete().await;
     Ok(())
@@ -468,54 +461,51 @@ async fn test_sync_dangerous_drops_orphan_table_fk_order() -> Result<(), DbErr> 
     let ctx = TestContext::new("test_sync_dangerous_drops_orphan_table_fk_order").await;
     let db = &ctx.db;
 
-
-        // Create both tables; fk_child has an FK to fk_parent.
-        db.get_schema_builder()
-            .register(fk_parent_v1::Entity)
-            .register(fk_child_v1::Entity)
-            .sync(db)
-            .await?;
-
-        assert!(table_exists(db, "sync_fk_parent").await?);
-        assert!(table_exists(db, "sync_fk_child").await?);
-
-        // Discover with no registered entities → both tables are orphans; apply in one shot.
-        let result = discover_interpret_and_apply(
-            db,
-            db.get_schema_builder(),
-            sea_orm::InterpretConfig {
-                db_backend: db.get_database_backend(),
-                assumptions: false,
-                allow_dangerous: true,
-            },
-        )
+    // Create both tables; fk_child has an FK to fk_parent.
+    db.get_schema_builder()
+        .register(fk_parent_v1::Entity)
+        .register(fk_child_v1::Entity)
+        .sync(db)
         .await?;
 
-        let child_pos = result
-            .statements
-            .iter()
-            .position(|(_, s)| s.sql.to_uppercase().contains("SYNC_FK_CHILD"))
-            .expect("DROP TABLE sync_fk_child must be in statements");
-        let parent_pos = result
-            .statements
-            .iter()
-            .position(|(_, s)| s.sql.to_uppercase().contains("SYNC_FK_PARENT"))
-            .expect("DROP TABLE sync_fk_parent must be in statements");
+    assert!(table_exists(db, "sync_fk_parent").await?);
+    assert!(table_exists(db, "sync_fk_child").await?);
 
-        assert!(
-            child_pos < parent_pos,
-            "child table must be dropped before parent to avoid FK violation; \
+    // Discover with no registered entities → both tables are orphans; apply in one shot.
+    let result = discover_interpret_and_apply(
+        db,
+        db.get_schema_builder(),
+        sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: false,
+            allow_dangerous: true,
+        },
+    )
+    .await?;
+
+    let child_pos = result
+        .statements
+        .iter()
+        .position(|(_, s)| s.sql.to_uppercase().contains("SYNC_FK_CHILD"))
+        .expect("DROP TABLE sync_fk_child must be in statements");
+    let parent_pos = result
+        .statements
+        .iter()
+        .position(|(_, s)| s.sql.to_uppercase().contains("SYNC_FK_PARENT"))
+        .expect("DROP TABLE sync_fk_parent must be in statements");
+
+    assert!(
+        child_pos < parent_pos,
+        "child table must be dropped before parent to avoid FK violation; \
              child at {child_pos}, parent at {parent_pos}"
-        );
+    );
 
-        assert!(!table_exists(db, "sync_fk_child").await?);
-        assert!(!table_exists(db, "sync_fk_parent").await?);
-
+    assert!(!table_exists(db, "sync_fk_child").await?);
+    assert!(!table_exists(db, "sync_fk_parent").await?);
 
     ctx.delete().await;
     Ok(())
 }
-
 
 /// discover(dangerous=true) must include DROP FOREIGN KEY / CONSTRAINT when a FK is removed.
 #[sea_orm_macros::test]
@@ -525,38 +515,36 @@ async fn test_discover_drop_foreign_key() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_discover_drop_foreign_key").await;
     let db = &ctx.db;
 
+    db.get_schema_builder()
+        .register(category_v1::Entity)
+        .register(article_v1::Entity)
+        .sync(db)
+        .await?;
 
-        db.get_schema_builder()
-            .register(category_v1::Entity)
-            .register(article_v1::Entity)
-            .sync(db)
-            .await?;
+    let change_set = db
+        .get_schema_builder()
+        .register(category_v1::Entity)
+        .register(article_v2::Entity)
+        .discover(db, true)
+        .await?;
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: false,
+            allow_dangerous: true,
+        },
+    );
 
-        let change_set = db
-            .get_schema_builder()
-            .register(category_v1::Entity)
-            .register(article_v2::Entity)
-            .discover(db, true)
-            .await?;
-        let result = sea_orm::interpret_changes(
-            change_set,
-            &sea_orm::InterpretConfig {
-                db_backend: db.get_database_backend(),
-                assumptions: false,
-                allow_dangerous: true,
-            },
-        );
-
-        let has_drop_fk = result.statements.iter().any(|(_, s)| {
-            let sql = s.sql.to_uppercase();
-            sql.contains("DROP FOREIGN KEY") || sql.contains("DROP CONSTRAINT")
-        });
-        assert!(
-            has_drop_fk,
-            "discover(dangerous=true) must include DROP FOREIGN KEY / CONSTRAINT; got: {:?}",
-            result.statements
-        );
-
+    let has_drop_fk = result.statements.iter().any(|(_, s)| {
+        let sql = s.sql.to_uppercase();
+        sql.contains("DROP FOREIGN KEY") || sql.contains("DROP CONSTRAINT")
+    });
+    assert!(
+        has_drop_fk,
+        "discover(dangerous=true) must include DROP FOREIGN KEY / CONSTRAINT; got: {:?}",
+        result.statements
+    );
 
     ctx.delete().await;
     Ok(())
@@ -570,28 +558,26 @@ async fn test_sync_dangerous_drops_foreign_key() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_sync_dangerous_drops_foreign_key").await;
     let db = &ctx.db;
 
-
-        db.get_schema_builder()
-            .register(category_v1::Entity)
-            .register(article_v1::Entity)
-            .sync(db)
-            .await?;
-
-        discover_interpret_and_apply(
-            db,
-            db.get_schema_builder()
-                .register(category_v1::Entity)
-                .register(article_v2::Entity),
-            sea_orm::InterpretConfig {
-                db_backend: db.get_database_backend(),
-                assumptions: false,
-                allow_dangerous: true,
-            },
-        )
+    db.get_schema_builder()
+        .register(category_v1::Entity)
+        .register(article_v1::Entity)
+        .sync(db)
         .await?;
 
-        assert!(table_exists(db, "sync_article").await?);
+    discover_interpret_and_apply(
+        db,
+        db.get_schema_builder()
+            .register(category_v1::Entity)
+            .register(article_v2::Entity),
+        sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: false,
+            allow_dangerous: true,
+        },
+    )
+    .await?;
 
+    assert!(table_exists(db, "sync_article").await?);
 
     ctx.delete().await;
     Ok(())
@@ -608,38 +594,35 @@ async fn test_discover_no_changes_when_synced() -> Result<(), DbErr> {
     let ctx = TestContext::new("test_discover_no_changes_when_synced").await;
     let db = &ctx.db;
 
+    db.get_schema_builder()
+        .register(widget_v1::Entity)
+        .sync(db)
+        .await?;
 
-        db.get_schema_builder()
+    for dangerous in [false, true] {
+        let change_set = db
+            .get_schema_builder()
             .register(widget_v1::Entity)
-            .sync(db)
+            .discover(db, dangerous)
             .await?;
-
-        for dangerous in [false, true] {
-            let change_set = db
-                .get_schema_builder()
-                .register(widget_v1::Entity)
-                .discover(db, dangerous)
-                .await?;
-            let result = sea_orm::interpret_changes(
-                change_set,
-                &sea_orm::InterpretConfig {
-                    db_backend: db.get_database_backend(),
-                    assumptions: false,
-                    allow_dangerous: dangerous,
-                },
-            );
-            assert!(
-                result.statements.is_empty(),
-                "discover(dangerous={dangerous}) must return no changes when schema is up-to-date; got: {:?}",
-                result.statements
-            );
-        }
-
+        let result = sea_orm::interpret_changes(
+            change_set,
+            &sea_orm::InterpretConfig {
+                db_backend: db.get_database_backend(),
+                assumptions: false,
+                allow_dangerous: dangerous,
+            },
+        );
+        assert!(
+            result.statements.is_empty(),
+            "discover(dangerous={dangerous}) must return no changes when schema is up-to-date; got: {:?}",
+            result.statements
+        );
+    }
 
     ctx.delete().await;
     Ok(())
 }
-
 
 /// Dangerous sync with assumptions=true auto-assumes obvious rename and generates RENAME COLUMN.
 #[sea_orm_macros::test]
@@ -790,8 +773,7 @@ async fn test_discover_add_notnull_column_warns() -> Result<(), DbErr> {
     );
     assert!(
         result.warnings.iter().any(|w| {
-            w.kind == sea_orm::schema::WarningKind::NotNullNoDefault
-                && w.message.contains("age")
+            w.kind == sea_orm::schema::WarningKind::NotNullNoDefault && w.message.contains("age")
         }),
         "NOT NULL column without default must produce NotNullNoDefault warning; got: {:?}",
         result.warnings
@@ -924,7 +906,8 @@ async fn test_discover_add_column_applies() -> Result<(), DbErr> {
 
     discover_interpret_and_apply(
         db,
-        db.get_schema_builder().register(coltest_v2_nullable::Entity),
+        db.get_schema_builder()
+            .register(coltest_v2_nullable::Entity),
         sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
@@ -1117,15 +1100,21 @@ async fn test_complex_drop_sequence() -> Result<(), DbErr> {
 
     // ── 1. All expected statement kinds are present ──────────────────────
     assert!(
-        stmts.iter().any(|s| s.contains("DROP TABLE") && s.contains("DROP_SEQ_LEAF")),
+        stmts
+            .iter()
+            .any(|s| s.contains("DROP TABLE") && s.contains("DROP_SEQ_LEAF")),
         "DROP TABLE drop_seq_leaf must be present; got:\n{stmts:#?}"
     );
     assert!(
-        stmts.iter().any(|s| s.contains("DROP TABLE") && s.contains("DROP_SEQ_MID")),
+        stmts
+            .iter()
+            .any(|s| s.contains("DROP TABLE") && s.contains("DROP_SEQ_MID")),
         "DROP TABLE drop_seq_mid must be present; got:\n{stmts:#?}"
     );
     assert!(
-        stmts.iter().any(|s| s.contains("DROP TABLE") && s.contains("DROP_SEQ_GP")),
+        stmts
+            .iter()
+            .any(|s| s.contains("DROP TABLE") && s.contains("DROP_SEQ_GP")),
         "DROP TABLE drop_seq_gp must be present; got:\n{stmts:#?}"
     );
     assert!(
@@ -1181,10 +1170,7 @@ async fn test_complex_drop_sequence() -> Result<(), DbErr> {
         .iter()
         .rposition(|s| s.contains("DROP TABLE"))
         .unwrap();
-    let drop_type_pos = stmts
-        .iter()
-        .position(|s| s.contains("DROP TYPE"))
-        .unwrap();
+    let drop_type_pos = stmts.iter().position(|s| s.contains("DROP TYPE")).unwrap();
     assert!(
         drop_type_pos > last_drop_table_pos,
         "DROP TYPE must come after all DROP TABLE statements; \

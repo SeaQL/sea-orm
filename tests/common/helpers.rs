@@ -1,5 +1,5 @@
-use sea_orm::{DatabaseConnection, DbBackend, DbErr, query::*};
 use sea_orm::sea_query::{Alias, Condition, Expr, Query};
+use sea_orm::{DatabaseConnection, DbBackend, DbErr, query::*};
 
 #[cfg(feature = "schema-sync")]
 use sea_orm::{InterpretConfig, InterpretResult, schema::SchemaBuilder};

@@ -1,13 +1,19 @@
 use std::{future::Future, pin::Pin};
 
+#[cfg(feature = "stream")]
 use futures_util::Stream;
 
 use crate::{
     DbBackend, DbErr, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError,
 };
 
-/// The generic API for a database connection that can perform query or execute statements.
-/// It abstracts database connection and transaction
+/// A connection (or transaction) that can run queries against the database.
+///
+/// Implemented by [`DatabaseConnection`](crate::DatabaseConnection),
+/// [`DatabaseTransaction`](crate::DatabaseTransaction), and the mock/proxy
+/// connections used in testing. Most query and mutation methods in SeaORM
+/// (`.one(db)`, `.all(db)`, `.exec(db)`, ...) take any `&impl ConnectionTrait`,
+/// so the same code works on a pool, a transaction, or a mock.
 #[async_trait::async_trait]
 pub trait ConnectionTrait: Sync {
     /// Get the database backend for the connection. This depends on feature flags enabled.
@@ -16,7 +22,7 @@ pub trait ConnectionTrait: Sync {
     /// Execute a [Statement]
     async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr>;
 
-    /// Execute a [QueryStatement]
+    /// Execute a [`StatementBuilder`]
     async fn execute<S: StatementBuilder>(&self, stmt: &S) -> Result<ExecResult, DbErr> {
         let db_backend = self.get_database_backend();
         let stmt = db_backend.build(stmt);
@@ -29,7 +35,7 @@ pub trait ConnectionTrait: Sync {
     /// Execute a [Statement] and return a single row of `QueryResult`
     async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr>;
 
-    /// Execute a [QueryStatement] and return a single row of `QueryResult`
+    /// Execute a [`StatementBuilder`] and return a single row of `QueryResult`
     async fn query_one<S: StatementBuilder>(&self, stmt: &S) -> Result<Option<QueryResult>, DbErr> {
         let db_backend = self.get_database_backend();
         let stmt = db_backend.build(stmt);
@@ -39,7 +45,7 @@ pub trait ConnectionTrait: Sync {
     /// Execute a [Statement] and return a vector of `QueryResult`
     async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
 
-    /// Execute a [QueryStatement] and return a vector of `QueryResult`
+    /// Execute a [`StatementBuilder`] and return a vector of `QueryResult`
     async fn query_all<S: StatementBuilder>(&self, stmt: &S) -> Result<Vec<QueryResult>, DbErr> {
         let db_backend = self.get_database_backend();
         let stmt = db_backend.build(stmt);
@@ -58,7 +64,10 @@ pub trait ConnectionTrait: Sync {
     }
 }
 
-/// Stream query results
+/// Streaming counterpart to [`ConnectionTrait`]: yields query results row by
+/// row rather than collecting them all into a `Vec`. Use this for large
+/// result sets when you don't want to load everything into memory at once.
+#[cfg(feature = "stream")]
 pub trait StreamTrait: Send + Sync {
     /// Create a stream for the [QueryResult]
     type Stream<'a>: Stream<Item = Result<QueryResult, DbErr>> + Send
@@ -74,7 +83,7 @@ pub trait StreamTrait: Send + Sync {
         stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>>;
 
-    /// Execute a [QueryStatement] and return a stream of results
+    /// Execute a [`StatementBuilder`] and return a stream of results
     fn stream<'a, S: StatementBuilder + Sync>(
         &'a self,
         stmt: &S,
@@ -164,11 +173,24 @@ pub struct TransactionOptions {
     pub sqlite_transaction_mode: Option<SqliteTransactionMode>,
 }
 
-/// Spawn database transaction
+/// Begin a database transaction.
+///
+/// Implemented by [`DatabaseConnection`](crate::DatabaseConnection) and
+/// [`DatabaseTransaction`](crate::DatabaseTransaction) (allowing nested
+/// transactions via SAVEPOINTs). Use [`begin`](Self::begin) for a manually
+/// managed transaction, or [`transaction`](Self::transaction) for a closure
+/// that auto-commits on `Ok` and rolls back on `Err`.
+///
+/// [`Self::Transaction`] must be a fixed point — its own transaction type is
+/// itself — because the `ActiveModelEx` mutation methods recurse through it
+/// (see <https://github.com/SeaQL/sea-orm/issues/3147>).
 #[async_trait::async_trait]
-pub trait TransactionTrait {
+pub trait TransactionTrait: Sync {
     /// The concrete type for the transaction
-    type Transaction: ConnectionTrait + TransactionTrait + TransactionSession;
+    type Transaction: ConnectionTrait
+        + TransactionTrait<Transaction = Self::Transaction>
+        + TransactionSession
+        + Send;
 
     /// Execute SQL `BEGIN` transaction.
     /// Returns a Transaction that can be committed or rolled back

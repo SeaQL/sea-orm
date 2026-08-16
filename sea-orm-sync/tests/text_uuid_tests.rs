@@ -35,3 +35,17 @@ fn text_uuid_test() -> Result<(), DbErr> {
 
     Ok(())
 }
+
+#[cfg(all(feature = "serde", feature = "with-json"))]
+#[test]
+fn text_uuid_serde_uses_uuid_string() -> Result<(), serde_json::Error> {
+    let uuid = Uuid::parse_str("67e55044-10b1-426f-9247-bb680e5fe0c8").unwrap();
+    let text_uuid = TextUuid::from(uuid);
+
+    let json = serde_json::to_string(&text_uuid)?;
+    assert_eq!(json, format!("\"{uuid}\""));
+    assert_eq!(serde_json::from_str::<TextUuid>(&json)?, text_uuid);
+    assert!(serde_json::from_str::<TextUuid>("\"not-a-uuid\"").is_err());
+
+    Ok(())
+}

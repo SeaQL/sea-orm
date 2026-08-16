@@ -1,11 +1,19 @@
 use crate::{EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait, QuerySelect};
 use sea_query::Expr;
 
-/// A trait for a part of [Model](super::model::ModelTrait)
+/// A partial projection of a [`Model`](super::model::ModelTrait) — a struct
+/// that holds only some of the entity's columns, used to avoid overfetching
+/// in `SELECT` queries.
+///
+/// Derive it on a custom struct with `#[derive(DerivePartialModel)]` and
+/// `#[sea_orm(entity = "...")]`, then call
+/// [`Select::into_partial_model`](crate::Select::into_partial_model) to
+/// restrict the query to just those columns. Nested partial models can be
+/// composed with `#[sea_orm(nested)]` fields.
 pub trait PartialModelTrait: FromQueryResult {
-    /// Select specific columns this [PartialModel] needs
+    /// Add the partial model's columns to a [`QuerySelect`]'s projection.
     ///
-    /// No need to implement this method, please implement `select_cols_nested` instead.
+    /// No need to implement this method; implement `select_cols_nested` instead.
     fn select_cols<S: QuerySelect>(select: S) -> S {
         Self::select_cols_nested(select, None, None)
     }

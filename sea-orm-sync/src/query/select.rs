@@ -6,7 +6,11 @@ use core::fmt::Debug;
 use core::marker::PhantomData;
 use sea_query::{FunctionCall, IntoColumnRef, SelectStatement, SimpleExpr};
 
-/// Defines a structure to perform select operations
+/// A `SELECT` query against entity `E`. Returned by
+/// [`EntityTrait::find`](crate::EntityTrait::find); chain filters, joins,
+/// ordering, and projections onto it, then run it on a
+/// [`ConnectionTrait`](crate::ConnectionTrait) with `.one(db)` /
+/// `.all(db)` / `.stream(db)` / `.paginate(db, n)`.
 #[derive(Clone, Debug)]
 pub struct Select<E>
 where
@@ -17,7 +21,9 @@ where
     pub(crate) linked_index: usize,
 }
 
-/// Defines a structure to perform a SELECT operation on two Models, with the second Model being optional
+/// A `SELECT` joining two entities, yielding `(E::Model, Option<F::Model>)`
+/// per row — the right side is `None` for outer-join rows with no match.
+/// Returned by [`Select::find_also_related`] and similar helpers.
 #[derive(Clone, Debug)]
 pub struct SelectTwo<E, F>
 where
@@ -28,7 +34,9 @@ where
     pub(crate) entity: PhantomData<(E, F)>,
 }
 
-/// Defines a structure to perform a SELECT operation on many Models
+/// A `SELECT` joining two entities, with results grouped into
+/// `(E::Model, Vec<F::Model>)` per left model. Returned by
+/// [`Select::find_with_related`].
 #[derive(Clone, Debug)]
 pub struct SelectTwoMany<E, F>
 where
@@ -39,7 +47,8 @@ where
     pub(crate) entity: PhantomData<(E, F)>,
 }
 
-/// Defines a structure to perform a SELECT operation on two Models
+/// A `SELECT` joining two entities where both sides are required, yielding
+/// `(E::Model, F::Model)` per row (no `Option`).
 #[derive(Clone, Debug)]
 pub struct SelectTwoRequired<E, F>
 where
@@ -50,21 +59,24 @@ where
     pub(crate) entity: PhantomData<(E, F)>,
 }
 
-/// Topology of multi-joins
+/// Marker trait describing how 3+ tables are joined: from one centre entity
+/// to several siblings ([`TopologyStar`]) or in a sequential chain
+/// ([`TopologyChain`]).
 pub trait Topology {}
 
-/// A star topology
+/// Star join: a centre entity joined separately to each of the others.
 #[derive(Debug, Clone)]
 pub struct TopologyStar;
 
-/// A chain topology
+/// Chain join: each entity joined to the previous one in sequence.
 #[derive(Debug, Clone)]
 pub struct TopologyChain;
 
 impl Topology for TopologyStar {}
 impl Topology for TopologyChain {}
 
-/// Perform a SELECT operation on three Models
+/// Three-way join select, yielding `(E::Model, Option<F::Model>, Option<G::Model>)`.
+/// The `TOP` parameter is the join [`Topology`].
 #[derive(Clone, Debug)]
 pub struct SelectThree<E, F, G, TOP>
 where
@@ -77,7 +89,8 @@ where
     pub(crate) entity: PhantomData<(E, F, G, TOP)>,
 }
 
-/// Perform a SELECT operation on three Models with results consolidated
+/// Like [`SelectThree`], but results are consolidated under the left model:
+/// `(E::Model, Vec<F::Model>, Vec<G::Model>)`.
 #[derive(Clone, Debug)]
 pub struct SelectThreeMany<E, F, G, TOP>
 where
@@ -90,7 +103,7 @@ where
     pub(crate) entity: PhantomData<(E, F, G, TOP)>,
 }
 
-/// Perform a SELECT operation on 4 Models
+/// Four-way join select.
 #[derive(Clone, Debug)]
 pub struct SelectFour<E, F, G, H, TOP>
 where
@@ -104,7 +117,21 @@ where
     pub(crate) entity: PhantomData<(E, F, G, H, TOP)>,
 }
 
-/// Perform a SELECT operation on 5 Models
+/// Like [`SelectFour`], but results are consolidated under the left model.
+#[derive(Clone, Debug)]
+pub struct SelectFourMany<E, F, G, H, TOP>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+    H: EntityTrait,
+    TOP: Topology,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G, H, TOP)>,
+}
+
+/// Five-way join select.
 #[derive(Clone, Debug)]
 pub struct SelectFive<E, F, G, H, I, TOP>
 where
@@ -119,7 +146,7 @@ where
     pub(crate) entity: PhantomData<(E, F, G, H, I, TOP)>,
 }
 
-/// Perform a SELECT operation on 6 Models
+/// Six-way join select.
 #[derive(Clone, Debug)]
 pub struct SelectSix<E, F, G, H, I, J, TOP>
 where
@@ -135,16 +162,18 @@ where
     pub(crate) entity: PhantomData<(E, F, G, H, I, J, TOP)>,
 }
 
-/// Performs a conversion to [SimpleExpr]
+/// Conversion into a [`SimpleExpr`]. Implemented for entity columns so they
+/// can be used anywhere a `sea_query` expression is expected.
 pub trait IntoSimpleExpr {
-    /// Method to perform the conversion
+    /// Build the [`SimpleExpr`].
     fn into_simple_expr(self) -> SimpleExpr;
 }
 
-/// Extending [IntoSimpleExpr] to support casting ActiveEnum as TEXT in select expression
+/// Like [`IntoSimpleExpr`] but applies SeaORM's enum-to-text cast for
+/// `ActiveEnum` columns appearing in a SELECT list.
 pub trait ColumnAsExpr: IntoSimpleExpr {
-    /// Casting ActiveEnum as TEXT in select expression,
-    /// otherwise same as [IntoSimpleExpr::into_simple_expr]
+    /// Build the [`SimpleExpr`], casting `ActiveEnum` columns to text;
+    /// otherwise identical to [`IntoSimpleExpr::into_simple_expr`].
     fn into_column_as_expr(self) -> SimpleExpr;
 }
 

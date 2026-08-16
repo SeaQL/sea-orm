@@ -7,7 +7,7 @@
 
 //! Performs topological sorting.
 //!
-//! Vendored from https://github.com/gifnksm/topological-sort-rs
+//! Vendored from <https://github.com/gifnksm/topological-sort-rs>
 
 #![warn(bad_style)]
 #![warn(missing_copy_implementations)]

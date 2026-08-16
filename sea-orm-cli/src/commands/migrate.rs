@@ -341,6 +341,18 @@ fn get_full_migration_dir(migration_dir: &str) -> PathBuf {
     }
 }
 
+/// `get_migrator_filepath` looks for a file `migration_dir/src/lib.rs`
+/// and returns that path if found.
+///
+/// If `src` is not found, it will look directly in `migration_dir` for `lib.rs`.
+///
+/// If `lib.rs` is not found, it will look for `mod.rs` instead,
+/// e.g. `migration_dir/mod.rs`.
+///
+/// This way, `src` doesn't need to be appended in the standard case where
+/// migrations are in their own crate (with a file `lib.rs`). If the
+/// migrations are in a submodule of another crate (with a file `mod.rs`),
+/// `migration_dir` can point directly to that module.
 fn get_migrator_filepath(migration_dir: &str) -> PathBuf {
     let full_migration_dir = get_full_migration_dir(migration_dir);
     let with_lib = full_migration_dir.join("lib.rs");
@@ -428,6 +440,9 @@ impl Error for MigrationCommandError {}
 mod tests {
     use super::*;
 
+    const EXPECTED_TEMPLATE: &str =
+        include_str!("../../template/migration/src/m20220101_000001_create_table.rs");
+
     #[test]
     fn test_create_new_migration() {
         let migration_name = "test_name";
@@ -439,10 +454,7 @@ mod tests {
             .join(format!("{migration_name}.rs"));
         assert!(migration_filepath.exists());
         let migration_content = fs::read_to_string(migration_filepath).unwrap();
-        assert_eq!(
-            &migration_content,
-            include_str!("../../template/migration/src/m20220101_000001_create_table.rs")
-        );
+        assert_eq!(&migration_content, EXPECTED_TEMPLATE);
         fs::remove_dir_all("/tmp/sea_orm_cli_test_new_migration/").unwrap();
     }
 

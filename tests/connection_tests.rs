@@ -160,3 +160,14 @@ pub async fn connection_with_search_path_postgres() {
 
     ctx.delete().await;
 }
+
+#[sea_orm_macros::test]
+#[cfg(feature = "rusqlite")]
+pub async fn rusqlite_connects_file_uri_with_sqlite_query_parameters() {
+    let db =
+        sea_orm::Database::connect("sqlite:file:sea-orm-rusqlite-uri?mode=memory&cache=shared")
+            .await
+            .unwrap();
+
+    db.ping().await.unwrap();
+}

@@ -11,9 +11,9 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub filling_id: i32,
     #[sea_orm(belongs_to, from = "cake_id", to = "id", on_update = "Cascade", on_delete = "Cascade")]
-    pub cake: HasOne<super::cake::Entity> ,
+    pub cake: BelongsTo<super::cake::Entity> ,
     #[sea_orm(belongs_to, from = "filling_id", to = "id", on_update = "Cascade", on_delete = "Cascade")]
-    pub filling: HasOne<super::filling::Entity> ,
+    pub filling: BelongsTo<super::filling::Entity> ,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

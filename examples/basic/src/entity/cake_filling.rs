@@ -17,7 +17,7 @@ pub struct Model {
         on_update = "Cascade",
         on_delete = "Cascade"
     )]
-    pub cake: HasOne<super::cake::Entity>,
+    pub cake: BelongsTo<super::cake::Entity>,
     #[sea_orm(
         belongs_to,
         from = "filling_id",
@@ -25,7 +25,7 @@ pub struct Model {
         on_update = "Cascade",
         on_delete = "Cascade"
     )]
-    pub filling: HasOne<super::filling::Entity>,
+    pub filling: BelongsTo<super::filling::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

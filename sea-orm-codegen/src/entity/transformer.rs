@@ -62,16 +62,16 @@ impl EntityTransformer {
             for index in table_create.get_indexes().iter() {
                 if index.is_unique_key() {
                     let col_names = index.get_index_spec().get_column_names();
-                    if col_names.len() > 1 {
-                        if let Some(mut key_name) = index.get_index_spec().get_name() {
-                            if let Some((_, suffix)) = key_name.rsplit_once('-') {
-                                key_name = suffix;
-                            }
-                            for col_name in col_names {
-                                for column in columns.iter_mut() {
-                                    if column.name == col_name {
-                                        column.unique_key = Some(key_name.to_owned());
-                                    }
+                    if col_names.len() > 1
+                        && let Some(mut key_name) = index.get_index_spec().get_name()
+                    {
+                        if let Some((_, suffix)) = key_name.rsplit_once('-') {
+                            key_name = suffix;
+                        }
+                        for col_name in col_names {
+                            for column in columns.iter_mut() {
+                                if column.name == col_name {
+                                    column.unique_key = Some(key_name.to_owned());
                                 }
                             }
                         }

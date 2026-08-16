@@ -3,14 +3,14 @@
 [package]
 edition      = "2024"
 name         = "loco_starter"
-rust-version = "1.85.0"
+rust-version = "1.94.0"
 version      = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 
-loco-rs   = { version = "0.16" }
+loco-rs   = { version = "1.0" }
 migration = { path = "migration" }
 
 async-trait        = "0.1.74"
@@ -34,7 +34,7 @@ features = [
     "runtime-tokio-rustls",
     "macros",
 ]
-version = "~2.0.0-rc.38" # sea-orm version
+version = "~2.0.2" # sea-orm version
 
 [[bin]]
 name              = "loco_starter-cli"
@@ -43,9 +43,10 @@ required-features = []
 
 [dev-dependencies]
 insta       = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
-loco-rs     = { version = "0.16", features = ["testing"] }
+loco-rs     = { version = "1.0", features = ["testing"] }
 rstest      = "0.18.2"
 serial_test = "2.0.0"
 
 [patch.crates-io]
-loco-rs = { git = "https://github.com/SeaQL/loco", branch = "master" }
+sea-orm           = { path = "../.." }                   # remove this line in your own project
+sea-orm-migration = { path = "../../sea-orm-migration" } # remove this line in your own project

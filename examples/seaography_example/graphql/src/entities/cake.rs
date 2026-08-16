@@ -20,7 +20,7 @@ pub struct Model {
         on_update = "Cascade",
         on_delete = "Cascade"
     )]
-    pub bakery: HasOne<super::bakery::Entity>,
+    pub bakery: BelongsTo<super::bakery::Entity>,
     #[sea_orm(has_many, via = "cake_baker")]
     pub bakers: HasMany<super::baker::Entity>,
 }

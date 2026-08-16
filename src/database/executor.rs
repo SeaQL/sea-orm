@@ -1,3 +1,4 @@
+use super::transaction::run_async_transaction_callback;
 use crate::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
     ExecResult, IsolationLevel, QueryResult, Statement, TransactionError, TransactionOptions,
@@ -7,15 +8,21 @@ use crate::{Schema, SchemaBuilder};
 use std::future::Future;
 use std::pin::Pin;
 
-/// A wrapper that holds either a reference to a [`DatabaseConnection`] or [`DatabaseTransaction`],
-/// or an owned [`DatabaseTransaction`].
+/// Either a borrowed [`DatabaseConnection`] / [`DatabaseTransaction`], or an
+/// owned [`DatabaseTransaction`].
+///
+/// Implements [`ConnectionTrait`] and [`TransactionTrait`], so APIs that
+/// need to accept "any of those three" can take a `DatabaseExecutor` and
+/// not worry about which variant the caller had. Used in particular by
+/// `sea-orm-migration`'s `SchemaManager`.
 #[derive(Debug)]
 pub enum DatabaseExecutor<'c> {
-    /// A reference to a database connection
+    /// Borrowed connection — use against a long-lived pool.
     Connection(&'c DatabaseConnection),
-    /// A reference to a database transaction
+    /// Borrowed transaction — caller still owns the transaction handle.
     Transaction(&'c DatabaseTransaction),
-    /// An owned database transaction (used by migration's `SchemaManager::begin()`)
+    /// Owned transaction — used by migration's `SchemaManager::begin()` so
+    /// the transaction can be committed/rolled back at the end of the call.
     OwnedTransaction(DatabaseTransaction),
 }
 
@@ -164,12 +171,15 @@ impl TransactionTrait for DatabaseExecutor<'_> {
     }
 }
 
-/// A trait for converting into [`DatabaseExecutor`]
+/// Conversion into a [`DatabaseExecutor`]. Implemented for
+/// `&DatabaseConnection`, `&DatabaseTransaction`, and owned
+/// `DatabaseTransaction` — let users hand any of them to functions that
+/// take `impl IntoDatabaseExecutor<'_>`.
 pub trait IntoDatabaseExecutor<'c>: Send
 where
     Self: 'c,
 {
-    /// Convert into a [`DatabaseExecutor`]
+    /// Build the [`DatabaseExecutor`].
     fn into_database_executor(self) -> DatabaseExecutor<'c>;
 }
 
@@ -198,6 +208,40 @@ impl IntoDatabaseExecutor<'static> for DatabaseTransaction {
 }
 
 impl DatabaseExecutor<'_> {
+    /// Execute the function inside a transaction.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
+    pub async fn transaction_async<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> AsyncFnOnce(&'c DatabaseTransaction) -> Result<T, E> + Send,
+        T: Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
+    {
+        let transaction = self.begin().await.map_err(TransactionError::Connection)?;
+        run_async_transaction_callback(transaction, callback).await
+    }
+
+    /// Execute the function inside a transaction with isolation level and/or access mode.
+    /// If the function returns an error, the transaction will be rolled back.
+    /// Otherwise, the transaction will be committed.
+    pub async fn transaction_with_config_async<F, T, E>(
+        &self,
+        callback: F,
+        isolation_level: Option<IsolationLevel>,
+        access_mode: Option<AccessMode>,
+    ) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> AsyncFnOnce(&'c DatabaseTransaction) -> Result<T, E> + Send,
+        T: Send,
+        E: std::fmt::Display + std::fmt::Debug + Send,
+    {
+        let transaction = self
+            .begin_with_config(isolation_level, access_mode)
+            .await
+            .map_err(TransactionError::Connection)?;
+        run_async_transaction_callback(transaction, callback).await
+    }
+
     /// Returns `true` if this executor is backed by a transaction (borrowed or owned).
     pub fn is_transaction(&self) -> bool {
         matches!(

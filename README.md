@@ -91,7 +91,7 @@ mod post {
         pub user_id: i32,
         pub title: String,
         #[sea_orm(belongs_to, from = "user_id", to = "id")]
-        pub author: HasOne<super::user::Entity>,
+        pub author: BelongsTo<super::user::Entity>,
         #[sea_orm(has_many, via = "post_tag")] // M-N relation with junction
         pub tags: HasMany<super::tag::Entity>,
     }
@@ -124,12 +124,9 @@ smart_user
         id: 42,
         name: "Bob".into(),
         email: "bob@sea-ql.org".into(),
-        profile: HasOne::Loaded(
-            profile::ModelEx {
-                picture: "image.jpg".into(),
-            }
-            .into(),
-        ),
+        profile: HasOne::loaded(Some(profile::ModelEx {
+            picture: "image.jpg".into(),
+        })),
         posts: HasMany::Loaded(vec![post::ModelEx {
             title: "Nice weather".into(),
             tags: HasMany::Loaded(vec![tag::ModelEx {
@@ -143,6 +140,7 @@ smart_user
 Persist an entire object graph: user, profile (1-1), posts (1-N), and tags (M-N)
 in a single operation using a fluent builder API. SeaORM automatically determines
 the dependencies and inserts or deletes objects in the correct order.
+This requires the SeaORM 2.0 dense entity format.
 
 ```rust
 // this creates the nested object as shown above:
@@ -507,17 +505,6 @@ Here is a short list of awesome open source software built with SeaORM. Feel fre
 
 [SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers.
 If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
-
-### Gold Sponsors
-
-<table><tr>
-<td><a href="https://qdx.co/">
-  <img src="https://www.sea-ql.org/static/sponsors/QDX.svg" width="138"/>
-</a></td>
-</tr></table>
-
-[QDX](https://qdx.co/) pioneers quantum dynamics-powered drug discovery, leveraging AI and supercomputing to accelerate molecular modeling.
-We're immensely grateful to QDX for sponsoring the development of SeaORM, the SQL toolkit that powers their data intensive applications.
 
 ### Silver Sponsors
 

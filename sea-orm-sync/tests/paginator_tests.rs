@@ -4,7 +4,7 @@ pub mod common;
 
 pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{PaginatorTrait, QueryOrder, Set, entity::prelude::*};
+use sea_orm::{PaginatorTrait, QueryOrder, QuerySelect, Set, entity::prelude::*};
 
 #[sea_orm_macros::test]
 fn paginator_tests() -> Result<(), DbErr> {
@@ -144,6 +144,11 @@ pub fn paginator_count(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(Entity::find().filter(Column::Id.lte(3)).count(db)?, 3);
 
     assert_eq!(Entity::find().filter(Column::Id.gt(100)).count(db)?, 0);
+
+    // `count` honors `limit`/`offset` set on the query, unlike `num_items`.
+    assert_eq!(Entity::find().limit(3).count(db)?, 3);
+
+    assert_eq!(Entity::find().limit(4).offset(8).count(db)?, 2);
 
     Ok(())
 }

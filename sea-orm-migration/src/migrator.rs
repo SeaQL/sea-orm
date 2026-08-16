@@ -118,6 +118,52 @@ pub trait MigratorTrait: Send {
             .collect())
     }
 
+    /// Get list of migrations with status, without creating the migration table.
+    ///
+    /// Unlike [`get_migration_with_status`](Self::get_migration_with_status), this never runs
+    /// `CREATE TABLE`, so it can be called by a database user without DDL privileges (for
+    /// example, checking pending migrations from a read-only connection). If the migration
+    /// table does not exist, every migration is reported as [`MigrationStatus::Pending`].
+    async fn get_migration_with_status_read_only<C>(db: &C) -> Result<Vec<Migration>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        get_migration_with_status(
+            Self::get_migration_files(),
+            get_migration_models_read_only(db, Self::migration_table_name()).await?,
+        )
+    }
+
+    /// Get list of pending migrations without creating the migration table.
+    ///
+    /// The read-only counterpart of [`get_pending_migrations`](Self::get_pending_migrations);
+    /// see [`get_migration_with_status_read_only`](Self::get_migration_with_status_read_only).
+    async fn get_pending_migrations_read_only<C>(db: &C) -> Result<Vec<Migration>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        Ok(Self::get_migration_with_status_read_only(db)
+            .await?
+            .into_iter()
+            .filter(|file| file.status == MigrationStatus::Pending)
+            .collect())
+    }
+
+    /// Get list of applied migrations without creating the migration table.
+    ///
+    /// The read-only counterpart of [`get_applied_migrations`](Self::get_applied_migrations);
+    /// see [`get_migration_with_status_read_only`](Self::get_migration_with_status_read_only).
+    async fn get_applied_migrations_read_only<C>(db: &C) -> Result<Vec<Migration>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        Ok(Self::get_migration_with_status_read_only(db)
+            .await?
+            .into_iter()
+            .filter(|file| file.status == MigrationStatus::Applied)
+            .collect())
+    }
+
     /// Create migration table `seaql_migrations` in the database
     async fn install<C>(db: &C) -> Result<(), DbErr>
     where

@@ -5,17 +5,23 @@ use crate::{
 };
 use sea_query::{FromValueTuple, Query, UpdateStatement};
 
-/// Defines an update operation
+/// Lower-level executor that runs a raw `sea_query` [`UpdateStatement`].
+/// Most code shouldn't need it directly — prefer
+/// [`EntityTrait::update`](crate::EntityTrait::update) /
+/// [`update_many`](crate::EntityTrait::update_many), which return
+/// strongly-typed builders.
 #[derive(Clone, Debug)]
 pub struct Updater {
     query: UpdateStatement,
     check_record_exists: bool,
 }
 
-/// The result of an update operation on an ActiveModel
+/// Result of an `UPDATE` that doesn't return rows: how many rows were
+/// modified.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub struct UpdateResult {
-    /// The rows affected by the update operation
+    /// Number of rows touched by the statement.
     pub rows_affected: u64,
 }
 
@@ -23,6 +29,19 @@ impl<A> ValidatedUpdateOne<A>
 where
     A: ActiveModelTrait,
 {
+    /// Execute an UPDATE operation without a RETURNING clause, yielding an
+    /// [`UpdateResult`] instead of the updated model. Returns
+    /// [`DbErr::RecordNotUpdated`] if no row matches.
+    pub fn exec_without_returning<C>(self, db: &C) -> Result<UpdateResult, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        Updater::new(self.query)
+            // If nothing is updated, return RecordNotUpdated error
+            .check_record_exists()
+            .exec(db)
+    }
+
     /// Execute an UPDATE operation on an ActiveModel
     pub fn exec<C>(self, db: &C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
@@ -37,6 +56,16 @@ impl<A> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
+    /// Execute an UPDATE operation without a RETURNING clause, yielding an
+    /// [`UpdateResult`] instead of the updated model. Returns
+    /// [`DbErr::RecordNotUpdated`] if no row matches.
+    pub fn exec_without_returning<C>(self, db: &C) -> Result<UpdateResult, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.0?.exec_without_returning(db)
+    }
+
     /// Execute an UPDATE operation on an ActiveModel
     pub fn exec<C>(self, db: &C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
@@ -75,6 +104,11 @@ impl Updater {
             query,
             check_record_exists: false,
         }
+    }
+
+    fn check_record_exists(mut self) -> Self {
+        self.check_record_exists = true;
+        self
     }
 
     /// Execute an update operation

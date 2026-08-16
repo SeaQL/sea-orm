@@ -1,9 +1,13 @@
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
 use std::{
     ops::Deref,
     sync::{Arc, Mutex, MutexGuard, TryLockError},
-    time::{Duration, Instant},
+    time::Duration,
 };
 use tracing::{debug, instrument, warn};
+#[cfg(target_arch = "wasm32")]
+use web_time::Instant;
 
 pub use OwnedRow as RusqliteRow;
 use rusqlite::{
@@ -17,9 +21,12 @@ use sea_query_rusqlite::{RusqliteValue, RusqliteValues, rusqlite};
 
 use crate::{
     AccessMode, ColIdx, ConnectOptions, DatabaseConnection, DatabaseConnectionType,
-    DatabaseTransaction, InnerConnection, IsolationLevel, QueryStream, SqliteTransactionMode,
-    Statement, TransactionError, error::*, executor::*,
+    DatabaseTransaction, InnerConnection, IsolationLevel, SqliteTransactionMode, Statement,
+    TransactionError, error::*, executor::*,
 };
+
+#[cfg(feature = "stream")]
+use crate::QueryStream;
 
 /// A helper class to connect to Rusqlite
 #[derive(Debug)]
@@ -207,22 +214,26 @@ impl RusqliteConnector {
             .trim_start_matches("sqlite://")
             .trim_start_matches("sqlite:");
 
-        let (path, mode) = match raw.find('?') {
-            Some(q) => {
-                let query = &raw[q + 1..];
-                let mut mode = None;
-                for kv in query.split('&') {
-                    if let Some(val) = kv.strip_prefix("mode=") {
-                        mode = Some(val);
-                    } else if !kv.is_empty() {
-                        return Err(DbErr::Conn(RuntimeErr::Internal(format!(
-                            "unsupported SQLite connection parameter: {kv}"
-                        ))));
+        let (path, mode) = if raw.starts_with("file:") {
+            (raw, None)
+        } else {
+            match raw.find('?') {
+                Some(q) => {
+                    let query = &raw[q + 1..];
+                    let mut mode = None;
+                    for kv in query.split('&') {
+                        if let Some(val) = kv.strip_prefix("mode=") {
+                            mode = Some(val);
+                        } else if !kv.is_empty() {
+                            return Err(DbErr::Conn(RuntimeErr::Internal(format!(
+                                "unsupported SQLite connection parameter: {kv}"
+                            ))));
+                        }
                     }
+                    (&raw[..q], mode)
                 }
-                (&raw[..q], mode)
+                None => (raw, None),
             }
-            None => (raw, None),
         };
 
         let conn = match mode {
@@ -313,7 +324,7 @@ impl RusqliteSharedConnection {
     }
 
     /// Execute a [Statement] on a SQLite backend
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug!("{}", stmt);
 
@@ -333,7 +344,7 @@ impl RusqliteSharedConnection {
     }
 
     /// Execute an unprepared SQL statement on a SQLite backend
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(sql))]
     pub fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug!("{}", sql);
 
@@ -350,7 +361,7 @@ impl RusqliteSharedConnection {
     }
 
     /// Get one result from a SQL query. Returns [Option::None] if no match was found
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug!("{}", stmt);
 
@@ -375,7 +386,7 @@ impl RusqliteSharedConnection {
     }
 
     /// Get the results of a query returning them as a Vec<[QueryResult]>
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug!("{}", stmt);
 
@@ -400,7 +411,8 @@ impl RusqliteSharedConnection {
     }
 
     /// Stream the results of executing a SQL query
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
+    #[cfg(feature = "stream")]
     pub fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug!("{}", stmt);
 
@@ -481,7 +493,7 @@ impl RusqliteSharedConnection {
 }
 
 impl RusqliteInnerConnection {
-    #[instrument(level = "trace", skip(metric_callback))]
+    #[instrument(level = "trace", skip(metric_callback, stmt))]
     pub fn execute(
         &self,
         stmt: Statement,
@@ -503,7 +515,7 @@ impl RusqliteInnerConnection {
         })
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(sql))]
     pub(crate) fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug!("{}", sql);
 
@@ -518,7 +530,7 @@ impl RusqliteInnerConnection {
         }
     }
 
-    #[instrument(level = "trace", skip(metric_callback))]
+    #[instrument(level = "trace", skip(metric_callback, stmt))]
     pub fn query_one(
         &self,
         stmt: Statement,
@@ -545,7 +557,7 @@ impl RusqliteInnerConnection {
         })
     }
 
-    #[instrument(level = "trace", skip(metric_callback))]
+    #[instrument(level = "trace", skip(metric_callback, stmt))]
     pub fn query_all(
         &self,
         stmt: Statement,
@@ -572,7 +584,7 @@ impl RusqliteInnerConnection {
         })
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub(crate) fn stream(&self, stmt: &Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug!("{}", stmt);
 

@@ -4,7 +4,7 @@ use std::fmt::Debug;
 
 pub use ActiveValue::{NotSet, Set, Unchanged};
 
-/// The state of a field in an [ActiveModel][ActiveModelTrait].
+/// The state of a field in an [ActiveModel][crate::ActiveModelTrait].
 ///
 /// There are three possible states represented by three enum variants:
 ///
@@ -62,20 +62,20 @@ where
     ///
     /// When editing an existing value, you can use [set_ne][ActiveValue::set_ne]
     /// to preserve the [Unchanged] state when the new value is the same as the old one.
-    /// Then you can meaningfully use methods like [ActiveModelTrait::is_changed].
+    /// Then you can meaningfully use methods like [crate::ActiveModelTrait::is_changed].
     Set(V),
     /// An existing, unchanged [Value] from the database.
     ///
     /// You get these when you query an existing [Model][crate::ModelTrait]
-    /// from the database and convert it into an [ActiveModel][ActiveModelTrait].
+    /// from the database and convert it into an [ActiveModel][crate::ActiveModelTrait].
     ///
     /// When you edit it, you can use [set_ne][ActiveValue::set_ne]
     /// to preserve this "unchanged" state if the new value is the same as the old one.
-    /// Then you can meaningfully use methods like [ActiveModelTrait::is_changed].
+    /// Then you can meaningfully use methods like [crate::ActiveModelTrait::is_changed].
     Unchanged(V),
     /// An undefined [Value]. Nothing is sent to the database.
     ///
-    /// When you create a new [ActiveModel][ActiveModelTrait],
+    /// When you create a new [ActiveModel][crate::ActiveModelTrait],
     /// its fields are [NotSet][ActiveValue::NotSet] by default.
     ///
     /// This can be useful when:
@@ -240,6 +240,12 @@ where
         matches!(self, Self::Set(_))
     }
 
+    /// Check if the [ActiveValue] is [ActiveValue::Set] and that the inner value
+    /// matches a given predicate.
+    pub fn is_set_and(&self, f: impl FnOnce(&V) -> bool) -> bool {
+        matches!(self, Self::Set(v) if f(v))
+    }
+
     /// Create an [ActiveValue::Unchanged]
     pub fn unchanged(value: V) -> Self {
         Self::Unchanged(value)
@@ -248,6 +254,12 @@ where
     /// Check if the [ActiveValue] is [ActiveValue::Unchanged]
     pub fn is_unchanged(&self) -> bool {
         matches!(self, Self::Unchanged(_))
+    }
+
+    /// Check if the [ActiveValue] is [ActiveValue::Unchanged] and that the inner
+    /// value matches a given predicate.
+    pub fn is_unchanged_and(&self, f: impl FnOnce(&V) -> bool) -> bool {
+        matches!(self, Self::Unchanged(v) if f(v))
     }
 
     /// Create an [ActiveValue::NotSet]
@@ -314,7 +326,7 @@ where
     /// and then use [`.is_unchanged()`][ActiveValue#method.is_unchanged] to see whether it has *actually* changed.
     ///
     /// The same nice effect applies to the entire `ActiveModel`.
-    /// You can now meaningfully use [ActiveModelTrait::is_changed][ActiveModelTrait#method.is_changed]
+    /// You can now meaningfully use [crate::ActiveModelTrait::is_changed][crate::ActiveModelTrait#method.is_changed]
     /// to see whether are any changes that need to be saved to the database.
     ///
     /// ## Examples
@@ -394,6 +406,120 @@ where
         self.set_ne_and(value, f);
     }
 
+    /// `Set(value)` if [`self.is_not_set()`][ActiveValue#method.is_not_set], no-op otherwise.
+    /// Similar to "null coalescing" or [Option#method.get_or_insert], but without
+    /// returning the inner value if it is set/unchanged.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// # use sea_orm::ActiveValue;
+    /// #
+    /// let mut set_value = ActiveValue::Set(true);
+    /// let mut unchanged_value = ActiveValue::Unchanged(true);
+    /// let mut notset_value = ActiveValue::NotSet;
+    ///
+    /// // since `set_value.is_not_set == false`, we leave the existing set value alone
+    /// set_value.set_if_unset(false);
+    /// assert_eq!(set_value, ActiveValue::Set(true));
+    ///
+    /// // since `set_value.is_not_set == false`, we leave the existing set value alone
+    /// unchanged_value.set_if_unset(false);
+    /// assert_eq!(unchanged_value, ActiveValue::Unchanged(true));
+    ///
+    /// // since `set_value.is_not_set == true`, we fill with the provided value
+    /// notset_value.set_if_unset(false);
+    /// assert_eq!(notset_value, ActiveValue::Set(false));
+    /// ```
+    pub fn set_if_unset(&mut self, value: V) {
+        if let ActiveValue::NotSet = self {
+            *self = ActiveValue::Set(value);
+        }
+    }
+
+    /// `Set(f())` if [`self.is_not_set()`][ActiveValue#method.is_not_set], no-op otherwise.
+    /// Similar to "null coalescing" or [Option#method.get_or_insert_with], but without
+    /// returning the inner value if it is set/unchanged.
+    ///
+    /// This can be useful if the value you want to replace it with is expensive to compute,
+    /// or has side-effects which need to be ran (like logging).
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// # use sea_orm::ActiveValue;
+    /// #
+    /// let mut set_value = ActiveValue::Set(true);
+    /// let mut unchanged_value = ActiveValue::Unchanged(true);
+    /// let mut notset_value = ActiveValue::NotSet;
+    ///
+    /// let mut count = 0;
+    /// // since `set_value.is_not_set == false`, we leave the existing set value alone
+    /// set_value.set_if_unset_with(|| {
+    ///     count += 1;
+    ///     false
+    /// });
+    /// assert_eq!(set_value, ActiveValue::Set(true));
+    ///
+    /// // since `set_value.is_not_set == false`, we leave the existing set value alone
+    /// unchanged_value.set_if_unset_with(|| {
+    ///     count += 1;
+    ///     false
+    /// });
+    /// assert_eq!(unchanged_value, ActiveValue::Unchanged(true));
+    ///
+    /// // since `set_value.is_not_set == true`, we fill with the result of the provided computation.
+    /// notset_value.set_if_unset_with(|| {
+    ///     count += 1;
+    ///     false
+    /// });
+    /// assert_eq!(notset_value, ActiveValue::Set(false));
+    ///
+    /// // Only the last closure actually executed.
+    /// assert_eq!(count, 1);
+    /// ```
+    pub fn set_if_unset_with(&mut self, f: impl FnOnce() -> V) {
+        if let ActiveValue::NotSet = self {
+            *self = ActiveValue::Set(f());
+        }
+    }
+
+    /// `Set(V::default())` if [`self.is_not_set()`][ActiveValue#method.is_not_set], no-op otherwise.
+    /// Similar to "null coalescing" or [Option#method.get_or_insert_default], but without
+    /// returning the inner value if it is set/unchanged.
+    ///
+    /// Convenient shorthand for `set_if_unset(Default::default())`.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// # use sea_orm::ActiveValue;
+    /// #
+    /// let mut set_value = ActiveValue::Set(100);
+    /// let mut unchanged_value = ActiveValue::Unchanged(100);
+    /// let mut notset_value = ActiveValue::NotSet;
+    ///
+    /// // since `set_value.is_not_set == false`, we leave the existing set value alone
+    /// set_value.set_if_unset_default();
+    /// assert_eq!(set_value, ActiveValue::Set(100));
+    ///
+    /// // since `set_value.is_not_set == false`, we leave the existing set value alone
+    /// unchanged_value.set_if_unset_default();
+    /// assert_eq!(unchanged_value, ActiveValue::Unchanged(100));
+    ///
+    /// // since `set_value.is_not_set == true`, we fill with the default int (0)
+    /// notset_value.set_if_unset_default();
+    /// assert_eq!(notset_value, ActiveValue::Set(0));
+    /// ```
+    pub fn set_if_unset_default(&mut self)
+    where
+        V: Default,
+    {
+        if let ActiveValue::NotSet = self {
+            *self = ActiveValue::Set(V::default());
+        }
+    }
+
     /// Get the inner value, unless `self` is [NotSet][ActiveValue::NotSet].
     ///
     /// There's also a panicking version: [ActiveValue::as_ref].
@@ -410,6 +536,62 @@ where
     pub fn try_as_ref(&self) -> Option<&V> {
         match self {
             ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value),
+            ActiveValue::NotSet => None,
+        }
+    }
+}
+
+impl<V> ActiveValue<Option<V>>
+where
+    V: Into<Value> + Nullable,
+{
+    /// Flatten an `&ActiveValue<Option<V>>` into an `Option<&V>`, folding
+    /// [NotSet][ActiveValue::NotSet] together with the inner [None][Option::None],
+    /// and [Set][ActiveValue::Set] / [Unchanged][ActiveValue::Unchanged] together
+    /// with the inner [Some][Option::Some].
+    ///
+    /// Shorthand for `self.try_as_ref().and_then(Option::as_ref)`. For the owned
+    /// version, see [ActiveValue::into_option].
+    ///
+    /// ```
+    /// use sea_orm::ActiveValue;
+    ///
+    /// let x: ActiveValue<Option<i32>> = ActiveValue::Set(Some(1));
+    /// let y: ActiveValue<Option<i32>> = ActiveValue::Set(None);
+    /// let z: ActiveValue<Option<i32>> = ActiveValue::NotSet;
+    ///
+    /// assert_eq!(x.as_option(), Some(&1));
+    /// assert_eq!(y.as_option(), None);
+    /// assert_eq!(z.as_option(), None);
+    ///
+    /// // composes cleanly with a predicate, on a single line
+    /// assert!(x.as_option().is_some_and(|v| *v == 1));
+    /// ```
+    pub fn as_option(&self) -> Option<&V> {
+        self.try_as_ref().and_then(Option::as_ref)
+    }
+
+    /// Flatten an `ActiveValue<Option<V>>` into an `Option<V>`, folding
+    /// [NotSet][ActiveValue::NotSet] together with the inner [None][Option::None],
+    /// and [Set][ActiveValue::Set] / [Unchanged][ActiveValue::Unchanged] together
+    /// with the inner [Some][Option::Some].
+    ///
+    /// For a borrowing version, see [ActiveValue::as_option].
+    ///
+    /// ```
+    /// use sea_orm::ActiveValue;
+    ///
+    /// let x: ActiveValue<Option<i32>> = ActiveValue::Set(Some(1));
+    /// let y: ActiveValue<Option<i32>> = ActiveValue::Set(None);
+    /// let z: ActiveValue<Option<i32>> = ActiveValue::NotSet;
+    ///
+    /// assert_eq!(x.into_option(), Some(1));
+    /// assert_eq!(y.into_option(), None);
+    /// assert_eq!(z.into_option(), None);
+    /// ```
+    pub fn into_option(self) -> Option<V> {
+        match self {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
             ActiveValue::NotSet => None,
         }
     }

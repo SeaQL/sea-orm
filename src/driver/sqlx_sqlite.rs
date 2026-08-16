@@ -14,11 +14,14 @@ use tracing::{instrument, warn};
 
 use crate::{
     AccessMode, ConnectOptions, DatabaseConnection, DatabaseConnectionType, DatabaseTransaction,
-    IsolationLevel, QueryStream, SqliteTransactionMode, Statement, TransactionError, debug_print,
-    error::*, executor::*, sqlx_error_to_exec_err,
+    IsolationLevel, SqliteTransactionMode, Statement, TransactionError, debug_print, error::*,
+    executor::*, sqlx_error_to_exec_err,
 };
 
 use super::sqlx_common::*;
+
+#[cfg(feature = "stream")]
+use crate::QueryStream;
 
 /// Defines the [sqlx::sqlite] connector
 #[derive(Debug)]
@@ -96,7 +99,14 @@ impl SqlxSqliteConnector {
         let after_conn = options.after_connect.clone();
         let connect_lazy = options.connect_lazy;
         let sqlite_pool_opts_fn = options.sqlite_pool_opts_fn.clone();
+        let sqlite_before_acquire = options.sqlite_before_acquire_fn.clone();
+        let ping_after_idle = options.test_before_acquire_if_idle_for;
         let mut pool_options = options.sqlx_pool_options();
+        pool_options = crate::ConnectOptions::apply_before_acquire::<sqlx::Sqlite>(
+            pool_options,
+            ping_after_idle,
+            sqlite_before_acquire,
+        );
 
         if let Some(f) = &sqlite_pool_opts_fn {
             pool_options = f(pool_options);
@@ -148,7 +158,7 @@ impl SqlxSqliteConnector {
 
 impl SqlxSqlitePoolConnection {
     /// Execute a [Statement] on a SQLite backend
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
@@ -163,19 +173,19 @@ impl SqlxSqlitePoolConnection {
     }
 
     /// Execute an unprepared SQL statement on a SQLite backend
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(sql))]
     pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug_print!("{}", sql);
 
         let conn = &mut self.pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
-        match conn.execute(sql).await {
+        match conn.execute(sqlx::AssertSqlSafe(sql.to_owned())).await {
             Ok(res) => Ok(res.into()),
             Err(err) => Err(sqlx_error_to_exec_err(err)),
         }
     }
 
     /// Get one result from a SQL query. Returns [Option::None] if no match was found
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -193,7 +203,7 @@ impl SqlxSqlitePoolConnection {
     }
 
     /// Get the results of a query returning them as a Vec<[QueryResult]>
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
     pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -208,7 +218,8 @@ impl SqlxSqlitePoolConnection {
     }
 
     /// Stream the results of executing a SQL query
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(stmt))]
+    #[cfg(feature = "stream")]
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
@@ -320,7 +331,7 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, Sql
         .values
         .as_ref()
         .map_or(Values(Vec::new()), |values| values.clone());
-    sqlx::query_with(&stmt.sql, SqlxValues(values))
+    sqlx::query_with(sqlx::AssertSqlSafe(stmt.sql.as_str()), SqlxValues(values))
 }
 
 pub(crate) async fn set_transaction_config(
@@ -354,6 +365,7 @@ async fn get_version(conn: &SqlxSqlitePoolConnection) -> Result<String, DbErr> {
         .try_get_by(0)
 }
 
+#[cfg(feature = "stream")]
 impl
     From<(
         PoolConnection<sqlx::Sqlite>,

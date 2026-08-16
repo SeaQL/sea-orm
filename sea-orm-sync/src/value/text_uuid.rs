@@ -1,4 +1,8 @@
-use std::ops::{Deref, DerefMut};
+use std::{
+    fmt,
+    ops::{Deref, DerefMut},
+    str::FromStr,
+};
 
 use sea_query::{ValueType, ValueTypeErr};
 
@@ -12,8 +16,24 @@ use crate::{DbErr, TryGetError};
 /// - TEXT makes it easier to interact with the SQLite DB directly
 /// - Allows for queries like `WHERE id IN (<uuid>, <uuid>, ...)` which are
 ///   impossible to write with `BLOB` values
-#[derive(Clone, Debug, PartialEq, Eq, Copy)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash)]
 pub struct TextUuid(pub uuid::Uuid);
+
+impl fmt::Display for TextUuid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl FromStr for TextUuid {
+    type Err = uuid::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        uuid::Uuid::parse_str(s).map(TextUuid)
+    }
+}
+
+super::impl_serde_with_str!(TextUuid);
 
 impl From<TextUuid> for sea_query::Value {
     fn from(value: TextUuid) -> Self {

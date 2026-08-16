@@ -13,7 +13,7 @@ tracing-subscriber = { version = "0.3.17" }
 
 [dependencies.sea-orm]
 features = ["sqlx-sqlite", "runtime-tokio-native-tls", "seaography"]
-version  = "~2.0.0-rc"
+version  = "~2.0.2"                                                  # sea-orm version
 
 [dependencies.seaography]
 features = ["graphql-playground", "with-decimal", "with-chrono"]
@@ -27,3 +27,4 @@ members = []
 
 [patch.crates-io]
 # sea-query = { path = "../sea-query" }
+sea-orm = { path = "../../.." } # remove this line in your own project

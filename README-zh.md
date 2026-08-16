@@ -91,7 +91,7 @@ mod post {
         pub user_id: i32,
         pub title: String,
         #[sea_orm(belongs_to, from = "user_id", to = "id")]
-        pub author: HasOne<super::user::Entity>,
+        pub author: BelongsTo<super::user::Entity>,
         #[sea_orm(has_many, via = "post_tag")] // 多对多关系，使用中间表
         pub tags: HasMany<super::tag::Entity>,
     }
@@ -124,12 +124,9 @@ smart_user
         id: 42,
         name: "Bob".into(),
         email: "bob@sea-ql.org".into(),
-        profile: HasOne::Loaded(
-            profile::ModelEx {
-                picture: "image.jpg".into(),
-            }
-            .into(),
-        ),
+        profile: HasOne::loaded(Some(profile::ModelEx {
+            picture: "image.jpg".into(),
+        })),
         posts: HasMany::Loaded(vec![post::ModelEx {
             title: "Nice weather".into(),
             tags: HasMany::Loaded(vec![tag::ModelEx {
@@ -504,17 +501,6 @@ SeaORM 2.0 将是我们迄今最重要的版本——包含一些破坏性变更
 ## 赞助
 
 [SeaQL.org](https://www.sea-ql.org/) 是一个由热情的开发者运营的独立开源组织。如果你愿意，通过 [GitHub Sponsor](https://github.com/sponsors/SeaQL) 进行小额捐赠将不胜感激，并将大大有助于维持组织的运营。
-
-### 金牌赞助商
-
-<table><tr>
-<td><a href="https://qdx.co/">
-  <img src="https://www.sea-ql.org/static/sponsors/QDX.svg" width="138"/>
-</a></td>
-</tr></table>
-
-[QDX](https://qdx.co/) 开创了量子动力学驱动的药物发现，利用人工智能和超级计算加速分子建模。
-我们非常感谢 QDX 赞助 SeaORM 的开发，这是为其数据密集型应用提供支持的 SQL 工具包。
 
 ### 银牌赞助商
 

@@ -3,11 +3,11 @@ mod common;
 use std::fs;
 use tempfile::TempDir;
 
-use common::entity_migrator::default::Migrator;
 use common::entity_common::{
     CakeAmbiguousOnly, CakeRenamedOnly, CakeTypeChangeOnly, CakeV1FruitV2, CakeV1Only,
     CakeV2FruitV1, FullSchema,
 };
+use common::entity_migrator::default::Migrator;
 use sea_orm::{Database, DbErr, Schema};
 use sea_orm_migration::{EntitySet, MigratorTraitSelf, SchemaManager, prelude::*};
 
@@ -438,11 +438,14 @@ async fn test_discover_dangerous_drops_orphaned_tables_but_not_tracker() -> Resu
 
     let builder = CakeV1Only.register(Schema::new(db.get_database_backend()).builder());
     let change_set = builder.discover(&db, true).await?;
-    let result = sea_orm::interpret_changes(change_set, &sea_orm::InterpretConfig {
-        db_backend: db.get_database_backend(),
-        assumptions: false,
-        allow_dangerous: true,
-    });
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: false,
+            allow_dangerous: true,
+        },
+    );
     let stmts: Vec<_> = result.statements.iter().map(|(_, s)| s).collect();
 
     let protected = Migrator.migration_table_name().to_string();
@@ -534,7 +537,11 @@ async fn test_full_migration_lifecycle() -> Result<(), DbErr> {
     let builder = FullSchema.register(Schema::new(db.get_database_backend()).builder());
     let change_set = builder.discover(&db, false).await?;
     let stmts = change_set.statements();
-    assert!(stmts.is_empty(), "no changes after full apply, got: {:?}", stmts.iter().map(|s| &s.sql).collect::<Vec<_>>());
+    assert!(
+        stmts.is_empty(),
+        "no changes after full apply, got: {:?}",
+        stmts.iter().map(|s| &s.sql).collect::<Vec<_>>()
+    );
 
     Migrator.down(&db, Some(1)).await?;
     assert!(!manager.has_table("fruit").await?);
@@ -606,11 +613,14 @@ async fn test_discover_warns_on_possible_column_rename() -> Result<(), DbErr> {
 
     let builder = CakeRenamedOnly.register(Schema::new(db.get_database_backend()).builder());
     let change_set = builder.discover(&db, true).await?;
-    let result = sea_orm::interpret_changes(change_set, &sea_orm::InterpretConfig {
-        db_backend: db.get_database_backend(),
-        assumptions: true,
-        allow_dangerous: true,
-    });
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: true,
+            allow_dangerous: true,
+        },
+    );
 
     assert!(
         result
@@ -627,8 +637,7 @@ async fn test_discover_warns_on_possible_column_rename() -> Result<(), DbErr> {
         .find(|s| s.kind == SuggestionKind::PossibleRename)
         .unwrap();
     assert!(
-        rename_suggestion.message.contains("name")
-            && rename_suggestion.message.contains("title"),
+        rename_suggestion.message.contains("name") && rename_suggestion.message.contains("title"),
         "suggestion should mention old and new column names, got: {}",
         rename_suggestion.message
     );
@@ -670,14 +679,16 @@ async fn test_discover_no_rename_warning_when_types_differ() -> Result<(), DbErr
         .sync(&db)
         .await?;
 
-    let builder =
-        CakeTypeChangeOnly.register(Schema::new(db.get_database_backend()).builder());
+    let builder = CakeTypeChangeOnly.register(Schema::new(db.get_database_backend()).builder());
     let change_set = builder.discover(&db, true).await?;
-    let result = sea_orm::interpret_changes(change_set, &sea_orm::InterpretConfig {
-        db_backend: db.get_database_backend(),
-        assumptions: true,
-        allow_dangerous: true,
-    });
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: true,
+            allow_dangerous: true,
+        },
+    );
 
     assert!(
         !result
@@ -714,17 +725,24 @@ async fn test_ambiguous_rename_in_unresolved() -> Result<(), DbErr> {
 
     let builder = CakeAmbiguousOnly.register(Schema::new(db.get_database_backend()).builder());
     let change_set = builder.discover(&db, true).await?;
-    let result = sea_orm::interpret_changes(change_set, &sea_orm::InterpretConfig {
-        db_backend: db.get_database_backend(),
-        assumptions: true,
-        allow_dangerous: true,
-    });
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: true,
+            allow_dangerous: true,
+        },
+    );
 
     assert!(
         !result.unresolved.is_empty(),
         "expected unresolved ambiguous renames, got none; warnings: {:?}, statements: {:?}",
         result.warnings,
-        result.statements.iter().map(|(_, s)| &s.sql).collect::<Vec<_>>()
+        result
+            .statements
+            .iter()
+            .map(|(_, s)| &s.sql)
+            .collect::<Vec<_>>()
     );
 
     let ambiguous = &result.unresolved[0];
@@ -806,9 +824,7 @@ mod safety_summary_tests {
     #[test]
     fn test_summary_alter_type_add_value() {
         assert_eq!(
-            summarize(&[stmt(
-                r#"ALTER TYPE "mood" ADD VALUE 'neutral'"#
-            )]),
+            summarize(&[stmt(r#"ALTER TYPE "mood" ADD VALUE 'neutral'"#)]),
             vec!["Added enum variant"]
         );
     }
@@ -832,8 +848,14 @@ mod warning_type_tests {
 
     #[test]
     fn test_suggestion_kinds_are_eq() {
-        assert_eq!(SuggestionKind::PossibleRename, SuggestionKind::PossibleRename);
-        assert_ne!(SuggestionKind::PossibleRename, SuggestionKind::EnumVariantChange);
+        assert_eq!(
+            SuggestionKind::PossibleRename,
+            SuggestionKind::PossibleRename
+        );
+        assert_ne!(
+            SuggestionKind::PossibleRename,
+            SuggestionKind::EnumVariantChange
+        );
         assert_ne!(
             SuggestionKind::EnumRename,
             SuggestionKind::EnumVariantChange

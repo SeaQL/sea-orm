@@ -142,6 +142,30 @@ mod custom_schema_entity {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+// Entity with generated indexes in a non-default PostgreSQL schema.
+mod custom_schema_indexed_entity {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(
+        schema_name = "test_schema_3084",
+        table_name = "sync_custom_schema_indexed"
+    )]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        #[sea_orm(indexed)]
+        pub email: String,
+        #[sea_orm(unique_key = "tenant_name")]
+        pub tenant_id: i32,
+        #[sea_orm(unique_key = "tenant_name")]
+        pub name: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 /// Regression test for <https://github.com/SeaQL/sea-orm/issues/2970>.
 ///
 /// A table with a `#[sea_orm(unique)]` column is created on the first sync.
@@ -314,6 +338,60 @@ fn test_sync_non_default_schema() -> Result<(), DbErr> {
     Ok(())
 }
 
+/// Regression test for <https://github.com/SeaQL/sea-orm/issues/3084>.
+///
+/// An entity with `schema_name` pointing to a non-default PostgreSQL schema
+/// should create generated indexes against that schema-qualified table.
+#[sea_orm_macros::test]
+#[cfg(feature = "sqlx-postgres")]
+fn test_sync_non_default_schema_indexes() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_sync_non_default_schema_indexes");
+    let db = &ctx.db;
+
+    #[cfg(feature = "schema-sync")]
+    {
+        db.execute_raw(Statement::from_string(
+            DatabaseBackend::Postgres,
+            "CREATE SCHEMA IF NOT EXISTS test_schema_3084".to_owned(),
+        ))?;
+
+        db.get_schema_builder()
+            .register(custom_schema_indexed_entity::Entity)
+            .sync(db)?;
+
+        assert!(
+            pg_table_exists_in_schema(db, "test_schema_3084", "sync_custom_schema_indexed")?,
+            "table should exist in schema `test_schema_3084`"
+        );
+
+        assert!(
+            pg_index_exists_in_schema(
+                db,
+                "test_schema_3084",
+                "sync_custom_schema_indexed",
+                "idx-sync_custom_schema_indexed-email"
+            )?,
+            "index on `sync_custom_schema_indexed.email` should exist in schema `test_schema_3084`"
+        );
+
+        assert!(
+            pg_index_exists_in_schema(
+                db,
+                "test_schema_3084",
+                "sync_custom_schema_indexed",
+                "idx-sync_custom_schema_indexed-tenant_name"
+            )?,
+            "unique index on `sync_custom_schema_indexed.(tenant_id, name)` should exist in schema `test_schema_3084`"
+        );
+
+        db.get_schema_builder()
+            .register(custom_schema_indexed_entity::Entity)
+            .sync(db)?;
+    }
+
+    Ok(())
+}
+
 #[cfg(feature = "sqlx-postgres")]
 fn pg_table_exists_in_schema_query(schema: &str, table: &str) -> SelectStatement {
     Query::select()
@@ -346,6 +424,33 @@ fn pg_table_exists_in_schema(
     table: &str,
 ) -> Result<bool, DbErr> {
     db.query_one(&pg_table_exists_in_schema_query(schema, table))?
+        .unwrap()
+        .try_get_by_index(0)
+        .map_err(DbErr::from)
+}
+
+#[cfg(feature = "sqlx-postgres")]
+fn pg_index_exists_in_schema_query(schema: &str, table: &str, index: &str) -> SelectStatement {
+    Query::select()
+        .expr(Expr::cust("COUNT(*) > 0"))
+        .from("pg_indexes")
+        .cond_where(
+            Condition::all()
+                .add(Expr::col("schemaname").eq(schema))
+                .add(Expr::col("tablename").eq(table))
+                .add(Expr::col("indexname").eq(index)),
+        )
+        .to_owned()
+}
+
+#[cfg(feature = "sqlx-postgres")]
+fn pg_index_exists_in_schema(
+    db: &DatabaseConnection,
+    schema: &str,
+    table: &str,
+    index: &str,
+) -> Result<bool, DbErr> {
+    db.query_one(&pg_index_exists_in_schema_query(schema, table, index))?
         .unwrap()
         .try_get_by_index(0)
         .map_err(DbErr::from)

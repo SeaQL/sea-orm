@@ -5,10 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 2.0.0 - pending
+## [2.0.2](changelog/2.0.2.md) - 2026-08-12
+
+`require_one` query helper, `date_time_default_now` / `timestamp_default_now` schema helpers, entity-merge duplicate-import fix
+
+## [2.0.1](changelog/2.0.1.md) - 2026-08-02
+
+`ActiveValue` helpers (`set_unset`, `is_set_and`, `as_option`), `Paginator::set_page`, `before_acquire` pool hooks, read-only migration status queries, nested-transaction recursion fix
+
+## 2.0.0 - 2026-07-19
 
 ### Release Candidates
 
+- [2.0.0-rc.43](changelog/2.0.0-rc.43.md) — `BelongsTo` relation type (opt-in, compile-time FK cardinality), CLI generation-option errors, `has_related` `Condition::any()` & PG enum-array codegen fixes
+- [2.0.0-rc.42](changelog/2.0.0-rc.42.md) — typed value arrays, `HasOne` replace/delete, `ActiveHasOne`/`ActiveHasMany` rename, codegen `ColumnType` fixes
+- [2.0.0-rc.41](changelog/2.0.0-rc.41.md) — `SelectFourMany`, `update_without_returning`, `cargo binstall sea-orm-cli`, junction `ActiveModelBehavior` & schema-sync PG-schema fixes
+- [2.0.0-rc.40](changelog/2.0.0-rc.40.md) - Restore pgvector binding with SQLx 0.9
+- [2.0.0-rc.39](changelog/2.0.0-rc.39.md) - SeaQuery 1.0, SQLx 0.9, async transaction helpers
 - [2.0.0-rc.38](changelog/2.0.0-rc.38.md) — `find_both_related`, `set_ne`, pool options, schema sync fixes
 - [2.0.0-rc.37](changelog/2.0.0-rc.37.md) — ER Diagram Generation
 - [2.0.0-rc.36](changelog/2.0.0-rc.36.md) — Per-migration transaction control
@@ -29,6 +42,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [2.0.0-rc.20](changelog/2.0.0-rc.20.md) — Stringy newtypes, M2M self-ref, nullable columns, bug fixes
 
 ### New Features
+
+* Split `belongs_to` from `has_one` with a new `BelongsTo` relation type https://github.com/SeaQL/sea-orm/pull/3118
+
+  A `belongs_to` relation can now be typed `BelongsTo<Entity>` (required) or
+  `BelongsTo<Option<Entity>>` (optional), encoding the foreign-key cardinality in the type,
+  paired with the write-side companion `ActiveBelongsTo`. `BelongsTo` is the recommended
+  type for `belongs_to`; the legacy `HasOne<Entity>` field type remains supported for
+  backward compatibility.
 
 * Role Based Access Control https://github.com/SeaQL/sea-orm/pull/2683
 
@@ -482,10 +503,13 @@ let user = user::ActiveModel::builder()
 
 ### Enhancements
 
+* Added `serde` feature 
+* `TextUuid` now derives `Serialize` and `Deserialize` when the `serde` feature is enabled
 * [sea-orm-cli] Added `--column-extra-derives` https://github.com/SeaQL/sea-orm/pull/2212
 * [sea-orm-cli] Added `--big-integer-type=i32` to use i32 for bigint (for SQLite)
 * [sea-orm-cli] Fix codegen to not generate relations to filtered entities https://github.com/SeaQL/sea-orm/pull/2913
 * [sea-orm-cli] Added `--experimental-preserve-user-modifications` https://github.com/SeaQL/sea-orm/pull/2755 https://github.com/SeaQL/sea-orm/pull/2964
+* [sea-orm-migration] Add custom connection entrypoint to migration CLI https://github.com/SeaQL/sea-orm/pull/3035
 * Added `Model::try_set`
 * Added new error variant `BackendNotSupported`. Previously, it panics with e.g. "Database backend doesn't support RETURNING" https://github.com/SeaQL/sea-orm/pull/2630
 ```rust
@@ -688,6 +712,10 @@ pub struct MyUserId(pub UserId);
     + Added parquet example
 * Support `HashMap` and `BTreeMap` for JSON columns via `TryGetableFromJson` https://github.com/SeaQL/sea-orm/pull/3009
 * Derive macros now inherit the visibility of the input type for generated items such as `Entity`, `Column`, `PrimaryKey`, and `ActiveModel` https://github.com/SeaQL/sea-orm/pull/3029
+
+### Bug Fixes
+
+* [sea-orm-migration] PostgreSQL `drop_everything` now drops custom types with `CASCADE`
 
 ### Breaking Changes
 

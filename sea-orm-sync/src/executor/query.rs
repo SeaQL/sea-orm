@@ -17,9 +17,16 @@ use crate::debug_print;
 #[cfg(feature = "sqlx-dep")]
 use crate::driver::*;
 #[cfg(feature = "sqlx-dep")]
-use sqlx::{Row, TypeInfo, ValueRef};
+use sqlx::Row;
+#[cfg(feature = "sqlx-postgres")]
+use sqlx::{TypeInfo, ValueRef};
 
-/// Defines the result of a query operation on a Model
+/// One row of a query result.
+///
+/// Returned by [`ConnectionTrait::query_one`](crate::ConnectionTrait::query_one)
+/// / [`query_all`](crate::ConnectionTrait::query_all). Read columns from it
+/// with [`QueryResult::try_get`] / [`try_get_by`](Self::try_get_by) or
+/// materialise into a struct via [`FromQueryResult`](crate::FromQueryResult).
 #[derive(Debug)]
 pub struct QueryResult {
     pub(crate) row: QueryResultRow,
@@ -41,12 +48,18 @@ pub(crate) enum QueryResultRow {
     Proxy(crate::ProxyRow),
 }
 
-/// An interface to get a value from the query result
+/// Decode a single column value out of a [`QueryResult`].
+///
+/// Implemented for every primitive SeaORM understands (integers, strings,
+/// booleans, JSON, UUIDs, chrono / time types when their features are
+/// enabled, etc.). User code rarely names this trait directly; it's the
+/// foundation that [`FromQueryResult`](crate::FromQueryResult) builds on.
 pub trait TryGetable: Sized {
-    /// Get a value from the query result with an ColIdx
+    /// Decode the value at the column named or positioned by `index`.
     fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError>;
 
-    /// Get a value from the query result with prefixed column name
+    /// Decode the value at column `{pre}{col}` — `pre` is the prefix used
+    /// when nesting partial models or joining tables.
     fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
         if pre.is_empty() {
             Self::try_get_by(res, col)
@@ -55,7 +68,7 @@ pub trait TryGetable: Sized {
         }
     }
 
-    /// Get a value from the query result based on the order in the select expressions
+    /// Decode the value at the given positional index in the SELECT list.
     fn try_get_by_index(res: &QueryResult, index: usize) -> Result<Self, TryGetError> {
         Self::try_get_by(res, index)
     }
@@ -609,20 +622,15 @@ macro_rules! try_getable_date_time {
                         .map_err(|e| sqlx_error_to_query_err(e).into())
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "sqlx-sqlite")]
-                    QueryResultRow::SqlxSqlite(row) => {
-                        use chrono::{DateTime, Utc};
-                        row.try_get::<Option<DateTime<Utc>>, _>(idx.as_sqlx_sqlite_index())
-                            .map_err(|e| sqlx_error_to_query_err(e).into())
-                            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
-                            .map(|v| v.into())
-                    }
+                    QueryResultRow::SqlxSqlite(row) => row
+                        .try_get::<Option<$type>, _>(idx.as_sqlx_sqlite_index())
+                        .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "rusqlite")]
-                    QueryResultRow::Rusqlite(row) => {
-                        use chrono::{DateTime, Utc};
-                        row.try_get::<Option<DateTime<Utc>>, _>(idx)
-                            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
-                            .map(|v| v.into())
-                    }
+                    QueryResultRow::Rusqlite(row) => row
+                        .try_get::<Option<$type>, _>(idx)
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
+                        .map(|v| v.into()),
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
@@ -1293,12 +1301,17 @@ impl TryGetable for pgvector::Vector {
 
 // TryGetableMany //
 
-/// An interface to get a tuple value from the query result
+/// Decode multiple column values out of a [`QueryResult`] into a tuple.
+///
+/// The tuple impls let you write things like
+/// `Select::values::<(i32, String)>(...)` for queries with a small number of
+/// scalar outputs.
 pub trait TryGetableMany: Sized {
-    /// Get a tuple value from the query result with prefixed column name
+    /// Decode by column name. `pre` is the prefix used when nesting (e.g.
+    /// from a joined table); `cols` names each tuple position.
     fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError>;
 
-    /// Get a tuple value from the query result based on the order in the select expressions
+    /// Decode positionally, in the order columns appear in the SELECT list.
     fn try_get_many_by_index(res: &QueryResult) -> Result<Self, TryGetError>;
 
     /// ```
@@ -1524,7 +1537,7 @@ where
         }
     }
 
-    /// Get a Vec<Self> from an Array of Json
+    /// Decode a JSON array into a `Vec<Self>`.
     fn from_json_vec(value: serde_json::Value) -> Result<Vec<Self>, TryGetError> {
         match value {
             serde_json::Value::Array(values) => {
@@ -1562,9 +1575,13 @@ where
 }
 
 // TryFromU64 //
-/// Try to convert a type to a u64
+/// Build a value of `Self` from a `u64` last-insert-id returned by the
+/// database after an auto-increment `INSERT`.
+///
+/// Auto-generated for primitive integer primary keys; failures (e.g. for
+/// non-integer or composite keys) yield [`DbErr::ConvertFromU64`](crate::DbErr::ConvertFromU64).
 pub trait TryFromU64: Sized {
-    /// The method to convert the type to a u64
+    /// Build `Self` from the raw `u64` returned by the driver.
     fn try_from_u64(n: u64) -> Result<Self, DbErr>;
 }
 

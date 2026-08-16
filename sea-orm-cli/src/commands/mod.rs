@@ -2,10 +2,10 @@ use std::fmt::Display;
 
 use colored::Colorize;
 
-#[cfg(feature = "codegen")]
-pub mod generate;
 #[cfg(feature = "cli")]
 pub mod entity;
+#[cfg(feature = "codegen")]
+pub mod generate;
 pub mod migrate;
 pub mod subprocess;
 

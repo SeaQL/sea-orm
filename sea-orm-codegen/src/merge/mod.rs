@@ -49,7 +49,7 @@ impl<'a> OldIndex<'a> {
 
 struct Merger<'a> {
     old: OldIndex<'a>,
-    seen_use: HashSet<ItemUse>,
+    seen_use_paths: HashSet<String>,
     extra_uses: Vec<&'a syn::ItemUse>,
     old_behaviors: Vec<&'a syn::ItemImpl>,
 }
@@ -62,7 +62,7 @@ impl<'a> Merger<'a> {
     ) -> Self {
         Self {
             old,
-            seen_use: HashSet::new(),
+            seen_use_paths: HashSet::new(),
             extra_uses,
             old_behaviors,
         }
@@ -76,10 +76,10 @@ impl<'a> Fold for Merger<'a> {
             merge_item_attributes(&mut i.attrs, self.old.model_attrs);
             if let Fields::Named(named) = &mut i.fields {
                 for field in &mut named.named {
-                    if let Some(ident) = &field.ident {
-                        if let Some(old_attrs) = self.old.model_field_attrs.get(ident) {
-                            merge_item_attributes(&mut field.attrs, old_attrs);
-                        }
+                    if let Some(ident) = &field.ident
+                        && let Some(old_attrs) = self.old.model_field_attrs.get(ident)
+                    {
+                        merge_item_attributes(&mut field.attrs, old_attrs);
                     }
                 }
             }
@@ -108,7 +108,7 @@ impl<'a> Fold for Merger<'a> {
             match item {
                 Item::Use(u) => {
                     let u = fold::fold_item_use(self, u);
-                    if self.seen_use.insert(u.clone()) {
+                    if mark_use_paths(&mut self.seen_use_paths, &u) {
                         uses.push(Item::Use(u));
                     }
                 }
@@ -127,7 +127,7 @@ impl<'a> Fold for Merger<'a> {
         }
 
         for &u in &self.extra_uses {
-            if self.seen_use.insert(u.clone()) {
+            if mark_use_paths(&mut self.seen_use_paths, u) {
                 uses.push(Item::Use(u.clone()));
             }
         }
@@ -379,6 +379,65 @@ fn is_active_model_behavior_impl(item_impl: &ItemImpl) -> bool {
 
 fn is_doc_attribute(attr: &Attribute) -> bool {
     attr.path().is_ident("doc")
+}
+
+/// Record every leaf import introduced by a `use` statement, returning whether
+/// it contributes at least one path not already seen. A statement whose leaves
+/// are all already imported (e.g. a grouped `use foo::{A, B}` after `A` and `B`
+/// were imported individually) is redundant and should be dropped (#2947).
+///
+/// Grouped and individual imports of the same item flatten to the same leaf
+/// string, so they deduplicate against each other. A statement that mixes new
+/// and already-seen leaves is still kept verbatim (its grouping is preserved);
+/// this only skips statements that are wholly redundant, which is the case the
+/// entity generator produces on regeneration.
+fn mark_use_paths(seen: &mut HashSet<String>, item: &ItemUse) -> bool {
+    let mut leaves = Vec::new();
+    collect_use_leaves(&item.tree, "", &mut leaves);
+    // A `use` with no leaves shouldn't happen, but keep it rather than silently drop.
+    let mut is_new = leaves.is_empty();
+    for leaf in leaves {
+        if seen.insert(leaf) {
+            is_new = true;
+        }
+    }
+    is_new
+}
+
+/// Flatten a `use` tree into canonical leaf strings, e.g. `super::foo::Bar`,
+/// `crate::Baz as Qux`, `sea_orm::entity::prelude::*`.
+fn collect_use_leaves(tree: &syn::UseTree, prefix: &str, out: &mut Vec<String>) {
+    fn joined(prefix: &str, seg: &str) -> String {
+        if prefix.is_empty() {
+            seg.to_owned()
+        } else {
+            format!("{prefix}::{seg}")
+        }
+    }
+    match tree {
+        syn::UseTree::Path(path) => {
+            let next = joined(prefix, &path.ident.to_string());
+            collect_use_leaves(&path.tree, &next, out);
+        }
+        syn::UseTree::Name(name) => {
+            out.push(joined(prefix, &name.ident.to_string()));
+        }
+        syn::UseTree::Rename(rename) => {
+            out.push(format!(
+                "{} as {}",
+                joined(prefix, &rename.ident.to_string()),
+                rename.rename
+            ));
+        }
+        syn::UseTree::Glob(_) => {
+            out.push(joined(prefix, "*"));
+        }
+        syn::UseTree::Group(group) => {
+            for tree in &group.items {
+                collect_use_leaves(tree, prefix, out);
+            }
+        }
+    }
 }
 
 fn render_file_with_spacing(file: syn::File) -> String {
@@ -656,6 +715,59 @@ mod tests {
         };
 
         assert_eq!(merged, expected);
+    }
+
+    // #2947: regenerating over a user-grouped enum import must not re-emit the
+    // grouped `use` alongside the freshly generated individual imports.
+    #[test]
+    fn duplicate_enum_imports_grouped_vs_individual() {
+        let old_src = indoc! {r#"
+            use sea_orm::entity::prelude::*;
+            use super::sea_orm_active_enums::{Status, Category};
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            pub struct Model {
+                pub status: Status,
+                pub category: Category,
+            }
+            "#
+        };
+
+        let new_src = indoc! {r#"
+            use sea_orm::entity::prelude::*;
+            use super::sea_orm_active_enums::Category;
+            use super::sea_orm_active_enums::Status;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            pub struct Model {
+                pub status: Status,
+                pub category: Category,
+            }
+            "#
+        };
+
+        let merged = merge_entity_files(old_src, new_src).expect("merge should succeed");
+
+        // The grouped form from the old file must not be re-emitted.
+        assert!(
+            !merged.contains("{Status, Category}") && !merged.contains("{ Status, Category }"),
+            "grouped import should not be duplicated:\n{merged}"
+        );
+        // Each individual import appears exactly once.
+        assert_eq!(
+            merged
+                .matches("use super::sea_orm_active_enums::Status;")
+                .count(),
+            1,
+            "Status import duplicated:\n{merged}"
+        );
+        assert_eq!(
+            merged
+                .matches("use super::sea_orm_active_enums::Category;")
+                .count(),
+            1,
+            "Category import duplicated:\n{merged}"
+        );
     }
 
     #[test]
