@@ -283,7 +283,7 @@ pub enum EntitySubcommands {
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum GenerateSubcommands {
-    #[command(about = "Generate entity")]
+    #[command(about = "Generate entities from existing database")]
     #[command(group(ArgGroup::new("formats").args(&["compact_format", "expanded_format", "frontend_format"])))]
     #[command(group(ArgGroup::new("group-tables").args(&["tables", "include_hidden_tables"])))]
     Entity {
