@@ -41,11 +41,6 @@ name = "sea"
 path = "src/bin/main.rs"
 required-features = ["cli", "codegen"]
 
-[[bin]]
-name = "sea-dev"
-path = "src/bin/main.rs"
-required-features = ["cli", "codegen"]
-
 [dependencies]
 async-std = { version = "1.9", default-features = false, features = [
     "attributes",
