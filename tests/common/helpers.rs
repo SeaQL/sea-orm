@@ -1,7 +1,7 @@
 use sea_orm::sea_query::{Alias, Condition, Expr, Query};
 use sea_orm::{DatabaseConnection, DbBackend, DbErr, query::*};
 
-#[cfg(feature = "schema-sync")]
+#[cfg(all(feature = "schema-sync", feature = "sqlx-dep"))]
 use sea_orm::{InterpretConfig, InterpretResult, schema::SchemaBuilder};
 
 /// Runs `discover` + `interpret_changes` + executes every emitted statement, then
@@ -11,7 +11,11 @@ use sea_orm::{InterpretConfig, InterpretResult, schema::SchemaBuilder};
 /// This is the "ground-truth" form of a sync round-trip: unlike tests that only
 /// inspect the generated SQL, this helper actually applies the statements to the
 /// live database so follow-up `column_exists`/`table_exists` checks are meaningful.
-#[cfg(feature = "schema-sync")]
+///
+/// Requires `sqlx-dep` in addition to `schema-sync`: the `sea_schema::Connection`
+/// impl for `DatabaseConnection` (src/database/sea_schema_shim.rs) is only
+/// compiled when a real sqlx backend is active.
+#[cfg(all(feature = "schema-sync", feature = "sqlx-dep"))]
 pub async fn discover_interpret_and_apply(
     db: &DatabaseConnection,
     builder: SchemaBuilder,

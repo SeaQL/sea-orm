@@ -7,7 +7,7 @@ pub mod common;
 
 use crate::common::TestContext;
 use crate::common::fixtures::*;
-#[cfg(feature = "schema-sync")]
+#[cfg(all(feature = "schema-sync", feature = "sqlx-dep"))]
 use crate::common::helpers::discover_interpret_and_apply;
 use crate::common::helpers::{column_exists, table_exists};
 use sea_orm::{DatabaseConnection, DbErr, entity::*, query::*};
