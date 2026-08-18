@@ -21,37 +21,47 @@ path = "src/lib.rs"
 
 [dependencies]
 async-trait = { version = "0.1", default-features = false }
-chrono = { version = "0.4", default-features = false, features = ["clock"], optional = true }
+chrono = { version = "0.4", default-features = false, features = [
+    "clock",
+], optional = true }
 clap = { version = "4.3", features = ["env", "derive"], optional = true }
 colored = "2"
 dotenvy = { version = "0.15", default-features = false, optional = true }
 glob = { version = "0.3", default-features = false }
 regex = { version = "1", optional = true }
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1" }
-sea-orm-cli = { version = "~2.0.2", path = "../sea-orm-cli", default-features = false, optional = true }
 sea-orm = { version = "~2.0.2", path = "../", features = ["schema-sync"] }
+sea-orm-cli = { version = "~2.0.2", path = "../sea-orm-cli", default-features = false, optional = true }
 sea-schema = { version = "0.18.1", default-features = false, features = [
     "discovery",
     "writer",
     "probe",
 ] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
 tracing = { version = "0.1", default-features = false, features = ["log"] }
 
 [dev-dependencies]
 tempfile = "3"
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio    = { version = "1", features = ["rt-multi-thread", "macros"] }
 
 [[test]]
-name = "entity_first"
+name              = "main"
+required-features = ["sqlx-dep"]
+
+[[test]]
+name              = "entity_first"
 required-features = ["entity-first", "sqlx-sqlite", "runtime-tokio-native-tls"]
 
 [[test]]
 name = "entity_first_multi_schema_postgres"
-required-features = ["entity-first", "sqlx-postgres", "runtime-tokio-native-tls"]
+required-features = [
+    "entity-first",
+    "sqlx-postgres",
+    "runtime-tokio-native-tls",
+]
 
 [[test]]
-name = "entity_first_multi_schema_mysql"
+name              = "entity_first_multi_schema_mysql"
 required-features = ["entity-first", "sqlx-mysql", "runtime-tokio-native-tls"]
 
 [features]
