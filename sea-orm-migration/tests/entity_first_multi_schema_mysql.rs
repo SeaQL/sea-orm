@@ -1,14 +1,22 @@
 //! MySQL analogue of `entity_first_multi_schema.rs`. On MySQL, `schema_name`
 //! addresses a separate *database* on the same server rather than a
 //! namespace inside one database, so these tests exercise the
-//! `mysql_list_all_schemas` / cross-database discovery path added alongside
-//! the PostgreSQL support, live against a real MySQL server.
+//! cross-database discovery path added alongside the PostgreSQL support,
+//! live against a real MySQL server.
 //!
 //! Unlike PostgreSQL, `discover`/`sync` do not auto-create a missing
 //! `schema_name` database on MySQL (creating a database is out of scope for
 //! a table-sync tool) — so unlike the Postgres suite, there is no
 //! "create missing schema from scratch" test here; every database an entity
 //! references must already exist.
+//!
+//! Also unlike PostgreSQL, dangerous discovery never scans every database on
+//! the server: a MySQL server commonly hosts other applications'/tests'
+//! databases, and there is no safe way to tell those apart from ones this
+//! app used to own. So MySQL orphan detection is limited to databases a
+//! *currently* registered entity's `schema_name` points at — a `schema_name`
+//! rename leaves the old database untouched rather than risking a scan (and
+//! potential drops) across the whole server.
 //!
 //! Requires a real MySQL connection via `DATABASE_URL`.
 
@@ -128,6 +136,14 @@ impl EntitySet for FullSetV2 {
 const SCHEMA_A: &str = "entity_first_mysql_schema_a";
 const SCHEMA_B: &str = "entity_first_mysql_schema_b";
 
+/// `widget_v1`/`widget_v2`/`gadget`/`widget_in_schema_b` all pin their
+/// `schema_name` to the two literal databases above at compile time, so
+/// unlike `db_name` they can't be made unique per test. Every test that goes
+/// through `fresh_multi_schema_db` must hold this lock for its entire body —
+/// otherwise two tests running in parallel (the default) race to drop/recreate
+/// the same shared `SCHEMA_A`/`SCHEMA_B` databases out from under each other.
+static SCHEMA_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 /// Connects to a fresh, empty database (dropped + recreated) with the two
 /// non-default "schema" databases used by these tests also dropped + recreated.
 async fn fresh_multi_schema_db(db_name: &str) -> Result<DatabaseConnection, DbErr> {
@@ -199,6 +215,7 @@ async fn table_exists_in_schema(
 #[tokio::test]
 #[cfg(feature = "sqlx-mysql")]
 async fn test_discover_multi_schema_creates_tables_in_correct_databases() -> Result<(), DbErr> {
+    let _guard = SCHEMA_LOCK.lock().await;
     let db = fresh_multi_schema_db("entity_first_mysql_multi_schema_discover").await?;
 
     let builder = FullSet.register(Schema::new(db.get_database_backend()).builder());
@@ -238,6 +255,7 @@ async fn test_discover_multi_schema_creates_tables_in_correct_databases() -> Res
 #[tokio::test]
 #[cfg(feature = "sqlx-mysql")]
 async fn test_sync_multi_schema_twice_is_idempotent() -> Result<(), DbErr> {
+    let _guard = SCHEMA_LOCK.lock().await;
     let db = fresh_multi_schema_db("entity_first_mysql_multi_schema_sync").await?;
 
     FullSet
@@ -273,6 +291,7 @@ async fn test_sync_multi_schema_twice_is_idempotent() -> Result<(), DbErr> {
 #[tokio::test]
 #[cfg(feature = "sqlx-mysql")]
 async fn test_discover_detects_added_column_in_non_default_schema() -> Result<(), DbErr> {
+    let _guard = SCHEMA_LOCK.lock().await;
     let db = fresh_multi_schema_db("entity_first_mysql_multi_schema_column").await?;
 
     Schema::new(db.get_database_backend())
@@ -306,15 +325,16 @@ async fn test_discover_detects_added_column_in_non_default_schema() -> Result<()
 
 /// Regression test: renaming an entity's `schema_name` (schema_a -> schema_b)
 /// leaves a table behind that no registered entity references anymore.
-/// Dangerous discovery must scan every database on the server — not just
-/// ones a *current* entity references — so it can still find and flag that
-/// orphan for a DROP TABLE. Mirrors the PostgreSQL regression test but
-/// exercises `mysql_list_all_schemas` instead of `pg_list_all_schemas`.
+/// Unlike PostgreSQL, dangerous discovery must NOT scan every database on
+/// the server looking for it — schema_a is a database that could belong to
+/// another application entirely, so it must be left untouched rather than
+/// scanned (and potentially proposed for a drop).
 #[tokio::test]
 #[cfg(feature = "sqlx-mysql")]
-async fn test_discover_dangerous_detects_orphan_after_schema_rename() -> Result<(), DbErr> {
+async fn test_discover_dangerous_ignores_orphan_after_schema_rename() -> Result<(), DbErr> {
     use sea_orm::{InterpretConfig, interpret_changes};
 
+    let _guard = SCHEMA_LOCK.lock().await;
     let db = fresh_multi_schema_db("entity_first_mysql_multi_schema_rename").await?;
 
     // widget starts out in schema_a.
@@ -348,21 +368,23 @@ async fn test_discover_dangerous_detects_orphan_after_schema_rename() -> Result<
         .join(" ");
 
     assert!(
-        sql_all.to_uppercase().contains("DROP TABLE")
-            && sql_all.contains(SCHEMA_A)
-            && sql_all.contains("widget"),
-        "should detect the orphaned schema_a.widget and propose dropping it, got: {sql_all}"
+        !sql_all.to_uppercase().contains("DROP TABLE") || !sql_all.contains(SCHEMA_A),
+        "schema_a is no longer referenced by any entity and must not be scanned or dropped, got: {sql_all}"
     );
+    // The old table is still there, untouched.
+    assert!(table_exists_in_schema(&db, SCHEMA_A, "widget").await?);
 
     Ok(())
 }
 
-/// `.exclude_schema(...)` must keep dangerous discovery from ever scanning
-/// (and therefore proposing drops for) a database that belongs to another
-/// application/tenant sharing the same MySQL server.
+/// A database that no registered entity ever references (via `schema_name`)
+/// must never be scanned for orphans — even without `.exclude_schema(...)`.
+/// This protects a database belonging to another application/tenant sharing
+/// the same MySQL server from being touched at all.
 #[tokio::test]
 #[cfg(feature = "sqlx-mysql")]
-async fn test_exclude_schema_protects_foreign_schema_from_orphan_scan() -> Result<(), DbErr> {
+async fn test_unreferenced_schema_never_scanned_for_orphans() -> Result<(), DbErr> {
+    let _guard = SCHEMA_LOCK.lock().await;
     let db = fresh_multi_schema_db("entity_first_mysql_multi_schema_exclude").await?;
 
     let url = std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
@@ -384,28 +406,11 @@ async fn test_exclude_schema_protects_foreign_schema_from_orphan_scan() -> Resul
         .await?;
     assert!(schema_exists(&db, "entity_first_mysql_foreign_schema").await?);
 
-    // Without exclude_schema: the foreign app's table is scanned and shows up as an orphan.
+    // No entity references the foreign database, so it must never be scanned,
+    // dangerous discovery or not.
     let change_set = Schema::new(db.get_database_backend())
         .builder()
         .register(thing::Entity)
-        .discover(&db, true)
-        .await?;
-    let sql_all: String = change_set
-        .tables
-        .iter()
-        .map(|tc| format!("{:?}", tc.kind))
-        .collect::<Vec<_>>()
-        .join(" ");
-    assert!(
-        sql_all.contains("entity_first_mysql_foreign_schema") && sql_all.contains("foreign_table"),
-        "sanity check: without exclude_schema, the foreign table should be seen at all, got: {sql_all}"
-    );
-
-    // With exclude_schema: the foreign database must never be scanned at all.
-    let change_set = Schema::new(db.get_database_backend())
-        .builder()
-        .register(thing::Entity)
-        .exclude_schema("entity_first_mysql_foreign_schema")
         .discover(&db, true)
         .await?;
     let sql_all: String = change_set
@@ -417,7 +422,7 @@ async fn test_exclude_schema_protects_foreign_schema_from_orphan_scan() -> Resul
     assert!(
         !sql_all.contains("entity_first_mysql_foreign_schema")
             && !sql_all.contains("foreign_table"),
-        "excluded schema must never be scanned or proposed for drops, got: {sql_all}"
+        "a database no entity references must never be scanned, got: {sql_all}"
     );
 
     Ok(())

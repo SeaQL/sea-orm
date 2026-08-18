@@ -31,26 +31,31 @@ where
     C: ConnectionTrait + sea_schema::Connection,
 {
     let db_backend = db.get_database_backend();
-    // Only read by the Postgres/MySQL branches below.
-    let _ = excluded_schemas;
 
     // Multi scheme
     let mut extra_schemas: Vec<String> = new_entities
         .iter()
         .filter_map(|e| e.schema_name().map(str::to_owned))
+        .filter(|s| !excluded_schemas.iter().any(|e| e == s))
         .collect();
 
     // Orphan detection (allow_dangerous) needs to see every schema, not just
     // ones a current entity references — otherwise a schema no entity
     // references anymore (e.g. after a `schema_name` rename) is invisible,
     // and its now-orphaned tables can never be reported.
+    //
+    // Postgres-only: a Postgres `schema_name` is a namespace inside the one
+    // database this connection already owns, so scanning every non-system
+    // schema in it is self-contained and safe. On MySQL, `schema_name`
+    // addresses a separate *database* on the server — scanning "every schema"
+    // there means scanning every database the connection can see, which is
+    // very likely to include databases belonging to other applications/tests
+    // sharing the server. There's no safe way to auto-discover which of those
+    // used to be "ours", so MySQL orphan detection is intentionally limited
+    // to databases a currently-registered entity's `schema_name` still points at.
     #[cfg(feature = "sqlx-postgres")]
     if allow_dangerous && db_backend == crate::DbBackend::Postgres {
         extra_schemas.extend(schema::pg_list_all_schemas(db, excluded_schemas).await?);
-    }
-    #[cfg(feature = "sqlx-mysql")]
-    if allow_dangerous && db_backend == crate::DbBackend::MySql {
-        extra_schemas.extend(schema::mysql_list_all_schemas(db, excluded_schemas).await?);
     }
 
     extra_schemas.sort_unstable();

@@ -31,15 +31,17 @@ async fn pg_schema_exists<C: ConnectionTrait>(db: &C, schema: &str) -> Result<bo
     row.try_get_by_index(0)
 }
 
-/// Every schema/database name visible via `information_schema.schemata`,
-/// minus `system_schemas` and `excluded`. Shared by Postgres (schemas) and
-/// MySQL (databases) — both expose the same view with a `schema_name` column.
+/// Every schema name visible via `information_schema.schemata`, minus
+/// `system_schemas` and `excluded`.
 ///
-/// Used to power orphan-table discovery (`allow_dangerous`) across the whole
-/// server: a schema no longer referenced by any registered entity (e.g.
-/// after a `schema_name` rename) would otherwise never be looked at, so its
-/// now-orphaned tables could never be reported.
-#[cfg(any(feature = "sqlx-postgres", feature = "sqlx-mysql"))]
+/// Used to power orphan-table discovery (`allow_dangerous`) across every
+/// namespace in the current Postgres database: a schema no longer referenced
+/// by any registered entity (e.g. after a `schema_name` rename) would
+/// otherwise never be looked at, so its now-orphaned tables could never be
+/// reported. Postgres-only — see `discover()`'s doc comment for why this
+/// doesn't extend to MySQL, where `schema_name` addresses a separate database
+/// rather than a namespace inside the current one.
+#[cfg(feature = "sqlx-postgres")]
 async fn list_schemas_excluding<C: ConnectionTrait>(
     db: &C,
     system_schemas: &[&str],
@@ -85,23 +87,6 @@ pub(crate) async fn pg_list_all_schemas<C: ConnectionTrait>(
         db,
         &["pg_catalog", "information_schema", "pg_toast"],
         &["pg_temp_%", "pg_toast_temp_%"],
-        excluded,
-    )
-    .await
-}
-
-/// Every non-system MySQL database ("schema" == "database" in MySQL), minus
-/// `excluded`. Always skips `information_schema`, `mysql`,
-/// `performance_schema`, and `sys`.
-#[cfg(feature = "sqlx-mysql")]
-pub(crate) async fn mysql_list_all_schemas<C: ConnectionTrait>(
-    db: &C,
-    excluded: &[String],
-) -> Result<Vec<String>, DbErr> {
-    list_schemas_excluding(
-        db,
-        &["information_schema", "mysql", "performance_schema", "sys"],
-        &[],
         excluded,
     )
     .await
