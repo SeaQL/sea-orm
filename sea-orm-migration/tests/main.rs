@@ -135,7 +135,12 @@ async fn create_db(
         DbBackend::MySql => {
             db.execute_raw(Statement::from_string(
                 db.get_database_backend(),
-                format!("CREATE DATABASE IF NOT EXISTS `{db_name}`;"),
+                format!("DROP DATABASE IF EXISTS `{db_name}`;"),
+            ))
+            .await?;
+            db.execute_raw(Statement::from_string(
+                db.get_database_backend(),
+                format!("CREATE DATABASE `{db_name}`;"),
             ))
             .await?;
 
