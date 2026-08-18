@@ -52,6 +52,7 @@ fn run_migrate_json(
 ) -> Result<(), Box<dyn Error>> {
     let manifest = manifest_path(migration_dir);
 
+    //TODO: move matches into functions or make this more readable in other ways
     match command {
         Some(MigrateSubcommands::Status) | None => {
             match run_subprocess_json::<StatusData>(
@@ -62,9 +63,9 @@ fn run_migrate_json(
             ) {
                 Ok((_, data)) => {
                     print_status(&data);
-                    return Ok(());
+                    Ok(())
                 }
-                Err(e) => return Err(render_subprocess_error(e).into()),
+                Err(e) => Err(render_subprocess_error(e).into()),
             }
         }
         Some(MigrateSubcommands::Up { num }) => {
@@ -81,9 +82,9 @@ fn run_migrate_json(
             ) {
                 Ok((_, data)) => {
                     print_applied(&data);
-                    return Ok(());
+                    Ok(())
                 }
-                Err(e) => return Err(render_subprocess_error(e).into()),
+                Err(e) => Err(render_subprocess_error(e).into()),
             }
         }
         Some(MigrateSubcommands::Down { num }) => {
@@ -97,9 +98,9 @@ fn run_migrate_json(
             ) {
                 Ok((_, data)) => {
                     print_rolled_back(&data);
-                    return Ok(());
+                    Ok(())
                 }
-                Err(e) => return Err(render_subprocess_error(e).into()),
+                Err(e) => Err(render_subprocess_error(e).into()),
             }
         }
         Some(MigrateSubcommands::Fresh) => {
@@ -111,9 +112,9 @@ fn run_migrate_json(
             ) {
                 Ok((_, data)) => {
                     print_applied(&data);
-                    return Ok(());
+                    Ok(())
                 }
-                Err(e) => return Err(render_subprocess_error(e).into()),
+                Err(e) => Err(render_subprocess_error(e).into()),
             }
         }
         Some(MigrateSubcommands::Refresh) => {
@@ -125,9 +126,9 @@ fn run_migrate_json(
             ) {
                 Ok((_, data)) => {
                     print_lifecycle(&data);
-                    return Ok(());
+                    Ok(())
                 }
-                Err(e) => return Err(render_subprocess_error(e).into()),
+                Err(e) => Err(render_subprocess_error(e).into()),
             }
         }
         Some(MigrateSubcommands::Reset) => {
@@ -139,9 +140,9 @@ fn run_migrate_json(
             ) {
                 Ok((_, data)) => {
                     print_rolled_back(&data);
-                    return Ok(());
+                    Ok(())
                 }
-                Err(e) => return Err(render_subprocess_error(e).into()),
+                Err(e) => Err(render_subprocess_error(e).into()),
             }
         }
         Some(MigrateSubcommands::Init) | Some(MigrateSubcommands::Generate { .. }) => {

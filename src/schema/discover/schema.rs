@@ -28,7 +28,7 @@ async fn pg_schema_exists<C: ConnectionTrait>(db: &C, schema: &str) -> Result<bo
         )
         .await?
         .ok_or_else(|| DbErr::RecordNotFound("Can't check schema existence".into()))?;
-    row.try_get_by_index(0).map_err(DbErr::from)
+    row.try_get_by_index(0)
 }
 
 /// Every schema/database name visible via `information_schema.schemata`,
@@ -69,7 +69,7 @@ async fn list_schemas_excluding<C: ConnectionTrait>(
         .await?;
 
     rows.iter()
-        .map(|row| row.try_get_by_index::<String>(0).map_err(DbErr::from))
+        .map(|row| row.try_get_by_index::<String>(0))
         .collect()
 }
 
@@ -129,6 +129,7 @@ pub(crate) async fn discover_existing_schema<C>(
 where
     C: ConnectionTrait + sea_schema::Connection,
 {
+    let _ = extra_schemas; // No drivers - no schemes
     match db.get_database_backend() {
         #[cfg(feature = "sqlx-mysql")]
         DbBackend::MySql => {
@@ -230,7 +231,6 @@ where
         #[cfg(feature = "sqlx-sqlite")]
         DbBackend::Sqlite => {
             use sea_schema::sqlite::{SqliteDiscoveryError, discovery::SchemaDiscovery};
-            let _ = extra_schemas; // Doesn't have schemes
             let schema = SchemaDiscovery::discover_with(db)
                 .await
                 .map_err(|err| {

@@ -52,9 +52,21 @@ pub(crate) fn record_table_changes(
         );
     } else {
         changes.record_table(TableChangeKind::Create {
-            table: table_name_str,
+            table: table_name_str.clone(),
             stmt: db_backend.build(entity.table()),
         });
+
+        //TODO: move into its own record fn
+        for stmt in entity.indexes() {
+            let mut idx_stmt = stmt.clone();
+            idx_stmt.if_not_exists();
+            changes.record_constraint(
+                table_name_str.clone(),
+                ConstraintChangeKind::AddIndex {
+                    stmt: db_backend.build(&idx_stmt),
+                },
+            );
+        }
     }
 }
 
@@ -123,12 +135,11 @@ fn record_column_changes(
 
         // Check for explicit renamed_from annotation
         let mut renamed_from = "";
-        if let Some(comment) = &column_def.get_column_spec().comment {
-            if let Some((_, suffix)) = comment.rsplit_once("renamed_from \"") {
-                if let Some((prefix, _)) = suffix.split_once('"') {
-                    renamed_from = prefix;
-                }
-            }
+        if let Some(comment) = &column_def.get_column_spec().comment
+            && let Some((_, suffix)) = comment.rsplit_once("renamed_from \"")
+            && let Some((prefix, _)) = suffix.split_once('"')
+        {
+            renamed_from = prefix;
         }
 
         if !renamed_from.is_empty() {
@@ -352,27 +363,26 @@ fn record_unique_constraint_drops(
                 });
             }
         }
-        if !has_index {
-            if let Some(name) = existing_index
+        if !has_index
+            && let Some(name) = existing_index
                 .get_index_spec()
                 .get_name()
                 .map(|s| s.to_owned())
-            {
-                let stmt = if db_backend == DbBackend::Postgres {
-                    db_backend.build(
-                        TableAlterStatement::new()
-                            .table(entity_table_name.clone())
-                            .drop_constraint(name.clone()),
-                    )
-                } else {
-                    db_backend.build(sea_query::Index::drop().name(name.clone()))
-                };
+        {
+            let stmt = if db_backend == DbBackend::Postgres {
+                db_backend.build(
+                    TableAlterStatement::new()
+                        .table(entity_table_name.clone())
+                        .drop_constraint(name.clone()),
+                )
+            } else {
+                db_backend.build(sea_query::Index::drop().name(name.clone()))
+            };
 
-                changes.record_constraint(
-                    table_name_str.to_string(),
-                    ConstraintChangeKind::DropUniqueConstraint { name, stmt },
-                );
-            }
+            changes.record_constraint(
+                table_name_str.to_string(),
+                ConstraintChangeKind::DropUniqueConstraint { name, stmt },
+            );
         }
     }
 }

@@ -1,6 +1,5 @@
 use super::changes::{ChangeSet, EnumChangeKind};
 use super::resolver::{self, extract_enum_type_name};
-use super::schema::DiscoveredSchema;
 use crate::DbBackend;
 use sea_query::extension::postgres::TypeCreateStatement;
 

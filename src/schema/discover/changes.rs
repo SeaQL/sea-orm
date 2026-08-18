@@ -1,5 +1,5 @@
 use crate::Statement;
-use sea_query::{ColumnType, TableName, TableRef};
+use sea_query::{ColumnType, TableName};
 
 /// Unique identifier for a recorded schema change.
 #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
@@ -252,12 +252,13 @@ impl ChangeSet {
             }
         }
         for cc in self.constraints {
+            //TODO: Unify stmt get into, also review if "name" parameter is even needed.
             match cc.kind {
                 ConstraintChangeKind::AddForeignKey { stmt }
                 | ConstraintChangeKind::AddIndex { stmt }
-                | ConstraintChangeKind::AddUniqueConstraint { stmt, .. } => stmts.push(stmt),
-                ConstraintChangeKind::DropForeignKey { .. }
-                | ConstraintChangeKind::DropUniqueConstraint { .. } => {}
+                | ConstraintChangeKind::AddUniqueConstraint { stmt, .. }
+                | ConstraintChangeKind::DropForeignKey { stmt, .. }
+                | ConstraintChangeKind::DropUniqueConstraint { stmt, .. } => stmts.push(stmt),
             }
         }
 

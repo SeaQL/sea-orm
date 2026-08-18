@@ -344,7 +344,10 @@ impl EntitySchemaInfo {
 /// Builds a `CREATE SCHEMA IF NOT EXISTS "..."` statement for a PostgreSQL namespace.
 pub(crate) fn create_schema_stmt(backend: DbBackend, schema: &str) -> Statement {
     let quoted = schema.replace('"', "\"\"");
-    Statement::from_string(backend, format!(r#"CREATE SCHEMA IF NOT EXISTS "{quoted}""#))
+    Statement::from_string(
+        backend,
+        format!(r#"CREATE SCHEMA IF NOT EXISTS "{quoted}""#),
+    )
 }
 
 /// Panics if the table reference is not a table name
@@ -359,6 +362,7 @@ pub(crate) fn get_table_name(table_ref: Option<&TableRef>) -> TableName {
 
 /// Controls which tables appear first in [`sorted_tables`] output.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub(crate) enum TableSortOrder {
     /// Parent tables (no FK dependents) appear before children
     ParentsFirst,
@@ -403,7 +407,7 @@ pub(crate) fn sorted_tables(
         if level.is_empty() {
             break;
         }
-        level.sort_by(|a, b| a.1.to_string().cmp(&b.1.to_string()));
+        level.sort_by_key(|a| a.1.to_string());
         sorted.extend(level);
     }
 
@@ -511,7 +515,8 @@ mod tests {
         );
 
         assert!(
-            !sql.iter().any(|s| s.contains("CREATE SCHEMA") && s.contains("thing")),
+            !sql.iter()
+                .any(|s| s.contains("CREATE SCHEMA") && s.contains("thing")),
             "no CREATE SCHEMA should be emitted for the default-schema `thing` table: {sql:?}"
         );
     }

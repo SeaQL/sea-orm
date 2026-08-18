@@ -274,6 +274,7 @@ pub enum EntitySubcommands {
     },
 }
 
+#[allow(clippy::large_enum_variant)] //TODO: later
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum GenerateSubcommands {
     #[command(about = "Generate entities from existing database")]
