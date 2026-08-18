@@ -101,6 +101,7 @@ impl QueryResult {
         T: sqlx::Type<sqlx::Postgres> + for<'r> sqlx::Decode<'r, sqlx::Postgres>,
         I: ColIdx,
     {
+        #[allow(unused)]
         match &self.row {
             QueryResultRow::SqlxPostgres(row) => {
                 let value = match row.try_get_raw(idx.as_sqlx_postgres_index()) {

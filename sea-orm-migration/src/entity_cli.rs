@@ -445,6 +445,7 @@ fn run_schema<E: EntitySet>(
 }
 
 /// Generate and write a migration file.
+#[allow(clippy::too_many_arguments)] // TODO: remove later
 async fn run_generate<E: EntitySet>(
     entity_set: E,
     db: &sea_orm::DatabaseConnection,
