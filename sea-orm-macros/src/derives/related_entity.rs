@@ -2,8 +2,8 @@
 mod private {
     use heck::ToLowerCamelCase;
     use proc_macro_crate::{FoundCrate, crate_name};
-    use proc_macro2::{Ident, Span, TokenStream};
-    use quote::{quote, quote_spanned};
+    use proc_macro2::TokenStream;
+    use quote::{format_ident, quote, quote_spanned};
 
     use crate::derives::attributes::related_attr;
 
@@ -94,7 +94,7 @@ mod private {
             let async_graphql_crate = match crate_name("async-graphql") {
                 // if found, use application's `async-graphql`
                 Ok(FoundCrate::Name(name)) => {
-                    let ident = Ident::new(&name, Span::call_site());
+                    let ident = format_ident!("{}", name);
                     quote! { #ident }
                 }
                 Ok(FoundCrate::Itself) => quote! { async_graphql },

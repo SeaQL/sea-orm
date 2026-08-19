@@ -1,6 +1,6 @@
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{
     Field, GenericArgument, LitStr, Meta, MetaNameValue, PathArguments, Type, TypePath,
     meta::ParseNestedMeta, punctuated::Punctuated, token::Comma,
@@ -54,9 +54,9 @@ impl RelationColumns {
                 let Some(segment) = path.segments.last() else {
                     return Err(syn::Error::new_spanned(path, "expected column path"));
                 };
-                Ok(Ident::new(
-                    &escape_rust_keyword(segment.ident.to_string().to_upper_camel_case()),
-                    segment.ident.span(),
+                Ok(format_ident!(
+                    "{}",
+                    escape_rust_keyword(segment.ident.to_string().to_upper_camel_case())
                 ))
             })
             .collect::<syn::Result<Vec<_>>>()?;
@@ -125,8 +125,8 @@ impl CompoundType {
     pub(crate) fn matches_type(type_path: &TypePath) -> bool {
         last_path_segment(type_path).is_ok_and(|segment| {
             matches!(
-                segment.ident.to_string().as_str(),
-                "BelongsTo" | "HasOne" | "HasMany"
+                &segment.ident,
+                id if *id == "BelongsTo" || *id == "HasOne" || *id == "HasMany"
             )
         })
     }
@@ -135,8 +135,8 @@ impl CompoundType {
     pub(crate) fn from_type(type_path: &TypePath) -> syn::Result<Option<Self>> {
         let segment = last_path_segment(type_path)?;
 
-        match segment.ident.to_string().as_str() {
-            "BelongsTo" => {
+        match &segment.ident {
+            id if *id == "BelongsTo" => {
                 let PathArguments::AngleBracketed(args) = &segment.arguments else {
                     return Err(syn::Error::new_spanned(
                         type_path,
@@ -163,15 +163,12 @@ impl CompoundType {
                     ));
                 };
                 let target_segment = last_path_segment(ty_path)?;
-                match (
-                    target_segment.ident.to_string().as_str(),
-                    &target_segment.arguments,
-                ) {
-                    ("Entity", _) => Ok(Some(Self {
+                match (&target_segment.ident, &target_segment.arguments) {
+                    (id, _) if *id == "Entity" => Ok(Some(Self {
                         kind: CompoundKind::BelongsTo(CardinalityKind::Required),
                         entity: ty_path.clone(),
                     })),
-                    ("Option", PathArguments::AngleBracketed(args)) => {
+                    (id, PathArguments::AngleBracketed(args)) if *id == "Option" => {
                         let Some(entity) = entity_generic_arg(&args.args) else {
                             return Err(syn::Error::new_spanned(
                                 ty,
@@ -189,7 +186,7 @@ impl CompoundType {
                     )),
                 }
             }
-            "HasOne" => {
+            id if *id == "HasOne" => {
                 let PathArguments::AngleBracketed(args) = &segment.arguments else {
                     return Err(syn::Error::new_spanned(
                         type_path,
@@ -207,7 +204,7 @@ impl CompoundType {
                     entity,
                 }))
             }
-            "HasMany" => {
+            id if *id == "HasMany" => {
                 let PathArguments::AngleBracketed(args) = &segment.arguments else {
                     return Err(syn::Error::new_spanned(
                         type_path,

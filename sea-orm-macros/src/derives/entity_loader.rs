@@ -1,3 +1,4 @@
+use proc_macro2::Span;
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::collections::{HashMap, HashSet};
@@ -18,6 +19,16 @@ pub enum EntityLoaderFieldKind {
         junction_module: Ident,
         reverse: bool,
     },
+}
+
+/// Ident for the `LoadTarget` variant used by a self-referential many-to-many
+/// junction: `TableRef` for the forward direction, `TableRefRev` for the reverse.
+fn table_ref_ident(reverse: bool, span: Span) -> Ident {
+    if reverse {
+        Ident::new("TableRefRev", span)
+    } else {
+        Ident::new("TableRef", span)
+    }
 }
 
 pub struct EntityLoaderField {
@@ -115,11 +126,7 @@ impl EntityLoaderField {
         junction_module: &Ident,
         reverse: bool,
     ) {
-        let target_type = if !reverse {
-            Ident::new("TableRef", junction_module.span())
-        } else {
-            Ident::new("TableRefRev", junction_module.span())
-        };
+        let target_type = table_ref_ident(reverse, junction_module.span());
 
         let target_entity = if !reverse {
             quote!(super::#junction_module::Entity)
@@ -195,11 +202,7 @@ impl EntityLoaderField {
                     reverse,
                 } = &self.kind
                 {
-                    let target_type = if !reverse {
-                        Ident::new("TableRef", junction_module.span())
-                    } else {
-                        Ident::new("TableRefRev", junction_module.span())
-                    };
+                    let target_type = table_ref_ident(*reverse, junction_module.span());
 
                     output.loader_with_set_impl.extend(quote! {
                         if target == sea_orm::compound::LoadTarget::#target_type(super::#junction_module::Entity.table_ref()) {
@@ -248,11 +251,7 @@ impl EntityLoaderField {
                 junction_module,
                 reverse,
             } => {
-                let target_type = if !reverse {
-                    Ident::new("TableRef", junction_module.span())
-                } else {
-                    Ident::new("TableRefRev", junction_module.span())
-                };
+                let target_type = table_ref_ident(*reverse, junction_module.span());
 
                 output.loader_with_2_impl.extend(quote! {
                     if left == sea_orm::compound::LoadTarget::#target_type(super::#junction_module::Entity.table_ref()) {

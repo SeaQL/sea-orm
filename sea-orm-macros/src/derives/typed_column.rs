@@ -4,7 +4,7 @@ use super::util::{CompoundType, escape_rust_keyword, trim_starting_raw_identifie
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{Data, Fields, Lit, Visibility, spanned::Spanned};
+use syn::{Data, Fields, Lit, Visibility};
 
 /// First is `struct TypedColumn`, second is the `const COLUMN`
 pub fn expand_typed_column(
@@ -72,7 +72,7 @@ pub fn expand_typed_column(
 
             column_fields.push(ident.clone());
             let wrapper =
-                super::value_type_match::column_type_wrapper(&column_type, field_ty, field.span());
+                super::value_type_match::column_type_wrapper(&column_type, field_ty, ident.span());
             column_types.push(if let Some(wrapper) = &wrapper {
                 quote!(sea_orm::#wrapper<Entity>)
             } else {

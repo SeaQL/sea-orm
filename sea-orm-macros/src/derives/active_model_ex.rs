@@ -6,7 +6,7 @@ use super::util::{
     await_token, consume_meta, escape_rust_keyword, is_self_entity, trim_starting_raw_identifier,
 };
 use heck::ToUpperCamelCase;
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use syn::{Attribute, Data, LitStr, PathArguments, Type, TypePath, Visibility};
 
@@ -620,10 +620,10 @@ impl ActiveModelActionTokens {
                                 if is_unique_relation_target {
                                     RelationLookup::ByRelatedEntity
                                 } else {
-                                    RelationLookup::ByRelationVariant(Ident::new(
-                                        &infer_relation_name_from_entity(&compound_type.entity)
-                                            .to_upper_camel_case(),
-                                        Span::call_site(),
+                                    RelationLookup::ByRelationVariant(format_ident!(
+                                        "{}",
+                                        infer_relation_name_from_entity(&compound_type.entity)
+                                            .to_upper_camel_case()
                                     ))
                                 }
                             }

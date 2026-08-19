@@ -127,7 +127,7 @@ impl TryFrom<&ParseNestedMeta<'_>> for CaseStyle {
 
 #[test]
 fn test_convert_case() {
-    let id = Ident::new("test_me", proc_macro2::Span::call_site());
+    let id = quote::format_ident!("test_me");
     assert_eq!("testMe", id.convert_case(Some(CaseStyle::CamelCase)));
     assert_eq!("TestMe", id.convert_case(Some(CaseStyle::PascalCase)));
 }

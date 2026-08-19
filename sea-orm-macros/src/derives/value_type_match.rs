@@ -1,6 +1,6 @@
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote_spanned;
-use syn::{GenericArgument, Ident, LitStr, PathArguments, Type, TypePath};
+use syn::{GenericArgument, LitStr, PathArguments, Type, TypePath};
 
 pub fn column_type_expr(
     column_type: Option<TokenStream>,

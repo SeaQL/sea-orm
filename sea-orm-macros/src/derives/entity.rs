@@ -25,7 +25,10 @@ impl DeriveEntity {
         let ident = input.ident;
         let column_ident = sea_attr.column.unwrap_or_else(|| format_ident!("Column"));
         let model_ident = sea_attr.model.unwrap_or_else(|| format_ident!("Model"));
-        let model_ex_ident = sea_attr.model_ex.unwrap_or_else(|| format_ident!("Model"));
+        let model_ex_ident = sea_attr
+            .model_ex
+            .0
+            .unwrap_or_else(|| format_ident!("Model"));
         let active_model_ident = sea_attr
             .active_model
             .unwrap_or_else(|| format_ident!("ActiveModel"));

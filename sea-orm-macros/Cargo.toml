@@ -18,7 +18,7 @@ path       = "src/lib.rs"
 proc-macro = true
 
 [dependencies]
-bae = { version = "0.2", package = "sea-bae", default-features = false, optional = true }
+darling = { version = "0.23", optional = true }
 heck = { version = "0.5", default-features = false }
 itertools = "0.14"
 pluralizer = { version = "0.5" }
@@ -44,7 +44,7 @@ serde = { version = "1.0", features = ["derive"] }
 [features]
 async           = []
 default         = ["derive"]
-derive          = ["bae"]
+derive          = ["darling"]
 entity-registry = []
 postgres-array  = []
 seaography      = ["proc-macro-crate"]
