@@ -337,8 +337,8 @@ jobs:
       - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo test --test '*' --features tests-features,sqlx-sqlite,runtime-${{ matrix.runtime }} --no-run
       - run: cargo test --test '*' --features tests-features,sqlx-sqlite,runtime-${{ matrix.runtime }}
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }} --no-run
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features entity-first,sqlx-sqlite,runtime-${{ matrix.runtime }} --no-run
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features entity-first,sqlx-sqlite,runtime-${{ matrix.runtime }}
 
   rusqlite:
     name: rusqlite
@@ -419,8 +419,8 @@ jobs:
       - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features entity-first,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features entity-first,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   mariadb:
     name: MariaDB
@@ -519,5 +519,5 @@ jobs:
       - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo test --test '*' --features tests-features,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --test '*' --features tests-features,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features entity-first,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features entity-first,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
