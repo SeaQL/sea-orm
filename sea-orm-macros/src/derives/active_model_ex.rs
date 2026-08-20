@@ -822,13 +822,14 @@ fn expand_active_model_ex<'a>(
     vis: &Visibility,
     ident: &Ident,
     data: &Data,
+    attrs: &[Attribute],
     fields: &'a Fields<'a>,
     active_model_action: TokenStream,
 ) -> syn::Result<TokenStream> {
     let async_ = async_token();
     let await_ = await_token();
     let active_model_trait_methods =
-        DeriveActiveModel::new(vis, ident, data)?.impl_active_model_trait_methods();
+        DeriveActiveModel::new(vis, ident, data, attrs)?.impl_active_model_trait_methods();
     let Output {
         model_field_defs,
         active_model_setters,
@@ -1461,5 +1462,5 @@ pub fn expand_derive_active_model_ex(
     };
     let active_model_action = active_model_action_tokens.expand();
 
-    expand_active_model_ex(vis, ident, data, &fields, active_model_action)
+    expand_active_model_ex(vis, ident, data, attrs, &fields, active_model_action)
 }

@@ -169,7 +169,7 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
     );
 
     ts.extend::<TokenStream>(
-        derives::expand_derive_active_model(&vis, &ident, &data)
+        derives::expand_derive_active_model(&vis, &ident, &data, &attrs)
             .unwrap_or_else(Error::into_compile_error)
             .into(),
     );
@@ -467,10 +467,14 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(DeriveActiveModel, attributes(sea_orm))]
 pub fn derive_active_model(input: TokenStream) -> TokenStream {
     let DeriveInput {
-        vis, ident, data, ..
+        vis,
+        ident,
+        data,
+        attrs,
+        ..
     } = parse_macro_input!(input);
 
-    match derives::expand_derive_active_model(&vis, &ident, &data) {
+    match derives::expand_derive_active_model(&vis, &ident, &data, &attrs) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }

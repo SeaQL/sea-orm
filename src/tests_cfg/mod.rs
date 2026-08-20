@@ -12,6 +12,8 @@ pub mod cake_filling;
 pub mod cake_filling_price;
 pub mod entity_linked;
 pub mod filling;
+#[cfg(feature = "with-json")]
+pub mod from_json_time;
 pub mod fruit;
 pub mod indexes;
 pub mod ingredient;

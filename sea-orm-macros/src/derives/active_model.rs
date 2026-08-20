@@ -1,8 +1,12 @@
-use super::util::{escape_rust_keyword, field_not_ignored, trim_starting_raw_identifier};
+use super::case_style::CaseStyle;
+use super::util::{
+    consume_meta, escape_rust_keyword, field_not_ignored, trim_starting_raw_identifier,
+};
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use syn::{Data, DataStruct, Expr, Fields, LitStr, Type, Visibility};
+use std::str::FromStr;
+use syn::{Attribute, Data, DataStruct, Expr, Fields, LitStr, Type, Visibility};
 
 pub(crate) struct DeriveActiveModel {
     model: Ident,
@@ -10,10 +14,17 @@ pub(crate) struct DeriveActiveModel {
     fields: Vec<Ident>,
     names: Vec<Ident>,
     types: Vec<Type>,
+    #[cfg(feature = "with-json")]
+    serde_serialize_names: Vec<String>,
 }
 
 impl DeriveActiveModel {
-    pub fn new(vis: &Visibility, ident: &Ident, data: &Data) -> syn::Result<Self> {
+    pub fn new(
+        vis: &Visibility,
+        ident: &Ident,
+        data: &Data,
+        attrs: &[Attribute],
+    ) -> syn::Result<Self> {
         let all_fields = match data {
             Data::Struct(DataStruct {
                 fields: Fields::Named(named),
@@ -27,16 +38,95 @@ impl DeriveActiveModel {
             }
         };
 
+        // Parse `#[serde(rename_all = "...")]` / `#[serde(rename_all(serialize = "...",
+        // deserialize = "..."))]` at struct level, keeping only the serialize
+        // side since these names are used to look up dummy values serialized
+        // via `serde_json::to_value`.
+        let mut serde_rename_all_serialize: Option<CaseStyle> = None;
+        #[cfg(feature = "with-json")]
+        attrs
+            .iter()
+            .filter(|attr| attr.path().is_ident("serde"))
+            .try_for_each(|attr| {
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("rename_all") {
+                        if let Ok(lit) = meta.value().and_then(|v| v.parse::<LitStr>()) {
+                            serde_rename_all_serialize = CaseStyle::from_str(&lit.value()).ok();
+                        } else {
+                            meta.parse_nested_meta(|nested| {
+                                if nested.path.is_ident("serialize") {
+                                    let lit: LitStr = nested.value()?.parse()?;
+                                    serde_rename_all_serialize =
+                                        CaseStyle::from_str(&lit.value()).ok();
+                                } else {
+                                    consume_meta(nested);
+                                }
+                                Ok(())
+                            })?;
+                        }
+                    } else {
+                        consume_meta(meta);
+                    }
+                    Ok(())
+                })
+            })?;
+
         let mut fields = Vec::new();
         let mut names = Vec::new();
         let mut types = Vec::new();
+        #[cfg(feature = "with-json")]
+        let mut serde_serialize_names = Vec::new();
 
         for field in all_fields.iter().filter(|f| field_not_ignored(f)) {
             let field_ident = field.ident.as_ref().expect("named fields have identifiers");
+            let original_field_name = field_ident.to_string();
+            let original_field_name = trim_starting_raw_identifier(original_field_name);
             fields.push(field_ident.clone());
 
-            let ident = field_ident.to_string();
-            let ident = trim_starting_raw_identifier(ident).to_upper_camel_case();
+            // Parse `#[serde(rename = "...")]` / `#[serde(rename(serialize = "..."))]`
+            // at field level, keeping only the serialize side.
+            let mut serde_rename_serialize: Option<String> = None;
+            #[cfg(feature = "with-json")]
+            field
+                .attrs
+                .iter()
+                .filter(|attr| attr.path().is_ident("serde"))
+                .try_for_each(|attr| {
+                    attr.parse_nested_meta(|meta| {
+                        if meta.path.is_ident("rename") {
+                            if let Ok(lit) = meta.value().and_then(|v| v.parse::<LitStr>()) {
+                                serde_rename_serialize = Some(lit.value());
+                            } else {
+                                meta.parse_nested_meta(|nested| {
+                                    if nested.path.is_ident("serialize") {
+                                        let lit: LitStr = nested.value()?.parse()?;
+                                        serde_rename_serialize = Some(lit.value());
+                                    } else {
+                                        consume_meta(nested);
+                                    }
+                                    Ok(())
+                                })?;
+                            }
+                        } else {
+                            consume_meta(meta);
+                        }
+                        Ok(())
+                    })
+                })?;
+
+            #[cfg(feature = "with-json")]
+            {
+                let name = if let Some(rename) = serde_rename_serialize.as_deref() {
+                    rename.to_string()
+                } else if let Some(case_style) = serde_rename_all_serialize {
+                    super::entity_model::convert_case_public(&original_field_name, case_style)
+                } else {
+                    original_field_name.clone()
+                };
+                serde_serialize_names.push(name);
+            }
+
+            let ident = original_field_name.to_upper_camel_case();
             let ident = escape_rust_keyword(ident);
             let mut ident = format_ident!("{}", &ident);
             field
@@ -69,6 +159,8 @@ impl DeriveActiveModel {
             fields,
             names,
             types,
+            #[cfg(feature = "with-json")]
+            serde_serialize_names,
         })
     }
 }
@@ -128,7 +220,102 @@ impl DeriveActiveModel {
 
     fn impl_active_model_trait(&self) -> TokenStream {
         let fields = &self.fields;
+        let model = &self.model;
         let methods = self.impl_active_model_trait_methods();
+
+        // A derive-generated `from_json` replaces the trait-default
+        // implementation. The default merges dummy values serialized with
+        // `sea_value_to_json_value` (SQL literal form), which cannot be
+        // deserialized back by `Model` for types whose SQL literal form
+        // differs from their serde representation (e.g. time-crate date and
+        // time values). Here the dummy model is serialized with serde
+        // instead, so the model round-trip always succeeds.
+        let from_json_method = {
+            #[cfg(feature = "with-json")]
+            {
+                let names = &self.names;
+                let serde_serialize_names = &self.serde_serialize_names;
+                quote! {
+                    fn from_json(json: sea_orm::JsonValue) -> Result<Self, sea_orm::DbErr>
+                    where
+                        Self: sea_orm::TryIntoModel<#model>,
+                        #model: sea_orm::IntoActiveModel<Self>,
+                        for<'de> #model: serde::de::Deserialize<'de> + serde::Serialize,
+                    {
+                        use sea_orm::{ColumnTrait, IntoActiveModel, Iterable, TryIntoModel};
+                        let sea_orm::JsonValue::Object(mut input) = json else {
+                            return Err(sea_orm::DbErr::Json(format!(
+                                "invalid type: expected JSON object for {}",
+                                <<Self as sea_orm::ActiveModelTrait>::Entity as sea_orm::IdenStatic>::as_str(&Default::default())
+                            )));
+                        };
+
+                        let dummy_am = <Self as sea_orm::ActiveModelTrait>::default_values();
+                        let len = <<Self::Entity as sea_orm::EntityTrait>::Column>::iter().len();
+                        // Mark down which attribute exists in the JSON object
+                        let mut json_keys = Vec::with_capacity(len);
+
+                        let dummy_model: #model = dummy_am.try_into_model()
+                            .map_err(|e| sea_orm::DbErr::Json(e.to_string()))?;
+                        // Serialize the dummy model with serde. Keys are the
+                        // columns' serialize names, so look each one up by that
+                        // name and re-key it to the column's json key (the
+                        // deserialize name) used by `from_json`.
+                        let mut merged = match serde_json::to_value(&dummy_model)
+                            .map_err(|e| sea_orm::DbErr::Json(e.to_string()))?
+                        {
+                            sea_orm::JsonValue::Object(map) => map,
+                            _ => serde_json::Map::new(),
+                        };
+
+                        for col in <<Self::Entity as sea_orm::EntityTrait>::Column>::iter() {
+                            let key = col.json_key();
+                            let has_key = input.contains_key(key);
+                            json_keys.push((col, has_key));
+                            if !has_key {
+                                match col {
+                                    #(
+                                    <Self::Entity as sea_orm::EntityTrait>::Column::#names => {
+                                        if let Some(value) = merged.remove(#serde_serialize_names) {
+                                            merged.insert(key.to_owned(), value);
+                                        }
+                                    },
+                                    )*
+                                    _ => {}
+                                }
+                            }
+                        }
+
+                        merged.append(&mut input);
+                        let _ = input;
+
+                        let json_value = serde_json::Value::Object(merged);
+
+                        // Convert JSON object into ActiveModel via Model
+                        let model: #model = serde_json::from_value(json_value)
+                            .map_err(|e| sea_orm::DbErr::Json(e.to_string()))?;
+                        let mut am: Self = model.into_active_model();
+
+                        // Transform attributes that exist in the JSON object
+                        // into ActiveValue::Set, otherwise ActiveValue::NotSet
+                        for (col, json_key_exists) in json_keys {
+                            match (json_key_exists, am.get(col)) {
+                                (true, sea_orm::ActiveValue::Set(value) | sea_orm::ActiveValue::Unchanged(value)) => {
+                                    am.set(col, value);
+                                }
+                                _ => {
+                                    am.not_set(col);
+                                }
+                            }
+                        }
+
+                        Ok(am)
+                    }
+                }
+            }
+            #[cfg(not(feature = "with-json"))]
+            quote! {}
+        };
 
         quote! {
             #[automatically_derived]
@@ -136,6 +323,8 @@ impl DeriveActiveModel {
                 type Entity = Entity;
 
                 #methods
+
+                #from_json_method
 
                 fn default() -> Self {
                     Self {
@@ -287,8 +476,9 @@ pub fn expand_derive_active_model(
     vis: &Visibility,
     ident: &Ident,
     data: &Data,
+    attrs: &[Attribute],
 ) -> syn::Result<TokenStream> {
-    let derive_active_model = DeriveActiveModel::new(vis, ident, data)?;
+    let derive_active_model = DeriveActiveModel::new(vis, ident, data, attrs)?;
 
     let define_active_model = derive_active_model.define_active_model();
     let impl_active_model = derive_active_model.impl_active_model();

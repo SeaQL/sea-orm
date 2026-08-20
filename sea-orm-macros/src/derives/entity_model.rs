@@ -14,6 +14,11 @@ use syn::{
 const NOT_AUTO_INCRE_TYPE_SUFFIX: [&str; 2] = ["String", "Uuid"];
 
 #[allow(dead_code)]
+pub(crate) fn convert_case_public(s: &str, case_style: CaseStyle) -> String {
+    convert_case(s, case_style)
+}
+
+#[allow(dead_code)]
 fn convert_case(s: &str, case_style: CaseStyle) -> String {
     match case_style {
         CaseStyle::PascalCase => s.to_upper_camel_case(),
