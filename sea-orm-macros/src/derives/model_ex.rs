@@ -113,6 +113,13 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
         *attr = parse_quote!(#[derive( #new_list )]);
     }
 
+    model_ex_attrs.push(parse_quote! {
+        #[allow(
+            clippy::derive_partial_eq_without_eq,
+            reason = "Skip `Eq` on ModelEx"
+        )]
+    });
+
     let compact_model = if compact {
         quote!(#[sea_orm(compact_model)])
     } else {
