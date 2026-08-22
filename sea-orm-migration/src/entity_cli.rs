@@ -8,8 +8,8 @@ use crate::{
     codegen::MigrationMetadata,
     fs::write_migration,
     response::{
-        ApiMeta, ApiResponse, DiffData, GenerateData, SchemaData, SuggestionJson,
-        UnresolvedRenameJson, WarningJson, fnv64_hex,
+        ApiMeta, ApiResponse, AssumedRenameJson, DiffData, GenerateData, SchemaData,
+        SuggestionJson, UnresolvedRenameJson, WarningJson, fnv64_hex,
     },
     summary::summarize,
 };
@@ -95,6 +95,16 @@ enum Commands {
         /// Resolve an ambiguous rename in the format TABLE.OLD_COL:NEW_COL
         #[arg(long = "rename", value_name = "TABLE.OLD:NEW")]
         renames: Vec<String>,
+
+        /// Reject an auto-applied rename reported by `diff` — replace it with a
+        /// separate DROP COLUMN + ADD COLUMN, in the format TABLE.OLD_COL
+        #[arg(long = "reject", value_name = "TABLE.OLD")]
+        rejects: Vec<String>,
+
+        /// Exclude a statement reported by `diff` from the generated migration,
+        /// identified by its position in the `diff` `statements`/`changes` array
+        #[arg(long = "exclude", value_name = "INDEX")]
+        excludes: Vec<usize>,
     },
 
     /// Preview the schema as defined by the registered entities, as SQL DDL statements.
@@ -238,6 +248,8 @@ where
             local_time,
             universal_time: _,
             renames,
+            rejects,
+            excludes,
         }) => {
             let meta = build_meta(&migrator, None);
             match run_generate(
@@ -248,6 +260,8 @@ where
                 &schema_hash,
                 local_time,
                 &renames,
+                &rejects,
+                &excludes,
                 &migration_table,
             )
             .await
@@ -408,12 +422,28 @@ async fn run_diff<E: EntitySet>(
         })
         .collect();
 
+    let assumed = result
+        .assumed
+        .iter()
+        .map(|a| AssumedRenameJson {
+            table: a.table.clone(),
+            from: a.from.clone(),
+            to: a.to.clone(),
+            statement_index: result
+                .statements
+                .iter()
+                .position(|(id, _)| *id == a.id)
+                .expect("assumed rename must have a matching statement"),
+        })
+        .collect();
+
     Ok(DiffData {
         changes,
         statements,
         warnings,
         suggestions,
         unresolved,
+        assumed,
         schema_hash,
     })
 }
@@ -454,6 +484,8 @@ async fn run_generate<E: EntitySet>(
     expected_schema_hash: &str,
     local_time: bool,
     renames: &[String],
+    rejects: &[String],
+    excludes: &[usize],
     protected_table: &str,
 ) -> Result<GenerateData, Box<dyn std::error::Error>> {
     if name.contains('-') {
@@ -489,6 +521,39 @@ async fn run_generate<E: EntitySet>(
              Re-run `diff` to get a fresh schema hash."
         )
         .into());
+    }
+
+    // --exclude indices refer to positions in the `diff`-reported statement list,
+    // before any --reject/--exclude modifications shift the vec around.
+    let original_ids: Vec<sea_orm::SchemaChangeId> =
+        result.statements.iter().map(|(id, _)| *id).collect();
+
+    // Reject auto-applied renames — replace each with a separate DROP + ADD.
+    for reject in rejects {
+        let (table, column) = reject
+            .split_once('.')
+            .ok_or_else(|| format!("invalid --reject value '{reject}': expected table.column"))?;
+        let assumed = result
+            .assumed
+            .iter()
+            .find(|a| a.table == table && a.from == column)
+            .ok_or_else(|| format!("--reject {reject} does not match any auto-applied rename"))?;
+        result.reject_assumed(assumed.id);
+    }
+
+    // Exclude statements by the index `diff` reported them at.
+    if !excludes.is_empty() {
+        let mut exclude_ids = std::collections::HashSet::new();
+        for &idx in excludes {
+            let id = original_ids.get(idx).ok_or_else(|| {
+                format!(
+                    "--exclude {idx} is out of range (diff reported {} statements)",
+                    original_ids.len()
+                )
+            })?;
+            exclude_ids.insert(*id);
+        }
+        result.exclude(&exclude_ids);
     }
 
     // Error if there are still unresolved renames

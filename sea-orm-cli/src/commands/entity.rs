@@ -6,9 +6,10 @@ use std::io;
 use colored::Colorize;
 
 use crate::commands::subprocess::{
-    DiffData, GenerateData, SchemaData, manifest_path, run_subprocess_json,
+    AssumedRenameJson, DiffData, GenerateData, SchemaData, manifest_path, run_subprocess_json,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_entity_sync(
     dir: &str,
     migration_dir: &str,
@@ -17,6 +18,7 @@ pub fn run_entity_sync(
     database_schema: Option<&str>,
     renames: &[String],
     no_confirm: bool,
+    review_all: bool,
 ) -> Result<(), Box<dyn Error>> {
     let manifest = manifest_path(dir);
 
@@ -26,7 +28,7 @@ pub fn run_entity_sync(
         run_subprocess_json::<DiffData>(&manifest, &diff_args, database_url, database_schema)
             .map_err(|e| format!("diff failed: {e}"))?;
 
-    let decision = run_sync(diff, name, renames, no_confirm)?;
+    let decision = run_sync(diff, name, renames, no_confirm, review_all)?;
 
     match decision {
         SyncDecision::Quit => {
@@ -37,6 +39,8 @@ pub fn run_entity_sync(
             schema_hash,
             renames: resolved_renames,
             migration_name: gen_name,
+            rejects,
+            excludes,
         } => {
             let mut gen_args = vec![
                 "generate".to_string(),
@@ -46,6 +50,12 @@ pub fn run_entity_sync(
             ];
             for (table, old, new) in &resolved_renames {
                 gen_args.push(format!("--rename={table}.{old}:{new}"));
+            }
+            for (table, old) in &rejects {
+                gen_args.push(format!("--reject={table}.{old}"));
+            }
+            for idx in &excludes {
+                gen_args.push(format!("--exclude={idx}"));
             }
 
             let gen_args_ref: Vec<&str> = gen_args.iter().map(String::as_str).collect();
@@ -88,6 +98,8 @@ enum SyncDecision {
         schema_hash: String,
         renames: Vec<(String, String, String)>, // (table, old, new)
         migration_name: String,
+        rejects: Vec<(String, String)>, // (table, old) -- assumed renames rejected in review
+        excludes: Vec<usize>,           // statement indices excluded in review
     },
 }
 
@@ -96,6 +108,7 @@ fn run_sync(
     name: Option<&str>,
     rename_flags: &[String],
     no_confirm: bool,
+    review_all: bool,
 ) -> Result<SyncDecision, Box<dyn Error>> {
     if diff.statements.is_empty() {
         println!(
@@ -228,6 +241,10 @@ fn run_sync(
         }
     }
 
+    let Some((rejects, excludes)) = run_change_review(&diff, review_all)? else {
+        return Ok(SyncDecision::Quit);
+    };
+
     let migration_name = match name {
         Some(n) => n.to_string(),
         None => {
@@ -261,7 +278,102 @@ fn run_sync(
         schema_hash,
         renames: resolved_renames,
         migration_name,
+        rejects,
+        excludes,
     })
+}
+
+/// Walk the reviewable changes one at a time, prompting `[y/n/b/q]` for each.
+/// By default only assumed (auto-applied) renames are reviewed; with `review_all`,
+/// every change in `diff.changes` is. Returns `None` on quit, otherwise the
+/// rejected assumed renames (as `(table, old_column)`) and the indices of any
+/// other rejected changes to exclude from the migration.
+fn run_change_review(
+    diff: &DiffData,
+    review_all: bool,
+) -> Result<Option<(Vec<(String, String)>, Vec<usize>)>, Box<dyn Error>> {
+    let assumed_by_index: std::collections::HashMap<usize, &AssumedRenameJson> = diff
+        .assumed
+        .iter()
+        .map(|a| (a.statement_index, a))
+        .collect();
+
+    let queue: Vec<usize> = if review_all {
+        (0..diff.changes.len()).collect()
+    } else {
+        let mut idxs: Vec<usize> = assumed_by_index.keys().copied().collect();
+        idxs.sort_unstable();
+        idxs
+    };
+
+    if queue.is_empty() {
+        return Ok(Some((Vec::new(), Vec::new())));
+    }
+
+    println!();
+    println!("{}", "Review changes:".bold());
+
+    let mut decisions: Vec<(usize, bool)> = Vec::new();
+    let mut pos = 0;
+    while pos < queue.len() {
+        let idx = queue[pos];
+        let assumed = assumed_by_index.get(&idx);
+
+        println!();
+        if let Some(a) = assumed {
+            println!(
+                "  {} rename {}.{} {} {}",
+                "[assumed]".yellow(),
+                a.table,
+                a.from,
+                "->".dimmed(),
+                a.to
+            );
+        }
+        println!("  {}", diff.changes[idx]);
+        println!("    {}", diff.statements[idx].dimmed());
+
+        print!("{}", "  [y]es/[n]o/[b]ack/[q]uit: ".bold());
+        io::Write::flush(&mut io::stdout())?;
+        let mut input = String::new();
+        io::BufRead::read_line(&mut io::stdin().lock(), &mut input)?;
+        let input = input.trim().to_lowercase();
+
+        match input.as_str() {
+            "y" | "yes" => {
+                decisions.push((idx, true));
+                pos += 1;
+            }
+            "n" | "no" => {
+                decisions.push((idx, false));
+                pos += 1;
+            }
+            "b" | "back" => {
+                if decisions.is_empty() {
+                    println!("  {}", "Nothing to go back to.".yellow());
+                } else {
+                    decisions.pop();
+                    pos -= 1;
+                }
+            }
+            "q" | "quit" => return Ok(None),
+            _ => println!("  {}", "Please enter y, n, b, or q.".yellow()),
+        }
+    }
+
+    let mut rejects = Vec::new();
+    let mut excludes = Vec::new();
+    for (idx, accepted) in decisions {
+        if accepted {
+            continue;
+        }
+        match assumed_by_index.get(&idx) {
+            Some(a) => rejects.push((a.table.clone(), a.from.clone())),
+            None => excludes.push(idx),
+        }
+    }
+
+    Ok(Some((rejects, excludes)))
 }
 
 fn prompt_rename_choice(candidates: &[String]) -> Result<Option<String>, Box<dyn Error>> {

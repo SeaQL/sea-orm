@@ -39,6 +39,7 @@ pub struct DiffData {
     pub warnings: Vec<WarningJson>,
     pub suggestions: Vec<SuggestionJson>,
     pub unresolved: Vec<UnresolvedRenameJson>,
+    pub assumed: Vec<AssumedRenameJson>,
     pub schema_hash: String,
 }
 
@@ -66,6 +67,14 @@ pub struct UnresolvedRenameJson {
     pub table: String,
     pub removed: String,
     pub candidates: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct AssumedRenameJson {
+    pub table: String,
+    pub from: String,
+    pub to: String,
+    pub statement_index: usize,
 }
 
 /// Output of `schema` — entity-defined schema as SQL DDL, no DB connection needed.

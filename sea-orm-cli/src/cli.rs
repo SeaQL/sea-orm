@@ -234,6 +234,10 @@ pub enum EntitySubcommands {
         /// Skip the Y/n confirmation prompt and generate the migration immediately.
         #[arg(long, default_value_t = false)]
         no_confirm: bool,
+
+        /// Interactively review every change, not just auto-applied (assumed) renames.
+        #[arg(long, default_value_t = false)]
+        review_all: bool,
     },
 
     #[command(
@@ -624,6 +628,7 @@ pub async fn main() {
                 name,
                 renames,
                 no_confirm,
+                review_all,
             } => {
                 if let Err(e) = run_entity_sync(
                     &dir,
@@ -633,6 +638,7 @@ pub async fn main() {
                     database_schema.as_deref(),
                     &renames,
                     no_confirm,
+                    review_all,
                 ) {
                     eprintln!("{} {e}", "Error:".red().bold());
                     std::process::exit(1);

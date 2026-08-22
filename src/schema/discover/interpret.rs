@@ -30,6 +30,11 @@ pub struct InterpretResult {
     pub suggestions: Vec<DiscoverSuggestion>,
     /// Ambiguous renames that need user input to resolve.
     pub unresolved: Vec<resolver::AmbiguousRename>,
+    /// Renames that were auto-applied because they were an obvious 1:1 match
+    /// (see [`resolver::RenameResolution::assumed`]). Each entry names the
+    /// statement in `statements` it produced, plus the DROP + ADD pair that
+    /// should replace it if the caller rejects the assumption.
+    pub assumed: Vec<AssumedRename>,
 }
 
 impl InterpretResult {
@@ -37,6 +42,48 @@ impl InterpretResult {
     pub fn sql_statements(&self) -> Vec<&Statement> {
         self.statements.iter().map(|(_, s)| s).collect()
     }
+
+    /// Reject an auto-applied rename: remove its RENAME COLUMN statement and
+    /// replace it with the separate DROP COLUMN + ADD COLUMN it was assumed from.
+    /// No-op if `id` does not match any entry in `assumed`.
+    pub fn reject_assumed(&mut self, id: ChangeId) {
+        let Some(pos) = self.assumed.iter().position(|a| a.id == id) else {
+            return;
+        };
+        let assumed = self.assumed.remove(pos);
+        self.statements.retain(|(sid, _)| *sid != id);
+        self.statements
+            .push((assumed.drop_id, assumed.fallback_drop));
+        self.statements.push((assumed.add_id, assumed.fallback_add));
+    }
+
+    /// Exclude a set of statements from the result entirely, identified by [`ChangeId`].
+    pub fn exclude(&mut self, ids: &HashSet<ChangeId>) {
+        self.statements.retain(|(sid, _)| !ids.contains(sid));
+    }
+}
+
+/// A rename that was auto-applied because the resolver considered it an
+/// obvious 1:1 match (same type, close proximity). Carries the fallback
+/// DROP + ADD statements needed if the caller rejects the assumption via
+/// [`InterpretResult::reject_assumed`].
+#[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
+#[derive(Debug, Clone)]
+pub struct AssumedRename {
+    /// The table the renamed column belongs to.
+    pub table: String,
+    /// The old (removed) column name.
+    pub from: String,
+    /// The new (added) column name.
+    pub to: String,
+    /// [`ChangeId`] of the RENAME COLUMN statement currently in `statements`.
+    pub id: ChangeId,
+    /// [`ChangeId`] to use for the fallback DROP COLUMN statement.
+    pub drop_id: ChangeId,
+    /// [`ChangeId`] to use for the fallback ADD COLUMN statement.
+    pub add_id: ChangeId,
+    fallback_drop: Statement,
+    fallback_add: Statement,
 }
 
 /// A decision made about an ambiguous rename.
@@ -123,6 +170,7 @@ pub fn interpret(change_set: ChangeSet, config: &InterpretConfig) -> InterpretRe
     let mut warnings: Vec<DiscoverWarning> = Vec::new();
     let mut suggestions: Vec<DiscoverSuggestion> = Vec::new();
     let mut unresolved: Vec<resolver::AmbiguousRename> = Vec::new();
+    let mut assumed: Vec<AssumedRename> = Vec::new();
 
     // Ordered to satisfy FK / type constraints:
     // 1. CREATE SCHEMA — namespaces must exist before anything created inside them
@@ -144,6 +192,7 @@ pub fn interpret(change_set: ChangeSet, config: &InterpretConfig) -> InterpretRe
         &mut warnings,
         &mut suggestions,
         &mut unresolved,
+        &mut assumed,
     );
     interpret_constraint_adds(&change_set.constraints, &mut statements);
     interpret_constraint_drops(&change_set.constraints, &mut statements);
@@ -156,6 +205,7 @@ pub fn interpret(change_set: ChangeSet, config: &InterpretConfig) -> InterpretRe
         warnings,
         suggestions,
         unresolved,
+        assumed,
     }
 }
 
@@ -206,6 +256,7 @@ fn interpret_column_adds(
     warnings: &mut Vec<DiscoverWarning>,
     suggestions: &mut Vec<DiscoverSuggestion>,
     unresolved: &mut Vec<resolver::AmbiguousRename>,
+    assumed: &mut Vec<AssumedRename>,
 ) {
     let mut drop_stmts: Vec<(ChangeId, Statement)> = Vec::new();
     interpret_columns_inner(
@@ -216,6 +267,7 @@ fn interpret_column_adds(
         warnings,
         suggestions,
         unresolved,
+        assumed,
     );
     // drop_stmts are discarded here; they will be emitted by interpret_column_drops
 }
@@ -231,6 +283,7 @@ fn interpret_column_drops(
     let mut warnings = Vec::new();
     let mut suggestions = Vec::new();
     let mut unresolved = Vec::new();
+    let mut assumed = Vec::new();
     interpret_columns_inner(
         columns,
         config,
@@ -239,11 +292,13 @@ fn interpret_column_drops(
         &mut warnings,
         &mut suggestions,
         &mut unresolved,
+        &mut assumed,
     );
     statements.extend(drop_stmts);
 }
 
 /// Core column interpretation: runs rename detection and separates ADD/RENAME from DROP outputs.
+#[allow(clippy::too_many_arguments)]
 fn interpret_columns_inner(
     columns: &[ColumnChange],
     config: &InterpretConfig,
@@ -252,6 +307,7 @@ fn interpret_columns_inner(
     warnings: &mut Vec<DiscoverWarning>,
     suggestions: &mut Vec<DiscoverSuggestion>,
     unresolved: &mut Vec<resolver::AmbiguousRename>,
+    assumed: &mut Vec<AssumedRename>,
 ) {
     let mut table_added: HashMap<String, Vec<(ChangeId, AddedColumn, Statement)>> =
         Default::default();
@@ -396,6 +452,16 @@ fn interpret_columns_inner(
                         rename.removed, rename.added, rename.proximity,
                     ),
                     related_changes: vec![add_id, drop_id],
+                });
+                assumed.push(AssumedRename {
+                    table: table.clone(),
+                    from: rename.removed.clone(),
+                    to: rename.added.clone(),
+                    id: add_id,
+                    drop_id,
+                    add_id,
+                    fallback_drop: removed_stmts[&rename.removed].clone(),
+                    fallback_add: added_stmts[&rename.added].clone(),
                 });
             } else {
                 suggestions.push(DiscoverSuggestion {

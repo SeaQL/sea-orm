@@ -9,8 +9,9 @@ use sea_query::{
 pub use super::discover::resolver::extract_enum_type_name;
 #[cfg(feature = "schema-sync")]
 pub use super::discover::{
-    DiscoverSuggestion, DiscoverWarning, InterpretConfig, InterpretResult, RenameDecision,
-    SchemaChangeId, SuggestionKind, WarningKind, interpret::interpret as interpret_changes,
+    AssumedRename, DiscoverSuggestion, DiscoverWarning, InterpretConfig, InterpretResult,
+    RenameDecision, SchemaChangeId, SuggestionKind, WarningKind,
+    interpret::interpret as interpret_changes,
 };
 
 /// A schema builder that can take a registry of Entities and synchronize it with database.

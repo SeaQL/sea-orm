@@ -99,6 +99,9 @@ pub struct DiffData {
     pub suggestions: Vec<SuggestionJson>,
     /// Ambiguous renames that the caller must resolve before calling `generate`.
     pub unresolved: Vec<UnresolvedRenameJson>,
+    /// Renames auto-applied as an obvious 1:1 match — candidates for interactive review.
+    /// `statement_index` is the position of the RENAME statement in `statements`/`changes`.
+    pub assumed: Vec<AssumedRenameJson>,
     /// FNV64 hex digest of the discovered SQL — must be passed back to `generate`
     /// unchanged so stale calls are rejected.
     pub schema_hash: String,
@@ -136,6 +139,14 @@ pub struct UnresolvedRenameJson {
     pub table: String,
     pub removed: String,
     pub candidates: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AssumedRenameJson {
+    pub table: String,
+    pub from: String,
+    pub to: String,
+    pub statement_index: usize,
 }
 
 // ---------------------------------------------------------------------------
