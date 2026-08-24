@@ -102,6 +102,10 @@ pub struct DiffData {
     /// Renames auto-applied as an obvious 1:1 match — candidates for interactive review.
     /// `statement_index` is the position of the RENAME statement in `statements`/`changes`.
     pub assumed: Vec<AssumedRenameJson>,
+    /// Table renames/schema-moves auto-applied because a dropped table and a
+    /// created table had an identical column signature — candidates for
+    /// interactive review.
+    pub table_moves: Vec<AssumedTableMoveJson>,
     /// FNV64 hex digest of the discovered SQL — must be passed back to `generate`
     /// unchanged so stale calls are rejected.
     pub schema_hash: String,
@@ -147,6 +151,16 @@ pub struct AssumedRenameJson {
     pub from: String,
     pub to: String,
     pub statement_index: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AssumedTableMoveJson {
+    pub from: String,
+    pub to: String,
+    /// Positions in `statements`/`changes` of the statement(s) this move
+    /// produced (one if only the name or only the schema changed, two if
+    /// both did) — reviewed and accepted/rejected as a single unit.
+    pub statement_indices: Vec<usize>,
 }
 
 // ---------------------------------------------------------------------------

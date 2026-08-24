@@ -12,7 +12,9 @@ use crate::{ConnectionTrait, DbErr, sorted_tables};
 use changes::ChangeSet;
 
 pub use changes::ChangeId as SchemaChangeId;
-pub use interpret::{AssumedRename, InterpretConfig, InterpretResult, RenameDecision};
+pub use interpret::{
+    AssumedRename, AssumedTableMove, InterpretConfig, InterpretResult, RenameDecision,
+};
 use sea_query::TableCreateStatement;
 pub use suggestion::{DiscoverSuggestion, SuggestionKind};
 pub use warning::{DiscoverWarning, WarningKind};

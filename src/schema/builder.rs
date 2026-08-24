@@ -9,8 +9,8 @@ use sea_query::{
 pub use super::discover::resolver::extract_enum_type_name;
 #[cfg(feature = "schema-sync")]
 pub use super::discover::{
-    AssumedRename, DiscoverSuggestion, DiscoverWarning, InterpretConfig, InterpretResult,
-    RenameDecision, SchemaChangeId, SuggestionKind, WarningKind,
+    AssumedRename, AssumedTableMove, DiscoverSuggestion, DiscoverWarning, InterpretConfig,
+    InterpretResult, RenameDecision, SchemaChangeId, SuggestionKind, WarningKind,
     interpret::interpret as interpret_changes,
 };
 

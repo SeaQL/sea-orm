@@ -8,8 +8,8 @@ use crate::{
     codegen::MigrationMetadata,
     fs::write_migration,
     response::{
-        ApiMeta, ApiResponse, AssumedRenameJson, DiffData, GenerateData, SchemaData,
-        SuggestionJson, UnresolvedRenameJson, WarningJson, fnv64_hex,
+        ApiMeta, ApiResponse, AssumedRenameJson, AssumedTableMoveJson, DiffData, GenerateData,
+        SchemaData, SuggestionJson, UnresolvedRenameJson, WarningJson, fnv64_hex,
     },
     summary::summarize,
 };
@@ -105,6 +105,12 @@ enum Commands {
         /// identified by its position in the `diff` `statements`/`changes` array
         #[arg(long = "exclude", value_name = "INDEX")]
         excludes: Vec<usize>,
+
+        /// Reject an auto-applied table rename/schema-move reported by `diff`
+        /// — replace it with a separate CREATE TABLE + DROP TABLE, identified
+        /// by the table's old (schema-qualified) name
+        #[arg(long = "reject-table", value_name = "TABLE")]
+        reject_tables: Vec<String>,
     },
 
     /// Preview the schema as defined by the registered entities, as SQL DDL statements.
@@ -250,6 +256,7 @@ where
             renames,
             rejects,
             excludes,
+            reject_tables,
         }) => {
             let meta = build_meta(&migrator, None);
             match run_generate(
@@ -262,6 +269,7 @@ where
                 &renames,
                 &rejects,
                 &excludes,
+                &reject_tables,
                 &migration_table,
             )
             .await
@@ -416,7 +424,7 @@ async fn run_diff<E: EntitySet>(
         .unresolved
         .iter()
         .map(|u| UnresolvedRenameJson {
-            table: u.table.clone(),
+            table: u.table_name(),
             removed: u.removed.clone(),
             candidates: u.candidates.iter().map(|c| c.added.clone()).collect(),
         })
@@ -426,7 +434,7 @@ async fn run_diff<E: EntitySet>(
         .assumed
         .iter()
         .map(|a| AssumedRenameJson {
-            table: a.table.clone(),
+            table: a.table_name(),
             from: a.from.clone(),
             to: a.to.clone(),
             statement_index: result
@@ -437,6 +445,29 @@ async fn run_diff<E: EntitySet>(
         })
         .collect();
 
+    let table_moves = result
+        .table_moves
+        .iter()
+        .map(|m| {
+            let statement_indices = result
+                .statements
+                .iter()
+                .enumerate()
+                .filter(|(_, (id, _))| *id == m.id || *id == m.drop_id)
+                .map(|(idx, _)| idx)
+                .collect::<Vec<_>>();
+            assert!(
+                !statement_indices.is_empty(),
+                "assumed table move must have at least one matching statement"
+            );
+            AssumedTableMoveJson {
+                from: m.from_name(),
+                to: m.to_name(),
+                statement_indices,
+            }
+        })
+        .collect();
+
     Ok(DiffData {
         changes,
         statements,
@@ -444,6 +475,7 @@ async fn run_diff<E: EntitySet>(
         suggestions,
         unresolved,
         assumed,
+        table_moves,
         schema_hash,
     })
 }
@@ -486,6 +518,7 @@ async fn run_generate<E: EntitySet>(
     renames: &[String],
     rejects: &[String],
     excludes: &[usize],
+    reject_tables: &[String],
     protected_table: &str,
 ) -> Result<GenerateData, Box<dyn std::error::Error>> {
     if name.contains('-') {
@@ -530,15 +563,30 @@ async fn run_generate<E: EntitySet>(
 
     // Reject auto-applied renames — replace each with a separate DROP + ADD.
     for reject in rejects {
+        // rsplit so a schema-qualified table (`schema.table.column`) still
+        // isolates the column as the last segment.
         let (table, column) = reject
-            .split_once('.')
+            .rsplit_once('.')
             .ok_or_else(|| format!("invalid --reject value '{reject}': expected table.column"))?;
         let assumed = result
             .assumed
             .iter()
-            .find(|a| a.table == table && a.from == column)
+            .find(|a| a.table_name() == table && a.from == column)
             .ok_or_else(|| format!("--reject {reject} does not match any auto-applied rename"))?;
         result.reject_assumed(assumed.id);
+    }
+
+    // Reject auto-applied table renames/schema-moves — replace each with a
+    // separate CREATE TABLE + DROP TABLE.
+    for reject in reject_tables {
+        let table_move = result
+            .table_moves
+            .iter()
+            .find(|m| &m.from_name() == reject)
+            .ok_or_else(|| {
+                format!("--reject-table {reject} does not match any auto-applied table move")
+            })?;
+        result.reject_table_move(table_move.id);
     }
 
     // Exclude statements by the index `diff` reported them at.
@@ -580,7 +628,7 @@ async fn run_generate<E: EntitySet>(
                     .map(|c| c.added.as_str())
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("{}.{} -> [{}]", u.table, u.removed, candidates)
+                format!("{}.{} -> [{}]", u.table_name(), u.removed, candidates)
             })
             .collect();
         return Err(format!(
@@ -648,9 +696,10 @@ fn resolve_renames(
     let mut missing = Vec::new();
 
     for ambiguous in unresolved {
+        let table_name = ambiguous.table_name();
         if let Some((_, _, new_name)) = cli_renames
             .iter()
-            .find(|(table, old, _)| *table == ambiguous.table && *old == ambiguous.removed)
+            .find(|(table, old, _)| *table == table_name && *old == ambiguous.removed)
         {
             if ambiguous.candidates.iter().any(|c| c.added == *new_name) {
                 decisions.push(RenameDecision::Rename {
@@ -660,7 +709,7 @@ fn resolve_renames(
             } else {
                 return Err(format!(
                     "--rename {}.{}:{} is invalid: '{}' is not among candidates [{}]",
-                    ambiguous.table,
+                    table_name,
                     ambiguous.removed,
                     new_name,
                     new_name,
@@ -676,7 +725,7 @@ fn resolve_renames(
         } else {
             missing.push(format!(
                 "{}.{} (candidates: {})",
-                ambiguous.table,
+                table_name,
                 ambiguous.removed,
                 ambiguous
                     .candidates
@@ -700,9 +749,11 @@ fn resolve_renames(
 }
 
 /// Parse a `--rename TABLE.OLD:NEW` string into `(table, old, new)`.
+/// `TABLE` may itself be schema-qualified (`schema.table`), so split off the
+/// old-column name from the *last* dot rather than the first.
 fn parse_rename_arg(s: &str) -> Option<(String, String, String)> {
     let (table_old, new) = s.split_once(':')?;
-    let (table, old) = table_old.split_once('.')?;
+    let (table, old) = table_old.rsplit_once('.')?;
     if table.is_empty() || old.is_empty() || new.is_empty() {
         return None;
     }

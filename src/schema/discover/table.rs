@@ -19,14 +19,7 @@ pub(crate) fn record_table_changes(
         .find(|tbl| get_table_name(tbl.get_table_name()) == table_name);
 
     if let Some(existing_table) = existing_table {
-        record_column_changes(
-            entity,
-            existing_table,
-            &table_name_str,
-            changes,
-            allow_dangerous,
-            db_backend,
-        );
+        record_column_changes(entity, existing_table, changes, allow_dangerous, db_backend);
         record_foreign_key_changes(
             entity,
             existing_table,
@@ -52,7 +45,8 @@ pub(crate) fn record_table_changes(
         );
     } else {
         changes.record_table(TableChangeKind::Create {
-            table: table_name_str.clone(),
+            table_ref: get_entity_table_name(entity),
+            columns: column_signature(entity.table()),
             stmt: db_backend.build(entity.table()),
         });
 
@@ -92,8 +86,29 @@ pub(crate) fn record_orphan_tables(
         .collect();
 
     for table_name in sorted_tables(&orphans, TableSortOrder::ChildrenFirst) {
-        changes.record_table(TableChangeKind::Drop { table: table_name });
+        let tbl = orphans
+            .iter()
+            .find(|t| get_table_name(t.get_table_name()) == table_name)
+            .expect("orphan table must be in the orphans list it was sorted from");
+        changes.record_table(TableChangeKind::Drop {
+            table: table_name,
+            columns: column_signature(tbl),
+        });
     }
+}
+
+/// Column (name, type) signature in definition order — used to detect a
+/// dropped table and a created table as the same table renamed/schema-moved.
+fn column_signature(tbl: &TableCreateStatement) -> Vec<(String, Option<sea_query::ColumnType>)> {
+    tbl.get_columns()
+        .iter()
+        .map(|c| {
+            (
+                c.get_column_name().to_string(),
+                c.get_column_type().cloned(),
+            )
+        })
+        .collect()
 }
 
 fn get_entity_table_name(entity: &EntitySchemaInfo) -> sea_query::TableRef {
@@ -107,7 +122,6 @@ fn get_entity_table_name(entity: &EntitySchemaInfo) -> sea_query::TableRef {
 fn record_column_changes(
     entity: &EntitySchemaInfo,
     existing_table: &sea_query::TableCreateStatement,
-    table_name_str: &str,
     changes: &mut ChangeSet,
     allow_dangerous: bool,
     db_backend: DbBackend,
@@ -124,7 +138,7 @@ fn record_column_changes(
         if exists_in_db {
             if column_def.get_column_spec().check.is_some() {
                 changes.record_column(
-                    table_name_str.to_string(),
+                    entity_table_name.clone(),
                     ColumnChangeKind::CheckConstraintPresent {
                         column: col_name.to_string(),
                     },
@@ -144,7 +158,7 @@ fn record_column_changes(
 
         if !renamed_from.is_empty() {
             changes.record_column(
-                table_name_str.to_string(),
+                entity_table_name.clone(),
                 ColumnChangeKind::ExplicitRename {
                     from: renamed_from.to_string(),
                     to: col_name.to_string(),
@@ -159,7 +173,7 @@ fn record_column_changes(
             let spec = column_def.get_column_spec();
             let is_not_null = matches!(spec.nullable, Some(false));
             changes.record_column(
-                table_name_str.to_string(),
+                entity_table_name.clone(),
                 ColumnChangeKind::Add {
                     column: col_name.to_string(),
                     index: idx,
@@ -188,7 +202,7 @@ fn record_column_changes(
                 .any(|ec| ec.get_column_name() == col_name);
             if !in_entity {
                 changes.record_column(
-                    table_name_str.to_string(),
+                    entity_table_name.clone(),
                     ColumnChangeKind::Drop {
                         column: col_name.to_string(),
                         index: idx,

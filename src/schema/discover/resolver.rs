@@ -41,12 +41,34 @@ pub struct RenameCandidate {
 /// An ambiguous rename where multiple candidates exist for a removed column.
 #[derive(Debug, Clone)]
 pub struct AmbiguousRename {
-    /// The table this rename occurs in.
-    pub table: String,
+    /// Full (possibly schema-qualified) reference to the table this rename
+    /// occurs in, for building the eventual rename/drop statement without
+    /// losing the schema.
+    pub table_ref: sea_query::TableRef,
     /// The name of the removed column.
     pub removed: String,
     /// All possible added columns it could be renamed to.
     pub candidates: Vec<RenameCandidate>,
+}
+
+impl AmbiguousRename {
+    /// The table this rename occurs in, qualified by schema when the table has one
+    /// (e.g. `"my_schema.person"`).
+    pub fn table_name(&self) -> String {
+        qualified_table_name(&self.table_ref)
+    }
+}
+
+/// Render a table reference as a display string, schema-qualified when present
+/// (e.g. `"my_schema.person"`), falling back to the bare name otherwise.
+pub(crate) fn qualified_table_name(table_ref: &sea_query::TableRef) -> String {
+    match table_ref {
+        sea_query::TableRef::Table(sea_query::TableName(Some(schema), table), _) => {
+            format!("{}.{}", schema.1, table)
+        }
+        sea_query::TableRef::Table(sea_query::TableName(None, table), _) => table.to_string(),
+        other => other.sea_orm_table().to_string(),
+    }
 }
 
 /// The result of rename resolution.
@@ -111,7 +133,7 @@ pub fn types_compatible(a: Option<&ColumnType>, b: Option<&ColumnType>) -> bool 
 /// - If multiple candidates → ambiguous rename.
 /// - Unmatched columns go to remaining_added / remaining_removed.
 pub fn resolve_renames(
-    table: &str,
+    table_ref: sea_query::TableRef,
     added: Vec<AddedColumn>,
     removed: Vec<RemovedColumn>,
 ) -> RenameResolution {
@@ -193,7 +215,7 @@ pub fn resolve_renames(
 
         if available.len() > 1 {
             resolution.ambiguous.push(AmbiguousRename {
-                table: table.to_string(),
+                table_ref: table_ref.clone(),
                 removed: removed[*ri].name.clone(),
                 candidates: available,
             });
@@ -299,6 +321,7 @@ fn extract_enum_variants(sql: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sea_query::IntoTableRef;
 
     fn added(index: usize, name: &str, col_type: Option<ColumnType>) -> AddedColumn {
         AddedColumn {
@@ -316,6 +339,10 @@ mod tests {
         }
     }
 
+    fn tref(name: &str) -> sea_query::TableRef {
+        sea_query::Alias::new(name).into_table_ref()
+    }
+
     #[test]
     fn test_single_obvious_rename() {
         let added_cols = vec![added(
@@ -329,7 +356,7 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames("cake", added_cols, removed_cols);
+        let result = resolve_renames(tref("cake"), added_cols, removed_cols);
 
         assert_eq!(result.assumed.len(), 1);
         assert_eq!(result.assumed[0].removed, "name");
@@ -349,7 +376,7 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames("cake", added_cols, removed_cols);
+        let result = resolve_renames(tref("cake"), added_cols, removed_cols);
 
         assert!(result.assumed.is_empty());
         assert!(result.ambiguous.is_empty());
@@ -370,7 +397,7 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames("cake", added_cols, removed_cols);
+        let result = resolve_renames(tref("cake"), added_cols, removed_cols);
 
         assert!(result.assumed.is_empty());
         assert!(result.ambiguous.is_empty());
@@ -399,11 +426,11 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames("cake", added_cols, removed_cols);
+        let result = resolve_renames(tref("cake"), added_cols, removed_cols);
 
         assert!(result.assumed.is_empty());
         assert_eq!(result.ambiguous.len(), 1);
-        assert_eq!(result.ambiguous[0].table, "cake");
+        assert_eq!(result.ambiguous[0].table_name(), "cake");
         assert_eq!(result.ambiguous[0].removed, "name");
         assert_eq!(result.ambiguous[0].candidates.len(), 2);
     }
@@ -428,7 +455,7 @@ mod tests {
             removed(3, "weight", Some(ColumnType::Integer)),
         ];
 
-        let result = resolve_renames("product", added_cols, removed_cols);
+        let result = resolve_renames(tref("product"), added_cols, removed_cols);
 
         assert_eq!(result.assumed.len(), 2);
         assert!(result.ambiguous.is_empty());
@@ -449,7 +476,7 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames("item", added_cols, removed_cols);
+        let result = resolve_renames(tref("item"), added_cols, removed_cols);
 
         assert_eq!(result.assumed.len(), 1);
         assert_eq!(result.assumed[0].removed, "desc");
@@ -470,7 +497,7 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames("cake", added_cols, removed_cols);
+        let result = resolve_renames(tref("cake"), added_cols, removed_cols);
         assert_eq!(result.assumed.len(), 1);
         assert_eq!(result.assumed[0].proximity, 2);
 
@@ -486,13 +513,13 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames("cake", added_cols, removed_cols);
+        let result = resolve_renames(tref("cake"), added_cols, removed_cols);
         assert!(result.assumed.is_empty());
     }
 
     #[test]
     fn test_no_columns_produces_empty_resolution() {
-        let result = resolve_renames("empty", vec![], vec![]);
+        let result = resolve_renames(tref("empty"), vec![], vec![]);
         assert!(result.assumed.is_empty());
         assert!(result.ambiguous.is_empty());
         assert!(result.remaining_added.is_empty());
@@ -510,7 +537,7 @@ mod tests {
             added(2, "another", Some(ColumnType::Integer)),
         ];
 
-        let result = resolve_renames("t", added_cols, vec![]);
+        let result = resolve_renames(tref("t"), added_cols, vec![]);
         assert!(result.assumed.is_empty());
         assert!(result.ambiguous.is_empty());
         assert_eq!(result.remaining_added.len(), 2);
@@ -525,7 +552,7 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames("t", vec![], removed_cols);
+        let result = resolve_renames(tref("t"), vec![], removed_cols);
         assert!(result.assumed.is_empty());
         assert!(result.ambiguous.is_empty());
         assert!(result.remaining_added.is_empty());

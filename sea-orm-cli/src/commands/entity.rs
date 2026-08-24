@@ -6,7 +6,8 @@ use std::io;
 use colored::Colorize;
 
 use crate::commands::subprocess::{
-    AssumedRenameJson, DiffData, GenerateData, SchemaData, manifest_path, run_subprocess_json,
+    AssumedRenameJson, AssumedTableMoveJson, DiffData, GenerateData, SchemaData, manifest_path,
+    run_subprocess_json,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -41,6 +42,7 @@ pub fn run_entity_sync(
             migration_name: gen_name,
             rejects,
             excludes,
+            reject_tables,
         } => {
             let mut gen_args = vec![
                 "generate".to_string(),
@@ -56,6 +58,9 @@ pub fn run_entity_sync(
             }
             for idx in &excludes {
                 gen_args.push(format!("--exclude={idx}"));
+            }
+            for table in &reject_tables {
+                gen_args.push(format!("--reject-table={table}"));
             }
 
             let gen_args_ref: Vec<&str> = gen_args.iter().map(String::as_str).collect();
@@ -100,6 +105,7 @@ enum SyncDecision {
         migration_name: String,
         rejects: Vec<(String, String)>, // (table, old) -- assumed renames rejected in review
         excludes: Vec<usize>,           // statement indices excluded in review
+        reject_tables: Vec<String>,     // from-table names of table moves rejected in review
     },
 }
 
@@ -164,8 +170,10 @@ fn run_sync(
         let (table_col, new) = flag
             .split_once(':')
             .ok_or_else(|| format!("invalid --rename value '{flag}': expected table.old:new"))?;
+        // rsplit so a schema-qualified table (`schema.table.old`) still
+        // isolates the old-column name as the last segment.
         let (table, old) = table_col
-            .split_once('.')
+            .rsplit_once('.')
             .ok_or_else(|| format!("invalid --rename value '{flag}': expected table.old:new"))?;
         rename_map.insert((table.to_string(), old.to_string()), new.to_string());
     }
@@ -241,7 +249,7 @@ fn run_sync(
         }
     }
 
-    let Some((rejects, excludes)) = run_change_review(&diff, review_all)? else {
+    let Some((rejects, excludes, reject_tables)) = run_change_review(&diff, review_all)? else {
         return Ok(SyncDecision::Quit);
     };
 
@@ -280,34 +288,58 @@ fn run_sync(
         migration_name,
         rejects,
         excludes,
+        reject_tables,
     })
 }
 
 /// Walk the reviewable changes one at a time, prompting `[y/n/b/q]` for each.
-/// By default only assumed (auto-applied) renames are reviewed; with `review_all`,
-/// every change in `diff.changes` is. Returns `None` on quit, otherwise the
-/// rejected assumed renames (as `(table, old_column)`) and the indices of any
-/// other rejected changes to exclude from the migration.
+/// By default only assumed (auto-applied) changes — column renames and table
+/// renames/schema-moves — are reviewed; with `review_all`, every change in
+/// `diff.changes` is. A table move may span two statements (rename + schema
+/// move); both are reviewed together as one item, keyed by the first index.
+/// Returns `None` on quit, otherwise the rejected assumed renames (as
+/// `(table, old_column)`), the indices of any other rejected changes to
+/// exclude, and the rejected table moves (as `from_table` names).
 fn run_change_review(
     diff: &DiffData,
     review_all: bool,
-) -> Result<Option<(Vec<(String, String)>, Vec<usize>)>, Box<dyn Error>> {
+) -> Result<Option<(Vec<(String, String)>, Vec<usize>, Vec<String>)>, Box<dyn Error>> {
     let assumed_by_index: std::collections::HashMap<usize, &AssumedRenameJson> = diff
         .assumed
         .iter()
         .map(|a| (a.statement_index, a))
         .collect();
 
+    // Table moves may produce a second statement (rename + schema move).
+    // That second index is never independently reviewable — it's folded
+    // into the decision made at the move's first (primary) index.
+    let table_move_by_primary_index: std::collections::HashMap<usize, &AssumedTableMoveJson> = diff
+        .table_moves
+        .iter()
+        .filter_map(|m| m.statement_indices.first().map(|&idx| (idx, m)))
+        .collect();
+    let secondary_table_move_indices: std::collections::HashSet<usize> = diff
+        .table_moves
+        .iter()
+        .flat_map(|m| m.statement_indices.iter().skip(1).copied())
+        .collect();
+
     let queue: Vec<usize> = if review_all {
-        (0..diff.changes.len()).collect()
+        (0..diff.changes.len())
+            .filter(|idx| !secondary_table_move_indices.contains(idx))
+            .collect()
     } else {
-        let mut idxs: Vec<usize> = assumed_by_index.keys().copied().collect();
+        let mut idxs: Vec<usize> = assumed_by_index
+            .keys()
+            .chain(table_move_by_primary_index.keys())
+            .copied()
+            .collect();
         idxs.sort_unstable();
         idxs
     };
 
     if queue.is_empty() {
-        return Ok(Some((Vec::new(), Vec::new())));
+        return Ok(Some((Vec::new(), Vec::new(), Vec::new())));
     }
 
     println!();
@@ -318,6 +350,7 @@ fn run_change_review(
     while pos < queue.len() {
         let idx = queue[pos];
         let assumed = assumed_by_index.get(&idx);
+        let table_move = table_move_by_primary_index.get(&idx);
 
         println!();
         if let Some(a) = assumed {
@@ -330,8 +363,22 @@ fn run_change_review(
                 a.to
             );
         }
+        if let Some(m) = table_move {
+            println!(
+                "  {} table move {} {} {}",
+                "[assumed]".yellow(),
+                m.from,
+                "->".dimmed(),
+                m.to
+            );
+        }
         println!("  {}", diff.changes[idx]);
         println!("    {}", diff.statements[idx].dimmed());
+        if let Some(m) = table_move {
+            for &extra_idx in m.statement_indices.iter().skip(1) {
+                println!("    {}", diff.statements[extra_idx].dimmed());
+            }
+        }
 
         print!("{}", "  [y]es/[n]o/[b]ack/[q]uit: ".bold());
         io::Write::flush(&mut io::stdout())?;
@@ -363,17 +410,21 @@ fn run_change_review(
 
     let mut rejects = Vec::new();
     let mut excludes = Vec::new();
+    let mut reject_tables = Vec::new();
     for (idx, accepted) in decisions {
         if accepted {
             continue;
         }
-        match assumed_by_index.get(&idx) {
-            Some(a) => rejects.push((a.table.clone(), a.from.clone())),
-            None => excludes.push(idx),
+        if let Some(a) = assumed_by_index.get(&idx) {
+            rejects.push((a.table.clone(), a.from.clone()));
+        } else if let Some(m) = table_move_by_primary_index.get(&idx) {
+            reject_tables.push(m.from.clone());
+        } else {
+            excludes.push(idx);
         }
     }
 
-    Ok(Some((rejects, excludes)))
+    Ok(Some((rejects, excludes, reject_tables)))
 }
 
 fn prompt_rename_choice(candidates: &[String]) -> Result<Option<String>, Box<dyn Error>> {
