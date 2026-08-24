@@ -537,6 +537,12 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     fn json_key(&self) -> &'static str {
         self.as_str()
     }
+
+    /// JSON key used for this column when serializing the model.
+    #[cfg(feature = "with-json")]
+    fn json_key_serialize(&self) -> &'static str {
+        self.as_str()
+    }
 }
 
 /// Extension methods on [`ColumnType`] for building [`ColumnDef`]s and
