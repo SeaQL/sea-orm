@@ -524,16 +524,19 @@ pub trait ActiveModelTrait: Clone + Debug {
 
         let mut ser_de_map = <<Self::Entity as EntityTrait>::Column>::iter()
             .map(|col| (col.json_key_serialize(), col.json_key()))
-            .collect::<std::collections::HashMap<_,_>>();
+            .collect::<std::collections::HashMap<_, _>>();
 
         let mut merged = merged
             .into_iter()
             .map(|(key, val)| {
                 // map seralized keys into deserialize keys
-                let new_key = ser_de_map.remove(key.as_str()).map(ToString::to_string).unwrap_or(key);
+                let new_key = ser_de_map
+                    .remove(key.as_str())
+                    .map(ToString::to_string)
+                    .unwrap_or(key);
                 (new_key, val)
             })
-            .collect::<serde_json::Map<_,_>>();
+            .collect::<serde_json::Map<_, _>>();
 
         for col in <<Self::Entity as EntityTrait>::Column>::iter() {
             let key = col.json_key();
