@@ -3,7 +3,7 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{
     Field, GenericArgument, LitStr, Meta, MetaNameValue, PathArguments, Type, TypePath,
-    meta::ParseNestedMeta, punctuated::Punctuated, token::Comma,
+    meta::ParseNestedMeta, parse_quote, punctuated::Punctuated, token::Comma,
 };
 
 pub(crate) fn async_token() -> TokenStream {
@@ -38,7 +38,7 @@ impl RelationColumns {
     /// For example:
     /// `cake_id` or `Column::CakeId` -> `CakeId`;
     /// `(user_id, post_id)` -> `UserId`, `PostId`.
-    pub(crate) fn from_lit(lit: LitStr) -> syn::Result<Self> {
+    pub(crate) fn from_lit(lit: &LitStr) -> syn::Result<Self> {
         let paths = if lit.value().starts_with('(') {
             lit.parse_with(|input: syn::parse::ParseStream<'_>| {
                 let content;
@@ -120,7 +120,6 @@ pub(crate) enum CompoundKind {
     HasMany,
 }
 
-#[derive(Clone)]
 pub(crate) struct CompoundType {
     pub(crate) kind: CompoundKind,
     pub(crate) entity: TypePath,
@@ -175,7 +174,7 @@ impl CompoundType {
                 ) {
                     ("Entity", _) => Ok(Some(Self {
                         kind: CompoundKind::BelongsTo(CardinalityKind::Required),
-                        entity: ty_path.clone(),
+                        entity: parse_quote!(#ty_path),
                     })),
                     ("Option", PathArguments::AngleBracketed(args)) => {
                         let Some(entity) = entity_generic_arg(&args.args) else {
@@ -291,7 +290,7 @@ fn entity_generic_arg(args: &Punctuated<GenericArgument, Comma>) -> Option<TypeP
     }
     match args.first() {
         Some(GenericArgument::Type(Type::Path(type_path))) if is_entity_type(type_path) => {
-            Some(type_path.clone())
+            Some(parse_quote!(#type_path))
         }
         _ => None,
     }

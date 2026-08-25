@@ -302,7 +302,7 @@ pub fn expand_derive_entity_model(
                                     ignore = true;
                                 } else if meta.path.is_ident("primary_key") {
                                     is_primary_key = true;
-                                    primary_key_types.push(field.ty.clone());
+                                    primary_key_types.push(&field.ty);
                                 } else if meta.path.is_ident("nullable") {
                                     nullable = true;
                                 } else if meta.path.is_ident("indexed") {

@@ -28,9 +28,22 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
     let mut has_arrow_schema = false;
 
     for attr in input.attrs {
-        if !attr.path().is_ident("sea_orm") {
-            model_attrs.push(attr.clone());
+        let is_sea_orm = attr
+            .path()
+            .segments
+            .first()
+            .map(|seg| seg.ident == "sea_orm")
+            .unwrap_or(false);
+        if !is_sea_orm {
+            model_attrs.push(parse_quote!(#attr));
             model_ex_attrs.push(attr);
+            continue;
+        }
+
+        // `sea_orm::model` / `sea_orm::compact_model` are proc-macro invocations.
+        // Do not re-emit them: re-emitting would re-trigger the macro, and syn 3
+        // rejects `::` inside nested meta paths anyway.
+        if attr.path().segments.len() > 1 {
             continue;
         }
 
@@ -74,7 +87,7 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
 
         if !other_attrs.is_empty() {
             let attr: Attribute = parse_quote!( #[sea_orm(#other_attrs)] );
-            model_attrs.push(attr.clone());
+            model_attrs.push(parse_quote!(#attr));
             model_ex_attrs.push(attr);
         }
     }
@@ -473,7 +486,9 @@ fn entity_loader_field(field: &Ident, compound: &CompoundField) -> EntityLoaderF
     let self_entity = is_self_entity(entity);
     let (relation_enum, kind) = match &compound.relation {
         Some(RelationAttr::BelongsTo(attr)) => (
-            attr.relation_variants.explicit_name().cloned(),
+            attr.relation_variants
+                .explicit_name()
+                .map(|lit| parse_quote!(#lit)),
             if self_entity {
                 EntityLoaderFieldKind::HasOneSelf
             } else {
@@ -481,7 +496,9 @@ fn entity_loader_field(field: &Ident, compound: &CompoundField) -> EntityLoaderF
             },
         ),
         Some(RelationAttr::HasOne(attr)) => (
-            attr.relation_variants.explicit_name().cloned(),
+            attr.relation_variants
+                .explicit_name()
+                .map(|lit| parse_quote!(#lit)),
             if self_entity {
                 EntityLoaderFieldKind::HasOneSelf
             } else {
@@ -496,7 +513,9 @@ fn entity_loader_field(field: &Ident, compound: &CompoundField) -> EntityLoaderF
                     reverse,
                     ..
                 } => (
-                    relation_variants.explicit_name().cloned(),
+                    relation_variants
+                        .explicit_name()
+                        .map(|lit| parse_quote!(#lit)),
                     via.as_ref().map(|junction| junction.module.clone()),
                     *reverse,
                 ),
@@ -505,7 +524,7 @@ fn entity_loader_field(field: &Ident, compound: &CompoundField) -> EntityLoaderF
                     junction_module,
                     direction,
                 } => (
-                    relation_enum.clone(),
+                    parse_quote!(#relation_enum),
                     Some(junction_module.clone()),
                     matches!(direction, ManyToManySelfDirection::Reverse),
                 ),
@@ -540,7 +559,7 @@ fn entity_loader_field(field: &Ident, compound: &CompoundField) -> EntityLoaderF
     };
     EntityLoaderField {
         field: field.clone(),
-        entity: entity.clone(),
+        entity: parse_quote!(#entity),
         relation_enum,
         kind,
     }
@@ -748,14 +767,14 @@ impl BelongsToAttr {
             to
         };
 
-        let from = match from.map(RelationColumns::from_lit).transpose() {
+        let from = match from.map(|lit| RelationColumns::from_lit(&lit)).transpose() {
             Ok(from) => from,
             Err(err) => {
                 combine_error(&mut error, err);
                 None
             }
         };
-        let to = match to.map(RelationColumns::from_lit).transpose() {
+        let to = match to.map(|lit| RelationColumns::from_lit(&lit)).transpose() {
             Ok(to) => to,
             Err(err) => {
                 combine_error(&mut error, err);
@@ -1456,17 +1475,18 @@ fn expand_find_by_unique_key(schema: &ModelExSchema<'_>) -> (TokenStream, TokenS
         let ModelExFieldKind::Scalar(scalar) = &field.kind else {
             continue;
         };
+        let scalar_ty = &scalar.ty;
         if scalar.unique {
             unique_keys.insert(
                 field.ident.clone(),
-                vec![(field.ident.clone(), scalar.ty.clone())],
+                vec![(field.ident.clone(), parse_quote!(#scalar_ty))],
             );
         }
         for unique_key in &scalar.unique_keys {
             unique_keys
                 .entry(unique_key.clone())
                 .or_default()
-                .push((field.ident.clone(), scalar.ty.clone()));
+                .push((field.ident.clone(), parse_quote!(#scalar_ty)));
         }
     }
 

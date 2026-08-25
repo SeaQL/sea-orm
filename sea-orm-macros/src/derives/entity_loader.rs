@@ -48,6 +48,11 @@ struct EntityLoaderOutput {
 }
 
 impl EntityLoaderField {
+    fn entity_path(&self) -> syn::Path {
+        let path = &self.entity.path;
+        syn::parse_quote!(#path)
+    }
+
     fn expand_loader_with_field_into(&self, output: &mut EntityLoaderOutput) {
         let field = &self.field;
 
@@ -63,7 +68,7 @@ impl EntityLoaderField {
             EntityLoaderFieldKind::HasOne
             | EntityLoaderFieldKind::HasMany
             | EntityLoaderFieldKind::ManyToMany => {
-                let mut entity_module = self.entity.path.clone();
+                let mut entity_module = self.entity_path();
                 entity_module.segments.pop();
                 entity_module
                     .segments
@@ -82,9 +87,10 @@ impl EntityLoaderField {
     }
 
     fn expand_relation_tuple_with_param_into(&self, output: &mut EntityLoaderOutput) {
-        let mut entity_module = self.entity.path.clone();
+        let mut entity_module = self.entity_path();
         entity_module.segments.pop();
-        let mut related_entity = entity_module.clone();
+        // syn 3's `pop()` leaves a trailing `::`, which `push` reuses as the separator.
+        let mut related_entity: syn::Path = entity_module.clone();
         related_entity.segments.push(syn::parse_quote!(Entity));
         let mut related_relation = entity_module;
         related_relation.segments.push(syn::parse_quote!(Relation));
@@ -297,7 +303,7 @@ impl EntityLoaderField {
         } else {
             quote!()
         };
-        let mut entity_module = self.entity.path.clone();
+        let mut entity_module = self.entity_path();
         entity_module.segments.pop();
         entity_module.segments.push(syn::parse_quote!(EntityLoader));
 
@@ -349,7 +355,7 @@ impl EntityLoaderField {
         } else {
             quote!()
         };
-        let mut entity_module = self.entity.path.clone();
+        let mut entity_module = self.entity_path();
         entity_module.segments.pop();
         entity_module.segments.push(syn::parse_quote!(EntityLoader));
 
@@ -408,7 +414,7 @@ impl EntityLoaderField {
         } else {
             quote!()
         };
-        let mut entity_module = self.entity.path.clone();
+        let mut entity_module = self.entity_path();
         entity_module.segments.pop();
         entity_module.segments.push(syn::parse_quote!(EntityLoader));
 
@@ -460,7 +466,7 @@ impl EntityLoaderField {
         } else {
             quote!()
         };
-        let mut entity_module = self.entity.path.clone();
+        let mut entity_module = self.entity_path();
         entity_module.segments.pop();
         entity_module.segments.push(syn::parse_quote!(EntityLoader));
 
@@ -1001,5 +1007,42 @@ pub fn expand_entity_loader(vis: &Visibility, schema: EntityLoaderSchema) -> Tok
         }
     }
 
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use proc_macro2::Span;
+    use syn::parse_quote;
+
+    #[test]
+    fn expand_relation_tuple_multi_segment_entity_path() {
+        // Verifies the multi-segment entity module path is extended correctly
+        // (syn 3 `pop()` leaves a trailing `::`, reused as the separator).
+        let field = EntityLoaderField {
+            field: syn::Ident::new("cakes", Span::call_site()),
+            entity: parse_quote!(crate::entities::cake::Entity),
+            relation_enum: None,
+            kind: EntityLoaderFieldKind::HasMany,
+        };
+
+        let mut output = EntityLoaderOutput::default();
+        field.expand_relation_tuple_with_param_into(&mut output);
+
+        let generated = output.with_param_impls.to_string();
+        assert!(
+            generated.contains("crate :: entities :: cake :: Entity"),
+            "expected related entity path, got: {generated}"
+        );
+        assert!(
+            generated.contains("crate :: entities :: cake :: Relation"),
+            "expected related relation path, got: {generated}"
+        );
+        // No dangling or doubled `::` in the emitted paths.
+        assert!(
+            !generated.contains(":: ::"),
+            "unexpected double colon in generated path: {generated}"
+        );
     }
 }
