@@ -1,3 +1,4 @@
+use super::util::clone_with_mixed_site_span;
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::collections::{HashMap, HashSet};
@@ -267,9 +268,10 @@ impl EntityLoaderField {
 
     fn expand_select_one_into(&self, output: &mut EntityLoaderOutput) {
         let field = &self.field;
+        let field_binding = clone_with_mixed_site_span(field);
         let entity = &self.entity;
 
-        output.select_tuple_fields.push(quote!(#field));
+        output.select_tuple_fields.push(quote!(#field_binding));
         output.fetch_select_impl.extend(quote! {
             let select = if self.with.#field && self.nest.#field.is_empty() {
                 self.with.#field = false;
@@ -281,13 +283,14 @@ impl EntityLoaderField {
         });
         output.assemble_one.extend(quote! {
             if loaded.#field {
-                model.#field = #field.map(Into::into).map(Box::new).into();
+                model.#field = #field_binding.map(Into::into).map(Box::new).into();
             }
         });
     }
 
     fn expand_load_one_into(&self, output: &mut EntityLoaderOutput) {
         let field = &self.field;
+        let field_binding = clone_with_mixed_site_span(field);
         let entity = &self.entity;
         let await_ = if cfg!(feature = "async") {
             quote!(.await)
@@ -300,32 +303,32 @@ impl EntityLoaderField {
 
         output.load_one.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_one_ex(#entity, db)#await_?;
-                let #field = <#entity_module>::load_nest(#field, &nest.#field, db)#await_?;
+                let #field_binding = models.as_slice().load_one_ex(#entity, db)#await_?;
+                let #field_binding = <#entity_module>::load_nest(#field_binding, &nest.#field, db)#await_?;
 
-                for (model, #field) in models.iter_mut().zip(#field) {
-                    model.#field = #field.map(Into::into).map(Box::new).into();
+                for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
+                    model.#field = #field_binding.map(Into::into).map(Box::new).into();
                 }
             }
         });
         output.load_one_nest.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_one_ex(#entity, db)#await_?;
+                let #field_binding = models.as_slice().load_one_ex(#entity, db)#await_?;
 
-                for (model, #field) in models.iter_mut().zip(#field) {
+                for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
                     if let Some(model) = model.as_mut() {
-                        model.#field = #field.map(Into::into).map(Box::new).into();
+                        model.#field = #field_binding.map(Into::into).map(Box::new).into();
                     }
                 }
             }
         });
         output.load_one_nest_nest.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_one_ex(#entity, db)#await_?;
+                let #field_binding = models.as_slice().load_one_ex(#entity, db)#await_?;
 
-                for (models, #field) in models.iter_mut().zip(#field) {
-                    for (model, #field) in models.iter_mut().zip(#field) {
-                        model.#field = #field.map(Into::into).map(Box::new).into();
+                for (models, #field_binding) in models.iter_mut().zip(#field_binding) {
+                    for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
+                        model.#field = #field_binding.map(Into::into).map(Box::new).into();
                     }
                 }
             }
@@ -338,6 +341,7 @@ impl EntityLoaderField {
         relation_enum: &syn::LitStr,
     ) {
         let field = &self.field;
+        let field_binding = clone_with_mixed_site_span(field);
         let entity = &self.entity;
         let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
         let await_ = if cfg!(feature = "async") {
@@ -351,44 +355,44 @@ impl EntityLoaderField {
 
         output.load_one.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_one_ex_with_rel(
+                let #field_binding = models.as_slice().load_one_ex_with_rel(
                     #entity,
                     sea_orm::RelationTrait::def(&Relation::#relation_enum),
                     db,
                 )#await_?;
-                let #field = <#entity_module>::load_nest(#field, &nest.#field, db)#await_?;
+                let #field_binding = <#entity_module>::load_nest(#field_binding, &nest.#field, db)#await_?;
 
-                for (model, #field) in models.iter_mut().zip(#field) {
-                    model.#field = #field.map(Into::into).map(Box::new).into();
+                for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
+                    model.#field = #field_binding.map(Into::into).map(Box::new).into();
                 }
             }
         });
         output.load_one_nest.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_one_ex_with_rel(
+                let #field_binding = models.as_slice().load_one_ex_with_rel(
                     #entity,
                     sea_orm::RelationTrait::def(&Relation::#relation_enum),
                     db,
                 )#await_?;
 
-                for (model, #field) in models.iter_mut().zip(#field) {
+                for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
                     if let Some(model) = model.as_mut() {
-                        model.#field = #field.map(Into::into).map(Box::new).into();
+                        model.#field = #field_binding.map(Into::into).map(Box::new).into();
                     }
                 }
             }
         });
         output.load_one_nest_nest.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_one_ex_with_rel(
+                let #field_binding = models.as_slice().load_one_ex_with_rel(
                     #entity,
                     sea_orm::RelationTrait::def(&Relation::#relation_enum),
                     db,
                 )#await_?;
 
-                for (models, #field) in models.iter_mut().zip(#field) {
-                    for (model, #field) in models.iter_mut().zip(#field) {
-                        model.#field = #field.map(Into::into).map(Box::new).into();
+                for (models, #field_binding) in models.iter_mut().zip(#field_binding) {
+                    for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
+                        model.#field = #field_binding.map(Into::into).map(Box::new).into();
                     }
                 }
             }
@@ -397,6 +401,7 @@ impl EntityLoaderField {
 
     fn expand_load_many_into(&self, output: &mut EntityLoaderOutput) {
         let field = &self.field;
+        let field_binding = clone_with_mixed_site_span(field);
         let entity = &self.entity;
         let await_ = if cfg!(feature = "async") {
             quote!(.await)
@@ -409,32 +414,32 @@ impl EntityLoaderField {
 
         output.load_many.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_many_ex(#entity, db)#await_?;
-                let #field = <#entity_module>::load_nest_nest(#field, &nest.#field, db)#await_?;
+                let #field_binding = models.as_slice().load_many_ex(#entity, db)#await_?;
+                let #field_binding = <#entity_module>::load_nest_nest(#field_binding, &nest.#field, db)#await_?;
 
-                for (model, #field) in models.iter_mut().zip(#field) {
-                    model.#field = #field.into();
+                for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
+                    model.#field = #field_binding.into();
                 }
             }
         });
         output.load_many_nest.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_many_ex(#entity, db)#await_?;
+                let #field_binding = models.as_slice().load_many_ex(#entity, db)#await_?;
 
-                for (model, #field) in models.iter_mut().zip(#field) {
+                for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
                     if let Some(model) = model.as_mut() {
-                        model.#field = #field.into();
+                        model.#field = #field_binding.into();
                     }
                 }
             }
         });
         output.load_many_nest_nest.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_many_ex(#entity, db)#await_?;
+                let #field_binding = models.as_slice().load_many_ex(#entity, db)#await_?;
 
-                for (models, #field) in models.iter_mut().zip(#field) {
-                    for (model, #field) in models.iter_mut().zip(#field) {
-                        model.#field = #field.into();
+                for (models, #field_binding) in models.iter_mut().zip(#field_binding) {
+                    for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
+                        model.#field = #field_binding.into();
                     }
                 }
             }
@@ -447,6 +452,7 @@ impl EntityLoaderField {
         relation_enum: &syn::LitStr,
     ) {
         let field = &self.field;
+        let field_binding = clone_with_mixed_site_span(field);
         let entity = &self.entity;
         let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
         let await_ = if cfg!(feature = "async") {
@@ -460,44 +466,44 @@ impl EntityLoaderField {
 
         output.load_many.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_many_ex_with_rel(
+                let #field_binding = models.as_slice().load_many_ex_with_rel(
                     #entity,
                     sea_orm::RelationTrait::def(&Relation::#relation_enum),
                     db,
                 )#await_?;
-                let #field = <#entity_module>::load_nest_nest(#field, &nest.#field, db)#await_?;
+                let #field_binding = <#entity_module>::load_nest_nest(#field_binding, &nest.#field, db)#await_?;
 
-                for (model, #field) in models.iter_mut().zip(#field) {
-                    model.#field = #field.into();
+                for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
+                    model.#field = #field_binding.into();
                 }
             }
         });
         output.load_many_nest.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_many_ex_with_rel(
+                let #field_binding = models.as_slice().load_many_ex_with_rel(
                     #entity,
                     sea_orm::RelationTrait::def(&Relation::#relation_enum),
                     db,
                 )#await_?;
 
-                for (model, #field) in models.iter_mut().zip(#field) {
+                for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
                     if let Some(model) = model.as_mut() {
-                        model.#field = #field.into();
+                        model.#field = #field_binding.into();
                     }
                 }
             }
         });
         output.load_many_nest_nest.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_many_ex_with_rel(
+                let #field_binding = models.as_slice().load_many_ex_with_rel(
                     #entity,
                     sea_orm::RelationTrait::def(&Relation::#relation_enum),
                     db,
                 )#await_?;
 
-                for (models, #field) in models.iter_mut().zip(#field) {
-                    for (model, #field) in models.iter_mut().zip(#field) {
-                        model.#field = #field.into();
+                for (models, #field_binding) in models.iter_mut().zip(#field_binding) {
+                    for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
+                        model.#field = #field_binding.into();
                     }
                 }
             }
@@ -510,6 +516,7 @@ impl EntityLoaderField {
         relation_enum: &syn::LitStr,
     ) {
         let field = &self.field;
+        let field_binding = clone_with_mixed_site_span(field);
         let entity = &self.entity;
         let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
         let await_ = if cfg!(feature = "async") {
@@ -520,10 +527,10 @@ impl EntityLoaderField {
 
         output.load_one.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_self_ex(#entity, Relation::#relation_enum, db)#await_?;
+                let #field_binding = models.as_slice().load_self_ex(#entity, Relation::#relation_enum, db)#await_?;
 
-                for (model, #field) in models.iter_mut().zip(#field) {
-                    model.#field = #field.map(Into::into).map(Box::new).into();
+                for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
+                    model.#field = #field_binding.map(Into::into).map(Box::new).into();
                 }
             }
         });
@@ -535,6 +542,7 @@ impl EntityLoaderField {
         relation_enum: &syn::LitStr,
     ) {
         let field = &self.field;
+        let field_binding = clone_with_mixed_site_span(field);
         let entity = &self.entity;
         let relation_enum = Ident::new(&relation_enum.value(), relation_enum.span());
         let await_ = if cfg!(feature = "async") {
@@ -545,10 +553,10 @@ impl EntityLoaderField {
 
         output.load_many.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_self_many_ex(#entity, Relation::#relation_enum, db)#await_?;
+                let #field_binding = models.as_slice().load_self_many_ex(#entity, Relation::#relation_enum, db)#await_?;
 
-                for (model, #field) in models.iter_mut().zip(#field) {
-                    model.#field = #field.into();
+                for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
+                    model.#field = #field_binding.into();
                 }
             }
         });
@@ -561,6 +569,7 @@ impl EntityLoaderField {
         reverse: bool,
     ) {
         let field = &self.field;
+        let field_binding = clone_with_mixed_site_span(field);
         let await_ = if cfg!(feature = "async") {
             quote!(.await)
         } else {
@@ -569,32 +578,32 @@ impl EntityLoaderField {
 
         output.load_many.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_self_via_ex(super::#junction_module::Entity, #reverse, db)#await_?;
-                let #field = EntityLoader::load_nest_nest(#field, &nest.#field, db)#await_?;
+                let #field_binding = models.as_slice().load_self_via_ex(super::#junction_module::Entity, #reverse, db)#await_?;
+                let #field_binding = EntityLoader::load_nest_nest(#field_binding, &nest.#field, db)#await_?;
 
-                for (model, #field) in models.iter_mut().zip(#field) {
-                    model.#field = #field.into();
+                for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
+                    model.#field = #field_binding.into();
                 }
             }
         });
         output.load_many_nest.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_self_via_ex(super::#junction_module::Entity, #reverse, db)#await_?;
+                let #field_binding = models.as_slice().load_self_via_ex(super::#junction_module::Entity, #reverse, db)#await_?;
 
-                for (model, #field) in models.iter_mut().zip(#field) {
+                for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
                     if let Some(model) = model.as_mut() {
-                        model.#field = #field.into();
+                        model.#field = #field_binding.into();
                     }
                 }
             }
         });
         output.load_many_nest_nest.extend(quote! {
             if with.#field {
-                let #field = models.as_slice().load_self_via_ex(super::#junction_module::Entity, #reverse, db)#await_?;
+                let #field_binding = models.as_slice().load_self_via_ex(super::#junction_module::Entity, #reverse, db)#await_?;
 
-                for (models, #field) in models.iter_mut().zip(#field) {
-                    for (model, #field) in models.iter_mut().zip(#field) {
-                        model.#field = #field.into();
+                for (models, #field_binding) in models.iter_mut().zip(#field_binding) {
+                    for (model, #field_binding) in models.iter_mut().zip(#field_binding) {
+                        model.#field = #field_binding.into();
                     }
                 }
             }
