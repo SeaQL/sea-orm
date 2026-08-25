@@ -532,7 +532,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         cast_enum_as(val, &self.def(), save_enum_as)
     }
 
-    /// JSON key used for this column when (de)serializing the model.
+    /// JSON key used for this column when deserializing the model.
     #[cfg(feature = "with-json")]
     fn json_key(&self) -> &'static str {
         self.as_str()
@@ -540,7 +540,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
 
     /// JSON key used for this column when serializing the model.
     #[cfg(feature = "with-json")]
-    fn json_key_serialize(&self) -> &'static str {
+    fn serialize_json_key(&self) -> &'static str {
         self.as_str()
     }
 }
