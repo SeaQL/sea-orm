@@ -21,8 +21,7 @@ pub async fn discover_interpret_and_apply(
     builder: SchemaBuilder,
     config: InterpretConfig,
 ) -> Result<InterpretResult, DbErr> {
-    let dangerous = config.allow_dangerous;
-    let change_set = builder.discover(db, dangerous).await?;
+    let change_set = builder.discover(db).await?;
     let result = sea_orm::interpret_changes(change_set, &config);
     for (_, stmt) in &result.statements {
         db.execute_raw(stmt.clone()).await?;

@@ -221,8 +221,6 @@ pub struct InterpretConfig {
     pub db_backend: DbBackend,
     /// Whether to auto-apply heuristic renames as SQL changes.
     pub assumptions: bool,
-    /// Whether dangerous operations (drops) are allowed.
-    pub allow_dangerous: bool,
 }
 
 /// The schema-qualified table identity behind a [`sea_query::TableRef`], suitable
@@ -317,6 +315,39 @@ fn interpret_table_creates(
     }
 }
 
+/// Column type equivalence for table-move signature matching. Treats
+/// `Integer`/`BigInteger` as interchangeable: SQLite's `INTEGER PRIMARY KEY`
+/// round-trips from discovery as `BigInteger`, even though an entity with an
+/// `i32` primary key declares it as `Integer` — the create side of a move is
+/// always the entity's own declared schema, while the drop side is always
+/// DB-introspected, so this mismatch would otherwise silently defeat exact
+/// signature matching for essentially every table with an auto-increment key.
+fn column_types_equivalent(
+    a: &Option<sea_query::ColumnType>,
+    b: &Option<sea_query::ColumnType>,
+) -> bool {
+    use sea_query::ColumnType::{BigInteger, Integer};
+    match (a, b) {
+        (Some(Integer), Some(BigInteger)) | (Some(BigInteger), Some(Integer)) => true,
+        _ => a == b,
+    }
+}
+
+/// Column-name-and-type signature equality used for table-move detection,
+/// tolerant of the entity-vs-introspected type quirks handled by
+/// [`column_types_equivalent`].
+fn signatures_match(
+    a: &[(String, Option<sea_query::ColumnType>)],
+    b: &[(String, Option<sea_query::ColumnType>)],
+) -> bool {
+    a.len() == b.len()
+        && a.iter()
+            .zip(b.iter())
+            .all(|((a_name, a_ty), (b_name, b_ty))| {
+                a_name == b_name && column_types_equivalent(a_ty, b_ty)
+            })
+}
+
 /// Detect a dropped table and a created table as the same table renamed
 /// and/or moved to a different schema, by comparing column signatures.
 /// Only ever matches a unique 1:1 pair (same rule as column rename detection).
@@ -336,9 +367,6 @@ fn interpret_table_moves(
     table_moves: &mut Vec<AssumedTableMove>,
 ) -> HashSet<ChangeId> {
     let mut handled = HashSet::new();
-    if !config.allow_dangerous {
-        return handled;
-    }
 
     let creates: Vec<(
         ChangeId,
@@ -374,7 +402,7 @@ fn interpret_table_moves(
         // proximity heuristic (tables have no natural position to compare).
         let matches: Vec<_> = creates
             .iter()
-            .filter(|(_, _, _, cols)| *cols == drop_columns)
+            .filter(|(_, _, _, cols)| signatures_match(cols, drop_columns))
             .collect();
         if matches.len() != 1 {
             continue;
@@ -382,7 +410,7 @@ fn interpret_table_moves(
         let &(create_id, to_table_ref, create_stmt, _) = matches[0];
         let reverse_matches = drops
             .iter()
-            .filter(|(_, _, cols)| *cols == drop_columns)
+            .filter(|(_, _, cols)| signatures_match(cols, drop_columns))
             .count();
         if reverse_matches != 1 {
             continue;
@@ -682,7 +710,7 @@ fn interpret_columns_inner(
         let table_ref = table_refs[table].clone();
         let table_name = resolver::qualified_table_name(&table_ref);
 
-        if !config.allow_dangerous || (added.is_empty() && removed.is_empty()) {
+        if (added.is_empty() && removed.is_empty()) {
             for (id, _, stmt) in &added {
                 add_stmts.push((*id, stmt.clone()));
             }
@@ -830,37 +858,31 @@ fn interpret_enum_drops(
     for ec in enums {
         match &ec.kind {
             EnumChangeKind::VariantChange { name, .. } => {
-                if config.allow_dangerous {
-                    suggestions.push(DiscoverSuggestion {
-                        kind: SuggestionKind::EnumVariantChange,
-                        message: format!(
-                            "Enum type '{name}' has changed variants. Adding variants requires \
-                             `ALTER TYPE ... ADD VALUE`; removing variants requires type recreation. \
-                             This migration must be written manually.",
-                        ),
-                        related_changes: vec![ec.id],
-                    });
-                }
+                suggestions.push(DiscoverSuggestion {
+                                        kind: SuggestionKind::EnumVariantChange,
+                                        message: format!(
+                                            "Enum type '{name}' has changed variants. Adding variants requires \
+                                             `ALTER TYPE ... ADD VALUE`; removing variants requires type recreation. \
+                                             This migration must be written manually.",
+                                        ),
+                                        related_changes: vec![ec.id],
+                                    });
             }
             EnumChangeKind::Rename {
                 existing_name,
                 new_name,
             } => {
-                if config.allow_dangerous {
-                    suggestions.push(DiscoverSuggestion {
-                        kind: SuggestionKind::EnumRename,
-                        message: format!(
-                            "Enum type '{existing_name}' appears to have been renamed to '{new_name}'. \
-                             This requires `ALTER TYPE ... RENAME TO`.",
-                        ),
-                        related_changes: vec![ec.id],
-                    });
-                }
+                suggestions.push(DiscoverSuggestion {
+                    kind: SuggestionKind::EnumRename,
+                    message: format!(
+                        "Enum type '{existing_name}' appears to have been renamed to '{new_name}'. \
+                                             This requires `ALTER TYPE ... RENAME TO`.",
+                    ),
+                    related_changes: vec![ec.id],
+                });
             }
             EnumChangeKind::Drop { stmt, .. } => {
-                if config.allow_dangerous {
-                    statements.push((ec.id, stmt.clone()));
-                }
+                statements.push((ec.id, stmt.clone()));
             }
             EnumChangeKind::Create { .. } => {}
         }
@@ -927,7 +949,6 @@ mod tests {
             &InterpretConfig {
                 db_backend: DbBackend::Postgres,
                 assumptions: true,
-                allow_dangerous: true,
             },
         );
 
@@ -985,7 +1006,6 @@ mod tests {
             &InterpretConfig {
                 db_backend: DbBackend::Postgres,
                 assumptions: true,
-                allow_dangerous: true,
             },
         );
 
@@ -1046,7 +1066,6 @@ mod tests {
             &InterpretConfig {
                 db_backend: DbBackend::Postgres,
                 assumptions: true,
-                allow_dangerous: true,
             },
         );
 
@@ -1129,7 +1148,6 @@ mod tests {
             &InterpretConfig {
                 db_backend: DbBackend::Postgres,
                 assumptions: true,
-                allow_dangerous: true,
             },
         );
 
@@ -1161,7 +1179,6 @@ mod tests {
             &InterpretConfig {
                 db_backend: DbBackend::Postgres,
                 assumptions: true,
-                allow_dangerous: true,
             },
         );
 
@@ -1208,7 +1225,6 @@ mod tests {
             &InterpretConfig {
                 db_backend: DbBackend::Postgres,
                 assumptions: true,
-                allow_dangerous: true,
             },
         );
 
@@ -1245,7 +1261,6 @@ mod tests {
             &InterpretConfig {
                 db_backend: DbBackend::Postgres,
                 assumptions: false,
-                allow_dangerous: true,
             },
         );
 
@@ -1287,7 +1302,6 @@ mod tests {
             &InterpretConfig {
                 db_backend: DbBackend::Postgres,
                 assumptions: true,
-                allow_dangerous: true,
             },
         );
 
@@ -1323,7 +1337,6 @@ mod tests {
             &InterpretConfig {
                 db_backend: DbBackend::MySql,
                 assumptions: true,
-                allow_dangerous: true,
             },
         );
 

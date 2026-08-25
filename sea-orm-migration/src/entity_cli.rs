@@ -378,7 +378,7 @@ async fn run_diff<E: EntitySet>(
         .register(schema.builder())
         .exclude(protected_table);
 
-    let change_set = builder.discover(db, true).await?;
+    let change_set = builder.discover(db).await?;
     let result = interpret_changes(
         change_set,
         &InterpretConfig {
@@ -531,7 +531,7 @@ async fn run_generate<E: EntitySet>(
         .register(schema.builder())
         .exclude(protected_table);
 
-    let change_set = builder.discover(db, true).await?;
+    let change_set = builder.discover(db).await?;
     let mut result = interpret_changes(
         change_set,
         &InterpretConfig {

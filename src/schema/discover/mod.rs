@@ -25,7 +25,6 @@ pub use warning::{DiscoverWarning, WarningKind};
 pub(crate) async fn discover<C>(
     new_entities: &[EntitySchemaInfo],
     db: &C,
-    allow_dangerous: bool,
     excluded_tables: &[String],
     excluded_schemas: &[String],
 ) -> Result<ChangeSet, DbErr>
@@ -56,7 +55,7 @@ where
     // used to be "ours", so MySQL orphan detection is intentionally limited
     // to databases a currently-registered entity's `schema_name` still points at.
     #[cfg(feature = "sqlx-postgres")]
-    if allow_dangerous && db_backend == crate::DbBackend::Postgres {
+    if db_backend == crate::DbBackend::Postgres {
         extra_schemas.extend(schema::pg_list_all_schemas(db, excluded_schemas).await?);
     }
 
@@ -73,46 +72,31 @@ where
     }
 
     let tabl_ref: Vec<&TableCreateStatement> = new_entities.iter().map(|e| e.table()).collect();
-    for table_name in sorted_tables(&tabl_ref, TableSortOrder::ParentsFirst) {
+    let entities_by_table: std::collections::HashMap<_, _> = new_entities
+        .iter()
+        .map(|e| (get_table_name(e.table().get_table_name()), e))
+        .collect();
+    for table in sorted_tables(&tabl_ref, TableSortOrder::ParentsFirst) {
+        let table_name = get_table_name(table.get_table_name());
         let name_str = table_name.1.to_string();
         if excluded_tables.iter().any(|e| e == &name_str) {
             continue;
         }
 
-        //PERF: just sort TableCreateStatements, instead of searching
-        if let Some(entity) = new_entities
-            .iter()
-            .find(|entity| table_name == get_table_name(entity.table().get_table_name()))
-        {
-            enum_::record_enum_changes(
-                entity.enums(),
-                db_backend,
-                &existing.enums,
-                &mut change_set,
-            );
-            table::record_table_changes(
-                entity,
-                &existing.tables,
-                &mut change_set,
-                allow_dangerous,
-                db_backend,
-            );
-        } else {
-            unreachable!()
-        }
+        let entity = entities_by_table[&table_name];
+        enum_::record_enum_changes(entity.enums(), db_backend, &existing.enums, &mut change_set);
+        table::record_table_changes(entity, &existing.tables, &mut change_set, db_backend);
     }
 
-    if allow_dangerous {
-        table::record_orphan_tables(new_entities, &existing, &mut change_set, excluded_tables);
-        let all_entity_enums: Vec<&sea_query::extension::postgres::TypeCreateStatement> =
-            new_entities.iter().flat_map(|e| e.enums().iter()).collect();
-        enum_::record_orphan_enums(
-            &all_entity_enums,
-            db_backend,
-            &existing.enums,
-            &mut change_set,
-        );
-    }
+    table::record_orphan_tables(new_entities, &existing, &mut change_set, excluded_tables);
+    let all_entity_enums: Vec<&sea_query::extension::postgres::TypeCreateStatement> =
+        new_entities.iter().flat_map(|e| e.enums().iter()).collect();
+    enum_::record_orphan_enums(
+        &all_entity_enums,
+        db_backend,
+        &existing.enums,
+        &mut change_set,
+    );
 
     Ok(change_set)
 }

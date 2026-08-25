@@ -5,7 +5,7 @@ use tempfile::TempDir;
 
 use common::entity_common::{
     CakeAmbiguousOnly, CakeRenamedOnly, CakeTypeChangeOnly, CakeV1FruitV2, CakeV1Only,
-    CakeV2FruitV1, FullSchema,
+    CakeV2FruitV1, FullSchema, PastryAmbiguousSet, PastryDiffColumnsOnly, PastryRenamedOnly,
 };
 use common::entity_migrator::default::Migrator;
 use sea_orm::{Database, DbErr, Schema};
@@ -345,7 +345,7 @@ mod fs_tests {
 async fn test_discover_full_schema_on_empty_db() -> Result<(), DbErr> {
     let db = connect().await?;
     let builder = FullSchema.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
 
     assert!(!stmts.is_empty());
@@ -372,7 +372,7 @@ async fn test_no_diff_when_schema_matches_entities() -> Result<(), DbErr> {
     Migrator.up(&db, None).await?;
 
     let builder = FullSchema.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
 
     assert!(
@@ -395,7 +395,7 @@ async fn test_discover_detects_added_columns() -> Result<(), DbErr> {
         .await?;
 
     let builder = CakeV2FruitV1.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
 
     let sql_all: String = stmts
@@ -434,7 +434,7 @@ async fn test_discover_detects_added_column_and_unique_index() -> Result<(), DbE
         .await?;
 
     let builder = CakeV1FruitV2.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
 
     assert!(!stmts.is_empty(), "should detect changes");
@@ -459,13 +459,12 @@ async fn test_discover_dangerous_drops_orphaned_tables_but_not_tracker() -> Resu
     Migrator.up(&db, None).await?;
 
     let builder = CakeV1Only.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, true).await?;
+    let change_set = builder.discover(&db).await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: true,
         },
     );
     let stmts: Vec<_> = result.statements.iter().map(|(_, s)| s).collect();
@@ -519,7 +518,7 @@ async fn test_discover_safe_never_drops() -> Result<(), DbErr> {
     Migrator.up(&db, None).await?;
 
     let builder = CakeV1Only.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
 
     assert!(
@@ -557,7 +556,7 @@ async fn test_full_migration_lifecycle() -> Result<(), DbErr> {
     assert_eq!(applied.len(), 2);
 
     let builder = FullSchema.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
     assert!(
         stmts.is_empty(),
@@ -586,7 +585,7 @@ async fn test_generate_pipeline_for_full_schema() -> Result<(), DbErr> {
     let dir = temp_migration_dir();
 
     let builder = FullSchema.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
     assert!(!stmts.is_empty());
 
@@ -634,13 +633,12 @@ async fn test_discover_warns_on_possible_column_rename() -> Result<(), DbErr> {
         .await?;
 
     let builder = CakeRenamedOnly.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, true).await?;
+    let change_set = builder.discover(&db).await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: true,
-            allow_dangerous: true,
         },
     );
 
@@ -702,13 +700,12 @@ async fn test_discover_no_rename_warning_when_types_differ() -> Result<(), DbErr
         .await?;
 
     let builder = CakeTypeChangeOnly.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, true).await?;
+    let change_set = builder.discover(&db).await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: true,
-            allow_dangerous: true,
         },
     );
 
@@ -746,13 +743,12 @@ async fn test_ambiguous_rename_in_unresolved() -> Result<(), DbErr> {
         .await?;
 
     let builder = CakeAmbiguousOnly.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, true).await?;
+    let change_set = builder.discover(&db).await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: true,
-            allow_dangerous: true,
         },
     );
 
@@ -790,6 +786,287 @@ async fn test_ambiguous_rename_in_unresolved() -> Result<(), DbErr> {
             .iter()
             .any(|s| s.kind == sea_orm::schema::SuggestionKind::PossibleRename),
         "ambiguous renames should not produce PossibleRename suggestions"
+    );
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Table-level rename/move detection — full discover -> interpret pipeline
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_table_rename_detected_via_full_pipeline() -> Result<(), DbErr> {
+    let db = connect().await?;
+
+    sea_orm::Schema::new(db.get_database_backend())
+        .builder()
+        .register(common::entity_common::cake_v1::Entity)
+        .sync(&db)
+        .await?;
+
+    let builder = PastryRenamedOnly.register(Schema::new(db.get_database_backend()).builder());
+    let change_set = builder.discover(&db).await?;
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: true,
+        },
+    );
+
+    assert_eq!(
+        result.table_moves.len(),
+        1,
+        "should detect exactly one table move, got: {:?}",
+        result.table_moves
+    );
+    assert_eq!(result.table_moves[0].from_name(), "cake");
+    assert_eq!(result.table_moves[0].to_name(), "pastry");
+
+    let sql_all: String = result
+        .statements
+        .iter()
+        .map(|(_, s)| s.sql.to_uppercase())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        sql_all.contains("RENAME"),
+        "should produce a RENAME statement, got: {sql_all}"
+    );
+    assert!(
+        !sql_all.contains("DROP TABLE") && !sql_all.contains("CREATE TABLE"),
+        "should not fall back to CREATE+DROP when a table rename is auto-assumed; got: {sql_all}"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_table_rename_not_detected_when_columns_differ() -> Result<(), DbErr> {
+    let db = connect().await?;
+
+    sea_orm::Schema::new(db.get_database_backend())
+        .builder()
+        .register(common::entity_common::cake_v1::Entity)
+        .sync(&db)
+        .await?;
+
+    let builder = PastryDiffColumnsOnly.register(Schema::new(db.get_database_backend()).builder());
+    let change_set = builder.discover(&db).await?;
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: true,
+        },
+    );
+
+    assert!(
+        result.table_moves.is_empty(),
+        "a differing column set must not be treated as a rename, got: {:?}",
+        result.table_moves
+    );
+
+    let sql_all: String = result
+        .statements
+        .iter()
+        .map(|(_, s)| s.sql.to_uppercase())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        sql_all.contains("CREATE TABLE") && sql_all.contains("DROP TABLE"),
+        "should fall back to plain CREATE+DROP, got: {sql_all}"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_table_rename_not_detected_when_ambiguous() -> Result<(), DbErr> {
+    let db = connect().await?;
+
+    sea_orm::Schema::new(db.get_database_backend())
+        .builder()
+        .register(common::entity_common::cake_v1::Entity)
+        .sync(&db)
+        .await?;
+
+    let builder = PastryAmbiguousSet.register(Schema::new(db.get_database_backend()).builder());
+    let change_set = builder.discover(&db).await?;
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: true,
+        },
+    );
+
+    assert!(
+        result.table_moves.is_empty(),
+        "a dropped table matching two created tables must not auto-apply either, got: {:?}",
+        result.table_moves
+    );
+    use sea_orm::schema::SuggestionKind;
+    assert!(
+        !result
+            .suggestions
+            .iter()
+            .any(|s| s.kind == SuggestionKind::PossibleRename),
+        "an ambiguous table match should not suggest a specific rename either, got: {:?}",
+        result.suggestions
+    );
+
+    let sql_all: String = result
+        .statements
+        .iter()
+        .map(|(_, s)| s.sql.to_uppercase())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        sql_all.contains("CREATE TABLE \"PASTRY_A\"")
+            && sql_all.contains("CREATE TABLE \"PASTRY_B\""),
+        "both ambiguous candidates should be created plainly, got: {sql_all}"
+    );
+    assert!(
+        sql_all.contains("DROP TABLE"),
+        "the orphaned cake table should be dropped plainly, got: {sql_all}"
+    );
+
+    Ok(())
+}
+
+/// A table rename/move must never be proposed by a *safe* (non-dangerous)
+/// discover — without `allow_dangerous`, orphan tables are never scanned in
+/// the first place, so there is no drop candidate to pair with the create.
+#[tokio::test]
+async fn test_table_rename_requires_dangerous_discover() -> Result<(), DbErr> {
+    let db = connect().await?;
+
+    sea_orm::Schema::new(db.get_database_backend())
+        .builder()
+        .register(common::entity_common::cake_v1::Entity)
+        .sync(&db)
+        .await?;
+
+    let builder = PastryRenamedOnly.register(Schema::new(db.get_database_backend()).builder());
+    let change_set = builder.discover(&db).await?;
+    let stmts = change_set.statements();
+
+    let sql_all: String = stmts
+        .iter()
+        .map(|s| s.sql.to_uppercase())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        sql_all.contains("CREATE TABLE") && sql_all.contains("PASTRY"),
+        "should still propose creating pastry, got: {sql_all}"
+    );
+    assert!(
+        !sql_all.contains("DROP") && !sql_all.contains("RENAME"),
+        "safe discover must never drop or rename cake, got: {sql_all}"
+    );
+
+    Ok(())
+}
+
+/// Without `assumptions`, a detected table move must surface only as a
+/// suggestion — the actual statements still fall back to CREATE+DROP so
+/// nothing destructive happens without explicit opt-in.
+#[tokio::test]
+async fn test_table_rename_requires_assumptions_to_auto_apply() -> Result<(), DbErr> {
+    use sea_orm::schema::SuggestionKind;
+    let db = connect().await?;
+
+    sea_orm::Schema::new(db.get_database_backend())
+        .builder()
+        .register(common::entity_common::cake_v1::Entity)
+        .sync(&db)
+        .await?;
+
+    let builder = PastryRenamedOnly.register(Schema::new(db.get_database_backend()).builder());
+    let change_set = builder.discover(&db).await?;
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: false,
+        },
+    );
+
+    assert!(
+        result.table_moves.is_empty(),
+        "must not auto-apply without assumptions, got: {:?}",
+        result.table_moves
+    );
+    let rename_suggestion = result
+        .suggestions
+        .iter()
+        .find(|s| s.kind == SuggestionKind::PossibleRename)
+        .expect("should suggest the possible rename");
+    assert!(
+        rename_suggestion.message.contains("cake") && rename_suggestion.message.contains("pastry"),
+        "suggestion should mention both table names, got: {}",
+        rename_suggestion.message
+    );
+
+    let sql_all: String = result
+        .statements
+        .iter()
+        .map(|(_, s)| s.sql.to_uppercase())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        sql_all.contains("CREATE TABLE") && sql_all.contains("DROP TABLE"),
+        "statements should still be plain CREATE+DROP, got: {sql_all}"
+    );
+
+    Ok(())
+}
+
+/// Rejecting an auto-applied table move must fall back to the pre-built
+/// CREATE+DROP statements, exactly like rejecting an assumed column rename.
+#[tokio::test]
+async fn test_reject_table_move_falls_back_to_create_and_drop() -> Result<(), DbErr> {
+    let db = connect().await?;
+
+    sea_orm::Schema::new(db.get_database_backend())
+        .builder()
+        .register(common::entity_common::cake_v1::Entity)
+        .sync(&db)
+        .await?;
+
+    let builder = PastryRenamedOnly.register(Schema::new(db.get_database_backend()).builder());
+    let change_set = builder.discover(&db).await?;
+    let mut result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: true,
+        },
+    );
+
+    let move_id = result.table_moves.first().expect("should detect a move").id;
+    result.reject_table_move(move_id);
+
+    assert!(
+        result.table_moves.is_empty(),
+        "the rejected move should be removed from table_moves"
+    );
+
+    let sql_all: String = result
+        .statements
+        .iter()
+        .map(|(_, s)| s.sql.to_uppercase())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        !sql_all.contains("RENAME"),
+        "should no longer produce a RENAME statement after rejection, got: {sql_all}"
+    );
+    assert!(
+        sql_all.contains("CREATE TABLE") && sql_all.contains("DROP TABLE"),
+        "should fall back to CREATE+DROP after rejection, got: {sql_all}"
     );
 
     Ok(())

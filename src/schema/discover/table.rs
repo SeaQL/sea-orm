@@ -9,7 +9,6 @@ pub(crate) fn record_table_changes(
     entity: &EntitySchemaInfo,
     existing: &[TableCreateStatement],
     changes: &mut ChangeSet,
-    allow_dangerous: bool,
     db_backend: DbBackend,
 ) {
     let table_name = get_table_name(entity.table().get_table_name());
@@ -19,15 +18,8 @@ pub(crate) fn record_table_changes(
         .find(|tbl| get_table_name(tbl.get_table_name()) == table_name);
 
     if let Some(existing_table) = existing_table {
-        record_column_changes(entity, existing_table, changes, allow_dangerous, db_backend);
-        record_foreign_key_changes(
-            entity,
-            existing_table,
-            &table_name_str,
-            changes,
-            allow_dangerous,
-            db_backend,
-        );
+        record_column_changes(entity, existing_table, changes, db_backend);
+        record_foreign_key_changes(entity, existing_table, &table_name_str, changes, db_backend);
         record_index_changes(entity, existing_table, &table_name_str, changes, db_backend);
         record_unique_constraint_changes(
             entity,
@@ -85,13 +77,9 @@ pub(crate) fn record_orphan_tables(
         })
         .collect();
 
-    for table_name in sorted_tables(&orphans, TableSortOrder::ChildrenFirst) {
-        let tbl = orphans
-            .iter()
-            .find(|t| get_table_name(t.get_table_name()) == table_name)
-            .expect("orphan table must be in the orphans list it was sorted from");
+    for tbl in sorted_tables(&orphans, TableSortOrder::ChildrenFirst) {
         changes.record_table(TableChangeKind::Drop {
-            table: table_name,
+            table: get_table_name(tbl.get_table_name()),
             columns: column_signature(tbl),
         });
     }
@@ -123,7 +111,6 @@ fn record_column_changes(
     entity: &EntitySchemaInfo,
     existing_table: &sea_query::TableCreateStatement,
     changes: &mut ChangeSet,
-    allow_dangerous: bool,
     db_backend: DbBackend,
 ) {
     let entity_table_name = get_entity_table_name(entity);
@@ -191,30 +178,28 @@ fn record_column_changes(
     }
 
     // Removed columns (in DB but not in entity)
-    if allow_dangerous {
-        let entity_table_name = get_entity_table_name(entity);
-        for (idx, col) in existing_table.get_columns().iter().enumerate() {
-            let col_name = col.get_column_name();
-            let in_entity = entity
-                .table()
-                .get_columns()
-                .iter()
-                .any(|ec| ec.get_column_name() == col_name);
-            if !in_entity {
-                changes.record_column(
-                    entity_table_name.clone(),
-                    ColumnChangeKind::Drop {
-                        column: col_name.to_string(),
-                        index: idx,
-                        column_type: col.get_column_type().cloned(),
-                        stmt: db_backend.build(
-                            TableAlterStatement::new()
-                                .table(entity_table_name.clone())
-                                .drop_column(sea_query::Alias::new(col_name)),
-                        ),
-                    },
-                );
-            }
+    let entity_table_name = get_entity_table_name(entity);
+    for (idx, col) in existing_table.get_columns().iter().enumerate() {
+        let col_name = col.get_column_name();
+        let in_entity = entity
+            .table()
+            .get_columns()
+            .iter()
+            .any(|ec| ec.get_column_name() == col_name);
+        if !in_entity {
+            changes.record_column(
+                entity_table_name.clone(),
+                ColumnChangeKind::Drop {
+                    column: col_name.to_string(),
+                    index: idx,
+                    column_type: col.get_column_type().cloned(),
+                    stmt: db_backend.build(
+                        TableAlterStatement::new()
+                            .table(entity_table_name.clone())
+                            .drop_column(sea_query::Alias::new(col_name)),
+                    ),
+                },
+            );
         }
     }
 }
@@ -224,7 +209,6 @@ fn record_foreign_key_changes(
     existing_table: &sea_query::TableCreateStatement,
     table_name_str: &str,
     changes: &mut ChangeSet,
-    allow_dangerous: bool,
     db_backend: DbBackend,
 ) {
     for foreign_key in entity.table().get_foreign_key_create_stmts().iter() {
@@ -242,29 +226,27 @@ fn record_foreign_key_changes(
         }
     }
 
-    if allow_dangerous {
-        let entity_table_name = get_entity_table_name(entity);
-        for existing_key in existing_table.get_foreign_key_create_stmts().iter() {
-            let in_entity = entity
-                .table()
-                .get_foreign_key_create_stmts()
-                .iter()
-                .any(|fk| compare_foreign_key(fk, existing_key));
-            if !in_entity {
-                let fk = existing_key.get_foreign_key();
-                if let Some(name) = fk.get_name() {
-                    changes.record_constraint(
-                        table_name_str.to_string(),
-                        ConstraintChangeKind::DropForeignKey {
-                            name: name.to_owned(),
-                            stmt: db_backend.build(
-                                TableAlterStatement::new()
-                                    .table(entity_table_name.clone())
-                                    .drop_foreign_key(name.to_owned()),
-                            ),
-                        },
-                    );
-                }
+    let entity_table_name = get_entity_table_name(entity);
+    for existing_key in existing_table.get_foreign_key_create_stmts().iter() {
+        let in_entity = entity
+            .table()
+            .get_foreign_key_create_stmts()
+            .iter()
+            .any(|fk| compare_foreign_key(fk, existing_key));
+        if !in_entity {
+            let fk = existing_key.get_foreign_key();
+            if let Some(name) = fk.get_name() {
+                changes.record_constraint(
+                    table_name_str.to_string(),
+                    ConstraintChangeKind::DropForeignKey {
+                        name: name.to_owned(),
+                        stmt: db_backend.build(
+                            TableAlterStatement::new()
+                                .table(entity_table_name.clone())
+                                .drop_foreign_key(name.to_owned()),
+                        ),
+                    },
+                );
             }
         }
     }

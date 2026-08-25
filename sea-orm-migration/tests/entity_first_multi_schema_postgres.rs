@@ -98,6 +98,43 @@ mod widget_in_schema_b {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+/// Same table name (`widget`) and same columns as `widget_v1`, but pinned to
+/// `entity_first_schema_b` instead of `entity_first_schema_a` — a pure
+/// schema move (no rename), with an identical column signature so table-move
+/// detection should actually match it (unlike `widget_in_schema_b` above).
+mod widget_moved {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(schema_name = "entity_first_schema_b", table_name = "widget")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub name: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+/// Same columns as `widget_v1`, but both a different table name (`sprocket`)
+/// *and* a different schema (`entity_first_schema_b`) — a combined
+/// rename + schema move.
+mod sprocket_renamed_and_moved {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(schema_name = "entity_first_schema_b", table_name = "sprocket")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub name: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 struct FullSet;
 impl EntitySet for FullSet {
     fn register(self, builder: SchemaBuilder) -> SchemaBuilder {
@@ -228,7 +265,7 @@ async fn test_discover_multi_schema_creates_tables_in_correct_schemas() -> Resul
     let db = fresh_multi_schema_db("entity_first_multi_schema_discover").await?;
 
     let builder = FullSet.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
 
     let creates: Vec<_> = stmts
@@ -288,7 +325,7 @@ async fn test_sync_multi_schema_twice_is_idempotent() -> Result<(), DbErr> {
 
     // A subsequent discover should now see no diff at all.
     let builder = FullSet.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
     assert!(
         stmts.is_empty(),
@@ -315,7 +352,7 @@ async fn test_discover_detects_added_column_in_non_default_schema() -> Result<()
         .await?;
 
     let builder = FullSetV2.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
 
     let sql_all: String = stmts
@@ -354,7 +391,7 @@ async fn test_discover_no_cross_schema_name_collision() -> Result<(), DbErr> {
     assert!(table_exists_in_schema(&db, "entity_first_schema_b", "widget").await?);
 
     let builder = CollisionSet.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
     assert!(
         stmts.is_empty(),
@@ -379,7 +416,7 @@ async fn test_discover_and_sync_create_missing_schema_from_scratch() -> Result<(
     assert!(!schema_exists(&db, "entity_first_schema_b").await?);
 
     let builder = FullSet.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
     assert!(
         stmts
@@ -432,7 +469,7 @@ async fn test_interpret_changes_includes_missing_schema() -> Result<(), DbErr> {
     let db = fresh_db_no_schemas("entity_first_multi_schema_interpret").await?;
 
     let builder = FullSet.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let result = interpret_changes(
         change_set,
         &InterpretConfig {
@@ -503,7 +540,7 @@ async fn test_discover_dangerous_detects_orphan_after_schema_rename() -> Result<
     let builder = Schema::new(db.get_database_backend())
         .builder()
         .register(widget_in_schema_b::Entity);
-    let change_set = builder.discover(&db, true).await?;
+    let change_set = builder.discover(&db).await?;
     let result = interpret_changes(
         change_set,
         &InterpretConfig {
@@ -529,6 +566,141 @@ async fn test_discover_dangerous_detects_orphan_after_schema_rename() -> Result<
     Ok(())
 }
 
+/// A table moved to a different schema with the same name and an identical
+/// column signature must be detected as a pure schema move
+/// (`ALTER TABLE ... SET SCHEMA`), not a DROP + CREATE pair.
+#[tokio::test]
+#[cfg(feature = "sqlx-postgres")]
+async fn test_table_schema_move_detected() -> Result<(), DbErr> {
+    use sea_orm::{InterpretConfig, interpret_changes};
+
+    let db = fresh_multi_schema_db("entity_first_multi_schema_move").await?;
+
+    Schema::new(db.get_database_backend())
+        .builder()
+        .register(widget_v1::Entity)
+        .sync(&db)
+        .await?;
+    assert!(table_exists_in_schema(&db, "entity_first_schema_a", "widget").await?);
+
+    let builder = Schema::new(db.get_database_backend())
+        .builder()
+        .register(widget_moved::Entity);
+    let change_set = builder.discover(&db).await?;
+    let result = interpret_changes(
+        change_set,
+        &InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: true,
+            allow_dangerous: true,
+        },
+    );
+
+    assert_eq!(
+        result.table_moves.len(),
+        1,
+        "should detect exactly one schema move, got: {:?}",
+        result.table_moves
+    );
+    assert_eq!(
+        result.table_moves[0].from_name(),
+        "entity_first_schema_a.widget"
+    );
+    assert_eq!(
+        result.table_moves[0].to_name(),
+        "entity_first_schema_b.widget"
+    );
+
+    let sql_all: String = result
+        .statements
+        .iter()
+        .map(|(_, s)| s.sql.clone())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        sql_all.to_uppercase().contains("SET SCHEMA")
+            && sql_all.contains("entity_first_schema_a")
+            && sql_all.contains("entity_first_schema_b")
+            && sql_all.contains("widget"),
+        "should produce ALTER TABLE ... SET SCHEMA, got: {sql_all}"
+    );
+    assert!(
+        !sql_all.to_uppercase().contains("DROP TABLE")
+            && !sql_all.to_uppercase().contains("CREATE TABLE"),
+        "should not fall back to CREATE+DROP, got: {sql_all}"
+    );
+
+    Ok(())
+}
+
+/// A table renamed *and* moved to a different schema at once, with an
+/// identical column signature, must be detected as a single combined move
+/// (RENAME TO, then SET SCHEMA), not a DROP + CREATE pair.
+#[tokio::test]
+#[cfg(feature = "sqlx-postgres")]
+async fn test_table_rename_and_schema_move_detected() -> Result<(), DbErr> {
+    use sea_orm::{InterpretConfig, interpret_changes};
+
+    let db = fresh_multi_schema_db("entity_first_multi_schema_rename_move").await?;
+
+    Schema::new(db.get_database_backend())
+        .builder()
+        .register(widget_v1::Entity)
+        .sync(&db)
+        .await?;
+    assert!(table_exists_in_schema(&db, "entity_first_schema_a", "widget").await?);
+
+    let builder = Schema::new(db.get_database_backend())
+        .builder()
+        .register(sprocket_renamed_and_moved::Entity);
+    let change_set = builder.discover(&db).await?;
+    let result = interpret_changes(
+        change_set,
+        &InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: true,
+            allow_dangerous: true,
+        },
+    );
+
+    assert_eq!(
+        result.table_moves.len(),
+        1,
+        "should detect exactly one combined move, got: {:?}",
+        result.table_moves
+    );
+    assert_eq!(
+        result.table_moves[0].from_name(),
+        "entity_first_schema_a.widget"
+    );
+    assert_eq!(
+        result.table_moves[0].to_name(),
+        "entity_first_schema_b.sprocket"
+    );
+
+    let sql_all: String = result
+        .statements
+        .iter()
+        .map(|(_, s)| s.sql.clone())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        sql_all.to_uppercase().contains("RENAME") && sql_all.contains("sprocket"),
+        "should produce a RENAME statement, got: {sql_all}"
+    );
+    assert!(
+        sql_all.to_uppercase().contains("SET SCHEMA") && sql_all.contains("entity_first_schema_b"),
+        "should produce a SET SCHEMA statement, got: {sql_all}"
+    );
+    assert!(
+        !sql_all.to_uppercase().contains("DROP TABLE")
+            && !sql_all.to_uppercase().contains("CREATE TABLE"),
+        "should not fall back to CREATE+DROP, got: {sql_all}"
+    );
+
+    Ok(())
+}
+
 /// `.exclude_schema(...)` must keep dangerous discovery from ever scanning
 /// (and therefore proposing drops for) a schema that belongs to another
 /// application/tenant sharing the same database.
@@ -548,7 +720,7 @@ async fn test_exclude_schema_protects_foreign_schema_from_orphan_scan() -> Resul
     let change_set = Schema::new(db.get_database_backend())
         .builder()
         .register(thing::Entity)
-        .discover(&db, true)
+        .discover(&db)
         .await?;
     let sql_all: String = change_set
         .tables
@@ -566,7 +738,7 @@ async fn test_exclude_schema_protects_foreign_schema_from_orphan_scan() -> Resul
         .builder()
         .register(thing::Entity)
         .exclude_schema("entity_first_foreign_schema")
-        .discover(&db, true)
+        .discover(&db)
         .await?;
     let sql_all: String = change_set
         .tables

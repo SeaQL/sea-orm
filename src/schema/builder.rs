@@ -93,8 +93,7 @@ impl SchemaBuilder {
 
     /// Exclude tables from schema discovery.
     ///
-    /// Excluded tables are never reported as orphans and are never diffed for column/FK changes.
-    /// Use this to protect system tables (e.g. the migration tracker) from being dropped.
+    /// They are never show as orphans and are never diffed for column/FK changes
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
     pub fn exclude(mut self, table: impl Into<String>) -> Self {
@@ -102,16 +101,17 @@ impl SchemaBuilder {
         self
     }
 
-    /// Exclude a PostgreSQL schema (namespace) from orphan-table discovery.
+    /// Exclude a PostgreSQL schema from discovery.
     ///
-    /// When `discover`/`sync` run with dangerous operations enabled, every
-    /// non-system schema in the database is scanned for orphaned tables —
-    /// otherwise a schema no entity references anymore (e.g. after a
-    /// `schema_name` rename) would be invisible to that scan. Use this to
-    /// protect schemas that belong to other applications/tenants sharing the
-    /// same database from being scanned at all.
-    #[cfg(feature = "schema-sync")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
+    /// When `discover()`/`sync()` , every non-system schema in the database
+    /// is scanned for orphaned tables.
+    /// Use this to protect schemas that belong to other applications/tenants
+    /// sharing the same database from being scanned at all.
+    #[cfg(all(feature = "schema-sync", feature = "sqlx-postgres"))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(all(feature = "schema-sync", feature = "sqlx-postgres")))
+    )]
     pub fn exclude_schema(mut self, schema: impl Into<String>) -> Self {
         self.excluded_schemas.push(schema.into());
         self
@@ -134,7 +134,7 @@ impl SchemaBuilder {
     where
         C: ConnectionTrait + sea_schema::Connection,
     {
-        let change_set = self.discover(db, true).await?;
+        let change_set = self.discover(db).await?;
         for stmt in change_set.statements() {
             db.execute_raw(stmt).await?;
         }
@@ -142,26 +142,17 @@ impl SchemaBuilder {
     }
 
     /// Returns a [`ChangeSet`](super::discover::changes::ChangeSet) grouped by origin.
-    /// Use [`interpret`](super::discover::interpret) to turn it into SQL statements.
-    ///
-    /// * `db` - The database connection to use for fetching existing table schema.
-    /// * `allow_dangerous` - If `true`, changes will include drops (tables, columns, constraints).
     ///
     /// Panics if TableCreateStatement any table name is empty, will never happen.
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
-    pub async fn discover<C>(
-        &self,
-        db: &C,
-        allow_dangerous: bool,
-    ) -> Result<super::discover::changes::ChangeSet, DbErr>
+    pub async fn discover<C>(&self, db: &C) -> Result<super::discover::changes::ChangeSet, DbErr>
     where
         C: ConnectionTrait + sea_schema::Connection,
     {
         super::discover::discover(
             &self.entities,
             db,
-            allow_dangerous,
             &self.excluded_tables,
             &self.excluded_schemas,
         )
@@ -180,18 +171,13 @@ impl SchemaBuilder {
         names
     }
 
-    /// Returns the SQL DDL statements (CREATE SCHEMA, CREATE TABLE, CREATE TYPE,
-    /// CREATE INDEX) for all registered entities, rendered for the builder's backend.
-    ///
-    /// Tables are ordered topologically (parents before children). Useful for previewing
-    /// the schema without connecting to a database.
-    ///
-    /// A `CREATE SCHEMA IF NOT EXISTS` statement is emitted for each distinct
-    /// `schema_name` on PostgreSQL; other backends don't have this concept of
-    /// a namespace separate from the table itself, so none is emitted.
+    /// Returns the SQL DDL statements for all registered entities.
+    /// Tables are ordered topologically (parents before children).
     pub fn schema_statements(&self) -> Vec<Statement> {
         let backend = self.helper.backend;
         let mut stmts: Vec<Statement> = Vec::new();
+
+        // Create schemas for postgres
         if backend == DbBackend::Postgres {
             for schema in self.distinct_schema_names() {
                 stmts.push(create_schema_stmt(backend, schema));
@@ -199,12 +185,14 @@ impl SchemaBuilder {
         }
         let table_refs: Vec<&TableCreateStatement> =
             self.entities.iter().map(|e| &e.table).collect();
-        for table_name in sorted_tables(&table_refs, TableSortOrder::ParentsFirst) {
-            if let Some(entity) = self
-                .entities
-                .iter()
-                .find(|e| table_name == get_table_name(e.table.get_table_name()))
-            {
+        let entities_by_table: std::collections::HashMap<TableName, &EntitySchemaInfo> = self
+            .entities
+            .iter()
+            .map(|e| (get_table_name(e.table.get_table_name()), e))
+            .collect();
+        for table in sorted_tables(&table_refs, TableSortOrder::ParentsFirst) {
+            let table_name = get_table_name(table.get_table_name());
+            if let Some(entity) = entities_by_table.get(&table_name) {
                 for stmt in &entity.enums {
                     stmts.push(backend.build(stmt));
                 }
@@ -220,9 +208,6 @@ impl SchemaBuilder {
     /// Create all registered tables, columns, unique keys, and foreign keys.
     /// Fails if any table already exists. Use `sync` (feature `schema-sync`)
     /// instead for an incremental version that diffs against the live schema.
-    ///
-    /// On PostgreSQL, also creates (`IF NOT EXISTS`) every namespace referenced
-    /// by a registered entity's `schema_name`, before any table.
     pub async fn apply<C: ConnectionTrait>(self, db: &C) -> Result<(), DbErr> {
         let mut created_enums: Vec<Statement> = Default::default();
 
@@ -235,12 +220,14 @@ impl SchemaBuilder {
 
         let table_refs: Vec<&TableCreateStatement> =
             self.entities.iter().map(|entity| &entity.table).collect();
-        for table_name in sorted_tables(&table_refs, TableSortOrder::ParentsFirst) {
-            if let Some(entity) = self
-                .entities
-                .iter()
-                .find(|entity| table_name == get_table_name(entity.table.get_table_name()))
-            {
+        let entities_by_table: std::collections::HashMap<TableName, &EntitySchemaInfo> = self
+            .entities
+            .iter()
+            .map(|entity| (get_table_name(entity.table.get_table_name()), entity))
+            .collect();
+        for table in sorted_tables(&table_refs, TableSortOrder::ParentsFirst) {
+            let table_name = get_table_name(table.get_table_name());
+            if let Some(entity) = entities_by_table.get(&table_name) {
                 entity.apply(db, &mut created_enums).await?;
             }
         }
@@ -371,55 +358,72 @@ pub(crate) enum TableSortOrder {
     ChildrenFirst,
 }
 
-/// Sort table names topologically by FK dependency
-pub(crate) fn sorted_tables(
-    tables: &[&TableCreateStatement],
+/// Sort table create statements topologically by FK dependency.
+///
+/// Tables not present in `tables` may still appear as FK targets (e.g. an
+/// orphan table pointing at one still in use); such foreign nodes are
+/// filtered out before returning, since callers expect only their input
+/// reordered.
+pub(crate) fn sorted_tables<'a>(
+    tables: &[&'a TableCreateStatement],
     order: TableSortOrder,
-) -> Vec<TableName> {
+) -> Vec<&'a TableCreateStatement> {
+    let by_name: std::collections::HashMap<TableName, &'a TableCreateStatement> = tables
+        .iter()
+        .map(|tbl| (get_table_name(tbl.get_table_name()), *tbl))
+        .collect();
+
     let mut sorter = TopologicalSort::<TableName>::new();
 
+    // Register every input table as a node up front, so tables with no
+    // FKs (in either direction) still show up in the output.
     for tbl in tables {
         sorter.insert(get_table_name(tbl.get_table_name()));
     }
+
+    // Wire up edges per FK. Direction flips based on desired order:
+    // parents-first means "referenced table before referencing table".
     for tbl in tables {
         let self_name = get_table_name(tbl.get_table_name());
         for fk in tbl.get_foreign_key_create_stmts() {
             let ref_table = get_table_name(fk.get_foreign_key().get_ref_table());
-            if self_name != ref_table {
-                match order {
-                    TableSortOrder::ParentsFirst => {
-                        sorter.add_dependency(ref_table.clone(), self_name.clone());
-                    }
-                    TableSortOrder::ChildrenFirst => {
-                        sorter.add_dependency(self_name.clone(), ref_table.clone());
-                    }
+            if self_name == ref_table {
+                continue; // skip self-referencing FKs
+            }
+            match order {
+                TableSortOrder::ParentsFirst => sorter.add_dependency(ref_table, self_name.clone()),
+                TableSortOrder::ChildrenFirst => {
+                    sorter.add_dependency(self_name.clone(), ref_table)
                 }
             }
         }
     }
+
     let mut sorted = Vec::new();
     loop {
-        // Collect all zero-predecessor nodes, sort by name for determinism,
-        // then drain them one level at a time. Without this sort, HashMap
-        // iteration order inside TopologicalSort::peek() is random per process,
-        // causing different orderings across subprocess invocations (e.g. diff
-        // vs generate in `entity sync`), which breaks the schema-hash check.
+        // Pull all currently-unblocked (zero-predecessor) nodes
         let mut level = sorter.pop_all();
         if level.is_empty() {
             break;
         }
-        level.sort_by_key(|a| a.1.to_string());
+        level.retain(|name| by_name.contains_key(name));
+        level.sort_by_key(|name| name.1.to_string());
         sorted.extend(level);
     }
 
-    // Append any leftovers (circular deps)
+    // Anything left unsorted here is part of a dependency cycle, since
+    // pop_all() only stops early when nodes remain but none are unblocked.
+    // Append them in input order — there's no valid topological position
+    // for a cycle, so this is just a stable fallback, not a meaningful order.
+    let sorted_set: std::collections::HashSet<TableName> = sorted.iter().cloned().collect();
     for tbl in tables {
         let name = get_table_name(tbl.get_table_name());
-        if !sorted.contains(&name) {
+        if !sorted_set.contains(&name) {
             sorted.push(name);
         }
     }
-    sorted
+
+    sorted.into_iter().map(|name| by_name[&name]).collect()
 }
 
 #[cfg(test)]

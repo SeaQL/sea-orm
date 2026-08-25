@@ -164,6 +164,77 @@ pub mod cake_ambiguous {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+/// `pastry` — same columns as `cake_v1` (id, name) but a different table
+/// name. Used to test table-level rename detection (table dropped + table
+/// created with an identical column signature).
+pub mod pastry {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "pastry")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub name: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+/// `pastry_diff` — different table name than `cake_v1` *and* an extra
+/// column, so its signature does not match. Used to prove table rename
+/// detection requires an exact column match, not just a name swap.
+pub mod pastry_diff {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "pastry_diff")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub name: String,
+        pub extra: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+/// `pastry_a` — same columns as `cake_v1`, used alongside `pastry_b` to
+/// create an ambiguous table-move scenario (one dropped table matches two
+/// created tables).
+pub mod pastry_a {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "pastry_a")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub name: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+/// `pastry_b` — see [`pastry_a`].
+pub mod pastry_b {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "pastry_b")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub name: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 // ---------------------------------------------------------------------------
 // EntitySet implementations
 // ---------------------------------------------------------------------------
@@ -223,5 +294,31 @@ pub struct CakeAmbiguousOnly;
 impl EntitySet for CakeAmbiguousOnly {
     fn register(self, builder: SchemaBuilder) -> SchemaBuilder {
         builder.register(cake_ambiguous::Entity)
+    }
+}
+
+/// `pastry` only — same columns as `cake_v1`, different table name. Table-level rename.
+pub struct PastryRenamedOnly;
+impl EntitySet for PastryRenamedOnly {
+    fn register(self, builder: SchemaBuilder) -> SchemaBuilder {
+        builder.register(pastry::Entity)
+    }
+}
+
+/// `pastry_diff` only — different table name *and* an extra column. No table-level match.
+pub struct PastryDiffColumnsOnly;
+impl EntitySet for PastryDiffColumnsOnly {
+    fn register(self, builder: SchemaBuilder) -> SchemaBuilder {
+        builder.register(pastry_diff::Entity)
+    }
+}
+
+/// `pastry_a` + `pastry_b`, both matching `cake_v1`'s signature — ambiguous table move.
+pub struct PastryAmbiguousSet;
+impl EntitySet for PastryAmbiguousSet {
+    fn register(self, builder: SchemaBuilder) -> SchemaBuilder {
+        builder
+            .register(pastry_a::Entity)
+            .register(pastry_b::Entity)
     }
 }

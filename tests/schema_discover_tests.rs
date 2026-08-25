@@ -26,13 +26,12 @@ async fn test_discover_creates_enum_type() -> Result<(), DbErr> {
     let db = &ctx.db;
 
     let builder = db.get_schema_builder().register(enum_v1::Entity);
-    let change_set = builder.discover(db, false).await?;
+    let change_set = builder.discover(db).await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: false,
         },
     );
 
@@ -92,14 +91,13 @@ async fn test_discover_skips_existing_enum() -> Result<(), DbErr> {
     let change_set = db
         .get_schema_builder()
         .register(enum_v1::Entity)
-        .discover(db, false)
+        .discover(db)
         .await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: false,
         },
     );
 
@@ -137,14 +135,13 @@ async fn test_discover_enum_variant_change_warning() -> Result<(), DbErr> {
     let change_set = db
         .get_schema_builder()
         .register(enum_v2::Entity)
-        .discover(db, true)
+        .discover(db)
         .await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: true,
-            allow_dangerous: true,
         },
     );
 
@@ -185,14 +182,13 @@ async fn test_discover_enum_rename_warning() -> Result<(), DbErr> {
     let change_set = db
         .get_schema_builder()
         .register(enum_renamed::Entity)
-        .discover(db, true)
+        .discover(db)
         .await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: true,
-            allow_dangerous: true,
         },
     );
 
@@ -225,14 +221,13 @@ async fn test_discover_safe_no_enum_warnings() -> Result<(), DbErr> {
     let change_set = db
         .get_schema_builder()
         .register(enum_v2::Entity)
-        .discover(db, false)
+        .discover(db)
         .await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: false,
         },
     );
 
@@ -270,14 +265,13 @@ async fn test_discover_drop_column() -> Result<(), DbErr> {
     let change_set = db
         .get_schema_builder()
         .register(widget_v2::Entity)
-        .discover(db, true)
+        .discover(db)
         .await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: true,
         },
     );
 
@@ -315,7 +309,7 @@ async fn test_discover_safe_no_drops() -> Result<(), DbErr> {
         let change_set = db
             .get_schema_builder()
             .register(widget_v2::Entity)
-            .discover(db, false)
+            .discover(db)
             .await?;
         let result = sea_orm::interpret_changes(
             change_set,
@@ -360,7 +354,6 @@ async fn test_sync_dangerous_drops_column() -> Result<(), DbErr> {
         sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: true,
         },
     )
     .await?;
@@ -392,14 +385,13 @@ async fn test_discover_drop_table() -> Result<(), DbErr> {
     let change_set = db
         .get_schema_builder()
         .register(widget_v1::Entity)
-        .discover(db, true)
+        .discover(db)
         .await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: true,
         },
     );
 
@@ -440,7 +432,6 @@ async fn test_sync_dangerous_drops_table() -> Result<(), DbErr> {
         sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: true,
         },
     )
     .await?;
@@ -478,7 +469,6 @@ async fn test_sync_dangerous_drops_orphan_table_fk_order() -> Result<(), DbErr> 
         sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: true,
         },
     )
     .await?;
@@ -525,14 +515,13 @@ async fn test_discover_drop_foreign_key() -> Result<(), DbErr> {
         .get_schema_builder()
         .register(category_v1::Entity)
         .register(article_v2::Entity)
-        .discover(db, true)
+        .discover(db)
         .await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: true,
         },
     );
 
@@ -572,7 +561,6 @@ async fn test_sync_dangerous_drops_foreign_key() -> Result<(), DbErr> {
         sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: true,
         },
     )
     .await?;
@@ -599,26 +587,23 @@ async fn test_discover_no_changes_when_synced() -> Result<(), DbErr> {
         .sync(db)
         .await?;
 
-    for dangerous in [false, true] {
-        let change_set = db
-            .get_schema_builder()
-            .register(widget_v1::Entity)
-            .discover(db, dangerous)
-            .await?;
-        let result = sea_orm::interpret_changes(
-            change_set,
-            &sea_orm::InterpretConfig {
-                db_backend: db.get_database_backend(),
-                assumptions: false,
-                allow_dangerous: dangerous,
-            },
-        );
-        assert!(
-            result.statements.is_empty(),
-            "discover(dangerous={dangerous}) must return no changes when schema is up-to-date; got: {:?}",
-            result.statements
-        );
-    }
+    let change_set = db
+        .get_schema_builder()
+        .register(widget_v1::Entity)
+        .discover(db)
+        .await?;
+    let result = sea_orm::interpret_changes(
+        change_set,
+        &sea_orm::InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: false,
+        },
+    );
+    assert!(
+        result.statements.is_empty(),
+        "discover() must return no changes when schema is up-to-date; got: {:?}",
+        result.statements
+    );
 
     ctx.delete().await;
     Ok(())
@@ -643,14 +628,13 @@ async fn test_sync_dangerous_add_and_drop_column() -> Result<(), DbErr> {
     let change_set = db
         .get_schema_builder()
         .register(combo_v2::Entity)
-        .discover(db, true)
+        .discover(db)
         .await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: true,
-            allow_dangerous: true,
         },
     );
 
@@ -704,7 +688,7 @@ async fn test_discover_add_nullable_column() -> Result<(), DbErr> {
     let change_set = db
         .get_schema_builder()
         .register(coltest_v2_nullable::Entity)
-        .discover(db, false)
+        .discover(db)
         .await?;
     let result = sea_orm::interpret_changes(
         change_set,
@@ -752,7 +736,7 @@ async fn test_discover_add_notnull_column_warns() -> Result<(), DbErr> {
     let change_set = db
         .get_schema_builder()
         .register(coltest_v2_notnull::Entity)
-        .discover(db, false)
+        .discover(db)
         .await?;
     let result = sea_orm::interpret_changes(
         change_set,
@@ -799,7 +783,7 @@ async fn test_discover_add_notnull_with_default_no_warn() -> Result<(), DbErr> {
     let change_set = db
         .get_schema_builder()
         .register(coltest_v2_notnull_default::Entity)
-        .discover(db, false)
+        .discover(db)
         .await?;
     let result = sea_orm::interpret_changes(
         change_set,
@@ -847,7 +831,7 @@ async fn test_discover_add_multiple_columns() -> Result<(), DbErr> {
     let change_set = db
         .get_schema_builder()
         .register(coltest_v2_multi::Entity)
-        .discover(db, false)
+        .discover(db)
         .await?;
     let result = sea_orm::interpret_changes(
         change_set,
@@ -942,13 +926,12 @@ async fn test_discover_drops_orphan_enum_type() -> Result<(), DbErr> {
         .await?;
 
     // Discover with NO entities registered — the enum is now orphaned.
-    let change_set = db.get_schema_builder().discover(db, true).await?;
+    let change_set = db.get_schema_builder().discover(db).await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: true,
         },
     );
 
@@ -986,7 +969,6 @@ async fn test_discover_drop_table_before_enum_type() -> Result<(), DbErr> {
         sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: true,
         },
     )
     .await?;
@@ -1026,13 +1008,12 @@ async fn test_discover_safe_no_drop_enum_type() -> Result<(), DbErr> {
         .sync(db)
         .await?;
 
-    let change_set = db.get_schema_builder().discover(db, false).await?;
+    let change_set = db.get_schema_builder().discover(db).await?;
     let result = sea_orm::interpret_changes(
         change_set,
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: false,
         },
     );
 
@@ -1087,7 +1068,6 @@ async fn test_complex_drop_sequence() -> Result<(), DbErr> {
         sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: true,
         },
     )
     .await?;

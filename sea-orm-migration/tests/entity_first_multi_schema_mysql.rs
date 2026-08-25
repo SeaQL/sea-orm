@@ -109,6 +109,41 @@ mod widget_in_schema_b {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+/// `origin` — no `schema_name`, used as the "before" side of a same-database
+/// table rename test (MySQL builds renames via `RENAME TABLE`, unlike
+/// Postgres/SQLite's `ALTER TABLE ... RENAME TO`).
+mod origin_v1 {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "origin")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub name: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+/// Same columns as `origin_v1`, different table name, same (default)
+/// database — the "after" side of the rename.
+mod destination {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "destination")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub name: String,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
 struct FullSet;
 impl EntitySet for FullSet {
     fn register(self, builder: SchemaBuilder) -> SchemaBuilder {
@@ -219,7 +254,7 @@ async fn test_discover_multi_schema_creates_tables_in_correct_databases() -> Res
     let db = fresh_multi_schema_db("entity_first_mysql_multi_schema_discover").await?;
 
     let builder = FullSet.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
 
     let creates: Vec<_> = stmts
@@ -274,7 +309,7 @@ async fn test_sync_multi_schema_twice_is_idempotent() -> Result<(), DbErr> {
     assert!(table_exists_in_schema(&db, "entity_first_mysql_multi_schema_sync", "thing").await?);
 
     let builder = FullSet.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
     assert!(
         stmts.is_empty(),
@@ -301,7 +336,7 @@ async fn test_discover_detects_added_column_in_non_default_schema() -> Result<()
         .await?;
 
     let builder = FullSetV2.register(Schema::new(db.get_database_backend()).builder());
-    let change_set = builder.discover(&db, false).await?;
+    let change_set = builder.discover(&db).await?;
     let stmts = change_set.statements();
 
     let sql_all: String = stmts
@@ -351,7 +386,7 @@ async fn test_discover_dangerous_ignores_orphan_after_schema_rename() -> Result<
     let builder = Schema::new(db.get_database_backend())
         .builder()
         .register(widget_in_schema_b::Entity);
-    let change_set = builder.discover(&db, true).await?;
+    let change_set = builder.discover(&db).await?;
     let result = interpret_changes(
         change_set,
         &InterpretConfig {
@@ -373,6 +408,63 @@ async fn test_discover_dangerous_ignores_orphan_after_schema_rename() -> Result<
     );
     // The old table is still there, untouched.
     assert!(table_exists_in_schema(&db, SCHEMA_A, "widget").await?);
+
+    Ok(())
+}
+
+/// A table renamed within the same (default) database, with an identical
+/// column signature, must be detected via MySQL's `RENAME TABLE` syntax
+/// rather than falling back to DROP + CREATE.
+#[tokio::test]
+#[cfg(feature = "sqlx-mysql")]
+async fn test_table_rename_detected_same_database() -> Result<(), DbErr> {
+    use sea_orm::{InterpretConfig, interpret_changes};
+
+    let _guard = SCHEMA_LOCK.lock().await;
+    let db = fresh_multi_schema_db("entity_first_mysql_rename").await?;
+
+    Schema::new(db.get_database_backend())
+        .builder()
+        .register(origin_v1::Entity)
+        .sync(&db)
+        .await?;
+
+    let builder = Schema::new(db.get_database_backend())
+        .builder()
+        .register(destination::Entity);
+    let change_set = builder.discover(&db).await?;
+    let result = interpret_changes(
+        change_set,
+        &InterpretConfig {
+            db_backend: db.get_database_backend(),
+            assumptions: true,
+            allow_dangerous: true,
+        },
+    );
+
+    assert_eq!(
+        result.table_moves.len(),
+        1,
+        "should detect exactly one table rename, got: {:?}",
+        result.table_moves
+    );
+    assert_eq!(result.table_moves[0].from_name(), "origin");
+    assert_eq!(result.table_moves[0].to_name(), "destination");
+
+    let sql_all: String = result
+        .statements
+        .iter()
+        .map(|(_, s)| s.sql.to_uppercase())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        sql_all.contains("RENAME TABLE") && sql_all.contains("DESTINATION"),
+        "should produce a MySQL RENAME TABLE statement, got: {sql_all}"
+    );
+    assert!(
+        !sql_all.contains("DROP TABLE") && !sql_all.contains("CREATE TABLE"),
+        "should not fall back to CREATE+DROP, got: {sql_all}"
+    );
 
     Ok(())
 }
@@ -411,7 +503,7 @@ async fn test_unreferenced_schema_never_scanned_for_orphans() -> Result<(), DbEr
     let change_set = Schema::new(db.get_database_backend())
         .builder()
         .register(thing::Entity)
-        .discover(&db, true)
+        .discover(&db)
         .await?;
     let sql_all: String = change_set
         .tables
