@@ -77,12 +77,15 @@ pub(crate) fn record_enum_changes(
         } else {
             existing
                 .iter()
-                .filter(|e| resolver::extract_enum_variants(&db_backend.build(*e).sql) == new_variants)
+                .filter(|e| {
+                    resolver::extract_enum_variants(&db_backend.build(*e).sql) == new_variants
+                })
                 .collect()
         };
 
         if let [existing_enum] = rename_candidates[..]
-            && let Some(existing_name) = extract_enum_type_name(&db_backend.build(existing_enum).sql)
+            && let Some(existing_name) =
+                extract_enum_type_name(&db_backend.build(existing_enum).sql)
         {
             changes.record_enum(EnumChangeKind::Rename {
                 existing_name,

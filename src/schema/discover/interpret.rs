@@ -180,7 +180,11 @@ impl InterpretResult {
             .statements
             .iter()
             .map(|(id, _)| id.0)
-            .chain(self.assumed.iter().flat_map(|a| [a.id.0, a.drop_id.0, a.add_id.0]))
+            .chain(
+                self.assumed
+                    .iter()
+                    .flat_map(|a| [a.id.0, a.drop_id.0, a.add_id.0]),
+            )
             .chain(self.table_moves.iter().flat_map(|m| [m.id.0, m.drop_id.0]))
             .max()
             .map_or(0, |m| m + 1);
@@ -999,7 +1003,11 @@ mod tests {
             ids.len(),
             2,
             "each applied decision must get a distinct ChangeId: {:?}",
-            result.statements.iter().map(|(id, _)| id).collect::<Vec<_>>()
+            result
+                .statements
+                .iter()
+                .map(|(id, _)| id)
+                .collect::<Vec<_>>()
         );
     }
 

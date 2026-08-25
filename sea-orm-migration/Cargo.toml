@@ -1,3 +1,4 @@
+# TODO: temporary change for development
 # [workspace]
 # # A separate workspace
 
@@ -61,7 +62,7 @@ required-features = [
 
 [[test]]
 name              = "entity_first_multi_schema_mysql"
-required-features = ["entity-first", "sqlx-mysql"] # still needs a runtime
+required-features = ["entity-first", "sqlx-mysql"]    # still needs a runtime
 
 [features]
 cli = ["clap", "dotenvy", "sea-orm-cli/cli"]
