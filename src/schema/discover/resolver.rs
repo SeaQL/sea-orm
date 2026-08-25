@@ -3,6 +3,7 @@
 //! This module contains pure functions that take raw added/removed column lists
 //! and produce structured rename decisions. No I/O or user interaction happens here.
 
+use crate::TableId;
 use sea_query::ColumnType;
 
 /// A column that exists in the entity but not in the database.
@@ -41,10 +42,9 @@ pub struct RenameCandidate {
 /// An ambiguous rename where multiple candidates exist for a removed column.
 #[derive(Debug, Clone)]
 pub struct AmbiguousRename {
-    /// Full (possibly schema-qualified) reference to the table this rename
-    /// occurs in, for building the eventual rename/drop statement without
-    /// losing the schema.
-    pub table_ref: sea_query::TableRef,
+    /// The table this rename occurs in, so the eventual rename/drop statement
+    /// can be built without losing the schema.
+    pub table: TableId,
     /// The name of the removed column.
     pub removed: String,
     /// All possible added columns it could be renamed to.
@@ -55,19 +55,7 @@ impl AmbiguousRename {
     /// The table this rename occurs in, qualified by schema when the table has one
     /// (e.g. `"my_schema.person"`).
     pub fn table_name(&self) -> String {
-        qualified_table_name(&self.table_ref)
-    }
-}
-
-/// Render a table reference as a display string, schema-qualified when present
-/// (e.g. `"my_schema.person"`), falling back to the bare name otherwise.
-pub(crate) fn qualified_table_name(table_ref: &sea_query::TableRef) -> String {
-    match table_ref {
-        sea_query::TableRef::Table(sea_query::TableName(Some(schema), table), _) => {
-            format!("{}.{}", schema.1, table)
-        }
-        sea_query::TableRef::Table(sea_query::TableName(None, table), _) => table.to_string(),
-        other => other.sea_orm_table().to_string(),
+        self.table.to_string()
     }
 }
 
@@ -82,27 +70,6 @@ pub struct RenameResolution {
     pub remaining_added: Vec<AddedColumn>,
     /// Genuinely removed columns (no rename match).
     pub remaining_removed: Vec<RemovedColumn>,
-}
-
-/// The kind of enum change detected between existing and new definitions.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum EnumChange {
-    /// Same enum name, different variants.
-    VariantChange {
-        /// The enum type name.
-        name: String,
-        /// The existing CREATE TYPE SQL.
-        existing_sql: String,
-        /// The new CREATE TYPE SQL.
-        new_sql: String,
-    },
-    /// Different enum name with same variants (enum was renamed).
-    NameChange {
-        /// The existing enum type name.
-        existing_name: String,
-        /// The new enum type name.
-        new_name: String,
-    },
 }
 
 /// Check if two column types are compatible for rename detection.
@@ -133,7 +100,7 @@ pub fn types_compatible(a: Option<&ColumnType>, b: Option<&ColumnType>) -> bool 
 /// - If multiple candidates → ambiguous rename.
 /// - Unmatched columns go to remaining_added / remaining_removed.
 pub fn resolve_renames(
-    table_ref: sea_query::TableRef,
+    table: &TableId,
     added: Vec<AddedColumn>,
     removed: Vec<RemovedColumn>,
 ) -> RenameResolution {
@@ -215,7 +182,7 @@ pub fn resolve_renames(
 
         if available.len() > 1 {
             resolution.ambiguous.push(AmbiguousRename {
-                table_ref: table_ref.clone(),
+                table: table.clone(),
                 removed: removed[*ri].name.clone(),
                 candidates: available,
             });
@@ -245,36 +212,6 @@ pub fn resolve_renames(
     }
 
     resolution
-}
-
-/// Detect enum changes between existing and new SQL definitions.
-/// Compares two `CREATE TYPE ... AS ENUM (...)` SQL strings and returns
-/// the kind of change detected, if any.
-pub fn detect_enum_change(existing_sql: &str, new_sql: &str) -> Option<EnumChange> {
-    let existing_name = extract_enum_type_name(existing_sql)?;
-    let new_name = extract_enum_type_name(new_sql)?;
-
-    if existing_name == new_name && existing_sql != new_sql {
-        Some(EnumChange::VariantChange {
-            name: existing_name,
-            existing_sql: existing_sql.to_string(),
-            new_sql: new_sql.to_string(),
-        })
-    } else if existing_name != new_name {
-        // Extract variants to check if they match
-        let existing_variants = extract_enum_variants(existing_sql);
-        let new_variants = extract_enum_variants(new_sql);
-        if existing_variants == new_variants && !existing_variants.is_empty() {
-            Some(EnumChange::NameChange {
-                existing_name,
-                new_name,
-            })
-        } else {
-            None
-        }
-    } else {
-        None
-    }
 }
 
 /// Extract the type name from a `CREATE TYPE "name" AS ENUM (...)` SQL string.
@@ -321,7 +258,6 @@ pub(crate) fn extract_enum_variants(sql: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sea_query::IntoTableRef;
 
     fn added(index: usize, name: &str, col_type: Option<ColumnType>) -> AddedColumn {
         AddedColumn {
@@ -339,8 +275,8 @@ mod tests {
         }
     }
 
-    fn tref(name: &str) -> sea_query::TableRef {
-        sea_query::Alias::new(name).into_table_ref()
+    fn tref(name: &str) -> TableId {
+        TableId::new(name)
     }
 
     #[test]
@@ -356,7 +292,7 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames(tref("cake"), added_cols, removed_cols);
+        let result = resolve_renames(&tref("cake"), added_cols, removed_cols);
 
         assert_eq!(result.assumed.len(), 1);
         assert_eq!(result.assumed[0].removed, "name");
@@ -376,7 +312,7 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames(tref("cake"), added_cols, removed_cols);
+        let result = resolve_renames(&tref("cake"), added_cols, removed_cols);
 
         assert!(result.assumed.is_empty());
         assert!(result.ambiguous.is_empty());
@@ -397,7 +333,7 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames(tref("cake"), added_cols, removed_cols);
+        let result = resolve_renames(&tref("cake"), added_cols, removed_cols);
 
         assert!(result.assumed.is_empty());
         assert!(result.ambiguous.is_empty());
@@ -426,7 +362,7 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames(tref("cake"), added_cols, removed_cols);
+        let result = resolve_renames(&tref("cake"), added_cols, removed_cols);
 
         assert!(result.assumed.is_empty());
         assert_eq!(result.ambiguous.len(), 1);
@@ -455,7 +391,7 @@ mod tests {
             removed(3, "weight", Some(ColumnType::Integer)),
         ];
 
-        let result = resolve_renames(tref("product"), added_cols, removed_cols);
+        let result = resolve_renames(&tref("product"), added_cols, removed_cols);
 
         assert_eq!(result.assumed.len(), 2);
         assert!(result.ambiguous.is_empty());
@@ -476,7 +412,7 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames(tref("item"), added_cols, removed_cols);
+        let result = resolve_renames(&tref("item"), added_cols, removed_cols);
 
         assert_eq!(result.assumed.len(), 1);
         assert_eq!(result.assumed[0].removed, "desc");
@@ -497,7 +433,7 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames(tref("cake"), added_cols, removed_cols);
+        let result = resolve_renames(&tref("cake"), added_cols, removed_cols);
         assert_eq!(result.assumed.len(), 1);
         assert_eq!(result.assumed[0].proximity, 2);
 
@@ -513,13 +449,13 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames(tref("cake"), added_cols, removed_cols);
+        let result = resolve_renames(&tref("cake"), added_cols, removed_cols);
         assert!(result.assumed.is_empty());
     }
 
     #[test]
     fn test_no_columns_produces_empty_resolution() {
-        let result = resolve_renames(tref("empty"), vec![], vec![]);
+        let result = resolve_renames(&tref("empty"), vec![], vec![]);
         assert!(result.assumed.is_empty());
         assert!(result.ambiguous.is_empty());
         assert!(result.remaining_added.is_empty());
@@ -537,7 +473,7 @@ mod tests {
             added(2, "another", Some(ColumnType::Integer)),
         ];
 
-        let result = resolve_renames(tref("t"), added_cols, vec![]);
+        let result = resolve_renames(&tref("t"), added_cols, vec![]);
         assert!(result.assumed.is_empty());
         assert!(result.ambiguous.is_empty());
         assert_eq!(result.remaining_added.len(), 2);
@@ -552,7 +488,7 @@ mod tests {
             Some(ColumnType::String(sea_query::StringLen::None)),
         )];
 
-        let result = resolve_renames(tref("t"), vec![], removed_cols);
+        let result = resolve_renames(&tref("t"), vec![], removed_cols);
         assert!(result.assumed.is_empty());
         assert!(result.ambiguous.is_empty());
         assert!(result.remaining_added.is_empty());
@@ -560,52 +496,17 @@ mod tests {
     }
 
     #[test]
-    fn test_enum_variant_change() {
-        let existing = r#"CREATE TYPE "mood" AS ENUM ('happy', 'sad')"#;
-        let new = r#"CREATE TYPE "mood" AS ENUM ('happy', 'sad', 'neutral')"#;
-
-        let change = detect_enum_change(existing, new);
-        assert!(change.is_some());
-        match change.unwrap() {
-            EnumChange::VariantChange { name, .. } => {
-                assert_eq!(name, "mood");
-            }
-            _ => panic!("expected VariantChange"),
-        }
-    }
-
-    #[test]
-    fn test_enum_rename() {
-        let existing = r#"CREATE TYPE "mood" AS ENUM ('happy', 'sad')"#;
-        let new = r#"CREATE TYPE "feeling" AS ENUM ('happy', 'sad')"#;
-
-        let change = detect_enum_change(existing, new);
-        assert!(change.is_some());
-        match change.unwrap() {
-            EnumChange::NameChange {
-                existing_name,
-                new_name,
-            } => {
-                assert_eq!(existing_name, "mood");
-                assert_eq!(new_name, "feeling");
-            }
-            _ => panic!("expected NameChange"),
-        }
-    }
-
-    #[test]
-    fn test_enum_no_change() {
+    fn test_extract_enum_type_name() {
         let sql = r#"CREATE TYPE "mood" AS ENUM ('happy', 'sad')"#;
-        assert!(detect_enum_change(sql, sql).is_none());
+        assert_eq!(extract_enum_type_name(sql), Some("mood".to_string()));
+        assert_eq!(extract_enum_type_name("CREATE TABLE mood ()"), None);
     }
 
     #[test]
-    fn test_enum_completely_different() {
-        let existing = r#"CREATE TYPE "mood" AS ENUM ('happy', 'sad')"#;
-        let new = r#"CREATE TYPE "color" AS ENUM ('red', 'blue')"#;
-
-        // Different name AND different variants — no match
-        assert!(detect_enum_change(existing, new).is_none());
+    fn test_extract_enum_variants() {
+        let sql = r#"CREATE TYPE "mood" AS ENUM ('happy', 'sad')"#;
+        assert_eq!(extract_enum_variants(sql), vec!["happy", "sad"]);
+        assert!(extract_enum_variants("CREATE TABLE mood ()").is_empty());
     }
 
     #[test]

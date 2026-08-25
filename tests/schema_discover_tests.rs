@@ -38,7 +38,7 @@ async fn test_discover_creates_enum_type() -> Result<(), DbErr> {
     let has_create_type = result
         .statements
         .iter()
-        .any(|(_, s)| s.sql.to_uppercase().contains("CREATE TYPE"));
+        .any(|s| s.stmt.sql.to_uppercase().contains("CREATE TYPE"));
     assert!(
         has_create_type,
         "discover() must include CREATE TYPE for Postgres enum; got: {:?}",
@@ -48,7 +48,7 @@ async fn test_discover_creates_enum_type() -> Result<(), DbErr> {
     let has_create_table = result
         .statements
         .iter()
-        .any(|(_, s)| s.sql.to_uppercase().contains("CREATE TABLE"));
+        .any(|s| s.stmt.sql.to_uppercase().contains("CREATE TABLE"));
     assert!(
         has_create_table,
         "discover() must include CREATE TABLE; got: {:?}",
@@ -58,12 +58,12 @@ async fn test_discover_creates_enum_type() -> Result<(), DbErr> {
     let type_pos = result
         .statements
         .iter()
-        .position(|(_, s)| s.sql.to_uppercase().contains("CREATE TYPE"))
+        .position(|s| s.stmt.sql.to_uppercase().contains("CREATE TYPE"))
         .unwrap();
     let table_pos = result
         .statements
         .iter()
-        .position(|(_, s)| s.sql.to_uppercase().contains("CREATE TABLE"))
+        .position(|s| s.stmt.sql.to_uppercase().contains("CREATE TABLE"))
         .unwrap();
     assert!(
         type_pos < table_pos,
@@ -105,7 +105,7 @@ async fn test_discover_skips_existing_enum() -> Result<(), DbErr> {
         result
             .statements
             .iter()
-            .all(|(_, s)| !s.sql.to_uppercase().contains("CREATE TYPE")),
+            .all(|s| !s.stmt.sql.to_uppercase().contains("CREATE TYPE")),
         "discover() must NOT re-create an existing enum type; got: {:?}",
         result.statements
     );
@@ -157,7 +157,7 @@ async fn test_discover_enum_variant_change_warning() -> Result<(), DbErr> {
         result
             .statements
             .iter()
-            .all(|(_, s)| !s.sql.to_uppercase().contains("CREATE TYPE")),
+            .all(|s| !s.stmt.sql.to_uppercase().contains("CREATE TYPE")),
         "changed enum should produce a warning, not a CREATE TYPE; got: {:?}",
         result.statements
     );
@@ -279,7 +279,7 @@ async fn test_discover_drop_column() -> Result<(), DbErr> {
         result
             .statements
             .iter()
-            .any(|(_, s)| s.sql.to_uppercase().contains("DROP COLUMN")),
+            .any(|s| s.stmt.sql.to_uppercase().contains("DROP COLUMN")),
         "discover() must include DROP COLUMN for `weight`; got: {:?}",
         result.statements
     );
@@ -357,7 +357,7 @@ async fn test_discover_drop_table() -> Result<(), DbErr> {
         result
             .statements
             .iter()
-            .any(|(_, s)| s.sql.to_uppercase().contains("DROP TABLE")),
+            .any(|s| s.stmt.sql.to_uppercase().contains("DROP TABLE")),
         "discover(dangerous=true) must include DROP TABLE for `sync_tag`; got: {:?}",
         result.statements
     );
@@ -434,12 +434,12 @@ async fn test_sync_dangerous_drops_orphan_table_fk_order() -> Result<(), DbErr> 
     let child_pos = result
         .statements
         .iter()
-        .position(|(_, s)| s.sql.to_uppercase().contains("SYNC_FK_CHILD"))
+        .position(|s| s.stmt.sql.to_uppercase().contains("SYNC_FK_CHILD"))
         .expect("DROP TABLE sync_fk_child must be in statements");
     let parent_pos = result
         .statements
         .iter()
-        .position(|(_, s)| s.sql.to_uppercase().contains("SYNC_FK_PARENT"))
+        .position(|s| s.stmt.sql.to_uppercase().contains("SYNC_FK_PARENT"))
         .expect("DROP TABLE sync_fk_parent must be in statements");
 
     assert!(
@@ -483,8 +483,8 @@ async fn test_discover_drop_foreign_key() -> Result<(), DbErr> {
         },
     );
 
-    let has_drop_fk = result.statements.iter().any(|(_, s)| {
-        let sql = s.sql.to_uppercase();
+    let has_drop_fk = result.statements.iter().any(|s| {
+        let sql = s.stmt.sql.to_uppercase();
         sql.contains("DROP FOREIGN KEY") || sql.contains("DROP CONSTRAINT")
     });
     assert!(
@@ -608,7 +608,7 @@ async fn test_sync_dangerous_add_and_drop_column() -> Result<(), DbErr> {
         result
             .statements
             .iter()
-            .any(|(_, s)| s.sql.to_uppercase().contains("RENAME COLUMN")),
+            .any(|s| s.stmt.sql.to_uppercase().contains("RENAME COLUMN")),
         "auto-assumed rename should produce RENAME COLUMN; got: {:?}",
         result.statements
     );
@@ -616,8 +616,8 @@ async fn test_sync_dangerous_add_and_drop_column() -> Result<(), DbErr> {
         result
             .statements
             .iter()
-            .all(|(_, s)| !s.sql.to_uppercase().contains("ADD COLUMN")
-                && !s.sql.to_uppercase().contains("DROP COLUMN")),
+            .all(|s| !s.stmt.sql.to_uppercase().contains("ADD COLUMN")
+                && !s.stmt.sql.to_uppercase().contains("DROP COLUMN")),
         "rename-detected pair should not produce ADD/DROP; got: {:?}",
         result.statements
     );
@@ -657,8 +657,8 @@ async fn test_discover_add_nullable_column() -> Result<(), DbErr> {
     );
 
     assert!(
-        result.statements.iter().any(|(_, s)| {
-            let sql = s.sql.to_uppercase();
+        result.statements.iter().any(|s| {
+            let sql = s.stmt.sql.to_uppercase();
             sql.contains("ADD COLUMN") && sql.contains("BIO")
         }),
         "discover() must include ADD COLUMN for `bio`; got: {:?}",
@@ -704,8 +704,8 @@ async fn test_discover_add_notnull_column_warns() -> Result<(), DbErr> {
     );
 
     assert!(
-        result.statements.iter().any(|(_, s)| {
-            let sql = s.sql.to_uppercase();
+        result.statements.iter().any(|s| {
+            let sql = s.stmt.sql.to_uppercase();
             sql.contains("ADD COLUMN") && sql.contains("AGE")
         }),
         "discover() must include ADD COLUMN for `age`; got: {:?}",
@@ -750,8 +750,8 @@ async fn test_discover_add_notnull_with_default_no_warn() -> Result<(), DbErr> {
     );
 
     assert!(
-        result.statements.iter().any(|(_, s)| {
-            let sql = s.sql.to_uppercase();
+        result.statements.iter().any(|s| {
+            let sql = s.stmt.sql.to_uppercase();
             sql.contains("ADD COLUMN") && sql.contains("SCORE")
         }),
         "discover() must include ADD COLUMN for `score`; got: {:?}",
@@ -798,8 +798,8 @@ async fn test_discover_add_multiple_columns() -> Result<(), DbErr> {
 
     for col in ["BIO", "AGE", "SCORE"] {
         assert!(
-            result.statements.iter().any(|(_, s)| {
-                let sql = s.sql.to_uppercase();
+            result.statements.iter().any(|s| {
+                let sql = s.stmt.sql.to_uppercase();
                 sql.contains("ADD COLUMN") && sql.contains(col)
             }),
             "discover() must include ADD COLUMN for `{col}`; got: {:?}",
@@ -891,7 +891,7 @@ async fn test_discover_drops_orphan_enum_type() -> Result<(), DbErr> {
     let has_drop_type = result
         .statements
         .iter()
-        .any(|(_, s)| s.sql.to_uppercase().contains("DROP TYPE"));
+        .any(|s| s.stmt.sql.to_uppercase().contains("DROP TYPE"));
     assert!(
         has_drop_type,
         "discover(dangerous=true) must include DROP TYPE for orphaned enum; got: {:?}",
@@ -929,12 +929,12 @@ async fn test_discover_drop_table_before_enum_type() -> Result<(), DbErr> {
     let table_pos = result
         .statements
         .iter()
-        .position(|(_, s)| s.sql.to_uppercase().contains("DROP TABLE"))
+        .position(|s| s.stmt.sql.to_uppercase().contains("DROP TABLE"))
         .expect("DROP TABLE must be present");
     let type_pos = result
         .statements
         .iter()
-        .position(|(_, s)| s.sql.to_uppercase().contains("DROP TYPE"))
+        .position(|s| s.stmt.sql.to_uppercase().contains("DROP TYPE"))
         .expect("DROP TYPE must be present");
 
     assert!(
@@ -993,7 +993,7 @@ async fn test_complex_drop_sequence() -> Result<(), DbErr> {
     let stmts: Vec<_> = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.to_uppercase())
+        .map(|s| s.stmt.sql.to_uppercase())
         .collect();
 
     // ── 1. All expected statement kinds are present ──────────────────────

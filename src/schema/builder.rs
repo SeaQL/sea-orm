@@ -1,16 +1,15 @@
-use super::{Schema, TopologicalSort};
+use super::{Schema, TableId, TopologicalSort};
 use crate::{ConnectionTrait, DbBackend, DbErr, EntityTrait, Statement};
 use sea_query::{
-    IndexCreateStatement, TableCreateStatement, TableName, TableRef,
-    extension::postgres::TypeCreateStatement,
+    IndexCreateStatement, TableCreateStatement, extension::postgres::TypeCreateStatement,
 };
 
 #[cfg(feature = "schema-sync")]
 pub use super::discover::resolver::extract_enum_type_name;
 #[cfg(feature = "schema-sync")]
 pub use super::discover::{
-    AssumedRename, AssumedTableMove, DiscoverSuggestion, DiscoverWarning, InterpretConfig,
-    InterpretResult, RenameDecision, SchemaChangeId, SuggestionKind, WarningKind,
+    AssumedRename, AssumedTableMove, ColumnSignature, DiscoverSuggestion, DiscoverWarning,
+    InterpretConfig, InterpretResult, RenameDecision, SchemaChangeId, SuggestionKind, WarningKind,
     interpret::interpret as interpret_changes,
 };
 
@@ -184,14 +183,13 @@ impl SchemaBuilder {
         }
         let table_refs: Vec<&TableCreateStatement> =
             self.entities.iter().map(|e| &e.table).collect();
-        let entities_by_table: std::collections::HashMap<TableName, &EntitySchemaInfo> = self
+        let entities_by_table: std::collections::HashMap<TableId, &EntitySchemaInfo> = self
             .entities
             .iter()
-            .map(|e| (get_table_name(e.table.get_table_name()), e))
+            .map(|e| (table_id(&e.table), e))
             .collect();
         for table in sorted_tables(&table_refs, TableSortOrder::ParentsFirst) {
-            let table_name = get_table_name(table.get_table_name());
-            if let Some(entity) = entities_by_table.get(&table_name) {
+            if let Some(entity) = entities_by_table.get(&table_id(table)) {
                 for stmt in &entity.enums {
                     stmts.push(backend.build(stmt));
                 }
@@ -219,14 +217,13 @@ impl SchemaBuilder {
 
         let table_refs: Vec<&TableCreateStatement> =
             self.entities.iter().map(|entity| &entity.table).collect();
-        let entities_by_table: std::collections::HashMap<TableName, &EntitySchemaInfo> = self
+        let entities_by_table: std::collections::HashMap<TableId, &EntitySchemaInfo> = self
             .entities
             .iter()
-            .map(|entity| (get_table_name(entity.table.get_table_name()), entity))
+            .map(|entity| (table_id(&entity.table), entity))
             .collect();
         for table in sorted_tables(&table_refs, TableSortOrder::ParentsFirst) {
-            let table_name = get_table_name(table.get_table_name());
-            if let Some(entity) = entities_by_table.get(&table_name) {
+            if let Some(entity) = entities_by_table.get(&table_id(table)) {
                 entity.apply(db, &mut created_enums).await?;
             }
         }
@@ -337,14 +334,16 @@ pub(crate) fn create_schema_stmt(backend: DbBackend, schema: &str) -> Statement 
     )
 }
 
-/// Panics if the table reference is not a table name
-pub(crate) fn get_table_name(table_ref: Option<&TableRef>) -> TableName {
+/// The table a create statement targets.
+///
+/// Panics if the statement has no table name — everything schema building and
+/// discovery handle is fully built by the time it gets here.
+pub(crate) fn table_id(stmt: &TableCreateStatement) -> TableId {
     //TODO: either rewrite TableCreateStatement or move to something else that is not a builder with options
-    match table_ref {
-        Some(TableRef::Table(table_name, _)) => table_name.clone(),
-        None => panic!("Expect TableCreateStatement is properly built"),
-        _ => unreachable!("Unexpected {table_ref:?}"),
-    }
+    let table_ref = stmt
+        .get_table_name()
+        .expect("Expect TableCreateStatement is properly built");
+    TableId::from_table_ref(table_ref)
 }
 
 /// Controls which tables appear first in [`sorted_tables`] output.
@@ -367,25 +366,27 @@ pub(crate) fn sorted_tables<'a>(
     tables: &[&'a TableCreateStatement],
     order: TableSortOrder,
 ) -> Vec<&'a TableCreateStatement> {
-    let by_name: std::collections::HashMap<TableName, &'a TableCreateStatement> = tables
-        .iter()
-        .map(|tbl| (get_table_name(tbl.get_table_name()), *tbl))
-        .collect();
+    let by_name: std::collections::HashMap<TableId, &'a TableCreateStatement> =
+        tables.iter().map(|tbl| (table_id(tbl), *tbl)).collect();
 
-    let mut sorter = TopologicalSort::<TableName>::new();
+    let mut sorter = TopologicalSort::<TableId>::new();
 
     // Register every input table as a node up front, so tables with no
     // FKs (in either direction) still show up in the output.
     for tbl in tables {
-        sorter.insert(get_table_name(tbl.get_table_name()));
+        sorter.insert(table_id(tbl));
     }
 
     // Wire up edges per FK. Direction flips based on desired order:
     // parents-first means "referenced table before referencing table".
     for tbl in tables {
-        let self_name = get_table_name(tbl.get_table_name());
+        let self_name = table_id(tbl);
         for fk in tbl.get_foreign_key_create_stmts() {
-            let ref_table = get_table_name(fk.get_foreign_key().get_ref_table());
+            let ref_table = fk
+                .get_foreign_key()
+                .get_ref_table()
+                .map(TableId::from_table_ref)
+                .expect("Expect ForeignKeyCreateStatement is properly built");
             if self_name == ref_table {
                 continue; // skip self-referencing FKs
             }
@@ -405,8 +406,8 @@ pub(crate) fn sorted_tables<'a>(
         if level.is_empty() {
             break;
         }
-        level.retain(|name| by_name.contains_key(name));
-        level.sort_by_key(|name| name.1.to_string());
+        level.retain(|table| by_name.contains_key(table));
+        level.sort_by(|a, b| (&a.name, &a.schema).cmp(&(&b.name, &b.schema)));
         sorted.extend(level);
     }
 
@@ -414,15 +415,15 @@ pub(crate) fn sorted_tables<'a>(
     // pop_all() only stops early when nodes remain but none are unblocked.
     // Append them in input order — there's no valid topological position
     // for a cycle, so this is just a stable fallback, not a meaningful order.
-    let sorted_set: std::collections::HashSet<TableName> = sorted.iter().cloned().collect();
+    let sorted_set: std::collections::HashSet<TableId> = sorted.iter().cloned().collect();
     for tbl in tables {
-        let name = get_table_name(tbl.get_table_name());
-        if !sorted_set.contains(&name) {
-            sorted.push(name);
+        let table = table_id(tbl);
+        if !sorted_set.contains(&table) {
+            sorted.push(table);
         }
     }
 
-    sorted.into_iter().map(|name| by_name[&name]).collect()
+    sorted.into_iter().map(|table| by_name[&table]).collect()
 }
 
 #[cfg(test)]

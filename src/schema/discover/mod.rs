@@ -7,11 +7,12 @@ pub mod suggestion;
 mod table;
 pub mod warning;
 
-use crate::schema::builder::{EntitySchemaInfo, TableSortOrder, get_table_name};
-use crate::{ConnectionTrait, DbErr, sorted_tables};
+use crate::schema::builder::{EntitySchemaInfo, TableSortOrder, table_id};
+use crate::{ConnectionTrait, DbErr, TableId, sorted_tables};
 use changes::ChangeSet;
 
 pub use changes::ChangeId as SchemaChangeId;
+pub use changes::ColumnSignature;
 pub use interpret::{
     AssumedRename, AssumedTableMove, InterpretConfig, InterpretResult, RenameDecision,
 };
@@ -72,18 +73,17 @@ where
     }
 
     let tabl_ref: Vec<&TableCreateStatement> = new_entities.iter().map(|e| e.table()).collect();
-    let entities_by_table: std::collections::HashMap<_, _> = new_entities
+    let entities_by_table: std::collections::HashMap<TableId, &EntitySchemaInfo> = new_entities
         .iter()
-        .map(|e| (get_table_name(e.table().get_table_name()), e))
+        .map(|e| (table_id(e.table()), e))
         .collect();
     for table in sorted_tables(&tabl_ref, TableSortOrder::ParentsFirst) {
-        let table_name = get_table_name(table.get_table_name());
-        let name_str = table_name.1.to_string();
-        if excluded_tables.iter().any(|e| e == &name_str) {
+        let table = table_id(table);
+        if excluded_tables.iter().any(|e| e == &table.name) {
             continue;
         }
 
-        let entity = entities_by_table[&table_name];
+        let entity = entities_by_table[&table];
         enum_::record_enum_changes(entity.enums(), db_backend, &existing.enums, &mut change_set);
         table::record_table_changes(entity, &existing.tables, &mut change_set, db_backend);
     }

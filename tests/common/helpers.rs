@@ -23,8 +23,8 @@ pub async fn discover_interpret_and_apply(
 ) -> Result<InterpretResult, DbErr> {
     let change_set = builder.discover(db).await?;
     let result = sea_orm::interpret_changes(change_set, &config);
-    for (_, stmt) in &result.statements {
-        db.execute_raw(stmt.clone()).await?;
+    for planned in &result.statements {
+        db.execute_raw(planned.stmt.clone()).await?;
     }
     Ok(result)
 }

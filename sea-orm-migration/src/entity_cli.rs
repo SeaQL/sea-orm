@@ -1,5 +1,5 @@
 use chrono::Utc;
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use dotenvy::dotenv;
 use sea_orm::{ConnectOptions, Database, DbBackend, InterpretConfig, Schema, interpret_changes};
 
@@ -62,56 +62,7 @@ enum Commands {
     /// Requires that `diff` was run first. Pass the `schema_hash` from the diff
     /// output via `--schema-hash` so stale calls are rejected. All ambiguous
     /// renames reported by `diff` must be resolved via `--rename` flags.
-    Generate {
-        /// Path to the migration crate directory
-        #[arg(long, default_value = "../migration")]
-        migration_dir: String,
-
-        /// Name for the migration (e.g. `add_users`)
-        #[arg(required = true)]
-        name: String,
-
-        /// Schema hash from the preceding `diff` output — used to detect staleness
-        #[arg(long, required = true)]
-        schema_hash: String,
-
-        #[arg(
-            long,
-            default_value = "true",
-            help = "Generate migration file based on Utc time",
-            conflicts_with = "local_time",
-            display_order = 1001
-        )]
-        universal_time: bool,
-
-        #[arg(
-            long,
-            help = "Generate migration file based on Local time",
-            conflicts_with = "universal_time",
-            display_order = 1002
-        )]
-        local_time: bool,
-
-        /// Resolve an ambiguous rename in the format TABLE.OLD_COL:NEW_COL
-        #[arg(long = "rename", value_name = "TABLE.OLD:NEW")]
-        renames: Vec<String>,
-
-        /// Reject an auto-applied rename reported by `diff` — replace it with a
-        /// separate DROP COLUMN + ADD COLUMN, in the format TABLE.OLD_COL
-        #[arg(long = "reject", value_name = "TABLE.OLD")]
-        rejects: Vec<String>,
-
-        /// Exclude a statement reported by `diff` from the generated migration,
-        /// identified by its position in the `diff` `statements`/`changes` array
-        #[arg(long = "exclude", value_name = "INDEX")]
-        excludes: Vec<usize>,
-
-        /// Reject an auto-applied table rename/schema-move reported by `diff`
-        /// — replace it with a separate CREATE TABLE + DROP TABLE, identified
-        /// by the table's old (schema-qualified) name
-        #[arg(long = "reject-table", value_name = "TABLE")]
-        reject_tables: Vec<String>,
-    },
+    Generate(GenerateArgs),
 
     /// Preview the schema as defined by the registered entities, as SQL DDL statements.
     ///
@@ -154,6 +105,115 @@ enum Commands {
         )]
         num: u32,
     },
+}
+
+/// Everything `generate` needs, kept as one value so it can travel from the
+/// CLI parser to [`run_generate`] without an argument list nobody can read.
+#[derive(Args)]
+struct GenerateArgs {
+    /// Path to the migration crate directory
+    #[arg(long, default_value = "../migration")]
+    migration_dir: String,
+
+    /// Name for the migration (e.g. `add_users`)
+    #[arg(required = true)]
+    name: String,
+
+    /// Schema hash from the preceding `diff` output — used to detect staleness
+    #[arg(long, required = true)]
+    schema_hash: String,
+
+    #[arg(
+        long,
+        default_value = "true",
+        help = "Generate migration file based on Utc time",
+        conflicts_with = "local_time",
+        display_order = 1001
+    )]
+    universal_time: bool,
+
+    #[arg(
+        long,
+        help = "Generate migration file based on Local time",
+        conflicts_with = "universal_time",
+        display_order = 1002
+    )]
+    local_time: bool,
+
+    /// Resolve an ambiguous rename in the format TABLE.OLD_COL:NEW_COL
+    #[arg(long = "rename", value_name = "TABLE.OLD:NEW")]
+    renames: Vec<String>,
+
+    /// Reject an auto-applied rename reported by `diff` — replace it with a
+    /// separate DROP COLUMN + ADD COLUMN, in the format TABLE.OLD_COL
+    #[arg(long = "reject", value_name = "TABLE.OLD")]
+    rejects: Vec<String>,
+
+    /// Exclude a statement reported by `diff` from the generated migration,
+    /// identified by its position in the `diff` `statements`/`changes` array
+    #[arg(long = "exclude", value_name = "INDEX")]
+    excludes: Vec<usize>,
+
+    /// Reject an auto-applied table rename/schema-move reported by `diff`
+    /// — replace it with a separate CREATE TABLE + DROP TABLE, identified
+    /// by the table's old (schema-qualified) name
+    #[arg(long = "reject-table", value_name = "TABLE")]
+    reject_tables: Vec<String>,
+}
+
+/// A parsed `--rename TABLE.OLD:NEW` override.
+struct RenameArg {
+    /// The table the rename happens in, schema-qualified when the table is.
+    table: String,
+    /// The old (removed) column name.
+    old: String,
+    /// The new (added) column name.
+    new: String,
+}
+
+impl std::str::FromStr for RenameArg {
+    type Err = String;
+
+    /// `TABLE` may itself be schema-qualified (`schema.table`), so the old
+    /// column name is split off the *last* dot rather than the first.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let invalid = || format!("invalid --rename value '{s}': expected TABLE.OLD:NEW");
+        let (table_old, new) = s.split_once(':').ok_or_else(invalid)?;
+        let (table, old) = table_old.rsplit_once('.').ok_or_else(invalid)?;
+        if table.is_empty() || old.is_empty() || new.is_empty() {
+            return Err(invalid());
+        }
+        Ok(Self {
+            table: table.to_owned(),
+            old: old.to_owned(),
+            new: new.to_owned(),
+        })
+    }
+}
+
+/// A parsed `--reject TABLE.COLUMN` override.
+struct RejectArg {
+    /// The table the rejected rename happens in, schema-qualified when the
+    /// table is.
+    table: String,
+    /// The old (removed) column name.
+    column: String,
+}
+
+impl std::str::FromStr for RejectArg {
+    type Err = String;
+
+    /// `rsplit` so a schema-qualified table (`schema.table.column`) still
+    /// isolates the column as the last segment.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (table, column) = s
+            .rsplit_once('.')
+            .ok_or_else(|| format!("invalid --reject value '{s}': expected TABLE.COLUMN"))?;
+        Ok(Self {
+            table: table.to_owned(),
+            column: column.to_owned(),
+        })
+    }
 }
 
 /// Run the entity-first CLI with the given entity set and migrator.
@@ -247,33 +307,9 @@ where
             }
         }
 
-        Some(Commands::Generate {
-            migration_dir,
-            name,
-            schema_hash,
-            local_time,
-            universal_time: _,
-            renames,
-            rejects,
-            excludes,
-            reject_tables,
-        }) => {
+        Some(Commands::Generate(args)) => {
             let meta = build_meta(&migrator, None);
-            match run_generate(
-                entity_set,
-                &db,
-                &migration_dir,
-                &name,
-                &schema_hash,
-                local_time,
-                &renames,
-                &rejects,
-                &excludes,
-                &reject_tables,
-                &migration_table,
-            )
-            .await
-            {
+            match run_generate(entity_set, &db, &args, &migration_table).await {
                 Ok(data) => println!(
                     "{}",
                     serde_json::to_string(&ApiResponse::ok(meta, data)).unwrap()
@@ -390,14 +426,14 @@ async fn run_diff<E: EntitySet>(
     let statements: Vec<String> = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.clone())
+        .map(|planned| planned.stmt.sql.clone())
         .collect();
     let schema_hash = fnv64_hex(statements.iter().map(String::as_str));
     let changes = summarize(
         &result
             .statements
             .iter()
-            .map(|(_, s)| s.clone())
+            .map(|planned| planned.stmt.clone())
             .collect::<Vec<_>>(),
     );
 
@@ -439,7 +475,7 @@ async fn run_diff<E: EntitySet>(
             statement_index: result
                 .statements
                 .iter()
-                .position(|(id, _)| *id == a.id)
+                .position(|planned| planned.id == a.id)
                 .expect("assumed rename must have a matching statement"),
         })
         .collect();
@@ -452,7 +488,7 @@ async fn run_diff<E: EntitySet>(
                 .statements
                 .iter()
                 .enumerate()
-                .filter(|(_, (id, _))| *id == m.id || *id == m.drop_id)
+                .filter(|(_, planned)| planned.id == m.id || planned.id == m.drop_id)
                 .map(|(idx, _)| idx)
                 .collect::<Vec<_>>();
             assert!(
@@ -506,20 +542,24 @@ fn run_schema<E: EntitySet>(
 }
 
 /// Generate and write a migration file.
-#[allow(clippy::too_many_arguments)] // TODO: remove later
 async fn run_generate<E: EntitySet>(
     entity_set: E,
     db: &sea_orm::DatabaseConnection,
-    migration_dir: &str,
-    name: &str,
-    expected_schema_hash: &str,
-    local_time: bool,
-    renames: &[String],
-    rejects: &[String],
-    excludes: &[usize],
-    reject_tables: &[String],
+    args: &GenerateArgs,
     protected_table: &str,
 ) -> Result<GenerateData, Box<dyn std::error::Error>> {
+    let GenerateArgs {
+        migration_dir,
+        name,
+        schema_hash: expected_schema_hash,
+        local_time,
+        universal_time: _,
+        renames,
+        rejects,
+        excludes,
+        reject_tables,
+    } = args;
+
     if name.contains('-') {
         return Err("`-` cannot be used in migration name".into());
     }
@@ -543,10 +583,10 @@ async fn run_generate<E: EntitySet>(
     let current_stmts: Vec<String> = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.clone())
+        .map(|planned| planned.stmt.sql.clone())
         .collect();
     let current_hash = fnv64_hex(current_stmts.iter().map(String::as_str));
-    if current_hash != expected_schema_hash {
+    if &current_hash != expected_schema_hash {
         return Err(format!(
             "Schema hash mismatch: expected {expected_schema_hash}, got {current_hash}. \
              Re-run `diff` to get a fresh schema hash."
@@ -557,20 +597,21 @@ async fn run_generate<E: EntitySet>(
     // --exclude indices refer to positions in the `diff`-reported statement list,
     // before any --reject/--exclude modifications shift the vec around.
     let original_ids: Vec<sea_orm::SchemaChangeId> =
-        result.statements.iter().map(|(id, _)| *id).collect();
+        result.statements.iter().map(|planned| planned.id).collect();
 
     // Reject auto-applied renames — replace each with a separate DROP + ADD.
     for reject in rejects {
-        // rsplit so a schema-qualified table (`schema.table.column`) still
-        // isolates the column as the last segment.
-        let (table, column) = reject
-            .rsplit_once('.')
-            .ok_or_else(|| format!("invalid --reject value '{reject}': expected table.column"))?;
+        let reject: RejectArg = reject.parse()?;
         let assumed = result
             .assumed
             .iter()
-            .find(|a| a.table_name() == table && a.from == column)
-            .ok_or_else(|| format!("--reject {reject} does not match any auto-applied rename"))?;
+            .find(|a| a.table_name() == reject.table && a.from == reject.column)
+            .ok_or_else(|| {
+                format!(
+                    "--reject {}.{} does not match any auto-applied rename",
+                    reject.table, reject.column
+                )
+            })?;
         result.reject_assumed(assumed.id);
     }
 
@@ -580,7 +621,7 @@ async fn run_generate<E: EntitySet>(
         let table_move = result
             .table_moves
             .iter()
-            .find(|m| &m.from_name() == reject)
+            .find(|m| m.from_name() == *reject)
             .ok_or_else(|| {
                 format!("--reject-table {reject} does not match any auto-applied table move")
             })?;
@@ -602,17 +643,19 @@ async fn run_generate<E: EntitySet>(
         result.exclude(&exclude_ids);
     }
 
+    // A malformed --rename is an error in its own right: swallowing it here
+    // would surface later as a misleading "ambiguous renames need --rename".
+    let cli_renames: Vec<RenameArg> = renames
+        .iter()
+        .map(|s| s.parse())
+        .collect::<Result<_, _>>()?;
+
     // Error if there are still unresolved renames
     if !result.unresolved.is_empty() {
-        // Try to apply provided --rename flags
-        let cli_renames: Vec<(String, String, String)> =
-            renames.iter().filter_map(|s| parse_rename_arg(s)).collect();
-
         let decisions = resolve_renames(&result.unresolved, &cli_renames)?;
         result.apply_rename_decisions(&decisions, backend);
-    } else if !renames.is_empty() {
-        // --rename flags provided but nothing to resolve — harmless, ignore
     }
+    // --rename flags with nothing to resolve are harmless, ignore them.
 
     // After applying decisions, check if any unresolved remain
     if !result.unresolved.is_empty() {
@@ -636,13 +679,17 @@ async fn run_generate<E: EntitySet>(
         .into());
     }
 
-    let stmts: Vec<_> = result.statements.into_iter().map(|(_, s)| s).collect();
+    let stmts: Vec<_> = result
+        .statements
+        .into_iter()
+        .map(|planned| planned.stmt)
+        .collect();
 
     if stmts.is_empty() {
         return Err("No schema changes detected. Migration file not generated.".into());
     }
 
-    let (timestamp, generated_at) = if local_time {
+    let (timestamp, generated_at) = if *local_time {
         let now = chrono::Local::now();
         (
             now.format("%Y%m%d_%H%M%S").to_string(),
@@ -686,7 +733,7 @@ async fn run_generate<E: EntitySet>(
 /// Errors if any ambiguity is left unresolved.
 fn resolve_renames(
     unresolved: &[sea_orm::schema::resolver::AmbiguousRename],
-    cli_renames: &[(String, String, String)],
+    cli_renames: &[RenameArg],
 ) -> Result<Vec<sea_orm::schema::RenameDecision>, Box<dyn std::error::Error>> {
     use sea_orm::schema::RenameDecision;
 
@@ -695,44 +742,29 @@ fn resolve_renames(
 
     for ambiguous in unresolved {
         let table_name = ambiguous.table_name();
-        if let Some((_, _, new_name)) = cli_renames
+        let candidates = candidate_names(ambiguous);
+        let Some(rename) = cli_renames
             .iter()
-            .find(|(table, old, _)| *table == table_name && *old == ambiguous.removed)
-        {
-            if ambiguous.candidates.iter().any(|c| c.added == *new_name) {
-                decisions.push(RenameDecision::Rename {
-                    from: ambiguous.removed.clone(),
-                    to: new_name.clone(),
-                });
-            } else {
-                return Err(format!(
-                    "--rename {}.{}:{} is invalid: '{}' is not among candidates [{}]",
-                    table_name,
-                    ambiguous.removed,
-                    new_name,
-                    new_name,
-                    ambiguous
-                        .candidates
-                        .iter()
-                        .map(|c| c.added.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-                .into());
-            }
-        } else {
+            .find(|r| r.table == table_name && r.old == ambiguous.removed)
+        else {
             missing.push(format!(
-                "{}.{} (candidates: {})",
-                table_name,
+                "{table_name}.{} (candidates: {candidates})",
                 ambiguous.removed,
-                ambiguous
-                    .candidates
-                    .iter()
-                    .map(|c| c.added.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
             ));
+            continue;
+        };
+
+        if !ambiguous.candidates.iter().any(|c| c.added == rename.new) {
+            return Err(format!(
+                "--rename {table_name}.{}:{} is invalid: '{}' is not among candidates [{candidates}]",
+                ambiguous.removed, rename.new, rename.new,
+            )
+            .into());
         }
+        decisions.push(RenameDecision::Rename {
+            from: ambiguous.removed.clone(),
+            to: rename.new.clone(),
+        });
     }
 
     if !missing.is_empty() {
@@ -746,16 +778,14 @@ fn resolve_renames(
     Ok(decisions)
 }
 
-/// Parse a `--rename TABLE.OLD:NEW` string into `(table, old, new)`.
-/// `TABLE` may itself be schema-qualified (`schema.table`), so split off the
-/// old-column name from the *last* dot rather than the first.
-fn parse_rename_arg(s: &str) -> Option<(String, String, String)> {
-    let (table_old, new) = s.split_once(':')?;
-    let (table, old) = table_old.rsplit_once('.')?;
-    if table.is_empty() || old.is_empty() || new.is_empty() {
-        return None;
-    }
-    Some((table.to_string(), old.to_string(), new.to_string()))
+/// The added column names an ambiguous rename could resolve to, comma-separated.
+fn candidate_names(ambiguous: &sea_orm::schema::resolver::AmbiguousRename) -> String {
+    ambiguous
+        .candidates
+        .iter()
+        .map(|c| c.added.as_str())
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn build_meta<M: MigratorTraitSelf>(migrator: &M, schema_hash: Option<String>) -> ApiMeta {

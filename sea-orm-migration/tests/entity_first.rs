@@ -467,7 +467,11 @@ async fn test_discover_dangerous_drops_orphaned_tables_but_not_tracker() -> Resu
             assumptions: false,
         },
     );
-    let stmts: Vec<_> = result.statements.iter().map(|(_, s)| s).collect();
+    let stmts: Vec<_> = result
+        .statements
+        .iter()
+        .map(|planned| &planned.stmt)
+        .collect();
 
     let protected = Migrator.migration_table_name().to_string();
     let raw_drops: Vec<_> = stmts
@@ -665,7 +669,7 @@ async fn test_discover_warns_on_possible_column_rename() -> Result<(), DbErr> {
     let sql_all: String = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.to_uppercase())
+        .map(|planned| planned.stmt.sql.to_uppercase())
         .collect::<Vec<_>>()
         .join(" ");
     assert!(
@@ -721,7 +725,7 @@ async fn test_discover_no_rename_warning_when_types_differ() -> Result<(), DbErr
     let sql_all: String = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.clone())
+        .map(|planned| planned.stmt.sql.clone())
         .collect::<Vec<_>>()
         .join(" ");
     assert!(
@@ -759,7 +763,7 @@ async fn test_ambiguous_rename_in_unresolved() -> Result<(), DbErr> {
         result
             .statements
             .iter()
-            .map(|(_, s)| &s.sql)
+            .map(|planned| &planned.stmt.sql)
             .collect::<Vec<_>>()
     );
 
@@ -774,7 +778,7 @@ async fn test_ambiguous_rename_in_unresolved() -> Result<(), DbErr> {
     let has_rename = result
         .statements
         .iter()
-        .any(|(_, s)| s.sql.to_uppercase().contains("RENAME COLUMN"));
+        .any(|planned| planned.stmt.sql.to_uppercase().contains("RENAME COLUMN"));
     assert!(
         !has_rename,
         "should not generate RENAME COLUMN for ambiguous rename"
@@ -827,7 +831,7 @@ async fn test_table_rename_detected_via_full_pipeline() -> Result<(), DbErr> {
     let sql_all: String = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.to_uppercase())
+        .map(|planned| planned.stmt.sql.to_uppercase())
         .collect::<Vec<_>>()
         .join(" ");
     assert!(
@@ -871,7 +875,7 @@ async fn test_table_rename_not_detected_when_columns_differ() -> Result<(), DbEr
     let sql_all: String = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.to_uppercase())
+        .map(|planned| planned.stmt.sql.to_uppercase())
         .collect::<Vec<_>>()
         .join(" ");
     assert!(
@@ -920,7 +924,7 @@ async fn test_table_rename_not_detected_when_ambiguous() -> Result<(), DbErr> {
     let sql_all: String = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.to_uppercase())
+        .map(|planned| planned.stmt.sql.to_uppercase())
         .collect::<Vec<_>>()
         .join(" ");
     assert!(
@@ -1013,7 +1017,7 @@ async fn test_table_rename_requires_assumptions_to_auto_apply() -> Result<(), Db
     let sql_all: String = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.to_uppercase())
+        .map(|planned| planned.stmt.sql.to_uppercase())
         .collect::<Vec<_>>()
         .join(" ");
     assert!(
@@ -1057,7 +1061,7 @@ async fn test_reject_table_move_falls_back_to_create_and_drop() -> Result<(), Db
     let sql_all: String = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.to_uppercase())
+        .map(|planned| planned.stmt.sql.to_uppercase())
         .collect::<Vec<_>>()
         .join(" ");
     assert!(

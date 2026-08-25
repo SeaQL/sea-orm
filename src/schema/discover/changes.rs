@@ -1,10 +1,24 @@
-use crate::Statement;
-use sea_query::{ColumnType, TableName, TableRef};
+use crate::{Statement, TableId};
+use sea_query::ColumnType;
 
 /// Unique identifier for a recorded schema change.
 #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ChangeId(pub usize);
+
+/// A column's name and declared type, in table definition order.
+///
+/// A table's full list of these is its signature: comparing the signature of a
+/// dropped table against a created one is how a rename/schema-move is told
+/// apart from a genuine create + drop.
+#[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
+#[derive(Debug, Clone, PartialEq)]
+pub struct ColumnSignature {
+    /// Column name.
+    pub name: String,
+    /// Column type, when the definition carries one.
+    pub column_type: Option<ColumnType>,
+}
 
 // ── Schema (namespace) changes ───────────────────────────────────────────
 
@@ -33,20 +47,19 @@ pub struct TableChange {
 #[derive(Debug, Clone)]
 pub enum TableChangeKind {
     /// Table exists in entities but not in the database.
-    /// Carries the pre-built CREATE TABLE statement, plus a column signature
-    /// (name, type) in definition order — used by interpretation to detect
-    /// this as a rename/schema-move of a dropped table rather than a genuine
-    /// create.
+    /// Carries the pre-built CREATE TABLE statement, plus the table's column
+    /// signature — used by interpretation to detect this as a rename/schema-move
+    /// of a dropped table rather than a genuine create.
     Create {
-        table_ref: TableRef,
+        table: TableId,
         stmt: Statement,
-        columns: Vec<(String, Option<ColumnType>)>,
+        columns: Vec<ColumnSignature>,
     },
-    /// Table exists in the database but not in entities. Carries a column
-    /// signature (name, type) in definition order — see [`TableChangeKind::Create`].
+    /// Table exists in the database but not in entities. Carries the table's
+    /// column signature — see [`TableChangeKind::Create`].
     Drop {
-        table: TableName,
-        columns: Vec<(String, Option<ColumnType>)>,
+        table: TableId,
+        columns: Vec<ColumnSignature>,
     },
 }
 
@@ -57,9 +70,9 @@ pub enum TableChangeKind {
 #[derive(Debug, Clone)]
 pub struct ColumnChange {
     pub id: ChangeId,
-    /// Full (possibly schema-qualified) table reference, for building fresh
-    /// statements during interpretation without losing the schema.
-    pub table_ref: TableRef,
+    /// The table the column belongs to, so interpretation can build fresh
+    /// statements without losing the schema.
+    pub table: TableId,
     pub kind: ColumnChangeKind,
 }
 
@@ -214,13 +227,9 @@ impl ChangeSet {
         id
     }
 
-    pub fn record_column(&mut self, table_ref: TableRef, kind: ColumnChangeKind) -> ChangeId {
+    pub fn record_column(&mut self, table: TableId, kind: ColumnChangeKind) -> ChangeId {
         let id = self.next_id();
-        self.columns.push(ColumnChange {
-            id,
-            table_ref,
-            kind,
-        });
+        self.columns.push(ColumnChange { id, table, kind });
         id
     }
 

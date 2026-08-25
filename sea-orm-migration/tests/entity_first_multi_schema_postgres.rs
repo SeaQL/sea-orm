@@ -478,7 +478,11 @@ async fn test_interpret_changes_includes_missing_schema() -> Result<(), DbErr> {
         },
     );
 
-    let stmts: Vec<sea_orm::Statement> = result.statements.iter().map(|(_, s)| s.clone()).collect();
+    let stmts: Vec<sea_orm::Statement> = result
+        .statements
+        .iter()
+        .map(|planned| planned.stmt.clone())
+        .collect();
     let sql_all: String = stmts
         .iter()
         .map(|s| s.sql.clone())
@@ -550,7 +554,7 @@ async fn test_discover_dangerous_detects_orphan_after_schema_rename() -> Result<
     let sql_all: String = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.clone())
+        .map(|planned| planned.stmt.sql.clone())
         .collect::<Vec<_>>()
         .join(" ");
 
@@ -611,7 +615,7 @@ async fn test_table_schema_move_detected() -> Result<(), DbErr> {
     let sql_all: String = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.clone())
+        .map(|planned| planned.stmt.sql.clone())
         .collect::<Vec<_>>()
         .join(" ");
     assert!(
@@ -677,7 +681,7 @@ async fn test_table_rename_and_schema_move_detected() -> Result<(), DbErr> {
     let sql_all: String = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.clone())
+        .map(|planned| planned.stmt.sql.clone())
         .collect::<Vec<_>>()
         .join(" ");
     assert!(

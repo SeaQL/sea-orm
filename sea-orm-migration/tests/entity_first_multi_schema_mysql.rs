@@ -397,7 +397,7 @@ async fn test_discover_dangerous_ignores_orphan_after_schema_rename() -> Result<
     let sql_all: String = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.clone())
+        .map(|planned| planned.stmt.sql.clone())
         .collect::<Vec<_>>()
         .join(" ");
 
@@ -452,7 +452,7 @@ async fn test_table_rename_detected_same_database() -> Result<(), DbErr> {
     let sql_all: String = result
         .statements
         .iter()
-        .map(|(_, s)| s.sql.to_uppercase())
+        .map(|planned| planned.stmt.sql.to_uppercase())
         .collect::<Vec<_>>()
         .join(" ");
     assert!(

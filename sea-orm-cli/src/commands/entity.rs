@@ -5,23 +5,16 @@ use std::io;
 
 use colored::Colorize;
 
+use crate::cli::EntitySyncArgs;
 use crate::commands::subprocess::{
     AssumedRenameJson, AssumedTableMoveJson, DiffData, GenerateData, SchemaData, manifest_path,
     run_subprocess_json,
 };
 
-#[allow(clippy::too_many_arguments)]
-pub fn run_entity_sync(
-    dir: &str,
-    migration_dir: &str,
-    name: Option<&str>,
-    database_url: Option<&str>,
-    database_schema: Option<&str>,
-    renames: &[String],
-    no_confirm: bool,
-    review_all: bool,
-) -> Result<(), Box<dyn Error>> {
-    let manifest = manifest_path(dir);
+pub fn run_entity_sync(args: &EntitySyncArgs) -> Result<(), Box<dyn Error>> {
+    let manifest = manifest_path(&args.dir);
+    let database_url = args.database_url.as_deref();
+    let database_schema = args.database_schema.as_deref();
 
     let diff_args = ["diff"];
 
@@ -29,53 +22,45 @@ pub fn run_entity_sync(
         run_subprocess_json::<DiffData>(&manifest, &diff_args, database_url, database_schema)
             .map_err(|e| format!("diff failed: {e}"))?;
 
-    let decision = run_sync(diff, name, renames, no_confirm, review_all)?;
-
-    match decision {
+    let plan = match run_sync(diff, args)? {
         SyncDecision::Quit => {
             println!("{}", "Aborted.".yellow());
             return Ok(());
         }
-        SyncDecision::Generate {
-            schema_hash,
-            renames: resolved_renames,
-            migration_name: gen_name,
-            rejects,
-            excludes,
-            reject_tables,
-        } => {
-            let mut gen_args = vec![
-                "generate".to_string(),
-                gen_name,
-                format!("--migration-dir={migration_dir}"),
-                format!("--schema-hash={schema_hash}"),
-            ];
-            for (table, old, new) in &resolved_renames {
-                gen_args.push(format!("--rename={table}.{old}:{new}"));
-            }
-            for (table, old) in &rejects {
-                gen_args.push(format!("--reject={table}.{old}"));
-            }
-            for idx in &excludes {
-                gen_args.push(format!("--exclude={idx}"));
-            }
-            for table in &reject_tables {
-                gen_args.push(format!("--reject-table={table}"));
-            }
+        SyncDecision::Generate(plan) => plan,
+    };
 
-            let gen_args_ref: Vec<&str> = gen_args.iter().map(String::as_str).collect();
-
-            let (_, result) = run_subprocess_json::<GenerateData>(
-                &manifest,
-                &gen_args_ref,
-                database_url,
-                database_schema,
-            )
-            .map_err(|e| format!("generate failed: {e}"))?;
-
-            print_generate_result(&result);
-        }
+    let migration_dir = &args.migration_dir;
+    let mut gen_args = vec![
+        "generate".to_string(),
+        plan.migration_name,
+        format!("--migration-dir={migration_dir}"),
+        format!("--schema-hash={}", plan.schema_hash),
+    ];
+    for rename in &plan.renames {
+        gen_args.push(format!("--rename={}:{}", rename.column, rename.new_name));
     }
+    for column in &plan.rejected_renames {
+        gen_args.push(format!("--reject={column}"));
+    }
+    for idx in &plan.excluded_statements {
+        gen_args.push(format!("--exclude={idx}"));
+    }
+    for table in &plan.rejected_table_moves {
+        gen_args.push(format!("--reject-table={table}"));
+    }
+
+    let gen_args_ref: Vec<&str> = gen_args.iter().map(String::as_str).collect();
+
+    let (_, result) = run_subprocess_json::<GenerateData>(
+        &manifest,
+        &gen_args_ref,
+        database_url,
+        database_schema,
+    )
+    .map_err(|e| format!("generate failed: {e}"))?;
+
+    print_generate_result(&result);
 
     Ok(())
 }
@@ -97,25 +82,83 @@ pub fn run_entity_init(_dir: &str) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-enum SyncDecision {
-    Quit,
-    Generate {
-        schema_hash: String,
-        renames: Vec<(String, String, String)>, // (table, old, new)
-        migration_name: String,
-        rejects: Vec<(String, String)>, // (table, old) -- assumed renames rejected in review
-        excludes: Vec<usize>,           // statement indices excluded in review
-        reject_tables: Vec<String>,     // from-table names of table moves rejected in review
-    },
+/// A column, addressed as `table.column`. The table is schema-qualified
+/// (`schema.table.column`) whenever the entity carries a `schema_name`, which
+/// is why every parse of this form splits on the *last* dot.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ColumnRef {
+    table: String,
+    column: String,
 }
 
-fn run_sync(
-    diff: DiffData,
-    name: Option<&str>,
-    rename_flags: &[String],
-    no_confirm: bool,
-    review_all: bool,
-) -> Result<SyncDecision, Box<dyn Error>> {
+impl std::fmt::Display for ColumnRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}.{}", self.table, self.column)
+    }
+}
+
+/// A rename settled during sync — either from a `--rename` flag or answered
+/// at the prompt.
+#[derive(Debug, Clone)]
+struct ResolvedRename {
+    /// The removed column.
+    column: ColumnRef,
+    /// The added column it was renamed to.
+    new_name: String,
+}
+
+impl std::str::FromStr for ResolvedRename {
+    type Err = String;
+
+    /// Parses the `--rename TABLE.OLD:NEW` flag format.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let invalid = || format!("invalid --rename value '{s}': expected table.old:new");
+        let (table_old, new_name) = s.split_once(':').ok_or_else(invalid)?;
+        let (table, column) = table_old.rsplit_once('.').ok_or_else(invalid)?;
+        if table.is_empty() || column.is_empty() || new_name.is_empty() {
+            return Err(invalid());
+        }
+        Ok(Self {
+            column: ColumnRef {
+                table: table.to_owned(),
+                column: column.to_owned(),
+            },
+            new_name: new_name.to_owned(),
+        })
+    }
+}
+
+/// What the interactive review decided to reject, addressed the way the
+/// `generate` subcommand expects it back.
+#[derive(Debug, Default)]
+struct ReviewOutcome {
+    /// Assumed column renames the user rejected — each becomes a plain
+    /// DROP + ADD instead.
+    rejected_renames: Vec<ColumnRef>,
+    /// Positions in the diff's statement list to leave out entirely.
+    excluded_statements: Vec<usize>,
+    /// Old (schema-qualified) names of table moves the user rejected — each
+    /// becomes a plain CREATE + DROP instead.
+    rejected_table_moves: Vec<String>,
+}
+
+/// Everything `generate` needs once the user has settled every open question.
+#[derive(Debug)]
+struct GeneratePlan {
+    schema_hash: String,
+    migration_name: String,
+    renames: Vec<ResolvedRename>,
+    rejected_renames: Vec<ColumnRef>,
+    excluded_statements: Vec<usize>,
+    rejected_table_moves: Vec<String>,
+}
+
+enum SyncDecision {
+    Quit,
+    Generate(GeneratePlan),
+}
+
+fn run_sync(diff: DiffData, args: &EntitySyncArgs) -> Result<SyncDecision, Box<dyn Error>> {
     if diff.statements.is_empty() {
         println!(
             "{}",
@@ -164,23 +207,16 @@ fn run_sync(
         }
     }
 
-    let mut rename_map: std::collections::HashMap<(String, String), String> =
+    let mut rename_map: std::collections::HashMap<ColumnRef, String> =
         std::collections::HashMap::new();
-    for flag in rename_flags {
-        let (table_col, new) = flag
-            .split_once(':')
-            .ok_or_else(|| format!("invalid --rename value '{flag}': expected table.old:new"))?;
-        // rsplit so a schema-qualified table (`schema.table.old`) still
-        // isolates the old-column name as the last segment.
-        let (table, old) = table_col
-            .rsplit_once('.')
-            .ok_or_else(|| format!("invalid --rename value '{flag}': expected table.old:new"))?;
-        rename_map.insert((table.to_string(), old.to_string()), new.to_string());
+    for flag in &args.renames {
+        let rename: ResolvedRename = flag.parse()?;
+        rename_map.insert(rename.column, rename.new_name);
     }
 
-    let has_rename_flags = !rename_flags.is_empty();
+    let has_rename_flags = !args.renames.is_empty();
     let schema_hash = diff.schema_hash.clone();
-    let mut resolved_renames: Vec<(String, String, String)> = Vec::new();
+    let mut resolved_renames: Vec<ResolvedRename> = Vec::new();
 
     if !diff.unresolved.is_empty() {
         println!();
@@ -193,33 +229,27 @@ fn run_sync(
     }
 
     for unresolved in &diff.unresolved {
-        let key = (unresolved.table.clone(), unresolved.removed.clone());
+        let column = ColumnRef {
+            table: unresolved.table.clone(),
+            column: unresolved.removed.clone(),
+        };
 
-        if let Some(new_col) = rename_map.get(&key) {
-            if !unresolved.candidates.contains(new_col) {
+        if let Some(new_name) = rename_map.get(&column) {
+            if !unresolved.candidates.contains(new_name) {
                 return Err(format!(
-                    "--rename {}.{}:{} is invalid: '{}' is not among the candidates: {}",
-                    unresolved.table,
-                    unresolved.removed,
-                    new_col,
-                    new_col,
+                    "--rename {column}:{new_name} is invalid: '{new_name}' is not among the candidates: {}",
                     unresolved.candidates.join(", ")
                 )
                 .into());
             }
-            resolved_renames.push((
-                unresolved.table.clone(),
-                unresolved.removed.clone(),
-                new_col.clone(),
-            ));
+            resolved_renames.push(ResolvedRename {
+                column: column.clone(),
+                new_name: new_name.clone(),
+            });
         } else if has_rename_flags {
             return Err(format!(
-                "unresolved rename for {}.{} (candidates: {}): provide --rename={}.{}:<new_col>",
-                unresolved.table,
-                unresolved.removed,
+                "unresolved rename for {column} (candidates: {}): provide --rename={column}:<new_col>",
                 unresolved.candidates.join(", "),
-                unresolved.table,
-                unresolved.removed,
             )
             .into());
         } else {
@@ -239,21 +269,20 @@ fn run_sync(
             );
 
             let choice = prompt_rename_choice(&unresolved.candidates)?;
-            if let Some(new_col) = choice {
-                resolved_renames.push((
-                    unresolved.table.clone(),
-                    unresolved.removed.clone(),
-                    new_col,
-                ));
+            if let Some(new_name) = choice {
+                resolved_renames.push(ResolvedRename {
+                    column: column.clone(),
+                    new_name,
+                });
             }
         }
     }
 
-    let Some((rejects, excludes, reject_tables)) = run_change_review(&diff, review_all)? else {
+    let Some(review) = run_change_review(&diff, args.review_all)? else {
         return Ok(SyncDecision::Quit);
     };
 
-    let migration_name = match name {
+    let migration_name = match args.name.as_deref() {
         Some(n) => n.to_string(),
         None => {
             print!("{}", "Migration name (e.g. add_users): ".bold());
@@ -268,7 +297,7 @@ fn run_sync(
         }
     };
 
-    if !no_confirm {
+    if !args.no_confirm {
         print!(
             "{}",
             format!("Generate migration '{migration_name}'? [Y/n]: ").bold()
@@ -282,14 +311,14 @@ fn run_sync(
         }
     }
 
-    Ok(SyncDecision::Generate {
+    Ok(SyncDecision::Generate(GeneratePlan {
         schema_hash,
-        renames: resolved_renames,
         migration_name,
-        rejects,
-        excludes,
-        reject_tables,
-    })
+        renames: resolved_renames,
+        rejected_renames: review.rejected_renames,
+        excluded_statements: review.excluded_statements,
+        rejected_table_moves: review.rejected_table_moves,
+    }))
 }
 
 /// Walk the reviewable changes one at a time, prompting `[y/n/b/q]` for each.
@@ -297,13 +326,11 @@ fn run_sync(
 /// renames/schema-moves — are reviewed; with `review_all`, every change in
 /// `diff.changes` is. A table move may span two statements (rename + schema
 /// move); both are reviewed together as one item, keyed by the first index.
-/// Returns `None` on quit, otherwise the rejected assumed renames (as
-/// `(table, old_column)`), the indices of any other rejected changes to
-/// exclude, and the rejected table moves (as `from_table` names).
+/// Returns `None` when the user quits.
 fn run_change_review(
     diff: &DiffData,
     review_all: bool,
-) -> Result<Option<(Vec<(String, String)>, Vec<usize>, Vec<String>)>, Box<dyn Error>> {
+) -> Result<Option<ReviewOutcome>, Box<dyn Error>> {
     let assumed_by_index: std::collections::HashMap<usize, &AssumedRenameJson> = diff
         .assumed
         .iter()
@@ -339,7 +366,7 @@ fn run_change_review(
     };
 
     if queue.is_empty() {
-        return Ok(Some((Vec::new(), Vec::new(), Vec::new())));
+        return Ok(Some(ReviewOutcome::default()));
     }
 
     println!();
@@ -408,23 +435,24 @@ fn run_change_review(
         }
     }
 
-    let mut rejects = Vec::new();
-    let mut excludes = Vec::new();
-    let mut reject_tables = Vec::new();
+    let mut outcome = ReviewOutcome::default();
     for (idx, accepted) in decisions {
         if accepted {
             continue;
         }
         if let Some(a) = assumed_by_index.get(&idx) {
-            rejects.push((a.table.clone(), a.from.clone()));
+            outcome.rejected_renames.push(ColumnRef {
+                table: a.table.clone(),
+                column: a.from.clone(),
+            });
         } else if let Some(m) = table_move_by_primary_index.get(&idx) {
-            reject_tables.push(m.from.clone());
+            outcome.rejected_table_moves.push(m.from.clone());
         } else {
-            excludes.push(idx);
+            outcome.excluded_statements.push(idx);
         }
     }
 
-    Ok(Some((rejects, excludes, reject_tables)))
+    Ok(Some(outcome))
 }
 
 fn prompt_rename_choice(candidates: &[String]) -> Result<Option<String>, Box<dyn Error>> {

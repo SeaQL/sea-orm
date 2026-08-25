@@ -9,21 +9,38 @@ use std::collections::{HashMap, HashSet};
 use sea_query::TableAlterStatement;
 
 use super::changes::{
-    ChangeId, ChangeSet, ColumnChange, ColumnChangeKind, ConstraintChange, ConstraintChangeKind,
-    EnumChange, EnumChangeKind, SchemaChange, TableChange, TableChangeKind,
+    ChangeId, ChangeSet, ColumnChange, ColumnChangeKind, ColumnSignature, ConstraintChange,
+    ConstraintChangeKind, EnumChange, EnumChangeKind, SchemaChange, TableChange, TableChangeKind,
 };
 use super::resolver::{self, AddedColumn, RemovedColumn};
 use super::suggestion::{DiscoverSuggestion, SuggestionKind};
 use super::warning::{DiscoverWarning, WarningKind};
-use crate::{DbBackend, Statement};
+use crate::{DbBackend, Statement, TableId};
+
+/// A SQL statement together with the [`ChangeId`] of the recorded change it
+/// was generated from, so callers can address it individually — exclude it,
+/// or reject the assumption that produced it.
+#[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
+#[derive(Debug, Clone)]
+pub struct PlannedStatement {
+    /// The change this statement came from.
+    pub id: ChangeId,
+    /// The SQL to execute.
+    pub stmt: Statement,
+}
+
+impl PlannedStatement {
+    fn new(id: ChangeId, stmt: Statement) -> Self {
+        Self { id, stmt }
+    }
+}
 
 /// Result of interpreting recorded schema changes (Phase 2).
 #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
 #[derive(Debug, Default)]
 pub struct InterpretResult {
     /// SQL statements needed to bring the database in sync with entity definitions.
-    /// Each entry is paired with the [`ChangeId`] it was generated from.
-    pub statements: Vec<(ChangeId, Statement)>,
+    pub statements: Vec<PlannedStatement>,
     /// Always-on warnings about changes requiring manual attention (e.g. data migration).
     pub warnings: Vec<DiscoverWarning>,
     /// Heuristic-powered suggested fixes (renames, enum changes).
@@ -46,7 +63,10 @@ pub struct InterpretResult {
 impl InterpretResult {
     /// Get just the SQL statements (without change IDs).
     pub fn sql_statements(&self) -> Vec<&Statement> {
-        self.statements.iter().map(|(_, s)| s).collect()
+        self.statements
+            .iter()
+            .map(|planned| &planned.stmt)
+            .collect()
     }
 
     /// Reject an auto-applied rename: remove its RENAME COLUMN statement and
@@ -57,15 +77,18 @@ impl InterpretResult {
             return;
         };
         let assumed = self.assumed.remove(pos);
-        self.statements.retain(|(sid, _)| *sid != id);
+        self.statements.retain(|planned| planned.id != id);
+        self.statements.push(PlannedStatement::new(
+            assumed.drop_id,
+            assumed.fallback_drop,
+        ));
         self.statements
-            .push((assumed.drop_id, assumed.fallback_drop));
-        self.statements.push((assumed.add_id, assumed.fallback_add));
+            .push(PlannedStatement::new(assumed.add_id, assumed.fallback_add));
     }
 
     /// Exclude a set of statements from the result entirely, identified by [`ChangeId`].
     pub fn exclude(&mut self, ids: &HashSet<ChangeId>) {
-        self.statements.retain(|(sid, _)| !ids.contains(sid));
+        self.statements.retain(|planned| !ids.contains(&planned.id));
     }
 
     /// Reject an auto-applied table rename/schema-move: remove its statement(s)
@@ -77,11 +100,15 @@ impl InterpretResult {
         };
         let table_move = self.table_moves.remove(pos);
         self.statements
-            .retain(|(sid, _)| *sid != table_move.id && *sid != table_move.drop_id);
-        self.statements
-            .push((table_move.id, table_move.fallback_create));
-        self.statements
-            .push((table_move.drop_id, table_move.fallback_drop));
+            .retain(|planned| planned.id != table_move.id && planned.id != table_move.drop_id);
+        self.statements.push(PlannedStatement::new(
+            table_move.id,
+            table_move.fallback_create,
+        ));
+        self.statements.push(PlannedStatement::new(
+            table_move.drop_id,
+            table_move.fallback_drop,
+        ));
     }
 }
 
@@ -92,9 +119,8 @@ impl InterpretResult {
 #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
 #[derive(Debug, Clone)]
 pub struct AssumedRename {
-    /// Full (possibly schema-qualified) reference to the table the renamed
-    /// column belongs to.
-    pub table_ref: sea_query::TableRef,
+    /// The table the renamed column belongs to.
+    pub table: TableId,
     /// The old (removed) column name.
     pub from: String,
     /// The new (added) column name.
@@ -113,7 +139,7 @@ impl AssumedRename {
     /// The table the renamed column belongs to, qualified by schema when the
     /// table has one (e.g. `"my_schema.person"`).
     pub fn table_name(&self) -> String {
-        resolver::qualified_table_name(&self.table_ref)
+        self.table.to_string()
     }
 }
 
@@ -125,10 +151,10 @@ impl AssumedRename {
 #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
 #[derive(Debug, Clone)]
 pub struct AssumedTableMove {
-    /// Full (possibly schema-qualified) reference to the table's old identity.
-    pub from: sea_query::TableRef,
-    /// Full (possibly schema-qualified) reference to the table's new identity.
-    pub to: sea_query::TableRef,
+    /// The table's old identity.
+    pub from: TableId,
+    /// The table's new identity.
+    pub to: TableId,
     /// [`ChangeId`] of the (first) move statement currently in `statements`.
     pub id: ChangeId,
     /// [`ChangeId`] used for a second move statement when both the name and
@@ -141,12 +167,12 @@ pub struct AssumedTableMove {
 impl AssumedTableMove {
     /// The table's old (possibly schema-qualified) name, e.g. `"my_schema.person"`.
     pub fn from_name(&self) -> String {
-        resolver::qualified_table_name(&self.from)
+        self.from.to_string()
     }
 
     /// The table's new (possibly schema-qualified) name, e.g. `"my_schema.person"`.
     pub fn to_name(&self) -> String {
-        resolver::qualified_table_name(&self.to)
+        self.to.to_string()
     }
 }
 
@@ -179,7 +205,7 @@ impl InterpretResult {
         let mut next_id = self
             .statements
             .iter()
-            .map(|(id, _)| id.0)
+            .map(|planned| planned.id.0)
             .chain(
                 self.assumed
                     .iter()
@@ -202,9 +228,9 @@ impl InterpretResult {
                         .iter()
                         .find(|a| a.removed == *from && a.candidates.iter().any(|c| c.added == *to))
                     {
-                        let table_ref = ambiguous.table_ref.clone();
+                        let table_ref = ambiguous.table.to_table_ref();
                         let id = alloc_id();
-                        self.statements.push((
+                        self.statements.push(PlannedStatement::new(
                             id,
                             db_backend.build(
                                 TableAlterStatement::new()
@@ -217,9 +243,9 @@ impl InterpretResult {
                 RenameDecision::DropAndAdd { removed, .. } => {
                     if let Some(ambiguous) = self.unresolved.iter().find(|a| a.removed == *removed)
                     {
-                        let table_ref = ambiguous.table_ref.clone();
+                        let table_ref = ambiguous.table.to_table_ref();
                         let id = alloc_id();
-                        self.statements.push((
+                        self.statements.push(PlannedStatement::new(
                             id,
                             db_backend.build(
                                 TableAlterStatement::new()
@@ -244,27 +270,17 @@ pub struct InterpretConfig {
     pub assumptions: bool,
 }
 
-/// The schema-qualified table identity behind a [`sea_query::TableRef`], suitable
-/// as a `HashMap`/`HashSet` key (unlike `TableRef` itself, which isn't `Eq`/`Hash`).
-/// Discovery only ever produces the `TableRef::Table` variant.
-fn table_key(table_ref: &sea_query::TableRef) -> sea_query::TableName {
-    match table_ref {
-        sea_query::TableRef::Table(name, _) => name.clone(),
-        other => unreachable!("discovery only produces TableRef::Table, got {other:?}"),
-    }
-}
-
 /// Phase 2: Interpret recorded changes into SQL statements, warnings, and suggestions.
 ///
 /// Operates only on the [`ChangeSet`] from Phase 1. Changes carry pre-built
 /// [`Statement`]s; interpretation decides which to emit and generates warnings/suggestions.
 pub fn interpret(change_set: ChangeSet, config: &InterpretConfig) -> InterpretResult {
-    let mut statements: Vec<(ChangeId, Statement)> = Vec::new();
-    let mut warnings: Vec<DiscoverWarning> = Vec::new();
-    let mut suggestions: Vec<DiscoverSuggestion> = Vec::new();
-    let mut unresolved: Vec<resolver::AmbiguousRename> = Vec::new();
-    let mut assumed: Vec<AssumedRename> = Vec::new();
-    let mut table_moves: Vec<AssumedTableMove> = Vec::new();
+    let mut result = InterpretResult::default();
+
+    // Rename detection needs to see a table's adds and drops together, so
+    // columns are interpreted up front; the statements it produces are spliced
+    // into the ordering below.
+    let columns = interpret_columns(&change_set.columns, config, &mut result);
 
     // Ordered to satisfy FK / type constraints:
     // 1. CREATE SCHEMA — namespaces must exist before anything created inside them
@@ -276,46 +292,33 @@ pub fn interpret(change_set: ChangeSet, config: &InterpretConfig) -> InterpretRe
     // 7. DROP COLUMN
     // 8. DROP TABLE   — children before parents (ChangeSet records via sorted_table_drops)
     // 9. DROP TYPE    — after tables that referenced the type are gone
+    let mut statements = Vec::new();
     interpret_schema_creates(&change_set.schemas, &mut statements);
     interpret_enum_creates(&change_set.enums, &mut statements);
     let moved_ids = interpret_table_moves(
         &change_set.tables,
         config,
         &mut statements,
-        &mut suggestions,
-        &mut table_moves,
+        &mut result.suggestions,
+        &mut result.table_moves,
     );
     interpret_table_creates(&change_set.tables, &moved_ids, &mut statements);
-    interpret_column_adds(
-        &change_set.columns,
-        config,
-        &mut statements,
-        &mut warnings,
-        &mut suggestions,
-        &mut unresolved,
-        &mut assumed,
-    );
+    statements.extend(columns.adds);
     interpret_constraint_adds(&change_set.constraints, &mut statements);
     interpret_constraint_drops(&change_set.constraints, &mut statements);
-    interpret_column_drops(&change_set.columns, config, &mut statements);
+    statements.extend(columns.drops);
     interpret_table_drops(&change_set.tables, &moved_ids, config, &mut statements);
-    interpret_enum_drops(&change_set.enums, config, &mut statements, &mut suggestions);
+    interpret_enum_drops(&change_set.enums, &mut statements, &mut result.suggestions);
 
-    InterpretResult {
-        statements,
-        warnings,
-        suggestions,
-        unresolved,
-        assumed,
-        table_moves,
-    }
+    result.statements = statements;
+    result
 }
 
 /// Emit CREATE SCHEMA statements — always first, so nothing created inside a
 /// namespace can run before the namespace itself exists.
-fn interpret_schema_creates(schemas: &[SchemaChange], statements: &mut Vec<(ChangeId, Statement)>) {
+fn interpret_schema_creates(schemas: &[SchemaChange], statements: &mut Vec<PlannedStatement>) {
     for sc in schemas {
-        statements.push((sc.id, sc.stmt.clone()));
+        statements.push(PlannedStatement::new(sc.id, sc.stmt.clone()));
     }
 }
 
@@ -324,14 +327,14 @@ fn interpret_schema_creates(schemas: &[SchemaChange], statements: &mut Vec<(Chan
 fn interpret_table_creates(
     tables: &[TableChange],
     moved_ids: &HashSet<ChangeId>,
-    statements: &mut Vec<(ChangeId, Statement)>,
+    statements: &mut Vec<PlannedStatement>,
 ) {
     for tc in tables {
         if moved_ids.contains(&tc.id) {
             continue;
         }
         if let TableChangeKind::Create { stmt, .. } = &tc.kind {
-            statements.push((tc.id, stmt.clone()));
+            statements.push(PlannedStatement::new(tc.id, stmt.clone()));
         }
     }
 }
@@ -354,19 +357,13 @@ fn column_types_equivalent(
     }
 }
 
-/// Column-name-and-type signature equality used for table-move detection,
-/// tolerant of the entity-vs-introspected type quirks handled by
-/// [`column_types_equivalent`].
-fn signatures_match(
-    a: &[(String, Option<sea_query::ColumnType>)],
-    b: &[(String, Option<sea_query::ColumnType>)],
-) -> bool {
+/// Column signature equality used for table-move detection, tolerant of the
+/// entity-vs-introspected type quirks handled by [`column_types_equivalent`].
+fn signatures_match(a: &[ColumnSignature], b: &[ColumnSignature]) -> bool {
     a.len() == b.len()
-        && a.iter()
-            .zip(b.iter())
-            .all(|((a_name, a_ty), (b_name, b_ty))| {
-                a_name == b_name && column_types_equivalent(a_ty, b_ty)
-            })
+        && a.iter().zip(b.iter()).all(|(a, b)| {
+            a.name == b.name && column_types_equivalent(&a.column_type, &b.column_type)
+        })
 }
 
 /// Detect a dropped table and a created table as the same table renamed
@@ -383,33 +380,24 @@ fn signatures_match(
 fn interpret_table_moves(
     tables: &[TableChange],
     config: &InterpretConfig,
-    statements: &mut Vec<(ChangeId, Statement)>,
+    statements: &mut Vec<PlannedStatement>,
     suggestions: &mut Vec<DiscoverSuggestion>,
     table_moves: &mut Vec<AssumedTableMove>,
 ) -> HashSet<ChangeId> {
     let mut handled = HashSet::new();
 
-    let creates: Vec<(
-        ChangeId,
-        &sea_query::TableRef,
-        &Statement,
-        &[(String, Option<sea_query::ColumnType>)],
-    )> = tables
+    let creates: Vec<(ChangeId, &TableId, &Statement, &[ColumnSignature])> = tables
         .iter()
         .filter_map(|tc| match &tc.kind {
             TableChangeKind::Create {
-                table_ref,
+                table,
                 stmt,
                 columns,
-            } => Some((tc.id, table_ref, stmt, columns.as_slice())),
+            } => Some((tc.id, table, stmt, columns.as_slice())),
             _ => None,
         })
         .collect();
-    let drops: Vec<(
-        ChangeId,
-        &sea_query::TableName,
-        &[(String, Option<sea_query::ColumnType>)],
-    )> = tables
+    let drops: Vec<(ChangeId, &TableId, &[ColumnSignature])> = tables
         .iter()
         .filter_map(|tc| match &tc.kind {
             TableChangeKind::Drop { table, columns } => Some((tc.id, table, columns.as_slice())),
@@ -428,7 +416,7 @@ fn interpret_table_moves(
         if matches.len() != 1 {
             continue;
         }
-        let &(create_id, to_table_ref, create_stmt, _) = matches[0];
+        let &(create_id, to_table, create_stmt, _) = matches[0];
         let reverse_matches = drops
             .iter()
             .filter(|(_, _, cols)| signatures_match(cols, drop_columns))
@@ -437,36 +425,36 @@ fn interpret_table_moves(
             continue;
         }
 
-        let to_table = table_key(to_table_ref);
-        if from_table == &to_table {
+        if from_table == to_table {
             continue; // identical identity would already have matched in Phase 1
         }
 
-        let name_changed = from_table.1 != to_table.1;
-        let schema_changed = from_table.0 != to_table.0;
+        let name_changed = from_table.name != to_table.name;
+        let schema_changed = from_table.schema != to_table.schema;
         // schema_changed can only be true on Postgres: schema_name is ignored
-        // for MySQL/SQLite entities, so their table refs never carry one.
+        // for MySQL/SQLite entities, so their tables never carry one.
         if schema_changed && config.db_backend != DbBackend::Postgres {
             continue;
         }
 
-        let from_ref = sea_query::TableRef::Table(from_table.clone(), None);
         let mut move_stmts: Vec<Statement> = Vec::new();
-        let mut renamed_ref = from_ref.clone();
+        // The rename happens before the schema move, so the SET SCHEMA below
+        // has to address the table under its new name in its old schema.
+        let mut renamed = from_table.clone();
         if name_changed {
             let mut rename_stmt = sea_query::Table::rename();
             rename_stmt.table(
-                from_ref.clone(),
-                sea_query::Alias::new(to_table.1.to_string()),
+                from_table.to_table_ref(),
+                sea_query::Alias::new(to_table.name.clone()),
             );
             move_stmts.push(config.db_backend.build(&rename_stmt));
-            renamed_ref = sea_query::TableRef::Table(
-                sea_query::TableName(from_table.0.clone(), to_table.1.clone()),
-                None,
-            );
+            renamed = from_table.renamed(&to_table.name);
         }
         if schema_changed {
-            move_stmts.push(postgres_set_schema_stmt(&renamed_ref, &to_table.0));
+            move_stmts.push(postgres_set_schema_stmt(
+                &renamed,
+                to_table.schema.as_deref(),
+            ));
         }
         if move_stmts.is_empty() {
             continue;
@@ -474,18 +462,18 @@ fn interpret_table_moves(
 
         let drop_stmt = config.db_backend.build(
             sea_query::Table::drop()
-                .table(sea_query::TableRef::Table(from_table.clone(), None))
+                .table(from_table.to_table_ref())
                 .if_exists(),
         );
 
         if config.assumptions {
             for (i, stmt) in move_stmts.into_iter().enumerate() {
                 let id = if i == 0 { create_id } else { drop_id };
-                statements.push((id, stmt));
+                statements.push(PlannedStatement::new(id, stmt));
             }
             table_moves.push(AssumedTableMove {
-                from: from_ref,
-                to: to_table_ref.clone(),
+                from: from_table.clone(),
+                to: to_table.clone(),
                 id: create_id,
                 drop_id,
                 fallback_create: create_stmt.clone(),
@@ -497,10 +485,8 @@ fn interpret_table_moves(
             suggestions.push(DiscoverSuggestion {
                 kind: SuggestionKind::PossibleRename,
                 message: format!(
-                    "Table '{}' may have been renamed/moved to '{}' (identical columns). \
-                     Enable assumptions to auto-apply.",
-                    resolver::qualified_table_name(&from_ref),
-                    resolver::qualified_table_name(to_table_ref),
+                    "Table '{from_table}' may have been renamed/moved to '{to_table}' \
+                     (identical columns). Enable assumptions to auto-apply.",
                 ),
                 related_changes: vec![create_id, drop_id],
             });
@@ -516,28 +502,13 @@ fn quote_pg_ident(s: &str) -> String {
 }
 
 /// Build `ALTER TABLE ... SET SCHEMA ...` — Postgres-only, no [`sea_query`]
-/// statement builder covers it.
-fn postgres_set_schema_stmt(
-    table_ref: &sea_query::TableRef,
-    new_schema: &Option<sea_query::SchemaName>,
-) -> Statement {
-    let table_sql = match table_ref {
-        sea_query::TableRef::Table(sea_query::TableName(Some(schema), table), _) => {
-            format!(
-                "{}.{}",
-                quote_pg_ident(&schema.1.to_string()),
-                quote_pg_ident(&table.to_string())
-            )
-        }
-        sea_query::TableRef::Table(sea_query::TableName(None, table), _) => {
-            quote_pg_ident(&table.to_string())
-        }
-        other => quote_pg_ident(&other.sea_orm_table().to_string()),
+/// statement builder covers it. `None` means the default `public` schema.
+fn postgres_set_schema_stmt(table: &TableId, new_schema: Option<&str>) -> Statement {
+    let table_sql = match &table.schema {
+        Some(schema) => format!("{}.{}", quote_pg_ident(schema), quote_pg_ident(&table.name)),
+        None => quote_pg_ident(&table.name),
     };
-    let schema_sql = match new_schema {
-        Some(schema) => quote_pg_ident(&schema.1.to_string()),
-        None => "public".to_string(),
-    };
+    let schema_sql = quote_pg_ident(new_schema.unwrap_or("public"));
     Statement::from_string(
         DbBackend::Postgres,
         format!("ALTER TABLE {table_sql} SET SCHEMA {schema_sql}"),
@@ -550,18 +521,18 @@ fn interpret_table_drops(
     tables: &[TableChange],
     moved_ids: &HashSet<ChangeId>,
     config: &InterpretConfig,
-    statements: &mut Vec<(ChangeId, Statement)>,
+    statements: &mut Vec<PlannedStatement>,
 ) {
     for tc in tables {
         if moved_ids.contains(&tc.id) {
             continue;
         }
         if let TableChangeKind::Drop { table, .. } = &tc.kind {
-            statements.push((
+            statements.push(PlannedStatement::new(
                 tc.id,
                 config.db_backend.build(
                     sea_query::Table::drop()
-                        .table(sea_query::TableRef::Table(table.clone(), None))
+                        .table(table.to_table_ref())
                         .if_exists(),
                 ),
             ));
@@ -569,83 +540,41 @@ fn interpret_table_drops(
     }
 }
 
-/// Emit ADD COLUMN and RENAME COLUMN statements.
-/// Also populates warnings, suggestions, and unresolved renames.
-/// Drop statements are collected separately by `interpret_column_drops`.
-fn interpret_column_adds(
-    columns: &[ColumnChange],
-    config: &InterpretConfig,
-    statements: &mut Vec<(ChangeId, Statement)>,
-    warnings: &mut Vec<DiscoverWarning>,
-    suggestions: &mut Vec<DiscoverSuggestion>,
-    unresolved: &mut Vec<resolver::AmbiguousRename>,
-    assumed: &mut Vec<AssumedRename>,
-) {
-    let mut drop_stmts: Vec<(ChangeId, Statement)> = Vec::new();
-    interpret_columns_inner(
-        columns,
-        config,
-        statements,
-        &mut drop_stmts,
-        warnings,
-        suggestions,
-        unresolved,
-        assumed,
-    );
-    // drop_stmts are discarded here; they will be emitted by interpret_column_drops
+/// Column statements, split by where they belong in the emission order:
+/// ADD/RENAME COLUMN goes out before constraints, DROP COLUMN after them.
+#[derive(Default)]
+struct ColumnStatements {
+    adds: Vec<PlannedStatement>,
+    drops: Vec<PlannedStatement>,
 }
 
-/// Emit DROP COLUMN statements (after FK drops, before table drops).
-fn interpret_column_drops(
+/// Interpret every column change: run rename detection, split the resulting
+/// statements into adds and drops, and record the warnings, suggestions,
+/// unresolved and assumed renames it turned up onto `result`.
+///
+/// Runs once per [`interpret`] call — rename detection is a whole-table
+/// decision, so the adds and drops have to come out of the same pass.
+fn interpret_columns(
     columns: &[ColumnChange],
     config: &InterpretConfig,
-    statements: &mut Vec<(ChangeId, Statement)>,
-) {
-    let mut add_stmts: Vec<(ChangeId, Statement)> = Vec::new();
-    let mut drop_stmts: Vec<(ChangeId, Statement)> = Vec::new();
-    let mut warnings = Vec::new();
-    let mut suggestions = Vec::new();
-    let mut unresolved = Vec::new();
-    let mut assumed = Vec::new();
-    interpret_columns_inner(
-        columns,
-        config,
-        &mut add_stmts,
-        &mut drop_stmts,
-        &mut warnings,
-        &mut suggestions,
-        &mut unresolved,
-        &mut assumed,
-    );
-    statements.extend(drop_stmts);
-}
+    result: &mut InterpretResult,
+) -> ColumnStatements {
+    let mut out = ColumnStatements::default();
+    let add_stmts = &mut out.adds;
+    let drop_stmts = &mut out.drops;
+    let warnings = &mut result.warnings;
+    let suggestions = &mut result.suggestions;
+    let unresolved = &mut result.unresolved;
+    let assumed = &mut result.assumed;
 
-/// Core column interpretation: runs rename detection and separates ADD/RENAME from DROP outputs.
-#[allow(clippy::too_many_arguments)]
-fn interpret_columns_inner(
-    columns: &[ColumnChange],
-    config: &InterpretConfig,
-    add_stmts: &mut Vec<(ChangeId, Statement)>,
-    drop_stmts: &mut Vec<(ChangeId, Statement)>,
-    warnings: &mut Vec<DiscoverWarning>,
-    suggestions: &mut Vec<DiscoverSuggestion>,
-    unresolved: &mut Vec<resolver::AmbiguousRename>,
-    assumed: &mut Vec<AssumedRename>,
-) {
-    let mut table_added: HashMap<sea_query::TableName, Vec<(ChangeId, AddedColumn, Statement)>> =
+    let mut table_added: HashMap<TableId, Vec<(ChangeId, AddedColumn, Statement)>> =
         Default::default();
-    let mut table_removed: HashMap<
-        sea_query::TableName,
-        Vec<(ChangeId, RemovedColumn, Statement)>,
-    > = Default::default();
-    let mut table_refs: HashMap<sea_query::TableName, sea_query::TableRef> = Default::default();
+    let mut table_removed: HashMap<TableId, Vec<(ChangeId, RemovedColumn, Statement)>> =
+        Default::default();
 
     for cc in columns {
-        let key = table_key(&cc.table_ref);
-        table_refs
-            .entry(key.clone())
-            .or_insert_with(|| cc.table_ref.clone());
-        let table_name = resolver::qualified_table_name(&cc.table_ref);
+        let table = &cc.table;
+        let table_name = table.to_string();
         match &cc.kind {
             ColumnChangeKind::Add {
                 column,
@@ -665,7 +594,7 @@ fn interpret_columns_inner(
                         related_changes: vec![cc.id],
                     });
                 }
-                table_added.entry(key).or_default().push((
+                table_added.entry(table.clone()).or_default().push((
                     cc.id,
                     AddedColumn {
                         index: *index,
@@ -681,7 +610,7 @@ fn interpret_columns_inner(
                 column_type,
                 stmt,
             } => {
-                table_removed.entry(key).or_default().push((
+                table_removed.entry(table.clone()).or_default().push((
                     cc.id,
                     RemovedColumn {
                         index: *index,
@@ -693,7 +622,7 @@ fn interpret_columns_inner(
             }
             ColumnChangeKind::ExplicitRename { from, to, stmt } => {
                 if config.assumptions {
-                    add_stmts.push((cc.id, stmt.clone()));
+                    add_stmts.push(PlannedStatement::new(cc.id, stmt.clone()));
                 } else {
                     suggestions.push(DiscoverSuggestion {
                         kind: SuggestionKind::PossibleRename,
@@ -734,7 +663,7 @@ fn interpret_columns_inner(
     }
 
     // Rename detection per table
-    let all_tables: HashSet<sea_query::TableName> = table_added
+    let all_tables: HashSet<TableId> = table_added
         .keys()
         .chain(table_removed.keys())
         .cloned()
@@ -743,12 +672,11 @@ fn interpret_columns_inner(
     for table in &all_tables {
         let added = table_added.remove(table).unwrap_or_default();
         let removed = table_removed.remove(table).unwrap_or_default();
-        let table_ref = table_refs[table].clone();
-        let table_name = resolver::qualified_table_name(&table_ref);
+        let table_name = table.to_string();
 
-        if (added.is_empty() && removed.is_empty()) {
+        if added.is_empty() && removed.is_empty() {
             for (id, _, stmt) in &added {
-                add_stmts.push((*id, stmt.clone()));
+                add_stmts.push(PlannedStatement::new(*id, stmt.clone()));
             }
             continue;
         }
@@ -773,8 +701,7 @@ fn interpret_columns_inner(
         let resolver_added: Vec<AddedColumn> = added.into_iter().map(|(_, c, _)| c).collect();
         let resolver_removed: Vec<RemovedColumn> = removed.into_iter().map(|(_, c, _)| c).collect();
 
-        let resolution =
-            resolver::resolve_renames(table_ref.clone(), resolver_added, resolver_removed);
+        let resolution = resolver::resolve_renames(table, resolver_added, resolver_removed);
 
         // Assumed renames
         for rename in &resolution.assumed {
@@ -782,11 +709,11 @@ fn interpret_columns_inner(
             let drop_id = removed_ids[&rename.removed];
 
             if config.assumptions {
-                add_stmts.push((
+                add_stmts.push(PlannedStatement::new(
                     add_id,
                     config.db_backend.build(
                         TableAlterStatement::new()
-                            .table(table_ref.clone())
+                            .table(table.to_table_ref())
                             .rename_column(rename.removed.clone(), rename.added.clone()),
                     ),
                 ));
@@ -800,7 +727,7 @@ fn interpret_columns_inner(
                     related_changes: vec![add_id, drop_id],
                 });
                 assumed.push(AssumedRename {
-                    table_ref: table_ref.clone(),
+                    table: table.clone(),
                     from: rename.removed.clone(),
                     to: rename.added.clone(),
                     id: add_id,
@@ -819,8 +746,14 @@ fn interpret_columns_inner(
                     ),
                     related_changes: vec![add_id, drop_id],
                 });
-                add_stmts.push((add_id, added_stmts[&rename.added].clone()));
-                drop_stmts.push((drop_id, removed_stmts[&rename.removed].clone()));
+                add_stmts.push(PlannedStatement::new(
+                    add_id,
+                    added_stmts[&rename.added].clone(),
+                ));
+                drop_stmts.push(PlannedStatement::new(
+                    drop_id,
+                    removed_stmts[&rename.removed].clone(),
+                ));
             }
         }
 
@@ -828,27 +761,29 @@ fn interpret_columns_inner(
 
         for add in &resolution.remaining_added {
             let id = added_ids[&add.name];
-            add_stmts.push((id, added_stmts[&add.name].clone()));
+            add_stmts.push(PlannedStatement::new(id, added_stmts[&add.name].clone()));
         }
 
         for rem in &resolution.remaining_removed {
             let id = removed_ids[&rem.name];
-            drop_stmts.push((id, removed_stmts[&rem.name].clone()));
+            drop_stmts.push(PlannedStatement::new(id, removed_stmts[&rem.name].clone()));
         }
     }
+
+    out
 }
 
 /// Emit ADD FOREIGN KEY, ADD INDEX, ADD UNIQUE CONSTRAINT statements.
 fn interpret_constraint_adds(
     constraints: &[ConstraintChange],
-    statements: &mut Vec<(ChangeId, Statement)>,
+    statements: &mut Vec<PlannedStatement>,
 ) {
     for cc in constraints {
         match &cc.kind {
             ConstraintChangeKind::AddForeignKey { stmt }
             | ConstraintChangeKind::AddIndex { stmt }
             | ConstraintChangeKind::AddUniqueConstraint { stmt, .. } => {
-                statements.push((cc.id, stmt.clone()));
+                statements.push(PlannedStatement::new(cc.id, stmt.clone()));
             }
             ConstraintChangeKind::DropForeignKey { .. }
             | ConstraintChangeKind::DropUniqueConstraint { .. } => {}
@@ -859,13 +794,13 @@ fn interpret_constraint_adds(
 /// Emit DROP FOREIGN KEY and DROP UNIQUE CONSTRAINT statements (before column/table drops).
 fn interpret_constraint_drops(
     constraints: &[ConstraintChange],
-    statements: &mut Vec<(ChangeId, Statement)>,
+    statements: &mut Vec<PlannedStatement>,
 ) {
     for cc in constraints {
         match &cc.kind {
             ConstraintChangeKind::DropForeignKey { stmt, .. }
             | ConstraintChangeKind::DropUniqueConstraint { stmt, .. } => {
-                statements.push((cc.id, stmt.clone()));
+                statements.push(PlannedStatement::new(cc.id, stmt.clone()));
             }
             ConstraintChangeKind::AddForeignKey { .. }
             | ConstraintChangeKind::AddIndex { .. }
@@ -875,10 +810,10 @@ fn interpret_constraint_drops(
 }
 
 /// Emit CREATE TYPE statements and variant-change/rename suggestions.
-fn interpret_enum_creates(enums: &[EnumChange], statements: &mut Vec<(ChangeId, Statement)>) {
+fn interpret_enum_creates(enums: &[EnumChange], statements: &mut Vec<PlannedStatement>) {
     for ec in enums {
         if let EnumChangeKind::Create { stmt } = &ec.kind {
-            statements.push((ec.id, stmt.clone()));
+            statements.push(PlannedStatement::new(ec.id, stmt.clone()));
         }
     }
 }
@@ -887,8 +822,7 @@ fn interpret_enum_creates(enums: &[EnumChange], statements: &mut Vec<(ChangeId, 
 /// Must run after table drops so the enum is no longer referenced.
 fn interpret_enum_drops(
     enums: &[EnumChange],
-    config: &InterpretConfig,
-    statements: &mut Vec<(ChangeId, Statement)>,
+    statements: &mut Vec<PlannedStatement>,
     suggestions: &mut Vec<DiscoverSuggestion>,
 ) {
     for ec in enums {
@@ -918,7 +852,7 @@ fn interpret_enum_drops(
                 });
             }
             EnumChangeKind::Drop { stmt, .. } => {
-                statements.push((ec.id, stmt.clone()));
+                statements.push(PlannedStatement::new(ec.id, stmt.clone()));
             }
             EnumChangeKind::Create { .. } => {}
         }
@@ -928,28 +862,27 @@ fn interpret_enum_drops(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sea_query::IntoTableRef;
 
-    fn qualified_table_ref() -> sea_query::TableRef {
-        ("test", "person").into_table_ref()
+    fn person() -> TableId {
+        TableId::qualified("test", "person")
     }
 
-    fn other_qualified_table_ref() -> sea_query::TableRef {
-        ("test1", "person").into_table_ref()
+    fn other_person() -> TableId {
+        TableId::qualified("test1", "person")
     }
 
-    fn add_stmt(table_ref: sea_query::TableRef) -> Statement {
+    fn add_stmt(table: &TableId) -> Statement {
         DbBackend::Postgres.build(
             TableAlterStatement::new()
-                .table(table_ref)
+                .table(table.to_table_ref())
                 .add_column(sea_query::ColumnDef::new(sea_query::Alias::new("name")).string()),
         )
     }
 
-    fn drop_stmt(table_ref: sea_query::TableRef, column: &str) -> Statement {
+    fn drop_stmt(table: &TableId, column: &str) -> Statement {
         DbBackend::Postgres.build(
             TableAlterStatement::new()
-                .table(table_ref)
+                .table(table.to_table_ref())
                 .drop_column(sea_query::Alias::new(column)),
         )
     }
@@ -962,7 +895,7 @@ mod tests {
         let mut result = InterpretResult {
             unresolved: vec![
                 resolver::AmbiguousRename {
-                    table_ref: qualified_table_ref(),
+                    table: person(),
                     removed: "first_name".to_string(),
                     candidates: vec![resolver::RenameCandidate {
                         removed: "first_name".to_string(),
@@ -971,7 +904,7 @@ mod tests {
                     }],
                 },
                 resolver::AmbiguousRename {
-                    table_ref: qualified_table_ref(),
+                    table: person(),
                     removed: "last_name".to_string(),
                     candidates: vec![resolver::RenameCandidate {
                         removed: "last_name".to_string(),
@@ -998,7 +931,7 @@ mod tests {
         );
 
         assert_eq!(result.statements.len(), 2);
-        let ids: HashSet<_> = result.statements.iter().map(|(id, _)| *id).collect();
+        let ids: HashSet<_> = result.statements.iter().map(|planned| planned.id).collect();
         assert_eq!(
             ids.len(),
             2,
@@ -1006,7 +939,7 @@ mod tests {
             result
                 .statements
                 .iter()
-                .map(|(id, _)| id)
+                .map(|planned| planned.id)
                 .collect::<Vec<_>>()
         );
     }
@@ -1017,23 +950,23 @@ mod tests {
     fn assumed_rename_keeps_schema_qualifier() {
         let mut change_set = ChangeSet::default();
         change_set.record_column(
-            qualified_table_ref(),
+            person(),
             ColumnChangeKind::Add {
                 column: "name".to_string(),
                 index: 0,
                 column_type: Some(sea_query::ColumnType::String(sea_query::StringLen::None)),
                 is_not_null: false,
                 has_default: false,
-                stmt: add_stmt(qualified_table_ref()),
+                stmt: add_stmt(&person()),
             },
         );
         change_set.record_column(
-            qualified_table_ref(),
+            person(),
             ColumnChangeKind::Drop {
                 column: "first_name".to_string(),
                 index: 0,
                 column_type: Some(sea_query::ColumnType::String(sea_query::StringLen::None)),
-                stmt: drop_stmt(qualified_table_ref(), "first_name"),
+                stmt: drop_stmt(&person(), "first_name"),
             },
         );
 
@@ -1047,7 +980,7 @@ mod tests {
 
         assert_eq!(result.assumed.len(), 1);
         assert_eq!(result.assumed[0].table_name(), "test.person");
-        let sql = result.statements[0].1.sql.as_str();
+        let sql = result.statements[0].stmt.sql.as_str();
         assert!(
             sql.contains(r#""test"."person""#),
             "expected schema-qualified table in RENAME COLUMN, got: {sql}"
@@ -1057,11 +990,11 @@ mod tests {
         let id = result.assumed[0].id;
         let mut result = result;
         result.reject_assumed(id);
-        for (_, stmt) in &result.statements {
+        for planned in &result.statements {
             assert!(
-                stmt.sql.contains(r#""test"."person""#),
+                planned.stmt.sql.contains(r#""test"."person""#),
                 "expected schema-qualified table after rejecting assumption, got: {}",
-                stmt.sql
+                planned.stmt.sql
             );
         }
     }
@@ -1074,23 +1007,23 @@ mod tests {
     fn same_table_name_different_schemas_not_cross_matched() {
         let mut change_set = ChangeSet::default();
         change_set.record_column(
-            qualified_table_ref(),
+            person(),
             ColumnChangeKind::Drop {
                 column: "first_name".to_string(),
                 index: 0,
                 column_type: Some(sea_query::ColumnType::String(sea_query::StringLen::None)),
-                stmt: drop_stmt(qualified_table_ref(), "first_name"),
+                stmt: drop_stmt(&person(), "first_name"),
             },
         );
         change_set.record_column(
-            other_qualified_table_ref(),
+            other_person(),
             ColumnChangeKind::Add {
                 column: "name".to_string(),
                 index: 0,
                 column_type: Some(sea_query::ColumnType::String(sea_query::StringLen::None)),
                 is_not_null: false,
                 has_default: false,
-                stmt: add_stmt(other_qualified_table_ref()),
+                stmt: add_stmt(&other_person()),
             },
         );
 
@@ -1110,7 +1043,7 @@ mod tests {
         let sql_all: String = result
             .statements
             .iter()
-            .map(|(_, s)| s.sql.to_uppercase())
+            .map(|planned| planned.stmt.sql.to_uppercase())
             .collect::<Vec<_>>()
             .join(" ");
         assert!(!sql_all.contains("RENAME COLUMN"), "got: {sql_all}");
@@ -1123,34 +1056,34 @@ mod tests {
         let mut change_set = ChangeSet::default();
         // Two added candidates with the same type/proximity to force ambiguity.
         change_set.record_column(
-            qualified_table_ref(),
+            person(),
             ColumnChangeKind::Add {
                 column: "title".to_string(),
                 index: 0,
                 column_type: Some(sea_query::ColumnType::String(sea_query::StringLen::None)),
                 is_not_null: false,
                 has_default: false,
-                stmt: add_stmt(qualified_table_ref()),
+                stmt: add_stmt(&person()),
             },
         );
         change_set.record_column(
-            qualified_table_ref(),
+            person(),
             ColumnChangeKind::Add {
                 column: "label".to_string(),
                 index: 1,
                 column_type: Some(sea_query::ColumnType::String(sea_query::StringLen::None)),
                 is_not_null: false,
                 has_default: false,
-                stmt: add_stmt(qualified_table_ref()),
+                stmt: add_stmt(&person()),
             },
         );
         change_set.record_column(
-            qualified_table_ref(),
+            person(),
             ColumnChangeKind::Drop {
                 column: "name".to_string(),
                 index: 0,
                 column_type: Some(sea_query::ColumnType::String(sea_query::StringLen::None)),
-                stmt: drop_stmt(qualified_table_ref(), "name"),
+                stmt: drop_stmt(&person(), "name"),
             },
         );
 
@@ -1175,37 +1108,40 @@ mod tests {
         let rename_stmt = result
             .statements
             .iter()
-            .find(|(_, s)| s.sql.to_uppercase().contains("RENAME COLUMN"))
+            .find(|planned| planned.stmt.sql.to_uppercase().contains("RENAME COLUMN"))
             .expect("rename statement should be present");
         assert!(
-            rename_stmt.1.sql.contains(r#""test"."person""#),
+            rename_stmt.stmt.sql.contains(r#""test"."person""#),
             "expected schema-qualified table in resolved RENAME COLUMN, got: {}",
-            rename_stmt.1.sql
+            rename_stmt.stmt.sql
         );
     }
 
-    fn person_columns() -> Vec<(String, Option<sea_query::ColumnType>)> {
+    fn person_columns() -> Vec<ColumnSignature> {
         vec![
-            (
-                "name".to_string(),
-                Some(sea_query::ColumnType::String(sea_query::StringLen::None)),
-            ),
-            ("gender".to_string(), Some(sea_query::ColumnType::Text)),
+            ColumnSignature {
+                name: "name".to_string(),
+                column_type: Some(sea_query::ColumnType::String(sea_query::StringLen::None)),
+            },
+            ColumnSignature {
+                name: "gender".to_string(),
+                column_type: Some(sea_query::ColumnType::Text),
+            },
         ]
     }
 
     fn record_table_create(
         change_set: &mut ChangeSet,
-        table_ref: sea_query::TableRef,
-        columns: Vec<(String, Option<sea_query::ColumnType>)>,
+        table: TableId,
+        columns: Vec<ColumnSignature>,
     ) -> ChangeId {
         let mut create_stmt = sea_query::Table::create();
         create_stmt
-            .table(table_ref.clone())
+            .table(table.to_table_ref())
             .col(sea_query::ColumnDef::new(sea_query::Alias::new("name")).string());
         let stmt = DbBackend::Postgres.build(&create_stmt);
         change_set.record_table(TableChangeKind::Create {
-            table_ref,
+            table,
             stmt,
             columns,
         })
@@ -1213,8 +1149,8 @@ mod tests {
 
     fn record_table_drop(
         change_set: &mut ChangeSet,
-        table: sea_query::TableName,
-        columns: Vec<(String, Option<sea_query::ColumnType>)>,
+        table: TableId,
+        columns: Vec<ColumnSignature>,
     ) -> ChangeId {
         change_set.record_table(TableChangeKind::Drop { table, columns })
     }
@@ -1225,16 +1161,8 @@ mod tests {
     #[test]
     fn table_rename_same_schema_detected() {
         let mut change_set = ChangeSet::default();
-        record_table_create(
-            &mut change_set,
-            sea_query::Alias::new("post1").into_table_ref(),
-            person_columns(),
-        );
-        record_table_drop(
-            &mut change_set,
-            table_key(&sea_query::Alias::new("post").into_table_ref()),
-            person_columns(),
-        );
+        record_table_create(&mut change_set, TableId::new("post1"), person_columns());
+        record_table_drop(&mut change_set, TableId::new("post"), person_columns());
 
         let result = interpret(
             change_set,
@@ -1248,7 +1176,7 @@ mod tests {
         assert_eq!(result.table_moves[0].from_name(), "post");
         assert_eq!(result.table_moves[0].to_name(), "post1");
         assert_eq!(result.statements.len(), 1);
-        let sql = result.statements[0].1.sql.to_uppercase();
+        let sql = result.statements[0].stmt.sql.to_uppercase();
         assert!(sql.contains("RENAME"), "got: {sql}");
         assert!(!sql.contains("CREATE TABLE"), "got: {sql}");
         assert!(!sql.contains("DROP TABLE"), "got: {sql}");
@@ -1260,12 +1188,8 @@ mod tests {
     #[test]
     fn table_schema_move_detected() {
         let mut change_set = ChangeSet::default();
-        record_table_create(&mut change_set, qualified_table_ref(), person_columns());
-        record_table_drop(
-            &mut change_set,
-            table_key(&other_qualified_table_ref()),
-            person_columns(),
-        );
+        record_table_create(&mut change_set, person(), person_columns());
+        record_table_drop(&mut change_set, other_person(), person_columns());
 
         let result = interpret(
             change_set,
@@ -1279,7 +1203,7 @@ mod tests {
         assert_eq!(result.table_moves[0].from_name(), "test1.person");
         assert_eq!(result.table_moves[0].to_name(), "test.person");
         assert_eq!(result.statements.len(), 1);
-        let sql = &result.statements[0].1.sql;
+        let sql = &result.statements[0].stmt.sql;
         assert!(sql.to_uppercase().contains("SET SCHEMA"), "got: {sql}");
         assert!(sql.contains(r#""test1"."person""#), "got: {sql}");
         assert!(sql.contains(r#""test""#), "got: {sql}");
@@ -1291,7 +1215,7 @@ mod tests {
         let sql_all: String = result
             .statements
             .iter()
-            .map(|(_, s)| s.sql.to_uppercase())
+            .map(|planned| planned.stmt.sql.to_uppercase())
             .collect::<Vec<_>>()
             .join(" ");
         assert!(sql_all.contains("CREATE TABLE"), "got: {sql_all}");
@@ -1304,14 +1228,10 @@ mod tests {
         let mut change_set = ChangeSet::default();
         record_table_create(
             &mut change_set,
-            ("test", "person2").into_table_ref(),
+            TableId::qualified("test", "person2"),
             person_columns(),
         );
-        record_table_drop(
-            &mut change_set,
-            table_key(&other_qualified_table_ref()),
-            person_columns(),
-        );
+        record_table_drop(&mut change_set, other_person(), person_columns());
 
         let result = interpret(
             change_set,
@@ -1326,7 +1246,7 @@ mod tests {
         let sql_all: String = result
             .statements
             .iter()
-            .map(|(_, s)| s.sql.to_uppercase())
+            .map(|planned| planned.stmt.sql.to_uppercase())
             .collect::<Vec<_>>()
             .join(" ");
         assert!(sql_all.contains("RENAME"), "got: {sql_all}");
@@ -1338,16 +1258,8 @@ mod tests {
     #[test]
     fn table_move_not_applied_without_assumptions() {
         let mut change_set = ChangeSet::default();
-        record_table_create(
-            &mut change_set,
-            sea_query::Alias::new("post1").into_table_ref(),
-            person_columns(),
-        );
-        record_table_drop(
-            &mut change_set,
-            table_key(&sea_query::Alias::new("post").into_table_ref()),
-            person_columns(),
-        );
+        record_table_create(&mut change_set, TableId::new("post1"), person_columns());
+        record_table_drop(&mut change_set, TableId::new("post"), person_columns());
 
         let result = interpret(
             change_set,
@@ -1361,7 +1273,7 @@ mod tests {
         let sql_all: String = result
             .statements
             .iter()
-            .map(|(_, s)| s.sql.to_uppercase())
+            .map(|planned| planned.stmt.sql.to_uppercase())
             .collect::<Vec<_>>()
             .join(" ");
         assert!(sql_all.contains("CREATE TABLE"), "got: {sql_all}");
@@ -1379,15 +1291,14 @@ mod tests {
     #[test]
     fn table_move_not_detected_for_different_columns() {
         let mut change_set = ChangeSet::default();
-        record_table_create(
-            &mut change_set,
-            sea_query::Alias::new("post1").into_table_ref(),
-            person_columns(),
-        );
+        record_table_create(&mut change_set, TableId::new("post1"), person_columns());
         record_table_drop(
             &mut change_set,
-            table_key(&sea_query::Alias::new("post").into_table_ref()),
-            vec![("id".to_string(), Some(sea_query::ColumnType::Integer))],
+            TableId::new("post"),
+            vec![ColumnSignature {
+                name: "id".to_string(),
+                column_type: Some(sea_query::ColumnType::Integer),
+            }],
         );
 
         let result = interpret(
@@ -1402,7 +1313,7 @@ mod tests {
         let sql_all: String = result
             .statements
             .iter()
-            .map(|(_, s)| s.sql.to_uppercase())
+            .map(|planned| planned.stmt.sql.to_uppercase())
             .collect::<Vec<_>>()
             .join(" ");
         assert!(sql_all.contains("CREATE TABLE"), "got: {sql_all}");
@@ -1414,16 +1325,8 @@ mod tests {
     #[test]
     fn table_rename_detected_on_mysql() {
         let mut change_set = ChangeSet::default();
-        record_table_create(
-            &mut change_set,
-            sea_query::Alias::new("post1").into_table_ref(),
-            person_columns(),
-        );
-        record_table_drop(
-            &mut change_set,
-            table_key(&sea_query::Alias::new("post").into_table_ref()),
-            person_columns(),
-        );
+        record_table_create(&mut change_set, TableId::new("post1"), person_columns());
+        record_table_drop(&mut change_set, TableId::new("post"), person_columns());
 
         let result = interpret(
             change_set,
@@ -1436,9 +1339,13 @@ mod tests {
         assert_eq!(result.table_moves.len(), 1);
         assert_eq!(result.statements.len(), 1);
         assert!(
-            result.statements[0].1.sql.to_uppercase().contains("RENAME"),
+            result.statements[0]
+                .stmt
+                .sql
+                .to_uppercase()
+                .contains("RENAME"),
             "got: {}",
-            result.statements[0].1.sql
+            result.statements[0].stmt.sql
         );
     }
 }

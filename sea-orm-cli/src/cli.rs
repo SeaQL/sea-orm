@@ -1,4 +1,4 @@
-use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueEnum};
+use clap::{ArgAction, ArgGroup, Args, Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 #[cfg(feature = "cli")]
 use dotenvy::dotenv;
@@ -177,68 +177,73 @@ pub enum MigrateSubcommands {
     },
 }
 
+/// Everything `entity sync` needs, kept as one value so it can travel from the
+/// CLI parser to `run_entity_sync` without an argument list nobody can read.
+#[derive(Args, PartialEq, Eq, Debug)]
+pub struct EntitySyncArgs {
+    // TODO: add a help message in case default value fails
+    #[arg(
+        short = 'd',
+        long,
+        env = "ENTITY_DIR",
+        help = "Path to the entity crate root directory",
+        default_value = "./entity"
+    )]
+    pub dir: String,
+
+    #[arg(
+        long,
+        env = "MIGRATION_DIR",
+        help = "Path to the migration crate root directory",
+        default_value = "./migration"
+    )]
+    pub migration_dir: String,
+
+    #[arg(
+        short = 'u',
+        long,
+        env = "DATABASE_URL",
+        help = "Database URL",
+        hide_env_values = true
+    )]
+    pub database_url: Option<String>,
+
+    #[arg(
+        short = 's',
+        long,
+        env = "DATABASE_SCHEMA",
+        long_help = "Database schema\n \
+                    - For MySQL and SQLite, this argument is ignored.\n \
+                    - For PostgreSQL, this argument is optional with default value 'public'.\n"
+    )]
+    pub database_schema: Option<String>,
+
+    /// Name for the generated migration (e.g. add_users). Prompted interactively if omitted.
+    #[arg(long, help = "Name for the generated migration (e.g. add_users)")]
+    pub name: Option<String>,
+
+    /// Pre-supply rename decisions: `table.old_col:new_col`.
+    /// May be repeated for multiple renames. If any unresolved rename is
+    /// not covered by a --rename flag the command will exit with an error.
+    #[arg(long = "rename", value_name = "TABLE.OLD:NEW")]
+    pub renames: Vec<String>,
+
+    /// Skip the Y/n confirmation prompt and generate the migration immediately.
+    #[arg(long, default_value_t = false)]
+    pub no_confirm: bool,
+
+    /// Interactively review every change, not just auto-applied (assumed) renames.
+    #[arg(long, default_value_t = false)]
+    pub review_all: bool,
+}
+
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum EntitySubcommands {
     #[command(
         about = "Diff entity definitions against the live database and interactively generate a migration",
         display_order = 10
     )]
-    Sync {
-        // TODO: add a help message in case default value fails
-        #[arg(
-            short = 'd',
-            long,
-            env = "ENTITY_DIR",
-            help = "Path to the entity crate root directory",
-            default_value = "./entity"
-        )]
-        dir: String,
-
-        #[arg(
-            long,
-            env = "MIGRATION_DIR",
-            help = "Path to the migration crate root directory",
-            default_value = "./migration"
-        )]
-        migration_dir: String,
-
-        #[arg(
-            short = 'u',
-            long,
-            env = "DATABASE_URL",
-            help = "Database URL",
-            hide_env_values = true
-        )]
-        database_url: Option<String>,
-
-        #[arg(
-            short = 's',
-            long,
-            env = "DATABASE_SCHEMA",
-            long_help = "Database schema\n \
-                        - For MySQL and SQLite, this argument is ignored.\n \
-                        - For PostgreSQL, this argument is optional with default value 'public'.\n"
-        )]
-        database_schema: Option<String>,
-
-        /// Name for the generated migration (e.g. add_users). Prompted interactively if omitted.
-        #[arg(long, help = "Name for the generated migration (e.g. add_users)")]
-        name: Option<String>,
-
-        /// Pre-supply rename decisions: `table.old_col:new_col`.
-        /// May be repeated for multiple renames. If any unresolved rename is
-        /// not covered by a --rename flag the command will exit with an error.
-        #[arg(long = "rename", value_name = "TABLE.OLD:NEW")]
-        renames: Vec<String>,
-
-        /// Skip the Y/n confirmation prompt and generate the migration immediately.
-        #[arg(long, default_value_t = false)]
-        no_confirm: bool,
-
-        /// Interactively review every change, not just auto-applied (assumed) renames.
-        #[arg(long, default_value_t = false)]
-        review_all: bool,
-    },
+    Sync(EntitySyncArgs),
 
     #[command(
         about = "Preview the schema as defined by registered entities, without connecting to a database",
@@ -620,26 +625,8 @@ pub async fn main() {
             }
         }
         Commands::Entity { command } => match command {
-            EntitySubcommands::Sync {
-                dir,
-                migration_dir,
-                database_url,
-                database_schema,
-                name,
-                renames,
-                no_confirm,
-                review_all,
-            } => {
-                if let Err(e) = run_entity_sync(
-                    &dir,
-                    &migration_dir,
-                    name.as_deref(),
-                    database_url.as_deref(),
-                    database_schema.as_deref(),
-                    &renames,
-                    no_confirm,
-                    review_all,
-                ) {
+            EntitySubcommands::Sync(args) => {
+                if let Err(e) = run_entity_sync(&args) {
                     eprintln!("{} {e}", "Error:".red().bold());
                     std::process::exit(1);
                 }

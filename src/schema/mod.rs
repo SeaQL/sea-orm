@@ -15,12 +15,14 @@ pub(crate) mod discover;
 mod entity;
 #[cfg(feature = "serde_json")]
 mod json;
+mod table_id;
 mod topology;
 
 #[cfg(feature = "schema-sync")]
 pub use discover::resolver;
 
 pub use builder::*;
+pub use table_id::TableId;
 use topology::*;
 
 /// Helper that converts an [`EntityTrait`](crate::EntityTrait) into different
