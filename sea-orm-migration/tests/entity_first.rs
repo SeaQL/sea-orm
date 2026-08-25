@@ -936,9 +936,9 @@ async fn test_table_rename_not_detected_when_ambiguous() -> Result<(), DbErr> {
     Ok(())
 }
 
-/// A table rename/move must never be proposed by a *safe* (non-dangerous)
-/// discover — without `allow_dangerous`, orphan tables are never scanned in
-/// the first place, so there is no drop candidate to pair with the create.
+/// A table rename/move must never be proposed by `ChangeSet::statements()` —
+/// it filters out every `Drop` kind, so there is no drop candidate left to
+/// pair with the create.
 #[tokio::test]
 async fn test_table_rename_requires_dangerous_discover() -> Result<(), DbErr> {
     let db = connect().await?;

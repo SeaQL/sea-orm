@@ -1,6 +1,7 @@
 use super::changes::{ChangeSet, ColumnChangeKind, ConstraintChangeKind, TableChangeKind};
 use super::schema::DiscoveredSchema;
 use crate::schema::builder::{EntitySchemaInfo, get_table_name};
+use crate::schema::entity::index_table_ref;
 use crate::{DbBackend, TableSortOrder, sorted_tables};
 use sea_query::{ForeignKeyCreateStatement, Index, TableAlterStatement, TableCreateStatement};
 
@@ -131,6 +132,21 @@ fn record_column_changes(
                     },
                 );
             }
+            if let Some(existing_col) = existing_table
+                .get_columns()
+                .iter()
+                .find(|c| c.get_column_name() == col_name)
+                && existing_col.get_column_type() != column_def.get_column_type()
+            {
+                changes.record_column(
+                    entity_table_name.clone(),
+                    ColumnChangeKind::TypeMismatch {
+                        column: col_name.to_string(),
+                        existing_type: existing_col.get_column_type().cloned(),
+                        new_type: column_def.get_column_type().cloned(),
+                    },
+                );
+            }
             continue;
         }
 
@@ -211,6 +227,14 @@ fn record_foreign_key_changes(
     changes: &mut ChangeSet,
     db_backend: DbBackend,
 ) {
+    // SQLite can only declare foreign keys inline in CREATE TABLE — sea-query
+    // panics if asked to build a FK statement against an existing table
+    // (see `ForeignKeyBuilder::prepare_foreign_key_create_statement`, always
+    // `Mode::Alter`). Skip FK diffing there entirely, same as the old sync().
+    if db_backend == DbBackend::Sqlite {
+        return;
+    }
+
     for foreign_key in entity.table().get_foreign_key_create_stmts().iter() {
         let key_exists = existing_table
             .get_foreign_key_create_stmts()
@@ -321,7 +345,7 @@ fn record_unique_constraint_changes(
                         stmt: db_backend.build(
                             Index::create()
                                 .name(format!("idx-{table_name_str}-{col_name}"))
-                                .table(entity_table_name.clone())
+                                .table(index_table_ref(entity_table_name.clone(), db_backend))
                                 .col(sea_query::Alias::new(col_name))
                                 .unique()
                                 .if_not_exists(),
@@ -380,5 +404,33 @@ fn record_unique_constraint_drops(
                 ConstraintChangeKind::DropUniqueConstraint { name, stmt },
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema::builder::EntitySchemaInfo;
+    use crate::tests_cfg::fruit;
+    use crate::{DbBackend, Schema};
+
+    /// `fruit` has a FK (`cake_id`) missing from `existing_table`, so this
+    /// records an `AddForeignKey`. On SQLite, sea-query panics when building
+    /// any FK statement outside of `CREATE TABLE` (`Mode::Creation`) — see
+    /// `ForeignKeyBuilder::prepare_foreign_key_create_statement`, which always
+    /// builds in `Mode::Alter`. Regression test for that panic.
+    #[test]
+    fn record_foreign_key_changes_does_not_panic_on_sqlite() {
+        let backend = DbBackend::Sqlite;
+        let schema = Schema::new(backend);
+        let entity = EntitySchemaInfo::new(fruit::Entity, &schema);
+        let existing_table = sea_query::TableCreateStatement::new();
+
+        let mut changes = ChangeSet::default();
+        record_foreign_key_changes(&entity, &existing_table, "fruit", &mut changes, backend);
+
+        // SQLite can't ALTER a FK onto an existing table, so nothing should
+        // be recorded rather than a statement that would fail at execution.
+        assert!(changes.constraints.is_empty());
     }
 }

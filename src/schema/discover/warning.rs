@@ -29,4 +29,7 @@ pub enum WarningKind {
     CheckConstraintDiff,
     /// A column is being added with NOT NULL and no default — existing rows need data populated.
     NotNullNoDefault,
+    /// An existing column's type differs from the entity's declared type.
+    /// Sync/discover leaves the column untouched — apply the change via a migration.
+    ColumnTypeMismatch,
 }

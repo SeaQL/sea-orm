@@ -392,7 +392,6 @@ async fn test_discover_dangerous_ignores_orphan_after_schema_rename() -> Result<
         &InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: true,
-            allow_dangerous: true,
         },
     );
     let sql_all: String = result
@@ -438,7 +437,6 @@ async fn test_table_rename_detected_same_database() -> Result<(), DbErr> {
         &InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: true,
-            allow_dangerous: true,
         },
     );
 

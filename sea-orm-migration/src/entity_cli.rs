@@ -384,7 +384,6 @@ async fn run_diff<E: EntitySet>(
         &InterpretConfig {
             db_backend: backend,
             assumptions: true,
-            allow_dangerous: true,
         },
     );
 
@@ -537,7 +536,6 @@ async fn run_generate<E: EntitySet>(
         &InterpretConfig {
             db_backend: backend,
             assumptions: true,
-            allow_dangerous: true,
         },
     );
 

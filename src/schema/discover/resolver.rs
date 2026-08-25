@@ -298,7 +298,7 @@ pub fn extract_enum_type_name(sql: &str) -> Option<String> {
 }
 
 /// Extract enum variant strings from a CREATE TYPE ... AS ENUM (...) SQL statement.
-fn extract_enum_variants(sql: &str) -> Vec<String> {
+pub(crate) fn extract_enum_variants(sql: &str) -> Vec<String> {
     let upper = sql.to_uppercase();
     let Some(paren_start) = upper.find("AS ENUM") else {
         return Vec::new();

@@ -173,6 +173,23 @@ pub enum RenameDecision {
 impl InterpretResult {
     /// Apply user decisions for ambiguous renames.
     pub fn apply_rename_decisions(&mut self, decisions: &[RenameDecision], db_backend: DbBackend) {
+        // IDs must be unique so callers can address each applied decision
+        // individually (e.g. via `exclude`) — start above every ID already
+        // in use anywhere in this result.
+        let mut next_id = self
+            .statements
+            .iter()
+            .map(|(id, _)| id.0)
+            .chain(self.assumed.iter().flat_map(|a| [a.id.0, a.drop_id.0, a.add_id.0]))
+            .chain(self.table_moves.iter().flat_map(|m| [m.id.0, m.drop_id.0]))
+            .max()
+            .map_or(0, |m| m + 1);
+        let mut alloc_id = || {
+            let id = ChangeId(next_id);
+            next_id += 1;
+            id
+        };
+
         for decision in decisions {
             match decision {
                 RenameDecision::Rename { from, to } => {
@@ -182,7 +199,7 @@ impl InterpretResult {
                         .find(|a| a.removed == *from && a.candidates.iter().any(|c| c.added == *to))
                     {
                         let table_ref = ambiguous.table_ref.clone();
-                        let id = ChangeId(usize::MAX);
+                        let id = alloc_id();
                         self.statements.push((
                             id,
                             db_backend.build(
@@ -197,7 +214,7 @@ impl InterpretResult {
                     if let Some(ambiguous) = self.unresolved.iter().find(|a| a.removed == *removed)
                     {
                         let table_ref = ambiguous.table_ref.clone();
-                        let id = ChangeId(usize::MAX);
+                        let id = alloc_id();
                         self.statements.push((
                             id,
                             db_backend.build(
@@ -694,6 +711,21 @@ fn interpret_columns_inner(
                     related_changes: vec![cc.id],
                 });
             }
+            ColumnChangeKind::TypeMismatch {
+                column,
+                existing_type,
+                new_type,
+            } => {
+                warnings.push(DiscoverWarning {
+                    kind: WarningKind::ColumnTypeMismatch,
+                    message: format!(
+                        "Column '{table_name}.{column}' has type {existing_type:?} in the \
+                         database but is declared as {new_type:?} in the entity. This is left \
+                         untouched — apply the change via a migration.",
+                    ),
+                    related_changes: vec![cc.id],
+                });
+            }
         }
     }
 
@@ -847,7 +879,7 @@ fn interpret_enum_creates(enums: &[EnumChange], statements: &mut Vec<(ChangeId, 
     }
 }
 
-/// Emit variant-change / rename suggestions, and DROP TYPE when allow_dangerous.
+/// Emit variant-change / rename suggestions, and DROP TYPE for orphaned enums.
 /// Must run after table drops so the enum is no longer referenced.
 fn interpret_enum_drops(
     enums: &[EnumChange],
@@ -916,6 +948,59 @@ mod tests {
                 .table(table_ref)
                 .drop_column(sea_query::Alias::new(column)),
         )
+    }
+
+    /// Regression test: each manually-resolved rename decision must get its
+    /// own `ChangeId`, not a shared `usize::MAX` sentinel — otherwise a caller
+    /// can't address one of them individually (e.g. via `exclude`).
+    #[test]
+    fn apply_rename_decisions_assigns_distinct_ids() {
+        let mut result = InterpretResult {
+            unresolved: vec![
+                resolver::AmbiguousRename {
+                    table_ref: qualified_table_ref(),
+                    removed: "first_name".to_string(),
+                    candidates: vec![resolver::RenameCandidate {
+                        removed: "first_name".to_string(),
+                        added: "full_name".to_string(),
+                        proximity: 0,
+                    }],
+                },
+                resolver::AmbiguousRename {
+                    table_ref: qualified_table_ref(),
+                    removed: "last_name".to_string(),
+                    candidates: vec![resolver::RenameCandidate {
+                        removed: "last_name".to_string(),
+                        added: "surname".to_string(),
+                        proximity: 0,
+                    }],
+                },
+            ],
+            ..Default::default()
+        };
+
+        result.apply_rename_decisions(
+            &[
+                RenameDecision::Rename {
+                    from: "first_name".to_string(),
+                    to: "full_name".to_string(),
+                },
+                RenameDecision::Rename {
+                    from: "last_name".to_string(),
+                    to: "surname".to_string(),
+                },
+            ],
+            DbBackend::Postgres,
+        );
+
+        assert_eq!(result.statements.len(), 2);
+        let ids: HashSet<_> = result.statements.iter().map(|(id, _)| *id).collect();
+        assert_eq!(
+            ids.len(),
+            2,
+            "each applied decision must get a distinct ChangeId: {:?}",
+            result.statements.iter().map(|(id, _)| id).collect::<Vec<_>>()
+        );
     }
 
     /// Regression test: an auto-assumed rename must keep the table's schema

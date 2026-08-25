@@ -475,7 +475,6 @@ async fn test_interpret_changes_includes_missing_schema() -> Result<(), DbErr> {
         &InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: true,
-            allow_dangerous: false,
         },
     );
 
@@ -546,7 +545,6 @@ async fn test_discover_dangerous_detects_orphan_after_schema_rename() -> Result<
         &InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: true,
-            allow_dangerous: true,
         },
     );
     let sql_all: String = result
@@ -592,7 +590,6 @@ async fn test_table_schema_move_detected() -> Result<(), DbErr> {
         &InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: true,
-            allow_dangerous: true,
         },
     );
 
@@ -659,7 +656,6 @@ async fn test_table_rename_and_schema_move_detected() -> Result<(), DbErr> {
         &InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: true,
-            allow_dangerous: true,
         },
     );
 

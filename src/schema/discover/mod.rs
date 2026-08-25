@@ -40,7 +40,7 @@ where
         .filter(|s| !excluded_schemas.iter().any(|e| e == s))
         .collect();
 
-    // Orphan detection (allow_dangerous) needs to see every schema, not just
+    // Orphan detection needs to see every schema, not just
     // ones a current entity references — otherwise a schema no entity
     // references anymore (e.g. after a `schema_name` rename) is invisible,
     // and its now-orphaned tables can never be reported.

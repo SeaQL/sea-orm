@@ -95,6 +95,14 @@ pub enum ColumnChangeKind {
     },
     /// A column has a CHECK constraint that cannot be automatically diffed.
     CheckConstraintPresent { column: String },
+    /// An existing column's type differs from the entity's declared type.
+    /// Sync/discover never alters an existing column, so this only ever
+    /// surfaces as a warning.
+    TypeMismatch {
+        column: String,
+        existing_type: Option<ColumnType>,
+        new_type: Option<ColumnType>,
+    },
 }
 
 // ── Constraint-level changes ─────────────────────────────────────────────
@@ -264,8 +272,9 @@ impl ChangeSet {
             match cc.kind {
                 ColumnChangeKind::Add { stmt, .. }
                 | ColumnChangeKind::ExplicitRename { stmt, .. } => stmts.push(stmt),
-                ColumnChangeKind::Drop { .. } | ColumnChangeKind::CheckConstraintPresent { .. } => {
-                }
+                ColumnChangeKind::Drop { .. }
+                | ColumnChangeKind::CheckConstraintPresent { .. }
+                | ColumnChangeKind::TypeMismatch { .. } => {}
             }
         }
         for cc in self.constraints {

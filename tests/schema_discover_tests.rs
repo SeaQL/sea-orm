@@ -248,7 +248,7 @@ async fn test_discover_safe_no_enum_warnings() -> Result<(), DbErr> {
 // Column drop / safe tests
 // ---------------------------------------------------------------------------
 
-/// When `allow_dangerous = true`, discover() must include a DROP COLUMN for removed columns.
+/// discover() must include a DROP COLUMN for removed columns.
 /// Changes must NOT be applied until the caller executes them.
 #[sea_orm_macros::test]
 #[cfg(not(any(feature = "sqlx-sqlite", feature = "rusqlite")))]
@@ -280,7 +280,7 @@ async fn test_discover_drop_column() -> Result<(), DbErr> {
             .statements
             .iter()
             .any(|(_, s)| s.sql.to_uppercase().contains("DROP COLUMN")),
-        "discover(dangerous=true) must include DROP COLUMN for `weight`; got: {:?}",
+        "discover() must include DROP COLUMN for `weight`; got: {:?}",
         result.statements
     );
     assert!(
@@ -292,49 +292,7 @@ async fn test_discover_drop_column() -> Result<(), DbErr> {
     Ok(())
 }
 
-/// When `allow_dangerous = false`, discover() must NEVER produce any DROP statements.
-#[sea_orm_macros::test]
-#[cfg(not(any(feature = "sqlx-sqlite", feature = "rusqlite")))]
-async fn test_discover_safe_no_drops() -> Result<(), DbErr> {
-    let ctx = TestContext::new("test_discover_safe_no_drops").await;
-    let db = &ctx.db;
-
-    #[cfg(feature = "schema-sync")]
-    {
-        db.get_schema_builder()
-            .register(widget_v1::Entity)
-            .sync(db)
-            .await?;
-
-        let change_set = db
-            .get_schema_builder()
-            .register(widget_v2::Entity)
-            .discover(db)
-            .await?;
-        let result = sea_orm::interpret_changes(
-            change_set,
-            &sea_orm::InterpretConfig {
-                db_backend: db.get_database_backend(),
-                assumptions: false,
-                allow_dangerous: false,
-            },
-        );
-
-        assert!(
-            result
-                .statements
-                .iter()
-                .all(|(_, s)| !s.sql.to_uppercase().contains("DROP")),
-            "discover(dangerous=false) must not include any DROP statements; got: {:?}",
-            result.statements
-        );
-    }
-
-    ctx.delete().await;
-    Ok(())
-}
-
-/// Applying dangerous changes actually drops the column.
+/// Applying changes actually drops the column.
 #[sea_orm_macros::test]
 #[cfg(not(any(feature = "sqlx-sqlite", feature = "rusqlite")))]
 #[cfg(feature = "schema-sync")]
@@ -695,7 +653,6 @@ async fn test_discover_add_nullable_column() -> Result<(), DbErr> {
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: false,
         },
     );
 
@@ -743,7 +700,6 @@ async fn test_discover_add_notnull_column_warns() -> Result<(), DbErr> {
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: false,
         },
     );
 
@@ -790,7 +746,6 @@ async fn test_discover_add_notnull_with_default_no_warn() -> Result<(), DbErr> {
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: false,
         },
     );
 
@@ -838,7 +793,6 @@ async fn test_discover_add_multiple_columns() -> Result<(), DbErr> {
         &sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: false,
         },
     );
 
@@ -895,7 +849,6 @@ async fn test_discover_add_column_applies() -> Result<(), DbErr> {
         sea_orm::InterpretConfig {
             db_backend: db.get_database_backend(),
             assumptions: false,
-            allow_dangerous: false,
         },
     )
     .await?;
@@ -990,41 +943,6 @@ async fn test_discover_drop_table_before_enum_type() -> Result<(), DbErr> {
     );
 
     assert!(!table_exists(db, "disc_enum_table").await?);
-
-    ctx.delete().await;
-    Ok(())
-}
-
-/// Safe discover (allow_dangerous=false) must NOT produce DROP TYPE even for orphaned enums.
-#[sea_orm_macros::test]
-#[cfg(feature = "sqlx-postgres")]
-#[cfg(feature = "schema-sync")]
-async fn test_discover_safe_no_drop_enum_type() -> Result<(), DbErr> {
-    let ctx = TestContext::new("test_discover_safe_no_drop_enum_type").await;
-    let db = &ctx.db;
-
-    db.get_schema_builder()
-        .register(enum_v1::Entity)
-        .sync(db)
-        .await?;
-
-    let change_set = db.get_schema_builder().discover(db).await?;
-    let result = sea_orm::interpret_changes(
-        change_set,
-        &sea_orm::InterpretConfig {
-            db_backend: db.get_database_backend(),
-            assumptions: false,
-        },
-    );
-
-    assert!(
-        result
-            .statements
-            .iter()
-            .all(|(_, s)| !s.sql.to_uppercase().contains("DROP TYPE")),
-        "safe discover must not produce DROP TYPE; got: {:?}",
-        result.statements
-    );
 
     ctx.delete().await;
     Ok(())

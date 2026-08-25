@@ -130,6 +130,7 @@ impl SchemaBuilder {
     /// signature may change in a minor (2.x) release.
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
+    #[deprecated(note = "unstable and should never be used, use entity-first")]
     pub async fn sync<C>(self, db: &C) -> Result<(), DbErr>
     where
         C: ConnectionTrait + sea_schema::Connection,
@@ -142,8 +143,6 @@ impl SchemaBuilder {
     }
 
     /// Returns a [`ChangeSet`](super::discover::changes::ChangeSet) grouped by origin.
-    ///
-    /// Panics if TableCreateStatement any table name is empty, will never happen.
     #[cfg(feature = "schema-sync")]
     #[cfg_attr(docsrs, doc(cfg(feature = "schema-sync")))]
     pub async fn discover<C>(&self, db: &C) -> Result<super::discover::changes::ChangeSet, DbErr>

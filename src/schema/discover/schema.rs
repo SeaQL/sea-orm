@@ -34,7 +34,7 @@ async fn pg_schema_exists<C: ConnectionTrait>(db: &C, schema: &str) -> Result<bo
 /// Every schema name visible via `information_schema.schemata`, minus
 /// `system_schemas` and `excluded`.
 ///
-/// Used to power orphan-table discovery (`allow_dangerous`) across every
+/// Used to power orphan-table discovery across every
 /// namespace in the current Postgres database: a schema no longer referenced
 /// by any registered entity (e.g. after a `schema_name` rename) would
 /// otherwise never be looked at, so its now-orphaned tables could never be
