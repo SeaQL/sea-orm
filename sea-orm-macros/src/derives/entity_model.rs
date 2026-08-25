@@ -81,6 +81,7 @@ pub fn expand_derive_entity_model(
                     if let Ok(lit) = meta.value().and_then(|v| v.parse::<LitStr>()) {
                         // #[serde(rename_all = "camelCase")]
                         serde_rename_all = CaseStyle::from_str(&lit.value()).ok();
+                        serde_rename_all_serialize = serde_rename_all.clone();
                     } else {
                         // #[serde(rename_all(serialize = "...", deserialize = "..."))]
                         meta.parse_nested_meta(|nested| {
@@ -364,6 +365,7 @@ pub fn expand_derive_entity_model(
                                     {
                                         // #[serde(rename = "xxx")]
                                         serde_rename = Some(lit.value());
+                                        serde_rename_serialize = serde_rename.clone();
                                     } else {
                                         // #[serde(rename(serialize = "...", deserialize = "..."))]
                                         meta.parse_nested_meta(|nested| {
@@ -603,7 +605,7 @@ pub fn expand_derive_entity_model(
                 }
             }
 
-            fn json_key_serialize(&self) -> &'static str {
+            fn serialize_json_key(&self) -> &'static str {
                 match self {
                     #columns_json_keys_serialize
                 }

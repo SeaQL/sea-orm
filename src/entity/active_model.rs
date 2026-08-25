@@ -508,36 +508,34 @@ pub trait ActiveModelTrait: Clone + Debug {
             )));
         };
 
-        let dummy_am = Self::default_values();
-        let dummy_model = dummy_am.clone().try_into_model().map_err(json_err)?;
+        let dummy_model = Self::default_values().try_into_model().map_err(json_err)?;
         let dummy_value = serde_json::to_value(dummy_model).map_err(json_err)?;
-
-        let len = <<Self::Entity as EntityTrait>::Column>::iter().len();
-        // Mark down which attribute exists in the JSON object
-        let mut json_keys = Vec::with_capacity(len);
-        let serde_json::Value::Object(merged) = dummy_value else {
+        let serde_json::Value::Object(dummy_value) = dummy_value else {
             return Err(DbErr::Json(format!(
                 "invalid type: expected JSON object for dummy model for {}",
                 <<Self as ActiveModelTrait>::Entity as IdenStatic>::as_str(&Default::default())
             )));
         };
 
-        let mut ser_de_map = <<Self::Entity as EntityTrait>::Column>::iter()
-            .map(|col| (col.json_key_serialize(), col.json_key()))
+        let ser_de_map = <<Self::Entity as EntityTrait>::Column>::iter()
+            .map(|col| (col.serialize_json_key(), col.json_key()))
             .collect::<std::collections::HashMap<_, _>>();
 
-        let mut merged = merged
+        let mut merged = dummy_value
             .into_iter()
             .map(|(key, val)| {
                 // map seralized keys into deserialize keys
                 let new_key = ser_de_map
-                    .remove(key.as_str())
+                    .get(key.as_str())
                     .map(ToString::to_string)
                     .unwrap_or(key);
                 (new_key, val)
             })
             .collect::<serde_json::Map<_, _>>();
 
+        let len = <<Self::Entity as EntityTrait>::Column>::iter().len();
+        // Mark down which attribute exists in the JSON object
+        let mut json_keys = Vec::with_capacity(len);
         for col in <<Self::Entity as EntityTrait>::Column>::iter() {
             let key = col.json_key();
             let has_key = input.contains_key(key);
