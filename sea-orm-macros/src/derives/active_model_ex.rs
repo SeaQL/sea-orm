@@ -3,7 +3,8 @@ use super::attributes::compound_attr;
 use super::model_ex::infer_relation_name_from_entity;
 use super::util::{
     CardinalityKind, CompoundKind, CompoundType, Junction, RelationColumns, async_token,
-    await_token, consume_meta, escape_rust_keyword, is_self_entity, trim_starting_raw_identifier,
+    await_token, clone_with_mixed_site_span, consume_meta, escape_rust_keyword, is_self_entity,
+    trim_starting_raw_identifier,
 };
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
@@ -1018,6 +1019,7 @@ impl BelongsToField<'_> {
         cardinality: CardinalityKind,
     ) -> syn::Result<()> {
         let ident = self.ident;
+        let field_binding = clone_with_mixed_site_span(ident);
         let related_entity = &self.compound_type.entity;
         let save_model = self.save_related_model();
         let from_columns = self.from;
@@ -1058,14 +1060,14 @@ impl BelongsToField<'_> {
         };
 
         output.belongs_to_action.extend(quote! {
-            let #ident = match self.#ident.take() {
+            let #field_binding = match self.#ident.take() {
                 ActiveBelongsTo::NotSet => ActiveBelongsTo::NotSet,
                 #action_arms
             };
         });
         output.belongs_to_after_action.extend(quote! {
-            if #ident.is_set() {
-                model.#ident = #ident;
+            if #field_binding.is_set() {
+                model.#ident = #field_binding;
             }
         });
         Ok(())
@@ -1073,10 +1075,11 @@ impl BelongsToField<'_> {
 
     fn expand_active_has_one_into(&self, output: &mut ActiveModelActionTokens) {
         let ident = self.ident;
+        let field_binding = clone_with_mixed_site_span(ident);
         let save_model = self.save_related_model();
 
         output.belongs_to_action.extend(quote! {
-            let #ident = match std::mem::take(&mut self.#ident) {
+            let #field_binding = match std::mem::take(&mut self.#ident) {
                 ActiveHasOne::Set(Some(model)) => {
                     #save_model
                     Some(model)
@@ -1086,8 +1089,8 @@ impl BelongsToField<'_> {
             };
         });
         output.belongs_to_after_action.extend(quote! {
-            if let Some(#ident) = #ident {
-                model.#ident = ActiveHasOne::set(Some(#ident));
+            if let Some(#field_binding) = #field_binding {
+                model.#ident = ActiveHasOne::set(Some(#field_binding));
             }
         });
     }
@@ -1114,8 +1117,9 @@ struct HasOneField<'a> {
 impl HasOneField<'_> {
     fn has_one_before_action(&self) -> TokenStream {
         let ident = self.ident;
+        let field_binding = clone_with_mixed_site_span(ident);
         quote! {
-            let #ident = std::mem::take(&mut self.#ident);
+            let #field_binding = std::mem::take(&mut self.#ident);
         }
     }
 
@@ -1135,6 +1139,7 @@ impl HasOneField<'_> {
             }
         };
         let ident = self.ident;
+        let field_binding = clone_with_mixed_site_span(ident);
         let related_entity = self.entity;
 
         let delete_existing_child = quote! {
@@ -1158,7 +1163,7 @@ impl HasOneField<'_> {
         };
 
         quote! {
-            match #ident {
+            match #field_binding {
                 ActiveHasOne::NotSet => {}
                 ActiveHasOne::Set(Some(child)) => {
                     let mut child = *child;
@@ -1216,6 +1221,7 @@ impl HasManySelfField<'_> {
             quote!()
         };
         let ident = self.ident;
+        let field_binding = clone_with_mixed_site_span(ident);
         let relation_variant =
             Ident::new(&self.relation_variant.value(), self.relation_variant.span());
         let relation_variant = quote!(Relation::#relation_variant);
@@ -1231,26 +1237,26 @@ impl HasManySelfField<'_> {
         };
 
         let has_many_before_action = quote! {
-            let #ident = self.#ident.take();
+            let #field_binding = self.#ident.take();
         };
 
         let has_many_action = quote! {
-            if #ident.is_replace() {
+            if #field_binding.is_replace() {
                 for item in model.find_belongs_to_self(#relation_variant, db.get_database_backend())?.all(db)#await_? {
-                    if !#ident.find(&item) {
+                    if !#field_binding.find(&item) {
                         #delete_associated_model
                     }
                 }
             }
-            model.#ident = #ident.empty_holder();
-            for mut #ident in #ident.into_vec() {
-                #ident.set_parent_key_for_self_rev(&model, #relation_variant)?;
-                let #ident = if #ident.is_changed() {
-                    #box_pin(#ident.action(action, db))#await_?
+            model.#ident = #field_binding.empty_holder();
+            for mut #field_binding in #field_binding.into_vec() {
+                #field_binding.set_parent_key_for_self_rev(&model, #relation_variant)?;
+                let #field_binding = if #field_binding.is_changed() {
+                    #box_pin(#field_binding.action(action, db))#await_?
                 } else {
-                    #ident
+                    #field_binding
                 };
-                model.#ident.push(#ident);
+                model.#ident.push(#field_binding);
             }
         };
 
@@ -1286,6 +1292,7 @@ impl ManyToManyField<'_> {
             quote!()
         };
         let ident = self.ident;
+        let field_binding = clone_with_mixed_site_span(ident);
         let junction_module = self.junction_module;
         let junction_entity = quote!(super::#junction_module::Entity);
         let (establish_links, delete_links) = match &self.kind {
@@ -1301,13 +1308,13 @@ impl ManyToManyField<'_> {
         let delete_links = Ident::new(delete_links, ident.span());
 
         let many_to_many_before_action = quote! {
-            let #ident = self.#ident.take();
+            let #field_binding = self.#ident.take();
         };
 
         let many_to_many_action = quote! {
-            model.#ident = #ident.empty_holder();
+            model.#ident = #field_binding.empty_holder();
             // TODO: Batch save?
-            for item in #ident.into_vec() {
+            for item in #field_binding.into_vec() {
                 let item = if item.is_update() && !item.is_changed() {
                     item
                 } else {
@@ -1343,8 +1350,9 @@ struct HasManyField<'a> {
 impl HasManyField<'_> {
     fn has_many_before_action(&self) -> TokenStream {
         let ident = self.ident;
+        let field_binding = clone_with_mixed_site_span(ident);
         quote! {
-            let #ident = self.#ident.take();
+            let #field_binding = self.#ident.take();
         }
     }
 
@@ -1356,6 +1364,7 @@ impl HasManyField<'_> {
             quote!()
         };
         let ident = self.ident;
+        let field_binding = clone_with_mixed_site_span(ident);
         let related_entity = self.entity;
         let delete_associated_model = quote! {
             let mut item = item.into_active_model();
@@ -1366,22 +1375,22 @@ impl HasManyField<'_> {
             }
         };
         quote! {
-            if #ident.is_replace() {
+            if #field_binding.is_replace() {
                 for item in model.find_related(#related_entity).all(db)#await_? {
-                    if !#ident.find(&item) {
+                    if !#field_binding.find(&item) {
                         #delete_associated_model
                     }
                 }
             }
-            model.#ident = #ident.empty_holder();
-            for mut #ident in #ident.into_vec() {
-                #ident.set_parent_key(&model)?;
-                let #ident = if #ident.is_changed() {
-                    #box_pin(#ident.action(action, db))#await_?
+            model.#ident = #field_binding.empty_holder();
+            for mut #field_binding in #field_binding.into_vec() {
+                #field_binding.set_parent_key(&model)?;
+                let #field_binding = if #field_binding.is_changed() {
+                    #box_pin(#field_binding.action(action, db))#await_?
                 } else {
-                    #ident
+                    #field_binding
                 };
-                model.#ident.push(#ident);
+                model.#ident.push(#field_binding);
             }
         }
     }

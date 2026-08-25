@@ -1,7 +1,7 @@
 use std::collections::{HashMap, hash_map::Entry};
 
 use super::util::GetMeta;
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, quote};
 use syn::{
     Data, DataStruct, DeriveInput, Error, Fields, Generics, Meta, ext::IdentExt,
@@ -35,11 +35,18 @@ pub(super) struct FromQueryResultItem {
 /// since structs embedding the current one might have wrapped the current one in an `Option`.
 /// In this case, we do not want to swallow other errors, which are very likely to actually be
 /// programming errors that should be noticed (and fixed).
-struct TryFromQueryResultCheck<'a>(bool, &'a FromQueryResultItem);
+struct TryFromQueryResultCheck<'a> {
+    use_field_prefix: bool,
+    item: &'a FromQueryResultItem,
+    row: &'a Ident,
+    pre: &'a Ident,
+}
 
 impl ToTokens for TryFromQueryResultCheck<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let FromQueryResultItem { ident, typ, alias } = self.1;
+        let FromQueryResultItem { ident, typ, alias } = self.item;
+        let row = self.row;
+        let pre = self.pre;
 
         match typ {
             ItemType::Flat => {
@@ -47,7 +54,7 @@ impl ToTokens for TryFromQueryResultCheck<'_> {
                     .to_owned()
                     .unwrap_or_else(|| ident.unraw().to_string());
                 tokens.extend(quote! {
-                    let #ident = match __sea_orm_row.try_get_nullable(__sea_orm_pre, #name) {
+                    let #ident = match #row.try_get_nullable(#pre, #name) {
                         Err(v @ sea_orm::TryGetError::DbErr(_)) => {
                             return Err(v);
                         }
@@ -61,17 +68,17 @@ impl ToTokens for TryFromQueryResultCheck<'_> {
                 });
             }
             ItemType::Nested { prefix } => {
-                let prefix = match (self.0, prefix) {
-                    (_, Some(p)) => quote! { &format!("{}{}", __sea_orm_pre, #p) },
+                let prefix = match (self.use_field_prefix, prefix) {
+                    (_, Some(p)) => quote! { &format!("{}{}", #pre, #p) },
                     (true, None) => {
                         let name = ident.unraw().to_string();
-                        quote! { &format!("{}{}_", __sea_orm_pre, #name) }
+                        quote! { &format!("{}{}_", #pre, #name) }
                     }
-                    (false, None) => quote! { __sea_orm_pre },
+                    (false, None) => quote! { #pre },
                 };
 
                 tokens.extend(quote! {
-                    let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(__sea_orm_row, #prefix) {
+                    let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(#row, #prefix) {
                         Err(v @ sea_orm::TryGetError::DbErr(_)) => {
                             return Err(v);
                         }
@@ -205,7 +212,7 @@ impl DeriveFromQueryResult {
         Ok(self.impl_from_query_result(false))
     }
 
-    pub(super) fn impl_from_query_result(&self, prefix: bool) -> TokenStream {
+    pub(super) fn impl_from_query_result(&self, use_field_prefix: bool) -> TokenStream {
         let Self {
             ident,
             generics,
@@ -214,20 +221,27 @@ impl DeriveFromQueryResult {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+        let row = Ident::new("row", Span::mixed_site());
+        let pre = Ident::new("pre", Span::mixed_site());
         let ident_try_init: Vec<_> = fields
             .iter()
-            .map(|s| TryFromQueryResultCheck(prefix, s))
+            .map(|item| TryFromQueryResultCheck {
+                use_field_prefix,
+                item,
+                row: &row,
+                pre: &pre,
+            })
             .collect();
         let ident_try_assign: Vec<_> = fields.iter().map(TryFromQueryResultAssignment).collect();
 
         quote!(
             #[automatically_derived]
             impl #impl_generics sea_orm::FromQueryResult for #ident #ty_generics #where_clause {
-                fn from_query_result(__sea_orm_row: &sea_orm::QueryResult, __sea_orm_pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
-                    Ok(Self::from_query_result_nullable(__sea_orm_row, __sea_orm_pre)?)
+                fn from_query_result(#row: &sea_orm::QueryResult, #pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
+                    Ok(Self::from_query_result_nullable(#row, #pre)?)
                 }
 
-                fn from_query_result_nullable(__sea_orm_row: &sea_orm::QueryResult, __sea_orm_pre: &str) -> std::result::Result<Self, sea_orm::TryGetError> {
+                fn from_query_result_nullable(#row: &sea_orm::QueryResult, #pre: &str) -> std::result::Result<Self, sea_orm::TryGetError> {
                     #(#ident_try_init)*
 
                     Ok(Self {

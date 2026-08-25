@@ -22,6 +22,12 @@ pub(crate) fn await_token() -> TokenStream {
     }
 }
 
+pub(crate) fn clone_with_mixed_site_span(ident: &Ident) -> Ident {
+    let mut ident = ident.clone();
+    ident.set_span(Span::mixed_site());
+    ident
+}
+
 pub(crate) struct RelationColumns {
     pub(crate) columns: Vec<Ident>,
     pub(crate) span: Span,
