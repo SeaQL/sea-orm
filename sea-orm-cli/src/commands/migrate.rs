@@ -365,7 +365,7 @@ fn get_migrator_filepath(migration_dir: &str) -> PathBuf {
 
 fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(), Box<dyn Error>> {
     let migration_filepath =
-        get_full_migration_dir(migration_dir).join(format!("{}.rs", &migration_name));
+        get_full_migration_dir(migration_dir).join(format!("{migration_name}.rs"));
     println!(
         "Creating migration file `{}`",
         migration_filepath.display().to_string().dimmed()
