@@ -1,5 +1,5 @@
-[workspace]
-# A separate workspace
+# [workspace]
+# # A separate workspace
 
 [package]
 authors = [
@@ -16,7 +16,7 @@ keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 license = "MIT OR Apache-2.0"
 name = "sea-orm-cli"
 repository = "https://github.com/SeaQL/sea-orm"
-rust-version = "1.85.0"
+rust-version = "1.94.0"
 version = "2.0.2"
 
 [package.metadata.binstall]
@@ -46,10 +46,9 @@ async-std = { version = "1.9", default-features = false, features = [
     "attributes",
     "tokio1",
 ], optional = true }
-chrono = { version = "0.4.20", default-features = false, features = [
-    "clock",
-] }
+chrono = { version = "0.4.20", default-features = false, features = ["clock"] }
 clap = { version = "4.3", features = ["env", "derive"], optional = true }
+colored = "2"
 dotenvy = { version = "0.15", default-features = false, optional = true }
 glob = { version = "0.3", default-features = false }
 indoc = "2.0.6"
@@ -60,6 +59,8 @@ sea-schema = { version = "0.18.1", default-features = false, features = [
     "writer",
     "probe",
 ], optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
 sqlx = { version = "0.9.0", default-features = false, optional = true }
 tokio = { version = "1.38.2", default-features = false, features = [
     "rt-multi-thread",
@@ -148,4 +149,5 @@ strip         = true
 # This allows us to develop using an overridden version of sea-query
 [patch.crates-io]
 # sea-query = { path = "../sea-query" }
+sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }
 # sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }

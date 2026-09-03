@@ -1,0 +1,546 @@
+//! Heuristic rename detection and enum change resolution for schema discovery.
+//!
+//! This module contains pure functions that take raw added/removed column lists
+//! and produce structured rename decisions. No I/O or user interaction happens here.
+
+use crate::TableId;
+use sea_query::ColumnType;
+
+/// A column that exists in the entity but not in the database.
+#[derive(Debug, Clone)]
+pub struct AddedColumn {
+    /// Position index in the entity's column list.
+    pub index: usize,
+    /// Column name.
+    pub name: String,
+    /// Column type (if available from the entity definition).
+    pub column_type: Option<ColumnType>,
+}
+
+/// A column that exists in the database but not in the entity.
+#[derive(Debug, Clone)]
+pub struct RemovedColumn {
+    /// Position index in the database table's column list.
+    pub index: usize,
+    /// Column name.
+    pub name: String,
+    /// Column type (if available from schema discovery).
+    pub column_type: Option<ColumnType>,
+}
+
+/// A single rename candidate pairing a removed column with an added column.
+#[derive(Debug, Clone)]
+pub struct RenameCandidate {
+    /// The name of the removed (old) column.
+    pub removed: String,
+    /// The name of the added (new) column.
+    pub added: String,
+    /// Positional distance between the two columns.
+    pub proximity: usize,
+}
+
+/// An ambiguous rename where multiple candidates exist for a removed column.
+#[derive(Debug, Clone)]
+pub struct AmbiguousRename {
+    /// The table this rename occurs in, so the eventual rename/drop statement
+    /// can be built without losing the schema.
+    pub table: TableId,
+    /// The name of the removed column.
+    pub removed: String,
+    /// All possible added columns it could be renamed to.
+    pub candidates: Vec<RenameCandidate>,
+}
+
+impl AmbiguousRename {
+    /// The table this rename occurs in, qualified by schema when the table has one
+    /// (e.g. `"my_schema.person"`).
+    pub fn table_name(&self) -> String {
+        self.table.to_string()
+    }
+}
+
+/// The result of rename resolution.
+#[derive(Debug, Clone, Default)]
+pub struct RenameResolution {
+    /// Obvious renames (1:1 mapping, same type, close proximity) — auto-decided.
+    pub assumed: Vec<RenameCandidate>,
+    /// Ambiguous renames (multiple candidates) — need user input.
+    pub ambiguous: Vec<AmbiguousRename>,
+    /// Genuinely new columns (no rename match).
+    pub remaining_added: Vec<AddedColumn>,
+    /// Genuinely removed columns (no rename match).
+    pub remaining_removed: Vec<RemovedColumn>,
+}
+
+/// Check if two column types are compatible for rename detection.
+/// Treats String variants (String, Text) as equivalent.
+pub fn types_compatible(a: Option<&ColumnType>, b: Option<&ColumnType>) -> bool {
+    match (a, b) {
+        (Some(a), Some(b)) => {
+            if a == b {
+                return true;
+            }
+            // Treat all String/Text variants as compatible
+            matches!(
+                (a, b),
+                (
+                    ColumnType::String(_) | ColumnType::Text,
+                    ColumnType::String(_) | ColumnType::Text,
+                )
+            )
+        }
+        _ => false,
+    }
+}
+
+/// Resolve renames from lists of added and removed columns.
+///
+/// For each removed column, find added columns with compatible types and proximity ≤ 2.
+/// - If exactly one match for both sides (1:1, neither claimed elsewhere) → assumed rename.
+/// - If multiple candidates → ambiguous rename.
+/// - Unmatched columns go to remaining_added / remaining_removed.
+pub fn resolve_renames(
+    table: &TableId,
+    added: Vec<AddedColumn>,
+    removed: Vec<RemovedColumn>,
+) -> RenameResolution {
+    let mut resolution = RenameResolution::default();
+
+    // For each removed column, collect all compatible added candidates within proximity
+    let mut removed_candidates: Vec<(usize, Vec<(usize, RenameCandidate)>)> = Vec::new();
+
+    for (ri, rem) in removed.iter().enumerate() {
+        let mut candidates = Vec::new();
+        for (ai, add) in added.iter().enumerate() {
+            let proximity = (rem.index as isize - add.index as isize).unsigned_abs();
+            if proximity <= 2
+                && types_compatible(rem.column_type.as_ref(), add.column_type.as_ref())
+            {
+                candidates.push((
+                    ai,
+                    RenameCandidate {
+                        removed: rem.name.clone(),
+                        added: add.name.clone(),
+                        proximity,
+                    },
+                ));
+            }
+        }
+        removed_candidates.push((ri, candidates));
+    }
+
+    // First pass: identify obvious 1:1 renames
+    let mut claimed_added: Vec<usize> = Vec::new();
+    let mut claimed_removed: Vec<usize> = Vec::new();
+
+    // Sort by number of candidates (fewest first) to greedily resolve unambiguous ones
+    let mut sorted_by_candidates: Vec<_> = removed_candidates.iter().collect();
+    sorted_by_candidates.sort_by_key(|(_, cands)| cands.len());
+
+    for (ri, candidates) in &sorted_by_candidates {
+        if claimed_removed.contains(ri) {
+            continue;
+        }
+        // Filter out already-claimed added columns
+        let available: Vec<_> = candidates
+            .iter()
+            .filter(|(ai, _)| !claimed_added.contains(ai))
+            .collect();
+
+        if available.len() == 1 {
+            // Check the reverse: is this added column also only matched by one removed column?
+            let ai = available[0].0;
+            let reverse_count = removed_candidates
+                .iter()
+                .filter(|(other_ri, other_cands)| {
+                    !claimed_removed.contains(other_ri)
+                        && other_cands.iter().any(|(other_ai, _)| {
+                            *other_ai == ai && !claimed_added.contains(other_ai)
+                        })
+                })
+                .count();
+
+            if reverse_count == 1 {
+                // Unique 1:1 mapping → assumed rename
+                resolution.assumed.push(available[0].1.clone());
+                claimed_added.push(ai);
+                claimed_removed.push(*ri);
+            }
+        }
+    }
+
+    // Second pass: collect ambiguous renames from unclaimed removed columns with candidates
+    for (ri, candidates) in &removed_candidates {
+        if claimed_removed.contains(ri) {
+            continue;
+        }
+        let available: Vec<_> = candidates
+            .iter()
+            .filter(|(ai, _)| !claimed_added.contains(ai))
+            .map(|(_, c)| c.clone())
+            .collect();
+
+        if available.len() > 1 {
+            resolution.ambiguous.push(AmbiguousRename {
+                table: table.clone(),
+                removed: removed[*ri].name.clone(),
+                candidates: available,
+            });
+            claimed_removed.push(*ri);
+            // Don't claim the added columns — the user will decide
+        }
+    }
+
+    // Remaining: unclaimed added and removed columns
+    for (ai, add) in added.iter().enumerate() {
+        if !claimed_added.contains(&ai) {
+            // Check if this added column is referenced in an ambiguous rename
+            let in_ambiguous = resolution
+                .ambiguous
+                .iter()
+                .any(|a| a.candidates.iter().any(|c| c.added == add.name));
+            if !in_ambiguous {
+                resolution.remaining_added.push(add.clone());
+            }
+        }
+    }
+
+    for (ri, rem) in removed.iter().enumerate() {
+        if !claimed_removed.contains(&ri) {
+            resolution.remaining_removed.push(rem.clone());
+        }
+    }
+
+    resolution
+}
+
+/// Extract the type name from a `CREATE TYPE "name" AS ENUM (...)` SQL string.
+pub fn extract_enum_type_name(sql: &str) -> Option<String> {
+    let upper = sql.to_uppercase();
+    let crt_type_pos = upper.find("CREATE TYPE")?;
+    let as_enum_pos = upper.find("AS ENUM")?;
+    if as_enum_pos <= crt_type_pos {
+        return None;
+    }
+
+    let between = sql[crt_type_pos + "CREATE TYPE".len()..as_enum_pos].trim();
+    // Extract quoted or unquoted identifier
+    let name = if let Some(stripped) = between.strip_prefix('"') {
+        let end = stripped.find('"')?;
+        &stripped[..end]
+    } else {
+        between.split_whitespace().next()?
+    };
+    Some(name.to_string())
+}
+
+/// Extract enum variant strings from a CREATE TYPE ... AS ENUM (...) SQL statement.
+pub(crate) fn extract_enum_variants(sql: &str) -> Vec<String> {
+    let upper = sql.to_uppercase();
+    let Some(paren_start) = upper.find("AS ENUM") else {
+        return Vec::new();
+    };
+    let rest = &sql[paren_start..];
+    let Some(open) = rest.find('(') else {
+        return Vec::new();
+    };
+    let Some(close) = rest.find(')') else {
+        return Vec::new();
+    };
+    let inner = &rest[open + 1..close];
+    inner
+        .split(',')
+        .map(|s| s.trim().trim_matches('\'').trim_matches('"').to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn added(index: usize, name: &str, col_type: Option<ColumnType>) -> AddedColumn {
+        AddedColumn {
+            index,
+            name: name.to_string(),
+            column_type: col_type,
+        }
+    }
+
+    fn removed(index: usize, name: &str, col_type: Option<ColumnType>) -> RemovedColumn {
+        RemovedColumn {
+            index,
+            name: name.to_string(),
+            column_type: col_type,
+        }
+    }
+
+    fn tref(name: &str) -> TableId {
+        TableId::new(name)
+    }
+
+    #[test]
+    fn test_single_obvious_rename() {
+        let added_cols = vec![added(
+            1,
+            "title",
+            Some(ColumnType::String(sea_query::StringLen::None)),
+        )];
+        let removed_cols = vec![removed(
+            1,
+            "name",
+            Some(ColumnType::String(sea_query::StringLen::None)),
+        )];
+
+        let result = resolve_renames(&tref("cake"), added_cols, removed_cols);
+
+        assert_eq!(result.assumed.len(), 1);
+        assert_eq!(result.assumed[0].removed, "name");
+        assert_eq!(result.assumed[0].added, "title");
+        assert_eq!(result.assumed[0].proximity, 0);
+        assert!(result.ambiguous.is_empty());
+        assert!(result.remaining_added.is_empty());
+        assert!(result.remaining_removed.is_empty());
+    }
+
+    #[test]
+    fn test_no_rename_type_mismatch() {
+        let added_cols = vec![added(1, "count", Some(ColumnType::Integer))];
+        let removed_cols = vec![removed(
+            1,
+            "name",
+            Some(ColumnType::String(sea_query::StringLen::None)),
+        )];
+
+        let result = resolve_renames(&tref("cake"), added_cols, removed_cols);
+
+        assert!(result.assumed.is_empty());
+        assert!(result.ambiguous.is_empty());
+        assert_eq!(result.remaining_added.len(), 1);
+        assert_eq!(result.remaining_removed.len(), 1);
+    }
+
+    #[test]
+    fn test_no_rename_too_far() {
+        let added_cols = vec![added(
+            5,
+            "title",
+            Some(ColumnType::String(sea_query::StringLen::None)),
+        )];
+        let removed_cols = vec![removed(
+            1,
+            "name",
+            Some(ColumnType::String(sea_query::StringLen::None)),
+        )];
+
+        let result = resolve_renames(&tref("cake"), added_cols, removed_cols);
+
+        assert!(result.assumed.is_empty());
+        assert!(result.ambiguous.is_empty());
+        assert_eq!(result.remaining_added.len(), 1);
+        assert_eq!(result.remaining_removed.len(), 1);
+    }
+
+    #[test]
+    fn test_ambiguous_multiple_candidates() {
+        // One removed column, two added columns with same type and close proximity
+        let added_cols = vec![
+            added(
+                1,
+                "title",
+                Some(ColumnType::String(sea_query::StringLen::None)),
+            ),
+            added(
+                2,
+                "label",
+                Some(ColumnType::String(sea_query::StringLen::None)),
+            ),
+        ];
+        let removed_cols = vec![removed(
+            1,
+            "name",
+            Some(ColumnType::String(sea_query::StringLen::None)),
+        )];
+
+        let result = resolve_renames(&tref("cake"), added_cols, removed_cols);
+
+        assert!(result.assumed.is_empty());
+        assert_eq!(result.ambiguous.len(), 1);
+        assert_eq!(result.ambiguous[0].table_name(), "cake");
+        assert_eq!(result.ambiguous[0].removed, "name");
+        assert_eq!(result.ambiguous[0].candidates.len(), 2);
+    }
+
+    #[test]
+    fn test_multiple_independent_renames() {
+        // Two removed + two added, each pair is uniquely matched
+        let added_cols = vec![
+            added(
+                1,
+                "title",
+                Some(ColumnType::String(sea_query::StringLen::None)),
+            ),
+            added(3, "weight_kg", Some(ColumnType::Integer)),
+        ];
+        let removed_cols = vec![
+            removed(
+                1,
+                "name",
+                Some(ColumnType::String(sea_query::StringLen::None)),
+            ),
+            removed(3, "weight", Some(ColumnType::Integer)),
+        ];
+
+        let result = resolve_renames(&tref("product"), added_cols, removed_cols);
+
+        assert_eq!(result.assumed.len(), 2);
+        assert!(result.ambiguous.is_empty());
+        assert!(result.remaining_added.is_empty());
+        assert!(result.remaining_removed.is_empty());
+
+        let names: Vec<_> = result.assumed.iter().map(|r| r.removed.as_str()).collect();
+        assert!(names.contains(&"name"));
+        assert!(names.contains(&"weight"));
+    }
+
+    #[test]
+    fn test_string_text_type_compatibility() {
+        let added_cols = vec![added(1, "description", Some(ColumnType::Text))];
+        let removed_cols = vec![removed(
+            1,
+            "desc",
+            Some(ColumnType::String(sea_query::StringLen::None)),
+        )];
+
+        let result = resolve_renames(&tref("item"), added_cols, removed_cols);
+
+        assert_eq!(result.assumed.len(), 1);
+        assert_eq!(result.assumed[0].removed, "desc");
+        assert_eq!(result.assumed[0].added, "description");
+    }
+
+    #[test]
+    fn test_proximity_at_boundary() {
+        // Proximity exactly 2 — should still match
+        let added_cols = vec![added(
+            3,
+            "title",
+            Some(ColumnType::String(sea_query::StringLen::None)),
+        )];
+        let removed_cols = vec![removed(
+            1,
+            "name",
+            Some(ColumnType::String(sea_query::StringLen::None)),
+        )];
+
+        let result = resolve_renames(&tref("cake"), added_cols, removed_cols);
+        assert_eq!(result.assumed.len(), 1);
+        assert_eq!(result.assumed[0].proximity, 2);
+
+        // Proximity 3 — should NOT match
+        let added_cols = vec![added(
+            4,
+            "title",
+            Some(ColumnType::String(sea_query::StringLen::None)),
+        )];
+        let removed_cols = vec![removed(
+            1,
+            "name",
+            Some(ColumnType::String(sea_query::StringLen::None)),
+        )];
+
+        let result = resolve_renames(&tref("cake"), added_cols, removed_cols);
+        assert!(result.assumed.is_empty());
+    }
+
+    #[test]
+    fn test_no_columns_produces_empty_resolution() {
+        let result = resolve_renames(&tref("empty"), vec![], vec![]);
+        assert!(result.assumed.is_empty());
+        assert!(result.ambiguous.is_empty());
+        assert!(result.remaining_added.is_empty());
+        assert!(result.remaining_removed.is_empty());
+    }
+
+    #[test]
+    fn test_only_added_columns() {
+        let added_cols = vec![
+            added(
+                1,
+                "new_col",
+                Some(ColumnType::String(sea_query::StringLen::None)),
+            ),
+            added(2, "another", Some(ColumnType::Integer)),
+        ];
+
+        let result = resolve_renames(&tref("t"), added_cols, vec![]);
+        assert!(result.assumed.is_empty());
+        assert!(result.ambiguous.is_empty());
+        assert_eq!(result.remaining_added.len(), 2);
+        assert!(result.remaining_removed.is_empty());
+    }
+
+    #[test]
+    fn test_only_removed_columns() {
+        let removed_cols = vec![removed(
+            1,
+            "old_col",
+            Some(ColumnType::String(sea_query::StringLen::None)),
+        )];
+
+        let result = resolve_renames(&tref("t"), vec![], removed_cols);
+        assert!(result.assumed.is_empty());
+        assert!(result.ambiguous.is_empty());
+        assert!(result.remaining_added.is_empty());
+        assert_eq!(result.remaining_removed.len(), 1);
+    }
+
+    #[test]
+    fn test_extract_enum_type_name() {
+        let sql = r#"CREATE TYPE "mood" AS ENUM ('happy', 'sad')"#;
+        assert_eq!(extract_enum_type_name(sql), Some("mood".to_string()));
+        assert_eq!(extract_enum_type_name("CREATE TABLE mood ()"), None);
+    }
+
+    #[test]
+    fn test_extract_enum_variants() {
+        let sql = r#"CREATE TYPE "mood" AS ENUM ('happy', 'sad')"#;
+        assert_eq!(extract_enum_variants(sql), vec!["happy", "sad"]);
+        assert!(extract_enum_variants("CREATE TABLE mood ()").is_empty());
+    }
+
+    #[test]
+    fn test_types_compatible_same() {
+        assert!(types_compatible(
+            Some(&ColumnType::Integer),
+            Some(&ColumnType::Integer)
+        ));
+    }
+
+    #[test]
+    fn test_types_compatible_string_text() {
+        assert!(types_compatible(
+            Some(&ColumnType::String(sea_query::StringLen::None)),
+            Some(&ColumnType::Text)
+        ));
+        assert!(types_compatible(
+            Some(&ColumnType::Text),
+            Some(&ColumnType::String(sea_query::StringLen::N(255)))
+        ));
+    }
+
+    #[test]
+    fn test_types_compatible_none() {
+        assert!(!types_compatible(None, Some(&ColumnType::Integer)));
+        assert!(!types_compatible(Some(&ColumnType::Integer), None));
+        assert!(!types_compatible(None, None));
+    }
+
+    #[test]
+    fn test_types_incompatible() {
+        assert!(!types_compatible(
+            Some(&ColumnType::Integer),
+            Some(&ColumnType::String(sea_query::StringLen::None))
+        ));
+    }
+}

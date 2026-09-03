@@ -4,7 +4,7 @@ services:
     #
 
     mysql_lts:
-        image: mysql:lts
+        image: docker.io/library/mysql:lts
         ports:
             - 3306
         environment:
@@ -20,7 +20,7 @@ services:
             retries: 3
 
     mysql_5_7:
-        image: mysql:5.7
+        image: docker.io/library/mysql:5.7
         ports:
             - 3306
         environment:
@@ -40,7 +40,7 @@ services:
     #
 
     mariadb_lts:
-        image: mariadb:lts
+        image: docker.io/library/mariadb:lts
         ports:
             - 3306
         environment:
@@ -60,7 +60,7 @@ services:
     #
 
     postgres_16:
-        image: postgres:16
+        image: docker.io/library/postgres:16
         ports:
             - 5432
         environment:
@@ -74,7 +74,7 @@ services:
             retries: 5
 
     postgres_14:
-        image: postgres:14
+        image: docker.io/library/postgres:14
         ports:
             - 5432
         environment:

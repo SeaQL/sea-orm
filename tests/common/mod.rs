@@ -4,6 +4,8 @@ pub mod blogger;
 pub mod blogger_legacy;
 pub mod features;
 pub mod film_store;
+pub mod fixtures;
+pub mod helpers;
 #[cfg(not(feature = "sync"))]
 pub mod runtime;
 pub mod setup;
