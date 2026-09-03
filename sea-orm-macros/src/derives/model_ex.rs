@@ -98,7 +98,7 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
 
         list.parse_nested_meta(|meta| {
             if meta.path.is_ident("Eq") {
-                // skip
+                new_list.push(parse_quote!(Eq))
             } else if meta.path.is_ident("DeriveEntityModel") {
                 // replace macro
                 new_list.push(parse_quote!(DeriveModelEx));
