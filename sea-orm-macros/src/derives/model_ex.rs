@@ -24,13 +24,14 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
     let mut all_fields = input.fields;
 
     let mut model_attrs: Vec<Attribute> = Vec::new();
+    let mut inherited_model_ex_attrs: Vec<Attribute> = Vec::new();
     let mut model_ex_attrs: Vec<Attribute> = Vec::new();
     let mut has_arrow_schema = false;
 
     for attr in input.attrs {
         if !attr.path().is_ident("sea_orm") {
             model_attrs.push(attr.clone());
-            model_ex_attrs.push(attr);
+            inherited_model_ex_attrs.push(attr);
             continue;
         }
 
@@ -75,7 +76,7 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
         if !other_attrs.is_empty() {
             let attr: Attribute = parse_quote!( #[sea_orm(#other_attrs)] );
             model_attrs.push(attr.clone());
-            model_ex_attrs.push(attr);
+            inherited_model_ex_attrs.push(attr);
         }
     }
 
@@ -85,7 +86,7 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
 
     let model_ex = format_ident!("{model}Ex");
 
-    for attr in &mut model_ex_attrs {
+    for attr in &mut inherited_model_ex_attrs {
         if !attr.path().is_ident("derive") {
             continue;
         }
@@ -98,9 +99,9 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
 
         list.parse_nested_meta(|meta| {
             if meta.path.is_ident("Eq") {
-                // skip
+                // Nested relations may contain non-`Eq` fields, so `Eq` cannot be forwarded safely.
             } else if meta.path.is_ident("DeriveEntityModel") {
-                // replace macro
+                // ModelEx uses its own derive macros.
                 new_list.push(parse_quote!(DeriveModelEx));
                 new_list.push(parse_quote!(DeriveActiveModelEx));
             } else {
@@ -154,8 +155,13 @@ pub fn expand_sea_orm_model(input: ItemStruct, compact: bool) -> syn::Result<Tok
             #(#model_fields),*
         }
 
+        #(#inherited_model_ex_attrs)*
         #(#model_ex_attrs)*
         #compact_model
+        #[allow(
+            clippy::derive_partial_eq_without_eq,
+            reason = "Nested relations may contain non-`Eq` fields, so `ModelEx` does not inherit `Eq`"
+        )]
         #vis struct #model_ex #all_fields
     })
 }
