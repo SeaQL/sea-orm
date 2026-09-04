@@ -843,7 +843,7 @@ mod tests {
         {
             assert_eq!(
                 E::find().build(DbBackend::Postgres).to_string(),
-                r#"SELECT "hello"."id", "hello"."one1", CAST("hello"."two" AS integer), "hello"."three3" FROM "hello""#,
+                r#"SELECT "hello"."id", "hello"."one1", CAST("hello"."two" AS integer) AS "two", "hello"."three3" FROM "hello""#,
             );
             assert_eq!(
                 Update::one(active_model)
@@ -1116,7 +1116,7 @@ mod tests {
         {
             assert_eq!(
                 E::find().build(DbBackend::Postgres).to_string(),
-                r#"SELECT "hello"."id", "hello"."one1", CAST("hello"."two" AS integer), "hello"."three3" FROM "hello""#,
+                r#"SELECT "hello"."id", "hello"."one1", CAST("hello"."two" AS integer) AS "two", "hello"."three3" FROM "hello""#,
             );
             assert_eq!(
                 Update::one(active_model)
