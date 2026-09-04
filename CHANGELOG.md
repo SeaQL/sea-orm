@@ -43,6 +43,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
+* Support built-in PostgreSQL geometric types (`point`, `line`, `lseg`, `box`, `path`, `polygon`, `circle`) https://github.com/SeaQL/sea-orm/issues/282
+
+  Behind the new `postgres-geometry` feature, geometric columns can be mapped
+  onto entity fields via a thin `Geo<T>` newtype wrapping sqlx's `Pg*` types
+  (`PgPoint`, `PgPolygon`, …). These are the core Postgres geometric types — no
+  PostGIS extension required. Values are stored/loaded as canonical Postgres
+  text using `save_as` / `select_as` casts, so the core `Value` enum is
+  unchanged. `Geo<T>` derefs to the inner sqlx type for direct field access.
+
+  ```rust
+  #[sea_orm(column_type = r#"custom("point")"#, select_as = "text", save_as = "point")]
+  pub location: Geo<PgPoint>,
+  ```
+
 * Split `belongs_to` from `has_one` with a new `BelongsTo` relation type https://github.com/SeaQL/sea-orm/pull/3118
 
   A `belongs_to` relation can now be typed `BelongsTo<Entity>` (required) or

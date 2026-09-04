@@ -27,6 +27,7 @@ features = [
     "runtime-tokio-native-tls",
     "postgres-array",
     "postgres-vector",
+    "postgres-geometry",
     "with-ipnetwork",
     "with-arrow",
     "stream",
@@ -209,6 +210,7 @@ with-ipnetwork = [
     "sea-query/with-ipnetwork",
     "sea-query-sqlx?/with-ipnetwork",
 ]
+postgres-geometry = ["sqlx-postgres"]
 with-json = [
     "dep:serde",
     "serde_json",
