@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-pub(crate) type Callback = Arc<dyn Fn(&Info<'_>)>;
+pub(crate) type Callback = Arc<dyn Fn(&Info<'_>) + Send + Sync>;
 
 #[allow(unused_imports)]
 pub(crate) use inner::metric;
