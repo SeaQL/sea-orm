@@ -508,22 +508,38 @@ pub trait ActiveModelTrait: Clone + Debug {
             )));
         };
 
-        let dummy_am = Self::default_values();
+        let dummy_model = Self::default_values().try_into_model().map_err(json_err)?;
+        let dummy_value = serde_json::to_value(dummy_model).map_err(json_err)?;
+        let serde_json::Value::Object(dummy_value) = dummy_value else {
+            return Err(DbErr::Json(format!(
+                "invalid type: expected JSON object for dummy model for {}",
+                <<Self as ActiveModelTrait>::Entity as IdenStatic>::as_str(&Default::default())
+            )));
+        };
+
+        let ser_de_map = <<Self::Entity as EntityTrait>::Column>::iter()
+            .map(|col| (col.serialize_json_key(), col.json_key()))
+            .collect::<std::collections::HashMap<_, _>>();
+
+        let mut merged = dummy_value
+            .into_iter()
+            .map(|(key, val)| {
+                // map seralized keys into deserialize keys
+                let new_key = ser_de_map
+                    .get(key.as_str())
+                    .map(ToString::to_string)
+                    .unwrap_or(key);
+                (new_key, val)
+            })
+            .collect::<serde_json::Map<_, _>>();
+
         let len = <<Self::Entity as EntityTrait>::Column>::iter().len();
         // Mark down which attribute exists in the JSON object
         let mut json_keys = Vec::with_capacity(len);
-        let mut merged = serde_json::Map::with_capacity(len);
-
         for col in <<Self::Entity as EntityTrait>::Column>::iter() {
             let key = col.json_key();
             let has_key = input.contains_key(key);
             json_keys.push((col, has_key));
-            match dummy_am.get(col) {
-                ActiveValue::Unchanged(value) | ActiveValue::Set(value) => {
-                    merged.insert(key.to_owned(), sea_query::sea_value_to_json_value(&value));
-                }
-                _ => {}
-            }
         }
 
         merged.append(&mut input);
