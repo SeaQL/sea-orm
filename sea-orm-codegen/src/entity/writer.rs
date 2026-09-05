@@ -70,10 +70,14 @@ pub enum BigIntegerType {
 
 #[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
 pub enum EntityFormat {
-    #[default]
+    /// Entity format in 1.0
     Compact,
+    /// Expanded format is considered legacy
     Expanded,
+    /// Generated models on the client without dependency
     Frontend,
+    /// Entity format in 2.0 (default)
+    #[default]
     Dense,
 }
 
