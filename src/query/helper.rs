@@ -1,4 +1,4 @@
-use super::select::select_column;
+use super::select::ColumnSelectExt;
 use crate::{
     ActiveModelTrait, ColumnAsExpr, ColumnTrait, EntityTrait, Identity, IntoIdentity,
     IntoSimpleExpr, Iterable, ModelTrait, PrimaryKeyToColumn, RelationDef,
@@ -71,7 +71,7 @@ pub trait QuerySelect: Sized {
     where
         C: ColumnTrait,
     {
-        self.query().expr(select_column(col));
+        self.query().expr(col.into_select_expr());
         self
     }
 

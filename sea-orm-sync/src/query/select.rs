@@ -268,22 +268,29 @@ impl IntoSimpleExpr for FunctionCall {
     }
 }
 
-pub(crate) fn select_column<C>(col: C) -> SelectExpr
+pub(crate) trait ColumnSelectExt: ColumnTrait {
+    fn into_select_expr(self) -> SelectExpr;
+}
+
+impl<C> ColumnSelectExt for C
 where
     C: ColumnTrait,
 {
-    let column = col.into_expr();
-    let expr = col.select_as(column.clone());
-    let is_column = match &expr {
-        SimpleExpr::Column(_) => expr == column,
-        SimpleExpr::AsEnum(_, inner) => inner.as_ref() == &column,
-        _ => false,
-    };
+    fn into_select_expr(self) -> SelectExpr {
+        let column = self.into_expr();
+        let expr = self.select_as(column.clone());
 
-    SelectExpr {
-        expr,
-        alias: (!is_column).then(|| col.as_str().into_iden()),
-        window: None,
+        let alias = match &expr {
+            SimpleExpr::Column(_) if expr == column => None,
+            SimpleExpr::AsEnum(_, inner) if inner.as_ref() == &column => None,
+            _ => Some(self.as_str().into_iden()),
+        };
+
+        SelectExpr {
+            expr,
+            alias,
+            window: None,
+        }
     }
 }
 
@@ -307,7 +314,9 @@ where
     }
 
     fn column_list(&self) -> Vec<SelectExpr> {
-        E::Column::iter().map(select_column).collect()
+        E::Column::iter()
+            .map(ColumnSelectExt::into_select_expr)
+            .collect()
     }
 
     fn prepare_from(mut self) -> Self {

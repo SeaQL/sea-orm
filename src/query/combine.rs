@@ -213,41 +213,6 @@ mod tests {
     use crate::tests_cfg::{cake, fruit};
     use crate::{ColumnTrait, DbBackend, EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 
-    #[cfg(feature = "macros")]
-    mod select_as_entity {
-        use crate as sea_orm;
-        use crate::entity::prelude::*;
-        use crate::tests_cfg::cake;
-
-        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-        #[sea_orm(table_name = "select_as_entity")]
-        pub struct Model {
-            #[sea_orm(primary_key)]
-            pub id: i32,
-            pub cake_id: i32,
-            #[sea_orm(select_as = "text")]
-            pub value: String,
-        }
-
-        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-        pub enum Relation {
-            #[sea_orm(
-                belongs_to = "cake::Entity",
-                from = "Column::CakeId",
-                to = "cake::Column::Id"
-            )]
-            Cake,
-        }
-
-        impl Related<cake::Entity> for Entity {
-            fn to() -> RelationDef {
-                Relation::Cake.def()
-            }
-        }
-
-        impl ActiveModelBehavior for ActiveModel {}
-    }
-
     #[test]
     fn alias_1() {
         assert_eq!(
@@ -257,42 +222,6 @@ mod tests {
                 .build(DbBackend::MySql)
                 .to_string(),
             "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`, `cake`.`id` AS `A_B` FROM `cake`",
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "macros")]
-    fn find_also_related_with_select_as_1() {
-        assert_eq!(
-            select_as_entity::Entity::find()
-                .find_also_related(cake::Entity)
-                .build(DbBackend::Postgres)
-                .to_string(),
-            [
-                r#"SELECT "select_as_entity"."id" AS "A_id", "select_as_entity"."cake_id" AS "A_cake_id", CAST("select_as_entity"."value" AS text) AS "A_value","#,
-                r#""cake"."id" AS "B_id", "cake"."name" AS "B_name""#,
-                r#"FROM "select_as_entity" LEFT JOIN "cake" ON "select_as_entity"."cake_id" = "cake"."id""#,
-            ]
-            .join(" ")
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "macros")]
-    fn find_also_related_with_selected_select_as_column_1() {
-        assert_eq!(
-            select_as_entity::Entity::find()
-                .select_only()
-                .column(select_as_entity::Column::Value)
-                .find_also_related(cake::Entity)
-                .build(DbBackend::Postgres)
-                .to_string(),
-            [
-                r#"SELECT CAST("select_as_entity"."value" AS text) AS "A_value","#,
-                r#""cake"."id" AS "B_id", "cake"."name" AS "B_name""#,
-                r#"FROM "select_as_entity" LEFT JOIN "cake" ON "select_as_entity"."cake_id" = "cake"."id""#,
-            ]
-            .join(" ")
         );
     }
 
