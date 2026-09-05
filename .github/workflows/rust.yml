@@ -155,10 +155,10 @@ jobs:
             kind: build
           - label: tokio native-tls mysql
             kind: test
-            features: sqlx-mysql,runtime-tokio-native-tls
+            features: sqlx-mysql,runtime-tokio-native-tls,unimplemented-jiff-sqlx-mysql
           - label: tokio rustls mysql
             kind: test
-            features: sqlx-mysql,runtime-tokio-rustls
+            features: sqlx-mysql,runtime-tokio-rustls,unimplemented-jiff-sqlx-mysql
           - label: tokio native-tls postgres
             kind: test
             features: sqlx-postgres,runtime-tokio-native-tls
@@ -367,8 +367,10 @@ jobs:
       - working-directory: ./sea-orm-sync
         run: cargo test --test '*' --features tests-features,rusqlite
       - working-directory: ./sea-orm-sync/examples/quickstart
+        name: run quickstart example
         run: cargo run
       - working-directory: ./sea-orm-sync/examples/parquet_example
+        name: run parquet example
         run: cargo run
 
   mysql:
@@ -417,8 +419,8 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-mysql-tests-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }},unimplemented-jiff-sqlx-mysql --no-run
+      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }},unimplemented-jiff-sqlx-mysql
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
@@ -470,8 +472,8 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-mariadb-tests-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }},unimplemented-jiff-sqlx-mysql --no-run
+      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }},unimplemented-jiff-sqlx-mysql
 
   postgres:
     name: Postgres

@@ -467,6 +467,7 @@ impl From<DateTimeCrate> for CodegenDateTimeCrate {
         match date_time_crate {
             DateTimeCrate::Chrono => CodegenDateTimeCrate::Chrono,
             DateTimeCrate::Time => CodegenDateTimeCrate::Time,
+            DateTimeCrate::Jiff => CodegenDateTimeCrate::Jiff,
         }
     }
 }
