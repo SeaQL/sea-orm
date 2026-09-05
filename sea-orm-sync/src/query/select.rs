@@ -4,7 +4,7 @@ use crate::{
 };
 use core::fmt::Debug;
 use core::marker::PhantomData;
-use sea_query::{FunctionCall, IntoColumnRef, SelectStatement, SimpleExpr};
+use sea_query::{FunctionCall, IntoColumnRef, IntoIden, SelectExpr, SelectStatement, SimpleExpr};
 
 /// A `SELECT` query against entity `E`. Returned by
 /// [`EntityTrait::find`](crate::EntityTrait::find); chain filters, joins,
@@ -268,6 +268,32 @@ impl IntoSimpleExpr for FunctionCall {
     }
 }
 
+pub(crate) trait ColumnSelectExt: ColumnTrait {
+    fn into_select_expr(self) -> SelectExpr;
+}
+
+impl<C> ColumnSelectExt for C
+where
+    C: ColumnTrait,
+{
+    fn into_select_expr(self) -> SelectExpr {
+        let column = self.into_expr();
+        let expr = self.select_as(column.clone());
+
+        let alias = match &expr {
+            SimpleExpr::Column(_) if expr == column => None,
+            SimpleExpr::AsEnum(_, inner) if inner.as_ref() == &column => None,
+            _ => Some(self.as_str().into_iden()),
+        };
+
+        SelectExpr {
+            expr,
+            alias,
+            window: None,
+        }
+    }
+}
+
 impl<E> Select<E>
 where
     E: EntityTrait,
@@ -287,9 +313,9 @@ where
         self
     }
 
-    fn column_list(&self) -> Vec<SimpleExpr> {
+    fn column_list(&self) -> Vec<SelectExpr> {
         E::Column::iter()
-            .map(|col| col.select_as(col.into_expr()))
+            .map(ColumnSelectExt::into_select_expr)
             .collect()
     }
 

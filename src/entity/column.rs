@@ -736,10 +736,9 @@ mod tests {
         );
     }
 
-    #[test]
     #[cfg(feature = "macros")]
-    fn select_as_1() {
-        use crate::{ActiveModelTrait, ActiveValue, Update};
+    mod select_as {
+        use super::*;
 
         mod hello_expanded {
             use crate as sea_orm;
@@ -836,37 +835,65 @@ mod tests {
             impl ActiveModelBehavior for ActiveModel {}
         }
 
-        fn assert_it<E, A>(active_model: A)
-        where
-            E: EntityTrait,
-            A: ActiveModelTrait<Entity = E>,
-        {
-            assert_eq!(
-                E::find().build(DbBackend::Postgres).to_string(),
-                r#"SELECT "hello"."id", "hello"."one1", CAST("hello"."two" AS integer), "hello"."three3" FROM "hello""#,
-            );
-            assert_eq!(
-                Update::one(active_model)
-                    .validate()
-                    .unwrap()
-                    .build(DbBackend::Postgres)
-                    .to_string(),
-                r#"UPDATE "hello" SET "one1" = 1, "two" = 2, "three3" = 3 WHERE "hello"."id" = 1"#,
-            );
+        #[test]
+        fn select_as_1() {
+            use crate::{ActiveModelTrait, ActiveValue, Update};
+
+            fn assert_it<E, A>(active_model: A)
+            where
+                E: EntityTrait,
+                A: ActiveModelTrait<Entity = E>,
+            {
+                assert_eq!(
+                    E::find().build(DbBackend::Postgres).to_string(),
+                    r#"SELECT "hello"."id", "hello"."one1", CAST("hello"."two" AS integer) AS "two", "hello"."three3" FROM "hello""#,
+                );
+                assert_eq!(
+                    Update::one(active_model)
+                        .validate()
+                        .unwrap()
+                        .build(DbBackend::Postgres)
+                        .to_string(),
+                    r#"UPDATE "hello" SET "one1" = 1, "two" = 2, "three3" = 3 WHERE "hello"."id" = 1"#,
+                );
+            }
+
+            assert_it(hello_expanded::ActiveModel {
+                id: ActiveValue::set(1),
+                one: ActiveValue::set(1),
+                two: ActiveValue::set(2),
+                three: ActiveValue::set(3),
+            });
+            assert_it(hello_compact::ActiveModel {
+                id: ActiveValue::set(1),
+                one: ActiveValue::set(1),
+                two: ActiveValue::set(2),
+                three: ActiveValue::set(3),
+            });
         }
 
-        assert_it(hello_expanded::ActiveModel {
-            id: ActiveValue::set(1),
-            one: ActiveValue::set(1),
-            two: ActiveValue::set(2),
-            three: ActiveValue::set(3),
-        });
-        assert_it(hello_compact::ActiveModel {
-            id: ActiveValue::set(1),
-            one: ActiveValue::set(1),
-            two: ActiveValue::set(2),
-            three: ActiveValue::set(3),
-        });
+        #[test]
+        fn select_as_columns_keep_aliases_in_multi_selects() {
+            use crate::{Iterable, QuerySelect};
+
+            fn assert_it<E: EntityTrait>() {
+                for select in [
+                    E::find(),
+                    E::find().select_only().columns(E::Column::iter()),
+                ] {
+                    assert_eq!(
+                        select
+                            .select_also(E::default())
+                            .build(DbBackend::Postgres)
+                            .to_string(),
+                        r#"SELECT "hello"."id" AS "A_id", "hello"."one1" AS "A_one1", CAST("hello"."two" AS integer) AS "A_two", "hello"."three3" AS "A_three3", "hello"."id" AS "B_id", "hello"."one1" AS "B_one1", CAST("hello"."two" AS integer) AS "B_two", "hello"."three3" AS "B_three3" FROM "hello""#,
+                    );
+                }
+            }
+
+            assert_it::<hello_expanded::Entity>();
+            assert_it::<hello_compact::Entity>();
+        }
     }
 
     #[test]
@@ -1116,7 +1143,7 @@ mod tests {
         {
             assert_eq!(
                 E::find().build(DbBackend::Postgres).to_string(),
-                r#"SELECT "hello"."id", "hello"."one1", CAST("hello"."two" AS integer), "hello"."three3" FROM "hello""#,
+                r#"SELECT "hello"."id", "hello"."one1", CAST("hello"."two" AS integer) AS "two", "hello"."three3" FROM "hello""#,
             );
             assert_eq!(
                 Update::one(active_model)
