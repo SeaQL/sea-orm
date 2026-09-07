@@ -91,6 +91,13 @@ fn sqlite_column_is_generated(col: &sea_schema::sqlite::def::ColumnInfo) -> bool
     )
 }
 
+#[cfg(feature = "sqlx-postgres")]
+fn remove_postgres_partial_unique_constraints(table: &mut sea_schema::postgres::def::TableDef) {
+    table
+        .unique_constraints
+        .retain(|constraint| !constraint.is_partial);
+}
+
 pub async fn run_generate_command(
     command: GenerateSubcommands,
     verbose: bool,
@@ -113,6 +120,7 @@ pub async fn run_generate_command(
             with_serde,
             serde_skip_deserializing_primary_key,
             serde_skip_hidden_column,
+            include_generated_columns,
             with_copy_enums,
             date_time_crate,
             big_integer_type,
@@ -230,7 +238,9 @@ pub async fn run_generate_command(
                             .filter(|schema| filter_skip_tables(&schema.info.name))
                             .map(|mut schema| {
                                 // Skip generated columns (see #3094).
-                                schema.columns.retain(|col| !col.extra.generated);
+                                if !include_generated_columns {
+                                    schema.columns.retain(|col| !col.extra.generated);
+                                }
                                 schema.write()
                             })
                             .collect();
@@ -271,9 +281,11 @@ pub async fn run_generate_command(
                                 // Skip generated columns: codegen can't round-trip them, and
                                 // emitting them as ordinary fields makes INSERT/UPDATE fail
                                 // ("cannot INSERT/UPDATE a generated column"). See #3094.
-                                schema
-                                    .columns
-                                    .retain(|col| !sqlite_column_is_generated(col));
+                                if !include_generated_columns {
+                                    schema
+                                        .columns
+                                        .retain(|col| !sqlite_column_is_generated(col));
+                                }
                                 schema.write()
                             })
                             .collect();
@@ -310,7 +322,10 @@ pub async fn run_generate_command(
                             .filter(|schema| filter_skip_tables(&schema.info.name))
                             .map(|mut schema| {
                                 // Skip generated columns (see #3094).
-                                schema.columns.retain(|col| col.generated.is_none());
+                                if !include_generated_columns {
+                                    schema.columns.retain(|col| col.generated.is_none());
+                                }
+                                remove_postgres_partial_unique_constraints(&mut schema);
                                 schema.write()
                             })
                             .collect();
@@ -815,5 +830,41 @@ mod tests {
             .map(|col| col.name.as_str())
             .collect();
         assert_eq!(kept, ["id", "w", "h"]);
+    }
+
+    #[cfg(feature = "sqlx-postgres")]
+    #[test]
+    fn test_generate_entity_skips_postgres_partial_unique_constraints() {
+        use sea_schema::postgres::def::{TableDef, TableInfo, Unique};
+
+        let mut table = TableDef {
+            info: TableInfo {
+                name: "login".to_owned(),
+                of_type: None,
+            },
+            columns: vec![],
+            check_constraints: vec![],
+            not_null_constraints: vec![],
+            unique_constraints: vec![
+                Unique {
+                    name: "login_email_key".to_owned(),
+                    columns: vec!["email".to_owned()],
+                    is_partial: false,
+                },
+                Unique {
+                    name: "login_human_login_id_key".to_owned(),
+                    columns: vec!["human_login_id".to_owned()],
+                    is_partial: true,
+                },
+            ],
+            primary_key_constraints: vec![],
+            reference_constraints: vec![],
+            exclusion_constraints: vec![],
+        };
+
+        super::remove_postgres_partial_unique_constraints(&mut table);
+
+        assert_eq!(table.unique_constraints.len(), 1);
+        assert_eq!(table.unique_constraints[0].name, "login_email_key");
     }
 }
