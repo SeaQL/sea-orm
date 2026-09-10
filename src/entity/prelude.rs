@@ -101,6 +101,11 @@ pub use uuid::Uuid;
 #[cfg(feature = "with-uuid")]
 pub use crate::value::TextUuid;
 
+#[cfg(feature = "postgres-geometry")]
+pub use crate::value::{Geo, PgGeometry};
+#[cfg(feature = "postgres-geometry")]
+pub use sqlx::postgres::types::{PgBox, PgCircle, PgLSeg, PgLine, PgPath, PgPoint, PgPolygon};
+
 #[cfg(feature = "postgres-vector")]
 pub use pgvector::Vector as PgVector;
 
