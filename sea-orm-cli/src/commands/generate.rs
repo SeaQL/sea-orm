@@ -91,6 +91,13 @@ fn sqlite_column_is_generated(col: &sea_schema::sqlite::def::ColumnInfo) -> bool
     )
 }
 
+#[cfg(feature = "sqlx-postgres")]
+fn remove_postgres_partial_unique_indexes(table: &mut sea_schema::postgres::def::TableDef) {
+    table
+        .unique_constraints
+        .retain(|constraint| !constraint.is_partial);
+}
+
 pub async fn run_generate_command(
     command: GenerateSubcommands,
     verbose: bool,
@@ -311,6 +318,8 @@ pub async fn run_generate_command(
                             .map(|mut schema| {
                                 // Skip generated columns (see #3094).
                                 schema.columns.retain(|col| col.generated.is_none());
+                                // Remove them because we don't support partial unique indexes in codegen yet.
+                                remove_postgres_partial_unique_indexes(&mut schema);
                                 schema.write()
                             })
                             .collect();
@@ -815,5 +824,40 @@ mod tests {
             .map(|col| col.name.as_str())
             .collect();
         assert_eq!(kept, ["id", "w", "h"]);
+    }
+
+    #[cfg(feature = "sqlx-postgres")]
+    #[test]
+    fn filter_out_postgres_partial_unique_indexes() {
+        use sea_schema::postgres::def::{TableDef, TableInfo, Unique};
+
+        let unique_constraint = Unique {
+            name: "login_email_key".to_owned(),
+            columns: vec!["email".to_owned()],
+            is_partial: false,
+        };
+        let partial_constraint = Unique {
+            name: "login_human_login_id_key".to_owned(),
+            columns: vec!["human_login_id".to_owned()],
+            is_partial: true,
+        };
+        let mut table = TableDef {
+            info: TableInfo {
+                name: "login".to_owned(),
+                of_type: None,
+            },
+            columns: vec![],
+            check_constraints: vec![],
+            not_null_constraints: vec![],
+            unique_constraints: vec![unique_constraint.clone(), partial_constraint],
+            primary_key_constraints: vec![],
+            reference_constraints: vec![],
+            exclusion_constraints: vec![],
+        };
+
+        super::remove_postgres_partial_unique_indexes(&mut table);
+
+        assert_eq!(table.unique_constraints.len(), 1);
+        assert_eq!(table.unique_constraints[0], unique_constraint);
     }
 }
