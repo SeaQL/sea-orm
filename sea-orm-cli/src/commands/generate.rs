@@ -98,6 +98,21 @@ fn remove_postgres_partial_unique_indexes(table: &mut sea_schema::postgres::def:
         .retain(|constraint| !constraint.is_partial);
 }
 
+/// The database name carried by a connection URL, or `None` if it has none.
+///
+/// The usual shape is hierarchical — `protocol://user:pass@host:port/database_name`
+/// — where the name is the first path segment. PostgreSQL also accepts the
+/// shorthand `postgres:database_name`, which has no authority component; the URL
+/// crate treats that as a "cannot-be-a-base" URL and yields no path segments at
+/// all, so the whole path is the database name (#2647).
+fn database_name_from_url(url: &Url) -> Option<&str> {
+    match url.path_segments() {
+        Some(mut segments) => segments.next(),
+        None => Some(url.path()),
+    }
+    .filter(|name| !name.is_empty())
+}
+
 pub async fn run_generate_command(
     command: GenerateSubcommands,
     verbose: bool,
@@ -178,31 +193,15 @@ pub async fn run_generate_command(
             let filter_skip_tables = |table: &String| -> bool { !ignore_tables.contains(table) };
 
             let _database_name = if !is_sqlite {
-                // The database name should be the first element of the path string
-                //
                 // Throwing an error if there is no database name since it might be
                 // accepted by the database without it, while we're looking to dump
                 // information from a particular database
-                let database_name = url
-                    .path_segments()
-                    .unwrap_or_else(|| {
-                        panic!(
-                            "There is no database name as part of the url path: {}",
-                            url.as_str()
-                        )
-                    })
-                    .next()
-                    .unwrap();
-
-                // An empty string as the database name is also an error
-                if database_name.is_empty() {
+                database_name_from_url(&url).unwrap_or_else(|| {
                     panic!(
                         "There is no database name as part of the url path: {}",
                         url.as_str()
-                    );
-                }
-
-                database_name
+                    )
+                })
             } else {
                 Default::default()
             };
@@ -506,6 +505,34 @@ mod tests {
 
     use super::*;
     use crate::{Cli, Commands};
+
+    #[test]
+    fn test_database_name_from_url() {
+        let cases = [
+            // Shorthand with no authority component -- the case from #2647.
+            ("postgres:my_db", Some("my_db")),
+            ("postgresql:my_db", Some("my_db")),
+            // The usual hierarchical forms.
+            ("postgres://user:pass@localhost:5432/my_db", Some("my_db")),
+            ("postgres:///my_db", Some("my_db")),
+            ("mysql://root:root@localhost:3306/my_db", Some("my_db")),
+            // Only the first segment is the database name.
+            ("postgres://localhost/my_db/extra", Some("my_db")),
+            // No database name in any form.
+            ("postgresql://root:root@localhost:3306", None),
+            ("mysql://root:root@localhost:3306/", None),
+            ("postgres:", None),
+        ];
+
+        for (input, expected) in cases {
+            let url = Url::parse(input).unwrap_or_else(|e| panic!("could not parse {input}: {e}"));
+            assert_eq!(
+                database_name_from_url(&url),
+                expected,
+                "unexpected database name for {input}"
+            );
+        }
+    }
 
     #[test]
     #[should_panic(
