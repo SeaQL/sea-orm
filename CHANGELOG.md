@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.0.3](changelog/2.0.3.md) - 2026-09-12
+
+`select_as` aliases in combined selects, derive macro hygiene, `ModelEx` `Eq` handling, PostgreSQL partial-unique-index and `postgres:db_name` CLI fixes
+
 ## [2.0.2](changelog/2.0.2.md) - 2026-08-12
 
 `require_one` query helper, `date_time_default_now` / `timestamp_default_now` schema helpers, entity-merge duplicate-import fix
