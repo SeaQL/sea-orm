@@ -63,7 +63,16 @@ cd examples
 # Tolerate taplo align_entries padding around `=` and before the comment.
 find . -depth -type f -name '*.toml' -exec "${SI[@]}" 's/^version *= ".*" *# sea-orm version$/version = "'~$1'" # sea-orm version/' {} \;
 find . -depth -type f -name '*.toml' -exec "${SI[@]}" 's/^version *= ".*" *# sea-orm-migration version$/version = "'~$1'" # sea-orm-migration version/' {} \;
-# Re-align comments the sed above may have shifted (align_entries) so CI Taplo passes.
-taplo fmt .
-git add .
+cd ..
+
+# Re-align the comments the sed above collapsed (align_entries), so CI Taplo passes.
+#
+# This must run from the repo root and be given explicit FILE paths. `.taplo.toml`
+# sets `include = ["**/*.toml"]`, which taplo anchors at the config's directory, so
+# passing a directory (`taplo fmt .` from examples/, or `taplo fmt examples` from
+# here) collects nothing -- "total=1 excluded=1" -- and silently formats no files.
+# That no-op is why 2.0.3 shipped with a red Taplo job.
+git ls-files -z '*.toml' -- examples | xargs -0 taplo fmt
+
+git add examples
 git commit -m "update examples"

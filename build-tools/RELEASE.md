@@ -92,6 +92,18 @@ cargo check --manifest-path sea-orm-sync/Cargo.toml
 
 Known warnings are acceptable only if they already exist and are unrelated to the release.
 
+Also run the formatting jobs, which `cargo check` does not cover and which a bump
+can break on its own:
+
+```sh
+taplo fmt --check
+cargo +nightly fmt --all -- --check
+```
+
+Note `taplo fmt` silently formats nothing when given a directory: `.taplo.toml` sets
+`include = ["**/*.toml"]`, anchored at the config's directory, so `taplo fmt examples`
+collects no files. Run it with no argument, or with explicit file paths.
+
 ## 6. Push and Wait for CI
 
 Push `master`:
@@ -101,6 +113,11 @@ git push origin master
 ```
 
 Wait for GitHub Actions to pass before publishing. Do not publish while CI is still running or red.
+
+This ordering is the point of the step. Publishing first cannot be undone: a crates.io
+release is permanent, so a failure CI would have caught lands on a commit that is
+already tagged and published. The 2.0.3 release was published before the push and the
+Taplo job then failed on the tagged commit.
 
 ## 7. Publish Crates
 
@@ -147,7 +164,7 @@ git tag -a "sea-orm-cli@2.0.0-rc.N" -m "sea-orm-cli 2.0.0-rc.N"
 git push origin "sea-orm-cli@2.0.0-rc.N"
 ```
 
-The workflow then builds the 5 targets, attaches the archives to a draft release,
+The workflow then builds the 4 targets, attaches the archives to a draft release,
 and publishes it. Confirm the assets appear on the `sea-orm-cli@2.0.0-rc.N`
 release and that `cargo binstall sea-orm-cli` resolves.
 
