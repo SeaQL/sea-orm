@@ -110,7 +110,7 @@ where
             self.linked_index += 1;
             let to_tbl = format!("r{r}").into_iden();
             let from_tbl = if i > 0 {
-                format!("r{}", i - 1).into_iden()
+                format!("r{}", r - 1).into_iden()
             } else {
                 rel.from_tbl.sea_orm_table().clone()
             };
@@ -813,6 +813,28 @@ mod tests {
                 "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
                 "INNER JOIN `cte` AS `r3` ON `r3`.`id` = `r2`.`cake_id`))",
                 "SELECT `cake`.`id`, `cake`.`name` FROM `cte` AS `cake`",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_26() {
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_linked(entity_linked::CakeToFilling)
+                .left_join_linked(entity_linked::CakeToFillingVendor)
+                .select_only()
+                .column(cake::Column::Id)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                r"SELECT `cake`.`id` FROM `cake`",
+                r"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id`",
+                r"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`",
+                r"LEFT JOIN `cake_filling` AS `r2` ON `cake`.`id` = `r2`.`cake_id`",
+                r"LEFT JOIN `filling` AS `r3` ON `r2`.`filling_id` = `r3`.`id`",
+                r"LEFT JOIN `vendor` AS `r4` ON `r3`.`vendor_id` = `r4`.`id`",
             ]
             .join(" ")
         );
