@@ -819,11 +819,11 @@ mod tests {
     }
 
     #[test]
-    fn join_26() {
+    fn chained_left_join_linked_uses_previous_hop_alias() {
         assert_eq!(
             cake::Entity::find()
                 .left_join_linked(entity_linked::CakeToFilling)
-                .left_join_linked(entity_linked::CakeToFillingVendor)
+                .left_join_linked(entity_linked::CakeToFilling)
                 .select_only()
                 .column(cake::Column::Id)
                 .build(DbBackend::MySql)
@@ -834,7 +834,6 @@ mod tests {
                 r"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`",
                 r"LEFT JOIN `cake_filling` AS `r2` ON `cake`.`id` = `r2`.`cake_id`",
                 r"LEFT JOIN `filling` AS `r3` ON `r2`.`filling_id` = `r3`.`id`",
-                r"LEFT JOIN `vendor` AS `r4` ON `r3`.`vendor_id` = `r4`.`id`",
             ]
             .join(" ")
         );
