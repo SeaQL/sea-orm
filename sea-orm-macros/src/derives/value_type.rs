@@ -231,6 +231,12 @@ impl DeriveValueTypeStruct {
                     -> std::result::Result<Self, sea_orm::TryGetError> {
                     <#field_type as sea_orm::TryGetable>::try_get_by(res, idx).map(|v| #name(v))
                 }
+
+                fn try_get_by_optional<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, idx: I)
+                    -> std::result::Result<Option<Self>, sea_orm::TryGetError> {
+                    <#field_type as sea_orm::TryGetable>::try_get_by_optional(res, idx)
+                        .map(|value| value.map(#name))
+                }
             }
 
             #[automatically_derived]
@@ -335,6 +341,13 @@ impl DeriveValueTypeString {
                             source: std::sync::Arc::new(#err),
                         })
                     })
+                }
+
+                fn try_get_by_optional<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, idx: I)
+                    -> std::result::Result<Option<Self>, sea_orm::TryGetError> {
+                    <String as sea_orm::TryGetable>::try_get_by_optional(res, idx)?
+                        .map(|string| #from_str(&string).map_err(|err| sea_orm::TryGetError::DbErr(sea_orm::DbErr::Type(format!("{err:?}")))))
+                        .transpose()
                 }
             }
 
