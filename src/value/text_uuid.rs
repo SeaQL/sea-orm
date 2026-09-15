@@ -52,6 +52,19 @@ impl TryGetable for TextUuid {
         })?;
         Ok(TextUuid(uuid))
     }
+
+    fn try_get_by_optional<I: sea_orm::ColIdx>(
+        res: &sea_orm::QueryResult,
+        index: I,
+    ) -> Result<Option<Self>, sea_orm::TryGetError> {
+        <String as TryGetable>::try_get_by_optional(res, index)?
+            .map(|uuid_str| {
+                uuid::Uuid::parse_str(&uuid_str).map(TextUuid).map_err(|e| {
+                    TryGetError::DbErr(DbErr::Type(format!("Failed to parse string as UUID: {e}")))
+                })
+            })
+            .transpose()
+    }
 }
 
 impl ValueType for TextUuid {

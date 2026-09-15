@@ -22,6 +22,21 @@ macro_rules! impl_timestamp {
                     "Failed to convert i64 to timestamp".to_owned(),
                 )))
             }
+
+            fn try_get_by_optional<I: sea_orm::ColIdx>(
+                res: &sea_orm::QueryResult,
+                idx: I,
+            ) -> std::result::Result<Option<Self>, TryGetError> {
+                <i64 as sea_orm::TryGetable>::try_get_by_optional(res, idx)?
+                    .map(|ts| {
+                        $from(ts).ok_or_else(|| {
+                            TryGetError::DbErr(DbErr::Type(
+                                "Failed to convert i64 to timestamp".to_owned(),
+                            ))
+                        })
+                    })
+                    .transpose()
+            }
         }
 
         impl sea_orm::sea_query::ValueType for $ty {
