@@ -31,6 +31,8 @@ mod access_log {
         pub ms: ChronoUnixTimestampMillis,
         pub tts: TimeUnixTimestamp,
         pub tms: TimeUnixTimestampMillis,
+        pub jts: JiffUnixTimestamp,
+        pub jms: JiffUnixTimestampMillis,
     }
 
     impl ActiveModelBehavior for ActiveModel {}
@@ -50,6 +52,8 @@ fn entity_timestamp_test() -> Result<(), DbErr> {
         now.timestamp_nanos_opt().unwrap() as i128,
     )
     .unwrap();
+    let jiff_seconds = JiffTimestamp::from_second(now.timestamp()).unwrap();
+    let jiff_millis = JiffTimestamp::from_millisecond(now.timestamp_millis()).unwrap();
 
     let log = access_log::ActiveModel {
         id: NotSet,
@@ -57,6 +61,8 @@ fn entity_timestamp_test() -> Result<(), DbErr> {
         ms: Set(ChronoUnixTimestampMillis(now)),
         tts: Set(TimeUnixTimestamp(time_now)),
         tms: Set(time_now.into()),
+        jts: Set(jiff_seconds.into()),
+        jms: Set(JiffUnixTimestampMillis(jiff_millis)),
     }
     .insert(db)?;
 
@@ -68,6 +74,8 @@ fn entity_timestamp_test() -> Result<(), DbErr> {
         log.tms.unix_timestamp_nanos() / 1_000_000,
         now.timestamp_millis() as i128
     );
+    assert_eq!(log.jts.as_second(), jiff_seconds.as_second());
+    assert_eq!(log.jms.as_millisecond(), jiff_millis.as_millisecond());
 
     #[derive(DerivePartialModel)]
     #[sea_orm(entity = "access_log::Entity")]
@@ -76,6 +84,8 @@ fn entity_timestamp_test() -> Result<(), DbErr> {
         ms: i64,
         tts: i64,
         tms: i64,
+        jts: i64,
+        jms: i64,
     }
 
     let log: AccessLog = access_log::Entity::find()
@@ -87,6 +97,8 @@ fn entity_timestamp_test() -> Result<(), DbErr> {
     assert_eq!(log.ms, now.timestamp_millis());
     assert_eq!(log.tts, now.timestamp());
     assert_eq!(log.tms, now.timestamp_millis());
+    assert_eq!(log.jts, jiff_seconds.as_second());
+    assert_eq!(log.jms, jiff_millis.as_millisecond());
 
     Ok(())
 }
