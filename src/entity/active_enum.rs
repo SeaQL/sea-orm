@@ -152,6 +152,18 @@ pub trait ActiveEnum: Sized + Iterable {
 pub trait ActiveEnumValue: Into<Value> + ValueType + Nullable + TryGetable {
     /// For getting an array of enum. Postgres only
     fn try_get_vec_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<Self>, TryGetError>;
+
+    /// Decode a nullable array of enum values. Postgres only.
+    fn try_get_vec_by_optional<I: ColIdx>(
+        res: &QueryResult,
+        index: I,
+    ) -> Result<Option<Vec<Self>>, TryGetError> {
+        match Self::try_get_vec_by(res, index) {
+            Ok(values) => Ok(Some(values)),
+            Err(TryGetError::Null(_)) => Ok(None),
+            Err(err) => Err(err),
+        }
+    }
 }
 
 macro_rules! impl_active_enum_value {
@@ -187,6 +199,18 @@ macro_rules! impl_active_enum_value_with_pg_array {
                     ctx: "ActiveEnumValue::try_get_vec_by (`postgres-array` not enabled)",
                 }))
             }
+
+            fn try_get_vec_by_optional<I: ColIdx>(
+                res: &QueryResult,
+                index: I,
+            ) -> Result<Option<Vec<Self>>, TryGetError> {
+                #[cfg(feature = "postgres-array")]
+                {
+                    <Vec<Self> as TryGetable>::try_get_by_optional(res, index)
+                }
+                #[cfg(not(feature = "postgres-array"))]
+                Self::try_get_vec_by(res, index).map(Some)
+            }
         }
     };
 }
@@ -212,6 +236,18 @@ impl TryGetable for sea_query::Enum {
             value: value.into(),
         })
     }
+
+    fn try_get_by_optional<I: ColIdx>(
+        res: &QueryResult,
+        idx: I,
+    ) -> Result<Option<Self>, TryGetError> {
+        Ok(
+            <String as TryGetable>::try_get_by_optional(res, idx)?.map(|value| Self {
+                type_name: "".into(),
+                value: value.into(),
+            }),
+        )
+    }
 }
 
 impl ActiveEnumValue for sea_query::Enum {
@@ -235,6 +271,28 @@ impl ActiveEnumValue for sea_query::Enum {
                 ctx: "ActiveEnumValue::try_get_vec_by (`postgres-array` not enabled)",
             }))
         }
+    }
+
+    fn try_get_vec_by_optional<I: ColIdx>(
+        res: &QueryResult,
+        index: I,
+    ) -> Result<Option<Vec<Self>>, TryGetError> {
+        #[cfg(feature = "postgres-array")]
+        {
+            Ok(
+                <Vec<String> as TryGetable>::try_get_by_optional(res, index)?.map(|values| {
+                    values
+                        .into_iter()
+                        .map(|value| Self {
+                            type_name: "".into(),
+                            value: value.into(),
+                        })
+                        .collect()
+                }),
+            )
+        }
+        #[cfg(not(feature = "postgres-array"))]
+        Self::try_get_vec_by(res, index).map(Some)
     }
 }
 

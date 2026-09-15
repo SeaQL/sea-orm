@@ -58,6 +58,18 @@ pub trait TryGetable: Sized {
     /// Decode the value at the column named or positioned by `index`.
     fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError>;
 
+    /// Get a value as an optional result.
+    fn try_get_by_optional<I: ColIdx>(
+        res: &QueryResult,
+        index: I,
+    ) -> Result<Option<Self>, TryGetError> {
+        match Self::try_get_by(res, index) {
+            Ok(value) => Ok(Some(value)),
+            Err(TryGetError::Null(_)) => Ok(None),
+            Err(err) => Err(err),
+        }
+    }
+
     /// Decode the value at column `{pre}{col}` — `pre` is the prefix used
     /// when nesting partial models or joining tables.
     fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
@@ -94,9 +106,84 @@ impl From<DbErr> for TryGetError {
 // QueryResult //
 
 impl QueryResult {
+    #[cfg(feature = "with-json")]
+    #[doc(hidden)]
+    #[allow(unused_variables, unreachable_code)]
+    pub fn try_get_from_json_optional<T, I>(&self, idx: I) -> Result<Option<T>, TryGetError>
+    where
+        T: for<'de> serde::Deserialize<'de>,
+        I: ColIdx,
+    {
+        match &self.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(row) => row
+                .try_get::<Option<sqlx::types::Json<T>>, _>(idx.as_sqlx_mysql_index())
+                .map_err(|e| sqlx_error_to_query_err(e).into())
+                .map(|opt| opt.map(|json| json.0)),
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => row
+                .try_get::<Option<sqlx::types::Json<T>>, _>(idx.as_sqlx_postgres_index())
+                .map_err(|e| sqlx_error_to_query_err(e).into())
+                .map(|opt| opt.map(|json| json.0)),
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(row) => row
+                .try_get::<Option<sqlx::types::Json<T>>, _>(idx.as_sqlx_sqlite_index())
+                .map_err(|e| sqlx_error_to_query_err(e).into())
+                .map(|opt| opt.map(|json| json.0)),
+            #[cfg(feature = "rusqlite")]
+            QueryResultRow::Rusqlite(row) => row
+                .try_get::<Option<serde_json::Value>, _>(idx)?
+                .map(serde_json::from_value)
+                .transpose()
+                .map_err(|e| crate::error::json_err(e).into()),
+            #[cfg(feature = "mock")]
+            QueryResultRow::Mock(row) => {
+                let json = match row.try_get::<serde_json::Value, I>(idx) {
+                    Ok(json) => json,
+                    Err(err) => {
+                        debug_print!("{:#?}", err.to_string());
+                        return Ok(None);
+                    }
+                };
+                serde_json::from_value(json)
+                    .map(Some)
+                    .map_err(|e| crate::error::json_err(e).into())
+            }
+            #[cfg(feature = "proxy")]
+            QueryResultRow::Proxy(row) => {
+                let json = match row.try_get::<serde_json::Value, I>(idx) {
+                    Ok(json) => json,
+                    Err(err) => {
+                        debug_print!("{:#?}", err.to_string());
+                        return Ok(None);
+                    }
+                };
+                serde_json::from_value(json)
+                    .map(Some)
+                    .map_err(|e| crate::error::json_err(e).into())
+            }
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        }
+    }
+
     #[doc(hidden)]
     #[cfg(feature = "sqlx-postgres")]
     pub fn try_get_from_sqlx_postgres<T, I>(&self, idx: I) -> Option<Result<T, TryGetError>>
+    where
+        T: sqlx::Type<sqlx::Postgres> + for<'r> sqlx::Decode<'r, sqlx::Postgres>,
+        I: ColIdx,
+    {
+        self.try_get_from_sqlx_postgres_optional(idx)
+            .map(|result| result.and_then(|value| value.ok_or_else(|| err_null_idx_col(idx))))
+    }
+
+    #[doc(hidden)]
+    #[cfg(feature = "sqlx-postgres")]
+    pub fn try_get_from_sqlx_postgres_optional<T, I>(
+        &self,
+        idx: I,
+    ) -> Option<Result<Option<T>, TryGetError>>
     where
         T: sqlx::Type<sqlx::Postgres> + for<'r> sqlx::Decode<'r, sqlx::Postgres>,
         I: ColIdx,
@@ -117,8 +204,7 @@ impl QueryResult {
 
                 Some(
                     row.try_get::<Option<T>, _>(idx.as_sqlx_postgres_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .map_err(|e| sqlx_error_to_query_err(e).into()),
                 )
             }
             _ => None,
@@ -305,8 +391,8 @@ impl Debug for QueryResultRow {
 
 impl<T: TryGetable> TryGetable for Option<T> {
     fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
-        match T::try_get_by(res, index) {
-            Ok(v) => Ok(Some(v)),
+        match T::try_get_by_optional(res, index) {
+            Ok(v) => Ok(v),
             Err(TryGetError::Null(_)) => Ok(None),
             #[cfg(feature = "sqlx-dep")]
             Err(TryGetError::DbErr(DbErr::Query(crate::RuntimeErr::SqlxError(err)))) => {
@@ -422,28 +508,30 @@ impl ColIdx for usize {
 macro_rules! try_getable_all {
     ( $type: ty ) => {
         impl TryGetable for $type {
-            #[allow(unused_variables)]
             fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+                Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+            }
+
+            #[allow(unused_variables)]
+            fn try_get_by_optional<I: ColIdx>(
+                res: &QueryResult,
+                idx: I,
+            ) -> Result<Option<Self>, TryGetError> {
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => row
                         .try_get::<Option<$type>, _>(idx.as_sqlx_mysql_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .map_err(|e| sqlx_error_to_query_err(e).into()),
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => row
                         .try_get::<Option<$type>, _>(idx.as_sqlx_postgres_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .map_err(|e| sqlx_error_to_query_err(e).into()),
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => row
                         .try_get::<Option<$type>, _>(idx.as_sqlx_sqlite_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .map_err(|e| sqlx_error_to_query_err(e).into()),
                     #[cfg(feature = "rusqlite")]
-                    QueryResultRow::Rusqlite(row) => row
-                        .try_get::<Option<$type>, _>(idx)
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                    QueryResultRow::Rusqlite(row) => row.try_get::<Option<$type>, _>(idx),
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
@@ -465,14 +553,20 @@ macro_rules! try_getable_all {
 macro_rules! try_getable_unsigned {
     ( $type: ty ) => {
         impl TryGetable for $type {
-            #[allow(unused_variables)]
             fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+                Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+            }
+
+            #[allow(unused_variables)]
+            fn try_get_by_optional<I: ColIdx>(
+                res: &QueryResult,
+                idx: I,
+            ) -> Result<Option<Self>, TryGetError> {
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => row
                         .try_get::<Option<$type>, _>(idx.as_sqlx_mysql_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .map_err(|e| sqlx_error_to_query_err(e).into()),
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => Err(type_err(format!(
                         "{} unsupported by sqlx-postgres",
@@ -482,12 +576,9 @@ macro_rules! try_getable_unsigned {
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => row
                         .try_get::<Option<$type>, _>(idx.as_sqlx_sqlite_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .map_err(|e| sqlx_error_to_query_err(e).into()),
                     #[cfg(feature = "rusqlite")]
-                    QueryResultRow::Rusqlite(row) => row
-                        .try_get::<Option<$type>, _>(idx)
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                    QueryResultRow::Rusqlite(row) => row.try_get::<Option<$type>, _>(idx),
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
@@ -509,14 +600,20 @@ macro_rules! try_getable_unsigned {
 macro_rules! try_getable_mysql {
     ( $type: ty ) => {
         impl TryGetable for $type {
-            #[allow(unused_variables)]
             fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+                Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+            }
+
+            #[allow(unused_variables)]
+            fn try_get_by_optional<I: ColIdx>(
+                res: &QueryResult,
+                idx: I,
+            ) -> Result<Option<Self>, TryGetError> {
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => row
                         .try_get::<Option<$type>, _>(idx.as_sqlx_mysql_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .map_err(|e| sqlx_error_to_query_err(e).into()),
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => Err(type_err(format!(
                         "{} unsupported by sqlx-postgres",
@@ -557,8 +654,15 @@ macro_rules! try_getable_mysql {
 macro_rules! try_getable_postgres {
     ( $type: ty ) => {
         impl TryGetable for $type {
-            #[allow(unused_variables)]
             fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+                Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+            }
+
+            #[allow(unused_variables)]
+            fn try_get_by_optional<I: ColIdx>(
+                res: &QueryResult,
+                idx: I,
+            ) -> Result<Option<Self>, TryGetError> {
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(_) => Err(type_err(format!(
@@ -569,8 +673,7 @@ macro_rules! try_getable_postgres {
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => row
                         .try_get::<Option<$type>, _>(idx.as_sqlx_postgres_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .map_err(|e| sqlx_error_to_query_err(e).into()),
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
                         "{} unsupported by sqlx-sqlite",
@@ -605,32 +708,35 @@ macro_rules! try_getable_postgres {
 macro_rules! try_getable_date_time {
     ( $type: ty ) => {
         impl TryGetable for $type {
-            #[allow(unused_variables)]
             fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+                Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+            }
+
+            #[allow(unused_variables)]
+            fn try_get_by_optional<I: ColIdx>(
+                res: &QueryResult,
+                idx: I,
+            ) -> Result<Option<Self>, TryGetError> {
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use chrono::{DateTime, Utc};
                         row.try_get::<Option<DateTime<Utc>>, _>(idx.as_sqlx_mysql_index())
                             .map_err(|e| sqlx_error_to_query_err(e).into())
-                            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
-                            .map(|v| v.into())
+                            .map(|opt| opt.map(Into::into))
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => row
                         .try_get::<Option<$type>, _>(idx.as_sqlx_postgres_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .map_err(|e| sqlx_error_to_query_err(e).into()),
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => row
                         .try_get::<Option<$type>, _>(idx.as_sqlx_sqlite_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .map_err(|e| sqlx_error_to_query_err(e).into()),
                     #[cfg(feature = "rusqlite")]
                     QueryResultRow::Rusqlite(row) => row
                         .try_get::<Option<$type>, _>(idx)
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
-                        .map(|v| v.into()),
+                        .map(|opt| opt.map(Into::into)),
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
@@ -699,26 +805,31 @@ use rust_decimal::Decimal;
 
 #[cfg(feature = "with-rust_decimal")]
 impl TryGetable for Decimal {
-    #[allow(unused_variables)]
     fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+    }
+
+    #[allow(unused_variables)]
+    fn try_get_by_optional<I: ColIdx>(
+        res: &QueryResult,
+        idx: I,
+    ) -> Result<Option<Self>, TryGetError> {
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => row
                 .try_get::<Option<Decimal>, _>(idx.as_sqlx_mysql_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                .map_err(|e| sqlx_error_to_query_err(e).into()),
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => row
                 .try_get::<Option<Decimal>, _>(idx.as_sqlx_postgres_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                .map_err(|e| sqlx_error_to_query_err(e).into()),
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => {
                 let val: Option<f64> = row
                     .try_get(idx.as_sqlx_sqlite_index())
                     .map_err(sqlx_error_to_query_err)?;
                 match val {
-                    Some(v) => Decimal::try_from(v).map_err(|e| {
+                    Some(v) => Decimal::try_from(v).map(Some).map_err(|e| {
                         DbErr::TryIntoErr {
                             from: "f64",
                             into: "Decimal",
@@ -726,14 +837,14 @@ impl TryGetable for Decimal {
                         }
                         .into()
                     }),
-                    None => Err(err_null_idx_col(idx)),
+                    None => Ok(None),
                 }
             }
             #[cfg(feature = "rusqlite")]
             QueryResultRow::Rusqlite(row) => {
                 let val: Option<f64> = row.try_get(idx)?;
                 match val {
-                    Some(v) => Decimal::try_from(v).map_err(|e| {
+                    Some(v) => Decimal::try_from(v).map(Some).map_err(|e| {
                         DbErr::TryIntoErr {
                             from: "f64",
                             into: "Decimal",
@@ -741,7 +852,7 @@ impl TryGetable for Decimal {
                         }
                         .into()
                     }),
-                    None => Err(err_null_idx_col(idx)),
+                    None => Ok(None),
                 }
             }
             #[cfg(feature = "mock")]
@@ -767,26 +878,31 @@ use bigdecimal::BigDecimal;
 
 #[cfg(feature = "with-bigdecimal")]
 impl TryGetable for BigDecimal {
-    #[allow(unused_variables)]
     fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+    }
+
+    #[allow(unused_variables)]
+    fn try_get_by_optional<I: ColIdx>(
+        res: &QueryResult,
+        idx: I,
+    ) -> Result<Option<Self>, TryGetError> {
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => row
                 .try_get::<Option<BigDecimal>, _>(idx.as_sqlx_mysql_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                .map_err(|e| sqlx_error_to_query_err(e).into()),
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => row
                 .try_get::<Option<BigDecimal>, _>(idx.as_sqlx_postgres_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                .map_err(|e| sqlx_error_to_query_err(e).into()),
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => {
                 let val: Option<f64> = row
                     .try_get(idx.as_sqlx_sqlite_index())
                     .map_err(sqlx_error_to_query_err)?;
                 match val {
-                    Some(v) => BigDecimal::try_from(v).map_err(|e| {
+                    Some(v) => BigDecimal::try_from(v).map(Some).map_err(|e| {
                         DbErr::TryIntoErr {
                             from: "f64",
                             into: "BigDecimal",
@@ -794,14 +910,14 @@ impl TryGetable for BigDecimal {
                         }
                         .into()
                     }),
-                    None => Err(err_null_idx_col(idx)),
+                    None => Ok(None),
                 }
             }
             #[cfg(feature = "rusqlite")]
             QueryResultRow::Rusqlite(row) => {
                 let val: Option<f64> = row.try_get(idx)?;
                 match val {
-                    Some(v) => BigDecimal::try_from(v).map_err(|e| {
+                    Some(v) => BigDecimal::try_from(v).map(Some).map_err(|e| {
                         DbErr::TryIntoErr {
                             from: "f64",
                             into: "BigDecimal",
@@ -809,7 +925,7 @@ impl TryGetable for BigDecimal {
                         }
                         .into()
                     }),
-                    None => Err(err_null_idx_col(idx)),
+                    None => Ok(None),
                 }
             }
             #[cfg(feature = "mock")]
@@ -836,30 +952,34 @@ macro_rules! try_getable_uuid {
         #[allow(unused_variables, unreachable_code)]
         impl TryGetable for $type {
             fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
-                let res: Result<uuid::Uuid, TryGetError> = match &res.row {
+                Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+            }
+
+            fn try_get_by_optional<I: ColIdx>(
+                res: &QueryResult,
+                idx: I,
+            ) -> Result<Option<Self>, TryGetError> {
+                let res: Result<Option<uuid::Uuid>, TryGetError> = match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => row
                         .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_mysql_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
+                        .map_err(|e| TryGetError::DbErr(sqlx_error_to_query_err(e)))
                         .or_else(|_| {
                             // MariaDB's UUID type stores UUIDs as hyphenated strings.
                             // reference: https://github.com/SeaQL/sea-orm/pull/2485
-                            row.try_get::<Option<Vec<u8>>, _>(idx.as_sqlx_mysql_index())
-                                .map_err(|e| sqlx_error_to_query_err(e).into())
-                                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
+                            let bytes: Option<Vec<u8>> = row
+                                .try_get(idx.as_sqlx_mysql_index())
+                                .map_err(sqlx_error_to_query_err)?;
+                            bytes
                                 .map(|bytes| {
-                                    String::from_utf8(bytes).map_err(|e| {
+                                    let string = String::from_utf8(bytes).map_err(|e| {
                                         DbErr::TryIntoErr {
                                             from: "Vec<u8>",
                                             into: "String",
                                             source: Arc::new(e),
                                         }
-                                        .into()
-                                    })
-                                })?
-                                .and_then(|s| {
-                                    uuid::Uuid::parse_str(&s).map_err(|e| {
+                                    })?;
+                                    uuid::Uuid::parse_str(&string).map_err(|e| {
                                         DbErr::TryIntoErr {
                                             from: "String",
                                             into: "uuid::Uuid",
@@ -868,37 +988,38 @@ macro_rules! try_getable_uuid {
                                         .into()
                                     })
                                 })
+                                .transpose()
                         }),
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => row
                         .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_postgres_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .map_err(|e| sqlx_error_to_query_err(e).into()),
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => row
                         .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_sqlite_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .map_err(|e| sqlx_error_to_query_err(e).into()),
                     #[cfg(feature = "rusqlite")]
-                    QueryResultRow::Rusqlite(row) => row
-                        .try_get::<Option<uuid::Uuid>, _>(idx)
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                    QueryResultRow::Rusqlite(row) => row.try_get::<Option<uuid::Uuid>, _>(idx),
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
-                    QueryResultRow::Mock(row) => row.try_get::<uuid::Uuid, _>(idx).map_err(|e| {
-                        debug_print!("{:#?}", e.to_string());
-                        err_null_idx_col(idx)
-                    }),
+                    QueryResultRow::Mock(row) => {
+                        row.try_get::<Option<uuid::Uuid>, _>(idx).map_err(|e| {
+                            debug_print!("{:#?}", e.to_string());
+                            err_null_idx_col(idx)
+                        })
+                    }
                     #[cfg(feature = "proxy")]
                     #[allow(unused_variables)]
-                    QueryResultRow::Proxy(row) => row.try_get::<uuid::Uuid, _>(idx).map_err(|e| {
-                        debug_print!("{:#?}", e.to_string());
-                        err_null_idx_col(idx)
-                    }),
+                    QueryResultRow::Proxy(row) => {
+                        row.try_get::<Option<uuid::Uuid>, _>(idx).map_err(|e| {
+                            debug_print!("{:#?}", e.to_string());
+                            err_null_idx_col(idx)
+                        })
+                    }
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
                 };
-                res.map($conversion_fn)
+                res.map(|opt| opt.map($conversion_fn))
             }
         }
     };
@@ -926,47 +1047,52 @@ try_getable_postgres!(ipnetwork::IpNetwork);
 try_getable_postgres!(mac_address::MacAddress);
 
 impl TryGetable for u32 {
-    #[allow(unused_variables)]
     fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+    }
+
+    #[allow(unused_variables)]
+    fn try_get_by_optional<I: ColIdx>(
+        res: &QueryResult,
+        idx: I,
+    ) -> Result<Option<Self>, TryGetError> {
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => row
                 .try_get::<Option<u32>, _>(idx.as_sqlx_mysql_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                .map_err(|e| sqlx_error_to_query_err(e).into()),
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => {
                 use sqlx::postgres::types::Oid;
                 // Since 0.6.0, SQLx has dropped direct mapping from PostgreSQL's OID to Rust's `u32`;
                 // Instead, `u32` was wrapped by a `sqlx::Oid`.
                 match row.try_get::<Option<Oid>, _>(idx.as_sqlx_postgres_index()) {
-                    Ok(opt) => opt.ok_or_else(|| err_null_idx_col(idx)).map(|oid| oid.0),
+                    Ok(opt) => Ok(opt.map(|oid| oid.0)),
                     Err(_) => row
                         // Integers are always signed in PostgreSQL, so we try to get an `i32` and convert it to `u32`.
-                        .try_get::<i32, _>(idx.as_sqlx_postgres_index())
+                        .try_get::<Option<i32>, _>(idx.as_sqlx_postgres_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .map(|v| {
-                            v.try_into().map_err(|e| {
-                                DbErr::TryIntoErr {
-                                    from: "i32",
-                                    into: "u32",
-                                    source: Arc::new(e),
-                                }
-                                .into()
+                        .and_then(|opt| {
+                            opt.map(|value| {
+                                value.try_into().map_err(|e| {
+                                    DbErr::TryIntoErr {
+                                        from: "i32",
+                                        into: "u32",
+                                        source: Arc::new(e),
+                                    }
+                                    .into()
+                                })
                             })
-                        })
-                        .and_then(|r| r),
+                            .transpose()
+                        }),
                 }
             }
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => row
                 .try_get::<Option<u32>, _>(idx.as_sqlx_sqlite_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                .map_err(|e| sqlx_error_to_query_err(e).into()),
             #[cfg(feature = "rusqlite")]
-            QueryResultRow::Rusqlite(row) => row
-                .try_get::<Option<u32>, _>(idx)
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+            QueryResultRow::Rusqlite(row) => row.try_get::<Option<u32>, _>(idx),
             #[cfg(feature = "mock")]
             #[allow(unused_variables)]
             QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
@@ -986,38 +1112,43 @@ impl TryGetable for u32 {
 }
 
 impl TryGetable for String {
-    #[allow(unused_variables)]
     fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+    }
+
+    #[allow(unused_variables)]
+    fn try_get_by_optional<I: ColIdx>(
+        res: &QueryResult,
+        idx: I,
+    ) -> Result<Option<Self>, TryGetError> {
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => row
                 .try_get::<Option<Vec<u8>>, _>(idx.as_sqlx_mysql_index())
                 .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
-                .map(|bytes| {
-                    String::from_utf8(bytes).map_err(|e| {
-                        DbErr::TryIntoErr {
-                            from: "Vec<u8>",
-                            into: "String",
-                            source: Arc::new(e),
-                        }
-                        .into()
+                .and_then(|opt| {
+                    opt.map(|bytes| {
+                        String::from_utf8(bytes).map_err(|e| {
+                            DbErr::TryIntoErr {
+                                from: "Vec<u8>",
+                                into: "String",
+                                source: Arc::new(e),
+                            }
+                            .into()
+                        })
                     })
-                })?,
+                    .transpose()
+                }),
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => row
                 .try_get::<Option<String>, _>(idx.as_sqlx_postgres_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                .map_err(|e| sqlx_error_to_query_err(e).into()),
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => row
                 .try_get::<Option<String>, _>(idx.as_sqlx_sqlite_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                .map_err(|e| sqlx_error_to_query_err(e).into()),
             #[cfg(feature = "rusqlite")]
-            QueryResultRow::Rusqlite(row) => row
-                .try_get::<Option<String>, _>(idx)
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+            QueryResultRow::Rusqlite(row) => row.try_get::<Option<String>, _>(idx),
             #[cfg(feature = "mock")]
             QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                 debug_print!("{:#?}", e.to_string());
@@ -1049,6 +1180,13 @@ mod postgres_array {
             #[allow(unused_variables)]
             impl TryGetable for Vec<$type> {
                 fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+                    Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+                }
+
+                fn try_get_by_optional<I: ColIdx>(
+                    res: &QueryResult,
+                    idx: I,
+                ) -> Result<Option<Self>, TryGetError> {
                     match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
                         QueryResultRow::SqlxMySql(_) => Err(type_err(format!(
@@ -1059,8 +1197,7 @@ mod postgres_array {
                         #[cfg(feature = "sqlx-postgres")]
                         QueryResultRow::SqlxPostgres(row) => row
                             .try_get::<Option<Vec<$type>>, _>(idx.as_sqlx_postgres_index())
-                            .map_err(|e| sqlx_error_to_query_err(e).into())
-                            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                            .map_err(|e| sqlx_error_to_query_err(e).into()),
                         #[cfg(feature = "sqlx-sqlite")]
                         QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
                             "{} unsupported by sqlx-sqlite",
@@ -1154,7 +1291,14 @@ mod postgres_array {
             #[allow(unused_variables, unreachable_code)]
             impl TryGetable for Vec<$type> {
                 fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
-                    let res: Result<Vec<uuid::Uuid>, TryGetError> = match &res.row {
+                    Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+                }
+
+                fn try_get_by_optional<I: ColIdx>(
+                    res: &QueryResult,
+                    idx: I,
+                ) -> Result<Option<Self>, TryGetError> {
+                    let res: Result<Option<Vec<uuid::Uuid>>, TryGetError> = match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
                         QueryResultRow::SqlxMySql(_) => Err(type_err(format!(
                             "{} unsupported by sqlx-mysql",
@@ -1164,8 +1308,7 @@ mod postgres_array {
                         #[cfg(feature = "sqlx-postgres")]
                         QueryResultRow::SqlxPostgres(row) => row
                             .try_get::<Option<Vec<uuid::Uuid>>, _>(idx.as_sqlx_postgres_index())
-                            .map_err(|e| sqlx_error_to_query_err(e).into())
-                            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                            .map_err(|e| sqlx_error_to_query_err(e).into()),
                         #[cfg(feature = "sqlx-sqlite")]
                         QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
                             "{} unsupported by sqlx-sqlite",
@@ -1180,14 +1323,14 @@ mod postgres_array {
                         .into()),
                         #[cfg(feature = "mock")]
                         QueryResultRow::Mock(row) => {
-                            row.try_get::<Vec<uuid::Uuid>, _>(idx).map_err(|e| {
+                            row.try_get::<Option<Vec<uuid::Uuid>>, _>(idx).map_err(|e| {
                                 debug_print!("{:#?}", e.to_string());
                                 err_null_idx_col(idx)
                             })
                         }
                         #[cfg(feature = "proxy")]
                         QueryResultRow::Proxy(row) => {
-                            row.try_get::<Vec<uuid::Uuid>, _>(idx).map_err(|e| {
+                            row.try_get::<Option<Vec<uuid::Uuid>>, _>(idx).map_err(|e| {
                                 debug_print!("{:#?}", e.to_string());
                                 err_null_idx_col(idx)
                             })
@@ -1195,7 +1338,7 @@ mod postgres_array {
                         #[allow(unreachable_patterns)]
                         _ => unreachable!(),
                     };
-                    res.map(|vec| vec.into_iter().map($conversion_fn).collect())
+                    res.map(|opt| opt.map(|vec| vec.into_iter().map($conversion_fn).collect()))
                 }
             }
         };
@@ -1217,8 +1360,15 @@ mod postgres_array {
     try_getable_postgres_array_uuid!(uuid::fmt::Urn, uuid::Uuid::urn);
 
     impl TryGetable for Vec<u32> {
-        #[allow(unused_variables)]
         fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+            Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+        }
+
+        #[allow(unused_variables)]
+        fn try_get_by_optional<I: ColIdx>(
+            res: &QueryResult,
+            idx: I,
+        ) -> Result<Option<Self>, TryGetError> {
             match &res.row {
                 #[cfg(feature = "sqlx-mysql")]
                 QueryResultRow::SqlxMySql(_) => {
@@ -1231,8 +1381,7 @@ mod postgres_array {
                     // Instead, `u32` was wrapped by a `sqlx::Oid`.
                     row.try_get::<Option<Vec<Oid>>, _>(idx.as_sqlx_postgres_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
-                        .map(|oids| oids.into_iter().map(|oid| oid.0).collect())
+                        .map(|opt| opt.map(|oids| oids.into_iter().map(|oid| oid.0).collect()))
                 }
                 #[cfg(feature = "sqlx-sqlite")]
                 QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
@@ -1265,8 +1414,15 @@ mod postgres_array {
 
 #[cfg(feature = "postgres-vector")]
 impl TryGetable for pgvector::Vector {
-    #[allow(unused_variables)]
     fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        Self::try_get_by_optional(res, idx)?.ok_or_else(|| err_null_idx_col(idx))
+    }
+
+    #[allow(unused_variables)]
+    fn try_get_by_optional<I: ColIdx>(
+        res: &QueryResult,
+        idx: I,
+    ) -> Result<Option<Self>, TryGetError> {
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(_) => {
@@ -1275,8 +1431,7 @@ impl TryGetable for pgvector::Vector {
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => row
                 .try_get::<Option<pgvector::Vector>, _>(idx.as_sqlx_postgres_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                .map_err(|e| sqlx_error_to_query_err(e).into()),
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(_) => {
                 Err(type_err("Vector unsupported by sqlx-sqlite").into())
@@ -1284,15 +1439,21 @@ impl TryGetable for pgvector::Vector {
             #[cfg(feature = "rusqlite")]
             QueryResultRow::Rusqlite(_) => Err(type_err("Vector unsupported by rusqlite").into()),
             #[cfg(feature = "mock")]
-            QueryResultRow::Mock(row) => row.try_get::<pgvector::Vector, _>(idx).map_err(|e| {
-                debug_print!("{:#?}", e.to_string());
-                err_null_idx_col(idx)
-            }),
+            QueryResultRow::Mock(row) => {
+                row.try_get::<Option<pgvector::Vector>, _>(idx)
+                    .map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        err_null_idx_col(idx)
+                    })
+            }
             #[cfg(feature = "proxy")]
-            QueryResultRow::Proxy(row) => row.try_get::<pgvector::Vector, _>(idx).map_err(|e| {
-                debug_print!("{:#?}", e.to_string());
-                err_null_idx_col(idx)
-            }),
+            QueryResultRow::Proxy(row) => {
+                row.try_get::<Option<pgvector::Vector>, _>(idx)
+                    .map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        err_null_idx_col(idx)
+                    })
+            }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -1469,6 +1630,18 @@ fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), Try
 pub trait TryGetableArray: Sized {
     /// Just a delegate
     fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<Self>, TryGetError>;
+
+    /// Decode a nullable array of values.
+    fn try_get_by_optional<I: ColIdx>(
+        res: &QueryResult,
+        index: I,
+    ) -> Result<Option<Vec<Self>>, TryGetError> {
+        match Self::try_get_by(res, index) {
+            Ok(values) => Ok(Some(values)),
+            Err(TryGetError::Null(_)) => Ok(None),
+            Err(err) => Err(err),
+        }
+    }
 }
 
 impl<T> TryGetable for Vec<T>
@@ -1477,6 +1650,13 @@ where
 {
     fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
         T::try_get_by(res, index)
+    }
+
+    fn try_get_by_optional<I: ColIdx>(
+        res: &QueryResult,
+        index: I,
+    ) -> Result<Option<Self>, TryGetError> {
+        T::try_get_by_optional(res, index)
     }
 }
 
@@ -1489,53 +1669,20 @@ where
     for<'de> Self: serde::Deserialize<'de>,
 {
     /// Get a JSON from the query result with prefixed column name
-    #[allow(unused_variables, unreachable_code)]
     fn try_get_from_json<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
-        match &res.row {
-            #[cfg(feature = "sqlx-mysql")]
-            QueryResultRow::SqlxMySql(row) => row
-                .try_get::<Option<sqlx::types::Json<Self>>, _>(idx.as_sqlx_mysql_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0)),
-            #[cfg(feature = "sqlx-postgres")]
-            QueryResultRow::SqlxPostgres(row) => row
-                .try_get::<Option<sqlx::types::Json<Self>>, _>(idx.as_sqlx_postgres_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0)),
-            #[cfg(feature = "sqlx-sqlite")]
-            QueryResultRow::SqlxSqlite(row) => row
-                .try_get::<Option<sqlx::types::Json<Self>>, _>(idx.as_sqlx_sqlite_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0)),
-            #[cfg(feature = "rusqlite")]
-            QueryResultRow::Rusqlite(row) => row
-                .try_get::<Option<serde_json::Value>, _>(idx)?
-                .ok_or_else(|| err_null_idx_col(idx))
-                .and_then(|json| {
-                    serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
-                }),
-            #[cfg(feature = "mock")]
-            QueryResultRow::Mock(row) => row
-                .try_get::<serde_json::Value, I>(idx)
-                .map_err(|e| {
-                    debug_print!("{:#?}", e.to_string());
-                    err_null_idx_col(idx)
-                })
-                .and_then(|json| {
-                    serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
-                }),
-            #[cfg(feature = "proxy")]
-            QueryResultRow::Proxy(row) => row
-                .try_get::<serde_json::Value, I>(idx)
-                .map_err(|e| {
-                    debug_print!("{:#?}", e.to_string());
-                    err_null_idx_col(idx)
-                })
-                .and_then(|json| {
-                    serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
-                }),
-            #[allow(unreachable_patterns)]
-            _ => unreachable!(),
+        res.try_get_from_json_optional(idx)?
+            .ok_or_else(|| err_null_idx_col(idx))
+    }
+
+    /// Decode a nullable JSON column, preserving custom decoders by default.
+    fn try_get_from_json_optional<I: ColIdx>(
+        res: &QueryResult,
+        idx: I,
+    ) -> Result<Option<Self>, TryGetError> {
+        match Self::try_get_from_json(res, idx) {
+            Ok(value) => Ok(Some(value)),
+            Err(TryGetError::Null(_)) => Ok(None),
+            Err(err) => Err(err),
         }
     }
 
@@ -1564,6 +1711,13 @@ where
     fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
         T::try_get_from_json(res, index)
     }
+
+    fn try_get_by_optional<I: ColIdx>(
+        res: &QueryResult,
+        index: I,
+    ) -> Result<Option<Self>, TryGetError> {
+        T::try_get_from_json_optional(res, index)
+    }
 }
 
 #[cfg(feature = "with-json")]
@@ -1573,6 +1727,15 @@ where
 {
     fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<T>, TryGetError> {
         T::from_json_vec(serde_json::Value::try_get_by(res, index)?)
+    }
+
+    fn try_get_by_optional<I: ColIdx>(
+        res: &QueryResult,
+        index: I,
+    ) -> Result<Option<Vec<T>>, TryGetError> {
+        serde_json::Value::try_get_by_optional(res, index)?
+            .map(T::from_json_vec)
+            .transpose()
     }
 }
 
@@ -1596,6 +1759,12 @@ where
     K: DeserializeOwned + Eq + Hash,
     V: DeserializeOwned,
 {
+    fn try_get_from_json_optional<I: ColIdx>(
+        res: &QueryResult,
+        idx: I,
+    ) -> Result<Option<Self>, TryGetError> {
+        res.try_get_from_json_optional(idx)
+    }
 }
 
 #[cfg(feature = "with-json")]
@@ -1604,6 +1773,12 @@ where
     K: DeserializeOwned + Ord,
     V: DeserializeOwned,
 {
+    fn try_get_from_json_optional<I: ColIdx>(
+        res: &QueryResult,
+        idx: I,
+    ) -> Result<Option<Self>, TryGetError> {
+        res.try_get_from_json_optional(idx)
+    }
 }
 
 macro_rules! try_from_u64_err {

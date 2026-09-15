@@ -13,7 +13,14 @@ pub fn expand_derive_from_json_query_result(ident: Ident) -> syn::Result<TokenSt
 
     Ok(quote!(
         #[automatically_derived]
-        impl sea_orm::TryGetableFromJson for #ident {}
+        impl sea_orm::TryGetableFromJson for #ident {
+            fn try_get_from_json_optional<I: sea_orm::ColIdx>(
+                res: &sea_orm::QueryResult,
+                idx: I,
+            ) -> std::result::Result<Option<Self>, sea_orm::TryGetError> {
+                res.try_get_from_json_optional(idx)
+            }
+        }
 
         #[automatically_derived]
         impl std::convert::From<#ident> for sea_orm::Value {
