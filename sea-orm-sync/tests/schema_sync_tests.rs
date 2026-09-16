@@ -473,3 +473,58 @@ fn pg_index_exists(db: &DatabaseConnection, table: &str, index: &str) -> Result<
     .try_get_by_index(0)
     .map_err(DbErr::from)
 }
+
+/// MySQL counterpart of [`test_sync_drop_unique_constraint`].
+///
+/// A column marked `#[sea_orm(unique)]` is synced, then the unique attribute is
+/// removed. The second sync must drop the index without error: MySQL only accepts
+/// `DROP INDEX <name> ON <table>`.
+#[sea_orm_macros::test]
+#[cfg(feature = "sqlx-mysql")]
+fn test_sync_drop_unique_index() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_sync_drop_unique_index");
+    let db = &ctx.db;
+
+    #[cfg(feature = "schema-sync")]
+    {
+        // First sync: creates the table with the unique index
+        db.get_schema_builder()
+            .register(order_v1::Entity)
+            .sync(db)?;
+
+        assert!(
+            mysql_index_exists(db, "sync_order", "ref_no")?,
+            "unique index should exist after first sync"
+        );
+
+        // Second sync: unique is removed — must not error on MySQL
+        db.get_schema_builder()
+            .register(order_v2::Entity)
+            .sync(db)?;
+
+        assert!(
+            !mysql_index_exists(db, "sync_order", "ref_no")?,
+            "unique index should be gone after second sync"
+        );
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "sqlx-mysql")]
+fn mysql_index_exists(db: &DatabaseConnection, table: &str, index: &str) -> Result<bool, DbErr> {
+    db.query_one(
+        Query::select()
+            .expr(Expr::cust("COUNT(*) > 0"))
+            .from(("information_schema", "statistics"))
+            .cond_where(
+                Condition::all()
+                    .add(Expr::cust("TABLE_SCHEMA = DATABASE()"))
+                    .add(Expr::col("TABLE_NAME").eq(table))
+                    .add(Expr::col("INDEX_NAME").eq(index)),
+            ),
+    )?
+    .unwrap()
+    .try_get_by_index(0)
+    .map_err(DbErr::from)
+}
