@@ -287,11 +287,19 @@ where
         self.apply_order_by();
         self.apply_filters()?;
 
-        let rows = db.query_all(&self.query)?;
-        let mut buffer = Vec::with_capacity(rows.len());
-        for row in rows.into_iter() {
-            buffer.push(S::from_raw_query_result(row)?);
-        }
+        #[cfg(not(feature = "sync"))]
+        let mut buffer = db
+            .query_rows(&self.query)?
+            .collect(S::from_raw_query_result)?;
+        #[cfg(feature = "sync")]
+        let mut buffer = {
+            let rows = db.query_all(&self.query)?;
+            let mut buffer = Vec::with_capacity(rows.len());
+            for row in rows.into_iter() {
+                buffer.push(S::from_raw_query_result(row)?);
+            }
+            buffer
+        };
         if self.is_result_reversed {
             buffer.reverse()
         }

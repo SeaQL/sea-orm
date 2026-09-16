@@ -2,6 +2,12 @@ use std::{future::Future, pin::Pin};
 
 #[cfg(feature = "stream")]
 use futures_util::Stream;
+#[cfg(not(feature = "sync"))]
+use futures_util::stream::{BoxStream, iter};
+#[cfg(not(feature = "sync"))]
+use futures_util::{Stream as RowStream, TryStreamExt};
+#[cfg(not(feature = "sync"))]
+use std::task::{Context, Poll};
 
 use crate::{
     DbBackend, DbErr, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError,
@@ -52,6 +58,29 @@ pub trait ConnectionTrait: Sync {
         self.query_all_raw(stmt).await
     }
 
+    /// Query rows for internal model collection.
+    #[cfg(not(feature = "sync"))]
+    #[doc(hidden)]
+    async fn query_rows_raw(&self, stmt: Statement) -> Result<crate::QueryRows<'_>, DbErr> {
+        let rows = self.query_all_raw(stmt).await?;
+        Ok(crate::QueryRows::new(Box::pin(iter(
+            rows.into_iter().map(Ok),
+        ))))
+    }
+
+    /// Query rows from a statement builder for internal model collection.
+    #[cfg(not(feature = "sync"))]
+    #[doc(hidden)]
+    async fn query_rows<S: StatementBuilder>(
+        &self,
+        stmt: &S,
+    ) -> Result<crate::QueryRows<'_>, DbErr> {
+        let rows = self.query_all(stmt).await?;
+        Ok(crate::QueryRows::new(Box::pin(iter(
+            rows.into_iter().map(Ok),
+        ))))
+    }
+
     /// Check if the connection supports `RETURNING` syntax on insert and update
     fn support_returning(&self) -> bool {
         let db_backend = self.get_database_backend();
@@ -61,6 +90,93 @@ pub trait ConnectionTrait: Sync {
     /// Check if the connection is a test connection for the Mock database
     fn is_mock_connection(&self) -> bool {
         false
+    }
+}
+
+#[cfg(not(feature = "sync"))]
+/// An internal row source for collecting and decoding a query.
+#[doc(hidden)]
+pub struct QueryRows<'a> {
+    rows: BoxStream<'a, Result<QueryResult, DbErr>>,
+}
+
+#[cfg(not(feature = "sync"))]
+impl std::fmt::Debug for QueryRows<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("QueryRows")
+    }
+}
+
+#[cfg(not(feature = "sync"))]
+impl<'a> QueryRows<'a> {
+    pub(crate) fn new(rows: BoxStream<'a, Result<QueryResult, DbErr>>) -> Self {
+        Self { rows }
+    }
+
+    pub(crate) fn with_span(self, span: tracing::Span) -> Self {
+        if span.is_disabled() {
+            return self;
+        }
+        Self::new(Box::pin(TracedRows {
+            rows: Some(self.rows),
+            span,
+        }))
+    }
+
+    pub(crate) async fn collect<T, F>(self, mut convert: F) -> Result<Vec<T>, DbErr>
+    where
+        F: FnMut(QueryResult) -> Result<T, DbErr>,
+    {
+        let mut rows = self.rows;
+        let mut result = Vec::new();
+        while let Some(row) = rows.try_next().await? {
+            result.push(convert(row)?);
+        }
+        Ok(result)
+    }
+}
+
+#[cfg(not(feature = "sync"))]
+struct TracedRows<'a> {
+    rows: Option<BoxStream<'a, Result<QueryResult, DbErr>>>,
+    // The span lifetime includes gaps between polls; database elapsed time is measured separately.
+    span: tracing::Span,
+}
+
+#[cfg(not(feature = "sync"))]
+impl RowStream for TracedRows<'_> {
+    type Item = Result<QueryResult, DbErr>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+        let _entered = this.span.enter();
+        let Some(rows) = &mut this.rows else {
+            return Poll::Ready(None);
+        };
+        let result = rows.as_mut().poll_next(cx);
+        match &result {
+            Poll::Ready(Some(Err(_))) | Poll::Ready(None) => {
+                #[cfg(feature = "tracing-spans")]
+                {
+                    let status = match &result {
+                        Poll::Ready(Some(Err(err))) => Err(err),
+                        _ => Ok(()),
+                    };
+                    super::tracing_spans::record_query_result(&this.span, &status);
+                }
+                this.rows.take();
+            }
+            _ => {}
+        }
+        result
+    }
+}
+
+#[cfg(not(feature = "sync"))]
+impl Drop for TracedRows<'_> {
+    fn drop(&mut self) {
+        let _entered = self.span.enter();
+        self.rows.take();
     }
 }
 

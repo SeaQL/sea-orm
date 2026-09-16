@@ -1,4 +1,6 @@
 use super::transaction::run_async_transaction_callback;
+#[cfg(not(feature = "sync"))]
+use crate::StatementBuilder;
 use crate::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
     ExecResult, IsolationLevel, QueryResult, Statement, TransactionError, TransactionOptions,
@@ -76,6 +78,24 @@ impl ConnectionTrait for DatabaseExecutor<'_> {
             DatabaseExecutor::Connection(conn) => conn.query_all_raw(stmt),
             DatabaseExecutor::Transaction(trans) => trans.query_all_raw(stmt),
             DatabaseExecutor::OwnedTransaction(trans) => trans.query_all_raw(stmt),
+        }
+    }
+
+    #[cfg(not(feature = "sync"))]
+    fn query_rows_raw(&self, stmt: Statement) -> Result<crate::QueryRows<'_>, DbErr> {
+        match self {
+            DatabaseExecutor::Connection(conn) => conn.query_rows_raw(stmt),
+            DatabaseExecutor::Transaction(trans) => trans.query_rows_raw(stmt),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.query_rows_raw(stmt),
+        }
+    }
+
+    #[cfg(not(feature = "sync"))]
+    fn query_rows<S: StatementBuilder>(&self, stmt: &S) -> Result<crate::QueryRows<'_>, DbErr> {
+        match self {
+            DatabaseExecutor::Connection(conn) => conn.query_rows(stmt),
+            DatabaseExecutor::Transaction(trans) => trans.query_rows(stmt),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.query_rows(stmt),
         }
     }
 }
