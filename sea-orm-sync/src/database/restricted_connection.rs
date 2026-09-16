@@ -88,6 +88,12 @@ impl ConnectionTrait for RestrictedConnection {
         self.user_can_run(stmt)?;
         self.conn.query_all(stmt)
     }
+
+    #[cfg(not(feature = "sync"))]
+    fn query_rows<S: StatementBuilder>(&self, stmt: &S) -> Result<crate::QueryRows<'_>, DbErr> {
+        self.user_can_run(stmt)?;
+        self.conn.query_rows(stmt)
+    }
 }
 
 impl ConnectionTrait for RestrictedTransaction {
@@ -132,6 +138,12 @@ impl ConnectionTrait for RestrictedTransaction {
     fn query_all<S: StatementBuilder>(&self, stmt: &S) -> Result<Vec<QueryResult>, DbErr> {
         self.user_can_run(stmt)?;
         self.conn.query_all(stmt)
+    }
+
+    #[cfg(not(feature = "sync"))]
+    fn query_rows<S: StatementBuilder>(&self, stmt: &S) -> Result<crate::QueryRows<'_>, DbErr> {
+        self.user_can_run(stmt)?;
+        self.conn.query_rows(stmt)
     }
 }
 

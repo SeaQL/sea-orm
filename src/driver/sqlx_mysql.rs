@@ -1,3 +1,4 @@
+use futures_util::TryStreamExt;
 use futures_util::lock::Mutex;
 use log::LevelFilter;
 use sea_query::Values;
@@ -198,9 +199,34 @@ impl SqlxMySqlPoolConnection {
         })
     }
 
+    pub(crate) fn query_rows(&self, stmt: Statement) -> crate::QueryRows<'static> {
+        let span = tracing::trace_span!("query_all", self = ?self);
+        let pool = self.pool.clone();
+        let metric_callback = self.metric_callback.clone();
+        let rows = async_stream::try_stream! {
+            debug_print!("{}", stmt);
+            let mut conn = pool.acquire().await.map_err(sqlx_conn_acquire_err)?;
+            let query = sqlx_query(&stmt);
+            let stream = query
+                .fetch(&mut *conn)
+                .map_ok(Into::into)
+                .map_err(sqlx_error_to_query_err);
+            let mut stream = crate::database::stream::metric::MetricStream::new(
+                &metric_callback,
+                &stmt,
+                Some(std::time::Duration::ZERO),
+                stream,
+            );
+            while let Some(row) = stream.try_next().await? {
+                yield row;
+            }
+        };
+        crate::QueryRows::new(Box::pin(rows)).with_span(span)
+    }
+
     /// Stream the results of executing a SQL query
-    #[instrument(level = "trace", skip(stmt))]
     #[cfg(feature = "stream")]
+    #[instrument(level = "trace", name = "stream", skip(stmt))]
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
@@ -345,7 +371,7 @@ impl
         PoolConnection<sqlx::MySql>,
         Statement,
         Option<crate::metric::Callback>,
-    )> for crate::QueryStream
+    )> for QueryStream
 {
     fn from(
         (conn, stmt, metric_callback): (
@@ -354,7 +380,7 @@ impl
             Option<crate::metric::Callback>,
         ),
     ) -> Self {
-        crate::QueryStream::build(stmt, crate::InnerConnection::MySql(conn), metric_callback)
+        QueryStream::build(stmt, crate::InnerConnection::MySql(conn), metric_callback)
     }
 }
 
