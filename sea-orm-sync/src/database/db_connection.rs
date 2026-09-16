@@ -4,6 +4,10 @@ use crate::{
     Schema, SchemaBuilder, Statement, StatementBuilder, TransactionError, TransactionOptions,
     TransactionTrait, error::*,
 };
+#[cfg(all(feature = "stream", not(feature = "sync")))]
+use futures_util::stream::BoxStream;
+#[cfg(not(feature = "sync"))]
+use futures_util::stream::iter;
 use std::fmt::Debug;
 use tracing::instrument;
 use url::Url;
@@ -297,6 +301,89 @@ impl ConnectionTrait for DatabaseConnection {
                 ..
             }
         )
+    }
+
+    #[cfg(not(feature = "sync"))]
+    fn query_rows_raw(&self, stmt: Statement) -> Result<crate::QueryRows<'_>, DbErr> {
+        match &self.inner {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => {
+                #[cfg(feature = "tracing-spans")]
+                let span = self.query_all_span(&stmt);
+                let rows = conn.query_rows(stmt);
+                #[cfg(feature = "tracing-spans")]
+                let rows = rows.with_span(span);
+                Ok(rows)
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => {
+                #[cfg(feature = "tracing-spans")]
+                let span = self.query_all_span(&stmt);
+                let rows = conn.query_rows(stmt);
+                #[cfg(feature = "tracing-spans")]
+                let rows = rows.with_span(span);
+                Ok(rows)
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
+                #[cfg(feature = "tracing-spans")]
+                let span = self.query_all_span(&stmt);
+                let rows = conn.query_rows(stmt);
+                #[cfg(feature = "tracing-spans")]
+                let rows = rows.with_span(span);
+                Ok(rows)
+            }
+            _ => {
+                let rows = self.query_all_raw(stmt)?;
+                Ok(crate::QueryRows::new(Box::new(iter(
+                    rows.into_iter().map(Ok),
+                ))))
+            }
+        }
+    }
+
+    #[cfg(not(feature = "sync"))]
+    fn query_rows<S: StatementBuilder>(&self, stmt: &S) -> Result<crate::QueryRows<'_>, DbErr> {
+        self.query_rows_raw(self.get_database_backend().build(stmt))
+    }
+
+    #[cfg(all(feature = "stream", not(feature = "sync")))]
+    fn query_stream_raw(
+        &self,
+        stmt: Statement,
+    ) -> Result<BoxStream<'_, Result<QueryResult, DbErr>>, DbErr> {
+        match &self.inner {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnectionType::SqlxMySqlPoolConnection(conn) => {
+                return Ok(Box::new(conn.stream_rows(stmt)?));
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnectionType::SqlxPostgresPoolConnection(conn) => {
+                return Ok(Box::new(conn.stream_rows(stmt)?));
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnectionType::SqlxSqlitePoolConnection(conn) => {
+                return Ok(Box::new(conn.stream_rows(stmt)?));
+            }
+            #[cfg(feature = "rusqlite")]
+            DatabaseConnectionType::RusqliteSharedConnection(_) => {}
+            #[cfg(feature = "mock")]
+            DatabaseConnectionType::MockDatabaseConnection(_) => {}
+            #[cfg(feature = "proxy")]
+            DatabaseConnectionType::ProxyDatabaseConnection(_) => {}
+            DatabaseConnectionType::Disconnected => {}
+        }
+
+        let rows = self.query_all_raw(stmt)?;
+        Ok(Box::new(iter(rows.into_iter().map(Ok))))
+    }
+
+    #[cfg(all(feature = "stream", not(feature = "sync")))]
+    fn query_stream<S: StatementBuilder>(
+        &self,
+        stmt: &S,
+    ) -> Result<BoxStream<'_, Result<QueryResult, DbErr>>, DbErr> {
+        self.query_stream_raw(self.get_database_backend().build(stmt))
     }
 }
 
@@ -635,6 +722,19 @@ impl DatabaseConnection {
             .begin_with_config(isolation_level, access_mode)
             .map_err(TransactionError::Connection)?;
         run_async_transaction_callback(transaction, callback)
+    }
+
+    #[cfg(all(feature = "tracing-spans", not(feature = "sync")))]
+    fn query_all_span(&self, stmt: &Statement) -> tracing::Span {
+        let span = super::tracing_spans::db_span!(
+            "sea_orm.query_all",
+            self.get_database_backend(),
+            stmt.sql.as_str()
+        );
+        if self.get_record_stmt_in_spans() {
+            span.record("db.statement", stmt.sql.as_str());
+        }
+        span
     }
 
     #[allow(unused)]

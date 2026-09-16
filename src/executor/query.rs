@@ -669,12 +669,9 @@ macro_rules! try_getable_date_time {
                         .try_get::<Option<$type>, _>(idx.as_sqlx_postgres_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into()),
                     #[cfg(feature = "sqlx-sqlite")]
-                    QueryResultRow::SqlxSqlite(row) => {
-                        use chrono::{DateTime, Utc};
-                        row.try_get::<Option<DateTime<Utc>>, _>(idx.as_sqlx_sqlite_index())
-                            .map_err(|e| sqlx_error_to_query_err(e).into())
-                            .map(|opt| opt.map(Into::into))
-                    }
+                    QueryResultRow::SqlxSqlite(row) => row
+                        .try_get::<Option<$type>, _>(idx.as_sqlx_sqlite_index())
+                        .map_err(|e| sqlx_error_to_query_err(e).into()),
                     #[cfg(feature = "rusqlite")]
                     QueryResultRow::Rusqlite(row) => row
                         .try_get::<Option<$type>, _>(idx)

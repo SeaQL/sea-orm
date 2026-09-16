@@ -13,6 +13,7 @@ pub use crate::StreamTrait;
 #[cfg(feature = "stream")]
 use futures_util::{Stream, TryStreamExt};
 
+#[cfg(feature = "sync")]
 use itertools::Itertools;
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
@@ -896,11 +897,21 @@ where
     where
         C: ConnectionTrait,
     {
-        db.query_all(&self.query)
-            .await?
-            .into_iter()
-            .map(|row| S::from_raw_query_result(row))
-            .try_collect()
+        #[cfg(not(feature = "sync"))]
+        {
+            db.query_rows(&self.query)
+                .await?
+                .collect(S::from_raw_query_result)
+                .await
+        }
+        #[cfg(feature = "sync")]
+        {
+            db.query_all(&self.query)
+                .await?
+                .into_iter()
+                .map(|row| S::from_raw_query_result(row))
+                .try_collect()
+        }
     }
 
     /// Stream the results of the Select operation
@@ -1190,11 +1201,21 @@ where
     where
         C: ConnectionTrait,
     {
-        db.query_all_raw(self.stmt)
-            .await?
-            .into_iter()
-            .map(|row| S::from_raw_query_result(row))
-            .try_collect()
+        #[cfg(not(feature = "sync"))]
+        {
+            db.query_rows_raw(self.stmt)
+                .await?
+                .collect(S::from_raw_query_result)
+                .await
+        }
+        #[cfg(feature = "sync")]
+        {
+            db.query_all_raw(self.stmt)
+                .await?
+                .into_iter()
+                .map(|row| S::from_raw_query_result(row))
+                .try_collect()
+        }
     }
 
     /// Stream the results of the Select operation

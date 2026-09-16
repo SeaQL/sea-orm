@@ -8,6 +8,8 @@ use sqlx_core::sql_str::SqlSafeStr;
 use sqlx_core::transaction::TransactionManager;
 use tracing::instrument;
 
+#[cfg(not(feature = "sync"))]
+use crate::StatementBuilder;
 use crate::{
     AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, IsolationLevel,
     QueryResult, SqliteTransactionMode, Statement, TransactionOptions, TransactionSession,
@@ -15,6 +17,16 @@ use crate::{
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
+#[cfg(feature = "sqlx-dep")]
+use futures_util::TryStreamExt;
+#[cfg(all(feature = "stream", not(feature = "sync")))]
+use futures_util::stream::BoxStream;
+#[cfg(all(
+    feature = "stream",
+    not(feature = "sync"),
+    any(feature = "mock", feature = "proxy", feature = "rusqlite")
+))]
+use futures_util::stream::iter;
 
 #[cfg(feature = "stream")]
 use crate::{StreamTrait, TransactionStream};
@@ -655,6 +667,185 @@ impl ConnectionTrait for DatabaseTransaction {
                 }
             }
         )
+    }
+
+    #[cfg(not(feature = "sync"))]
+    async fn query_rows_raw(&self, stmt: Statement) -> Result<crate::QueryRows<'_>, DbErr> {
+        #[cfg(not(any(
+            feature = "sqlx-mysql",
+            feature = "sqlx-postgres",
+            feature = "sqlx-sqlite",
+            feature = "rusqlite",
+            feature = "mock",
+            feature = "proxy"
+        )))]
+        let _ = &stmt;
+        #[cfg(feature = "tracing-spans")]
+        let span = {
+            let span = super::tracing_spans::db_span!(
+                "sea_orm.query_all",
+                self.backend,
+                stmt.sql.as_str()
+            );
+            if self.record_stmt_in_spans {
+                span.record("db.statement", stmt.sql.as_str());
+            }
+            span
+        };
+
+        #[cfg(any(
+            feature = "sqlx-mysql",
+            feature = "sqlx-postgres",
+            feature = "sqlx-sqlite",
+            feature = "rusqlite"
+        ))]
+        let metric_callback = self.metric_callback.clone();
+        let rows = async_stream::try_stream! {
+            debug_print!("{}", stmt);
+            let mut guard = self.conn.lock().await;
+            match &mut *guard {
+                #[cfg(feature = "sqlx-mysql")]
+                InnerConnection::MySql(conn) => {
+                    let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
+                    let conn: &mut sqlx::MySqlConnection = &mut *conn;
+                    let stream = query.fetch(conn).map_ok(Into::into).map_err(sqlx_error_to_query_err);
+                    let mut stream = super::stream::metric::MetricStream::new(
+                        &metric_callback,
+                        &stmt,
+                        Some(std::time::Duration::ZERO),
+                        stream,
+                    );
+                    while let Some(row) = stream.try_next().await? {
+                        yield row;
+                    }
+                }
+                #[cfg(feature = "sqlx-postgres")]
+                InnerConnection::Postgres(conn) => {
+                    let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
+                    let conn: &mut sqlx::PgConnection = &mut *conn;
+                    let stream = query.fetch(conn).map_ok(Into::into).map_err(sqlx_error_to_query_err);
+                    let mut stream = super::stream::metric::MetricStream::new(
+                        &metric_callback,
+                        &stmt,
+                        Some(std::time::Duration::ZERO),
+                        stream,
+                    );
+                    while let Some(row) = stream.try_next().await? {
+                        yield row;
+                    }
+                }
+                #[cfg(feature = "sqlx-sqlite")]
+                InnerConnection::Sqlite(conn) => {
+                    let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
+                    let conn: &mut sqlx::SqliteConnection = &mut *conn;
+                    let stream = query.fetch(conn).map_ok(Into::into).map_err(sqlx_error_to_query_err);
+                    let mut stream = super::stream::metric::MetricStream::new(
+                        &metric_callback,
+                        &stmt,
+                        Some(std::time::Duration::ZERO),
+                        stream,
+                    );
+                    while let Some(row) = stream.try_next().await? {
+                        yield row;
+                    }
+                }
+                #[cfg(feature = "rusqlite")]
+                InnerConnection::Rusqlite(conn) => {
+                    for row in conn.query_all(stmt, &metric_callback)? {
+                        yield row;
+                    }
+                }
+                #[cfg(feature = "mock")]
+                InnerConnection::Mock(conn) => {
+                    for row in conn.query_all(stmt)? {
+                        yield row;
+                    }
+                }
+                #[cfg(feature = "proxy")]
+                InnerConnection::Proxy(conn) => {
+                    for row in conn.query_all(stmt).await? {
+                        yield row;
+                    }
+                }
+                #[allow(unreachable_patterns)]
+                _ => Err::<(), DbErr>(conn_err("Disconnected"))?,
+            }
+        };
+        let rows = crate::QueryRows::new(Box::pin(rows));
+        #[cfg(feature = "tracing-spans")]
+        let rows = rows.with_span(span);
+        Ok(rows)
+    }
+
+    #[cfg(not(feature = "sync"))]
+    async fn query_rows<S: StatementBuilder>(
+        &self,
+        stmt: &S,
+    ) -> Result<crate::QueryRows<'_>, DbErr> {
+        self.query_rows_raw(self.backend.build(stmt)).await
+    }
+
+    #[cfg(all(feature = "stream", not(feature = "sync")))]
+    async fn query_stream_raw(
+        &self,
+        stmt: Statement,
+    ) -> Result<BoxStream<'_, Result<QueryResult, DbErr>>, DbErr> {
+        let conn = self.conn.lock().await;
+        match &*conn {
+            #[cfg(feature = "mock")]
+            InnerConnection::Mock(conn) => {
+                let rows = conn.query_all(stmt)?;
+                Ok(Box::pin(iter(rows.into_iter().map(Ok))))
+            }
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(conn) => {
+                let rows = conn.query_all(stmt).await?;
+                Ok(Box::pin(iter(rows.into_iter().map(Ok))))
+            }
+            #[cfg(feature = "rusqlite")]
+            InnerConnection::Rusqlite(conn) => {
+                let rows = conn.query_all(stmt, &self.metric_callback)?;
+                Ok(Box::pin(iter(rows.into_iter().map(Ok))))
+            }
+            #[cfg(feature = "sqlx-mysql")]
+            InnerConnection::MySql(_) => Ok(Box::pin(TransactionStream::build(
+                conn,
+                stmt,
+                self.metric_callback.clone(),
+            ))),
+            #[cfg(feature = "sqlx-postgres")]
+            InnerConnection::Postgres(_) => Ok(Box::pin(TransactionStream::build(
+                conn,
+                stmt,
+                self.metric_callback.clone(),
+            ))),
+            #[cfg(feature = "sqlx-sqlite")]
+            InnerConnection::Sqlite(_) => Ok(Box::pin(TransactionStream::build(
+                conn,
+                stmt,
+                self.metric_callback.clone(),
+            ))),
+            #[cfg(not(any(
+                feature = "sqlx-mysql",
+                feature = "sqlx-postgres",
+                feature = "sqlx-sqlite",
+                feature = "rusqlite",
+                feature = "mock",
+                feature = "proxy",
+            )))]
+            _ => {
+                let _ = stmt;
+                Err(conn_err("Disconnected"))
+            }
+        }
+    }
+
+    #[cfg(all(feature = "stream", not(feature = "sync")))]
+    async fn query_stream<S: StatementBuilder>(
+        &self,
+        stmt: &S,
+    ) -> Result<BoxStream<'_, Result<QueryResult, DbErr>>, DbErr> {
+        self.query_stream_raw(self.backend.build(stmt)).await
     }
 }
 

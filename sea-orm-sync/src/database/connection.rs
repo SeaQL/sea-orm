@@ -1,3 +1,8 @@
+#[cfg(not(feature = "sync"))]
+use futures_util::TryStreamExt;
+#[cfg(not(feature = "sync"))]
+use futures_util::stream::{BoxStream, iter};
+
 use crate::{
     DbBackend, DbErr, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError,
 };
@@ -46,6 +51,45 @@ pub trait ConnectionTrait {
         self.query_all_raw(stmt)
     }
 
+    /// Query rows for internal model collection.
+    #[cfg(not(feature = "sync"))]
+    #[doc(hidden)]
+    fn query_rows_raw(&self, stmt: Statement) -> Result<crate::QueryRows<'_>, DbErr> {
+        let rows = self.query_all_raw(stmt)?;
+        Ok(crate::QueryRows::new(Box::new(iter(
+            rows.into_iter().map(Ok),
+        ))))
+    }
+
+    /// Query rows from a statement builder for internal model collection.
+    #[cfg(not(feature = "sync"))]
+    #[doc(hidden)]
+    fn query_rows<S: StatementBuilder>(&self, stmt: &S) -> Result<crate::QueryRows<'_>, DbErr> {
+        let rows = self.query_all(stmt)?;
+        Ok(crate::QueryRows::new(Box::new(iter(
+            rows.into_iter().map(Ok),
+        ))))
+    }
+
+    /// Execute a [Statement] and return a stream of `QueryResult`
+    #[cfg(all(feature = "stream", not(feature = "sync")))]
+    fn query_stream_raw(
+        &self,
+        stmt: Statement,
+    ) -> Result<BoxStream<'_, Result<QueryResult, DbErr>>, DbErr> {
+        let rows = self.query_all_raw(stmt)?;
+        Ok(Box::new(iter(rows.into_iter().map(Ok))))
+    }
+
+    /// Execute a [`StatementBuilder`] and return a stream of `QueryResult`
+    #[cfg(all(feature = "stream", not(feature = "sync")))]
+    fn query_stream<S: StatementBuilder>(
+        &self,
+        stmt: &S,
+    ) -> Result<BoxStream<'_, Result<QueryResult, DbErr>>, DbErr> {
+        self.query_stream_raw(self.get_database_backend().build(stmt))
+    }
+
     /// Check if the connection supports `RETURNING` syntax on insert and update
     fn support_returning(&self) -> bool {
         let db_backend = self.get_database_backend();
@@ -55,6 +99,66 @@ pub trait ConnectionTrait {
     /// Check if the connection is a test connection for the Mock database
     fn is_mock_connection(&self) -> bool {
         false
+    }
+}
+
+#[cfg(not(feature = "sync"))]
+/// An internal row source for collecting and decoding a query.
+#[doc(hidden)]
+pub struct QueryRows<'a> {
+    rows: BoxStream<'a, Result<QueryResult, DbErr>>,
+    #[cfg(feature = "tracing-spans")]
+    span: tracing::Span,
+}
+
+#[cfg(not(feature = "sync"))]
+impl std::fmt::Debug for QueryRows<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("QueryRows")
+    }
+}
+
+#[cfg(not(feature = "sync"))]
+impl<'a> QueryRows<'a> {
+    pub(crate) fn new(rows: BoxStream<'a, Result<QueryResult, DbErr>>) -> Self {
+        Self {
+            rows,
+            #[cfg(feature = "tracing-spans")]
+            span: tracing::Span::none(),
+        }
+    }
+
+    #[cfg(feature = "tracing-spans")]
+    pub(crate) fn with_span(mut self, span: tracing::Span) -> Self {
+        self.span = span;
+        self
+    }
+
+    pub(crate) fn collect<T, F>(self, mut convert: F) -> Result<Vec<T>, DbErr>
+    where
+        F: FnMut(QueryResult) -> Result<T, DbErr>,
+    {
+        let mut rows = self.rows;
+        let collect = {
+            let mut result = Vec::new();
+            while let Some(row) = rows.try_next()? {
+                result.push(convert(row)?);
+            }
+            Ok(result)
+        };
+
+        #[cfg(feature = "tracing-spans")]
+        {
+            use tracing::Instrument;
+
+            let result = collect.instrument(self.span.clone());
+            crate::database::tracing_spans::record_query_result(&self.span, &result);
+            result
+        }
+        #[cfg(not(feature = "tracing-spans"))]
+        {
+            collect
+        }
     }
 }
 
