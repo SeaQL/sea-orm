@@ -1,6 +1,7 @@
 use crate::{EntityTrait, QuerySelect, RelationDef, Select, join_tbl_on_condition};
 use sea_query::{
-    Alias, CommonTableExpression, Condition, IntoIden, IntoTableRef, JoinType, UnionType,
+    Alias, CommonTableExpression, Condition, ConditionType, IntoIden, IntoTableRef, JoinType,
+    UnionType,
 };
 
 /// One hop in a multi-hop [`Linked`] chain. Alias for [`RelationDef`].
@@ -45,7 +46,11 @@ where
         };
         let table_ref = rel.from_tbl;
 
-        let mut condition = Condition::all().add(join_tbl_on_condition(
+        let mut condition = match rel.condition_type {
+            ConditionType::All => Condition::all(),
+            ConditionType::Any => Condition::any(),
+        };
+        condition = condition.add(join_tbl_on_condition(
             from_tbl.clone(),
             to_tbl.clone(),
             rel.from_col,

@@ -4,7 +4,7 @@ use crate::{
     TopologyChain, TopologyStar, find_linked_recursive, join_tbl_on_condition,
 };
 pub use sea_query::JoinType;
-use sea_query::{Condition, Expr, IntoCondition, IntoIden, SelectExpr};
+use sea_query::{Condition, ConditionType, Expr, IntoCondition, IntoIden, SelectExpr};
 
 impl<E> Select<E>
 where
@@ -116,7 +116,11 @@ where
             };
             let table_ref = rel.to_tbl;
 
-            let mut condition = Condition::all().add(join_tbl_on_condition(
+            let mut condition = match rel.condition_type {
+                ConditionType::All => Condition::all(),
+                ConditionType::Any => Condition::any(),
+            };
+            condition = condition.add(join_tbl_on_condition(
                 from_tbl.clone(),
                 to_tbl.clone(),
                 rel.from_col,
@@ -834,6 +838,66 @@ mod tests {
                 r"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`",
                 r"LEFT JOIN `cake_filling` AS `r2` ON `cake`.`id` = `r2`.`cake_id`",
                 r"LEFT JOIN `filling` AS `r3` ON `r2`.`filling_id` = `r3`.`id`",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[derive(Debug)]
+    struct CakeToOrTropicalFruit;
+
+    impl crate::Linked for CakeToOrTropicalFruit {
+        type FromEntity = cake_compact::Entity;
+
+        type ToEntity = fruit::Entity;
+
+        fn link(&self) -> Vec<crate::LinkDef> {
+            vec![
+                cake_compact::Relation::Fruit
+                    .def()
+                    .condition_type(ConditionType::Any)
+                    .on_condition(|_left, right| {
+                        Expr::col((right, fruit::Column::Name))
+                            .like("%tropical%")
+                            .into_condition()
+                    }),
+            ]
+        }
+    }
+
+    #[test]
+    fn left_join_linked_respects_condition_type() {
+        assert_eq!(
+            cake_compact::Entity::find()
+                .left_join_linked(CakeToOrTropicalFruit)
+                .select_only()
+                .column(cake_compact::Column::Id)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                r"SELECT `cake`.`id` FROM `cake`",
+                r"LEFT JOIN `fruit` AS `r0` ON `cake`.`id` = `r0`.`cake_id` OR `r0`.`name` LIKE '%tropical%'",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn find_linked_respects_condition_type() {
+        let cake_model = cake_compact::Model {
+            id: 18,
+            name: "".to_owned(),
+        };
+
+        assert_eq!(
+            cake_model
+                .find_linked(CakeToOrTropicalFruit)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                r"SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
+                r"INNER JOIN `cake` AS `r0` ON `r0`.`id` = `fruit`.`cake_id` OR `fruit`.`name` LIKE '%tropical%'",
+                r"WHERE `r0`.`id` = 18",
             ]
             .join(" ")
         );
