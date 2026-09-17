@@ -1953,6 +1953,86 @@ mod tests {
     }
 
     #[test]
+    fn test_citext_columns_are_not_ignored() {
+        // Regression test for #3168: `generate entity` used to emit
+        // `#[sea_orm(ignore, ...)]` on citext columns, which removed the
+        // matching `Column` variant and broke compilation whenever citext was
+        // used as a primary key.
+        let citext_column = |name: &str, unique: bool| Column {
+            name: name.to_owned(),
+            col_type: ColumnType::Custom(SeaRc::new(Alias::new("citext"))),
+            auto_increment: false,
+            not_null: true,
+            unique,
+            unique_key: None,
+        };
+        let generate_body = |entity: &Entity| {
+            EntityWriter::gen_compact_code_blocks(
+                entity,
+                &WithSerde::None,
+                &default_column_option(),
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &TokenStream::new(),
+                false,
+                true,
+            )
+            .into_iter()
+            .skip(1)
+            .fold(TokenStream::new(), |mut acc, tok| {
+                acc.extend(tok);
+                acc
+            })
+            .to_string()
+        };
+
+        // citext as a regular column: the exact documented attribute string.
+        let entity = Entity {
+            table_name: "demo".to_owned(),
+            columns: vec![
+                Column {
+                    name: "id".to_owned(),
+                    col_type: ColumnType::Integer,
+                    auto_increment: true,
+                    not_null: true,
+                    unique: false,
+                    unique_key: None,
+                },
+                citext_column("handle", true),
+            ],
+            relations: vec![],
+            conjunct_relations: vec![],
+            primary_keys: vec![PrimaryKey {
+                name: "id".to_owned(),
+            }],
+        };
+        let body = generate_body(&entity);
+        assert!(body.contains(
+            r#"column_type = "custom(\"citext\")" , select_as = "text" , save_as = "citext" , unique"#
+        ));
+        assert!(!body.contains("ignore"));
+
+        // citext as the primary key must still produce a usable Column variant.
+        let entity = Entity {
+            table_name: "demo_pk".to_owned(),
+            columns: vec![citext_column("domain", false)],
+            relations: vec![],
+            conjunct_relations: vec![],
+            primary_keys: vec![PrimaryKey {
+                name: "domain".to_owned(),
+            }],
+        };
+        let body = generate_body(&entity);
+        assert!(body.contains(
+            r#"primary_key , auto_increment = false , column_type = "custom(\"citext\")" , select_as = "text" , save_as = "citext""#
+        ));
+        assert!(!body.contains("ignore"));
+    }
+
+    #[test]
     fn test_gen_expanded_code_blocks() -> io::Result<()> {
         let entities = setup();
         const ENTITY_FILES: [&str; 14] = [
