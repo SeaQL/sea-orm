@@ -204,6 +204,9 @@ pub fn expand_derive_entity_model(
                     let mut ignore = false;
                     let mut unique = false;
                     let mut sql_type = None;
+                    // (DbBackend variant ident, column type tokens) pairs collected
+                    // from column_type_mysql / column_type_postgres / column_type_sqlite
+                    let mut sql_type_overrides: Vec<(Ident, TokenStream)> = Vec::new();
                     let mut enum_name = None;
                     let mut is_primary_key = false;
                     let mut is_auto_increment = false;
@@ -237,6 +240,16 @@ pub fn expand_derive_entity_model(
                                         return Err(
                                             meta.error(format!("Invalid column_type {lit:?}"))
                                         );
+                                    }
+                                } else if let Some(backend) = column_type_backend(&meta) {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        let ty: TokenStream = syn::parse_str(&litstr.value())?;
+                                        sql_type_overrides.push((backend, ty));
+                                    } else {
+                                        return Err(meta.error(format!(
+                                            "Invalid column_type_{backend} {lit:?}"
+                                        )));
                                     }
                                 } else if meta.path.is_ident("auto_increment") {
                                     let lit = meta.value()?.parse()?;
@@ -474,6 +487,14 @@ pub fn expand_derive_entity_model(
                         quote! { sea_orm::prelude::ColumnTypeTrait::def(#sea_query_col_type) };
 
                     let mut match_row = quote! { Self::#field_name => #col_def };
+                    for (backend, ty) in &sql_type_overrides {
+                        match_row = quote! {
+                            #match_row.type_for(
+                                sea_orm::DbBackend::#backend,
+                                sea_orm::prelude::ColumnType::#ty,
+                            )
+                        };
+                    }
                     if nullable {
                         match_row = quote! { #match_row.nullable() };
                     }
@@ -631,4 +652,18 @@ pub fn expand_derive_entity_model(
 
         #primary_key
     })
+}
+
+/// Recognizes the `column_type_mysql` / `column_type_postgres` / `column_type_sqlite`
+/// attributes and maps them to the corresponding `DbBackend` variant name.
+/// Returns `None` for any other attribute so the parser can try the next branch.
+fn column_type_backend(meta: &syn::meta::ParseNestedMeta) -> Option<Ident> {
+    let ident = &meta.path.segments.last()?.ident;
+    let backend = match ident.to_string().as_str() {
+        "column_type_mysql" => "MySql",
+        "column_type_postgres" => "Postgres",
+        "column_type_sqlite" => "Sqlite",
+        _ => return None,
+    };
+    Some(Ident::new(backend, ident.span()))
 }

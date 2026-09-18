@@ -240,16 +240,21 @@ where
     E: EntityTrait,
 {
     let orm_column_def = column.def();
-    let types = match &orm_column_def.col_type {
-        ColumnType::Enum { name, variants } => match backend {
-            DbBackend::MySql => {
-                let variants: Vec<String> = variants.iter().map(|v| v.to_string()).collect();
-                ColumnType::custom(format!("ENUM('{}')", variants.join("', '")))
-            }
-            DbBackend::Postgres => ColumnType::Custom(name.clone()),
-            DbBackend::Sqlite => orm_column_def.col_type,
+    // an explicit per-backend override wins over both the logical type and the
+    // Enum rewriting below; backends without an override keep the default rendering
+    let types = match orm_column_def.get_column_type_override_for(backend) {
+        Some(ty) => ty.clone(),
+        None => match &orm_column_def.col_type {
+            ColumnType::Enum { name, variants } => match backend {
+                DbBackend::MySql => {
+                    let variants: Vec<String> = variants.iter().map(|v| v.to_string()).collect();
+                    ColumnType::custom(format!("ENUM('{}')", variants.join("', '")))
+                }
+                DbBackend::Postgres => ColumnType::Custom(name.clone()),
+                DbBackend::Sqlite => orm_column_def.col_type,
+            },
+            _ => orm_column_def.col_type,
         },
-        _ => orm_column_def.col_type,
     };
     let mut column_def = ColumnDef::new_with_type(column, types);
     if !orm_column_def.null {
@@ -293,6 +298,61 @@ where
 mod tests {
     use crate::{DbBackend, EntityName, Schema, sea_query::*, tests_cfg::*};
     use pretty_assertions::assert_eq;
+
+    mod per_backend_column_type {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+        #[sea_orm(table_name = "payload_item")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            #[sea_orm(column_type = "Json", column_type_postgres = "JsonBinary")]
+            pub payload: Json,
+            #[sea_orm(column_type = "TinyInteger", column_type_mysql = "SmallInteger")]
+            pub level: i16,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    #[test]
+    fn test_create_table_from_entity_per_backend_column_type() {
+        use per_backend_column_type as payload_item;
+
+        let create_sql = |backend| {
+            let schema = Schema::new(backend);
+            backend
+                .build(&schema.create_table_from_entity(payload_item::Entity))
+                .to_string()
+        };
+
+        let postgres_sql = create_sql(DbBackend::Postgres);
+        // the override wins on its backend...
+        assert!(
+            postgres_sql.contains(r#""payload" jsonb"#),
+            "postgres: {postgres_sql}"
+        );
+        // ...while the logical TinyInteger keeps its default rendering elsewhere
+        let mysql_sql = create_sql(DbBackend::MySql);
+        assert!(mysql_sql.contains("`level` smallint"), "mysql: {mysql_sql}");
+        assert!(!mysql_sql.contains("`payload` jsonb"), "mysql: {mysql_sql}");
+
+        // a backend without a matching override falls back to the logical type
+        let sqlite_sql = create_sql(DbBackend::Sqlite);
+        assert!(
+            sqlite_sql.contains(r#""payload" json_text"#),
+            "sqlite: {sqlite_sql}"
+        );
+        assert!(
+            sqlite_sql.contains(r#""level" tinyint"#),
+            "sqlite: {sqlite_sql}"
+        );
+    }
 
     mod custom_schema_indexes {
         use crate as sea_orm;

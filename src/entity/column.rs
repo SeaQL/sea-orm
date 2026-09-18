@@ -563,6 +563,7 @@ impl ColumnTypeTrait for ColumnType {
             renamed_from: None,
             extra: None,
             seaography: Default::default(),
+            col_type_overrides: Vec::new(),
         }
     }
 

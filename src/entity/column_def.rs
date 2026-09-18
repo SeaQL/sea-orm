@@ -1,5 +1,7 @@
 use sea_query::{SimpleExpr, Value};
 
+use crate::DbBackend;
+
 // The original `sea_orm::ColumnType` enum was dropped since 0.11.0
 // It was replaced by `sea_query::ColumnType`, we reexport it here to keep the `ColumnType` symbol
 pub use sea_query::ColumnType;
@@ -24,6 +26,10 @@ pub struct ColumnDef {
     pub(crate) renamed_from: Option<String>,
     pub(crate) extra: Option<String>,
     pub(crate) seaography: SeaographyColumnAttr,
+    /// Physical column type overrides, consulted by the schema builder when
+    /// rendering DDL for the matching [`DbBackend`]. The logical `col_type`
+    /// (value casts, codegen, Seaography) is unaffected.
+    pub(crate) col_type_overrides: Vec<(DbBackend, ColumnType)>,
 }
 
 /// Column-level attributes consumed by [Seaography](https://github.com/SeaQL/seaography)
@@ -112,6 +118,40 @@ impl ColumnDef {
         &self.col_type
     }
 
+    /// Override the physical column type used when building DDL for `backend`.
+    ///
+    /// The column's logical type (value casts, `select_as` / `save_as`, codegen)
+    /// stays [`ColumnDef::get_column_type`]; only `CREATE TABLE` / `ALTER TABLE`
+    /// statements rendered for the given backend pick up the override. Backends
+    /// without a matching override keep the default rendering.
+    ///
+    /// ```
+    /// # use sea_orm::entity::prelude::*;
+    /// # use sea_orm::DbBackend;
+    /// let def = ColumnType::Json
+    ///     .def()
+    ///     .type_for(DbBackend::Postgres, ColumnType::JsonBinary);
+    /// ```
+    pub fn type_for(mut self, backend: DbBackend, col_type: ColumnType) -> Self {
+        match self
+            .col_type_overrides
+            .iter_mut()
+            .find(|(b, _)| *b == backend)
+        {
+            Some((_, ty)) => *ty = col_type,
+            None => self.col_type_overrides.push((backend, col_type)),
+        }
+        self
+    }
+
+    /// Get the physical column type override registered for `backend`, if any.
+    pub fn get_column_type_override_for(&self, backend: DbBackend) -> Option<&ColumnType> {
+        self.col_type_overrides
+            .iter()
+            .find(|(b, _)| *b == backend)
+            .map(|(_, ty)| ty)
+    }
+
     /// Get the column's default value/expression, if one is set.
     pub fn get_column_default(&self) -> Option<&SimpleExpr> {
         self.default.as_ref()
@@ -136,6 +176,40 @@ impl ColumnDef {
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::*;
+
+    #[test]
+    fn test_type_for_override() {
+        use super::ColumnType;
+        use crate::{ColumnTypeTrait as _, DbBackend};
+
+        let def = ColumnType::Json
+            .def()
+            .type_for(DbBackend::Postgres, ColumnType::JsonBinary);
+        // the logical type stays untouched...
+        assert_eq!(def.get_column_type(), &ColumnType::Json);
+        // ...while the override is registered for its backend only
+        assert_eq!(
+            def.get_column_type_override_for(DbBackend::Postgres),
+            Some(&ColumnType::JsonBinary)
+        );
+        assert_eq!(def.get_column_type_override_for(DbBackend::MySql), None);
+
+        // re-registering for the same backend replaces the previous override
+        let def = def.type_for(DbBackend::Postgres, ColumnType::Text);
+        assert_eq!(
+            def.get_column_type_override_for(DbBackend::Postgres),
+            Some(&ColumnType::Text)
+        );
+        assert_eq!(def.col_type_overrides.len(), 1);
+
+        // columns without overrides carry nothing
+        let plain = ColumnType::Text.def();
+        assert!(plain.col_type_overrides.is_empty());
+        assert_eq!(
+            plain.get_column_type_override_for(DbBackend::Postgres),
+            None
+        );
+    }
 
     #[test]
     fn test_col_from_str() {
