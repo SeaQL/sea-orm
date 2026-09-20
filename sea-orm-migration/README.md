@@ -4,7 +4,7 @@ Install and Usage:
 
 ```sh
 > cargo install sea-orm-cli 
-> sea-orm-cli help
+> sea-orm-cli help // or sea
 ```
 
 Getting Help:
