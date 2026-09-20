@@ -7,13 +7,6 @@ Install and Usage:
 > sea-orm-cli help
 ```
 
-Or: 
-
-```sh
-> cargo install --bin sea
-> sea help
-```
-
 Getting Help:
 
 ```sh
