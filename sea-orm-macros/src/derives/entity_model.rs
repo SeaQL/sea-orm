@@ -69,6 +69,7 @@ pub fn expand_derive_entity_model(
     let mut model_ex = false;
     let mut rename_all: Option<CaseStyle> = None;
     let mut serde_rename_all: Option<CaseStyle> = None;
+    let mut serde_rename_all_serialize: Option<CaseStyle> = None;
 
     // Parse #[serde(rename_all = "...")] at struct level
     attrs
@@ -80,12 +81,16 @@ pub fn expand_derive_entity_model(
                     if let Ok(lit) = meta.value().and_then(|v| v.parse::<LitStr>()) {
                         // #[serde(rename_all = "camelCase")]
                         serde_rename_all = CaseStyle::from_str(&lit.value()).ok();
+                        serde_rename_all_serialize = serde_rename_all;
                     } else {
                         // #[serde(rename_all(serialize = "...", deserialize = "..."))]
                         meta.parse_nested_meta(|nested| {
                             if nested.path.is_ident("deserialize") {
                                 let lit: LitStr = nested.value()?.parse()?;
                                 serde_rename_all = CaseStyle::from_str(&lit.value()).ok();
+                            } else if nested.path.is_ident("serialize") {
+                                let lit: LitStr = nested.value()?.parse()?;
+                                serde_rename_all_serialize = CaseStyle::from_str(&lit.value()).ok();
                             } else {
                                 consume_meta(nested);
                             }
@@ -169,6 +174,8 @@ pub fn expand_derive_entity_model(
     let mut auto_increment: Option<bool> = None;
     #[cfg(feature = "with-json")]
     let mut columns_json_keys: Punctuated<_, Comma> = Punctuated::new();
+    #[cfg(feature = "with-json")]
+    let mut columns_json_keys_serialize: Punctuated<_, Comma> = Punctuated::new();
 
     if table_iden {
         if let Some(table_name) = &table_name {
@@ -211,6 +218,8 @@ pub fn expand_derive_entity_model(
                     let mut seaography_ignore = false;
                     #[cfg(feature = "with-json")]
                     let mut serde_rename: Option<String> = None;
+                    #[cfg(feature = "with-json")]
+                    let mut serde_rename_serialize: Option<String> = None;
 
                     let mut column_name = if let Some(case_style) = rename_all {
                         Some(field_name.convert_case(Some(case_style)))
@@ -356,12 +365,16 @@ pub fn expand_derive_entity_model(
                                     {
                                         // #[serde(rename = "xxx")]
                                         serde_rename = Some(lit.value());
+                                        serde_rename_serialize = serde_rename.clone();
                                     } else {
                                         // #[serde(rename(serialize = "...", deserialize = "..."))]
                                         meta.parse_nested_meta(|nested| {
                                             if nested.path.is_ident("deserialize") {
                                                 let lit: LitStr = nested.value()?.parse()?;
                                                 serde_rename = Some(lit.value());
+                                            } else if nested.path.is_ident("serialize") {
+                                                let lit: LitStr = nested.value()?.parse()?;
+                                                serde_rename_serialize = Some(lit.value());
                                             } else {
                                                 consume_meta(nested);
                                             }
@@ -381,6 +394,13 @@ pub fn expand_derive_entity_model(
                         &original_field_name,
                         serde_rename.as_deref(),
                         serde_rename_all,
+                    );
+
+                    #[cfg(feature = "with-json")]
+                    let json_key_name_serialize = serde_deserialize_name(
+                        &original_field_name,
+                        serde_rename_serialize.as_deref(),
+                        serde_rename_all_serialize,
                     );
 
                     if let Some(enum_name) = enum_name {
@@ -415,6 +435,11 @@ pub fn expand_derive_entity_model(
                         #[cfg(feature = "with-json")]
                         columns_json_keys.push(quote! {
                             Self::#field_name => #json_key_name
+                        });
+
+                        #[cfg(feature = "with-json")]
+                        columns_json_keys_serialize.push(quote! {
+                            Self::#field_name => #json_key_name_serialize
                         });
                     }
 
@@ -577,6 +602,12 @@ pub fn expand_derive_entity_model(
             fn json_key(&self) -> &'static str {
                 match self {
                     #columns_json_keys
+                }
+            }
+
+            fn serialize_json_key(&self) -> &'static str {
+                match self {
+                    #columns_json_keys_serialize
                 }
             }
         }
