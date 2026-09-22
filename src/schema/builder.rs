@@ -674,3 +674,90 @@ fn compare_foreign_key(a: &ForeignKeyCreateStatement, b: &ForeignKeyCreateStatem
             && a.get_columns() == b.get_columns()
             && a.get_ref_columns() == b.get_ref_columns())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{MockDatabase, MockExecResult, Transaction};
+    use sea_query::{ColumnDef, ColumnType, StringLen, Table};
+
+    mod item {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+        #[sea_orm(table_name = "override_item")]
+        pub struct Model {
+            #[sea_orm(primary_key, auto_increment = false)]
+            pub id: i32,
+            #[sea_orm(
+                column_type = "Text",
+                column_type_postgres = "String(StringLen::N(80))"
+            )]
+            pub name: String,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    #[smol_potat::test]
+    async fn test_column_type_override_apply_and_sync() -> Result<(), DbErr> {
+        for backend in [DbBackend::Postgres, DbBackend::MySql, DbBackend::Sqlite] {
+            let schema = Schema::new(backend);
+            let expected_type = match backend {
+                DbBackend::Postgres => ColumnType::String(StringLen::N(80)),
+                _ => ColumnType::Text,
+            };
+            let old_table = Table::create()
+                .table(item::Entity)
+                .col(
+                    ColumnDef::new(item::Column::Id)
+                        .integer()
+                        .not_null()
+                        .primary_key(),
+                )
+                .to_owned();
+            let name = ColumnDef::new_with_type(item::Column::Name, expected_type)
+                .not_null()
+                .to_owned();
+            let mut expected_table = old_table.clone();
+            expected_table.col(name.clone());
+
+            let db = MockDatabase::new(backend)
+                .append_exec_results([MockExecResult::default()])
+                .into_connection();
+            SchemaBuilder::new(Schema::new(backend))
+                .register(item::Entity)
+                .apply(&db)
+                .await?;
+            assert_eq!(
+                db.into_transaction_log(),
+                Transaction::wrap([backend.build(&expected_table)])
+            );
+
+            // Exercise the sync implementation with an existing table missing the overridden column.
+            let existing = DiscoveredSchema {
+                current_schema: "public".into(),
+                tables_by_schema: [("public".into(), vec![old_table])].into(),
+                enums_by_schema: Default::default(),
+            };
+            let db = MockDatabase::new(backend)
+                .append_exec_results([MockExecResult::default()])
+                .into_connection();
+            let entity = EntitySchemaInfo::new(item::Entity, &schema);
+            entity.sync(&db, &existing, &mut Vec::new()).await?;
+            let expected_alter = Table::alter()
+                .table(item::Entity)
+                .add_column(name)
+                .to_owned();
+            assert_eq!(
+                db.into_transaction_log(),
+                Transaction::wrap([backend.build(&expected_alter)])
+            );
+        }
+        Ok(())
+    }
+}

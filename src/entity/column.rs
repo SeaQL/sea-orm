@@ -96,6 +96,23 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// SQL type and constraints attached to this column.
     fn def(&self) -> ColumnDef;
 
+    /// Override this column's physical type when generating schema for `backend`.
+    ///
+    /// The default is `None`, which uses the logical type from [`Self::def`].
+    /// Derived entities can specify `column_type_mysql`, `column_type_postgres`,
+    /// or `column_type_sqlite` using the same syntax as `column_type`:
+    /// `#[sea_orm(column_type = "Json", column_type_postgres = "JsonBinary")]`.
+    /// Override expressions are evaluated only when schema generation requests
+    /// the matching backend; ordinary queries do not call this method.
+    ///
+    /// Overrides do not change value encoding, decoding, or query casts. The
+    /// caller must choose a type compatible with the Rust field and its logical
+    /// type, including for raw [`ColumnType::Custom`] SQL. PostgreSQL overrides
+    /// that change a native enum or enum array are rejected by schema generation.
+    fn column_type_override(&self, _backend: DbBackend) -> Option<ColumnType> {
+        None
+    }
+
     /// If the column maps to a database `ENUM`, the enum's type name.
     /// Returns `None` for non-enum columns.
     fn enum_type_name(&self) -> Option<&'static str> {
@@ -563,7 +580,6 @@ impl ColumnTypeTrait for ColumnType {
             renamed_from: None,
             extra: None,
             seaography: Default::default(),
-            col_type_overrides: Vec::new(),
         }
     }
 
