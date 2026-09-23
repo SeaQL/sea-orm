@@ -440,10 +440,8 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         let values: Vec<Value> = v.into_iter().map(|v| v.into()).collect();
 
         if let Some(first) = values.first() {
-            Expr::col(self.as_column_ref()).eq(PgFunc::any(Value::Array(
-                first.array_type(),
-                Some(Box::new(values)),
-            )))
+            let array = Value::Array(first.array_type(), Some(Box::new(values)));
+            Expr::col(self.as_column_ref()).eq(PgFunc::any(self.save_array_as(Expr::val(array))))
         } else {
             Expr::col(self.as_column_ref()).is_in(std::iter::empty::<V>())
         }
@@ -479,10 +477,8 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         let values: Vec<Value> = v.into_iter().map(|v| v.into()).collect();
 
         if let Some(first) = values.first() {
-            Expr::col(self.as_column_ref()).ne(PgFunc::all(Value::Array(
-                first.array_type(),
-                Some(Box::new(values)),
-            )))
+            let array = Value::Array(first.array_type(), Some(Box::new(values)));
+            Expr::col(self.as_column_ref()).ne(PgFunc::all(self.save_array_as(Expr::val(array))))
         } else {
             Expr::col(self.as_column_ref()).is_not_in(std::iter::empty::<V>())
         }
@@ -530,6 +526,13 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// Cast a value into the column's enum type; no-op for non-enum columns.
     fn save_enum_as(&self, val: Expr) -> Expr {
         cast_enum_as(val, &self.def(), save_enum_as)
+    }
+
+    /// Array counterpart of [`ColumnTrait::save_as`], applied to the array
+    /// operand of `eq_any` / `ne_all`. For a column with `save_as = "citext"`,
+    /// this casts the array to `citext[]`. No-op by default.
+    fn save_array_as(&self, val: Expr) -> Expr {
+        val
     }
 
     /// JSON key used for this column when (de)serializing the model.

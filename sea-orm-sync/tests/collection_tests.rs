@@ -4,7 +4,9 @@ pub mod common;
 
 pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
-use sea_orm::{DatabaseConnection, DerivePartialModel, QueryOrder, entity::prelude::*, entity::*};
+use sea_orm::{
+    DatabaseConnection, DerivePartialModel, QueryOrder, QuerySelect, entity::prelude::*, entity::*,
+};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -255,6 +257,24 @@ pub fn select_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             name: "Collection 1".into(),
         })
     );
+
+    // `name` is citext: `save_as` must also cast the `eq_any` / `ne_all` array to citext[]
+    let ids: Vec<i32> = Entity::find()
+        .select_only()
+        .column(Column::Id)
+        .filter(Column::Name.eq_any(["collection 1".to_owned(), "COLLECTION 3".to_owned()]))
+        .order_by_asc(Column::Id)
+        .into_tuple()
+        .all(db)?;
+    assert_eq!(ids, [1, 3]);
+
+    let ids: Vec<i32> = Entity::find()
+        .select_only()
+        .column(Column::Id)
+        .filter(Column::Name.ne_all(["collection 1".to_owned(), "COLLECTION 3".to_owned()]))
+        .into_tuple()
+        .all(db)?;
+    assert_eq!(ids, [2]);
 
     Ok(())
 }
