@@ -164,6 +164,7 @@ pub fn expand_derive_entity_model(
     let mut columns_enum_type_name: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_select_as: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_save_as: Punctuated<_, Comma> = Punctuated::new();
+    let mut columns_save_array_as: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_keys: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_key_types: Punctuated<_, Comma> = Punctuated::new();
     let mut auto_increment: Option<bool> = None;
@@ -448,6 +449,10 @@ pub fn expand_derive_entity_model(
                         columns_save_as.push(quote! {
                             Self::#field_name => sea_orm::sea_query::ExprTrait::cast_as(val, #save_as)
                         });
+                        let save_array_as = format!("{save_as}[]");
+                        columns_save_array_as.push(quote! {
+                            Self::#field_name => sea_orm::sea_query::ExprTrait::cast_as(val, #save_array_as)
+                        });
                     }
 
                     let field_type = if field_type.starts_with("Option<") {
@@ -527,6 +532,9 @@ pub fn expand_derive_entity_model(
     }
     if !columns_save_as.is_empty() {
         columns_save_as.push_punct(Comma::default());
+    }
+    if !columns_save_array_as.is_empty() {
+        columns_save_array_as.push_punct(Comma::default());
     }
 
     let primary_key = {
@@ -621,6 +629,13 @@ pub fn expand_derive_entity_model(
                 match self {
                     #columns_save_as
                     _ => sea_orm::prelude::ColumnTrait::save_enum_as(self, val),
+                }
+            }
+
+            fn save_array_as(&self, val: sea_orm::sea_query::Expr) -> sea_orm::sea_query::SimpleExpr {
+                match self {
+                    #columns_save_array_as
+                    _ => val,
                 }
             }
 
