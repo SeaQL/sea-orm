@@ -594,7 +594,17 @@ impl EntitySchemaInfo {
                                     .drop_constraint(drop_existing),
                             )?;
                         } else {
-                            db.execute(sea_query::Index::drop().name(drop_existing))?;
+                            // MySQL requires `DROP INDEX <name> ON <table>`; without the
+                            // target table the statement is a syntax error.
+                            let table_ref = index_table_ref(
+                                self.table.get_table_name().expect("Checked above").clone(),
+                                db_backend,
+                            );
+                            db.execute(
+                                sea_query::Index::drop()
+                                    .name(drop_existing)
+                                    .table(table_ref),
+                            )?;
                         }
                     }
                 }
