@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, EntityTrait, Iterable, Order, PrimaryKeyToColumn, QueryFilter, QueryOrder,
-    QuerySelect, QueryTrait,
+    ColumnTrait, EntityTrait, IdenStatic, Iterable, Order, PrimaryKeyToColumn, QueryFilter,
+    QueryOrder, QuerySelect, QueryTrait,
 };
 use core::fmt::Debug;
 use core::marker::PhantomData;
@@ -341,6 +341,27 @@ where
             self.query
                 .order_by_expr(col.into_simple_expr(), order.clone());
         }
+        self
+    }
+
+    /// Select all columns of this entity except the given ones.
+    ///
+    /// Clears any prior selection (`clear_selects`) and then rebuilds it, so this
+    /// overrides earlier [`QuerySelect::select_only`] / [`QuerySelect::column`] calls
+    /// and is not composable with them.
+    ///
+    /// Rows still hydrate into the full `Model`, so only `Option<_>` columns can be
+    /// excluded. Excluding a non-nullable column results in a runtime error,
+    /// `Missing value for column`. Excluding every column leaves nothing to select
+    /// and produces invalid SQL.
+    pub fn select_except(mut self, except: impl IntoIterator<Item = E::Column>) -> Self {
+        let except: Vec<&str> = except.into_iter().map(|col| col.as_str()).collect();
+        self.query.clear_selects();
+        self.query.exprs(
+            E::Column::iter()
+                .filter(|col| !except.contains(&col.as_str()))
+                .map(ColumnSelectExt::into_select_expr),
+        );
         self
     }
 }
