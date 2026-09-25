@@ -10,7 +10,13 @@ use sea_query::ExprTrait;
 use crate::common::TestContext;
 use common::bakery_chain::*;
 
-mod common;
+mod common {
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+    pub mod setup;
+    pub use setup::TestContext;
+    pub mod bakery_chain;
+}
 
 mod entity {
     use sea_orm::prelude::*;

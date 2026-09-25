@@ -1,6 +1,9 @@
 #![allow(unused_imports, dead_code)]
 
-pub mod common;
+pub mod common {
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+}
 
 pub use sea_orm::{Database, DbConn, entity::*, error::*, query::*, sea_query, tests_cfg::*};
 

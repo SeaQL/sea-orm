@@ -1,6 +1,15 @@
 #![allow(unused_imports, dead_code)]
 
-pub mod common;
+pub mod common {
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+    pub mod setup;
+    pub use setup::TestContext;
+    pub mod bakery_chain;
+    pub mod blogger;
+    pub mod features;
+    pub mod film_store;
+}
 
 pub use common::{TestContext, bakery_chain::*, setup::*};
 use sea_orm::{DbConn, DbErr, LoaderTraitEx, RuntimeErr, entity::*, query::*};

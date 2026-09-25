@@ -1,4 +1,10 @@
-pub mod common;
+pub mod common {
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+    pub mod setup;
+    pub use setup::TestContext;
+    pub mod features;
+}
 use common::{TestContext, features::*, setup::*};
 use sea_orm::{DatabaseConnection, IntoActiveModel, NotSet, Set, entity::prelude::*};
 use uuid::Uuid;

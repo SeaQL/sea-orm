@@ -6,7 +6,13 @@ use crate::common::TestContext;
 use common::bakery_chain::*;
 use serde_json::json;
 
-mod common;
+mod common {
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+    pub mod setup;
+    pub use setup::TestContext;
+    pub mod bakery_chain;
+}
 
 #[sea_orm_macros::test]
 #[cfg(feature = "sqlx-sqlite")]

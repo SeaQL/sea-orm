@@ -4,7 +4,12 @@
 //! `ActiveModelBehavior` (before_save / after_save) must run for the junction
 //! table rows when establishing a many-to-many relation through the builder.
 
-mod common;
+mod common {
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+    pub mod setup;
+    pub use setup::TestContext;
+}
 
 use crate::common::TestContext;
 use pretty_assertions::assert_eq;

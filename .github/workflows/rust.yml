@@ -255,7 +255,12 @@ jobs:
             echo "::group::$path"
             find $path -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
             find $path -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo update --manifest-path {}
-            find $path -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
+            case $path in
+              # Slowest examples: one workspace build, instead of rebuilding shared deps per member
+              react_admin) cargo test --workspace --manifest-path react_admin/backend/Cargo.toml ;;
+              loco_seaography|rocket_example) cargo test --workspace --manifest-path $path/Cargo.toml ;;
+              *) find $path -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {} ;;
+            esac
             if [ "$path" = quickstart ]; then (cd quickstart && cargo run); fi
             echo "::endgroup::"
           done

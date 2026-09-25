@@ -4,7 +4,12 @@
 //! mirroring the existing `SelectThree` consolidate test: build the 4-way query,
 //! execute it, and check the cross-product rows consolidate into per-child `Vec`s.
 
-mod common;
+mod common {
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+    pub mod setup;
+    pub use setup::TestContext;
+}
 
 use crate::common::TestContext;
 use pretty_assertions::assert_eq;

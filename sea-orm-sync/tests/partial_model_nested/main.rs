@@ -1,6 +1,11 @@
 mod local;
 mod nested_alias;
 
-#[path = "../common/mod.rs"]
+#[path = "../common"]
 #[allow(unused)]
-mod common;
+mod common {
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+    pub mod setup;
+    pub use setup::TestContext;
+}

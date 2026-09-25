@@ -1,6 +1,15 @@
 #![allow(unused_imports, dead_code)]
 
-pub mod common;
+pub mod common {
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+    pub mod setup;
+    pub use setup::TestContext;
+    pub mod bakery_chain;
+    pub mod bakery_dense;
+    pub mod blogger;
+    pub mod film_store;
+}
 
 #[path = "partial_model_nested/local/mod.rs"]
 mod local;
