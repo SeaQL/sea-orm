@@ -276,7 +276,7 @@ impl SqlxSqlitePoolConnection {
 
     pub(crate) fn set_metric_callback<F>(&mut self, callback: F)
     where
-        F: Fn(&crate::metric::Info<'_>) + 'static,
+        F: Fn(&crate::metric::Info<'_>) + Send + Sync + 'static,
     {
         self.metric_callback = Some(Arc::new(callback));
     }

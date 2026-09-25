@@ -30,7 +30,7 @@ pub struct MockDatabaseConnection {
 }
 
 /// A Trait for any type wanting to perform operations on the [MockDatabase]
-pub trait MockDatabaseTrait: Debug {
+pub trait MockDatabaseTrait: Send + Debug {
     /// Execute a statement in the [MockDatabase]
     fn execute(&mut self, counter: usize, stmt: Statement) -> Result<ExecResult, DbErr>;
 
