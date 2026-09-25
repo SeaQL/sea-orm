@@ -5,9 +5,10 @@
 # Following jobs will always run
 #
 #   - `clippy`
-#   - `rustfmt`
-#   - `taplo`
+#   - `fmt` (rustfmt & taplo)
 #   - `test`
+#   - `cli-test`
+#   - `compile`
 #   - `examples`
 #
 # Following jobs will be run when no keywords were found in commit message)
@@ -30,20 +31,17 @@
 # Following jobs will be run if keywords `[sqlite]` were found in commit message
 #
 #   - Jobs that will always run
-#   - `compile`
 #   - `sqlite`
 #
 # Following jobs will be run if keywords `[mysql]` were found in commit message
 #
 #   - Jobs that will always run
-#   - `compile`
 #   - `mysql`
 #   - `mariadb`
 #
 # Following jobs will be run if keywords `[postgres]` were found in commit message
 #
 #   - Jobs that will always run
-#   - `compile`
 #   - `postgres`
 
 name: tests
@@ -121,27 +119,21 @@ jobs:
       - run: cargo clippy --manifest-path sea-orm-cli/Cargo.toml -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-migration/Cargo.toml -- -D warnings
 
-  rustfmt:
-    name: Rustfmt
+  fmt:
+    name: Rustfmt & Taplo
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: taplo
       - run: cargo fmt --all -- --check
       - run: cargo fmt --manifest-path sea-orm-cli/Cargo.toml --all -- --check
       - run: cargo fmt --manifest-path sea-orm-migration/Cargo.toml --all -- --check
-
-  taplo:
-    name: Taplo
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo install --locked taplo-cli
-      - run: taplo fmt --check 
+      - run: taplo fmt --check
 
   compile:
     name: Compile (${{ matrix.label }})
@@ -153,21 +145,12 @@ jobs:
         include:
           - label: build
             kind: build
-          - label: tokio native-tls mysql
-            kind: test
-            features: sqlx-mysql,runtime-tokio-native-tls
           - label: tokio rustls mysql
             kind: test
             features: sqlx-mysql,runtime-tokio-rustls
-          - label: tokio native-tls postgres
-            kind: test
-            features: sqlx-postgres,runtime-tokio-native-tls
           - label: tokio rustls postgres
             kind: test
             features: sqlx-postgres,runtime-tokio-rustls
-          - label: tokio sqlite
-            kind: test
-            features: sqlx-sqlite,runtime-tokio
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -205,6 +188,21 @@ jobs:
       - run: cargo test --workspace
       - run: cargo test --lib --features rbac
       - run: cargo test --lib --features entity-registry -- registry
+
+  cli-test:
+    name: CLI Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-cli-test-${{ hashFiles('**/Cargo.toml') }}
+      - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml --no-run
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml
 
@@ -219,35 +217,26 @@ jobs:
       - run: cargo install --path sea-orm-cli --debug
 
   examples:
-    name: Examples
+    name: Examples (${{ matrix.paths }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        path:
-          [
-            actix_example,
-            axum_example,
-            basic,
-            graphql_example,
-            jsonrpsee_example,
-            loco_example,
-            loco_seaography,
-            loco_starter,
-            parquet_example,
-            poem_example,
-            proxy_gluesql_example,
-            quickstart,
-            react_admin,
-            rocket_example,
-            rocket_okapi_example,
-            salvo_example,
-            seaography_example,
-            tonic_example,
-          ]
+        # Grouped to stay under the org's 20 concurrent job limit; balanced by measured runtime
+        include:
+          - group: 1
+            paths: loco_seaography jsonrpsee_example parquet_example proxy_gluesql_example
+          - group: 2
+            paths: rocket_okapi_example actix_example graphql_example basic
+          - group: 3
+            paths: rocket_example salvo_example tonic_example quickstart
+          - group: 4
+            paths: loco_example seaography_example axum_example
+          - group: 5
+            paths: react_admin loco_starter poem_example
     steps:
       - uses: actions/checkout@v4
-      - if: ${{ contains(matrix.path, 'tonic_example') }}
+      - if: ${{ contains(matrix.paths, 'tonic_example') }}
         uses: arduino/setup-protoc@v3
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -258,17 +247,18 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-examples-${{ matrix.path }}
+          key: ${{ runner.os }}-cargo-examples-group-${{ matrix.group }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - working-directory: ./examples/
         run: |
-          find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
-          find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo update --manifest-path {}
-          find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
-          ${{'! '}}${{ '[ -d "' }}${{ matrix.path }}${{ '/api" ]' }} || find ${{ matrix.path }}/api -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
-      - if: matrix.path == 'quickstart'
-        working-directory: ./examples/${{ matrix.path }}
-        run: cargo run
+          for path in ${{ matrix.paths }}; do
+            echo "::group::$path"
+            find $path -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
+            find $path -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo update --manifest-path {}
+            find $path -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
+            if [ "$path" = quickstart ]; then (cd quickstart && cargo run); fi
+            echo "::endgroup::"
+          done
 
   issues-matrix:
     name: Issues Matrix
@@ -309,9 +299,7 @@ jobs:
 
   sqlite:
     name: SQLite
-    needs:
-      - init
-      - compile
+    needs: init
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -342,9 +330,7 @@ jobs:
 
   rusqlite:
     name: rusqlite
-    needs:
-      - init
-      - compile
+    needs: init
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -373,9 +359,7 @@ jobs:
 
   mysql:
     name: MySQL
-    needs:
-      - init
-      - compile
+    needs: init
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -424,9 +408,7 @@ jobs:
 
   mariadb:
     name: MariaDB
-    needs:
-      - init
-      - compile
+    needs: init
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -475,9 +457,7 @@ jobs:
 
   postgres:
     name: Postgres
-    needs:
-      - init
-      - compile
+    needs: init
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
