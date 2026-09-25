@@ -37,7 +37,7 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
         let _drop_db_result = db
             .execute_raw(Statement::from_string(
                 DatabaseBackend::Postgres,
-                format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
+                format!("DROP DATABASE IF EXISTS \"{db_name}\" WITH (FORCE);"),
             ))
             .await;
 
@@ -75,7 +75,7 @@ pub async fn tear_down(base_url: &str, db_name: &str) {
         let _ = db
             .execute_raw(Statement::from_string(
                 DatabaseBackend::Postgres,
-                format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
+                format!("DROP DATABASE IF EXISTS \"{db_name}\" WITH (FORCE);"),
             ))
             .await;
     };

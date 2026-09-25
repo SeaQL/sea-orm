@@ -32,7 +32,7 @@ pub fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
         let db = Database::connect(&url).unwrap();
         let _drop_db_result = db.execute_raw(Statement::from_string(
             DatabaseBackend::Postgres,
-            format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
+            format!("DROP DATABASE IF EXISTS \"{db_name}\" WITH (FORCE);"),
         ));
 
         let _create_db_result = db.execute_raw(Statement::from_string(
@@ -64,7 +64,7 @@ pub fn tear_down(base_url: &str, db_name: &str) {
         let db = Database::connect(&url).unwrap();
         let _ = db.execute_raw(Statement::from_string(
             DatabaseBackend::Postgres,
-            format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
+            format!("DROP DATABASE IF EXISTS \"{db_name}\" WITH (FORCE);"),
         ));
     };
 }
