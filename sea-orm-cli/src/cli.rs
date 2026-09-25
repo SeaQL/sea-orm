@@ -394,6 +394,7 @@ pub enum DateTimeCrate {
     #[default]
     Chrono,
     Time,
+    Jiff,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Default)]
