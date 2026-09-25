@@ -5,8 +5,7 @@
 # Following jobs will always run
 #
 #   - `clippy`
-#   - `rustfmt`
-#   - `taplo`
+#   - `fmt` (rustfmt & taplo)
 #   - `test`
 #   - `cli-test`
 #   - `compile`
@@ -120,26 +119,20 @@ jobs:
       - run: cargo clippy --manifest-path sea-orm-cli/Cargo.toml -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-migration/Cargo.toml -- -D warnings
 
-  rustfmt:
-    name: Rustfmt
+  fmt:
+    name: Rustfmt & Taplo
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
-      - run: cargo fmt --all -- --check
-      - run: cargo fmt --manifest-path sea-orm-cli/Cargo.toml --all -- --check
-      - run: cargo fmt --manifest-path sea-orm-migration/Cargo.toml --all -- --check
-
-  taplo:
-    name: Taplo
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - uses: taiki-e/install-action@v2
         with:
           tool: taplo
+      - run: cargo fmt --all -- --check
+      - run: cargo fmt --manifest-path sea-orm-cli/Cargo.toml --all -- --check
+      - run: cargo fmt --manifest-path sea-orm-migration/Cargo.toml --all -- --check
       - run: taplo fmt --check
 
   compile:
