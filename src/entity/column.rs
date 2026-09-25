@@ -876,6 +876,32 @@ mod tests {
         }
 
         #[test]
+        fn select_except_keeps_select_as_aliases() {
+            use crate::QuerySelect;
+
+            fn assert_it<E: EntityTrait>(except: E::Column) {
+                assert_eq!(
+                    E::find()
+                        .select_except([except])
+                        .build(DbBackend::Postgres)
+                        .to_string(),
+                    r#"SELECT "hello"."id", "hello"."one1", CAST("hello"."two" AS integer) AS "two" FROM "hello""#,
+                );
+                assert_eq!(
+                    E::find()
+                        .select_except([except])
+                        .select_also(E::default())
+                        .build(DbBackend::Postgres)
+                        .to_string(),
+                    r#"SELECT "hello"."id" AS "A_id", "hello"."one1" AS "A_one1", CAST("hello"."two" AS integer) AS "A_two", "hello"."id" AS "B_id", "hello"."one1" AS "B_one1", CAST("hello"."two" AS integer) AS "B_two", "hello"."three3" AS "B_three3" FROM "hello""#,
+                );
+            }
+
+            assert_it::<hello_expanded::Entity>(hello_expanded::Column::Three3);
+            assert_it::<hello_compact::Entity>(hello_compact::Column::Three3);
+        }
+
+        #[test]
         fn select_as_columns_keep_aliases_in_multi_selects() {
             use crate::{Iterable, QuerySelect};
 

@@ -346,21 +346,22 @@ where
 
     /// Select all columns of this entity except the given ones.
     ///
-    /// Clears any prior selection (`clear_selects`) and then rebuilds the query,
-    /// this overrides earlier [`QuerySelect::select_only`] / [`QuerySelect::column`] calls
-    /// and is not composable with them
+    /// Clears any prior selection (`clear_selects`) and then rebuilds it, so this
+    /// overrides earlier [`QuerySelect::select_only`] / [`QuerySelect::column`] calls
+    /// and is not composable with them.
     ///
-    /// Rows still hydrate into the full `Model`. Only `Option<_>` columns can be excluded,
-    /// excluding a non-nullable column results in a runtime error,
-    /// `Missing value for column`.
+    /// Rows still hydrate into the full `Model`, so only `Option<_>` columns can be
+    /// excluded. Excluding a non-nullable column results in a runtime error,
+    /// `Missing value for column`. Excluding every column leaves nothing to select
+    /// and produces invalid SQL.
     pub fn select_except(mut self, except: impl IntoIterator<Item = E::Column>) -> Self {
         let except: Vec<&str> = except.into_iter().map(|col| col.as_str()).collect();
         self.query.clear_selects();
-        for col in E::Column::iter() {
-            if !except.contains(&col.as_str()) {
-                self.query.expr(col.select_as(col.into_expr()));
-            }
-        }
+        self.query.exprs(
+            E::Column::iter()
+                .filter(|col| !except.contains(&col.as_str()))
+                .map(ColumnSelectExt::into_select_expr),
+        );
         self
     }
 }
