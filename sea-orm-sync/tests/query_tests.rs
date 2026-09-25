@@ -1,6 +1,13 @@
 #![allow(unused_imports, dead_code)]
 
-pub mod common;
+pub mod common {
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+    pub mod setup;
+    pub use setup::TestContext;
+    pub mod bakery_chain;
+    pub mod bakery_dense;
+}
 
 pub use common::{TestContext, bakery_chain::*, bakery_dense, setup::*};
 pub use sea_orm::entity::*;

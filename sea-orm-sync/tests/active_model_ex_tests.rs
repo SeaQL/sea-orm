@@ -1,6 +1,14 @@
 #![allow(unused_imports, dead_code)]
 
-mod common;
+mod common {
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+    pub mod setup;
+    pub use setup::TestContext;
+    pub mod bakery_dense;
+    pub mod blogger;
+    pub mod film_store;
+}
 
 use crate::common::TestContext;
 use sea_orm::{Database, DbConn, DbErr, entity::*, prelude::*, query::*};

@@ -1,6 +1,11 @@
 #![allow(unused_imports, dead_code)]
 
-pub mod common;
+pub mod common {
+    pub mod features;
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+    pub mod setup;
+}
 
 use sea_orm::{IntoActiveValue, TryFromU64, TryGetable, Value};
 

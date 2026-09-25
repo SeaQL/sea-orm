@@ -8,7 +8,13 @@
 //! relations are disambiguated, many-to-many junctions persist, and the entity loader hydrates
 //! the relations.
 
-mod common;
+mod common {
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+    pub mod setup;
+    pub use setup::TestContext;
+    pub mod blogger_legacy;
+}
 
 use crate::common::TestContext;
 use crate::common::blogger_legacy::*;

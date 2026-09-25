@@ -1,6 +1,12 @@
 #![allow(unused_imports, dead_code)]
 
-pub mod common;
+pub mod common {
+    #[cfg(not(feature = "sync"))]
+    pub mod runtime;
+    pub mod setup;
+    pub use setup::TestContext;
+    pub mod features;
+}
 
 pub use common::{TestContext, features::*, setup::*};
 use pretty_assertions::assert_eq;
