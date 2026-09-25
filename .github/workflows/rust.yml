@@ -8,6 +8,8 @@
 #   - `rustfmt`
 #   - `taplo`
 #   - `test`
+#   - `cli-test`
+#   - `compile`
 #   - `examples`
 #
 # Following jobs will be run when no keywords were found in commit message)
@@ -30,20 +32,17 @@
 # Following jobs will be run if keywords `[sqlite]` were found in commit message
 #
 #   - Jobs that will always run
-#   - `compile`
 #   - `sqlite`
 #
 # Following jobs will be run if keywords `[mysql]` were found in commit message
 #
 #   - Jobs that will always run
-#   - `compile`
 #   - `mysql`
 #   - `mariadb`
 #
 # Following jobs will be run if keywords `[postgres]` were found in commit message
 #
 #   - Jobs that will always run
-#   - `compile`
 #   - `postgres`
 
 name: tests
@@ -138,10 +137,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo install --locked taplo-cli
-      - run: taplo fmt --check 
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: taplo
+      - run: taplo fmt --check
 
   compile:
     name: Compile (${{ matrix.label }})
@@ -153,21 +152,12 @@ jobs:
         include:
           - label: build
             kind: build
-          - label: tokio native-tls mysql
-            kind: test
-            features: sqlx-mysql,runtime-tokio-native-tls
           - label: tokio rustls mysql
             kind: test
             features: sqlx-mysql,runtime-tokio-rustls
-          - label: tokio native-tls postgres
-            kind: test
-            features: sqlx-postgres,runtime-tokio-native-tls
           - label: tokio rustls postgres
             kind: test
             features: sqlx-postgres,runtime-tokio-rustls
-          - label: tokio sqlite
-            kind: test
-            features: sqlx-sqlite,runtime-tokio
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -205,6 +195,21 @@ jobs:
       - run: cargo test --workspace
       - run: cargo test --lib --features rbac
       - run: cargo test --lib --features entity-registry -- registry
+
+  cli-test:
+    name: CLI Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-cli-test-${{ hashFiles('**/Cargo.toml') }}
+      - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml --no-run
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml
 
@@ -309,9 +314,7 @@ jobs:
 
   sqlite:
     name: SQLite
-    needs:
-      - init
-      - compile
+    needs: init
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -342,9 +345,7 @@ jobs:
 
   rusqlite:
     name: rusqlite
-    needs:
-      - init
-      - compile
+    needs: init
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -373,9 +374,7 @@ jobs:
 
   mysql:
     name: MySQL
-    needs:
-      - init
-      - compile
+    needs: init
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -424,9 +423,7 @@ jobs:
 
   mariadb:
     name: MariaDB
-    needs:
-      - init
-      - compile
+    needs: init
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
@@ -475,9 +472,7 @@ jobs:
 
   postgres:
     name: Postgres
-    needs:
-      - init
-      - compile
+    needs: init
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
