@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.0.4](changelog/2.0.4.md) - 2026-09-25
+
+`select_except`, `sea-orm-migration` trimmed to the SeaORM features it needs, `save_as` casts for `eq_any` / `ne_all`, linked-join alias and `condition_type` fixes, MySQL schema-sync index drop fix
+
 ## [2.0.3](changelog/2.0.3.md) - 2026-09-12
 
 `select_as` aliases in combined selects, derive macro hygiene, `ModelEx` `Eq` handling, PostgreSQL partial-unique-index and `postgres:db_name` CLI fixes
