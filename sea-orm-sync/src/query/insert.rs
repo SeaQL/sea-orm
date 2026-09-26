@@ -34,11 +34,10 @@ where
     pub(crate) model: PhantomData<A>,
 }
 
-/// Wrapper of [`Insert`] / [`InsertMany`], treats "no row inserted/id returned" as a normal outcome.
+/// Wrapper of [`Insert`], treats "no row inserted/id returned" as a normal outcome.
 ///
 /// Its `exec*` methods return [`crate::TryInsertResult`].
-/// Mapping empty input to [`crate::TryInsertResult::Empty`] (no SQL executed) and
-/// `DbErr::RecordNotInserted` to [`crate::TryInsertResult::Conflicted`].
+/// Mapping `DbErr::RecordNotInserted` to [`crate::TryInsertResult::Conflicted`].
 ///
 /// Useful for idempotent inserts such as `ON CONFLICT ... DO NOTHING` (Postgres / SQLite) or the
 /// MySQL polyfill (`ON DUPLICATE KEY UPDATE pk = pk`).
@@ -48,7 +47,6 @@ where
     A: ActiveModelTrait,
 {
     pub(crate) insert_struct: Insert<A>,
-    pub(crate) empty: bool,
 }
 
 impl<A> Insert<A>
@@ -229,7 +227,7 @@ where
         TryInsert::from_one(self)
     }
 
-    /// Allow insert statement to return without error if nothing's been inserted.
+    /// Deprecated alias to [`Insert::try_insert`].
     #[deprecated(
         since = "2.0.0",
         note = "Please use [`TryInsert::one`] or `on_conflict_do_nothing*` methods that return [`TryInsert`], or [`Insert::try_insert`]."
@@ -409,7 +407,7 @@ where
     ///     r#"INSERT INTO `cake` (`id`, `name`) VALUES (2, 'Orange') ON DUPLICATE KEY UPDATE `id` = `id`"#,
     /// );
     /// ```
-    pub fn on_conflict_do_nothing_on<I>(mut self, columns: I) -> TryInsert<A>
+    pub fn on_conflict_do_nothing_on<I>(mut self, columns: I) -> Self
     where
         I: IntoIterator<Item = <A::Entity as EntityTrait>::Column>,
     {
@@ -417,50 +415,60 @@ where
         let mut on_conflict = OnConflict::columns(columns);
         on_conflict.do_nothing_on(primary_keys);
         self.query.on_conflict(on_conflict);
-        TryInsert::from_many(self)
+        self
     }
 
-    /// Allow insert statement to return without error if nothing's been inserted.
+    /// Deprecated no-op.
+    ///
+    /// [`InsertMany::exec`] already handles empty input and inserts that affect no rows.
     #[deprecated(
         since = "2.0.0",
-        note = "Please use [`TryInsert::many`] or `on_conflict_do_nothing*` methods that return [`TryInsert`], or [`InsertMany::try_insert`]"
+        note = "Deprecated no-op. Use [`InsertMany::exec`] directly."
     )]
-    pub fn do_nothing(self) -> TryInsert<A>
+    pub fn do_nothing(self) -> Self
     where
         A: ActiveModelTrait,
     {
-        TryInsert::from_many(self)
+        self
     }
 
-    /// Convert self into a `TryInsert`. It is just a wrapper for converting `DbErr::RecordNotInserted` -> `TryInsertResult::Conflicted`.
-    pub fn try_insert(self) -> TryInsert<A>
-    where
-        A: ActiveModelTrait,
-    {
-        TryInsert::from_many(self)
-    }
-
-    /// Alias to [`InsertMany::do_nothing`].
+    /// Deprecated no-op.
+    ///
+    /// [`InsertMany::exec`] already handles empty input and inserts that affect no rows.
     #[deprecated(
         since = "2.0.0",
-        note = "Empty input is already handled by [`InsertMany::exec`] (no SQL executed). For conflict handling, use [`InsertMany::on_conflict_do_nothing`] or [`InsertMany::on_conflict_do_nothing_on`]."
+        note = "Deprecated no-op. Use [`InsertMany::exec`] directly."
     )]
-    pub fn on_empty_do_nothing(self) -> TryInsert<A>
+    pub fn try_insert(self) -> Self
     where
         A: ActiveModelTrait,
     {
-        TryInsert::from_many(self)
+        self
+    }
+
+    /// Deprecated no-op.
+    ///
+    /// [`InsertMany::exec`] already handles empty input and inserts that affect no rows.
+    #[deprecated(
+        since = "2.0.0",
+        note = "Deprecated no-op. Use [`InsertMany::exec`] directly."
+    )]
+    pub fn on_empty_do_nothing(self) -> Self
+    where
+        A: ActiveModelTrait,
+    {
+        self
     }
 
     /// Set ON CONFLICT on primary key do nothing, but with MySQL specific polyfill.
     /// See also [`Insert::on_conflict_do_nothing`].
-    pub fn on_conflict_do_nothing(mut self) -> TryInsert<A>
+    pub fn on_conflict_do_nothing(mut self) -> Self
     where
         A: ActiveModelTrait,
     {
         self.query.on_conflict(on_conflict_primary_key::<A>());
 
-        TryInsert::from_many(self)
+        self
     }
 
     /// panic when self is empty
@@ -527,25 +535,6 @@ where
     fn from_one(insert: Insert<A>) -> Self {
         Self {
             insert_struct: insert,
-            empty: false,
-        }
-    }
-
-    fn from_many(insert: InsertMany<A>) -> Self {
-        let InsertMany {
-            query,
-            primary_key,
-            empty,
-            model,
-        } = insert;
-
-        Self {
-            insert_struct: Insert {
-                query,
-                primary_key,
-                model,
-            },
-            empty,
         }
     }
 
@@ -555,15 +544,6 @@ where
         M: IntoActiveModel<A>,
     {
         Self::from_one(Insert::one(m))
-    }
-
-    /// Try insert many items
-    pub fn many<M, I>(models: I) -> Self
-    where
-        M: IntoActiveModel<A>,
-        I: IntoIterator<Item = M>,
-    {
-        Self::from_many(Insert::many(models))
     }
 
     /// Set ON CONFLICT logic
