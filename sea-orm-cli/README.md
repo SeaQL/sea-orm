@@ -7,6 +7,16 @@ Install and Usage:
 > sea-orm-cli help // or sea
 ```
 
+### As a Cargo subcommand
+
+`cargo install sea-orm-cli` also installs a `cargo-sea` binary, so the CLI can be invoked
+as a standard Cargo subcommand:
+
+```sh
+> cargo sea generate entity -u sqlite://bakery.db -o out
+> cargo sea migrate up
+```
+
 Getting Help:
 
 ```sh
@@ -71,4 +81,3 @@ cargo run -- generate entity -u postgres://sea:sea@localhost/bakery -s public -o
     ```sh
     cargo run -- migrate status
     ```
-

@@ -1,7 +1,8 @@
 use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueEnum};
 #[cfg(feature = "codegen")]
 use dotenvy::dotenv;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
+use std::path::Path;
 
 #[cfg(feature = "codegen")]
 use crate::{handle_error, run_generate_command, run_migrate_command};
@@ -417,17 +418,38 @@ fn is_deprecated_preserve_user_modifications_flag(arg: &OsStr) -> bool {
         .is_some_and(|arg| arg.starts_with("--preserve-user-modifications"))
 }
 
+/// As a Cargo subcommand, `cargo sea …` runs `cargo-sea` with `sea` injected as argv[1].
+/// Strip it (only under a `cargo-` binary name) so clap sees the real arguments.
+fn strip_cargo_subcommand(mut args: Vec<OsString>) -> Vec<OsString> {
+    let sub = args
+        .first()
+        .map(Path::new)
+        .and_then(Path::file_stem) // strips the `.exe` suffix on Windows
+        .and_then(OsStr::to_str)
+        .and_then(|name| name.strip_prefix("cargo-"))
+        .map(str::to_owned);
+    if let Some(sub) = sub {
+        if args.get(1).map(OsString::as_os_str) == Some(OsStr::new(&sub)) {
+            args.remove(1);
+        }
+    }
+    args
+}
+
 /// Use this to build a local, version-controlled `sea-orm-cli` in dependent projects
 /// (see [example use case](https://github.com/SeaQL/sea-orm/discussions/1889)).
 #[cfg(feature = "codegen")]
 pub async fn main() {
     dotenv().ok();
 
-    let deprecated_preserve_user_modifications_flag_used = std::env::args_os()
-        .skip(1)
-        .any(|arg| is_deprecated_preserve_user_modifications_flag(&arg));
+    let args = strip_cargo_subcommand(std::env::args_os().collect());
 
-    let cli = Cli::parse();
+    let deprecated_preserve_user_modifications_flag_used = args
+        .iter()
+        .skip(1)
+        .any(|arg| is_deprecated_preserve_user_modifications_flag(arg));
+
+    let cli = Cli::parse_from(&args);
     if deprecated_preserve_user_modifications_flag_used {
         eprintln!(
             "warning: `--preserve-user-modifications` is deprecated; use `--experimental-preserve-user-modifications` instead."
@@ -454,5 +476,29 @@ pub async fn main() {
             verbose,
         )
         .unwrap_or_else(handle_error),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn strip(args: &[&str]) -> Vec<OsString> {
+        strip_cargo_subcommand(args.iter().map(OsString::from).collect())
+    }
+
+    #[test]
+    fn strip_cargo_subcommand_only_strips_injected_name() {
+        // `cargo sea …` runs `cargo-sea sea …`; the injected `sea` is removed.
+        assert_eq!(
+            strip(&["cargo-sea", "sea", "generate"]),
+            ["cargo-sea", "generate"]
+        );
+        // Standalone binaries and non-matching argv[1] are left untouched.
+        assert_eq!(
+            strip(&["sea", "sea", "generate"]),
+            ["sea", "sea", "generate"]
+        );
+        assert_eq!(strip(&["cargo-sea", "generate"]), ["cargo-sea", "generate"]);
     }
 }
