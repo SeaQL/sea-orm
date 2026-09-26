@@ -161,6 +161,7 @@ pub fn expand_derive_entity_model(
     // generate Column enum and it's ColumnTrait impl
     let mut columns_enum: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_trait: Punctuated<_, Comma> = Punctuated::new();
+    let mut columns_type_overrides = Vec::new();
     let mut columns_enum_type_name: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_select_as: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_save_as: Punctuated<_, Comma> = Punctuated::new();
@@ -205,6 +206,9 @@ pub fn expand_derive_entity_model(
                     let mut ignore = false;
                     let mut unique = false;
                     let mut sql_type = None;
+                    // (DbBackend variant ident, column type tokens) pairs collected
+                    // from column_type_mysql / column_type_postgres / column_type_sqlite
+                    let mut sql_type_overrides: Vec<(Ident, TokenStream)> = Vec::new();
                     let mut enum_name = None;
                     let mut is_primary_key = false;
                     let mut is_auto_increment = false;
@@ -238,6 +242,21 @@ pub fn expand_derive_entity_model(
                                         return Err(
                                             meta.error(format!("Invalid column_type {lit:?}"))
                                         );
+                                    }
+                                } else if let Some(backend) = column_type_backend(&meta) {
+                                    let lit = meta.value()?.parse()?;
+                                    if let Lit::Str(litstr) = lit {
+                                        let ty: TokenStream = syn::parse_str(&litstr.value())?;
+                                        if sql_type_overrides.iter().any(|(b, _)| b == &backend) {
+                                            return Err(meta.error(
+                                                "Duplicate column type override for this backend",
+                                            ));
+                                        }
+                                        sql_type_overrides.push((backend, ty));
+                                    } else {
+                                        return Err(meta.error(format!(
+                                            "Invalid column_type_{backend} {lit:?}"
+                                        )));
                                     }
                                 } else if meta.path.is_ident("auto_increment") {
                                     let lit = meta.value()?.parse()?;
@@ -479,6 +498,12 @@ pub fn expand_derive_entity_model(
                         quote! { sea_orm::prelude::ColumnTypeTrait::def(#sea_query_col_type) };
 
                     let mut match_row = quote! { Self::#field_name => #col_def };
+                    for (backend, ty) in &sql_type_overrides {
+                        columns_type_overrides.push(quote! {
+                            (Self::#field_name, sea_orm::DbBackend::#backend) =>
+                                Some(sea_orm::prelude::ColumnType::#ty),
+                        });
+                    }
                     if nullable {
                         match_row = quote! { #match_row.nullable() };
                     }
@@ -612,6 +637,13 @@ pub fn expand_derive_entity_model(
                 }
             }
 
+            fn column_type_override(&self, backend: sea_orm::DbBackend) -> Option<sea_orm::prelude::ColumnType> {
+                match (self, backend) {
+                    #(#columns_type_overrides)*
+                    _ => None,
+                }
+            }
+
             fn enum_type_name(&self) -> Option<&'static str> {
                 match self {
                     #columns_enum_type_name
@@ -646,4 +678,41 @@ pub fn expand_derive_entity_model(
 
         #primary_key
     })
+}
+
+/// Recognizes the `column_type_mysql` / `column_type_postgres` / `column_type_sqlite`
+/// attributes and maps them to the corresponding `DbBackend` variant name.
+/// Returns `None` for any other attribute so the parser can try the next branch.
+fn column_type_backend(meta: &syn::meta::ParseNestedMeta) -> Option<Ident> {
+    let ident = &meta.path.segments.last()?.ident;
+    let backend = match ident.to_string().as_str() {
+        "column_type_mysql" => "MySql",
+        "column_type_postgres" => "Postgres",
+        "column_type_sqlite" => "Sqlite",
+        _ => return None,
+    };
+    Some(Ident::new(backend, ident.span()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::expand_derive_entity_model;
+
+    #[test]
+    fn rejects_duplicate_column_type_overrides() {
+        let input: syn::DeriveInput = syn::parse_quote! {
+            struct Model {
+                #[sea_orm(primary_key)]
+                id: i32,
+                #[sea_orm(column_type_postgres = "Text")]
+                #[sea_orm(column_type_postgres = "JsonBinary")]
+                value: String,
+            }
+        };
+        let error = expand_derive_entity_model(&input.vis, &input.data, &input.attrs).unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "Duplicate column type override for this backend"
+        );
+    }
 }
