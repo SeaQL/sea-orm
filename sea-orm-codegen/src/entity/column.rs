@@ -115,6 +115,15 @@ impl Column {
             ColumnType::JsonBinary => Some("JsonBinary".to_owned()),
             ColumnType::Custom(iden) => {
                 let ty = format!("custom(\"{iden}\")");
+                // `citext` is a regular, text-castable column type: emit the
+                // documented cast attributes so the column stays mapped in the
+                // Entity. `ignore` would drop the `Column` variant entirely and
+                // break compilation whenever a citext column is a primary key.
+                if iden.to_string() == "citext" {
+                    return Some(quote! (
+                        column_type = #ty, select_as = "text", save_as = "citext"
+                    ));
+                }
                 return Some(quote! ( ignore, column_type = #ty, select_as = "text" ));
             }
             ColumnType::Binary(s) => Some(format!("Binary({s})")),
@@ -619,6 +628,47 @@ mod tests {
                 .unwrap()
                 .to_string(),
             quote! { column_type = "Decimal(Some((10, 2)))" }.to_string()
+        );
+    }
+
+    #[test]
+    fn test_get_col_type_attrs_custom_types() {
+        let make_col = |col_type| Column {
+            name: "handle".to_owned(),
+            col_type,
+            auto_increment: false,
+            not_null: true,
+            unique: false,
+            unique_key: None,
+        };
+
+        // Regression test for #3168: citext columns must map to a regular
+        // column with the documented cast attributes. Emitting `ignore` drops
+        // the `Column` variant entirely and breaks compilation whenever a
+        // citext column is a primary key.
+        let attrs = make_col(ColumnType::Custom(SeaRc::new(Alias::new("citext"))))
+            .get_col_type_attrs()
+            .unwrap()
+            .to_string();
+        assert_eq!(
+            attrs,
+            quote! {
+                column_type = "custom(\"citext\")", select_as = "text", save_as = "citext"
+            }
+            .to_string()
+        );
+        assert!(!attrs.contains("ignore"));
+
+        // Other custom types keep their existing emission.
+        assert_eq!(
+            make_col(ColumnType::Custom(SeaRc::new(Alias::new("cus_col"))))
+                .get_col_type_attrs()
+                .unwrap()
+                .to_string(),
+            quote! {
+                ignore, column_type = "custom(\"cus_col\")", select_as = "text"
+            }
+            .to_string()
         );
     }
 
