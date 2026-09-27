@@ -156,10 +156,12 @@ fn generate_field_definition(info: &ArrowFieldInfo) -> TokenStream {
     if let Some(comment) = &info.arrow_attrs.comment {
         quote! {
             Field::new(#field_name, #data_type, #nullable)
-                .with_metadata([(
-                    "comment".into(),
-                    #comment.into()
-                )].into())
+                .with_metadata(
+                    ::std::collections::HashMap::<::std::string::String, ::std::string::String>::from([(
+                        ::std::string::String::from("comment"),
+                        ::std::string::String::from(#comment),
+                    )])
+                )
         }
     } else {
         quote! {
