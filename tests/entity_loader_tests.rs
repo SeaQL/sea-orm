@@ -227,6 +227,67 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
     Ok(())
 }
 
+// https://github.com/SeaQL/sea-orm/issues/3188
+//
+// `EntityLoader` now implements `QuerySelect`, so `.join(..)` (and `.join_rev(..)`,
+// `.join_as(..)`, etc) is available on `Entity::load()`, exactly like on `Entity::find()`.
+// This lets callers filter on columns of a table that's only reachable via a join,
+// e.g. a many-to-many relation's "other side", which `.filter(..)` alone cannot reach.
+#[sea_orm_macros::test]
+async fn cake_entity_loader_join() -> Result<(), DbErr> {
+    use common::bakery_dense::prelude::*;
+    use sea_orm::JoinType;
+    use sea_orm::compound::EntityLoaderTrait;
+
+    let ctx = TestContext::new("test_cake_entity_loader_join").await;
+    let db = &ctx.db;
+    create_tables(db).await?;
+
+    let bakery_1 = insert_bakery(db, "SeaSide Bakery").await?;
+
+    let baker_1 = insert_baker(db, "Jane", bakery_1.id).await?;
+    let baker_2 = insert_baker(db, "Peter", bakery_1.id).await?;
+
+    let cake_1 = insert_cake(db, "Cheesecake", Some(bakery_1.id)).await?;
+    let cake_2 = insert_cake(db, "Coffee", Some(bakery_1.id)).await?;
+
+    insert_cake_baker(db, baker_1.id, cake_1.id).await?;
+    insert_cake_baker(db, baker_2.id, cake_2.id).await?;
+
+    // Join through the `cakes_bakers` junction table, from `cake` (the loader's root
+    // entity) to `baker`, then filter on `baker.name` -- a column that is otherwise
+    // unreachable from a plain `Cake::load().filter(..)`.
+    let cakes = Cake::load()
+        .join(
+            JoinType::InnerJoin,
+            cakes_bakers::Relation::Cake.def().rev(),
+        )
+        .join(JoinType::InnerJoin, cakes_bakers::Relation::Baker.def())
+        .filter(Baker::COLUMN.name.eq("Jane"))
+        .with(Bakery)
+        .all(db)
+        .await?;
+
+    assert_eq!(cakes, [cake_1.clone()]);
+    assert_eq!(cakes[0].bakery.as_ref().unwrap(), &bakery_1);
+
+    // sanity check: the other baker's cake is excluded
+    let cakes = Cake::load()
+        .join(
+            JoinType::InnerJoin,
+            cakes_bakers::Relation::Cake.def().rev(),
+        )
+        .join(JoinType::InnerJoin, cakes_bakers::Relation::Baker.def())
+        .filter(Baker::COLUMN.name.eq("Peter"))
+        .all(db)
+        .await?;
+    assert_eq!(cakes, [cake_2.clone()]);
+
+    ctx.delete().await;
+
+    Ok(())
+}
+
 #[sea_orm_macros::test]
 async fn entity_loader_join_three() {
     let ctx = TestContext::new("entity_loader_join_three").await;
