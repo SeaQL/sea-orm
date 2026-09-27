@@ -229,8 +229,8 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
 
 // https://github.com/SeaQL/sea-orm/issues/3188
 //
-// `EntityLoader` now implements `QuerySelect`, so `.join(..)` (and `.join_rev(..)`,
-// `.join_as(..)`, etc) is available on `Entity::load()`, exactly like on `Entity::find()`.
+// `EntityLoader` has inherent `.join(..)`, `.join_rev(..)`, `.join_as(..)` and
+// `.join_as_rev(..)` methods, so joins are available on `Entity::load()` like on `Entity::find()`.
 // This lets callers filter on columns of a table that's only reachable via a join,
 // e.g. a many-to-many relation's "other side", which `.filter(..)` alone cannot reach.
 #[sea_orm_macros::test]
