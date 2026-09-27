@@ -16,7 +16,7 @@ pub use sea_orm::{
 
 pub use crud::*;
 // use common::bakery_chain::*;
-use sea_orm::{DbConn, TryInsertResult};
+use sea_orm::DbConn;
 
 #[sea_orm_macros::test]
 fn main() {
@@ -48,7 +48,7 @@ pub fn test(db: &DbConn) {
         .on_conflict_do_nothing()
         .exec(db);
 
-    assert!(matches!(conflict_insert, Ok(TryInsertResult::Conflicted)));
+    assert!(conflict_insert.unwrap().last_insert_id.is_none());
 
     let empty_insert = Bakery::insert_many(std::iter::empty::<bakery::ActiveModel>())
         .exec(db)

@@ -293,7 +293,7 @@ let result = Fruit::insert_many([apple, pear])
     .on_conflict_do_nothing()
     .exec(db)?;
 
-matches!(result, TryInsertResult::Conflicted);
+result.last_insert_id.is_none();
 ```
 
 ### Update
