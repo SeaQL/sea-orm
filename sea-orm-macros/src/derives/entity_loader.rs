@@ -896,6 +896,15 @@ pub fn expand_entity_loader(vis: &Visibility, schema: EntityLoaderSchema) -> Tok
     }
 
     #[automatically_derived]
+    impl sea_orm::QuerySelect for EntityLoader {
+        type QueryStatement = <sea_orm::Select<Entity> as sea_orm::QuerySelect>::QueryStatement;
+
+        fn query(&mut self) -> &mut sea_orm::sea_query::SelectStatement {
+            sea_orm::QuerySelect::query(&mut self.select)
+        }
+    }
+
+    #[automatically_derived]
     #async_trait
     impl sea_orm::compound::EntityLoaderTrait<Entity> for EntityLoader {
         type ModelEx = ModelEx;
