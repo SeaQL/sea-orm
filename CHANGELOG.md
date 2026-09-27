@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.0.4](changelog/2.0.4.md) - 2026-09-27
 
-`select_except`, `save_as` casts for `eq_any` / `ne_all`, linked-join alias and `condition_type` fixes, MySQL schema-sync index drop fix
+`select_except`, `save_as` casts for `eq_any` / `ne_all`, linked-join alias and `condition_type` fixes, MySQL schema-sync index drop fix, arrow 60
 
 ## [2.0.3](changelog/2.0.3.md) - 2026-09-12
 
