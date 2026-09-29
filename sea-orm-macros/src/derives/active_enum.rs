@@ -452,6 +452,16 @@ impl ActiveEnum {
         } else {
             quote!()
         };
+        let sqlx_postgres_try_get_optional =
+            if cfg!(feature = "sqlx-postgres") && self.db_type.is_enum() {
+                quote! {
+                    if let Some(result) = res.try_get_from_sqlx_postgres_optional::<Self, I>(idx) {
+                        return result;
+                    }
+                }
+            } else {
+                quote!()
+            };
         let try_get_by_impl = {
             let enum_name = &self.enum_name;
             if self.generate_enum_impls() {
@@ -474,12 +484,41 @@ impl ActiveEnum {
                 }
             }
         };
+        let try_get_by_optional_impl = {
+            let enum_name = &self.enum_name;
+            if self.generate_enum_impls() {
+                quote! {
+                    #sqlx_postgres_try_get_optional
+                    <String as sea_orm::TryGetable>::try_get_by_optional(res, idx)?
+                        .map(|value| {
+                            let value = sea_orm::sea_query::Enum {
+                                type_name: #enum_name.into(),
+                                value: value.into(),
+                            };
+                            <Self as sea_orm::ActiveEnum>::try_from_value(&value)
+                                .map_err(sea_orm::TryGetError::DbErr)
+                        })
+                        .transpose()
+                }
+            } else {
+                quote! {
+                    #sqlx_postgres_try_get_optional
+                    <<Self as sea_orm::ActiveEnum>::Value as sea_orm::TryGetable>::try_get_by_optional(res, idx)?
+                        .map(|value| <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(sea_orm::TryGetError::DbErr))
+                        .transpose()
+                }
+            }
+        };
 
         quote! {
             #[automatically_derived]
             impl sea_orm::TryGetable for #ident {
                 fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, idx: I) -> std::result::Result<Self, sea_orm::TryGetError> {
                     #try_get_by_impl
+                }
+
+                fn try_get_by_optional<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, idx: I) -> std::result::Result<Option<Self>, sea_orm::TryGetError> {
+                    #try_get_by_optional_impl
                 }
             }
         }

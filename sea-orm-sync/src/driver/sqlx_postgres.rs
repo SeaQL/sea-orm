@@ -1,3 +1,4 @@
+use futures_util::TryStreamExt;
 use log::LevelFilter;
 use sea_query::Values;
 use std::sync::Mutex;
@@ -232,10 +233,39 @@ impl SqlxPostgresPoolConnection {
         })
     }
 
+    pub(crate) fn query_rows(&self, stmt: Statement) -> crate::QueryRows<'static> {
+        let pool = self.pool.clone();
+        let metric_callback = self.metric_callback.clone();
+        let rows = async_stream::try_stream! {
+            debug_print!("{}", stmt);
+            let mut conn = pool.acquire().map_err(sqlx_conn_acquire_err)?;
+            let query = sqlx_query(&stmt);
+            let stream = query
+                .fetch(&mut *conn)
+                .map_ok(Into::into)
+                .map_err(sqlx_error_to_query_err);
+            let mut stream = crate::database::stream::metric::MetricStream::new(
+                &metric_callback,
+                &stmt,
+                Some(std::time::Duration::ZERO),
+                stream,
+            );
+            while let Some(row) = stream.try_next()? {
+                yield row;
+            }
+        };
+        crate::QueryRows::new(Box::new(rows))
+    }
+
     /// Stream the results of executing a SQL query
-    #[instrument(level = "trace", skip(stmt))]
     #[cfg(feature = "stream")]
     pub fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
+        self.stream_rows(stmt)
+    }
+
+    #[cfg(feature = "stream")]
+    #[instrument(level = "trace", name = "stream", skip(stmt))]
+    pub(crate) fn stream_rows(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
         let conn = self.pool.acquire().map_err(sqlx_conn_acquire_err)?;
@@ -370,7 +400,7 @@ impl
         PoolConnection<sqlx::Postgres>,
         Statement,
         Option<crate::metric::Callback>,
-    )> for crate::QueryStream
+    )> for QueryStream
 {
     fn from(
         (conn, stmt, metric_callback): (
@@ -379,7 +409,7 @@ impl
             Option<crate::metric::Callback>,
         ),
     ) -> Self {
-        crate::QueryStream::build(
+        QueryStream::build(
             stmt,
             crate::InnerConnection::Postgres(conn),
             metric_callback,

@@ -56,11 +56,20 @@ where
             .limit(self.page_size)
             .offset(self.page_size * page)
             .to_owned();
-        let rows = self.db.query_all(&query)?;
-        let mut buffer = Vec::with_capacity(rows.len());
-        for row in rows.into_iter() {
-            buffer.push(S::from_raw_query_result(row)?);
-        }
+        #[cfg(not(feature = "sync"))]
+        let buffer = self
+            .db
+            .query_rows(&query)?
+            .collect(S::from_raw_query_result)?;
+        #[cfg(feature = "sync")]
+        let buffer = {
+            let rows = self.db.query_all(&query)?;
+            let mut buffer = Vec::with_capacity(rows.len());
+            for row in rows.into_iter() {
+                buffer.push(S::from_raw_query_result(row)?);
+            }
+            buffer
+        };
         Ok(buffer)
     }
 

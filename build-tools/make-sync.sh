@@ -28,6 +28,9 @@ cp examples/quickstart/src/main.rs sea-orm-sync/examples/quickstart/src/main.rs
 rm -rf sea-orm-sync/src/bin
 cd sea-orm-sync
 
+# Rustfmt resolves this gated module, so replace its async-only tests with an empty file.
+printf '%s\n' '// Async-only metric tests are omitted from the sync crate.' > ./src/database/stream/metric/tests.rs
+
 replace_rs "s/Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>>/Result<Self::Stream<'a>, DbErr>/" src
 replace_rs "s/Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>/Result<T, E>/" src
 replace_rs "s/Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>/Result<T, E>/" src
