@@ -146,35 +146,42 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveEntityModel, attributes(sea_orm, seaography))]
 pub fn derive_entity_model(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    match expand_entity_model(&input) {
+        Ok(ts) => ts.into(),
+        Err(error) => error.into_compile_error().into(),
+    }
+}
+
+#[cfg(feature = "derive")]
+fn expand_entity_model(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let DeriveInput {
         vis,
         ident,
         data,
         attrs,
         ..
-    } = parse_macro_input!(input as DeriveInput);
+    } = input;
 
     if ident != "Model" {
         panic!("Struct name must be Model");
     }
 
-    let mut ts: TokenStream = derives::expand_derive_entity_model(&vis, &data, &attrs)
-        .unwrap_or_else(Error::into_compile_error)
-        .into();
+    let active_model = derives::DeriveActiveModel::try_from(input)?;
 
-    ts.extend::<TokenStream>(
-        derives::expand_derive_model(&ident, &data, &attrs)
-            .unwrap_or_else(Error::into_compile_error)
-            .into(),
-    );
+    let mut ts = derives::expand_derive_entity_model(
+        vis,
+        data,
+        attrs,
+        #[cfg(feature = "with-json")]
+        &active_model.serde_meta,
+    )?;
 
-    ts.extend::<TokenStream>(
-        derives::expand_derive_active_model(&vis, &ident, &data)
-            .unwrap_or_else(Error::into_compile_error)
-            .into(),
-    );
+    ts.extend(derives::expand_derive_model(ident, data, attrs)?);
 
-    ts
+    ts.extend(active_model.expand());
+
+    Ok(ts)
 }
 
 /// Derive a complex model with relational fields
@@ -466,11 +473,10 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveActiveModel, attributes(sea_orm))]
 pub fn derive_active_model(input: TokenStream) -> TokenStream {
-    let DeriveInput {
-        vis, ident, data, ..
-    } = parse_macro_input!(input);
+    let input = parse_macro_input!(input as DeriveInput);
+    let expanded = derives::DeriveActiveModel::try_from(&input).map(|model| model.expand());
 
-    match derives::expand_derive_active_model(&vis, &ident, &data) {
+    match expanded {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }

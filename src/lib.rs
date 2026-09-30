@@ -730,6 +730,13 @@ pub use sea_orm_macros::{
 pub use sea_query;
 pub use sea_query::Iden;
 
+#[cfg(feature = "with-json")]
+#[doc(hidden)]
+pub use serde;
+#[cfg(feature = "with-json")]
+#[doc(hidden)]
+pub use serde_json;
+
 pub use sea_orm_macros::EnumIter;
 pub use strum;
 

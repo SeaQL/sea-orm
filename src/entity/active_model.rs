@@ -490,7 +490,17 @@ pub trait ActiveModelTrait: Clone + Debug {
         Ok(())
     }
 
-    /// Create ActiveModel from a JSON value
+    /// Create an ActiveModel from a JSON object.
+    /// If the object contain the field, it will convert to `Set`. Otherwise will be not set.
+    ///
+    /// Deriving `DeriveEntityModel` or `DeriveActiveModel` generates a specific implementation.
+    /// Due to difficulty of implementation, models with `transparent`, `from`, or `try_from` retain this trait's default implementation instead.
+    ///
+    /// The generated implementation support these serde attributes:
+    /// - `rename`, `rename_all`, `alias`, `deserialize_with`, `with`, `deny_unknown_fields`: Consistent with serde's behavior.
+    /// - `default`: Always `Set`
+    /// - `skip`, `skip_deserializing`: Leave the field `NotSet`.
+    /// - `flatten`: Skipped
     #[cfg(feature = "with-json")]
     fn from_json(json: serde_json::Value) -> Result<Self, DbErr>
     where

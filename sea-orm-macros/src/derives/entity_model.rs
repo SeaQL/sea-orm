@@ -1,11 +1,10 @@
 use super::case_style::{CaseStyle, CaseStyleHelpers};
+#[cfg(feature = "with-json")]
+use super::serde_attributes::SerdeMeta;
 use super::util::{consume_meta, escape_rust_keyword, trim_starting_raw_identifier};
-use heck::{
-    ToKebabCase, ToLowerCamelCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase, ToUpperCamelCase,
-};
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use std::str::FromStr;
 use syn::{
     Attribute, Data, Fields, Lit, LitStr, Visibility, punctuated::Punctuated, spanned::Spanned,
     token::Comma,
@@ -13,53 +12,12 @@ use syn::{
 
 const NOT_AUTO_INCRE_TYPE_SUFFIX: [&str; 2] = ["String", "Uuid"];
 
-#[allow(dead_code)]
-fn convert_case(s: &str, case_style: CaseStyle) -> String {
-    match case_style {
-        CaseStyle::PascalCase => s.to_upper_camel_case(),
-        CaseStyle::KebabCase => s.to_kebab_case(),
-        CaseStyle::MixedCase => s.to_lower_camel_case(),
-        CaseStyle::ShoutySnakeCase => s.to_shouty_snake_case(),
-        CaseStyle::SnakeCase => s.to_snake_case(),
-        CaseStyle::TitleCase => s.to_title_case(),
-        CaseStyle::UpperCase => s.to_uppercase(),
-        CaseStyle::LowerCase => s.to_lowercase(),
-        CaseStyle::ScreamingKebabCase => s.to_kebab_case().to_uppercase(),
-        CaseStyle::CamelCase => {
-            let camel_case = s.to_upper_camel_case();
-            let mut result = String::with_capacity(camel_case.len());
-            let mut it = camel_case.chars();
-            if let Some(ch) = it.next() {
-                result.extend(ch.to_lowercase());
-            }
-            result.extend(it);
-            result
-        }
-    }
-}
-
-#[cfg(feature = "with-json")]
-fn serde_deserialize_name(
-    orig: &str,
-    serde_rename: Option<&str>,
-    serde_rename_all: Option<CaseStyle>,
-) -> String {
-    if let Some(rename) = serde_rename.as_ref() {
-        return rename.to_string();
-    }
-
-    if let Some(case_style) = serde_rename_all {
-        convert_case(orig, case_style)
-    } else {
-        orig.to_string()
-    }
-}
-
 /// Method to derive an Model
 pub fn expand_derive_entity_model(
     vis: &Visibility,
     data: &Data,
     attrs: &[Attribute],
+    #[cfg(feature = "with-json")] serde_meta: &SerdeMeta<'_>,
 ) -> syn::Result<TokenStream> {
     // if #[sea_orm(table_name = "foo", schema_name = "bar")] specified, create Entity struct
     let mut table_name = None;
@@ -68,37 +26,6 @@ pub fn expand_derive_entity_model(
     let mut table_iden = false;
     let mut model_ex = false;
     let mut rename_all: Option<CaseStyle> = None;
-    let mut serde_rename_all: Option<CaseStyle> = None;
-
-    // Parse #[serde(rename_all = "...")] at struct level
-    attrs
-        .iter()
-        .filter(|attr| attr.path().is_ident("serde"))
-        .try_for_each(|attr| {
-            attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident("rename_all") {
-                    if let Ok(lit) = meta.value().and_then(|v| v.parse::<LitStr>()) {
-                        // #[serde(rename_all = "camelCase")]
-                        serde_rename_all = CaseStyle::from_str(&lit.value()).ok();
-                    } else {
-                        // #[serde(rename_all(serialize = "...", deserialize = "..."))]
-                        meta.parse_nested_meta(|nested| {
-                            if nested.path.is_ident("deserialize") {
-                                let lit: LitStr = nested.value()?.parse()?;
-                                serde_rename_all = CaseStyle::from_str(&lit.value()).ok();
-                            } else {
-                                consume_meta(nested);
-                            }
-                            Ok(())
-                        })?;
-                    }
-                } else {
-                    consume_meta(meta);
-                }
-                Ok(())
-            })
-        })?;
-
     attrs
         .iter()
         .filter(|attr| attr.path().is_ident("sea_orm"))
@@ -185,8 +112,17 @@ pub fn expand_derive_entity_model(
         }
     }
     if let Data::Struct(item_struct) = data {
-        if let Fields::Named(fields) = &item_struct.fields {
-            for field in &fields.named {
+        if let Fields::Named(_fields) = &item_struct.fields {
+            #[cfg(feature = "with-json")]
+            let fields = serde_meta.container.data.all_fields();
+            #[cfg(not(feature = "with-json"))]
+            let fields = _fields.named.iter();
+
+            for field in fields {
+                #[cfg(feature = "with-json")]
+                let (json_key_name, field) =
+                    (field.attrs.name().deserialize_name(), field.original);
+
                 if let Some(ident) = &field.ident {
                     let original_field_name = trim_starting_raw_identifier(ident);
                     let mut field_name =
@@ -209,9 +145,6 @@ pub fn expand_derive_entity_model(
                     let mut is_auto_increment = false;
                     let mut extra = None;
                     let mut seaography_ignore = false;
-                    #[cfg(feature = "with-json")]
-                    let mut serde_rename: Option<String> = None;
-
                     let mut column_name = if let Some(case_style) = rename_all {
                         Some(field_name.convert_case(Some(case_style)))
                     } else if original_field_name
@@ -348,40 +281,8 @@ pub fn expand_derive_entity_model(
 
                                 Ok(())
                             })?;
-                        } else if cfg!(feature = "with-json") && attr.path().is_ident("serde") {
-                            #[cfg(feature = "with-json")]
-                            attr.parse_nested_meta(|meta| {
-                                if meta.path.is_ident("rename") {
-                                    if let Ok(lit) = meta.value().and_then(|v| v.parse::<LitStr>())
-                                    {
-                                        // #[serde(rename = "xxx")]
-                                        serde_rename = Some(lit.value());
-                                    } else {
-                                        // #[serde(rename(serialize = "...", deserialize = "..."))]
-                                        meta.parse_nested_meta(|nested| {
-                                            if nested.path.is_ident("deserialize") {
-                                                let lit: LitStr = nested.value()?.parse()?;
-                                                serde_rename = Some(lit.value());
-                                            } else {
-                                                consume_meta(nested);
-                                            }
-                                            Ok(())
-                                        })?;
-                                    }
-                                } else {
-                                    consume_meta(meta);
-                                }
-                                Ok(())
-                            })?;
                         }
                     }
-
-                    #[cfg(feature = "with-json")]
-                    let json_key_name = serde_deserialize_name(
-                        &original_field_name,
-                        serde_rename.as_deref(),
-                        serde_rename_all,
-                    );
 
                     if let Some(enum_name) = enum_name {
                         field_name = enum_name;
