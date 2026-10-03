@@ -97,7 +97,7 @@ impl QueryStream {
                 #[cfg(feature = "proxy")]
                 InnerConnection::Proxy(c) => {
                     let start = _metric_callback.is_some().then(std::time::SystemTime::now);
-                    let stream = futures_util::stream::once({
+                    let stream = std::iter::once({
                         Err(DbErr::BackendNotSupported {
                             db: "Proxy",
                             ctx: "QueryStream",

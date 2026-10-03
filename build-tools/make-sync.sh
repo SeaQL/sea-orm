@@ -40,6 +40,7 @@ replace_rs 's/AsyncFnOnce/FnOnce/g' src
 replace_rs 's/transaction_with_config_async/transaction_with_config/g' src tests
 replace_rs 's/transaction_async/transaction/g' src tests
 replace_rs 's/async //' src
+replace_rs 's/futures_util::stream::once({/std::iter::once({/' src
 replace_rs 's/async //' tests
 replace_rs 's/async //' examples
 replace_rs 's/\.await//' src

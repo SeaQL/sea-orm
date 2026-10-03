@@ -357,7 +357,7 @@ jobs:
           key: ${{ runner.os }}-cargo-sqlite-tests-rusqlite-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - working-directory: ./sea-orm-sync
-        run: cargo test --test '*' --features tests-features,rusqlite
+        run: cargo test --test '*' --features tests-features,rusqlite,proxy
       - working-directory: ./sea-orm-sync/examples/quickstart
         run: cargo run
       - working-directory: ./sea-orm-sync/examples/parquet_example
