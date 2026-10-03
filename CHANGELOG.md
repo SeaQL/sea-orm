@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Enhancements
+
+- Use streaming collection by default for `.all()`, pagination, and cursor queries on SQLx backends https://github.com/SeaQL/sea-orm/pull/3215
+
+    In Diesel's benchmarks, this brings SeaORM's performance closer to SQLx.
+
+- Add `TryGetable::try_get_by_optional` to avoid allocating NULL error strings when decoding optional values https://github.com/SeaQL/sea-orm/pull/3215
+
+    The default implementation still calls `try_get_by` for compatibility. So you have to implement `try_get_by_optional` manually to avoid the extra allocation of error strings.
+
 ## [2.0.4](changelog/2.0.4.md) - 2026-09-27
 
 `select_except`, `save_as` casts for `eq_any` / `ne_all`, linked-join alias and `condition_type` fixes, MySQL schema-sync index drop fix, arrow 60
