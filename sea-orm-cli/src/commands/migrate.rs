@@ -188,7 +188,7 @@ fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(),
 }
 
 fn fmt_migration_template(migration_name: &str) -> String {
-    format! {
+    format!(
         r#"use sea_orm_migration::{{prelude::*, schema::*}};
 
 pub struct Migration;
@@ -212,7 +212,7 @@ impl MigrationTrait for Migration {{
     }}
 }}
 "#
-    }
+    )
 }
 
 /// `get_migrator_filepath` looks for a file `migration_dir/src/lib.rs`
