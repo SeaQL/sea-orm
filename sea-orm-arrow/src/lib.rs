@@ -380,7 +380,7 @@ fn decimal256_to_value(_value: i256, _precision: u8, _scale: i8) -> Result<Value
 
         let bigint = BigInt::from_bytes_be(sign, &magnitude);
         let decimal = BigDecimal::new(bigint, _scale as i64);
-        return Ok(Value::BigDecimal(Some(Box::new(decimal))));
+        Ok(Value::BigDecimal(Some(Box::new(decimal))))
     }
 
     #[cfg(not(feature = "with-bigdecimal"))]
