@@ -76,6 +76,11 @@ mod text_uuid;
 #[cfg(feature = "with-uuid")]
 pub use text_uuid::*;
 
+#[cfg(feature = "postgres-geometry")]
+mod postgres_geometry;
+#[cfg(feature = "postgres-geometry")]
+pub use postgres_geometry::*;
+
 /// Default value for `T`.
 pub trait DefaultActiveValue {
     /// `Default::default()` if implemented, dummy value otherwise.
