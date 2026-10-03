@@ -96,7 +96,7 @@ jobs:
         with:
           fetch-depth: 0
       - id: git-log
-        run: echo "message=$(git log --no-merges -1 --oneline)" >> $GITHUB_OUTPUT
+        run: echo "message=$(git log --no-merges -1 --oneline)" >> "$GITHUB_OUTPUT"
 
   clippy:
     name: Clippy
@@ -274,7 +274,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: set-matrix
-        run: echo "path_matrix=$(find issues -type f -name 'Cargo.toml' -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "issues/\(.)" ]')" >> $GITHUB_OUTPUT
+        run: echo "path_matrix=$(find issues -type f -name 'Cargo.toml' -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "issues/\(.)" ]')" >> "$GITHUB_OUTPUT"
     outputs:
       path_matrix: ${{ steps.set-matrix.outputs.path_matrix }}
 
