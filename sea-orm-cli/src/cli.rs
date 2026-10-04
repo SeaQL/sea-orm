@@ -1,7 +1,8 @@
 use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueEnum};
 #[cfg(feature = "codegen")]
 use dotenvy::dotenv;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
+#[cfg(feature = "codegen")]
 use std::path::Path;
 
 #[cfg(feature = "codegen")]
@@ -418,31 +419,21 @@ fn is_deprecated_preserve_user_modifications_flag(arg: &OsStr) -> bool {
         .is_some_and(|arg| arg.starts_with("--preserve-user-modifications"))
 }
 
-/// As a Cargo subcommand, `cargo sea …` runs `cargo-sea` with `sea` injected as argv[1].
-/// Strip it (only under a `cargo-` binary name) so clap sees the real arguments.
-fn strip_cargo_subcommand(mut args: Vec<OsString>) -> Vec<OsString> {
-    let sub = args
-        .first()
-        .map(Path::new)
-        .and_then(Path::file_stem) // strips the `.exe` suffix on Windows
-        .and_then(OsStr::to_str)
-        .and_then(|name| name.strip_prefix("cargo-"))
-        .map(str::to_owned);
-    if let Some(sub) = sub {
-        if args.get(1).map(OsString::as_os_str) == Some(OsStr::new(&sub)) {
-            args.remove(1);
-        }
-    }
-    args
-}
-
 /// Use this to build a local, version-controlled `sea-orm-cli` in dependent projects
 /// (see [example use case](https://github.com/SeaQL/sea-orm/discussions/1889)).
 #[cfg(feature = "codegen")]
 pub async fn main() {
     dotenv().ok();
 
-    let args = strip_cargo_subcommand(std::env::args_os().collect());
+    let mut args: Vec<_> = std::env::args_os().collect();
+
+    // Cargo injects `sea` as argv[1] when invoking `cargo-sea`.
+    if let [program, subcommand, ..] = args.as_slice()
+        && Path::new(program).file_stem() == Some(OsStr::new("cargo-sea"))
+        && subcommand == "sea"
+    {
+        args.remove(1);
+    }
 
     let deprecated_preserve_user_modifications_flag_used = args
         .iter()
@@ -476,29 +467,5 @@ pub async fn main() {
             verbose,
         )
         .unwrap_or_else(handle_error),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn strip(args: &[&str]) -> Vec<OsString> {
-        strip_cargo_subcommand(args.iter().map(OsString::from).collect())
-    }
-
-    #[test]
-    fn strip_cargo_subcommand_only_strips_injected_name() {
-        // `cargo sea …` runs `cargo-sea sea …`; the injected `sea` is removed.
-        assert_eq!(
-            strip(&["cargo-sea", "sea", "generate"]),
-            ["cargo-sea", "generate"]
-        );
-        // Standalone binaries and non-matching argv[1] are left untouched.
-        assert_eq!(
-            strip(&["sea", "sea", "generate"]),
-            ["sea", "sea", "generate"]
-        );
-        assert_eq!(strip(&["cargo-sea", "generate"]), ["cargo-sea", "generate"]);
     }
 }
