@@ -5,6 +5,8 @@ use sea_query::{TableCreateStatement, extension::postgres::TypeCreateStatement};
 /// Stores the discovered schema from the database, including tables and enums
 #[derive(Default)]
 pub(crate) struct DiscoveredSchema {
+    /// The connection's current schema, when the backend has schema namespaces.
+    pub(crate) current_schema: Option<String>,
     pub(crate) tables: Vec<TableCreateStatement>,
     pub(crate) enums: Vec<TypeCreateStatement>,
     /// Schemas (namespaces) referenced by a registered entity's `schema_name`
@@ -156,6 +158,7 @@ where
             }
 
             Ok(DiscoveredSchema {
+                current_schema: Some(current_schema),
                 tables,
                 enums: vec![],
                 missing_schemas: vec![],
@@ -208,6 +211,7 @@ where
             }
 
             Ok(DiscoveredSchema {
+                current_schema: Some(current_schema),
                 tables,
                 enums,
                 missing_schemas,
@@ -228,6 +232,7 @@ where
                 })?
                 .merge_indexes_into_table();
             Ok(DiscoveredSchema {
+                current_schema: None,
                 tables: schema.tables.iter().map(|table| table.write()).collect(),
                 enums: vec![],
                 missing_schemas: vec![],
@@ -247,6 +252,7 @@ where
                 })?
                 .merge_indexes_into_table();
             Ok(DiscoveredSchema {
+                current_schema: None,
                 tables: schema.tables.iter().map(|table| table.write()).collect(),
                 enums: vec![],
                 missing_schemas: vec![],

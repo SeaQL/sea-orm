@@ -2,20 +2,25 @@ use super::changes::{
     ChangeSet, ColumnChangeKind, ColumnSignature, ConstraintChangeKind, TableChangeKind,
 };
 use super::schema::DiscoveredSchema;
-use crate::schema::builder::{EntitySchemaInfo, table_id};
+use crate::schema::builder::EntitySchemaInfo;
 use crate::schema::entity::index_table_ref;
+use crate::schema::table_id::TableCreateStatementExt;
 use crate::{DbBackend, TableId, TableSortOrder, sorted_tables};
 use sea_query::{ForeignKeyCreateStatement, Index, TableAlterStatement, TableCreateStatement};
 
 /// Phase 1: Record table-level changes for a single entity against the existing schema.
 pub(crate) fn record_table_changes(
     entity: &EntitySchemaInfo,
-    existing: &[TableCreateStatement],
+    existing: &DiscoveredSchema,
     changes: &mut ChangeSet,
     db_backend: DbBackend,
 ) {
-    let table = table_id(entity.table());
-    let existing_table = existing.iter().find(|tbl| table_id(tbl) == table);
+    let table = entity.table().table_id();
+    let current_schema = existing.current_schema.as_deref();
+    let existing_table = existing
+        .tables
+        .iter()
+        .find(|tbl| table.eq_with_default_schema(&tbl.table_id(), current_schema));
 
     if let Some(existing_table) = existing_table {
         record_column_changes(entity, existing_table, changes, db_backend);
@@ -35,7 +40,7 @@ pub(crate) fn record_table_changes(
             let mut idx_stmt = stmt.clone();
             idx_stmt.if_not_exists();
             changes.record_constraint(
-                table.name.clone(),
+                table.clone(),
                 ConstraintChangeKind::AddIndex {
                     stmt: db_backend.build(&idx_stmt),
                 },
@@ -52,19 +57,29 @@ pub(crate) fn record_orphan_tables(
     changes: &mut ChangeSet,
     excluded_tables: &[String],
 ) {
-    let orphans: Vec<&TableCreateStatement> = existing
+    let current_schema = existing.current_schema.as_deref();
+    let registered_tables: Vec<_> = entities
+        .iter()
+        .map(|entity| entity.table().table_id())
+        .collect();
+
+    let orphans: Vec<_> = existing
         .tables
         .iter()
-        .filter(|tbl| {
-            let table = table_id(tbl);
-            !excluded_tables.iter().any(|e| e == &table.name)
-                && !entities.iter().any(|e| table_id(e.table()) == table)
+        .filter(|existing_table| {
+            let existing_table_id = existing_table.table_id();
+            if excluded_tables.contains(&existing_table_id.name) {
+                return false;
+            }
+            !registered_tables
+                .iter()
+                .any(|t| t.eq_with_default_schema(&existing_table_id, current_schema))
         })
         .collect();
 
     for tbl in sorted_tables(&orphans, TableSortOrder::ChildrenFirst) {
         changes.record_table(TableChangeKind::Drop {
-            table: table_id(tbl),
+            table: tbl.table_id(),
             columns: column_signature(tbl),
         });
     }
@@ -88,7 +103,7 @@ fn record_column_changes(
     changes: &mut ChangeSet,
     db_backend: DbBackend,
 ) {
-    let table = table_id(entity.table());
+    let table = entity.table().table_id();
 
     for (idx, column_def) in entity.table().get_columns().iter().enumerate() {
         let col_name = column_def.get_column_name();
@@ -215,7 +230,7 @@ fn record_foreign_key_changes(
             .any(|existing_key| compare_foreign_key(foreign_key, existing_key));
         if !key_exists {
             changes.record_constraint(
-                table.name.clone(),
+                table.clone(),
                 ConstraintChangeKind::AddForeignKey {
                     stmt: db_backend.build(foreign_key),
                 },
@@ -233,7 +248,7 @@ fn record_foreign_key_changes(
             let fk = existing_key.get_foreign_key();
             if let Some(name) = fk.get_name() {
                 changes.record_constraint(
-                    table.name.clone(),
+                    table.clone(),
                     ConstraintChangeKind::DropForeignKey {
                         name: name.to_owned(),
                         stmt: db_backend.build(
@@ -274,7 +289,7 @@ fn record_index_changes(
             let mut idx_stmt = stmt.clone();
             idx_stmt.if_not_exists();
             changes.record_constraint(
-                table.name.clone(),
+                table.clone(),
                 ConstraintChangeKind::AddIndex {
                     stmt: db_backend.build(&idx_stmt),
                 },
@@ -310,7 +325,7 @@ fn record_unique_constraint_changes(
             if !already_unique {
                 let table_name = &table.name;
                 changes.record_constraint(
-                    table.name.clone(),
+                    table.clone(),
                     ConstraintChangeKind::AddUniqueConstraint {
                         column: col_name.to_string(),
                         stmt: db_backend.build(
@@ -369,7 +384,7 @@ fn record_unique_constraint_drops(
             };
 
             changes.record_constraint(
-                table.name.clone(),
+                table.clone(),
                 ConstraintChangeKind::DropUniqueConstraint { name, stmt },
             );
         }

@@ -7,7 +7,8 @@ pub mod suggestion;
 mod table;
 pub mod warning;
 
-use crate::schema::builder::{EntitySchemaInfo, TableSortOrder, table_id};
+use crate::schema::builder::{EntitySchemaInfo, TableSortOrder};
+use crate::schema::table_id::TableCreateStatementExt;
 use crate::{ConnectionTrait, DbErr, TableId, sorted_tables};
 use changes::ChangeSet;
 
@@ -75,17 +76,17 @@ where
     let tabl_ref: Vec<&TableCreateStatement> = new_entities.iter().map(|e| e.table()).collect();
     let entities_by_table: std::collections::HashMap<TableId, &EntitySchemaInfo> = new_entities
         .iter()
-        .map(|e| (table_id(e.table()), e))
+        .map(|e| (e.table().table_id(), e))
         .collect();
     for table in sorted_tables(&tabl_ref, TableSortOrder::ParentsFirst) {
-        let table = table_id(table);
+        let table = table.table_id();
         if excluded_tables.iter().any(|e| e == &table.name) {
             continue;
         }
 
         let entity = entities_by_table[&table];
         enum_::record_enum_changes(entity.enums(), db_backend, &existing.enums, &mut change_set);
-        table::record_table_changes(entity, &existing.tables, &mut change_set, db_backend);
+        table::record_table_changes(entity, &existing, &mut change_set, db_backend);
     }
 
     table::record_orphan_tables(new_entities, &existing, &mut change_set, excluded_tables);

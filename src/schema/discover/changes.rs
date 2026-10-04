@@ -125,7 +125,7 @@ pub enum ColumnChangeKind {
 #[derive(Debug, Clone)]
 pub struct ConstraintChange {
     pub id: ChangeId,
-    pub table: String,
+    pub table: TableId,
     pub kind: ConstraintChangeKind,
 }
 
@@ -233,7 +233,7 @@ impl ChangeSet {
         id
     }
 
-    pub fn record_constraint(&mut self, table: String, kind: ConstraintChangeKind) -> ChangeId {
+    pub fn record_constraint(&mut self, table: TableId, kind: ConstraintChangeKind) -> ChangeId {
         let id = self.next_id();
         self.constraints.push(ConstraintChange { id, table, kind });
         id

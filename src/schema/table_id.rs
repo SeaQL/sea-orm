@@ -1,4 +1,4 @@
-use sea_query::{IntoTableRef, TableName, TableRef};
+use sea_query::{IntoTableRef, TableCreateStatement, TableName, TableRef};
 
 //TODO: this exists because [`sea_query::TableRef`] is very inconvenient to work with
 
@@ -32,6 +32,17 @@ impl TableId {
             schema: Some(schema.into()),
             name: name.into(),
         }
+    }
+
+    /// Compare table references with omitted schemas interpreted as `default_schema`.
+    pub(crate) fn eq_with_default_schema(
+        &self,
+        other: &Self,
+        default_schema: Option<&str>,
+    ) -> bool {
+        self.name == other.name
+            && self.schema.as_deref().or(default_schema)
+                == other.schema.as_deref().or(default_schema)
     }
 
     /// The same table under a different name, staying in its schema.
@@ -81,6 +92,24 @@ impl std::fmt::Display for TableId {
             Some(schema) => write!(f, "{schema}.{}", self.name),
             None => f.write_str(&self.name),
         }
+    }
+}
+
+pub(crate) trait TableCreateStatementExt {
+    /// The table a create statement targets.
+    ///
+    /// Panics if the statement has no table name — everything schema building and
+    /// discovery handle is fully built by the time it gets here.
+    fn table_id(&self) -> TableId;
+}
+
+impl TableCreateStatementExt for TableCreateStatement {
+    fn table_id(&self) -> TableId {
+        //TODO: either rewrite TableCreateStatement or move to something else that is not a builder with options
+        let table_ref = self
+            .get_table_name()
+            .expect("Expect TableCreateStatement is properly built");
+        TableId::from_table_ref(table_ref)
     }
 }
 
