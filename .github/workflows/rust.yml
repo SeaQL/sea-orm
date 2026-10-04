@@ -14,8 +14,10 @@
 # Following jobs will be run when no keywords were found in commit message)
 #
 #   - `sqlite`
+#   - `mysql-build`
 #   - `mysql`
 #   - `mariadb`
+#   - `postgres-build`
 #   - `postgres`
 #
 # Following jobs will be run if keywords `[issues]` were found in commit message
@@ -36,12 +38,14 @@
 # Following jobs will be run if keywords `[mysql]` were found in commit message
 #
 #   - Jobs that will always run
+#   - `mysql-build`
 #   - `mysql`
 #   - `mariadb`
 #
 # Following jobs will be run if keywords `[postgres]` were found in commit message
 #
 #   - Jobs that will always run
+#   - `postgres-build`
 #   - `postgres`
 
 name: tests
@@ -96,11 +100,13 @@ jobs:
         with:
           fetch-depth: 0
       - id: git-log
-        run: echo "message=$(git log --no-merges -1 --oneline)" >> $GITHUB_OUTPUT
+        run: echo "message=$(git log --no-merges -1 --oneline)" >> "$GITHUB_OUTPUT"
 
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -220,6 +226,8 @@ jobs:
   examples:
     name: Examples (${{ matrix.paths }})
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
     strategy:
       fail-fast: false
       matrix:
@@ -257,10 +265,12 @@ jobs:
             find $path -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
             find $path -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo update --manifest-path {}
             case $path in
-              # Slowest examples: one workspace build, instead of rebuilding shared deps per member
               react_admin) cargo test --workspace --manifest-path react_admin/backend/Cargo.toml ;;
-              loco_seaography|rocket_example) cargo test --workspace --manifest-path $path/Cargo.toml ;;
-              *) find $path -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {} ;;
+              seaography_example)
+                cargo test --workspace --manifest-path seaography_example/graphql/Cargo.toml
+                cargo test --workspace --manifest-path seaography_example/migration/Cargo.toml
+                ;;
+              *) cargo test --workspace --manifest-path $path/Cargo.toml ;;
             esac
             if [ "$path" = quickstart ]; then (cd quickstart && cargo run); fi
             echo "::endgroup::"
@@ -274,7 +284,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: set-matrix
-        run: echo "path_matrix=$(find issues -type f -name 'Cargo.toml' -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "issues/\(.)" ]')" >> $GITHUB_OUTPUT
+        run: echo "path_matrix=$(find issues -type f -name 'Cargo.toml' -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "issues/\(.)" ]')" >> "$GITHUB_OUTPUT"
     outputs:
       path_matrix: ${{ steps.set-matrix.outputs.path_matrix }}
 
@@ -313,6 +323,7 @@ jobs:
       }}
     runs-on: ubuntu-latest
     env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
       DATABASE_URL: "sqlite::memory:"
     strategy:
       fail-fast: false
@@ -344,6 +355,7 @@ jobs:
       }}
     runs-on: ubuntu-latest
     env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
       DATABASE_URL: "sqlite::memory:"
     steps:
       - uses: actions/checkout@v4
@@ -363,14 +375,59 @@ jobs:
       - working-directory: ./sea-orm-sync/examples/parquet_example
         run: cargo run
 
-  mysql:
-    name: MySQL
+  mysql-build:
+    name: Build MySQL tests (${{ matrix.runtime }}, ${{ matrix.tls }})
     needs: init
     if: >-
       ${{
         needs.init.outputs.run-partial == 'false' ||
         (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-mysql == 'true')
       }}
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [tokio]
+        tls: [native-tls]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-mysql-tests-${{ hashFiles('**/Cargo.toml') }}
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest@0.9.146
+      - name: Archive SeaORM tests
+        run: >-
+          cargo nextest archive --test '*'
+          --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+          --archive-file ${{ runner.temp }}/mysql-tests.tar.zst
+      - name: Archive migration tests
+        run: >-
+          cargo nextest archive --manifest-path sea-orm-migration/Cargo.toml --test '*'
+          --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+          --archive-file ${{ runner.temp }}/mysql-migration-tests.tar.zst
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mysql-tests-${{ matrix.runtime }}-${{ matrix.tls }}
+          path: |
+            ${{ runner.temp }}/mysql-tests.tar.zst
+            ${{ runner.temp }}/mysql-migration-tests.tar.zst
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+
+  mysql:
+    name: MySQL
+    needs: mysql-build
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: "mysql://root:@localhost"
@@ -398,28 +455,21 @@ jobs:
           --health-retries=3
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v5
+      - uses: taiki-e/install-action@v2
         with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-mysql-tests-${{ hashFiles('**/Cargo.toml') }}
-      - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+          tool: nextest@0.9.146
+      - uses: actions/download-artifact@v8
+        with:
+          name: mysql-tests-${{ matrix.runtime }}-${{ matrix.tls }}
+          path: ${{ runner.temp }}
+      - name: Run SeaORM tests
+        run: cargo nextest run --archive-file ${{ runner.temp }}/mysql-tests.tar.zst
+      - name: Run migration tests
+        run: cargo nextest run --archive-file ${{ runner.temp }}/mysql-migration-tests.tar.zst
 
   mariadb:
     name: MariaDB
-    needs: init
-    if: >-
-      ${{
-        needs.init.outputs.run-partial == 'false' ||
-        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-mysql == 'true')
-      }}
+    needs: mysql-build
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: "mysql://root:@localhost"
@@ -449,6 +499,34 @@ jobs:
           --health-retries=3
     steps:
       - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest@0.9.146
+      - uses: actions/download-artifact@v8
+        with:
+          name: mysql-tests-${{ matrix.runtime }}-${{ matrix.tls }}
+          path: ${{ runner.temp }}
+      - name: Run SeaORM tests
+        run: cargo nextest run --archive-file ${{ runner.temp }}/mysql-tests.tar.zst
+
+  postgres-build:
+    name: Build Postgres tests (${{ matrix.runtime }}, ${{ matrix.tls }})
+    needs: init
+    if: >-
+      ${{
+        needs.init.outputs.run-partial == 'false' ||
+        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-postgres == 'true')
+      }}
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [tokio]
+        tls: [native-tls]
+    steps:
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/cache@v5
         with:
@@ -456,19 +534,34 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-mariadb-tests-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-postgres-tests-${{ matrix.runtime }}-${{ matrix.tls }}-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest@0.9.146
+      - name: Archive SeaORM tests
+        run: >-
+          cargo nextest archive --test '*'
+          --features tests-features,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+          --archive-file ${{ runner.temp }}/postgres-tests.tar.zst
+      - name: Archive migration tests
+        run: >-
+          cargo nextest archive --manifest-path sea-orm-migration/Cargo.toml --test '*'
+          --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+          --archive-file ${{ runner.temp }}/postgres-migration-tests.tar.zst
+      - uses: actions/upload-artifact@v7
+        with:
+          name: postgres-tests-${{ matrix.runtime }}-${{ matrix.tls }}
+          path: |
+            ${{ runner.temp }}/postgres-tests.tar.zst
+            ${{ runner.temp }}/postgres-migration-tests.tar.zst
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
 
   postgres:
     name: Postgres
-    needs: init
-    if: >-
-      ${{
-        needs.init.outputs.run-partial == 'false' ||
-        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-postgres == 'true')
-      }}
+    needs: postgres-build
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: "postgres://root:root@localhost"
@@ -494,16 +587,14 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v5
+      - uses: taiki-e/install-action@v2
         with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-postgres-tests-${{ matrix.runtime }}-${{ matrix.tls }}-${{ hashFiles('**/Cargo.toml') }}
-      - uses: mozilla-actions/sccache-action@v0.0.9
-      - run: cargo test --test '*' --features tests-features,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --test '*' --features tests-features,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }} --no-run
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+          tool: nextest@0.9.146
+      - uses: actions/download-artifact@v8
+        with:
+          name: postgres-tests-${{ matrix.runtime }}-${{ matrix.tls }}
+          path: ${{ runner.temp }}
+      - name: Run SeaORM tests
+        run: cargo nextest run --archive-file ${{ runner.temp }}/postgres-tests.tar.zst
+      - name: Run migration tests
+        run: cargo nextest run --archive-file ${{ runner.temp }}/postgres-migration-tests.tar.zst

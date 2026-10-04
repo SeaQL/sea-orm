@@ -61,7 +61,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set version
         shell: bash
-        run: echo "VERSION=${GITHUB_REF_NAME#sea-orm-cli@}" >> $GITHUB_ENV
+        run: echo "VERSION=${GITHUB_REF_NAME#sea-orm-cli@}" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
