@@ -115,7 +115,8 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo clippy --all -- -D warnings
-      - run: cargo clippy --all --features runtime-tokio-native-tls,sqlx-all -- -D warnings
+      - run: cargo clippy --all --features runtime-tokio-native-tls,sqlx-all,proxy -- -D warnings
+      - run: cargo clippy --all --features runtime-tokio-native-tls,sqlx-all,proxy,with-bigdecimal -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-cli/Cargo.toml -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-migration/Cargo.toml -- -D warnings
 
@@ -356,7 +357,7 @@ jobs:
           key: ${{ runner.os }}-cargo-sqlite-tests-rusqlite-${{ hashFiles('**/Cargo.toml') }}
       - uses: mozilla-actions/sccache-action@v0.0.9
       - working-directory: ./sea-orm-sync
-        run: cargo test --test '*' --features tests-features,rusqlite
+        run: cargo test --test '*' --features tests-features,rusqlite,proxy
       - working-directory: ./sea-orm-sync/examples/quickstart
         run: cargo run
       - working-directory: ./sea-orm-sync/examples/parquet_example

@@ -605,7 +605,8 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                         #[cfg(feature = "with-bigdecimal")]
                         "NUMERIC" => Value::BigDecimal(
                             row.try_get::<Option<bigdecimal::BigDecimal>, _>(c.ordinal())
-                                .expect("Failed to get numeric"),
+                                .expect("Failed to get numeric")
+                                .map(Box::new),
                         ),
                         #[cfg(all(
                             feature = "with-rust_decimal",
@@ -623,7 +624,7 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 .map(|vals| {
                                     Box::new(
                                         vals.into_iter()
-                                            .map(|val| Value::BigDecimal(Some(val)))
+                                            .map(|val| Value::BigDecimal(Some(Box::new(val))))
                                             .collect(),
                                     )
                                 }),

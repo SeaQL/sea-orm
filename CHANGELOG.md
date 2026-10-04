@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
     The default implementation still calls `try_get_by` for compatibility. So you have to implement `try_get_by_optional` manually to avoid the extra allocation of error strings.
 
+### Bug Fixes
+
+- Fix compilation failures with the `proxy` feature https://github.com/SeaQL/sea-orm/pull/3220
+
 ## [2.0.4](changelog/2.0.4.md) - 2026-09-27
 
 `select_except`, `save_as` casts for `eq_any` / `ne_all`, linked-join alias and `condition_type` fixes, MySQL schema-sync index drop fix, arrow 60

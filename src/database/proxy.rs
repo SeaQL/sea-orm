@@ -81,6 +81,14 @@ impl From<ExecResult> for ProxyExecResult {
                 last_insert_id: result.last_insert_rowid() as u64,
                 rows_affected: result.rows_affected(),
             },
+            #[cfg(feature = "rusqlite")]
+            ExecResultHolder::Rusqlite(result) => Self {
+                last_insert_id: result
+                    .last_insert_rowid
+                    .try_into()
+                    .expect("negative last_insert_rowid"),
+                rows_affected: result.rows_affected,
+            },
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => Self {
                 last_insert_id: result.last_insert_id,
@@ -151,6 +159,27 @@ pub fn from_query_result_to_proxy_row(result: &QueryResult) -> ProxyRow {
         QueryResultRow::SqlxPostgres(row) => crate::from_sqlx_postgres_row_to_proxy_row(row),
         #[cfg(feature = "sqlx-sqlite")]
         QueryResultRow::SqlxSqlite(row) => crate::from_sqlx_sqlite_row_to_proxy_row(row),
+        #[cfg(feature = "rusqlite")]
+        QueryResultRow::Rusqlite(row) => ProxyRow {
+            values: row
+                .columns
+                .iter()
+                .zip(&row.values)
+                .map(|(name, value)| {
+                    use crate::driver::rusqlite::RusqliteOwnedValue;
+
+                    let value = match value {
+                        // SQLite NULL has no storage type, and OwnedRow has no column type metadata.
+                        RusqliteOwnedValue::Null => Value::String(None),
+                        RusqliteOwnedValue::Integer(value) => Value::BigInt(Some(*value)),
+                        RusqliteOwnedValue::Real(value) => Value::Double(Some(*value)),
+                        RusqliteOwnedValue::Text(value) => Value::String(Some(value.clone())),
+                        RusqliteOwnedValue::Blob(value) => Value::Bytes(Some(value.clone())),
+                    };
+                    (name.to_string(), value)
+                })
+                .collect(),
+        },
         #[cfg(feature = "mock")]
         QueryResultRow::Mock(row) => ProxyRow {
             values: row.values.clone(),
