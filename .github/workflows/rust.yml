@@ -105,6 +105,8 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -224,6 +226,8 @@ jobs:
   examples:
     name: Examples (${{ matrix.paths }})
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
     strategy:
       fail-fast: false
       matrix:
@@ -319,6 +323,7 @@ jobs:
       }}
     runs-on: ubuntu-latest
     env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
       DATABASE_URL: "sqlite::memory:"
     strategy:
       fail-fast: false
@@ -350,6 +355,7 @@ jobs:
       }}
     runs-on: ubuntu-latest
     env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
       DATABASE_URL: "sqlite::memory:"
     steps:
       - uses: actions/checkout@v4
@@ -378,6 +384,8 @@ jobs:
         (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-mysql == 'true')
       }}
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
     strategy:
       fail-fast: false
       matrix:
@@ -510,6 +518,8 @@ jobs:
         (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-postgres == 'true')
       }}
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
     strategy:
       fail-fast: false
       matrix:
