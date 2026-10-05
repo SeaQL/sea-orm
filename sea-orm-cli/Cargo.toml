@@ -16,7 +16,7 @@ keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 license = "MIT OR Apache-2.0"
 name = "sea-orm-cli"
 repository = "https://github.com/SeaQL/sea-orm"
-rust-version = "1.85.0"
+rust-version = "1.94.0"
 version = "2.0.4"
 
 [package.metadata.binstall]
@@ -38,6 +38,11 @@ required-features = ["cli", "codegen"]
 
 [[bin]]
 name              = "sea"
+path              = "src/bin/main.rs"
+required-features = ["cli", "codegen"]
+
+[[bin]]
+name              = "cargo-sea"
 path              = "src/bin/main.rs"
 required-features = ["cli", "codegen"]
 

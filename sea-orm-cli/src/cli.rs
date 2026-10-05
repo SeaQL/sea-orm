@@ -2,6 +2,8 @@ use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueEnum};
 #[cfg(feature = "codegen")]
 use dotenvy::dotenv;
 use std::ffi::OsStr;
+#[cfg(feature = "codegen")]
+use std::path::Path;
 
 #[cfg(feature = "codegen")]
 use crate::{handle_error, run_generate_command, run_migrate_command};
@@ -423,11 +425,22 @@ fn is_deprecated_preserve_user_modifications_flag(arg: &OsStr) -> bool {
 pub async fn main() {
     dotenv().ok();
 
-    let deprecated_preserve_user_modifications_flag_used = std::env::args_os()
-        .skip(1)
-        .any(|arg| is_deprecated_preserve_user_modifications_flag(&arg));
+    let mut args: Vec<_> = std::env::args_os().collect();
 
-    let cli = Cli::parse();
+    // Cargo injects `sea` as argv[1] when invoking `cargo-sea`.
+    if let [program, subcommand, ..] = args.as_slice()
+        && Path::new(program).file_stem() == Some(OsStr::new("cargo-sea"))
+        && subcommand == "sea"
+    {
+        args.remove(1);
+    }
+
+    let deprecated_preserve_user_modifications_flag_used = args
+        .iter()
+        .skip(1)
+        .any(|arg| is_deprecated_preserve_user_modifications_flag(arg));
+
+    let cli = Cli::parse_from(&args);
     if deprecated_preserve_user_modifications_flag_used {
         eprintln!(
             "warning: `--preserve-user-modifications` is deprecated; use `--experimental-preserve-user-modifications` instead."

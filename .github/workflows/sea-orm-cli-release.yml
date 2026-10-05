@@ -84,6 +84,7 @@ jobs:
           bin_cli="sea-orm-cli/target/${{ matrix.target }}/release/sea-orm-cli"
           cp "$bin_cli" "$package/sea-orm-cli"
           cp "$bin_cli" "$package/sea"
+          cp "$bin_cli" "$package/cargo-sea"
           tar -czf "${package}.tgz" "$package"
       - name: Package (windows)
         if: ${{ runner.os == 'Windows' }}
@@ -94,6 +95,7 @@ jobs:
           $bin_cli = "sea-orm-cli/target/${{ matrix.target }}/release/sea-orm-cli.exe"
           Copy-Item $bin_cli "$package/sea-orm-cli.exe"
           Copy-Item $bin_cli "$package/sea.exe"
+          Copy-Item $bin_cli "$package/cargo-sea.exe"
           Compress-Archive -Path "$package" -DestinationPath "$package.zip"
       - name: Upload release asset (unix)
         if: ${{ runner.os != 'Windows' }}

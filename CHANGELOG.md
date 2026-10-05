@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### New Features
+
+- Support invoking `sea-orm-cli` as a Cargo subcommand (`cargo sea generate entity`, `cargo sea migrate`) https://github.com/SeaQL/sea-orm/pull/3187
+
 ### Enhancements
 
 - Use streaming collection by default for `.all()`, pagination, and cursor queries on SQLx backends https://github.com/SeaQL/sea-orm/pull/3215
@@ -20,6 +24,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Bug Fixes
 
 - Fix compilation failures with the `proxy` feature https://github.com/SeaQL/sea-orm/pull/3220
+
+### Compatibility Notes
+
+- Update the declared MSRV of `sea-orm-cli` to Rust 1.94, matching its existing SQLx 0.9 dependency requirement https://github.com/SeaQL/sea-orm/pull/3187
 
 ## [2.0.4](changelog/2.0.4.md) - 2026-09-27
 
