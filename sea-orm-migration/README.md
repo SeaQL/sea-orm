@@ -67,4 +67,3 @@ cargo run -- generate entity -u postgres://sea:sea@localhost/bakery -s public -o
     ```sh
     cargo run -- migrate status
     ```
-

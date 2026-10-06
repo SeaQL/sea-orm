@@ -32,6 +32,30 @@ SeaORM is a batteries-included ORM with filters, pagination, and nested queries 
 
 With 250k+ weekly downloads, SeaORM is production-ready, trusted by startups and enterprises worldwide.
 
+## TLS configuration
+
+SeaORM's default features do not enable TLS. To select a TLS backend for SQLx, you need to add a SQLx dependency with the desired TLS feature.
+
+For example, to use sqlx-postgres with tokio and AWS-LC:
+
+```toml
+[dependencies]
+sea-orm = { version = "2", features = ["sqlx-postgres", "runtime-tokio"] }
+sqlx = { version = "0.9", features = ["tls-rustls-aws-lc-rs"] }
+```
+
+When using `sea-orm-cli` as a dependency, its defaults enable `runtime-tokio-native-tls`. To select another TLS backend, you need to disable the default features:
+
+```toml
+[dependencies]
+sea-orm-cli = { version = "2", default-features = false, features = [
+    "codegen",
+    "sqlx-postgres",
+    "runtime-tokio",
+] }
+sqlx = { version = "0.9", features = ["tls-rustls-aws-lc-rs"] }
+```
+
 ## Getting Started
 
 [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
