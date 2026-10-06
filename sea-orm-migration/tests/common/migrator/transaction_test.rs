@@ -3,6 +3,7 @@ use sea_orm_migration::{MigratorTraitSelf, prelude::*};
 
 pub struct Migrator {
     pub use_transaction: Option<bool>,
+    pub expect_transaction: bool,
     pub should_fail: bool,
 }
 
@@ -11,6 +12,7 @@ impl MigratorTraitSelf for Migrator {
     fn migrations(&self) -> Vec<Box<dyn MigrationTrait>> {
         vec![Box::new(m20250101_000001_create_test_table::Migration {
             use_transaction: self.use_transaction,
+            expect_transaction: self.expect_transaction,
             should_fail: self.should_fail,
         })]
     }

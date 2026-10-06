@@ -344,6 +344,7 @@ jobs:
       - run: cargo test --test '*' --features tests-features,sqlx-sqlite,runtime-${{ matrix.runtime }}
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }} --no-run
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }},feat-sqlite-transactional-migrations
 
   rusqlite:
     name: rusqlite

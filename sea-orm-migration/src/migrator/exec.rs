@@ -200,7 +200,11 @@ async fn drop_everything_impl<C: ConnectionTrait>(db: &C) -> Result<(), DbErr> {
 fn should_use_transaction(migration: &dyn crate::MigrationTrait, backend: DbBackend) -> bool {
     match migration.use_transaction() {
         Some(v) => v,
-        None => backend == DbBackend::Postgres,
+        None => match backend {
+            DbBackend::Postgres => true,
+            DbBackend::Sqlite => cfg!(feature = "feat-sqlite-transactional-migrations"),
+            _ => false,
+        },
     }
 }
 

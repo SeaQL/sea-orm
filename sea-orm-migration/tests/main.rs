@@ -241,10 +241,16 @@ where
     assert!(!manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
 
-    // Tests rolling back a failing migration on Postgres.
+    let uses_transactions_by_default = match db.get_database_backend() {
+        DbBackend::Postgres => true,
+        DbBackend::Sqlite => cfg!(feature = "feat-sqlite-transactional-migrations"),
+        _ => false,
+    };
+
+    // Tests rolling back a failing migration in a transaction.
     // With per-migration transactions, only the failing migration is rolled back;
     // earlier migrations that committed successfully are preserved.
-    if matches!(db.get_database_backend(), DbBackend::Postgres) {
+    if uses_transactions_by_default {
         println!("\nRoll back changes when encounter errors");
 
         // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
@@ -268,6 +274,8 @@ where
         // earlier migrations (cake, fruit, etc.) committed successfully
         assert!(manager.has_table("cake").await?);
         assert!(manager.has_table("fruit").await?);
+
+        assert_eq!(migrator.get_applied_migrations(db).await?.len(), 5);
 
         // Unset the flag
         unsafe {
@@ -298,12 +306,12 @@ where
     assert!(manager.has_column("cake", "name").await?);
     assert!(manager.has_column("fruit", "cake_id").await?);
 
-    // Tests rolling back a failing migration-down on Postgres.
+    // Tests rolling back a failing down migration in a transaction.
     // With per-migration transactions, rollbacks happen one at a time in reverse.
     // Migrations 6-2 roll back and commit successfully. Migration 1 (drops cake
     // then ABORTs) fails, so its DROP is restored. But migration 2's DROP of
     // the fruit table already committed.
-    if matches!(db.get_database_backend(), DbBackend::Postgres) {
+    if uses_transactions_by_default {
         println!("\nRoll back changes when encounter errors");
 
         // Set a flag to throw error inside `m20220118_000001_create_cake_table.rs`
@@ -327,6 +335,8 @@ where
         // Migrations 2-6 were rolled back successfully (fruit table dropped).
         assert!(manager.has_table("cake").await?);
         assert!(!manager.has_table("fruit").await?);
+
+        assert_eq!(migrator.get_applied_migrations(db).await?.len(), 1);
 
         // Unset the flag
         unsafe {
@@ -374,11 +384,16 @@ async fn run_transaction_test(url: &str, db_name: &str, schema: &str) -> Result<
     let backend = db.get_database_backend();
     let manager = SchemaManager::new(db);
 
-    // use_transaction = None: Postgres wraps by default, others don't.
+    // use_transaction = None: follows the backend default.
     // The assertion happens inside the migration's up()/down() body.
     println!("\nTransaction test: use_transaction = None");
     let m = transaction_test::Migrator {
         use_transaction: None,
+        expect_transaction: match backend {
+            DbBackend::Postgres => true,
+            DbBackend::Sqlite => cfg!(feature = "feat-sqlite-transactional-migrations"),
+            _ => false,
+        },
         should_fail: false,
     };
     m.up(db, None).await?;
@@ -391,6 +406,7 @@ async fn run_transaction_test(url: &str, db_name: &str, schema: &str) -> Result<
     println!("\nTransaction test: use_transaction = Some(true)");
     let m = transaction_test::Migrator {
         use_transaction: Some(true),
+        expect_transaction: true,
         should_fail: false,
     };
     m.up(db, None).await?;
@@ -403,6 +419,7 @@ async fn run_transaction_test(url: &str, db_name: &str, schema: &str) -> Result<
     println!("\nTransaction test: use_transaction = Some(false)");
     let m = transaction_test::Migrator {
         use_transaction: Some(false),
+        expect_transaction: false,
         should_fail: false,
     };
     m.up(db, None).await?;
@@ -415,6 +432,7 @@ async fn run_transaction_test(url: &str, db_name: &str, schema: &str) -> Result<
     println!("\nTransaction test: failure with transaction");
     let m = transaction_test::Migrator {
         use_transaction: Some(true),
+        expect_transaction: true,
         should_fail: true,
     };
     assert!(m.up(db, None).await.is_err());
@@ -430,6 +448,7 @@ async fn run_transaction_test(url: &str, db_name: &str, schema: &str) -> Result<
     println!("\nTransaction test: failure without transaction");
     let m = transaction_test::Migrator {
         use_transaction: Some(false),
+        expect_transaction: false,
         should_fail: true,
     };
     assert!(m.up(db, None).await.is_err());
