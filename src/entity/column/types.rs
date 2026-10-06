@@ -272,6 +272,7 @@ macro_rules! impl_numeric_column {
         bind_oper_0!(pub max, max);
         bind_oper_0!(pub min, min);
         bind_oper_0!(pub sum, sum);
+        bind_oper_0!(pub avg, avg);
         bind_oper_0!(pub count, count);
         bind_oper_0!(pub is_null, is_null);
         bind_oper_0!(pub is_not_null, is_not_null);
@@ -289,6 +290,16 @@ macro_rules! impl_numeric_column {
             I: IntoIterator<Item = V>,
         {
             self.0.eq_any(v)
+        }
+
+        /// `<> ALL(..)` operator. Postgres only.
+        #[cfg(feature = "postgres-array")]
+        pub fn ne_all<V, I>(&self, v: I) -> Expr
+        where
+            V: Into<Value> + $trait + sea_query::postgres_array::NotU8,
+            I: IntoIterator<Item = V>,
+        {
+            self.0.ne_all(v)
         }
 
         bind_subquery_func!(pub in_subquery);
@@ -338,6 +349,16 @@ macro_rules! impl_string_column {
             I: IntoIterator<Item = V>,
         {
             self.0.eq_any(v)
+        }
+
+        /// `<> ALL(..)` operator. Postgres only.
+        #[cfg(feature = "postgres-array")]
+        pub fn ne_all<V, I>(&self, v: I) -> Expr
+        where
+            V: Into<Value> + Into<String> + sea_query::postgres_array::NotU8,
+            I: IntoIterator<Item = V>,
+        {
+            self.0.ne_all(v)
         }
 
         bind_subquery_func!(pub in_subquery);

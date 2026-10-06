@@ -36,6 +36,16 @@ impl<E: EntityTrait> DateLikeColumn<E> {
         self.0.eq_any(v)
     }
 
+    /// `<> ALL(..)` operator. Postgres only.
+    #[cfg(feature = "postgres-array")]
+    pub fn ne_all<V, I>(&self, v: I) -> Expr
+    where
+        V: Into<Value> + DateLikeValue + sea_query::ValueType + sea_query::postgres_array::NotU8,
+        I: IntoIterator<Item = V>,
+    {
+        self.0.ne_all(v)
+    }
+
     bind_subquery_func!(pub in_subquery);
     bind_subquery_func!(pub not_in_subquery);
 }
@@ -75,6 +85,16 @@ impl<E: EntityTrait> TimeLikeColumn<E> {
         self.0.eq_any(v)
     }
 
+    /// `<> ALL(..)` operator. Postgres only.
+    #[cfg(feature = "postgres-array")]
+    pub fn ne_all<V, I>(&self, v: I) -> Expr
+    where
+        V: Into<Value> + TimeLikeValue + sea_query::ValueType + sea_query::postgres_array::NotU8,
+        I: IntoIterator<Item = V>,
+    {
+        self.0.ne_all(v)
+    }
+
     bind_subquery_func!(pub in_subquery);
     bind_subquery_func!(pub not_in_subquery);
 }
@@ -112,6 +132,16 @@ impl<E: EntityTrait> DateTimeLikeColumn<E> {
         I: IntoIterator<Item = V>,
     {
         self.0.eq_any(v)
+    }
+
+    /// `<> ALL(..)` operator. Postgres only.
+    #[cfg(feature = "postgres-array")]
+    pub fn ne_all<V, I>(&self, v: I) -> Expr
+    where
+        V: Into<Value> + DateTimeLikeValue + sea_query::postgres_array::NotU8,
+        I: IntoIterator<Item = V>,
+    {
+        self.0.ne_all(v)
     }
 
     bind_subquery_func!(pub in_subquery);
