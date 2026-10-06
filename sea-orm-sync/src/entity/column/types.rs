@@ -272,6 +272,7 @@ macro_rules! impl_numeric_column {
         bind_oper_0!(pub max, max);
         bind_oper_0!(pub min, min);
         bind_oper_0!(pub sum, sum);
+        bind_oper_0!(pub avg, avg);
         bind_oper_0!(pub count, count);
         bind_oper_0!(pub is_null, is_null);
         bind_oper_0!(pub is_not_null, is_not_null);
