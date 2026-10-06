@@ -26,6 +26,16 @@ impl<E: EntityTrait> JsonColumn<E> {
         self.0.eq_any(v)
     }
 
+    /// `<> ALL(..)` operator. Postgres only.
+    #[cfg(feature = "postgres-array")]
+    pub fn ne_all<V, I>(&self, v: I) -> Expr
+    where
+        V: Into<Value> + Into<Json> + sea_query::postgres_array::NotU8,
+        I: IntoIterator<Item = V>,
+    {
+        self.0.ne_all(v)
+    }
+
     bind_subquery_func!(pub in_subquery);
     bind_subquery_func!(pub not_in_subquery);
 }
