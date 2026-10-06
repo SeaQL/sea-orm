@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
     The default implementation still calls `try_get_by` for compatibility. So you have to implement `try_get_by_optional` manually to avoid the extra allocation of error strings.
 
+- Add `ConnectionTrait::build` as a shorthand for `conn.get_database_backend().build(&query)` https://github.com/SeaQL/sea-orm/pull/3226
+
 ### Bug Fixes
 
 - Fix compilation failures with the `proxy` feature https://github.com/SeaQL/sea-orm/pull/3220
