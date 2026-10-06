@@ -1,9 +1,9 @@
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::*;
-use sea_orm_migration::sea_orm::DbBackend;
 
 pub struct Migration {
     pub use_transaction: Option<bool>,
+    pub expect_transaction: bool,
     pub should_fail: bool,
 }
 
@@ -20,13 +20,10 @@ impl MigrationTrait for Migration {
     }
 
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let expect_txn = self
-            .use_transaction
-            .unwrap_or(manager.get_database_backend() == DbBackend::Postgres);
         assert_eq!(
             manager.get_connection().is_transaction(),
-            expect_txn,
-            "up: expected is_transaction() = {expect_txn}"
+            self.expect_transaction,
+            "up: unexpected transaction state"
         );
 
         manager
@@ -47,13 +44,10 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let expect_txn = self
-            .use_transaction
-            .unwrap_or(manager.get_database_backend() == DbBackend::Postgres);
         assert_eq!(
             manager.get_connection().is_transaction(),
-            expect_txn,
-            "down: expected is_transaction() = {expect_txn}"
+            self.expect_transaction,
+            "down: unexpected transaction state"
         );
 
         manager

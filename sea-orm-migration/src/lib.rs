@@ -34,7 +34,8 @@ pub trait MigrationTrait: MigrationName + Send + Sync {
 
     /// Control whether this migration runs inside a transaction.
     ///
-    /// - `None` (default): follow backend convention (Postgres = transaction, MySQL/SQLite = no transaction)
+    /// - `None` (default): use a transaction on Postgres, and on SQLite when
+    ///   `feat-sqlite-transactional-migrations` is enabled
     /// - `Some(true)`: force wrapping in a transaction on any backend
     /// - `Some(false)`: disable automatic transaction wrapping (use `manager.begin()` for manual control)
     fn use_transaction(&self) -> Option<bool> {

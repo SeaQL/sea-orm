@@ -45,6 +45,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 cli = ["clap", "dotenvy", "sea-orm-cli/cli"]
 default = ["cli"]
 entity-registry = ["sea-orm/entity-registry"]
+feat-sqlite-transactional-migrations = []
 runtime-async-std = [
     "sea-orm/runtime-async-std",
     "sea-schema/runtime-async-std",
