@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Update the declared MSRV of `sea-orm-cli` to Rust 1.94, matching its existing SQLx 0.9 dependency requirement https://github.com/SeaQL/sea-orm/pull/3187
 
+- SQLite migrations now run in transactions by default
+
+    Existing SQLite migrations that change `PRAGMA foreign_keys` may be affected, as SQLite silently ignores such changes within a transaction.
+
 ## [2.0.4](changelog/2.0.4.md) - 2026-09-27
 
 `select_except`, `save_as` casts for `eq_any` / `ne_all`, linked-join alias and `condition_type` fixes, MySQL schema-sync index drop fix, arrow 60
