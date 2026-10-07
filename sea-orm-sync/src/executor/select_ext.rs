@@ -25,7 +25,7 @@ fn into_exists_query(mut stmt: SelectStatement) -> SelectStatement {
     stmt.clear_selects();
     // Expr::Custom has fewer branches, but this may not have any significant impact on performance.
     stmt.expr(Expr::cust("1"));
-    stmt.reset_limit();
+    stmt.limit(1);
     stmt.reset_offset();
     stmt.clear_order_by();
     stmt
@@ -142,7 +142,7 @@ mod tests {
     fn exists_query_select_basic() {
         let stmt = fruit::Entity::find().exists_query();
         let sql = DbBackend::Postgres.build(&stmt).to_string();
-        assert_eq!(sql, r#"SELECT 1 FROM "fruit""#);
+        assert_eq!(sql, r#"SELECT 1 FROM "fruit" LIMIT 1"#);
     }
 
     #[test]
@@ -155,7 +155,10 @@ mod tests {
             .exists_query();
 
         let sql = DbBackend::Postgres.build(&stmt).to_string();
-        assert_eq!(sql, r#"SELECT 1 FROM "fruit" WHERE "fruit"."id" > 1"#);
+        assert_eq!(
+            sql,
+            r#"SELECT 1 FROM "fruit" WHERE "fruit"."id" > 1 LIMIT 1"#
+        );
     }
 
     #[test]
@@ -165,7 +168,7 @@ mod tests {
             .exists_query();
 
         let sql = DbBackend::Postgres.build(&stmt).to_string();
-        assert_eq!(sql, r#"SELECT 1 FROM "fruit""#);
+        assert_eq!(sql, r#"SELECT 1 FROM "fruit" LIMIT 1"#);
     }
 
     #[test]
@@ -179,7 +182,10 @@ mod tests {
             .exists_query();
 
         let sql = DbBackend::Postgres.build(&stmt).to_string();
-        assert_eq!(sql, r#"SELECT 1 FROM "fruit" WHERE "fruit"."id" > 1"#);
+        assert_eq!(
+            sql,
+            r#"SELECT 1 FROM "fruit" WHERE "fruit"."id" > 1 LIMIT 1"#
+        );
     }
 
     #[test]
@@ -219,7 +225,7 @@ mod tests {
         let sql = DbBackend::Postgres.build(&stmt).to_string();
         assert_eq!(
             sql,
-            r#"SELECT 1 FROM "cake" LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#
+            r#"SELECT 1 FROM "cake" LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id" LIMIT 1"#
         );
     }
 
@@ -239,7 +245,7 @@ mod tests {
             [
                 r#"SELECT 1 FROM "cake""#,
                 r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
-                r#"WHERE "cake"."id" > 1"#,
+                r#"WHERE "cake"."id" > 1 LIMIT 1"#,
             ]
             .join(" ")
         );
@@ -258,7 +264,7 @@ mod tests {
             [
                 r#"SELECT 1 FROM "cake_filling""#,
                 r#"LEFT JOIN "cake" ON "cake_filling"."cake_id" = "cake"."id""#,
-                r#"LEFT JOIN "filling" ON "cake_filling"."filling_id" = "filling"."id""#,
+                r#"LEFT JOIN "filling" ON "cake_filling"."filling_id" = "filling"."id" LIMIT 1"#,
             ]
             .join(" ")
         );
@@ -282,7 +288,7 @@ mod tests {
                 r#"SELECT 1 FROM "cake_filling""#,
                 r#"LEFT JOIN "cake" ON "cake_filling"."cake_id" = "cake"."id""#,
                 r#"LEFT JOIN "filling" ON "cake_filling"."filling_id" = "filling"."id""#,
-                r#"WHERE "cake_filling"."cake_id" > 1"#,
+                r#"WHERE "cake_filling"."cake_id" > 1 LIMIT 1"#,
             ]
             .join(" ")
         );
@@ -303,7 +309,7 @@ mod tests {
                 r#"SELECT 1 FROM "cake_filling""#,
                 r#"LEFT JOIN "cake" ON "cake_filling"."cake_id" = "cake"."id""#,
                 r#"LEFT JOIN "filling" ON "cake_filling"."filling_id" = "filling"."id""#,
-                r#"LEFT JOIN "ingredient" ON "filling"."id" = "ingredient"."filling_id""#,
+                r#"LEFT JOIN "ingredient" ON "filling"."id" = "ingredient"."filling_id" LIMIT 1"#,
             ]
             .join(" ")
         );
@@ -329,7 +335,7 @@ mod tests {
                 r#"LEFT JOIN "cake" ON "cake_filling"."cake_id" = "cake"."id""#,
                 r#"LEFT JOIN "filling" ON "cake_filling"."filling_id" = "filling"."id""#,
                 r#"LEFT JOIN "ingredient" ON "filling"."id" = "ingredient"."filling_id""#,
-                r#"WHERE "cake_filling"."cake_id" > 1"#,
+                r#"WHERE "cake_filling"."cake_id" > 1 LIMIT 1"#,
             ]
             .join(" ")
         );
@@ -352,7 +358,7 @@ mod tests {
                 r#"LEFT JOIN "cake" ON "cake_filling"."cake_id" = "cake"."id""#,
                 r#"LEFT JOIN "filling" ON "cake_filling"."filling_id" = "filling"."id""#,
                 r#"LEFT JOIN "ingredient" ON "filling"."id" = "ingredient"."filling_id""#,
-                r#"LEFT JOIN "public"."cake_filling_price" ON "cake_filling"."cake_id" = "cake_filling_price"."cake_id" AND "cake_filling"."filling_id" = "cake_filling_price"."filling_id""#,
+                r#"LEFT JOIN "public"."cake_filling_price" ON "cake_filling"."cake_id" = "cake_filling_price"."cake_id" AND "cake_filling"."filling_id" = "cake_filling_price"."filling_id" LIMIT 1"#,
             ]
             .join(" ")
         );
@@ -380,7 +386,7 @@ mod tests {
                 r#"LEFT JOIN "filling" ON "cake_filling"."filling_id" = "filling"."id""#,
                 r#"LEFT JOIN "ingredient" ON "filling"."id" = "ingredient"."filling_id""#,
                 r#"LEFT JOIN "public"."cake_filling_price" ON "cake_filling"."cake_id" = "cake_filling_price"."cake_id" AND "cake_filling"."filling_id" = "cake_filling_price"."filling_id""#,
-                r#"WHERE "cake_filling"."cake_id" > 1"#,
+                r#"WHERE "cake_filling"."cake_id" > 1 LIMIT 1"#,
             ]
             .join(" ")
         );
@@ -406,7 +412,7 @@ mod tests {
                 r#"LEFT JOIN "ingredient" ON "filling"."id" = "ingredient"."filling_id""#,
                 r#"LEFT JOIN "public"."cake_filling_price" ON "cake_filling"."cake_id" = "cake_filling_price"."cake_id" AND "cake_filling"."filling_id" = "cake_filling_price"."filling_id""#,
                 r#"LEFT JOIN "cake_filling" ON "filling"."id" = "cake_filling"."filling_id""#,
-                r#"LEFT JOIN "cake" ON "cake_filling"."cake_id" = "cake"."id""#,
+                r#"LEFT JOIN "cake" ON "cake_filling"."cake_id" = "cake"."id" LIMIT 1"#,
             ]
             .join(" ")
         );
@@ -437,7 +443,7 @@ mod tests {
                 r#"LEFT JOIN "public"."cake_filling_price" ON "cake_filling"."cake_id" = "cake_filling_price"."cake_id" AND "cake_filling"."filling_id" = "cake_filling_price"."filling_id""#,
                 r#"LEFT JOIN "cake_filling" ON "filling"."id" = "cake_filling"."filling_id""#,
                 r#"LEFT JOIN "cake" ON "cake_filling"."cake_id" = "cake"."id""#,
-                r#"WHERE "cake_filling"."cake_id" > 1"#,
+                r#"WHERE "cake_filling"."cake_id" > 1 LIMIT 1"#,
             ]
             .join(" ")
         );
