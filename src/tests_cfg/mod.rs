@@ -21,6 +21,7 @@ pub mod rust_keyword;
 pub mod sea_orm_active_enums;
 #[cfg(feature = "with-json")]
 pub mod serde_rename;
+pub mod simple;
 pub mod vendor;
 
 pub mod comment;
