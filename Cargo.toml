@@ -211,6 +211,7 @@ with-ipnetwork = [
 ]
 with-json = [
     "dep:serde",
+    "serde/derive",
     "serde_json",
     "sea-query/with-json",
     "sea-orm-macros/with-json",

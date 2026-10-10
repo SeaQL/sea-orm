@@ -1,4 +1,4 @@
-use super::active_model::DeriveActiveModel;
+use super::active_model::ActiveModelFields;
 use super::attributes::compound_attr;
 use super::model_ex::infer_relation_name_from_entity;
 use super::util::{
@@ -228,7 +228,7 @@ impl<'a> ScalarField<'a> {
 }
 
 #[derive(Clone, Copy)]
-enum FieldParseMode {
+enum ModelKind {
     Compact,
     Dense,
 }
@@ -255,7 +255,7 @@ struct Field<'a> {
 }
 
 impl<'a> Field<'a> {
-    fn from_field(field: &'a syn::Field, mode: FieldParseMode) -> syn::Result<Self> {
+    fn from_field(field: &'a syn::Field, model_kind: ModelKind) -> syn::Result<Self> {
         let Some(ident) = &field.ident else {
             return Err(syn::Error::new_spanned(field, "expected named field"));
         };
@@ -280,9 +280,9 @@ impl<'a> Field<'a> {
         } else if let Type::Path(type_path) = &field.ty
             && let Some(compound_type) = CompoundType::from_type(type_path)?
         {
-            let relation_attr = match mode {
-                FieldParseMode::Compact => None,
-                FieldParseMode::Dense => {
+            let relation_attr = match model_kind {
+                ModelKind::Compact => None,
+                ModelKind::Dense => {
                     let attrs = compound_attr::SeaOrm::try_from_attributes(&field.attrs)?
                         .unwrap_or_default();
                     RelationAttr::from_attr(&attrs, ident, &compound_type)?
@@ -348,21 +348,12 @@ impl<'a> Field<'a> {
 struct Fields<'a>(Vec<Field<'a>>);
 
 impl<'a> Fields<'a> {
-    fn from_data(data: &'a Data, ident: &Ident, mode: FieldParseMode) -> syn::Result<Self> {
-        let fields = if let Data::Struct(r#struct) = data
-            && let syn::Fields::Named(fields) = &r#struct.fields
-        {
-            fields
-                .named
-                .iter()
-                .map(|field| Field::from_field(field, mode))
-                .collect::<syn::Result<Vec<_>>>()?
-        } else {
-            return Err(syn::Error::new_spanned(
-                ident,
-                "You can only derive DeriveActiveModelEx on structs",
-            ));
-        };
+    fn from_fields(fields: &'a syn::FieldsNamed, model_kind: ModelKind) -> syn::Result<Self> {
+        let fields = fields
+            .named
+            .iter()
+            .map(|field| Field::from_field(field, model_kind))
+            .collect::<syn::Result<Vec<_>>>()?;
 
         Ok(Self(fields))
     }
@@ -821,15 +812,14 @@ impl<'a> Output<'a> {
 
 fn expand_active_model_ex<'a>(
     vis: &Visibility,
-    ident: &Ident,
-    data: &Data,
+    model_fields: &syn::FieldsNamed,
     fields: &'a Fields<'a>,
     active_model_action: TokenStream,
 ) -> syn::Result<TokenStream> {
     let async_ = async_token();
     let await_ = await_token();
     let active_model_trait_methods =
-        DeriveActiveModel::new(vis, ident, data)?.impl_active_model_trait_methods();
+        ActiveModelFields::new(model_fields)?.impl_active_model_trait_methods();
     let Output {
         model_field_defs,
         active_model_setters,
@@ -1457,12 +1447,22 @@ pub fn expand_derive_active_model_ex(
             })
         })?;
 
-    let mode = if compact {
-        FieldParseMode::Compact
+    let model_kind = if compact {
+        ModelKind::Compact
     } else {
-        FieldParseMode::Dense
+        ModelKind::Dense
     };
-    let fields = Fields::from_data(data, ident, mode)?;
+    let Data::Struct(syn::DataStruct {
+        fields: syn::Fields::Named(model_fields),
+        ..
+    }) = data
+    else {
+        return Err(syn::Error::new_spanned(
+            ident,
+            "You can only derive DeriveActiveModelEx on structs",
+        ));
+    };
+    let fields = Fields::from_fields(model_fields, model_kind)?;
     let active_model_action_tokens = if compact {
         ActiveModelActionTokens::default()
     } else {
@@ -1470,5 +1470,5 @@ pub fn expand_derive_active_model_ex(
     };
     let active_model_action = active_model_action_tokens.expand();
 
-    expand_active_model_ex(vis, ident, data, &fields, active_model_action)
+    expand_active_model_ex(vis, model_fields, &fields, active_model_action)
 }
