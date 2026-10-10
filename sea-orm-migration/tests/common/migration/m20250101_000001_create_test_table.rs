@@ -20,9 +20,10 @@ impl MigrationTrait for Migration {
     }
 
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let expect_txn = self
-            .use_transaction
-            .unwrap_or(manager.get_database_backend() == DbBackend::Postgres);
+        let expect_txn = self.use_transaction.unwrap_or(matches!(
+            manager.get_database_backend(),
+            DbBackend::Postgres | DbBackend::Sqlite
+        ));
         assert_eq!(
             manager.get_connection().is_transaction(),
             expect_txn,
@@ -47,9 +48,10 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let expect_txn = self
-            .use_transaction
-            .unwrap_or(manager.get_database_backend() == DbBackend::Postgres);
+        let expect_txn = self.use_transaction.unwrap_or(matches!(
+            manager.get_database_backend(),
+            DbBackend::Postgres | DbBackend::Sqlite
+        ));
         assert_eq!(
             manager.get_connection().is_transaction(),
             expect_txn,
