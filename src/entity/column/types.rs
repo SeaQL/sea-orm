@@ -76,7 +76,7 @@ impl_expr_traits!(GenericArrayColumn);
 #[cfg(feature = "with-json")]
 mod with_json;
 
-#[cfg(any(feature = "with-chrono", feature = "with-time"))]
+#[cfg(any(feature = "with-chrono", feature = "with-time", feature = "with-jiff"))]
 mod with_datetime;
 
 #[cfg(feature = "with-uuid")]
