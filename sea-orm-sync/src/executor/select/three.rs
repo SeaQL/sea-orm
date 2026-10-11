@@ -115,6 +115,7 @@ where
     {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }
@@ -138,6 +139,7 @@ where
     pub fn into_json(self) -> Selector<SelectThreeModel<JsonValue, JsonValue, JsonValue>> {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }
@@ -239,6 +241,7 @@ where
     {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }

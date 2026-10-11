@@ -124,6 +124,7 @@ where
     {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }
@@ -156,6 +157,7 @@ where
     {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }

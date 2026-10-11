@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
+- Add per-query SQLx statement-cache control through `Select::persistent`,
+  `Selector::persistent`, `SelectorRaw::persistent`, `Statement::persistent`, and
+  `StatementBuilder::persistent`. Caching remains enabled by default; opting out
+  preserves bound parameters and applies to single rows, lists, streams, and pagination.
+
 - Support invoking `sea-orm-cli` as a Cargo subcommand (`cargo sea generate entity`, `cargo sea migrate`) https://github.com/SeaQL/sea-orm/pull/3187
 
 ### Enhancements
@@ -28,6 +33,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Fix compilation failures with the `proxy` feature https://github.com/SeaQL/sea-orm/pull/3220
 
 ### Compatibility Notes
+
+- `Statement` struct literals need the new `persistent` field (`true` preserves
+  existing behavior). Prefer the constructors or `raw_sql!`, which set this default.
+  Disabling persistence forwards SQLx's policy; it does not evict an already
+  cached statement. Non-SQLx backends ignore the option.
+
+- SQLx 0.9's uncached PostgreSQL queries are unsafe outside a transaction through
+  PgBouncer transaction pooling: the driver separates `Parse` and `Bind` with
+  `Sync`. The concurrent regression test passes against direct PostgreSQL but
+  reproduces wrong results through PgBouncer. This requires a SQLx protocol fix
+  before using `.persistent(false)` for that deployment configuration.
 
 - Update the declared MSRV of `sea-orm-cli` to Rust 1.94, matching its existing SQLx 0.9 dependency requirement https://github.com/SeaQL/sea-orm/pull/3187
 

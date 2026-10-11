@@ -358,6 +358,7 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, Sql
         .as_ref()
         .map_or(Values(Vec::new()), |values| values.clone());
     sqlx::query_with(sqlx::AssertSqlSafe(stmt.sql.as_str()), SqlxValues(values))
+        .persistent(stmt.persistent)
 }
 
 pub(crate) async fn set_transaction_config(
@@ -380,6 +381,7 @@ async fn get_version(conn: &SqlxSqlitePoolConnection) -> Result<String, DbErr> {
         sql: "SELECT sqlite_version()".to_string(),
         values: None,
         db_backend: crate::DbBackend::Sqlite,
+        persistent: true,
     };
     conn.query_one(stmt)
         .await?

@@ -375,6 +375,7 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Postgres, S
         .as_ref()
         .map_or(Values(Vec::new()), |values| values.clone());
     sqlx::query_with(sqlx::AssertSqlSafe(stmt.sql.as_str()), SqlxValues(values))
+        .persistent(stmt.persistent)
 }
 
 pub(crate) async fn set_transaction_config(

@@ -1,6 +1,6 @@
 use crate::{
     ConnectionTrait, EntityTrait, FromQueryResult, Select, SelectModel, SelectTwo, SelectTwoModel,
-    Selector, SelectorRaw, SelectorTrait, error::*,
+    Selector, SelectorRaw, SelectorTrait, StatementBuilder, error::*,
 };
 use sea_query::{Expr, SelectStatement};
 use std::marker::PhantomData;
@@ -26,6 +26,7 @@ where
     S: SelectorTrait + 'db,
 {
     pub(crate) query: SelectStatement,
+    pub(crate) persistent: bool,
     pub(crate) page: u64,
     pub(crate) page_size: u64,
     pub(crate) db: &'db C,
@@ -59,11 +60,11 @@ where
         #[cfg(not(feature = "sync"))]
         let buffer = self
             .db
-            .query_rows(&query)?
+            .query_rows(&query.persistent(self.persistent))?
             .collect(S::from_raw_query_result)?;
         #[cfg(feature = "sync")]
         let buffer = {
-            let rows = self.db.query_all(&query)?;
+            let rows = self.db.query_all(&query.persistent(self.persistent))?;
             let mut buffer = Vec::with_capacity(rows.len());
             for row in rows.into_iter() {
                 buffer.push(S::from_raw_query_result(row)?);
@@ -92,7 +93,7 @@ where
                 "sub_query",
             )
             .to_owned();
-        let result = match self.db.query_one(&query)? {
+        let result = match self.db.query_one(&query.persistent(self.persistent))? {
             Some(res) => res,
             None => return Ok(0),
         };
@@ -301,7 +302,7 @@ where
                 "sub_query",
             )
             .to_owned();
-        let result = match db.query_one(&query)? {
+        let result = match db.query_one(&query.persistent(paginator.persistent))? {
             Some(res) => res,
             None => return Ok(0),
         };
@@ -320,6 +321,7 @@ where
         assert!(page_size != 0, "page_size should not be zero");
         Paginator {
             query: self.query,
+            persistent: self.persistent,
             page: 0,
             page_size,
             db,
@@ -346,6 +348,7 @@ where
 
         Paginator {
             query,
+            persistent: self.stmt.persistent,
             page: 0,
             page_size,
             db,

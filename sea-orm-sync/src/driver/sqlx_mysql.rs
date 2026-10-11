@@ -329,6 +329,7 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, Sqlx
         .as_ref()
         .map_or(Values(Vec::new()), |values| values.clone());
     sqlx::query_with(sqlx::AssertSqlSafe(stmt.sql.as_str()), SqlxValues(values))
+        .persistent(stmt.persistent)
 }
 
 pub(crate) fn set_transaction_config(
@@ -351,6 +352,7 @@ pub(crate) fn set_transaction_config(
             sql: format!("SET TRANSACTION {}", settings.join(", ")),
             values: None,
             db_backend: DbBackend::MySql,
+            persistent: true,
         };
         let query = sqlx_query(&stmt);
         conn.execute(query).map_err(sqlx_error_to_exec_err)?;
