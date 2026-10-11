@@ -4,7 +4,7 @@ use crate::{
     PrimaryKeyTrait, QueryFilter, Related, RelationBuilder, RelationTrait, RelationType, Select,
     Update, UpdateMany, UpdateOne, ValidatedDeleteOne,
 };
-use sea_query::{Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
+use sea_query::{Iden, IndexCreateStatement, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 use std::fmt::Debug;
 pub use strum::IntoEnumIterator as Iterable;
 
@@ -33,6 +33,35 @@ pub trait EntityName: IdenStatic + Default {
 
     /// SQL name of the table.
     fn table_name(&self) -> &'static str;
+
+    /// Table-level indexes declared with `#[sea_orm(index(..))]`, for indexes that
+    /// column-level attributes cannot express: non-unique composite indexes, an explicit
+    /// column order, descending columns, or a partial index (`where`).
+    ///
+    /// The statements carry no table; [`Schema::create_index_from_entity`](crate::Schema::create_index_from_entity)
+    /// fills it in, and derives a name (`idx-{table}-{columns}`) for unnamed indexes.
+    /// Schema sync identifies these indexes by name: it creates a declared index whose
+    /// name is missing, and never drops a declared unique index. It does not compare
+    /// definitions, so give an index a new name when changing it.
+    ///
+    /// ```ignore
+    /// #[sea_orm::model]
+    /// #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    /// #[sea_orm(table_name = "post")]
+    /// // non-unique composite index, with a descending column
+    /// #[sea_orm(index(name = "idx_post_feed", columns = "author_id, created_at DESC"))]
+    /// // composite unique index, named `idx-post-author_id-slug`
+    /// #[sea_orm(index(columns = "author_id, slug", unique))]
+    /// // partial index (Postgres and SQLite; MySQL has no partial indexes)
+    /// #[sea_orm(index(name = "idx_post_archived", columns = "archived_at", where = "archived_at IS NOT NULL"))]
+    /// pub struct Model { .. }
+    /// ```
+    ///
+    /// `columns` lists field names, each optionally followed by `ASC` or `DESC`; `where`
+    /// is raw SQL.
+    fn table_indexes(&self) -> Vec<IndexCreateStatement> {
+        Vec::new()
+    }
 
     /// [`TableRef`] for this entity, qualified with [`schema_name`](Self::schema_name)
     /// if one is set.

@@ -249,8 +249,13 @@ pub(crate) fn is_self_entity(entity: &TypePath) -> bool {
         && last_path_segment(entity).is_ok_and(|segment| segment.ident == "Entity")
 }
 
+/// Skips an attribute this derive does not handle: `key`, `key = value` or `key(..)`.
 pub(crate) fn consume_meta(meta: ParseNestedMeta<'_>) {
-    let _ = meta.value().and_then(|v| v.parse::<syn::Expr>());
+    if meta.input.peek(syn::token::Paren) {
+        let _ = meta.input.parse::<proc_macro2::Group>();
+    } else {
+        let _ = meta.value().and_then(|v| v.parse::<syn::Expr>());
+    }
 }
 
 /// Remove ignored fields and compound fields
