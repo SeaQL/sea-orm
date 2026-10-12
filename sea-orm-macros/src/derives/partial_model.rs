@@ -276,7 +276,11 @@ impl DerivePartialModel {
                             ColumnAs::Nested { .. } => None,
                             ColumnAs::Skip(_) => None,
                         }
-                        .map(|f| IntoActiveModelField::Normal(f.clone()))
+                        .map(|f| IntoActiveModelField {
+                            source: f.clone(),
+                            target: f.clone(),
+                            default: None,
+                        })
                     })
                     .collect(),
                 set_fields: Vec::new(),

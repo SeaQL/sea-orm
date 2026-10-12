@@ -2,28 +2,16 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{Meta, PathArguments, PathSegment, punctuated::Punctuated, token::Comma};
 
-use super::util::GetMeta;
-
 enum Error {
     InputNotStruct,
     Syn(syn::Error),
 }
 
-/// Matches all potential ways to convert struct fields into ActiveModel ones
-pub(super) enum IntoActiveModelField {
-    /// `IntoActiveValue::into_active_value(self.field).into()`
-    Normal(syn::Ident),
-    /// Option<T> with fallback: `Some(v) => Set(v).into(), None => Set(expr).into()`
-    WithDefault { ident: syn::Ident, expr: syn::Expr },
-}
-
-impl IntoActiveModelField {
-    pub(super) fn ident(&self) -> &syn::Ident {
-        match self {
-            IntoActiveModelField::Normal(ident) => ident,
-            IntoActiveModelField::WithDefault { ident, .. } => ident,
-        }
-    }
+/// An input field's mapping to an ActiveModel field and its optional fallback.
+pub(super) struct IntoActiveModelField {
+    pub source: syn::Ident,
+    pub target: syn::Ident,
+    pub default: Option<syn::Expr>,
 }
 
 /// Contains all the information extracted from the input struct and its attributes
@@ -33,7 +21,6 @@ pub(super) struct DeriveIntoActiveModel {
     pub ident: syn::Ident,
     /// Optional explicit ActiveModel type specified via `#[sea_orm(active_model = "Type")]`
     pub active_model: Option<syn::Type>,
-    /// handles provided struct fields
     pub fields: Vec<IntoActiveModelField>,
     /// handles fields set by #[sea_orm(set(field = expr))]
     pub set_fields: Vec<(syn::Ident, syn::Expr)>,
@@ -42,15 +29,6 @@ pub(super) struct DeriveIntoActiveModel {
 }
 
 impl DeriveIntoActiveModel {
-    /// This function finds attributes relevant for this macros:
-    /// Container attributes (#[sea_orm(...)]) on the struct for:
-    ///   - active_model: explicit ActiveModel type
-    ///   - exhaustive: require all fields to be set
-    ///   - set(...): provided values for ommited fields
-    ///
-    /// Field attributes (#[sea_orm(...)]) with:
-    ///   - ignore/skip: exclude from conversion
-    ///   - default: fallback value for Option<T> fields
     fn new(input: syn::DeriveInput) -> Result<Self, Error> {
         let fields = match input.data {
             syn::Data::Struct(syn::DataStruct {
@@ -74,40 +52,45 @@ impl DeriveIntoActiveModel {
             // - active_model = "Type": explicitly specify the ActiveModel type
             // - exhaustive: require all ActiveModel fields to be explicitly set
             // - set(field = expr, ...): provide default values for fields not in the input struct
-            if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
-                for meta in list {
-                    // Parse active_model attribute: #[sea_orm(active_model = "MyActiveModel")]
-                    if let Some(s) = meta.get_as_kv("active_model") {
-                        active_model = Some(syn::parse_str::<syn::Type>(&s).map_err(Error::Syn)?);
-                    }
-                    // Parse exhaustive flag: #[sea_orm(exhaustive)]
-                    // When set, prevents using Default::default() for unspecified fields
-                    if meta.exists("exhaustive") {
-                        exhaustive = true;
-                    }
-                    // Parse set attribute: #[sea_orm(set(field1 = expr1, field2 = expr2, ...))]
-                    // Collects field assignments to be included in the generated ActiveModel
-                    if let Meta::List(meta_list) = &meta {
-                        if meta_list.path.is_ident("set") {
-                            let nested = meta_list
-                                .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                                .map_err(Error::Syn)?;
-                            for nested_meta in nested {
-                                if let Some(val) = nested_meta.get_as_kv_with_ident() {
-                                    let (ident, expr_str) = val;
-                                    let expr = syn::parse_str::<syn::Expr>(&expr_str)
-                                        .map_err(Error::Syn)?;
-                                    set_fields.push((ident, expr));
-                                }
-                            }
-                        }
+            let list = attr
+                .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+                .map_err(Error::Syn)?;
+
+            for meta in list {
+                // Parse active_model attribute: #[sea_orm(active_model = "MyActiveModel")]
+                if meta.path().is_ident("active_model") {
+                    active_model = Some(to_lit_str(&meta)?.parse().map_err(Error::Syn)?);
+                }
+                // Parse exhaustive flag: #[sea_orm(exhaustive)]
+                // When set, prevents using Default::default() for unspecified fields
+                if meta.path().is_ident("exhaustive") {
+                    meta.require_path_only().map_err(Error::Syn)?;
+                    exhaustive = true;
+                }
+                // Parse set attribute: #[sea_orm(set(field1 = expr1, field2 = expr2, ...))]
+                // Collects field assignments to be included in the generated ActiveModel
+                if meta.path().is_ident("set") {
+                    let nested = meta
+                        .require_list()
+                        .map_err(Error::Syn)?
+                        .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+                        .map_err(Error::Syn)?;
+                    for nested_meta in nested {
+                        let ident = nested_meta
+                            .path()
+                            .require_ident()
+                            .map_err(Error::Syn)?
+                            .clone();
+                        let expr = to_lit_str(&nested_meta)?.parse().map_err(Error::Syn)?;
+
+                        set_fields.push((ident, expr));
                     }
                 }
             }
         }
 
         // Field attributes
-        let mut field_idents: Vec<IntoActiveModelField> = Vec::new();
+        let mut field_idents = Vec::new();
         for field in fields.iter() {
             if let Some(f) = parse_field(field)? {
                 field_idents.push(f);
@@ -164,26 +147,33 @@ impl DeriveIntoActiveModel {
             quote!()
         };
 
-        let field_idents: Vec<_> = fields.iter().map(|f| f.ident()).collect();
-
         // Generate field conversion code based on field type
-        let expanded_fields = fields.iter().map(|field| match field {
-            IntoActiveModelField::Normal(ident) => quote!(
-                sea_orm::IntoActiveValue::<_>::into_active_value(self.#ident).into()
-            ),
-            IntoActiveModelField::WithDefault { ident, expr } => quote!({
-                match self.#ident.into() {
-                    Some(v) => sea_orm::ActiveValue::Set(v).into(),
-                    None => sea_orm::ActiveValue::Set(#expr).into(),
-                }
-            }),
-        });
+        let expanded_fields = fields.iter().map(
+            |IntoActiveModelField {
+                 source,
+                 target,
+                 default,
+             }| {
+                let value = match default {
+                    None => quote!(
+                        sea_orm::IntoActiveValue::<_>::into_active_value(self.#source).into()
+                    ),
+                    Some(expr) => quote!({
+                        match self.#source.into() {
+                            Some(v) => sea_orm::ActiveValue::Set(v).into(),
+                            None => sea_orm::ActiveValue::Set(#expr).into(),
+                        }
+                    }),
+                };
+
+                quote!(#target: #value)
+            },
+        );
 
         // Add custom field assignments from #[sea_orm(set(field = expr))]
-        let (set_idents, set_exprs): (Vec<_>, Vec<_>) = set_fields.iter().cloned().unzip();
-        let expanded_sets = set_exprs.iter().map(|expr| {
+        let expanded_sets = set_fields.iter().map(|(target, expr)| {
             quote!(
-                sea_orm::ActiveValue::Set(#expr)
+                #target: sea_orm::ActiveValue::Set(#expr)
             )
         });
 
@@ -201,8 +191,8 @@ impl DeriveIntoActiveModel {
             impl sea_orm::IntoActiveModel<#active_model_ident> for #ident {
                 fn into_active_model(self) -> #active_model_ident {
                     #active_model_ident {
-                        #( #field_idents: #expanded_fields, )*
-                        #( #set_idents: #expanded_sets, )*
+                        #( #expanded_fields, )*
+                        #( #expanded_sets, )*
                         #rest
                     }
                 }
@@ -211,62 +201,77 @@ impl DeriveIntoActiveModel {
     }
 }
 
-/// Parse field-level attributes on each struct field
-/// Supports:
-/// - ignore or skip: exclude the field from conversion
-/// - default = "expr": provide a fallback value for Option<T> fields (Some(v) => Set(v), None => Set(expr))
 fn parse_field(field: &syn::Field) -> Result<Option<IntoActiveModelField>, Error> {
     let ident = field.ident.as_ref().unwrap().clone();
-    // Default expression for this field
+
+    let mut target = ident.clone();
+
     let mut default_expr: Option<syn::Expr> = None;
 
-    for attr in field.attrs.iter() {
-        if !attr.path().is_ident("sea_orm") {
-            continue;
-        }
+    let mut ignored = false;
 
+    for attr in field
+        .attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("sea_orm"))
+    {
         // Parse the attribute arguments: #[sea_orm(...)]
-        if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
-            for meta in list.iter() {
-                // Check for ignore/skip: #[sea_orm(ignore)] or #[sea_orm(skip)]
-                if meta.exists("ignore") || meta.exists("skip") {
-                    return Ok(None);
+        let list = attr
+            .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+            .map_err(Error::Syn)?;
+
+        for meta in &list {
+            // Check for ignore/skip: #[sea_orm(ignore)] or #[sea_orm(skip)]
+            if meta.path().is_ident("ignore") || meta.path().is_ident("skip") {
+                meta.require_path_only().map_err(Error::Syn)?;
+                ignored = true;
+            }
+
+            if meta.path().is_ident("rename") {
+                target = to_lit_str(meta)?.parse().map_err(Error::Syn)?;
+            }
+
+            if meta.path().is_ident("default") {
+                if default_expr.is_some() {
+                    return Err(Error::Syn(syn::Error::new_spanned(
+                        meta,
+                        "duplicate `default` attribute",
+                    )));
                 }
-                // Check for bare default: #[sea_orm(default)]
-                if meta.exists("default") {
-                    if default_expr.is_some() {
-                        return Err(Error::Syn(syn::Error::new_spanned(
-                            meta,
-                            "duplicate `default` attribute",
-                        )));
-                    }
-                    let expr: syn::Expr = syn::parse_quote!(::core::default::Default::default());
-                    default_expr = Some(expr);
-                    continue; // Skip next default check
-                }
-                // Check for default value: #[sea_orm(default = "expr")]
-                if let Some(expr_str) = meta.get_as_kv("default") {
-                    // Error on duplicate `default`
-                    if default_expr.is_some() {
-                        return Err(Error::Syn(syn::Error::new_spanned(
-                            meta,
-                            "duplicate `default` attribute",
-                        )));
-                    }
-                    // Parse the expression string into a syn::Expr
-                    let expr = syn::parse_str::<syn::Expr>(&expr_str).map_err(Error::Syn)?;
-                    default_expr = Some(expr);
-                }
+                default_expr = Some(match meta {
+                    Meta::Path(_) => syn::parse_quote!(::core::default::Default::default()),
+                    _ => to_lit_str(meta)?.parse().map_err(Error::Syn)?,
+                });
             }
         }
     }
 
-    // Finnaly match and return appropriate field type
-    if let Some(expr) = default_expr {
-        Ok(Some(IntoActiveModelField::WithDefault { ident, expr }))
-    } else {
-        Ok(Some(IntoActiveModelField::Normal(ident)))
+    if ignored {
+        return Ok(None);
     }
+
+    Ok(Some(IntoActiveModelField {
+        source: ident,
+        target,
+        default: default_expr,
+    }))
+}
+
+fn to_lit_str(meta: &Meta) -> Result<&syn::LitStr, Error> {
+    let value = &meta.require_name_value().map_err(Error::Syn)?.value;
+
+    let syn::Expr::Lit(syn::ExprLit {
+        lit: syn::Lit::Str(value),
+        ..
+    }) = value
+    else {
+        return Err(Error::Syn(syn::Error::new_spanned(
+            value,
+            "expected a string literal",
+        )));
+    };
+
+    Ok(value)
 }
 
 /// Method to derive the ActiveModel from the [ActiveModelTrait](sea_orm::ActiveModelTrait)
