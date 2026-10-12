@@ -476,38 +476,21 @@ pub fn derive_active_model(input: TokenStream) -> TokenStream {
     }
 }
 
-/// Will implement [`IntoActiveModel`] for a struct, allowing conversion into an ActiveModel.
-/// This is useful for "form" or "input" structs (like from API requests) that turn into
-/// an entity's ActiveModel but may omit some fields or provide optional values with defaults.
+/// Derives `IntoActiveModel` for a struct with named fields.
 ///
-/// ## Usage:
+/// # Container attributes
 ///
-/// ```rust
-/// # mod fruit {
-/// #     use sea_orm::entity::prelude::*;
-/// #     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-/// #     #[sea_orm(table_name = "fruit")]
-/// #     pub struct Model {
-/// #         #[sea_orm(primary_key)]
-/// #         pub id: i32,
-/// #         pub name: String,
-/// #         pub cake_id: Option<i32>,
-/// #     }
-/// #     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-/// #     pub enum Relation {}
-/// #     impl ActiveModelBehavior for ActiveModel {}
-/// # }
-/// use sea_orm::entity::prelude::*;
+/// - `#[sea_orm(active_model = "path::to::Target")]`: The path of target type. Defaults to `ActiveModel`.
+/// - `#[sea_orm(set(field = "expr", ...))]`: Assign `Set(expr)` to additional fields.
+/// - `#[sea_orm(exhaustive)]`: Make every target field required.
 ///
-/// #[derive(DeriveIntoActiveModel)]
-/// #[sea_orm(active_model = "fruit::ActiveModel")]
-/// struct NewFruit {
-///     name: String,
-///     // `id` and `cake_id` are omitted - they become `NotSet`
-/// }
-/// ```
+/// # Field attributes
 ///
-/// ## `set(...)` - always set absent ActiveModel fields
+/// - `#[sea_orm(rename = "target_field")]`: Map the field to the specified target name.
+/// - `#[sea_orm(ignore)]` / `#[sea_orm(skip)]`: Omit the field.
+/// - `#[sea_orm(default)]` / `#[sea_orm(default = "expr")]`: Set the active model field to `Default::default()` or `expr` when the input field is `Option::None`.
+///
+/// # Example
 ///
 /// ```rust
 /// # mod fruit {
@@ -524,70 +507,28 @@ pub fn derive_active_model(input: TokenStream) -> TokenStream {
 /// #     pub enum Relation {}
 /// #     impl ActiveModelBehavior for ActiveModel {}
 /// # }
-/// use sea_orm::entity::prelude::*;
-///
-/// #[derive(DeriveIntoActiveModel)]
-/// #[sea_orm(active_model = "fruit::ActiveModel", set(cake_id = "None"))]
-/// struct NewFruit {
-///     name: String,
-///     // `cake_id` is not on the struct, but will always be `Set(None)`
-/// }
-/// ```
-///
-/// ## `default = "expr"` - fallback for `Option<T>` struct fields
-///
-/// ```rust
-/// # mod fruit {
-/// #     use sea_orm::entity::prelude::*;
-/// #     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-/// #     #[sea_orm(table_name = "fruit")]
-/// #     pub struct Model {
-/// #         #[sea_orm(primary_key)]
-/// #         pub id: i32,
-/// #         pub name: String,
-/// #         pub cake_id: Option<i32>,
-/// #     }
-/// #     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-/// #     pub enum Relation {}
-/// #     impl ActiveModelBehavior for ActiveModel {}
-/// # }
-/// use sea_orm::entity::prelude::*;
-///
-/// #[derive(DeriveIntoActiveModel)]
-/// #[sea_orm(active_model = "fruit::ActiveModel")]
-/// struct UpdateFruit {
-///     /// `Some("Apple")` -> `Set("Apple")`, `None` ->`Set("Unnamed")`
-///     #[sea_orm(default = "String::from(\"Unnamed\")")]
-///     name: Option<String>,
-/// }
-/// ```
-///
-/// ## Combining `set(...)`, `default`, `ignore`, and `exhaustive`
-///
-/// ```rust
-/// # mod fruit {
-/// #     use sea_orm::entity::prelude::*;
-/// #     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-/// #     #[sea_orm(table_name = "fruit")]
-/// #     pub struct Model {
-/// #         #[sea_orm(primary_key)]
-/// #         pub id: i32,
-/// #         pub name: String,
-/// #         pub cake_id: Option<i32>,
-/// #     }
-/// #     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-/// #     pub enum Relation {}
-/// #     impl ActiveModelBehavior for ActiveModel {}
-/// # }
-/// use sea_orm::entity::prelude::*;
+/// use sea_orm::{DeriveIntoActiveModel, IntoActiveModel, Set};
 ///
 /// #[derive(DeriveIntoActiveModel)]
 /// #[sea_orm(active_model = "fruit::ActiveModel", exhaustive, set(cake_id = "None"))]
 /// struct NewFruit {
 ///     id: i32,
-///     #[sea_orm(default = "String::from(\"Unnamed\")")]
-///     name: Option<String>,
+///     #[sea_orm(rename = "name", default = "String::from(\"Unnamed\")")]
+///     fruit_name: Option<String>,
+///     #[sea_orm(ignore)]
+///     _request_token: String,
 /// }
+///
+/// let fruit = NewFruit {
+///     id: 1,
+///     fruit_name: None,
+///     _request_token: "token".to_owned(),
+/// }
+/// .into_active_model();
+///
+/// assert_eq!(fruit.id, Set(1));
+/// assert_eq!(fruit.name, Set("Unnamed".to_owned()));
+/// assert_eq!(fruit.cake_id, Set(None));
 /// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveIntoActiveModel, attributes(sea_orm))]

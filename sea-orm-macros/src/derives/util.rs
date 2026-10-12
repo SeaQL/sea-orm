@@ -432,7 +432,6 @@ pub(crate) const RUST_SPECIAL_KEYWORDS: [&str; 3] = ["crate", "Self", "self"];
 pub(crate) trait GetMeta {
     fn exists(&self, k: &str) -> bool;
     fn get_as_kv(&self, k: &str) -> Option<String>;
-    fn get_as_kv_with_ident(&self) -> Option<(Ident, String)>;
     fn get_list_args(&self, name: &str) -> Option<Punctuated<Meta, Comma>>;
 }
 
@@ -463,24 +462,6 @@ impl GetMeta for Meta {
         } else {
             None
         }
-    }
-
-    fn get_as_kv_with_ident(&self) -> Option<(Ident, String)> {
-        let Meta::NameValue(MetaNameValue {
-            path,
-            value: syn::Expr::Lit(exprlit),
-            ..
-        }) = self
-        else {
-            return None;
-        };
-
-        let syn::Lit::Str(litstr) = &exprlit.lit else {
-            return None;
-        };
-
-        path.get_ident()
-            .map(|ident| (ident.clone(), litstr.value()))
     }
 
     fn get_list_args(&self, name: &str) -> Option<Punctuated<Meta, Comma>> {
