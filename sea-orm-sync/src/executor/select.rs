@@ -5,7 +5,7 @@ use super::{
 use crate::{
     ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, PartialModelTrait,
     QueryResult, QuerySelect, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
-    SelectTwoRequired, Statement, TryGetableMany, error::*,
+    SelectTwoRequired, Statement, StatementBuilder, TryGetableMany, error::*,
 };
 
 #[cfg(feature = "stream")]
@@ -47,6 +47,7 @@ where
     S: SelectorTrait,
 {
     pub(crate) query: SelectStatement,
+    pub(crate) persistent: bool,
     selector: PhantomData<S>,
 }
 
@@ -260,6 +261,24 @@ impl<E> Select<E>
 where
     E: EntityTrait,
 {
+    /// Set whether SQLx should retain this query's prepared statement.
+    ///
+    /// Finish building the query before calling this method. The returned
+    /// [`Selector`] supports `.one()`, `.all()`, `.stream()`, and `.paginate()`.
+    /// See [`Statement::persistent`] for backend behavior.
+    ///
+    /// ```
+    /// use sea_orm::{DbBackend, entity::*, query::*, tests_cfg::cake};
+    ///
+    /// let query = cake::Entity::find()
+    ///     .filter(cake::Column::Id.eq(1))
+    ///     .persistent(false);
+    /// assert!(!query.into_statement(DbBackend::Postgres).persistent);
+    /// ```
+    pub fn persistent(self, persistent: bool) -> Selector<SelectModel<E::Model>> {
+        self.into_model().persistent(persistent)
+    }
+
     /// Perform a Select operation on a Model using a [Statement]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_raw_sql(self, stmt: Statement) -> SelectorRaw<SelectModel<E::Model>> {
@@ -276,6 +295,7 @@ where
     {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }
@@ -324,6 +344,7 @@ where
     pub fn into_json(self) -> Selector<SelectModel<JsonValue>> {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }
@@ -433,6 +454,7 @@ where
     {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }
@@ -530,6 +552,7 @@ where
     {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }
@@ -632,6 +655,7 @@ where
     {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }
@@ -653,6 +677,7 @@ where
     pub fn into_json(self) -> Selector<SelectTwoModel<JsonValue, JsonValue>> {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }
@@ -723,6 +748,7 @@ where
     {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }
@@ -768,6 +794,7 @@ where
     {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }
@@ -789,6 +816,7 @@ where
     pub fn into_json(self) -> Selector<SelectTwoRequiredModel<JsonValue, JsonValue>> {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }
@@ -850,9 +878,16 @@ impl<S> Selector<S>
 where
     S: SelectorTrait,
 {
+    /// Set whether SQLx should retain this query's prepared statement.
+    /// See [`Statement::persistent`] for backend behavior.
+    pub fn persistent(mut self, persistent: bool) -> Self {
+        self.persistent = persistent;
+        self
+    }
+
     /// Get the SQL statement
     pub fn into_statement(self, builder: DbBackend) -> Statement {
-        builder.build(&self.query)
+        builder.build(&self.query).persistent(self.persistent)
     }
 
     /// Get an item from the Select query
@@ -861,7 +896,7 @@ where
         C: ConnectionTrait,
     {
         self.query.limit(1);
-        let row = db.query_one(&self.query)?;
+        let row = db.query_one(&self.query.persistent(self.persistent))?;
         match row {
             Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
             None => Ok(None),
@@ -888,12 +923,12 @@ where
     {
         #[cfg(not(feature = "sync"))]
         {
-            db.query_rows(&self.query)?
+            db.query_rows(&self.query.persistent(self.persistent))?
                 .collect(S::from_raw_query_result)
         }
         #[cfg(feature = "sync")]
         {
-            db.query_all(&self.query)?
+            db.query_all(&self.query.persistent(self.persistent))?
                 .into_iter()
                 .map(|row| S::from_raw_query_result(row))
                 .try_collect()
@@ -907,7 +942,7 @@ where
         C: ConnectionTrait + StreamTrait,
         S: 'b,
     {
-        let stream = db.stream(&self.query)?;
+        let stream = db.stream(&self.query.persistent(self.persistent))?;
 
         #[cfg(not(feature = "sync"))]
         {
@@ -928,6 +963,13 @@ impl<S> SelectorRaw<S>
 where
     S: SelectorTrait,
 {
+    /// Set whether SQLx should retain this query's prepared statement.
+    /// See [`Statement::persistent`] for backend behavior.
+    pub fn persistent(mut self, persistent: bool) -> Self {
+        self.stmt.persistent = persistent;
+        self
+    }
+
     /// Select a custom Model from a raw SQL [Statement].
     pub fn from_statement<M>(stmt: Statement) -> SelectorRaw<SelectModel<M>>
     where

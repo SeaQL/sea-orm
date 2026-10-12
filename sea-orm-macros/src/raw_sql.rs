@@ -40,10 +40,10 @@ pub fn expand(input: proc_macro::TokenStream) -> syn::Result<TokenStream> {
 
         let query = sea_query::raw_query!(#builder, #sql_string);
 
-        sea_orm::Statement {
-            sql: query.sql,
-            values: Some(query.values),
-            db_backend: sea_orm::DbBackend::#backend,
-        }
+        sea_orm::Statement::from_sql_and_values(
+            sea_orm::DbBackend::#backend,
+            query.sql,
+            query.values.0,
+        )
     }})
 }

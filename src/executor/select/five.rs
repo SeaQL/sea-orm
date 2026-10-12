@@ -129,6 +129,7 @@ where
     {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }
@@ -158,6 +159,7 @@ where
     ) -> Selector<SelectFiveModel<JsonValue, JsonValue, JsonValue, JsonValue, JsonValue>> {
         Selector {
             query: self.query,
+            persistent: true,
             selector: PhantomData,
         }
     }

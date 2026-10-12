@@ -20,6 +20,9 @@ pub struct Statement {
     /// Backend this statement was built for; both the SQL dialect and the
     /// placeholder style must match.
     pub db_backend: DbBackend,
+    /// Whether SQLx should retain the prepared statement in its connection cache.
+    /// Defaults to `true`. See [`Statement::persistent`].
+    pub persistent: bool,
 }
 
 /// Anything that can be rendered to a backend-specific [`Statement`].
@@ -32,13 +35,62 @@ pub trait StatementBuilder: Sync {
     /// Render `self` into a [`Statement`] for `db_backend`.
     fn build(&self, db_backend: &DbBackend) -> Statement;
 
+    /// Set whether SQLx should retain this prepared statement in its connection cache.
+    /// See [`Statement::persistent`] for backend behavior.
+    fn persistent(&self, persistent: bool) -> impl StatementBuilder + '_
+    where
+        Self: Sized,
+    {
+        StatementWithPersistence {
+            inner: self,
+            persistent,
+        }
+    }
+
     #[cfg(feature = "rbac")]
     /// Inspect the statement and produce the access request that
     /// [`RbacEngine`](crate::rbac::RbacEngine) needs to authorise it.
     fn audit(&self) -> Result<QueryAccessAudit, AuditError>;
 }
 
+struct StatementWithPersistence<'a, S> {
+    inner: &'a S,
+    persistent: bool,
+}
+
+impl<S: StatementBuilder> StatementBuilder for StatementWithPersistence<'_, S> {
+    fn build(&self, db_backend: &DbBackend) -> Statement {
+        self.inner.build(db_backend).persistent(self.persistent)
+    }
+
+    #[cfg(feature = "rbac")]
+    fn audit(&self) -> Result<QueryAccessAudit, AuditError> {
+        self.inner.audit()
+    }
+}
+
 impl Statement {
+    /// Set whether SQLx should retain this prepared statement in its connection cache.
+    ///
+    /// Defaults to `true`. Set to `false` for queries whose prepared statements
+    /// should not be retained, for example when PostgreSQL's cached generic
+    /// plan is unsuitable for parameter-dependent workloads. Parameters remain
+    /// bound; this does not interpolate them into the SQL or change session settings.
+    ///
+    /// This forwards SQLx's `persistent` option. It does not evict statements
+    /// already cached on a connection; SQLx may reuse those statements. Use
+    /// `false` consistently for a given query to avoid that reuse.
+    /// Non-SQLx backends ignore this option.
+    ///
+    /// SQLx 0.9's PostgreSQL driver separates parsing an unnamed statement from
+    /// binding it with a protocol `Sync`. Do not use `false` with a
+    /// transaction-pooling proxy such as PgBouncer outside a transaction: the
+    /// backend can change between those messages, causing errors or wrong results.
+    pub fn persistent(mut self, persistent: bool) -> Self {
+        self.persistent = persistent;
+        self
+    }
+
     /// Create a [Statement] from a [crate::DatabaseBackend] and a raw SQL statement
     pub fn from_string<T>(db_backend: DbBackend, stmt: T) -> Statement
     where
@@ -48,6 +100,7 @@ impl Statement {
             sql: stmt.into(),
             values: None,
             db_backend,
+            persistent: true,
         }
     }
 
@@ -69,6 +122,7 @@ impl Statement {
             sql: stmt.0.into(),
             values: Some(stmt.1),
             db_backend,
+            persistent: true,
         }
     }
 }

@@ -726,6 +726,7 @@ fn get_version(conn: &RusqliteSharedConnection) -> Result<String, DbErr> {
         sql: "SELECT sqlite_version()".to_string(),
         values: None,
         db_backend: crate::DbBackend::Sqlite,
+        persistent: true,
     };
     conn.query_one(stmt)?
         .ok_or_else(|| {
