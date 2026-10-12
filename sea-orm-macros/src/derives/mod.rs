@@ -20,6 +20,8 @@ mod partial_model;
 mod primary_key;
 mod related_entity;
 mod relation;
+#[cfg(feature = "with-json")]
+mod serde_attributes;
 mod try_getable_from_json;
 mod typed_column;
 mod util;

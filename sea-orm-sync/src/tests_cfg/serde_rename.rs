@@ -110,6 +110,7 @@ pub mod directional_rename_all {
 #[cfg(all(test, feature = "with-json"))]
 mod tests {
     use super::*;
+    use crate as sea_orm;
     use crate::ActiveValue;
     use crate::entity::ActiveModelTrait;
 
@@ -204,5 +205,139 @@ mod tests {
 
         assert_eq!(am.id, ActiveValue::NotSet);
         assert_eq!(am.user_name, ActiveValue::Set("test_user".to_string()));
+    }
+
+    #[test]
+    fn respects_custom_deserializers() {
+        #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+        #[sea_orm(table_name = "example")]
+        struct Model {
+            #[sea_orm(primary_key)]
+            #[serde(deserialize_with = "deserialize_id")]
+            id: i64,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+
+        fn deserialize_id<'de, D>(deserializer: D) -> Result<i64, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            String::deserialize(deserializer)?
+                .parse()
+                .map_err(serde::de::Error::custom)
+        }
+
+        let missing = ActiveModel::from_json(serde_json::json!({})).unwrap();
+        assert_eq!(missing.id, ActiveValue::NotSet);
+
+        let present = ActiveModel::from_json(serde_json::json!({ "id": "7" })).unwrap();
+        assert_eq!(present.id, ActiveValue::Set(7));
+    }
+
+    #[test]
+    fn respects_serde_defaults() {
+        #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+        #[sea_orm(table_name = "job")]
+        struct Model {
+            #[sea_orm(primary_key)]
+            #[serde(default)]
+            id: i32,
+            #[serde(default = "default_retry_limit")]
+            retry_limit: i32,
+            #[serde(default)]
+            note: Option<String>,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+
+        fn default_retry_limit() -> i32 {
+            3
+        }
+
+        let missing = ActiveModel::from_json(serde_json::json!({})).unwrap();
+        assert_eq!(missing.id, ActiveValue::Set(0));
+        assert_eq!(missing.retry_limit, ActiveValue::Set(3));
+        assert_eq!(missing.note, ActiveValue::Set(None));
+
+        let present =
+            ActiveModel::from_json(serde_json::json!({ "retry_limit": 5, "note": null })).unwrap();
+        assert_eq!(present.retry_limit, ActiveValue::Set(5));
+        assert_eq!(present.note, ActiveValue::Set(None));
+    }
+
+    #[test]
+    fn accepts_ignored_fields_and_rejects_unknown_fields() {
+        #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+        #[sea_orm(table_name = "post")]
+        #[serde(deny_unknown_fields)]
+        struct Model {
+            #[sea_orm(primary_key)]
+            id: i32,
+            #[sea_orm(ignore)]
+            #[serde(rename = "responseCode", alias = "legacyCode")]
+            response_code: i32,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+
+        for key in ["responseCode", "legacyCode"] {
+            let active_model = ActiveModel::from_json(serde_json::json!({
+                "id": 7,
+                (key): "not a database value"
+            }))
+            .unwrap();
+            assert_eq!(active_model.id, ActiveValue::Set(7));
+        }
+
+        let active_model = ActiveModel::from_json(serde_json::json!({ "id": 7 })).unwrap();
+        assert_eq!(active_model.id, ActiveValue::Set(7));
+
+        assert!(matches!(
+            ActiveModel::from_json(serde_json::json!({ "id": 7, "unknown": 1 })),
+            Err(crate::DbErr::Json(_))
+        ));
+    }
+
+    #[test]
+    fn skips_serde_flatten_and_ignore_fields() {
+        #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+        #[sea_orm(table_name = "post")]
+        struct Model {
+            #[sea_orm(primary_key)]
+            id: i32,
+            #[serde(skip)]
+            created_by: i32,
+            #[serde(flatten)]
+            extra: Json,
+            #[sea_orm(ignore)]
+            response_code: i32,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+
+        let active_model = ActiveModel::from_json(serde_json::json!({
+            "id": 7,
+            "created_by": "not client writable",
+            "city": "Hong Kong",
+            "response_code": "not a database value"
+        }))
+        .unwrap();
+
+        assert_eq!(active_model.id, ActiveValue::Set(7));
+        assert_eq!(active_model.created_by, ActiveValue::NotSet);
+        assert_eq!(active_model.extra, ActiveValue::NotSet);
     }
 }
