@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
+- Declare table-level indexes on an entity with `#[sea_orm(index(..))]`: non-unique composite indexes, explicit column order, descending columns, and partial indexes. They are included in `Schema::create_index_from_entity` and created by schema sync, which matches them by name https://github.com/SeaQL/sea-orm/pull/3231
+
+    ```rust
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "post")]
+    #[sea_orm(index("idx_post_feed", on(author_id, created_at(desc))))]
+    #[sea_orm(index("idx_post_archived", on(archived_at), where = "archived_at IS NOT NULL"))]
+    pub struct Model { .. }
+    ```
+
 - Support invoking `sea-orm-cli` as a Cargo subcommand (`cargo sea generate entity`, `cargo sea migrate`) https://github.com/SeaQL/sea-orm/pull/3187
 
 ### Enhancements

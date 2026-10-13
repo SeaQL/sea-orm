@@ -1,4 +1,7 @@
-use super::{Schema, TopologicalSort, entity::index_table_ref};
+use super::{
+    Schema, TopologicalSort,
+    entity::{create_index_from_entity, create_table_index_from_entity, index_table_ref},
+};
 use crate::{ConnectionTrait, DbBackend, DbErr, EntityTrait, Statement};
 use sea_query::{
     ForeignKeyCreateStatement, Index, IndexCreateStatement, IntoIden, TableAlterStatement,
@@ -16,6 +19,10 @@ pub struct EntitySchemaInfo {
     table: TableCreateStatement,
     enums: Vec<TypeCreateStatement>,
     indexes: Vec<IndexCreateStatement>,
+    /// Table-level indexes (`#[sea_orm(index(..))]`). Unlike `indexes`, these are matched
+    /// against the database by name, since a partial or ordered index can cover the same
+    /// columns as another index.
+    table_indexes: Vec<IndexCreateStatement>,
     /// The schema name from the entity definition (e.g., `#[sea_orm(schema_name = "sys")]`).
     /// `None` means the entity uses the database's current/default schema.
     schema_name: Option<String>,
@@ -365,7 +372,8 @@ impl EntitySchemaInfo {
         Self {
             table: helper.create_table_from_entity(entity),
             enums: helper.create_enum_from_entity(entity),
-            indexes: helper.create_index_from_entity(entity),
+            indexes: create_index_from_entity(entity, helper.backend),
+            table_indexes: create_table_index_from_entity(entity, helper.backend),
             schema_name: entity.schema_name().map(|s| s.to_string()),
         }
     }
@@ -383,7 +391,7 @@ impl EntitySchemaInfo {
             }
         }
         db.execute(&self.table).await?;
-        for stmt in self.indexes.iter() {
+        for stmt in self.indexes.iter().chain(self.table_indexes.iter()) {
             db.execute(stmt).await?;
         }
         Ok(())
@@ -511,6 +519,19 @@ impl EntitySchemaInfo {
                 db.execute(&stmt).await?;
             }
         }
+        for stmt in self.table_indexes.iter() {
+            let has_index = existing_table.is_some_and(|existing_table| {
+                existing_table
+                    .get_indexes()
+                    .iter()
+                    .any(|existing_index| same_index_name(existing_index, stmt))
+            });
+            if !has_index {
+                let mut stmt = stmt.clone();
+                stmt.if_not_exists();
+                db.execute(&stmt).await?;
+            }
+        }
         if let Some(existing_table) = existing_table {
             // For columns with a column-level UNIQUE constraint (#[sea_orm(unique)]) that
             // already exist in the table but do not yet have a unique index, create one.
@@ -564,6 +585,14 @@ impl EntitySchemaInfo {
                             has_index = true;
                             break;
                         }
+                    }
+                    // A declared table-level unique index is kept by name.
+                    if self
+                        .table_indexes
+                        .iter()
+                        .any(|stmt| same_index_name(existing_index, stmt))
+                    {
+                        has_index = true;
                     }
                     // Also check if the unique index corresponds to a column-level UNIQUE
                     // constraint (from #[sea_orm(unique)]). These are embedded in the CREATE
@@ -638,7 +667,12 @@ impl EntitySchemaInfo {
         }
         write!(f, " ]")?;
         write!(f, " indexes: [")?;
-        for (i, stmt) in self.indexes.iter().enumerate() {
+        for (i, stmt) in self
+            .indexes
+            .iter()
+            .chain(self.table_indexes.iter())
+            .enumerate()
+        {
             if i > 0 {
                 write!(f, ", ")?;
             }
@@ -647,6 +681,13 @@ impl EntitySchemaInfo {
         write!(f, " ]")?;
         write!(f, " }}")
     }
+}
+
+fn same_index_name(existing: &IndexCreateStatement, declared: &IndexCreateStatement) -> bool {
+    matches!(
+        (existing.get_index_spec().get_name(), declared.get_index_spec().get_name()),
+        (Some(existing), Some(declared)) if existing == declared
+    )
 }
 
 fn get_table_name(table_ref: Option<&TableRef>) -> TableName {

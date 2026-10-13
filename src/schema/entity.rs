@@ -49,12 +49,17 @@ impl Schema {
     }
 
     /// Creates the indexes from an Entity, returning an empty Vec if there are none
-    /// to create. See [IndexCreateStatement] for more details
+    /// to create. This includes indexes derived from column attributes (`indexed`,
+    /// `unique_key`) followed by table-level indexes (`#[sea_orm(index(..))]`, see
+    /// [`EntityName::table_indexes`](crate::EntityName::table_indexes)).
+    /// See [IndexCreateStatement] for more details
     pub fn create_index_from_entity<E>(&self, entity: E) -> Vec<IndexCreateStatement>
     where
         E: EntityTrait,
     {
-        create_index_from_entity(entity, self.backend)
+        let mut indexes = create_index_from_entity(entity, self.backend);
+        indexes.extend(create_table_index_from_entity(entity, self.backend));
+        indexes
     }
 
     /// Creates a column definition for example to update a table.
@@ -180,6 +185,24 @@ where
     }
 
     indexes
+}
+
+/// Table-level indexes (`#[sea_orm(index(..))]`), with the table set.
+pub(crate) fn create_table_index_from_entity<E>(
+    entity: E,
+    backend: DbBackend,
+) -> Vec<IndexCreateStatement>
+where
+    E: EntityTrait,
+{
+    entity
+        .table_indexes()
+        .into_iter()
+        .map(|mut stmt| {
+            stmt.table(index_table_ref(entity.table_ref(), backend));
+            stmt
+        })
+        .collect()
 }
 
 /// Build the table reference used for a generated index.
@@ -463,6 +486,75 @@ mod tests {
                     "{builder:?} index should not be schema-qualified: {sql}"
                 );
             }
+        }
+    }
+
+    mod table_level_indexes {
+        use crate as sea_orm;
+        use crate::ExprTrait;
+        use crate::entity::prelude::*;
+
+        #[sea_orm::model]
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "post")]
+        #[sea_orm(index("idx_post_feed", on(author_id, created_at(desc), id(desc))))]
+        #[sea_orm(
+            index("uq_post_author_title", on(author_id, title), unique),
+            index("idx_post_active", on(title(asc)), where = Expr::col(Column::ArchivedAt).is_null())
+        )]
+        #[sea_orm(index(
+            "idx_post_archived",
+            on(archived_at),
+            where = "archived_at IS NOT NULL"
+        ))]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            pub author_id: i32,
+            #[sea_orm(column_name = "headline")]
+            pub title: String,
+            pub created_at: i64,
+            pub archived_at: Option<i64>,
+        }
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    #[test]
+    fn test_create_index_from_entity_table_level() {
+        let expected = [
+            (
+                DbBackend::Sqlite,
+                [
+                    r#"CREATE INDEX "idx_post_feed" ON "post" ("author_id", "created_at" DESC, "id" DESC)"#,
+                    r#"CREATE UNIQUE INDEX "uq_post_author_title" ON "post" ("author_id", "headline")"#,
+                    r#"CREATE INDEX "idx_post_active" ON "post" ("headline" ASC) WHERE "archived_at" IS NULL"#,
+                    r#"CREATE INDEX "idx_post_archived" ON "post" ("archived_at") WHERE archived_at IS NOT NULL"#,
+                ],
+            ),
+            (
+                DbBackend::Postgres,
+                [
+                    r#"CREATE INDEX "idx_post_feed" ON "post" ("author_id", "created_at" DESC, "id" DESC)"#,
+                    r#"CREATE UNIQUE INDEX "uq_post_author_title" ON "post" ("author_id", "headline")"#,
+                    r#"CREATE INDEX "idx_post_active" ON "post" ("headline" ASC) WHERE "archived_at" IS NULL"#,
+                    r#"CREATE INDEX "idx_post_archived" ON "post" ("archived_at") WHERE archived_at IS NOT NULL"#,
+                ],
+            ),
+            (
+                DbBackend::MySql,
+                [
+                    "CREATE INDEX `idx_post_feed` ON `post` (`author_id`, `created_at` DESC, `id` DESC)",
+                    "CREATE UNIQUE INDEX `uq_post_author_title` ON `post` (`author_id`, `headline`)",
+                    "CREATE INDEX `idx_post_active` ON `post` (`headline` ASC) WHERE `archived_at` IS NULL",
+                    "CREATE INDEX `idx_post_archived` ON `post` (`archived_at`) WHERE archived_at IS NOT NULL",
+                ],
+            ),
+        ];
+        for (backend, expected) in expected {
+            let stmts = Schema::new(backend).create_index_from_entity(table_level_indexes::Entity);
+            let sql: Vec<_> = stmts.iter().map(|stmt| backend.build(stmt).sql).collect();
+            assert_eq!(sql, expected, "{backend:?}");
         }
     }
 

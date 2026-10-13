@@ -171,6 +171,114 @@ mod custom_schema_indexed_entity {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+// Scenario 7a: initial version — only a column-level index.
+mod ledger_v1 {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "sync_ledger")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub account_id: i32,
+        pub seq: i32,
+        pub created_at: i64,
+        #[sea_orm(indexed)]
+        pub archived_at: Option<i64>,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+// Scenario 7b: table-level indexes are added (#3157): a non-unique composite index with
+// a descending column, a composite unique index, and a partial index on a column that
+// already has a column-level index.
+mod ledger_v2 {
+    use sea_orm::entity::prelude::*;
+    use sea_orm::{Condition, ExprTrait};
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "sync_ledger")]
+    #[sea_orm(index("idx_ledger_feed", on(account_id, created_at(desc))))]
+    #[sea_orm(index("idx_ledger_seq", on(account_id, seq), unique))]
+    #[sea_orm(index(
+        "idx_ledger_archived",
+        on(archived_at),
+        where = Condition::all().add(Expr::col(Column::ArchivedAt).is_not_null())
+    ))]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub account_id: i32,
+        pub seq: i32,
+        pub created_at: i64,
+        #[sea_orm(indexed)]
+        pub archived_at: Option<i64>,
+    }
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
+
+/// Table-level indexes are created on an existing table, matched by name on later
+/// syncs (no duplicate, no error), and a declared unique one is not dropped as stale.
+/// MySQL is excluded because it has no partial indexes.
+#[sea_orm_macros::test]
+#[cfg(any(feature = "sqlx-sqlite", feature = "sqlx-postgres"))]
+async fn test_sync_table_level_indexes() -> Result<(), DbErr> {
+    let ctx = TestContext::new("test_sync_table_level_indexes").await;
+    let db = &ctx.db;
+
+    #[cfg(feature = "schema-sync")]
+    {
+        db.get_schema_builder()
+            .register(ledger_v1::Entity)
+            .sync(db)
+            .await?;
+
+        for _ in 0..2 {
+            db.get_schema_builder()
+                .register(ledger_v2::Entity)
+                .sync(db)
+                .await?;
+
+            let indexes = index_names(db, "sync_ledger").await?;
+            for name in [
+                "idx-sync_ledger-archived_at",
+                "idx_ledger_feed",
+                "idx_ledger_seq",
+                "idx_ledger_archived",
+            ] {
+                assert!(
+                    indexes.iter().any(|index| index == name),
+                    "index `{name}` should exist, found {indexes:?}"
+                );
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn index_names(db: &DatabaseConnection, table: &str) -> Result<Vec<String>, DbErr> {
+    let backend = db.get_database_backend();
+    let sql = match backend {
+        DatabaseBackend::Sqlite => {
+            "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = ?"
+        }
+        DatabaseBackend::Postgres => {
+            "SELECT indexname FROM pg_indexes WHERE schemaname = CURRENT_SCHEMA() AND tablename = $1"
+        }
+        _ => unimplemented!("index_names is only used on SQLite and Postgres"),
+    };
+    db.query_all_raw(Statement::from_sql_and_values(backend, sql, [table.into()]))
+        .await?
+        .iter()
+        .map(|row| row.try_get_by_index::<String>(0).map_err(DbErr::from))
+        .collect()
+}
+
 /// Regression test for <https://github.com/SeaQL/sea-orm/issues/2970>.
 ///
 /// A table with a `#[sea_orm(unique)]` column is created on the first sync.
@@ -204,7 +312,6 @@ async fn test_sync_unique_column_no_drop() -> Result<(), DbErr> {
     Ok(())
 }
 
-/// Regression test for <https://github.com/SeaQL/sea-orm/issues/2970>.
 ///
 /// A unique column is added to an existing table via sync (ALTER TABLE ADD
 /// COLUMN … UNIQUE), which creates a column-level unique index. A subsequent
