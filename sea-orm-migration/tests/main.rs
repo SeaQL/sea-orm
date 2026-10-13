@@ -241,10 +241,13 @@ where
     assert!(!manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
 
-    // Tests rolling back a failing migration on Postgres.
+    // Tests rolling back a failing migration on Postgres and SQLite.
     // With per-migration transactions, only the failing migration is rolled back;
     // earlier migrations that committed successfully are preserved.
-    if matches!(db.get_database_backend(), DbBackend::Postgres) {
+    if matches!(
+        db.get_database_backend(),
+        DbBackend::Postgres | DbBackend::Sqlite
+    ) {
         println!("\nRoll back changes when encounter errors");
 
         // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
@@ -268,6 +271,8 @@ where
         // earlier migrations (cake, fruit, etc.) committed successfully
         assert!(manager.has_table("cake").await?);
         assert!(manager.has_table("fruit").await?);
+
+        assert_eq!(migrator.get_applied_migrations(db).await?.len(), 5);
 
         // Unset the flag
         unsafe {
@@ -298,12 +303,15 @@ where
     assert!(manager.has_column("cake", "name").await?);
     assert!(manager.has_column("fruit", "cake_id").await?);
 
-    // Tests rolling back a failing migration-down on Postgres.
+    // Tests rolling back a failing migration-down on Postgres and SQLite.
     // With per-migration transactions, rollbacks happen one at a time in reverse.
     // Migrations 6-2 roll back and commit successfully. Migration 1 (drops cake
     // then ABORTs) fails, so its DROP is restored. But migration 2's DROP of
     // the fruit table already committed.
-    if matches!(db.get_database_backend(), DbBackend::Postgres) {
+    if matches!(
+        db.get_database_backend(),
+        DbBackend::Postgres | DbBackend::Sqlite
+    ) {
         println!("\nRoll back changes when encounter errors");
 
         // Set a flag to throw error inside `m20220118_000001_create_cake_table.rs`
@@ -327,6 +335,8 @@ where
         // Migrations 2-6 were rolled back successfully (fruit table dropped).
         assert!(manager.has_table("cake").await?);
         assert!(!manager.has_table("fruit").await?);
+
+        assert_eq!(migrator.get_applied_migrations(db).await?.len(), 1);
 
         // Unset the flag
         unsafe {
@@ -374,7 +384,7 @@ async fn run_transaction_test(url: &str, db_name: &str, schema: &str) -> Result<
     let backend = db.get_database_backend();
     let manager = SchemaManager::new(db);
 
-    // use_transaction = None: Postgres wraps by default, others don't.
+    // use_transaction = None: Postgres and SQLite wrap by default.
     // The assertion happens inside the migration's up()/down() body.
     println!("\nTransaction test: use_transaction = None");
     let m = transaction_test::Migrator {
