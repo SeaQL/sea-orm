@@ -15,8 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     #[sea_orm::model]
     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm(table_name = "post")]
-    #[sea_orm(index(name = "idx_post_feed", columns = "author_id, created_at DESC"))]
-    #[sea_orm(index(name = "idx_post_archived", columns = "archived_at", where = "archived_at IS NOT NULL"))]
+    #[sea_orm(index("idx_post_feed", on(author_id, created_at(desc))))]
+    #[sea_orm(index("idx_post_archived", on(archived_at), where = "archived_at IS NOT NULL"))]
     pub struct Model { .. }
     ```
 

@@ -171,8 +171,6 @@ mod custom_schema_indexed_entity {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
-/// Regression test for <https://github.com/SeaQL/sea-orm/issues/2970>.
-///
 // Scenario 7a: initial version — only a column-level index.
 mod ledger_v1 {
     use sea_orm::entity::prelude::*;
@@ -198,16 +196,17 @@ mod ledger_v1 {
 // already has a column-level index.
 mod ledger_v2 {
     use sea_orm::entity::prelude::*;
+    use sea_orm::{Condition, ExprTrait};
 
     #[sea_orm::model]
     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm(table_name = "sync_ledger")]
-    #[sea_orm(index(name = "idx_ledger_feed", columns = "account_id, created_at DESC"))]
-    #[sea_orm(index(name = "idx_ledger_seq", columns = "account_id, seq", unique))]
+    #[sea_orm(index("idx_ledger_feed", on(account_id, created_at(desc))))]
+    #[sea_orm(index("idx_ledger_seq", on(account_id, seq), unique))]
     #[sea_orm(index(
-        name = "idx_ledger_archived",
-        columns = "archived_at",
-        where = "archived_at IS NOT NULL"
+        "idx_ledger_archived",
+        on(archived_at),
+        where = Condition::all().add(Expr::col(Column::ArchivedAt).is_not_null())
     ))]
     pub struct Model {
         #[sea_orm(primary_key)]
@@ -280,6 +279,8 @@ async fn index_names(db: &DatabaseConnection, table: &str) -> Result<Vec<String>
         .collect()
 }
 
+/// Regression test for <https://github.com/SeaQL/sea-orm/issues/2970>.
+///
 /// A table with a `#[sea_orm(unique)]` column is created on the first sync.
 /// The subsequent sync must not attempt to drop the column-level unique index.
 #[sea_orm_macros::test]
@@ -311,7 +312,6 @@ async fn test_sync_unique_column_no_drop() -> Result<(), DbErr> {
     Ok(())
 }
 
-/// Regression test for <https://github.com/SeaQL/sea-orm/issues/2970>.
 ///
 /// A unique column is added to an existing table via sync (ALTER TABLE ADD
 /// COLUMN … UNIQUE), which creates a column-level unique index. A subsequent

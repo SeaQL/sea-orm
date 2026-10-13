@@ -139,7 +139,7 @@ pub fn expand_derive_entity_model(
     let mut primary_keys: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_key_types: Punctuated<_, Comma> = Punctuated::new();
     let mut auto_increment: Option<bool> = None;
-    // (Rust field name, Column variant) of every column, for resolving `index(columns = ..)`
+    // (Rust field name, Column variant) of every column, for resolving `index("name", on(..))`
     let mut field_columns: Vec<(String, Ident)> = Vec::new();
     #[cfg(feature = "with-json")]
     let mut columns_json_keys: Punctuated<_, Comma> = Punctuated::new();
@@ -673,41 +673,72 @@ pub fn expand_derive_entity_model(
 /// A table-level `#[sea_orm(index(..))]` attribute.
 ///
 /// ```ignore
-/// #[sea_orm(index(name = "idx_post_feed", columns = "author_id, created_at DESC"))]
-/// #[sea_orm(index(columns = "deleted_at", where = "deleted_at IS NOT NULL"))]
-/// #[sea_orm(index(columns = "tenant_id, slug", unique))]
+/// #[sea_orm(index("idx_post_feed", on(author_id, created_at(desc))))]
+/// #[sea_orm(index("idx_post_deleted", on(deleted_at), where = "deleted_at IS NOT NULL"))]
+/// #[sea_orm(index("uq_post_tenant_slug", on(tenant_id, slug), unique))]
 /// ```
 struct TableIndexAttr {
-    name: Option<LitStr>,
-    columns: LitStr,
+    name: LitStr,
+    columns: Punctuated<TableIndexColumn, Comma>,
     unique: bool,
-    condition: Option<LitStr>,
+    condition: Option<syn::Expr>,
+}
+
+struct TableIndexColumn {
+    field: Ident,
+    order: Option<Ident>,
+}
+
+impl syn::parse::Parse for TableIndexColumn {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let field = input.parse()?;
+        let order = if input.peek(syn::token::Paren) {
+            let options;
+            syn::parenthesized!(options in input);
+            let order: Ident = options.parse()?;
+            if order != "asc" && order != "desc" {
+                return Err(syn::Error::new(order.span(), "expected `asc` or `desc`"));
+            }
+            Some(order)
+        } else {
+            None
+        };
+        Ok(Self { field, order })
+    }
 }
 
 impl TableIndexAttr {
     fn parse(meta: &syn::meta::ParseNestedMeta) -> syn::Result<Self> {
-        let mut name = None;
+        let content;
+        syn::parenthesized!(content in meta.input);
+        let name = content.parse::<LitStr>()?;
+        content.parse::<Comma>()?;
         let mut columns = None;
         let mut unique = false;
         let mut condition = None;
-        meta.parse_nested_meta(|meta| {
-            if meta.path.is_ident("name") {
-                name = Some(meta.value()?.parse::<LitStr>()?);
-            } else if meta.path.is_ident("columns") {
-                columns = Some(meta.value()?.parse::<LitStr>()?);
-            } else if meta.path.is_ident("unique") {
-                unique = true;
-            } else if meta.path.is_ident("where") {
-                condition = Some(meta.value()?.parse::<LitStr>()?);
-            } else {
-                return Err(meta.error(
-                    "expected `name = \"..\"`, `columns = \"..\"`, `unique` or `where = \"..\"`",
-                ));
-            }
-            Ok(())
-        })?;
-        let columns =
-            columns.ok_or_else(|| meta.error("`index(..)` requires `columns = \"..\"`"))?;
+        syn::parse::Parser::parse2(
+            syn::meta::parser(|meta| {
+                if meta.path.is_ident("on") {
+                    let fields;
+                    syn::parenthesized!(fields in meta.input);
+                    let parsed = fields
+                        .parse_terminated(<TableIndexColumn as syn::parse::Parse>::parse, Comma)?;
+                    if parsed.is_empty() {
+                        return Err(meta.error("`on(..)` requires at least one column"));
+                    }
+                    columns = Some(parsed);
+                } else if meta.path.is_ident("unique") {
+                    unique = true;
+                } else if meta.path.is_ident("where") {
+                    condition = Some(meta.value()?.parse()?);
+                } else {
+                    return Err(meta.error("expected `on(..)`, `unique` or `where = ..`"));
+                }
+                Ok(())
+            }),
+            content.parse()?,
+        )?;
+        let columns = columns.ok_or_else(|| meta.error("`index(..)` requires `on(..)`"))?;
         Ok(Self {
             name,
             columns,
@@ -716,63 +747,91 @@ impl TableIndexAttr {
         })
     }
 
-    /// Expands into an `IndexCreateStatement` without a table; `Schema` sets the table
-    /// and, if no name is given, derives one from the table and column names.
+    /// Expands into a named `IndexCreateStatement`; `Schema` sets the table.
     fn expand(&self, field_columns: &[(String, Ident)]) -> syn::Result<TokenStream> {
         let mut cols = Vec::new();
-        for part in self.columns.value().split(',') {
-            let mut words = part.split_whitespace();
-            let (Some(field), order, None) = (words.next(), words.next(), words.next()) else {
+        for column in &self.columns {
+            let field = trim_starting_raw_identifier(column.field.to_string());
+            let Some((_, variant)) = field_columns.iter().find(|(name, _)| *name == field) else {
                 return Err(syn::Error::new(
-                    self.columns.span(),
-                    format!(
-                        "invalid index column `{}`; expected `field` or `field ASC|DESC`",
-                        part.trim()
-                    ),
-                ));
-            };
-            let Some((_, variant)) = field_columns.iter().find(|(name, _)| name == field) else {
-                return Err(syn::Error::new(
-                    self.columns.span(),
+                    column.field.span(),
                     format!("index column `{field}` is not a column of this entity"),
                 ));
             };
-            let col = match order.map(str::to_ascii_uppercase).as_deref() {
+            let col = match column.order.as_ref() {
                 None => quote!(Column::#variant),
-                Some("ASC") => quote!((Column::#variant, sea_orm::sea_query::IndexOrder::Asc)),
-                Some("DESC") => quote!((Column::#variant, sea_orm::sea_query::IndexOrder::Desc)),
-                Some(other) => {
-                    return Err(syn::Error::new(
-                        self.columns.span(),
-                        format!("invalid index order `{other}`; expected `ASC` or `DESC`"),
-                    ));
+                Some(order) if order == "asc" => {
+                    quote!((Column::#variant, sea_orm::sea_query::IndexOrder::Asc))
                 }
+                Some(_) => quote!((Column::#variant, sea_orm::sea_query::IndexOrder::Desc)),
             };
             cols.push(col);
         }
-        if cols.is_empty() {
-            return Err(syn::Error::new(
-                self.columns.span(),
-                "index requires at least one column",
-            ));
-        }
-        let name = self.name.as_ref().map(|name| quote!(stmt.name(#name);));
+        let name = &self.name;
         let unique = self.unique.then(|| quote!(stmt.unique();));
         let condition = self.condition.as_ref().map(|condition| {
+            let condition = match condition {
+                syn::Expr::Lit(syn::ExprLit {
+                    lit: Lit::Str(sql), ..
+                }) => {
+                    quote!(sea_orm::sea_query::Expr::cust(#sql))
+                }
+                expr => quote!(#expr),
+            };
             quote! {
-                sea_orm::sea_query::ConditionalStatement::and_where(
-                    &mut stmt,
-                    sea_orm::sea_query::Expr::cust(#condition),
-                );
+                sea_orm::sea_query::ConditionalStatement::cond_where(&mut stmt, #condition);
             }
         });
         Ok(quote! {{
             let mut stmt = sea_orm::sea_query::Index::create();
-            #name
+            stmt.name(#name);
             #( stmt.col(#cols); )*
             #unique
             #condition
             stmt
         }})
+    }
+}
+
+#[cfg(test)]
+mod table_index_tests {
+    use super::*;
+
+    // Invalid declarations must fail at the attribute, rather than generating a
+    // different index or leaving schema sync without a stable index name.
+    #[test]
+    fn rejects_invalid_table_indexes() {
+        for (attribute, expected) in [
+            (quote!(#[sea_orm(index(on(id)))]), "expected string literal"),
+            (quote!(#[sea_orm(index("idx"))]), "expected `,`"),
+            (
+                quote!(#[sea_orm(index("idx", unique))]),
+                "requires `on(..)`",
+            ),
+            (
+                quote!(#[sea_orm(index("idx", on()))]),
+                "requires at least one column",
+            ),
+            (
+                quote!(#[sea_orm(index("idx", on(missing)))]),
+                "not a column of this entity",
+            ),
+            (
+                quote!(#[sea_orm(index("idx", on(id(nulls_last))))]),
+                "expected `asc` or `desc`",
+            ),
+            (
+                quote!(#[sea_orm(index("idx", on(id(desc, nulls_last))))]),
+                "unexpected token",
+            ),
+        ] {
+            let attribute: Attribute = syn::parse_quote!(#attribute);
+            let result = attribute.parse_nested_meta(|meta| {
+                TableIndexAttr::parse(&meta)?.expand(&[("id".into(), syn::parse_quote!(Id))])?;
+                Ok(())
+            });
+            let error = result.unwrap_err().to_string();
+            assert!(error.contains(expected), "{attribute:?}: {error}");
+        }
     }
 }

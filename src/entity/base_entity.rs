@@ -39,7 +39,7 @@ pub trait EntityName: IdenStatic + Default {
     /// column order, descending columns, or a partial index (`where`).
     ///
     /// The statements carry no table; [`Schema::create_index_from_entity`](crate::Schema::create_index_from_entity)
-    /// fills it in, and derives a name (`idx-{table}-{columns}`) for unnamed indexes.
+    /// fills it in. Each index must have an explicit name.
     /// Schema sync identifies these indexes by name: it creates a declared index whose
     /// name is missing, and never drops a declared unique index. It does not compare
     /// definitions, so give an index a new name when changing it.
@@ -49,16 +49,19 @@ pub trait EntityName: IdenStatic + Default {
     /// #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     /// #[sea_orm(table_name = "post")]
     /// // non-unique composite index, with a descending column
-    /// #[sea_orm(index(name = "idx_post_feed", columns = "author_id, created_at DESC"))]
-    /// // composite unique index, named `idx-post-author_id-slug`
-    /// #[sea_orm(index(columns = "author_id, slug", unique))]
+    /// #[sea_orm(index("idx_post_feed", on(author_id, created_at(desc))))]
+    /// // composite unique index
+    /// #[sea_orm(index("uq_post_author_slug", on(author_id, slug), unique))]
     /// // partial index (Postgres and SQLite; MySQL has no partial indexes)
-    /// #[sea_orm(index(name = "idx_post_archived", columns = "archived_at", where = "archived_at IS NOT NULL"))]
+    /// #[sea_orm(index("idx_post_archived", on(archived_at), where = "archived_at IS NOT NULL"))]
+    /// // A SeaQuery expression can also be used (with `sea_orm::ExprTrait` in scope).
+    /// #[sea_orm(index("idx_post_active", on(archived_at), where = Expr::col(Column::ArchivedAt).is_null()))]
     /// pub struct Model { .. }
     /// ```
     ///
-    /// `columns` lists field names, each optionally followed by `ASC` or `DESC`; `where`
-    /// is raw SQL.
+    /// `on(..)` lists field names, optionally with `(asc)` or `(desc)`. NULL ordering
+    /// is not supported by SeaQuery's index API. `where` accepts raw SQL or a SeaQuery
+    /// expression implementing `IntoCondition`.
     fn table_indexes(&self) -> Vec<IndexCreateStatement> {
         Vec::new()
     }

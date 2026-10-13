@@ -29,6 +29,7 @@ syn = { version = "2", default-features = false, features = [
     "parsing",
     "proc-macro",
     "derive",
+    "full",
     "printing",
     "extra-traits",
 ] }

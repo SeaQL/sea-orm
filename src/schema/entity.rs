@@ -187,8 +187,7 @@ where
     indexes
 }
 
-/// Table-level indexes (`#[sea_orm(index(..))]`), with the table set and a name derived
-/// for unnamed ones.
+/// Table-level indexes (`#[sea_orm(index(..))]`), with the table set.
 pub(crate) fn create_table_index_from_entity<E>(
     entity: E,
     backend: DbBackend,
@@ -201,10 +200,6 @@ where
         .into_iter()
         .map(|mut stmt| {
             stmt.table(index_table_ref(entity.table_ref(), backend));
-            if stmt.get_index_spec().get_name().is_none() {
-                let columns = stmt.get_index_spec().get_column_names().join("-");
-                stmt.name(format!("idx-{}-{}", entity.to_string(), columns));
-            }
             stmt
         })
         .collect()
@@ -496,19 +491,20 @@ mod tests {
 
     mod table_level_indexes {
         use crate as sea_orm;
+        use crate::ExprTrait;
         use crate::entity::prelude::*;
 
         #[sea_orm::model]
         #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
         #[sea_orm(table_name = "post")]
+        #[sea_orm(index("idx_post_feed", on(author_id, created_at(desc), id(desc))))]
+        #[sea_orm(
+            index("uq_post_author_title", on(author_id, title), unique),
+            index("idx_post_active", on(title(asc)), where = Expr::col(Column::ArchivedAt).is_null())
+        )]
         #[sea_orm(index(
-            name = "idx_post_feed",
-            columns = "author_id, created_at DESC, id desc"
-        ))]
-        #[sea_orm(index(columns = "author_id, title", unique))]
-        #[sea_orm(index(
-            name = "idx_post_archived",
-            columns = "archived_at",
+            "idx_post_archived",
+            on(archived_at),
             where = "archived_at IS NOT NULL"
         ))]
         pub struct Model {
@@ -531,7 +527,8 @@ mod tests {
                 DbBackend::Sqlite,
                 [
                     r#"CREATE INDEX "idx_post_feed" ON "post" ("author_id", "created_at" DESC, "id" DESC)"#,
-                    r#"CREATE UNIQUE INDEX "idx-post-author_id-headline" ON "post" ("author_id", "headline")"#,
+                    r#"CREATE UNIQUE INDEX "uq_post_author_title" ON "post" ("author_id", "headline")"#,
+                    r#"CREATE INDEX "idx_post_active" ON "post" ("headline" ASC) WHERE "archived_at" IS NULL"#,
                     r#"CREATE INDEX "idx_post_archived" ON "post" ("archived_at") WHERE archived_at IS NOT NULL"#,
                 ],
             ),
@@ -539,7 +536,8 @@ mod tests {
                 DbBackend::Postgres,
                 [
                     r#"CREATE INDEX "idx_post_feed" ON "post" ("author_id", "created_at" DESC, "id" DESC)"#,
-                    r#"CREATE UNIQUE INDEX "idx-post-author_id-headline" ON "post" ("author_id", "headline")"#,
+                    r#"CREATE UNIQUE INDEX "uq_post_author_title" ON "post" ("author_id", "headline")"#,
+                    r#"CREATE INDEX "idx_post_active" ON "post" ("headline" ASC) WHERE "archived_at" IS NULL"#,
                     r#"CREATE INDEX "idx_post_archived" ON "post" ("archived_at") WHERE archived_at IS NOT NULL"#,
                 ],
             ),
@@ -547,7 +545,8 @@ mod tests {
                 DbBackend::MySql,
                 [
                     "CREATE INDEX `idx_post_feed` ON `post` (`author_id`, `created_at` DESC, `id` DESC)",
-                    "CREATE UNIQUE INDEX `idx-post-author_id-headline` ON `post` (`author_id`, `headline`)",
+                    "CREATE UNIQUE INDEX `uq_post_author_title` ON `post` (`author_id`, `headline`)",
+                    "CREATE INDEX `idx_post_active` ON `post` (`headline` ASC) WHERE `archived_at` IS NULL",
                     "CREATE INDEX `idx_post_archived` ON `post` (`archived_at`) WHERE archived_at IS NOT NULL",
                 ],
             ),
