@@ -2,7 +2,7 @@ use crate::{
     ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation,
     RelationType,
 };
-use sea_query::TableCreateStatement;
+use sea_query::{Alias, DynIden, IntoIden, TableCreateStatement};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 #[derive(Clone, Debug)]
@@ -10,6 +10,28 @@ pub struct EntityTransformer;
 
 impl EntityTransformer {
     pub fn transform(table_create_stmts: Vec<TableCreateStatement>) -> Result<EntityWriter, Error> {
+        // A backend without named enum types (MySQL) names each inline `ENUM` after its column, so
+        // two tables with a column of the same name describe two different enums under the same
+        // name. Qualify such a name with its table, so neither enum overwrites the other (#3050).
+        let mut variants_of_enum: BTreeMap<String, HashSet<Vec<DynIden>>> = BTreeMap::new();
+        for col_def in table_create_stmts
+            .iter()
+            .flat_map(|stmt| stmt.get_columns())
+        {
+            if let Some(sea_query::ColumnType::Enum { name, variants }) = col_def.get_column_type()
+            {
+                variants_of_enum
+                    .entry(name.to_string())
+                    .or_default()
+                    .insert(variants.clone());
+            }
+        }
+        let shared_enum_names: HashSet<String> = variants_of_enum
+            .into_iter()
+            .filter(|(_, variants)| variants.len() > 1)
+            .map(|(name, _)| name)
+            .collect();
+
         let mut enums: BTreeMap<String, ActiveEnum> = BTreeMap::new();
         let mut inverse_relations: BTreeMap<String, Vec<Relation>> = BTreeMap::new();
         let mut entities = BTreeMap::new();
@@ -46,19 +68,45 @@ impl EntityTransformer {
                         > 0;
                     col
                 })
-                .inspect(|col| {
-                    if let sea_query::ColumnType::Enum { name, variants } = col.get_inner_col_type()
-                    {
-                        enums.insert(
-                            name.to_string(),
-                            ActiveEnum {
-                                enum_name: name.clone(),
-                                values: variants.clone(),
-                            },
-                        );
-                    }
-                })
                 .collect();
+            for col in columns.iter_mut() {
+                let sea_query::ColumnType::Enum { name, variants } = col.get_inner_col_type()
+                else {
+                    continue;
+                };
+                let (mut enum_name, variants) = (name.to_string(), variants.clone());
+                // An enum array is named by the database itself, so it is never qualified.
+                let inline = matches!(&col.col_type, sea_query::ColumnType::Enum { .. });
+                if inline {
+                    if shared_enum_names.contains(&enum_name) {
+                        enum_name = format!("{table_name}_{enum_name}");
+                    }
+                    // Two different enums must never share a name, or one would be dropped.
+                    let base = enum_name.clone();
+                    let mut suffix = 2;
+                    while enums
+                        .get(&enum_name)
+                        .is_some_and(|existing| existing.values != variants)
+                    {
+                        enum_name = format!("{base}_{suffix}");
+                        suffix += 1;
+                    }
+                }
+                let enum_iden = match inline {
+                    true => Alias::new(enum_name.as_str()).into_iden(),
+                    false => name.clone(),
+                };
+                if inline && let sea_query::ColumnType::Enum { name, .. } = &mut col.col_type {
+                    *name = enum_iden.clone();
+                }
+                enums.insert(
+                    enum_name,
+                    ActiveEnum {
+                        enum_name: enum_iden,
+                        values: variants,
+                    },
+                );
+            }
             for index in table_create.get_indexes().iter() {
                 if index.is_unique_key() {
                     let col_names = index.get_index_spec().get_column_names();
@@ -388,6 +436,124 @@ mod tests {
                 ),
             ],
         )
+    }
+
+    #[test]
+    fn duplicated_enum_names() -> Result<(), Box<dyn Error>> {
+        // MySQL has no named enum types: sea-schema names each inline enum after its column, so
+        // two tables with a `status` column describe two different enums under one name.
+        let table = |table: &'static str, column: &'static str, variants: [&'static str; 2]| {
+            Table::create()
+                .table(table)
+                .col(ColumnDef::new("id").integer().not_null().primary_key())
+                .col(ColumnDef::new(column).enumeration(column, variants))
+                .to_owned()
+        };
+
+        let writer = EntityTransformer::transform(vec![
+            table("user", "status", ["active", "inactive"]),
+            table("post", "status", ["draft", "published"]),
+            // This column is called like the name `user.status` was qualified to.
+            table("x", "user_status", ["red", "green"]),
+        ])?;
+
+        let enum_names: Vec<&str> = writer.enums.keys().map(String::as_str).collect();
+        assert_eq!(enum_names, ["post_status", "user_status", "user_status_2"]);
+        assert_eq!(
+            writer.enums["user_status"]
+                .values
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            ["active", "inactive"]
+        );
+        assert_eq!(
+            writer.enums["user_status_2"]
+                .values
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            ["red", "green"]
+        );
+
+        for (table_name, column_name, expected) in [
+            ("user", "status", "user_status"),
+            ("post", "status", "post_status"),
+            ("x", "user_status", "user_status_2"),
+        ] {
+            let entity = writer
+                .entities
+                .iter()
+                .find(|entity| entity.table_name == table_name)
+                .expect("missing entity");
+            let column = entity
+                .columns
+                .iter()
+                .find(|column| column.name == column_name)
+                .expect("missing column");
+            let sea_query::ColumnType::Enum { name, .. } = column.get_inner_col_type() else {
+                panic!("the column should be an enum")
+            };
+            assert_eq!(name.to_string(), expected);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn same_name_same_variants_stay_shared() -> Result<(), Box<dyn Error>> {
+        // Two columns of the same name holding the same variants describe one enum, as before.
+        let table = |table: &'static str| {
+            Table::create()
+                .table(table)
+                .col(ColumnDef::new("id").integer().not_null().primary_key())
+                .col(ColumnDef::new("status").enumeration("status", ["active", "inactive"]))
+                .to_owned()
+        };
+
+        let writer = EntityTransformer::transform(vec![table("user"), table("account")])?;
+
+        assert_eq!(
+            writer.enums.keys().map(String::as_str).collect::<Vec<_>>(),
+            ["status"]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn enum_array_column_registers_its_enum() -> Result<(), Box<dyn Error>> {
+        // An enum array is named by the database itself, so the name is left alone.
+        let table = Table::create()
+            .table("collection")
+            .col(ColumnDef::new("id").integer().not_null().primary_key())
+            .col(
+                ColumnDef::new("teas").array(sea_query::ColumnType::Enum {
+                    name: sea_query::Alias::new("tea").into_iden(),
+                    variants: ["everyday", "breakfast"]
+                        .into_iter()
+                        .map(|variant| sea_query::Alias::new(variant).into_iden())
+                        .collect(),
+                }),
+            )
+            .to_owned();
+
+        let writer = EntityTransformer::transform(vec![table])?;
+
+        assert_eq!(
+            writer.enums.keys().map(String::as_str).collect::<Vec<_>>(),
+            ["tea"]
+        );
+        assert_eq!(
+            writer.enums["tea"]
+                .values
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            ["everyday", "breakfast"]
+        );
+
+        Ok(())
     }
 
     #[test]
