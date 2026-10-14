@@ -154,7 +154,7 @@ jobs:
             kind: build
           - label: tokio rustls mysql
             kind: test
-            features: sqlx-mysql,runtime-tokio-rustls
+            features: sqlx-mysql,runtime-tokio-rustls,unimplemented-jiff-sqlx-mysql
           - label: tokio rustls postgres
             kind: test
             features: sqlx-postgres,runtime-tokio-rustls
@@ -371,8 +371,10 @@ jobs:
       - working-directory: ./sea-orm-sync
         run: cargo test --test '*' --features tests-features,rusqlite,proxy
       - working-directory: ./sea-orm-sync/examples/quickstart
+        name: run quickstart example
         run: cargo run
       - working-directory: ./sea-orm-sync/examples/parquet_example
+        name: run parquet example
         run: cargo run
 
   mysql-build:
@@ -408,7 +410,7 @@ jobs:
       - name: Archive SeaORM tests
         run: >-
           cargo nextest archive --test '*'
-          --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+          --features tests-features,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }},unimplemented-jiff-sqlx-mysql
           --archive-file ${{ runner.temp }}/mysql-tests.tar.zst
       - name: Archive migration tests
         run: >-

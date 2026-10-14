@@ -18,3 +18,6 @@ serde_json = { version = "1" }
 tokio = { version = "1", features = ["full"] }
 
 [patch.crates-io]
+[patch.crates-io]
+sea-query      = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
+sea-query-sqlx = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
