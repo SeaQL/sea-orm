@@ -1313,12 +1313,29 @@ where
         (keys, hashmap)
     };
 
-    let result: Vec<T> = keys
-        .iter()
-        .map(|key: &ValueTuple| hashmap.get(key).cloned().unwrap_or_default())
-        .collect();
+    Ok(distribute_by_key(&keys, hashmap))
+}
 
-    Ok(result)
+/// Hand out `hashmap[key]` for each key in order. A value is moved out at the last
+/// occurrence of its key, so only keys that repeat (e.g. many fruits of one cake) pay for a clone.
+fn distribute_by_key<T: Clone + Default>(
+    keys: &[ValueTuple],
+    mut hashmap: HashMap<ValueTuple, T>,
+) -> Vec<T> {
+    let mut remaining: HashMap<&ValueTuple, usize> = HashMap::with_capacity(keys.len());
+    for key in keys {
+        *remaining.entry(key).or_default() += 1;
+    }
+
+    keys.iter()
+        .map(|key| match remaining.get_mut(key) {
+            Some(count) if *count > 1 => {
+                *count -= 1;
+                hashmap.get(key).cloned().unwrap_or_default()
+            }
+            _ => hashmap.remove(key).unwrap_or_default(),
+        })
+        .collect()
 }
 
 fn cmp_table_ref(left: &TableRef, right: &TableRef) -> bool {
@@ -1843,13 +1860,60 @@ mod tests {
             .await
             .expect("Should return something");
 
-        assert_eq!(fruits.len(), 4);
+        assert_eq!(
+            fruits,
+            [
+                vec![fruit_model(1, Some(1)), fruit_model(2, Some(1))],
+                vec![fruit_model(1, Some(1)), fruit_model(2, Some(1))],
+                vec![fruit_model(3, Some(2))],
+                vec![fruit_model(3, Some(2))],
+            ]
+        );
 
         let logs = db.into_transaction_log();
         let sql = format!("{:?}", logs[0]);
 
         let values_count = sql.matches("$1").count() + sql.matches("$2").count();
         assert_eq!(values_count, 2, "Duplicate values were not removed");
+    }
+
+    #[test]
+    fn test_distribute_by_key_clones_only_repeated_keys() {
+        use super::distribute_by_key;
+        use sea_query::{Value, ValueTuple};
+        use std::{
+            collections::HashMap,
+            sync::atomic::{AtomicUsize, Ordering},
+        };
+
+        static CLONES: AtomicUsize = AtomicUsize::new(0);
+
+        #[derive(Debug, Default, PartialEq)]
+        struct Counted(i32);
+
+        impl Clone for Counted {
+            fn clone(&self) -> Self {
+                CLONES.fetch_add(1, Ordering::Relaxed);
+                Self(self.0)
+            }
+        }
+
+        let key = |id: i32| ValueTuple::One(Value::Int(Some(id)));
+        let hashmap = HashMap::from([(key(1), Counted(10)), (key(2), Counted(20))]);
+        let keys = [key(1), key(2), key(1), key(3), key(1)];
+
+        assert_eq!(
+            distribute_by_key(&keys, hashmap),
+            [
+                Counted(10),
+                Counted(20),
+                Counted(10),
+                Counted(0),
+                Counted(10)
+            ]
+        );
+        // key 1 appears three times: two clones, then moved out; key 2 is moved without a clone
+        assert_eq!(CLONES.load(Ordering::Relaxed), 2);
     }
 
     #[test]
