@@ -76,7 +76,7 @@ pub trait TryGetable: Sized {
         if pre.is_empty() {
             Self::try_get_by(res, col)
         } else {
-            Self::try_get_by(res, format!("{pre}{col}").as_str())
+            with_prefixed_name(pre, col, |name| Self::try_get_by(res, name))
         }
     }
 
@@ -84,6 +84,23 @@ pub trait TryGetable: Sized {
     fn try_get_by_index(res: &QueryResult, index: usize) -> Result<Self, TryGetError> {
         Self::try_get_by(res, index)
     }
+}
+
+/// Join `pre` and `col` in a stack buffer and pass the result to `f`. This runs for every
+/// column of every row of a joined select, so a heap `String` per call adds up.
+fn with_prefixed_name<T>(pre: &str, col: &str, f: impl FnOnce(&str) -> T) -> T {
+    const MAX_LEN: usize = 64;
+
+    let len = pre.len() + col.len();
+    if len <= MAX_LEN {
+        let mut buf = [0u8; MAX_LEN];
+        buf[..pre.len()].copy_from_slice(pre.as_bytes());
+        buf[pre.len()..len].copy_from_slice(col.as_bytes());
+        if let Ok(name) = std::str::from_utf8(&buf[..len]) {
+            return f(name);
+        }
+    }
+    f(&format!("{pre}{col}"))
 }
 
 impl From<TryGetError> for DbErr {
@@ -2011,6 +2028,38 @@ mod tests {
             query_result.column_names(),
             vec!["id".to_owned(), "name".to_owned()]
         );
+    }
+
+    #[test]
+    fn try_get_with_prefix() {
+        let long_col = "c".repeat(80);
+        let values = BTreeMap::from([
+            ("A_name".to_string(), Value::String(Some("Abc".to_owned()))),
+            (format!("A_{long_col}"), Value::Int(Some(42))),
+        ]);
+        let query_result = QueryResult {
+            row: QueryResultRow::Mock(MockRow { values }),
+        };
+
+        assert_eq!(query_result.try_get::<String>("A_", "name").unwrap(), "Abc");
+        // longer than the stack buffer, falls back to a heap allocated name
+        assert_eq!(query_result.try_get::<i32>("A_", &long_col).unwrap(), 42);
+        assert!(query_result.try_get::<String>("B_", "name").is_err());
+    }
+
+    #[test]
+    fn with_prefixed_name_joins_prefix_and_column() {
+        use super::with_prefixed_name;
+
+        assert_eq!(with_prefixed_name("A_", "id", str::to_owned), "A_id");
+        assert_eq!(
+            with_prefixed_name("前缀_", "名字", str::to_owned),
+            "前缀_名字"
+        );
+
+        let col = "x".repeat(62);
+        assert_eq!(with_prefixed_name("A_", &col, str::len), 64);
+        assert_eq!(with_prefixed_name("A_", &format!("{col}y"), str::len), 65);
     }
 
     #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
