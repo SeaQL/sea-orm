@@ -1267,6 +1267,8 @@ where
         }
     }
     let leftover = leftover; // un-mut
+    // a set, so checking each related model against the existing links stays O(1)
+    let existing_keys: std::collections::HashSet<_> = leftover.iter().map(|t| &t.1).collect();
 
     let mut via_models = Vec::new();
     let mut all_keys = std::collections::HashSet::new();
@@ -1276,7 +1278,7 @@ where
         via.set_parent_key_for_def(model, &left)?;
         via.set_parent_key_for_def(related_model, &right)?;
         let via_key = get_key_from_active_model(&right.from_col, &via)?;
-        if !leftover.iter().any(|t| t.1 == via_key) {
+        if !existing_keys.contains(&via_key) {
             // if not already exist, save for insert
             via_models.push(via);
         }

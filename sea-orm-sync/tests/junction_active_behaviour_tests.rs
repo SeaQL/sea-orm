@@ -147,3 +147,54 @@ fn junction_active_behaviour() -> Result<(), DbErr> {
 
     Ok(())
 }
+
+#[sea_orm_macros::test]
+fn junction_replace_keeps_existing_links() -> Result<(), DbErr> {
+    let ctx = TestContext::new("junction_replace_keeps_existing_links");
+    let db = &ctx.db;
+
+    db.get_schema_builder()
+        .register(jpost::Entity)
+        .register(jtag::Entity)
+        .register(jpost_tag::Entity)
+        .register(jlog::Entity)
+        .apply(db)?;
+
+    let mut post = jpost::ActiveModel::builder()
+        .set_title("hello")
+        .add_tag(jtag::ActiveModel::builder().set_name("rust"))
+        .add_tag(jtag::ActiveModel::builder().set_name("orm"))
+        .save(db)?;
+
+    // Keep "rust", drop "orm", add "sql".
+    post.tags = ActiveHasMany::Replace(vec![
+        jtag::ActiveModel {
+            id: Unchanged(1),
+            name: Unchanged("rust".into()),
+        }
+        .into(),
+        jtag::ActiveModel {
+            id: NotSet,
+            name: Set("sql".into()),
+        }
+        .into(),
+    ]);
+    post.save(db)?;
+
+    let links: Vec<_> = jpost_tag::Entity::find()
+        .all(db)?
+        .into_iter()
+        .map(|link| (link.post_id, link.tag_id))
+        .collect();
+    assert_eq!(links, [(1, 1), (1, 3)]);
+
+    // Only the "sql" link is new; the existing "rust" link must not be inserted again.
+    let logs = jlog::Entity::find().all(db)?;
+    let before = logs.iter().filter(|l| l.action == "before_save").count();
+    assert_eq!(
+        before, 3,
+        "before_save should run for the two first links and the new one"
+    );
+
+    Ok(())
+}
