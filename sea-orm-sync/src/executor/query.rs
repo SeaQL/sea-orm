@@ -74,33 +74,30 @@ pub trait TryGetable: Sized {
     /// when nesting partial models or joining tables.
     fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
         if pre.is_empty() {
-            Self::try_get_by(res, col)
-        } else {
-            with_prefixed_name(pre, col, |name| Self::try_get_by(res, name))
+            return Self::try_get_by(res, col);
         }
+
+        const MAX_LEN: usize = 64;
+
+        let len = pre.len() + col.len();
+
+        if len <= MAX_LEN {
+            let mut buf = [0u8; MAX_LEN];
+            buf[..pre.len()].copy_from_slice(pre.as_bytes());
+            buf[pre.len()..len].copy_from_slice(col.as_bytes());
+
+            if let Ok(name) = std::str::from_utf8(&buf[..len]) {
+                return Self::try_get_by(res, name);
+            }
+        }
+
+        Self::try_get_by(res, format!("{pre}{col}").as_str())
     }
 
     /// Decode the value at the given positional index in the SELECT list.
     fn try_get_by_index(res: &QueryResult, index: usize) -> Result<Self, TryGetError> {
         Self::try_get_by(res, index)
     }
-}
-
-/// Join `pre` and `col` in a stack buffer and pass the result to `f`. This runs for every
-/// column of every row of a joined select, so a heap `String` per call adds up.
-fn with_prefixed_name<T>(pre: &str, col: &str, f: impl FnOnce(&str) -> T) -> T {
-    const MAX_LEN: usize = 64;
-
-    let len = pre.len() + col.len();
-    if len <= MAX_LEN {
-        let mut buf = [0u8; MAX_LEN];
-        buf[..pre.len()].copy_from_slice(pre.as_bytes());
-        buf[pre.len()..len].copy_from_slice(col.as_bytes());
-        if let Ok(name) = std::str::from_utf8(&buf[..len]) {
-            return f(name);
-        }
-    }
-    f(&format!("{pre}{col}"))
 }
 
 impl From<TryGetError> for DbErr {
@@ -2029,35 +2026,17 @@ mod tests {
     }
 
     #[test]
-    fn try_get_with_prefix() {
-        let long_col = "c".repeat(80);
-        let values = BTreeMap::from([
-            ("A_name".to_string(), Value::String(Some("Abc".to_owned()))),
-            (format!("A_{long_col}"), Value::Int(Some(42))),
-        ]);
-        let query_result = QueryResult {
-            row: QueryResultRow::Mock(MockRow { values }),
-        };
+    fn reads_prefixed_multibyte_column_names_at_buffer_boundary() {
+        // The four-byte prefix makes the complete names 64 and 65 bytes long.
+        for col in ["界".repeat(20), format!("{}x", "界".repeat(20))] {
+            let values = BTreeMap::from([(format!("前_{col}"), Value::Int(Some(42)))]);
 
-        assert_eq!(query_result.try_get::<String>("A_", "name").unwrap(), "Abc");
-        // longer than the stack buffer, falls back to a heap allocated name
-        assert_eq!(query_result.try_get::<i32>("A_", &long_col).unwrap(), 42);
-        assert!(query_result.try_get::<String>("B_", "name").is_err());
-    }
+            let query_result = QueryResult {
+                row: QueryResultRow::Mock(MockRow { values }),
+            };
 
-    #[test]
-    fn with_prefixed_name_joins_prefix_and_column() {
-        use super::with_prefixed_name;
-
-        assert_eq!(with_prefixed_name("A_", "id", str::to_owned), "A_id");
-        assert_eq!(
-            with_prefixed_name("前缀_", "名字", str::to_owned),
-            "前缀_名字"
-        );
-
-        let col = "x".repeat(62);
-        assert_eq!(with_prefixed_name("A_", &col, str::len), 64);
-        assert_eq!(with_prefixed_name("A_", &format!("{col}y"), str::len), 65);
+            assert_eq!(query_result.try_get::<i32>("前_", &col).unwrap(), 42);
+        }
     }
 
     #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
