@@ -228,16 +228,10 @@ async fn cake_entity_loader() -> Result<(), DbErr> {
 }
 
 // https://github.com/SeaQL/sea-orm/issues/3188
-//
-// `EntityLoader` has inherent `.join(..)`, `.join_rev(..)`, `.join_as(..)` and
-// `.join_as_rev(..)` methods, so joins are available on `Entity::load()` like on `Entity::find()`.
-// This lets callers filter on columns of a table that's only reachable via a join,
-// e.g. a many-to-many relation's "other side", which `.filter(..)` alone cannot reach.
 #[sea_orm_macros::test]
 async fn cake_entity_loader_join() -> Result<(), DbErr> {
     use common::bakery_dense::prelude::*;
-    use sea_orm::JoinType;
-    use sea_orm::compound::EntityLoaderTrait;
+    use sea_orm::{JoinType, QueryJoin};
 
     let ctx = TestContext::new("test_cake_entity_loader_join").await;
     let db = &ctx.db;
@@ -254,34 +248,34 @@ async fn cake_entity_loader_join() -> Result<(), DbErr> {
     insert_cake_baker(db, baker_1.id, cake_1.id).await?;
     insert_cake_baker(db, baker_2.id, cake_2.id).await?;
 
-    // Join through the `cakes_bakers` junction table, from `cake` (the loader's root
-    // entity) to `baker`, then filter on `baker.name` -- a column that is otherwise
-    // unreachable from a plain `Cake::load().filter(..)`.
     let cakes = Cake::load()
-        .join(
-            JoinType::InnerJoin,
-            cakes_bakers::Relation::Cake.def().rev(),
-        )
+        .with(Bakery)
+        .join_rev(JoinType::InnerJoin, cakes_bakers::Relation::Cake.def())
         .join(JoinType::InnerJoin, cakes_bakers::Relation::Baker.def())
         .filter(Baker::COLUMN.name.eq("Jane"))
-        .with(Bakery)
         .all(db)
         .await?;
 
-    assert_eq!(cakes, [cake_1.clone()]);
+    assert_eq!(cakes, [cake_1]);
     assert_eq!(cakes[0].bakery.as_ref().unwrap(), &bakery_1);
 
-    // sanity check: the other baker's cake is excluded
     let cakes = Cake::load()
-        .join(
+        .join_as_rev(
             JoinType::InnerJoin,
-            cakes_bakers::Relation::Cake.def().rev(),
+            cakes_bakers::Relation::Cake.def(),
+            "matching_link",
         )
-        .join(JoinType::InnerJoin, cakes_bakers::Relation::Baker.def())
-        .filter(Baker::COLUMN.name.eq("Peter"))
+        .join_as(
+            JoinType::InnerJoin,
+            cakes_bakers::Relation::Baker
+                .def()
+                .from_alias("matching_link"),
+            "matching_baker",
+        )
+        .filter(Expr::col(("matching_baker", baker::Column::Name)).eq("Peter"))
         .all(db)
         .await?;
-    assert_eq!(cakes, [cake_2.clone()]);
+    assert_eq!(cakes, [cake_2]);
 
     ctx.delete().await;
 

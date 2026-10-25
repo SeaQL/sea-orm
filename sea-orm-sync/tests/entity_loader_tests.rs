@@ -217,6 +217,59 @@ fn cake_entity_loader() -> Result<(), DbErr> {
     Ok(())
 }
 
+// https://github.com/SeaQL/sea-orm/issues/3188
+#[sea_orm_macros::test]
+fn cake_entity_loader_join() -> Result<(), DbErr> {
+    use common::bakery_dense::prelude::*;
+    use sea_orm::{JoinType, QueryJoin};
+
+    let ctx = TestContext::new("test_cake_entity_loader_join");
+    let db = &ctx.db;
+    create_tables(db)?;
+
+    let bakery_1 = insert_bakery(db, "SeaSide Bakery")?;
+
+    let baker_1 = insert_baker(db, "Jane", bakery_1.id)?;
+    let baker_2 = insert_baker(db, "Peter", bakery_1.id)?;
+
+    let cake_1 = insert_cake(db, "Cheesecake", Some(bakery_1.id))?;
+    let cake_2 = insert_cake(db, "Coffee", Some(bakery_1.id))?;
+
+    insert_cake_baker(db, baker_1.id, cake_1.id)?;
+    insert_cake_baker(db, baker_2.id, cake_2.id)?;
+
+    let cakes = Cake::load()
+        .with(Bakery)
+        .join_rev(JoinType::InnerJoin, cakes_bakers::Relation::Cake.def())
+        .join(JoinType::InnerJoin, cakes_bakers::Relation::Baker.def())
+        .filter(Baker::COLUMN.name.eq("Jane"))
+        .all(db)?;
+
+    assert_eq!(cakes, [cake_1]);
+    assert_eq!(cakes[0].bakery.as_ref().unwrap(), &bakery_1);
+
+    let cakes = Cake::load()
+        .join_as_rev(
+            JoinType::InnerJoin,
+            cakes_bakers::Relation::Cake.def(),
+            "matching_link",
+        )
+        .join_as(
+            JoinType::InnerJoin,
+            cakes_bakers::Relation::Baker
+                .def()
+                .from_alias("matching_link"),
+            "matching_baker",
+        )
+        .filter(Expr::col(("matching_baker", baker::Column::Name)).eq("Peter"))
+        .all(db)?;
+    assert_eq!(cakes, [cake_2]);
+
+    ctx.delete();
+
+    Ok(())
+}
+
 #[sea_orm_macros::test]
 fn entity_loader_join_three() {
     let ctx = TestContext::new("entity_loader_join_three");
