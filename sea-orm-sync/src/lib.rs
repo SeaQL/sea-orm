@@ -693,6 +693,9 @@ pub mod schema;
 /// Helpers for working with [`sea_query::Value`].
 pub mod value;
 
+#[cfg(clippy)]
+mod unused_async_trait_impl;
+
 #[doc(hidden)]
 #[cfg(all(feature = "macros", feature = "tests-cfg"))]
 pub mod tests_cfg;

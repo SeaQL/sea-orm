@@ -19,6 +19,11 @@ pub trait ConnectionTrait {
     /// Get the database backend for the connection. This depends on feature flags enabled.
     fn get_database_backend(&self) -> DbBackend;
 
+    /// Build a [`Statement`] for this connection's database backend.
+    fn build<S: StatementBuilder>(&self, stmt: &S) -> Statement {
+        self.get_database_backend().build(stmt)
+    }
+
     /// Execute a [Statement]
     fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr>;
 
