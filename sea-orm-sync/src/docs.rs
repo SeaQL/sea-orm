@@ -6,7 +6,7 @@
 //! # use sea_orm::{error::*, tests_cfg::*, *};
 //! #
 //! # #[cfg(all(feature = "mock", not(feature = "sync")))]
-//! # pub fn main() -> Result<(), DbErr> {
+//! # fn main() -> Result<(), DbErr> {
 //! #
 //! # let db = MockDatabase::new(DbBackend::Postgres)
 //! #     .append_query_results([

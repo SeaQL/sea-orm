@@ -123,7 +123,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(feature = "mock")]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -168,7 +168,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(feature = "mock")]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
     /// #     .append_query_results([
@@ -238,7 +238,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(feature = "mock")]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -285,7 +285,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(feature = "mock")]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
     /// #     .append_query_results([
@@ -403,7 +403,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(feature = "mock")]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results([

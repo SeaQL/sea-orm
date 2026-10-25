@@ -48,8 +48,8 @@ replace_rs 's/\.await//' tests
 replace_rs 's/\.await//' examples
 replace_rs '/#\[async_trait::async_trait/d' src
 replace_rs '/#\[async_trait::async_trait/d' tests
-replace_rs 's/#\[smol_potat::test\]/#\[test\]/' src
-replace_rs '/#\[smol_potat::main\]/d' src
+replace_rs 's/#\[macro_rules_attribute::apply(smol_macros::test!)\]/#\[test\]/' src
+replace_rs '/#\[macro_rules_attribute::apply(smol_macros::main!)\]/d' src
 replace_rs '/#\[tokio::main\]/d' examples
 replace_rs 's/#\[tokio::test\]/#\[test\]/' src
 replace_rs 's/#\[cfg(feature = "sqlx-sqlite")\]/#\[cfg(feature = "rusqlite")\]/' tests

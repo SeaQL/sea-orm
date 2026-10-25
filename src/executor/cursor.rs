@@ -532,7 +532,7 @@ mod tests {
     use crate::{DbBackend, MockDatabase, Statement, Transaction};
     use pretty_assertions::assert_eq;
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn first_2_before_10() -> Result<(), DbErr> {
         use fruit::*;
 
@@ -583,7 +583,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn last_2_after_10_desc() -> Result<(), DbErr> {
         use fruit::*;
 
@@ -637,7 +637,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn first_2_before_10_also_related_select() -> Result<(), DbErr> {
         let models = [
             (
@@ -700,7 +700,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn last_2_after_10_also_related_select_desc() -> Result<(), DbErr> {
         let mut models = [
             (
@@ -766,7 +766,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn first_2_before_10_also_related_select_cursor_other() -> Result<(), DbErr> {
         let models = [(
             cake::Model {
@@ -816,7 +816,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn last_2_after_10_also_related_select_cursor_other_desc() -> Result<(), DbErr> {
         let models = [(
             cake::Model {
@@ -867,7 +867,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn first_2_before_10_also_linked_select() -> Result<(), DbErr> {
         let models = [
             (
@@ -929,7 +929,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn last_2_after_10_also_linked_select_desc() -> Result<(), DbErr> {
         let mut models = [
             (
@@ -994,7 +994,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn first_2_before_10_also_linked_select_cursor_other() -> Result<(), DbErr> {
         let models = [(
             cake::Model {
@@ -1044,7 +1044,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn last_2_after_10_also_linked_select_cursor_other_desc() -> Result<(), DbErr> {
         let mut models = [(
             cake::Model {
@@ -1097,7 +1097,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn last_2_after_10() -> Result<(), DbErr> {
         use fruit::*;
 
@@ -1157,7 +1157,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn first_2_before_10_desc() -> Result<(), DbErr> {
         use fruit::*;
 
@@ -1209,7 +1209,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn last_2_after_25_before_30() -> Result<(), DbErr> {
         use fruit::*;
 
@@ -1271,7 +1271,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn first_2_after_30_before_25_desc() -> Result<(), DbErr> {
         use fruit::*;
 
@@ -1365,7 +1365,7 @@ mod tests {
         impl ActiveModelBehavior for ActiveModel {}
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn composite_keys_1() -> Result<(), DbErr> {
         use test_entity::*;
 
@@ -1404,7 +1404,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn composite_keys_1_desc() -> Result<(), DbErr> {
         use test_entity::*;
 
@@ -1444,7 +1444,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn composite_keys_2() -> Result<(), DbErr> {
         use test_entity::*;
 
@@ -1491,7 +1491,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn composite_keys_error() -> Result<(), DbErr> {
         use test_entity::*;
 
@@ -1520,7 +1520,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn composite_keys_2_desc() -> Result<(), DbErr> {
         use test_entity::*;
 
@@ -1568,7 +1568,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn composite_keys_3() -> Result<(), DbErr> {
         use test_entity::*;
 
@@ -1615,7 +1615,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn composite_keys_3_desc() -> Result<(), DbErr> {
         use test_entity::*;
 
@@ -1663,7 +1663,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn composite_keys_4() -> Result<(), DbErr> {
         use xyz_entity::*;
 
@@ -1703,7 +1703,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn composite_keys_4_desc() -> Result<(), DbErr> {
         use xyz_entity::*;
 
@@ -1744,7 +1744,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn composite_keys_5() -> Result<(), DbErr> {
         use xyz_entity::*;
 
@@ -1796,7 +1796,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn composite_keys_5_desc() -> Result<(), DbErr> {
         use xyz_entity::*;
 
@@ -1888,7 +1888,7 @@ mod tests {
         impl ActiveModelBehavior for ActiveModel {}
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn cursor_by_many() -> Result<(), DbErr> {
         use composite_entity::*;
 
@@ -2010,7 +2010,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn cursor_by_many_desc() -> Result<(), DbErr> {
         use composite_entity::*;
 
@@ -2194,7 +2194,7 @@ mod tests {
         impl ActiveModelBehavior for ActiveModel {}
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn related_composite_keys_1() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[(
@@ -2240,7 +2240,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn related_composite_keys_1_desc() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[(
@@ -2287,7 +2287,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn related_composite_keys_2() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[(
@@ -2340,7 +2340,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn related_composite_keys_2_desc() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[(
@@ -2394,7 +2394,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn related_composite_keys_3() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[(
@@ -2450,7 +2450,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn related_composite_keys_3_desc() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[(

@@ -144,7 +144,7 @@ where
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(feature = "mock")]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -182,7 +182,7 @@ where
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(all(feature = "mock", not(feature = "sync")))]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([

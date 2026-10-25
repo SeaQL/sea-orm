@@ -29,7 +29,7 @@ sea-orm = { path = "../../", default-features = false, features = [
 sqlparser = "0.40"
 
 [dev-dependencies]
-smol       = { version = "1.2" }
-smol-potat = { version = "1.1" }
+macro_rules_attribute = "0.2.3"
+smol-macros           = "0.1.1"
 
 [patch.crates-io]

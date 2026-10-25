@@ -1478,9 +1478,9 @@ pub trait TryGetableMany: Sized {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(all(feature = "mock", feature = "macros"))]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([[

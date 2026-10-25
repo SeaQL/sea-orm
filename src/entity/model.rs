@@ -162,9 +162,9 @@ pub trait FromQueryResult: Sized {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([[

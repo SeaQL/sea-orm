@@ -461,7 +461,7 @@ mod tests {
         }
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn test_transaction_1() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
@@ -502,7 +502,7 @@ mod tests {
         );
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn test_transaction_2() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
@@ -534,7 +534,7 @@ mod tests {
         );
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn test_nested_transaction_1() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
@@ -575,7 +575,7 @@ mod tests {
         );
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn test_nested_transaction_2() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
@@ -631,7 +631,7 @@ mod tests {
         );
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     #[cfg(feature = "stream")]
     async fn test_stream_1() -> Result<(), DbErr> {
         let apple = fruit::Model {
@@ -661,7 +661,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     #[cfg(feature = "stream")]
     async fn test_stream_2() -> Result<(), DbErr> {
         use fruit::Entity as Fruit;
@@ -678,7 +678,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     #[cfg(feature = "stream")]
     async fn test_stream_in_transaction() -> Result<(), DbErr> {
         let apple = fruit::Model {
@@ -714,7 +714,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn test_mocked_join() {
         let row = (
             cake::Model {
@@ -737,7 +737,7 @@ mod tests {
         assert_eq!(2, b_id.unwrap());
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn test_find_also_related_1() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[(
@@ -784,7 +784,7 @@ mod tests {
     }
 
     #[cfg(feature = "postgres-array")]
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn test_postgres_array_1() -> Result<(), DbErr> {
         mod collection {
             use crate as sea_orm;
@@ -858,7 +858,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn test_query_err() {
         let db = MockDatabase::new(DbBackend::MySql)
             .append_query_errors([query_err("this is a mock query error")])
@@ -870,7 +870,7 @@ mod tests {
         );
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn test_exec_err() {
         let db = MockDatabase::new(DbBackend::MySql)
             .append_exec_errors([exec_err("this is a mock exec error")])
