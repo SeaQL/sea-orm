@@ -1225,12 +1225,29 @@ where
         (keys, hashmap)
     };
 
-    let result: Vec<T> = keys
-        .iter()
-        .map(|key: &ValueTuple| hashmap.get(key).cloned().unwrap_or_default())
-        .collect();
+    Ok(distribute_by_key(&keys, hashmap))
+}
 
-    Ok(result)
+/// Hand out `hashmap[key]` for each key in order. A value is moved out at the last
+/// occurrence of its key, so only keys that repeat (e.g. many fruits of one cake) pay for a clone.
+fn distribute_by_key<T: Clone + Default>(
+    keys: &[ValueTuple],
+    mut hashmap: HashMap<ValueTuple, T>,
+) -> Vec<T> {
+    let mut remaining: HashMap<&ValueTuple, usize> = HashMap::with_capacity(keys.len());
+    for key in keys {
+        *remaining.entry(key).or_default() += 1;
+    }
+
+    keys.iter()
+        .map(|key| match remaining.get_mut(key) {
+            Some(count) if *count > 1 => {
+                *count -= 1;
+                hashmap.get(key).cloned().unwrap_or_default()
+            }
+            _ => hashmap.remove(key).unwrap_or_default(),
+        })
+        .collect()
 }
 
 fn cmp_table_ref(left: &TableRef, right: &TableRef) -> bool {
@@ -1744,7 +1761,15 @@ mod tests {
             .load_many(fruit::Entity::find(), &db)
             .expect("Should return something");
 
-        assert_eq!(fruits.len(), 4);
+        assert_eq!(
+            fruits,
+            [
+                vec![fruit_model(1, Some(1)), fruit_model(2, Some(1))],
+                vec![fruit_model(1, Some(1)), fruit_model(2, Some(1))],
+                vec![fruit_model(3, Some(2))],
+                vec![fruit_model(3, Some(2))],
+            ]
+        );
 
         let logs = db.into_transaction_log();
         let sql = format!("{:?}", logs[0]);
