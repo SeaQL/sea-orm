@@ -74,10 +74,24 @@ pub trait TryGetable: Sized {
     /// when nesting partial models or joining tables.
     fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
         if pre.is_empty() {
-            Self::try_get_by(res, col)
-        } else {
-            Self::try_get_by(res, format!("{pre}{col}").as_str())
+            return Self::try_get_by(res, col);
         }
+
+        const MAX_LEN: usize = 64;
+
+        let len = pre.len() + col.len();
+
+        if len <= MAX_LEN {
+            let mut buf = [0u8; MAX_LEN];
+            buf[..pre.len()].copy_from_slice(pre.as_bytes());
+            buf[pre.len()..len].copy_from_slice(col.as_bytes());
+
+            if let Ok(name) = std::str::from_utf8(&buf[..len]) {
+                return Self::try_get_by(res, name);
+            }
+        }
+
+        Self::try_get_by(res, format!("{pre}{col}").as_str())
     }
 
     /// Decode the value at the given positional index in the SELECT list.
@@ -2009,6 +2023,20 @@ mod tests {
             query_result.column_names(),
             vec!["id".to_owned(), "name".to_owned()]
         );
+    }
+
+    #[test]
+    fn reads_prefixed_multibyte_column_names_at_buffer_boundary() {
+        // The four-byte prefix makes the complete names 64 and 65 bytes long.
+        for col in ["界".repeat(20), format!("{}x", "界".repeat(20))] {
+            let values = BTreeMap::from([(format!("前_{col}"), Value::Int(Some(42)))]);
+
+            let query_result = QueryResult {
+                row: QueryResultRow::Mock(MockRow { values }),
+            };
+
+            assert_eq!(query_result.try_get::<i32>("前_", &col).unwrap(), 42);
+        }
     }
 
     #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
