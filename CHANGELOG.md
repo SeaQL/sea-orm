@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
+- Support joins in `Entity::load()` queries via a new trait `QueryJoin` https://github.com/SeaQL/sea-orm/pull/3213
+
 - Support invoking `sea-orm-cli` as a Cargo subcommand (`cargo sea generate entity`, `cargo sea migrate`) https://github.com/SeaQL/sea-orm/pull/3187
 
 ### Enhancements
