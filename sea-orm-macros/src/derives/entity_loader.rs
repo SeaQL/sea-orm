@@ -896,6 +896,29 @@ pub fn expand_entity_loader(vis: &Visibility, schema: EntityLoaderSchema) -> Tok
     }
 
     #[automatically_derived]
+    impl sea_orm::QueryJoin for EntityLoader {
+        fn join(mut self, join: sea_orm::JoinType, rel: sea_orm::RelationDef) -> Self {
+            self.select = sea_orm::QuerySelect::join(self.select, join, rel);
+            self
+        }
+
+        fn join_rev(mut self, join: sea_orm::JoinType, rel: sea_orm::RelationDef) -> Self {
+            self.select = sea_orm::QuerySelect::join_rev(self.select, join, rel);
+            self
+        }
+
+        fn join_as<I: sea_orm::sea_query::IntoIden>(mut self, join: sea_orm::JoinType, rel: sea_orm::RelationDef, alias: I) -> Self {
+            self.select = sea_orm::QuerySelect::join_as(self.select, join, rel, alias);
+            self
+        }
+
+        fn join_as_rev<I: sea_orm::sea_query::IntoIden>(mut self, join: sea_orm::JoinType, rel: sea_orm::RelationDef, alias: I) -> Self {
+            self.select = sea_orm::QuerySelect::join_as_rev(self.select, join, rel, alias);
+            self
+        }
+    }
+
+    #[automatically_derived]
     #async_trait
     impl sea_orm::compound::EntityLoaderTrait<Entity> for EntityLoader {
         type ModelEx = ModelEx;

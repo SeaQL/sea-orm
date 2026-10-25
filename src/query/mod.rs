@@ -38,6 +38,7 @@ pub use debug::*;
 pub use delete::*;
 pub use helper::*;
 pub use insert::*;
+pub use join::QueryJoin;
 #[cfg(feature = "with-json")]
 pub use json::*;
 pub use loader::*;

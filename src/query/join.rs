@@ -1,10 +1,25 @@
 use crate::{
     ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QueryFilter, QuerySelect, QueryTrait,
-    Related, Select, SelectA, SelectB, SelectThree, SelectTwo, SelectTwoMany, SelectTwoRequired,
-    TopologyChain, TopologyStar, find_linked_recursive, join_tbl_on_condition,
+    Related, RelationDef, Select, SelectA, SelectB, SelectThree, SelectTwo, SelectTwoMany,
+    SelectTwoRequired, TopologyChain, TopologyStar, find_linked_recursive, join_tbl_on_condition,
 };
 pub use sea_query::JoinType;
 use sea_query::{Condition, ConditionType, Expr, IntoCondition, IntoIden, SelectExpr};
+
+/// A query that supports SQL joins.
+pub trait QueryJoin: Sized {
+    /// Joins a related table.
+    fn join(self, join: JoinType, rel: RelationDef) -> Self;
+
+    /// Joins a related table in the reverse direction.
+    fn join_rev(self, join: JoinType, rel: RelationDef) -> Self;
+
+    /// Joins a related table with an alias.
+    fn join_as<I: IntoIden>(self, join: JoinType, rel: RelationDef, alias: I) -> Self;
+
+    /// Joins a related table with an alias, in the reverse direction.
+    fn join_as_rev<I: IntoIden>(self, join: JoinType, rel: RelationDef, alias: I) -> Self;
+}
 
 impl<E> Select<E>
 where
