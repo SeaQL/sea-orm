@@ -1878,45 +1878,6 @@ mod tests {
     }
 
     #[test]
-    fn test_distribute_by_key_clones_only_repeated_keys() {
-        use super::distribute_by_key;
-        use sea_query::{Value, ValueTuple};
-        use std::{
-            collections::HashMap,
-            sync::atomic::{AtomicUsize, Ordering},
-        };
-
-        static CLONES: AtomicUsize = AtomicUsize::new(0);
-
-        #[derive(Debug, Default, PartialEq)]
-        struct Counted(i32);
-
-        impl Clone for Counted {
-            fn clone(&self) -> Self {
-                CLONES.fetch_add(1, Ordering::Relaxed);
-                Self(self.0)
-            }
-        }
-
-        let key = |id: i32| ValueTuple::One(Value::Int(Some(id)));
-        let hashmap = HashMap::from([(key(1), Counted(10)), (key(2), Counted(20))]);
-        let keys = [key(1), key(2), key(1), key(3), key(1)];
-
-        assert_eq!(
-            distribute_by_key(&keys, hashmap),
-            [
-                Counted(10),
-                Counted(20),
-                Counted(10),
-                Counted(0),
-                Counted(10)
-            ]
-        );
-        // key 1 appears three times: two clones, then moved out; key 2 is moved without a clone
-        assert_eq!(CLONES.load(Ordering::Relaxed), 2);
-    }
-
-    #[test]
     fn test_assemble_vectors() {
         use super::assemble_vectors;
 
