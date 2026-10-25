@@ -247,14 +247,14 @@ mod tests {
         }
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn create_proxy_conn() {
         let _db = Database::connect_proxy(DbBackend::MySql, Arc::new(Box::new(ProxyDb {})))
             .await
             .unwrap();
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn select_rows() {
         let db = Database::connect_proxy(DbBackend::MySql, Arc::new(Box::new(ProxyDb {})))
             .await
@@ -263,7 +263,7 @@ mod tests {
         let _ = cake::Entity::find().all(&db).await;
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn insert_one_row() {
         let db = Database::connect_proxy(DbBackend::MySql, Arc::new(Box::new(ProxyDb {})))
             .await

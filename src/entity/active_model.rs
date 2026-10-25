@@ -123,9 +123,9 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -169,9 +169,9 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
     /// #     .append_query_results([
@@ -242,9 +242,9 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -290,9 +290,9 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
     /// #     .append_query_results([
@@ -409,9 +409,9 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results([
@@ -2304,7 +2304,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     #[cfg(feature = "with-json")]
     async fn test_active_model_set_from_json_3() -> Result<(), DbErr> {
         use crate::*;
@@ -2448,7 +2448,7 @@ mod tests {
         );
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn test_reset_2() -> Result<(), DbErr> {
         use crate::*;
 

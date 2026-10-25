@@ -244,7 +244,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use sea_query::Expr;
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn update_record_not_found_1() -> Result<(), DbErr> {
         use crate::ActiveModelTrait;
 
@@ -402,7 +402,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn update_error() {
         use crate::{DbBackend, DbErr, MockDatabase};
 

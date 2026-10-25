@@ -197,7 +197,7 @@ where
 mod tests {
     use crate::tests_cfg::cake;
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn delete_error() {
         use crate::{DbBackend, DbErr, Delete, EntityTrait, MockDatabase};
 

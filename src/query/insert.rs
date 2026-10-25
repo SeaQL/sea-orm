@@ -788,7 +788,7 @@ mod tests {
         );
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn insert_8() -> Result<(), DbErr> {
         use crate::{DbBackend, MockDatabase, Statement, Transaction};
 
@@ -841,7 +841,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn insert_9() -> Result<(), DbErr> {
         use crate::{DbBackend, MockDatabase, MockExecResult, Statement, Transaction};
 

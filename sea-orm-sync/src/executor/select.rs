@@ -332,7 +332,7 @@ where
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(all(feature = "mock", feature = "macros"))]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([[
@@ -380,7 +380,7 @@ where
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(all(feature = "mock", feature = "macros"))]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([[
@@ -441,7 +441,7 @@ where
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(all(feature = "mock", feature = "macros"))]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -484,7 +484,7 @@ where
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(all(feature = "mock", feature = "macros"))]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -551,7 +551,7 @@ where
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(feature = "mock")]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -943,7 +943,7 @@ where
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(feature = "mock")]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([[
@@ -1015,7 +1015,7 @@ where
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(feature = "mock")]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([[
@@ -1084,7 +1084,7 @@ where
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(feature = "mock")]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -1143,7 +1143,7 @@ where
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[cfg(feature = "mock")]
-    /// # pub fn main() -> Result<(), DbErr> {
+    /// # fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([

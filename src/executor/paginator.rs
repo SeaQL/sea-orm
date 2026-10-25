@@ -147,9 +147,9 @@ where
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -186,9 +186,9 @@ where
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(all(feature = "mock", not(feature = "sync")))]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -471,7 +471,7 @@ mod tests {
         (db, num_items)
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn fetch_page() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
@@ -501,7 +501,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn fetch_page_raw() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
@@ -533,7 +533,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn fetch() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
@@ -567,7 +567,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn fetch_raw() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
@@ -603,7 +603,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn num_pages() -> Result<(), DbErr> {
         let (db, num_items) = setup_num_items();
 
@@ -635,7 +635,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn num_pages_raw() -> Result<(), DbErr> {
         let (db, num_items) = setup_num_items();
 
@@ -669,7 +669,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn next_and_cur_page() -> Result<(), DbErr> {
         let (db, _) = setup();
 
@@ -685,7 +685,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn next_and_cur_page_raw() -> Result<(), DbErr> {
         let (db, _) = setup();
 
@@ -703,7 +703,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn fetch_and_next() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
@@ -738,7 +738,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn fetch_and_next_raw() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
@@ -775,7 +775,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn into_stream() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
@@ -807,7 +807,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn into_stream_raw() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
@@ -842,7 +842,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn into_stream_raw_leading_spaces() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
@@ -883,7 +883,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     #[should_panic]
     async fn error() {
         let (db, _pages) = setup();

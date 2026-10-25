@@ -560,7 +560,7 @@ mod tests {
         (cake_model(cake_id), vendor_model(vendor_id))
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn also_related() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, MockDatabase, Statement, Transaction};
@@ -593,7 +593,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn also_related_2() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, MockDatabase};
@@ -613,7 +613,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn also_related_3() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, MockDatabase};
@@ -638,7 +638,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn also_related_4() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
@@ -665,7 +665,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn also_related_many_to_many() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
@@ -690,7 +690,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn also_related_many_to_many_2() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
@@ -717,7 +717,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn with_related() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, MockDatabase, Statement, Transaction};
@@ -761,7 +761,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn with_related_2() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
@@ -793,7 +793,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn with_related_empty() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
@@ -827,7 +827,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn with_related_many_to_many() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
@@ -851,7 +851,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn with_related_many_to_many_2() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
@@ -877,7 +877,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn also_linked_base() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, MockDatabase, Statement, Transaction};
@@ -915,7 +915,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn also_linked_same_cake() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, MockDatabase};
@@ -943,7 +943,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn also_linked_same_vendor() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
@@ -971,7 +971,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn also_linked_many_to_many() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
@@ -1003,7 +1003,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn also_linked_empty() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
@@ -1033,7 +1033,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn with_linked_base() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, MockDatabase, Statement, Transaction};
@@ -1077,7 +1077,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn with_linked_same_vendor() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
@@ -1105,7 +1105,7 @@ mod tests {
         Ok(())
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn with_linked_empty() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
@@ -1135,7 +1135,7 @@ mod tests {
     }
 
     // normally would not happen
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn with_linked_repeated() -> Result<(), crate::DbErr> {
         use crate::tests_cfg::*;
         use crate::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};

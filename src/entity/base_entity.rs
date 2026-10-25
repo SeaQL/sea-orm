@@ -147,9 +147,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -238,9 +238,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -279,9 +279,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -381,9 +381,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([[maplit::btreemap! {
@@ -420,9 +420,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
     /// #     .append_exec_results([
@@ -462,9 +462,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -512,9 +512,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([[maplit::btreemap! {
@@ -561,9 +561,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
     /// #     .append_exec_results([
@@ -652,9 +652,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -720,9 +720,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results([
@@ -772,9 +772,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
     /// #     .append_exec_results([
@@ -846,9 +846,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results([
@@ -899,9 +899,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results([
@@ -951,9 +951,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results([
@@ -1002,9 +1002,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results([
@@ -1037,9 +1037,9 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
-    /// # #[smol_potat::main]
+    /// # #[macro_rules_attribute::apply(smol_macros::main!)]
     /// # #[cfg(feature = "mock")]
-    /// # pub async fn main() -> Result<(), DbErr> {
+    /// # async fn main() -> Result<(), DbErr> {
     ///
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results([
@@ -1204,7 +1204,7 @@ mod tests {
         delete_by_id(Cow::from("UUID"));
     }
 
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn test_find_by_id() {
         use crate::tests_cfg::{cake, cake_filling};
         use crate::{DbBackend, EntityTrait, MockDatabase};

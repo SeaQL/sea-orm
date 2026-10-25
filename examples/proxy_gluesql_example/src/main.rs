@@ -184,7 +184,7 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-    #[smol_potat::test]
+    #[macro_rules_attribute::apply(smol_macros::test!)]
     async fn try_run() {
         crate::main()
     }

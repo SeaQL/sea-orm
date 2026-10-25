@@ -2,7 +2,7 @@ use super::*;
 use futures_util::StreamExt;
 use std::sync::{Arc, Mutex};
 
-#[smol_potat::test]
+#[macro_rules_attribute::apply(smol_macros::test!)]
 async fn reports_stream_errors() {
     let observed = Arc::new(Mutex::new(None));
     let metric_callback = Some({
@@ -24,7 +24,7 @@ async fn reports_stream_errors() {
     assert_eq!(*observed.lock().expect("metric lock"), Some(true));
 }
 
-#[smol_potat::test]
+#[macro_rules_attribute::apply(smol_macros::test!)]
 async fn includes_time_waiting_for_stream() {
     let observed = Arc::new(Mutex::new(None));
     let metric_callback = Some({
