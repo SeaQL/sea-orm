@@ -149,8 +149,8 @@ fn junction_active_behaviour() -> Result<(), DbErr> {
 }
 
 #[sea_orm_macros::test]
-fn junction_replace_keeps_existing_links() -> Result<(), DbErr> {
-    let ctx = TestContext::new("junction_replace_keeps_existing_links");
+fn junction_replacement_only_saves_new_links() -> Result<(), DbErr> {
+    let ctx = TestContext::new("junction_replacement_only_saves_new_links");
     let db = &ctx.db;
 
     db.get_schema_builder()
@@ -168,24 +168,17 @@ fn junction_replace_keeps_existing_links() -> Result<(), DbErr> {
 
     // Keep "rust", drop "orm", add "sql".
     post.tags = ActiveHasMany::Replace(vec![
-        jtag::ActiveModel {
-            id: Unchanged(1),
-            name: Unchanged("rust".into()),
-        }
-        .into(),
-        jtag::ActiveModel {
-            id: NotSet,
-            name: Set("sql".into()),
-        }
-        .into(),
+        post.tags[0].clone(),
+        jtag::ActiveModel::builder().set_name("sql"),
     ]);
     post.save(db)?;
 
-    let links: Vec<_> = jpost_tag::Entity::find()
+    let mut links: Vec<_> = jpost_tag::Entity::find()
         .all(db)?
         .into_iter()
         .map(|link| (link.post_id, link.tag_id))
         .collect();
+    links.sort_unstable();
     assert_eq!(links, [(1, 1), (1, 3)]);
 
     // Only the "sql" link is new; the existing "rust" link must not be inserted again.
