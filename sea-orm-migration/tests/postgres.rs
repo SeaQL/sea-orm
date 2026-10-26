@@ -8,6 +8,7 @@ mod inner {
         TransactionTrait, error::DbErr,
     };
     use sea_orm_migration::prelude::*;
+    use std::time::Duration;
 
     #[tokio::test]
     async fn test_fresh_with_extension() -> Result<(), DbErr> {
@@ -169,5 +170,31 @@ mod inner {
         assert!(Migrator::get_pending_migrations(&db).await?.is_empty());
 
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_lock_per_schema() -> Result<(), DbErr> {
+        let Some(url) = create_db("test_lock_per_schema").await? else {
+            return Ok(());
+        };
+        let connect = |schema: &str| {
+            Database::connect(
+                ConnectOptions::new(&url)
+                    .set_schema_search_path(schema)
+                    .to_owned(),
+            )
+        };
+        let a = connect("a").await?;
+        a.execute_unprepared("CREATE SCHEMA a; CREATE SCHEMA b")
+            .await?;
+        let b = connect("b").await?;
+
+        // An unfinished transaction in schema `a` holds the lock until it commits.
+        let txn = a.begin().await?;
+        Migrator::install(&txn).await?;
+        tokio::time::timeout(Duration::from_secs(5), Migrator::up(&b, None))
+            .await
+            .expect("schema `b` waited for the lock of schema `a`")?;
+        txn.commit().await
     }
 }
