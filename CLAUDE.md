@@ -139,7 +139,25 @@ let user = user::Entity::load()
     .with((post::Entity, comment::Entity))
     .one(db)
     .await?;
+
+// Self-referential relations (e.g. followers & following via user_follower junction)
+// Either use the generated entity constants:
+let user = user::Entity::load()
+    .filter_by_id(12)
+    .with(user::Entity::FOLLOWERS)          // forward self_ref
+    .with(user::Entity::FOLLOWING)          // reverse self_ref
+    .one(db)
+    .await?;
+
+// Or use the junction entity directly (forward: Entity, reverse: Entity::REVERSE):
+let user = user::Entity::load()
+    .filter_by_id(12)
+    .with(user_follower::Entity)           // forward self_ref
+    .with(user_follower::Entity::REVERSE)  // reverse self_ref
+    .one(db)
+    .await?;
 ```
+
 
 ## Schema Registry (Entity-First Workflow)
 
