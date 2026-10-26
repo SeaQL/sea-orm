@@ -16,6 +16,14 @@ pub trait MigratorTraitSelf: Sized + Send + Sync {
         seaql_migrations::Entity.into_iden()
     }
 
+    /// Whether a migration recorded as applied but missing from [`migrations`](Self::migrations)
+    /// is ignored instead of failing with an error. Turn it on when an older build of the app may
+    /// run against a database a newer one already migrated, e.g. during a rolling deploy or after
+    /// a rollback.
+    fn ignore_missing_migrations(&self) -> bool {
+        false
+    }
+
     /// Get list of migrations wrapped in `Migration` struct
     fn get_migration_files(&self) -> Vec<Migration> {
         self.migrations()
@@ -45,6 +53,7 @@ pub trait MigratorTraitSelf: Sized + Send + Sync {
         get_migration_with_status(
             self.get_migration_files(),
             self.get_migration_models(db).await?,
+            self.ignore_missing_migrations(),
         )
     }
 
@@ -89,6 +98,7 @@ pub trait MigratorTraitSelf: Sized + Send + Sync {
         get_migration_with_status(
             self.get_migration_files(),
             get_migration_models_read_only(db, self.migration_table_name()).await?,
+            self.ignore_missing_migrations(),
         )
     }
 
@@ -223,6 +233,10 @@ where
 
     fn migration_table_name(&self) -> DynIden {
         M::migration_table_name()
+    }
+
+    fn ignore_missing_migrations(&self) -> bool {
+        M::ignore_missing_migrations()
     }
 
     fn get_migration_files(&self) -> Vec<Migration> {
