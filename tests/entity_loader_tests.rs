@@ -728,10 +728,23 @@ async fn entity_loader_self_join_via() -> Result<(), DbErr> {
     // test user + follower + following (both sides)
 
     let users = user::Entity::load()
+        .with(user::Entity::FOLLOWERS)
+        .with(user::Entity::FOLLOWING)
+        .all(db)
+        .await?;
+
+    assert_eq!(users[0].name, alice.name);
+    assert_eq!(users[0].followers.len(), 2);
+    assert_eq!(users[0].followers[0].name, bob.name);
+    assert_eq!(users[0].followers[1].name, sam.name);
+    assert!(users[0].following.is_empty());
+
+    let users = user::Entity::load()
         .with(user::Follower)
         .with(user::Following)
         .all(db)
         .await?;
+
 
     assert_eq!(users[0].name, alice.name);
     assert_eq!(users[0].followers.len(), 2);
