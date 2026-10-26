@@ -10,7 +10,7 @@ use sea_orm::sea_query::{
 };
 use sea_orm::{
     ActiveValue, ConnectionTrait, DbBackend, DbErr, DynIden, EntityTrait, FromQueryResult,
-    Iterable, QueryFilter, Schema, Statement, TransactionSession, TransactionTrait,
+    Iterable, QueryFilter, Schema, SqlErr, Statement, TransactionSession, TransactionTrait,
 };
 
 pub async fn get_migration_models<C>(
@@ -95,7 +95,16 @@ where
         .create_table_from_entity(seaql_migrations::Entity)
         .table_name(migration_table_name);
     stmt.if_not_exists();
-    db.execute(&stmt).await?;
+    match db.execute(&stmt).await {
+        // On Postgres, `IF NOT EXISTS` does not hold against another connection creating the
+        // table at the same moment; the loser fails on `pg_type`, and the table is there now.
+        Err(err) if matches!(err.sql_err(), Some(SqlErr::UniqueConstraintViolation(_))) => {
+            db.execute(&stmt).await?;
+        }
+        res => {
+            res?;
+        }
+    }
     Ok(())
 }
 
@@ -208,6 +217,33 @@ fn should_use_transaction(migration: &dyn crate::MigrationTrait, backend: DbBack
     }
 }
 
+/// On Postgres, serializes the migration's transaction against other processes running the
+/// same migrator, and tells whether its record is in the table, read after the lock is taken.
+/// Other backends and migrations run outside of a transaction are not locked.
+async fn lock_and_check_applied<C: ConnectionTrait>(
+    db: &C,
+    name: &str,
+    migration_table_name: DynIden,
+) -> Result<Option<bool>, DbErr> {
+    if db.get_database_backend() != DbBackend::Postgres {
+        return Ok(None);
+    }
+    let key = format!("sea-orm-migration:{migration_table_name}");
+    db.execute_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT pg_advisory_xact_lock(hashtext($1))",
+        [key.into()],
+    ))
+    .await?;
+    let stmt = Query::select()
+        .expr(Expr::val(1))
+        .take()
+        .table_name(migration_table_name)
+        .and_where(Expr::col(seaql_migrations::Column::Version).eq(name))
+        .take();
+    Ok(Some(db.query_one(&stmt).await?.is_some()))
+}
+
 async fn insert_migration_record<C: ConnectionTrait>(
     db: &C,
     name: &str,
@@ -273,6 +309,19 @@ pub async fn exec_up_with(
 
         if use_txn {
             let transaction = db.begin().await?;
+            let applied = lock_and_check_applied(
+                &transaction,
+                migration.name(),
+                migration_table_name.clone(),
+            )
+            .await?;
+            if applied == Some(true) {
+                info!(
+                    "Migration '{}' has been applied by another process",
+                    migration.name()
+                );
+                continue;
+            }
             let txn_manager = SchemaManager::new(&transaction);
             migration.up(&txn_manager).await?;
             info!("Migration '{}' has been applied", migration.name());
@@ -319,6 +368,19 @@ pub async fn exec_down_with(
 
         if use_txn {
             let transaction = db.begin().await?;
+            let applied = lock_and_check_applied(
+                &transaction,
+                migration.name(),
+                migration_table_name.clone(),
+            )
+            .await?;
+            if applied == Some(false) {
+                info!(
+                    "Migration '{}' has been rolled back by another process",
+                    migration.name()
+                );
+                continue;
+            }
             let txn_manager = SchemaManager::new(&transaction);
             migration.down(&txn_manager).await?;
             info!("Migration '{}' has been rolled back", migration.name());

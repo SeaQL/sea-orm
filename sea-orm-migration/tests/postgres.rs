@@ -99,4 +99,59 @@ mod inner {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn test_concurrent_up() -> Result<(), DbErr> {
+        let url =
+            &std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
+        let db_name = "test_concurrent_up";
+
+        let db = Database::connect(url).await?;
+        if !matches!(db.get_database_backend(), DbBackend::Postgres) {
+            return Ok(());
+        }
+
+        db.execute_unprepared(&format!(r#"DROP DATABASE IF EXISTS "{db_name}""#))
+            .await?;
+        db.execute_unprepared(&format!(r#"CREATE DATABASE "{db_name}""#))
+            .await?;
+
+        // Several instances of an app starting at once, each migrating on start.
+        let url = format!("{url}/{db_name}");
+        let runs: Vec<_> = (0..8)
+            .map(|_| {
+                let url = url.clone();
+                tokio::spawn(async move {
+                    let db = Database::connect(url).await?;
+                    Migrator::up(&db, None).await
+                })
+            })
+            .collect();
+        for run in runs {
+            run.await.expect("migration task panicked")?;
+        }
+
+        let db = Database::connect(&url).await?;
+        assert_eq!(
+            Migrator::get_applied_migrations(&db).await?.len(),
+            Migrator::migrations().len()
+        );
+        assert!(Migrator::get_pending_migrations(&db).await?.is_empty());
+
+        let runs: Vec<_> = (0..8)
+            .map(|_| {
+                let url = url.clone();
+                tokio::spawn(async move {
+                    let db = Database::connect(url).await?;
+                    Migrator::down(&db, None).await
+                })
+            })
+            .collect();
+        for run in runs {
+            run.await.expect("migration task panicked")?;
+        }
+        assert!(Migrator::get_applied_migrations(&db).await?.is_empty());
+
+        Ok(())
+    }
 }
