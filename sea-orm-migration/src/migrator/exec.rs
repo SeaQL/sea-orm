@@ -86,6 +86,20 @@ pub fn get_migration_with_status(
     }
 }
 
+/// Fails on an applied migration without a file even if missing migrations are ignored:
+/// `reset` drops the table, and with it the only record that the migration was applied.
+pub async fn check_no_missing_migrations<C>(
+    db: &C,
+    migration_files: Vec<Migration>,
+    migration_table_name: DynIden,
+) -> Result<(), DbErr>
+where
+    C: ConnectionTrait,
+{
+    let migration_models = get_migration_models_read_only(db, migration_table_name).await?;
+    get_migration_with_status(migration_files, migration_models, false).map(|_| ())
+}
+
 pub async fn install<C>(db: &C, migration_table_name: DynIden) -> Result<(), DbErr>
 where
     C: ConnectionTrait,

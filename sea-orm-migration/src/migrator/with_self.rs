@@ -19,7 +19,8 @@ pub trait MigratorTraitSelf: Sized + Send + Sync {
     /// Whether a migration recorded as applied but missing from [`migrations`](Self::migrations)
     /// is ignored instead of failing with an error. Turn it on when an older build of the app may
     /// run against a database a newer one already migrated, e.g. during a rolling deploy or after
-    /// a rollback.
+    /// a rollback. [`reset`](Self::reset) still fails on such a migration, since dropping the
+    /// table would lose its record.
     fn ignore_missing_migrations(&self) -> bool {
         false
     }
@@ -185,6 +186,8 @@ pub trait MigratorTraitSelf: Sized + Send + Sync {
         C: IntoSchemaManagerConnection<'c>,
     {
         let db = db.into_database_executor();
+        check_no_missing_migrations(&db, self.get_migration_files(), self.migration_table_name())
+            .await?;
         let manager = SchemaManager::new(db);
         exec_down(self, &manager, None).await?;
         uninstall(&manager, self.migration_table_name()).await
