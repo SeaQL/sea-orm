@@ -202,7 +202,7 @@ impl RusqliteConnector {
     }
 
     /// Add configuration options for the SQLite database
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(options))]
     pub fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let acquire_timeout = options.acquire_timeout.unwrap_or(DEFAULT_ACQUIRE_TIMEOUT);
         let record_stmt_in_spans = options.get_record_stmt_in_spans();
