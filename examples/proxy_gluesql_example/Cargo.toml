@@ -33,3 +33,6 @@ macro_rules_attribute = "0.2.3"
 smol-macros           = "0.1.1"
 
 [patch.crates-io]
+[patch.crates-io]
+sea-query      = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
+sea-query-sqlx = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
