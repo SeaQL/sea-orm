@@ -52,6 +52,7 @@ where
 pub fn get_migration_with_status(
     migration_files: Vec<Migration>,
     migration_models: Vec<seaql_migrations::Model>,
+    ignore_missing: bool,
 ) -> Result<Vec<Migration>, DbErr> {
     let mut migration_files = migration_files;
 
@@ -78,11 +79,25 @@ pub fn get_migration_with_status(
                 format!("Migration file of version '{missing_migration}' is missing, this migration has been applied but its file is missing")
             }).collect();
 
-    if !errors.is_empty() {
+    if !errors.is_empty() && !ignore_missing {
         Err(DbErr::Custom(errors.join("\n")))
     } else {
         Ok(migration_files)
     }
+}
+
+/// Fails on an applied migration without a file even if missing migrations are ignored:
+/// `reset` drops the table, and with it the only record that the migration was applied.
+pub async fn check_no_missing_migrations<C>(
+    db: &C,
+    migration_files: Vec<Migration>,
+    migration_table_name: DynIden,
+) -> Result<(), DbErr>
+where
+    C: ConnectionTrait,
+{
+    let migration_models = get_migration_models_read_only(db, migration_table_name).await?;
+    get_migration_with_status(migration_files, migration_models, false).map(|_| ())
 }
 
 pub async fn install<C>(db: &C, migration_table_name: DynIden) -> Result<(), DbErr>
@@ -333,4 +348,66 @@ pub async fn exec_down_with(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{MigrationName, MigrationTrait};
+
+    struct Named(&'static str);
+
+    impl MigrationName for Named {
+        fn name(&self) -> &str {
+            self.0
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl MigrationTrait for Named {
+        async fn up(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
+            Ok(())
+        }
+    }
+
+    fn files() -> Vec<Migration> {
+        ["m1", "m2"]
+            .into_iter()
+            .map(|name| Migration {
+                migration: Box::new(Named(name)),
+                status: MigrationStatus::Pending,
+            })
+            .collect()
+    }
+
+    fn models() -> Vec<seaql_migrations::Model> {
+        ["m1", "m3"]
+            .into_iter()
+            .map(|version| seaql_migrations::Model {
+                version: version.to_owned(),
+                applied_at: 0,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn applied_migration_without_file() {
+        let Err(err) = get_migration_with_status(files(), models(), false) else {
+            panic!("an applied migration without a file must fail");
+        };
+        assert!(err.to_string().contains("'m3' is missing"));
+
+        let status: Vec<_> = get_migration_with_status(files(), models(), true)
+            .unwrap()
+            .into_iter()
+            .map(|m| (m.name().to_owned(), m.status()))
+            .collect();
+        assert_eq!(
+            status,
+            [
+                ("m1".to_owned(), MigrationStatus::Applied),
+                ("m2".to_owned(), MigrationStatus::Pending),
+            ]
+        );
+    }
 }
