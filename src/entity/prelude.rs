@@ -106,3 +106,5 @@ pub use pgvector::Vector as PgVector;
 
 #[cfg(feature = "with-ipnetwork")]
 pub use ipnetwork::IpNetwork;
+
+pub use crate::value::{TsQuery, TsVector};

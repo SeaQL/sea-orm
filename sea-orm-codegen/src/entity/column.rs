@@ -38,6 +38,12 @@ impl Column {
         fn write_rs_type(col_type: &ColumnType, opt: &ColumnOption) -> String {
             #[allow(unreachable_patterns)]
             match col_type {
+                ColumnType::Custom(s) if s.to_string().to_lowercase() == "tsvector" => {
+                    "TsVector".to_owned()
+                }
+                ColumnType::Custom(s) if s.to_string().to_lowercase() == "tsquery" => {
+                    "TsQuery".to_owned()
+                }
                 ColumnType::Char(_)
                 | ColumnType::String(_)
                 | ColumnType::Text

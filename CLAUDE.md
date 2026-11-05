@@ -141,6 +141,28 @@ let user = user::Entity::load()
     .await?;
 ```
 
+## PostgreSQL Full-Text Search (tsvector & tsquery)
+
+```rust
+use sea_orm::entity::prelude::*;
+
+#[sea_orm::model]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "article")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    pub title: String,
+    pub tsv: TsVector,
+}
+
+// Querying with match operator (@@)
+let results = article::Entity::find()
+    .filter(article::COLUMN.tsv.matches("rust & orm"))
+    .all(db)
+    .await?;
+```
+
 ## Schema Registry (Entity-First Workflow)
 
 ```rust

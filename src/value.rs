@@ -76,6 +76,9 @@ mod text_uuid;
 #[cfg(feature = "with-uuid")]
 pub use text_uuid::*;
 
+mod text_search;
+pub use text_search::*;
+
 /// Default value for `T`.
 pub trait DefaultActiveValue {
     /// `Default::default()` if implemented, dummy value otherwise.

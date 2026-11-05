@@ -73,6 +73,14 @@ impl_expr_traits!(NumericArrayColumn);
 pub struct GenericArrayColumn<E: EntityTrait>(pub E::Column);
 impl_expr_traits!(GenericArrayColumn);
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct TsVectorColumn<E: EntityTrait>(pub E::Column);
+impl_expr_traits!(TsVectorColumn);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct TsQueryColumn<E: EntityTrait>(pub E::Column);
+impl_expr_traits!(TsQueryColumn);
+
 #[cfg(feature = "with-json")]
 mod with_json;
 
@@ -87,6 +95,8 @@ mod with_ipnetwork;
 
 #[cfg(feature = "postgres-array")]
 mod postgres_array;
+
+mod with_text_search;
 
 mod macros {
     macro_rules! impl_expr_traits {

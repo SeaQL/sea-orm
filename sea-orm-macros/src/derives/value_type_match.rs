@@ -64,6 +64,8 @@ pub fn column_type_wrapper(
             "Json" | "JsonBinary" => Some("JsonColumn"),
             "Uuid" => Some("UuidColumn"),
             "Array" => Some("GenericArrayColumn"),
+            "TsVector" => Some("TsVectorColumn"),
+            "TsQuery" => Some("TsQueryColumn"),
             _ => None,
         }
         .map(|ty| Ident::new(ty, field_span));
@@ -105,6 +107,10 @@ pub fn column_type_wrapper(
         Some("JsonColumn")
     } else if is_type(field_type, "TextUuid") {
         Some("TextUuidColumn")
+    } else if is_type(field_type, "TsVector") {
+        Some("TsVectorColumn")
+    } else if is_type(field_type, "TsQuery") {
+        Some("TsQueryColumn")
     } else if is_numeric_type(field_type) || type_ident_contains(field_type, "UnixTimestamp") {
         if nullable {
             Some("NumericColumnNullable")

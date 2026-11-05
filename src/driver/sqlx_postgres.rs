@@ -969,6 +969,44 @@ pub(crate) fn from_sqlx_postgres_row_to_proxy_row(row: &sqlx::postgres::PgRow) -
                                 }),
                         ),
 
+                        "TSVECTOR" | "tsvector" => Value::String(
+                            row.try_get::<Option<String>, _>(c.ordinal())
+                                .expect("Failed to get tsvector")
+                                .map(Box::new),
+                        ),
+                        #[cfg(feature = "postgres-array")]
+                        "TSVECTOR[]" | "tsvector[]" => Value::Array(
+                            sea_query::ArrayType::String,
+                            row.try_get::<Option<Vec<String>>, _>(c.ordinal())
+                                .expect("Failed to get tsvector array")
+                                .map(|vals| {
+                                    Box::new(
+                                        vals.into_iter()
+                                            .map(|val| Value::String(Some(Box::new(val))))
+                                            .collect(),
+                                    )
+                                }),
+                        ),
+
+                        "TSQUERY" | "tsquery" => Value::String(
+                            row.try_get::<Option<String>, _>(c.ordinal())
+                                .expect("Failed to get tsquery")
+                                .map(Box::new),
+                        ),
+                        #[cfg(feature = "postgres-array")]
+                        "TSQUERY[]" | "tsquery[]" => Value::Array(
+                            sea_query::ArrayType::String,
+                            row.try_get::<Option<Vec<String>>, _>(c.ordinal())
+                                .expect("Failed to get tsquery array")
+                                .map(|vals| {
+                                    Box::new(
+                                        vals.into_iter()
+                                            .map(|val| Value::String(Some(Box::new(val))))
+                                            .collect(),
+                                    )
+                                }),
+                        ),
+
                         _ => unreachable!("Unknown column type: {}", c.type_info().name()),
                     },
                 )
