@@ -56,3 +56,4 @@ impl<E: EntityTrait> TsQueryColumn<E> {
         Expr::col(self.0.as_column_ref()).binary(PgBinOper::Matches, vector.into())
     }
 }
+

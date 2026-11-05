@@ -6,7 +6,7 @@ pub mod common {
     pub mod features;
 }
 
-use sea_orm::{DbBackend, entity::prelude::*};
+use sea_orm::{DbBackend, QueryTrait, entity::prelude::*};
 
 mod article {
     use sea_orm::entity::prelude::*;
@@ -66,3 +66,4 @@ fn test_matches_query_builder() {
         r#"SELECT "article"."id", "article"."title", "article"."body_tsv" FROM "article" WHERE "article"."body_tsv" @@ 'sea & orm'"#
     );
 }
+

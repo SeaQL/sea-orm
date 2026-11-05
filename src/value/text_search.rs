@@ -73,7 +73,7 @@ impl TryGetable for TsVector {
 impl ValueType for TsVector {
     fn try_from(v: sea_orm::Value) -> Result<Self, ValueTypeErr> {
         match v {
-            sea_orm::Value::String(Some(s)) => Ok(TsVector(*s)),
+            sea_orm::Value::String(Some(s)) => Ok(TsVector(s.to_string())),
             _ => Err(ValueTypeErr),
         }
     }
@@ -187,7 +187,7 @@ impl TryGetable for TsQuery {
 impl ValueType for TsQuery {
     fn try_from(v: sea_orm::Value) -> Result<Self, ValueTypeErr> {
         match v {
-            sea_orm::Value::String(Some(s)) => Ok(TsQuery(*s)),
+            sea_orm::Value::String(Some(s)) => Ok(TsQuery(s.to_string())),
             _ => Err(ValueTypeErr),
         }
     }
@@ -236,3 +236,4 @@ impl DerefMut for TsQuery {
         &mut self.0
     }
 }
+
