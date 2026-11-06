@@ -85,11 +85,18 @@ where
         C: ConnectionTrait,
     {
         self.query.limit(1);
-        let row = db.query_one(&self.query)?;
-        match row {
-            Some(row) => Ok(Some(self.selector.from_raw_query_result(row)?)),
-            None => Ok(None),
+        let task = db.query_one(&self.query);
+        let convert = move |result: Result<Option<QueryResult>, DbErr>| {
+            let row = result?;
+            row.map(|row| self.selector.from_raw_query_result(row))
+                .transpose()
+        };
+        #[cfg(not(feature = "sync"))]
+        {
+            FutureExt::map(task, convert)
         }
+        #[cfg(feature = "sync")]
+        convert(task)
     }
 
     /// Get all items from the Select query
@@ -97,9 +104,18 @@ where
     where
         C: ConnectionTrait,
     {
-        db.query_all(&self.query)?
-            .into_iter()
-            .map(|row| self.selector.from_raw_query_result(row))
-            .try_collect()
+        let task = db.query_all(&self.query);
+        let convert = move |result: Result<Vec<QueryResult>, DbErr>| {
+            let rows = result?;
+            rows.into_iter()
+                .map(|row| self.selector.from_raw_query_result(row))
+                .try_collect()
+        };
+        #[cfg(not(feature = "sync"))]
+        {
+            FutureExt::map(task, convert)
+        }
+        #[cfg(feature = "sync")]
+        convert(task)
     }
 }

@@ -7,7 +7,6 @@ use crate::{
     TransactionTrait,
 };
 use crate::{Schema, SchemaBuilder};
-use std::future::Future;
 use std::pin::Pin;
 
 /// Either a borrowed [`DatabaseConnection`] / [`DatabaseTransaction`], or an
@@ -49,6 +48,20 @@ impl ConnectionTrait for DatabaseExecutor<'_> {
         }
     }
 
+    #[cfg(not(feature = "sync"))]
+    fn execute_raw<'conn, 'task>(&'conn self, stmt: Statement) -> Result<ExecResult, DbErr>
+    where
+        'conn: 'task,
+        Self: 'task,
+    {
+        match self {
+            DatabaseExecutor::Connection(conn) => conn.execute_raw(stmt),
+            DatabaseExecutor::Transaction(trans) => trans.execute_raw(stmt),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.execute_raw(stmt),
+        }
+    }
+
+    #[cfg(feature = "sync")]
     fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
             DatabaseExecutor::Connection(conn) => conn.execute_raw(stmt),
@@ -57,6 +70,24 @@ impl ConnectionTrait for DatabaseExecutor<'_> {
         }
     }
 
+    #[cfg(not(feature = "sync"))]
+    fn execute_unprepared<'conn, 'sql, 'task>(
+        &'conn self,
+        sql: &'sql str,
+    ) -> Result<ExecResult, DbErr>
+    where
+        'conn: 'task,
+        'sql: 'task,
+        Self: 'task,
+    {
+        match self {
+            DatabaseExecutor::Connection(conn) => conn.execute_unprepared(sql),
+            DatabaseExecutor::Transaction(trans) => trans.execute_unprepared(sql),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.execute_unprepared(sql),
+        }
+    }
+
+    #[cfg(feature = "sync")]
     fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         match self {
             DatabaseExecutor::Connection(conn) => conn.execute_unprepared(sql),
@@ -65,6 +96,23 @@ impl ConnectionTrait for DatabaseExecutor<'_> {
         }
     }
 
+    #[cfg(not(feature = "sync"))]
+    fn query_one_raw<'conn, 'task>(
+        &'conn self,
+        stmt: Statement,
+    ) -> Result<Option<QueryResult>, DbErr>
+    where
+        'conn: 'task,
+        Self: 'task,
+    {
+        match self {
+            DatabaseExecutor::Connection(conn) => conn.query_one_raw(stmt),
+            DatabaseExecutor::Transaction(trans) => trans.query_one_raw(stmt),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.query_one_raw(stmt),
+        }
+    }
+
+    #[cfg(feature = "sync")]
     fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
             DatabaseExecutor::Connection(conn) => conn.query_one_raw(stmt),
@@ -73,6 +121,20 @@ impl ConnectionTrait for DatabaseExecutor<'_> {
         }
     }
 
+    #[cfg(not(feature = "sync"))]
+    fn query_all_raw<'conn, 'task>(&'conn self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>
+    where
+        'conn: 'task,
+        Self: 'task,
+    {
+        match self {
+            DatabaseExecutor::Connection(conn) => conn.query_all_raw(stmt),
+            DatabaseExecutor::Transaction(trans) => trans.query_all_raw(stmt),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.query_all_raw(stmt),
+        }
+    }
+
+    #[cfg(feature = "sync")]
     fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         match self {
             DatabaseExecutor::Connection(conn) => conn.query_all_raw(stmt),
@@ -82,7 +144,14 @@ impl ConnectionTrait for DatabaseExecutor<'_> {
     }
 
     #[cfg(not(feature = "sync"))]
-    fn query_rows_raw(&self, stmt: Statement) -> Result<crate::QueryRows<'_>, DbErr> {
+    fn query_rows_raw<'conn, 'task>(
+        &'conn self,
+        stmt: Statement,
+    ) -> Result<crate::QueryRows<'conn>, DbErr>
+    where
+        'conn: 'task,
+        Self: 'task,
+    {
         match self {
             DatabaseExecutor::Connection(conn) => conn.query_rows_raw(stmt),
             DatabaseExecutor::Transaction(trans) => trans.query_rows_raw(stmt),

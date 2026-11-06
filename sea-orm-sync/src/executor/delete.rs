@@ -33,15 +33,29 @@ where
     where
         C: ConnectionTrait,
     {
-        exec_delete_only(self.query, db)
+        Deleter::new(self.query).exec(db)
     }
 
     /// Execute an delete operation and return the deleted model
-    pub fn exec_with_returning<C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
+    pub fn exec_with_returning<C>(mut self, db: &C) -> Result<Option<E::Model>, DbErr>
     where
         C: ConnectionTrait,
     {
-        exec_delete_with_returning_one::<E, _>(self.query, db)
+        let db_backend = db.get_database_backend();
+        if db.support_returning() {
+            let returning = Query::returning().exprs(
+                E::Column::iter().map(|c| c.select_enum_as(c.into_returning_expr(db_backend))),
+            );
+            self.query.returning(returning);
+            ReturningSelector::<SelectModel<<E>::Model>, _>::from_query(self.query).one(db)
+        } else {
+            {
+                Err(DbErr::BackendNotSupported {
+                    db: db_backend.as_str(),
+                    ctx: "DELETE RETURNING",
+                })
+            }
+        }
     }
 }
 
@@ -54,7 +68,13 @@ where
     where
         C: ConnectionTrait,
     {
-        self.0?.exec(db)
+        let task = self.0.map(|delete| delete.exec(db));
+        #[cfg(not(feature = "sync"))]
+        {
+            ready(task).try_flatten()
+        }
+        #[cfg(feature = "sync")]
+        task?
     }
 
     /// Execute an delete operation and return the deleted model
@@ -62,7 +82,13 @@ where
     where
         C: ConnectionTrait,
     {
-        self.0?.exec_with_returning(db)
+        let task = self.0.map(|delete| delete.exec_with_returning(db));
+        #[cfg(not(feature = "sync"))]
+        {
+            ready(task).try_flatten()
+        }
+        #[cfg(feature = "sync")]
+        task?
     }
 }
 
@@ -75,7 +101,7 @@ where
     where
         C: ConnectionTrait,
     {
-        exec_delete_only(self.query, db)
+        Deleter::new(self.query).exec(db)
     }
 
     /// Execute an delete operation and return the deleted model
@@ -84,7 +110,7 @@ where
         E: EntityTrait,
         C: ConnectionTrait,
     {
-        exec_delete_with_returning_many::<E, _>(self.query, db)
+        Deleter::new(self.query).exec_with_returning::<E, _>(db)
     }
 }
 
@@ -99,16 +125,32 @@ impl Deleter {
     where
         C: ConnectionTrait,
     {
-        exec_delete(self.query, db)
+        Result::map(db.execute(&self.query), |result| DeleteResult {
+            rows_affected: result.rows_affected(),
+        })
     }
 
     /// Execute an delete operation and return the deleted model
-    pub fn exec_with_returning<E, C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
+    pub fn exec_with_returning<E, C>(mut self, db: &C) -> Result<Vec<E::Model>, DbErr>
     where
         E: EntityTrait,
         C: ConnectionTrait,
     {
-        exec_delete_with_returning_many::<E, _>(self.query, db)
+        let db_backend = db.get_database_backend();
+        if db.support_returning() {
+            let returning = Query::returning().exprs(
+                E::Column::iter().map(|c| c.select_enum_as(c.into_returning_expr(db_backend))),
+            );
+            self.query.returning(returning);
+            ReturningSelector::<SelectModel<<E>::Model>, _>::from_query(self.query).all(db)
+        } else {
+            {
+                Err(DbErr::BackendNotSupported {
+                    db: db_backend.as_str(),
+                    ctx: "DELETE RETURNING",
+                })
+            }
+        }
     }
 }
 
@@ -121,71 +163,6 @@ impl DeleteResult {
     #[doc(hidden)]
     pub fn merge(&mut self, other: DeleteResult) {
         self.rows_affected += other.rows_affected;
-    }
-}
-
-fn exec_delete_only<C>(query: DeleteStatement, db: &C) -> Result<DeleteResult, DbErr>
-where
-    C: ConnectionTrait,
-{
-    Deleter::new(query).exec(db)
-}
-
-fn exec_delete<C>(query: DeleteStatement, db: &C) -> Result<DeleteResult, DbErr>
-where
-    C: ConnectionTrait,
-{
-    let result = db.execute(&query)?;
-    Ok(DeleteResult {
-        rows_affected: result.rows_affected(),
-    })
-}
-
-fn exec_delete_with_returning_one<E, C>(
-    mut query: DeleteStatement,
-    db: &C,
-) -> Result<Option<E::Model>, DbErr>
-where
-    E: EntityTrait,
-    C: ConnectionTrait,
-{
-    let db_backend = db.get_database_backend();
-    match db.support_returning() {
-        true => {
-            let returning = Query::returning().exprs(
-                E::Column::iter().map(|c| c.select_enum_as(c.into_returning_expr(db_backend))),
-            );
-            query.returning(returning);
-            ReturningSelector::<SelectModel<<E>::Model>, _>::from_query(query).one(db)
-        }
-        false => Err(DbErr::BackendNotSupported {
-            db: db_backend.as_str(),
-            ctx: "DELETE RETURNING",
-        }),
-    }
-}
-
-fn exec_delete_with_returning_many<E, C>(
-    mut query: DeleteStatement,
-    db: &C,
-) -> Result<Vec<E::Model>, DbErr>
-where
-    E: EntityTrait,
-    C: ConnectionTrait,
-{
-    let db_backend = db.get_database_backend();
-    match db.support_returning() {
-        true => {
-            let returning = Query::returning().exprs(
-                E::Column::iter().map(|c| c.select_enum_as(c.into_returning_expr(db_backend))),
-            );
-            query.returning(returning);
-            ReturningSelector::<SelectModel<<E>::Model>, _>::from_query(query).all(db)
-        }
-        false => Err(DbErr::BackendNotSupported {
-            db: db_backend.as_str(),
-            ctx: "DELETE RETURNING",
-        }),
     }
 }
 

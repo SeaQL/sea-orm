@@ -4,6 +4,25 @@ use crate::{
     SelectC, SelectFour, SelectThree, SelectThreeMany, Topology, TopologyChain, TopologyStar,
     combine::prepare_select_col,
 };
+use futures_util::TryFutureExt;
+use std::future::Future;
+
+type SelectThreeManyResult<E, F, G> = (
+    <E as EntityTrait>::Model,
+    Vec<<F as EntityTrait>::Model>,
+    Vec<<G as EntityTrait>::Model>,
+);
+
+type SelectThreeChainResult<E, F, G> = (
+    <E as EntityTrait>::Model,
+    Vec<(<F as EntityTrait>::Model, Vec<<G as EntityTrait>::Model>)>,
+);
+
+type SelectThreeResult<E, F, G> = (
+    <E as EntityTrait>::Model,
+    Option<<F as EntityTrait>::Model>,
+    Option<<G as EntityTrait>::Model>,
+);
 
 impl<E, F, G, TOP> SelectThree<E, F, G, TOP>
 where
@@ -143,55 +162,52 @@ where
     }
 
     /// Get one Model from the Select query
-    pub async fn one<C>(
+    pub fn one<C>(
         self,
         db: &C,
-    ) -> Result<Option<(E::Model, Option<F::Model>, Option<G::Model>)>, DbErr>
+    ) -> impl Future<Output = Result<Option<SelectThreeResult<E, F, G>>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().one(db).await
+        self.into_model().one(db)
     }
 
     /// Get all Models from the Select query
-    pub async fn all<C>(
+    pub fn all<C>(
         self,
         db: &C,
-    ) -> Result<Vec<(E::Model, Option<F::Model>, Option<G::Model>)>, DbErr>
+    ) -> impl Future<Output = Result<Vec<SelectThreeResult<E, F, G>>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().all(db).await
+        self.into_model().all(db)
     }
 
     /// Stream the results of a Select operation on a Model
     #[cfg(feature = "stream")]
-    pub async fn stream<'a: 'b, 'b, C>(
+    pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<
-        impl Stream<Item = Result<(E::Model, Option<F::Model>, Option<G::Model>), DbErr>> + 'b,
-        DbErr,
-    >
+    ) -> impl Future<Output = Result<PinBoxStream<'b, SelectThreeResult<E, F, G>>, DbErr>>
     where
         C: ConnectionTrait + StreamTrait + Send,
     {
-        self.into_model().stream(db).await
+        self.into_model().stream(db)
     }
 
     /// Stream the result of the operation with PartialModel
     #[cfg(feature = "stream")]
-    pub async fn stream_partial_model<'a: 'b, 'b, C, M, N, O>(
+    pub fn stream_partial_model<'a: 'b, 'b, C, M, N, O>(
         self,
         db: &'a C,
-    ) -> Result<impl Stream<Item = Result<(M, Option<N>, Option<O>), DbErr>> + 'b + Send, DbErr>
+    ) -> impl Future<Output = Result<PinBoxStream<'b, (M, Option<N>, Option<O>)>, DbErr>>
     where
         C: ConnectionTrait + StreamTrait + Send,
         M: PartialModelTrait + Send + 'b,
         N: PartialModelTrait + Send + 'b,
         O: PartialModelTrait + Send + 'b,
     {
-        self.into_partial_model().stream(db).await
+        self.into_partial_model().stream(db)
     }
 
     /// Consolidate query result by first / second model depending on join topology
@@ -253,15 +269,17 @@ where
     G: EntityTrait,
 {
     /// Execute query and consolidate rows by E
-    pub async fn all<C>(
+    pub fn all<C>(
         self,
         db: &C,
-    ) -> Result<Vec<(E::Model, Vec<F::Model>, Vec<G::Model>)>, DbErr>
+    ) -> impl Future<Output = Result<Vec<SelectThreeManyResult<E, F, G>>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        let rows = self.into_model().all(db).await?;
-        Ok(consolidate_query_result_tee::<E, F, G>(rows))
+        TryFutureExt::map_ok(
+            self.into_model().all(db),
+            consolidate_query_result_tee::<E, F, G>,
+        )
     }
 }
 
@@ -272,15 +290,17 @@ where
     G: EntityTrait,
 {
     /// Execute query and consolidate rows in two passes, first by E, then by F
-    pub async fn all<C>(
+    pub fn all<C>(
         self,
         db: &C,
-    ) -> Result<Vec<(E::Model, Vec<(F::Model, Vec<G::Model>)>)>, DbErr>
+    ) -> impl Future<Output = Result<Vec<SelectThreeChainResult<E, F, G>>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        let rows = self.into_model().all(db).await?;
-        Ok(consolidate_query_result_chain::<E, F, G>(rows))
+        TryFutureExt::map_ok(
+            self.into_model().all(db),
+            consolidate_query_result_chain::<E, F, G>,
+        )
     }
 }
 

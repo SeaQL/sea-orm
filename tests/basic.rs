@@ -10,7 +10,7 @@ pub use sea_orm::{Database, DbConn, entity::*, error::*, query::*, sea_query, te
 // DATABASE_URL=sqlite::memory: cargo test --features rusqlite --test basic
 // DATABASE_URL=sqlite::memory: cargo test --features sqlx-sqlite,runtime-tokio --test basic
 #[sea_orm_macros::test]
-#[cfg(feature = "sqlx-sqlite")]
+#[cfg(any(feature = "sqlx-sqlite", feature = "rusqlite"))]
 async fn main() -> Result<(), DbErr> {
     dotenv::from_filename(".env.local").ok();
     dotenv::from_filename(".env").ok();
@@ -24,7 +24,7 @@ async fn main() -> Result<(), DbErr> {
     Ok(())
 }
 
-#[cfg(feature = "sqlx-sqlite")]
+#[cfg(any(feature = "sqlx-sqlite", feature = "rusqlite"))]
 async fn setup_schema(db: &DbConn) -> Result<(), DbErr> {
     use sea_query::*;
 
@@ -46,7 +46,7 @@ async fn setup_schema(db: &DbConn) -> Result<(), DbErr> {
     Ok(())
 }
 
-#[cfg(feature = "sqlx-sqlite")]
+#[cfg(any(feature = "sqlx-sqlite", feature = "rusqlite"))]
 async fn crud_cake(db: &DbConn) -> Result<(), DbErr> {
     let apple = cake::ActiveModel {
         name: Set("Apple Pie".to_owned()),

@@ -4,6 +4,15 @@ use crate::{
     SelectC, SelectFive, SelectSix, Topology, TopologyStar,
     combine::{SelectD, SelectE, prepare_select_col},
 };
+use std::future::Future;
+
+type SelectFiveResult<E, F, G, H, I> = (
+    <E as EntityTrait>::Model,
+    Option<<F as EntityTrait>::Model>,
+    Option<<G as EntityTrait>::Model>,
+    Option<<H as EntityTrait>::Model>,
+    Option<<I as EntityTrait>::Model>,
+);
 
 impl<E, F, G, H, I, TOP> SelectFive<E, F, G, H, I, TOP>
 where
@@ -163,69 +172,37 @@ where
     }
 
     /// Get one Model from the Select query
-    pub async fn one<C>(
+    pub fn one<C>(
         self,
         db: &C,
-    ) -> Result<
-        Option<(
-            E::Model,
-            Option<F::Model>,
-            Option<G::Model>,
-            Option<H::Model>,
-            Option<I::Model>,
-        )>,
-        DbErr,
-    >
+    ) -> impl Future<Output = Result<Option<SelectFiveResult<E, F, G, H, I>>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().one(db).await
+        self.into_model().one(db)
     }
 
     /// Get all Models from the Select query
-    pub async fn all<C>(
+    pub fn all<C>(
         self,
         db: &C,
-    ) -> Result<
-        Vec<(
-            E::Model,
-            Option<F::Model>,
-            Option<G::Model>,
-            Option<H::Model>,
-            Option<I::Model>,
-        )>,
-        DbErr,
-    >
+    ) -> impl Future<Output = Result<Vec<SelectFiveResult<E, F, G, H, I>>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().all(db).await
+        self.into_model().all(db)
     }
 
     /// Stream the results of a Select operation on a Model
     #[cfg(feature = "stream")]
-    pub async fn stream<'a: 'b, 'b, C>(
+    pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<
-        impl Stream<
-            Item = Result<
-                (
-                    E::Model,
-                    Option<F::Model>,
-                    Option<G::Model>,
-                    Option<H::Model>,
-                    Option<I::Model>,
-                ),
-                DbErr,
-            >,
-        > + 'b,
-        DbErr,
-    >
+    ) -> impl Future<Output = Result<PinBoxStream<'b, SelectFiveResult<E, F, G, H, I>>, DbErr>>
     where
         C: ConnectionTrait + StreamTrait + Send,
     {
-        self.into_model().stream(db).await
+        self.into_model().stream(db)
     }
 }
 

@@ -1,6 +1,5 @@
 use std::{sync::Arc, time::Duration};
 
-#[cfg(not(feature = "sync"))]
 #[cfg(feature = "sqlx-mysql")]
 use sqlx::mysql::MySqlConnectOptions;
 #[cfg(feature = "sqlx-postgres")]
@@ -53,9 +52,6 @@ use crate::error::*;
 #[derive(Debug, Default)]
 pub struct Database;
 
-#[cfg(feature = "sync")]
-type BoxFuture<'a, T> = T;
-
 #[cfg(feature = "sqlx-mysql")]
 type MapMySqlPoolOptsFn =
     Arc<dyn Fn(sqlx::pool::PoolOptions<sqlx::MySql>) -> sqlx::pool::PoolOptions<sqlx::MySql>>;
@@ -69,8 +65,7 @@ type MapSqlitePoolOptsFn = Option<
     Arc<dyn Fn(sqlx::pool::PoolOptions<sqlx::Sqlite>) -> sqlx::pool::PoolOptions<sqlx::Sqlite>>,
 >;
 
-type AfterConnectCallback =
-    Option<Arc<dyn Fn(DatabaseConnection) -> BoxFuture<'static, Result<(), DbErr>> + 'static>>;
+type AfterConnectCallback = Option<Arc<dyn Fn(DatabaseConnection) -> Result<(), DbErr> + 'static>>;
 
 /// Configuration for opening a [`DatabaseConnection`]: connection URL, pool
 /// sizing, timeouts, logging, and backend-specific options.
@@ -548,7 +543,7 @@ impl ConnectOptions {
     /// Set a callback function that will be called after a new connection is established.
     pub fn after_connect<F>(&mut self, f: F) -> &mut Self
     where
-        F: Fn(DatabaseConnection) -> BoxFuture<'static, Result<(), DbErr>> + 'static,
+        F: Fn(DatabaseConnection) -> Result<(), DbErr> + 'static,
     {
         self.after_connect = Some(Arc::new(f));
 

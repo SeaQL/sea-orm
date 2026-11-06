@@ -1,13 +1,14 @@
-use super::ReturningSelector;
+use super::{ReturningSelector, returning_all_columns};
 use crate::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, Insert, InsertMany,
-    IntoActiveModel, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, TryFromU64,
-    TryInsert, error::*,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, ExecResult, Insert,
+    InsertMany, IntoActiveModel, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, QueryResult,
+    SelectModel, TryFromU64, TryInsert, error::*,
 };
 use sea_query::{FromValueTuple, Iden, InsertStatement, Query, ReturningClause, ValueTuple};
 use std::marker::PhantomData;
 
 type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
+type PrimaryKeyValue<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
 
 /// Lower-level executor that runs a raw `sea_query` [`InsertStatement`].
 /// Most code shouldn't need it directly — prefer
@@ -33,7 +34,7 @@ where
     A: ActiveModelTrait,
 {
     /// Primary key of the inserted row.
-    pub last_insert_id: <PrimaryKey<A> as PrimaryKeyTrait>::ValueType,
+    pub last_insert_id: PrimaryKeyValue<A>,
 }
 
 /// Result of inserting many ActiveModels: the primary key of the last row
@@ -45,7 +46,7 @@ where
     A: ActiveModelTrait,
 {
     /// Primary key of the last inserted row, if any.
-    pub last_insert_id: Option<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>,
+    pub last_insert_id: Option<PrimaryKeyValue<A>>,
 }
 
 /// The result of executing a [`crate::TryInsert`].
@@ -73,6 +74,16 @@ pub enum TryInsertResult<T> {
     Inserted(T),
 }
 
+impl<T> TryInsertResult<T> {
+    fn from_result(result: Result<T, DbErr>) -> Result<Self, DbErr> {
+        match result {
+            Ok(value) => Ok(Self::Inserted(value)),
+            Err(DbErr::RecordNotInserted) => Ok(Self::Conflicted),
+            Err(err) => Err(err),
+        }
+    }
+}
+
 impl<A> TryInsertResult<InsertResult<A>>
 where
     A: ActiveModelTrait,
@@ -82,9 +93,7 @@ where
     /// - [`TryInsertResult::Empty`] => `Ok(None)`
     /// - [`TryInsertResult::Inserted`] => `Ok(Some(last_insert_id))`
     /// - [`TryInsertResult::Conflicted`] => `Err(DbErr::RecordNotInserted)`
-    pub fn last_insert_id(
-        self,
-    ) -> Result<Option<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr> {
+    pub fn last_insert_id(self) -> Result<Option<PrimaryKeyValue<A>>, DbErr> {
         match self {
             Self::Empty => Ok(None),
             Self::Inserted(v) => Ok(Some(v.last_insert_id)),
@@ -98,97 +107,110 @@ where
     A: ActiveModelTrait,
 {
     /// Execute an insert operation
-    pub fn exec<C>(self, db: &C) -> Result<TryInsertResult<InsertResult<A>>, DbErr>
+    pub fn exec<'a, C>(self, db: &'a C) -> Result<TryInsertResult<InsertResult<A>>, DbErr>
     where
         C: ConnectionTrait,
+        A: 'a,
     {
         if self.empty {
-            return Ok(TryInsertResult::Empty);
-        }
-        let res = self.insert_struct.exec(db);
-        match res {
-            Ok(res) => Ok(TryInsertResult::Inserted(res)),
-            Err(DbErr::RecordNotInserted) => Ok(TryInsertResult::Conflicted),
-            Err(err) => Err(err),
+            Ok(TryInsertResult::Empty)
+        } else {
+            let task = self.insert_struct.exec(db);
+            #[cfg(not(feature = "sync"))]
+            {
+                task.map(TryInsertResult::from_result)
+            }
+            #[cfg(feature = "sync")]
+            TryInsertResult::from_result(task)
         }
     }
 
     /// Execute an insert operation without returning (don't use `RETURNING` syntax)
     /// Number of rows affected is returned
-    pub fn exec_without_returning<C>(self, db: &C) -> Result<TryInsertResult<u64>, DbErr>
+    pub fn exec_without_returning<'a, C>(self, db: &'a C) -> Result<TryInsertResult<u64>, DbErr>
     where
         C: ConnectionTrait,
+        A: 'a,
     {
         if self.empty {
-            return Ok(TryInsertResult::Empty);
-        }
-        let res = self.insert_struct.exec_without_returning(db);
-        match res {
-            Ok(res) => Ok(TryInsertResult::Inserted(res)),
-            Err(DbErr::RecordNotInserted) => Ok(TryInsertResult::Conflicted),
-            Err(err) => Err(err),
+            Ok(TryInsertResult::Empty)
+        } else {
+            let task = self.insert_struct.exec_without_returning(db);
+            #[cfg(not(feature = "sync"))]
+            {
+                task.map(TryInsertResult::from_result)
+            }
+            #[cfg(feature = "sync")]
+            TryInsertResult::from_result(task)
         }
     }
 
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
-    pub fn exec_with_returning<C>(
+    pub fn exec_with_returning<'a, C>(
         self,
-        db: &C,
+        db: &'a C,
     ) -> Result<TryInsertResult<<A::Entity as EntityTrait>::Model>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
+        A: 'a,
     {
         if self.empty {
-            return Ok(TryInsertResult::Empty);
-        }
-        let res = self.insert_struct.exec_with_returning(db);
-        match res {
-            Ok(res) => Ok(TryInsertResult::Inserted(res)),
-            Err(DbErr::RecordNotInserted) => Ok(TryInsertResult::Conflicted),
-            Err(err) => Err(err),
+            Ok(TryInsertResult::Empty)
+        } else {
+            let task = self.insert_struct.exec_with_returning(db);
+            #[cfg(not(feature = "sync"))]
+            {
+                task.map(TryInsertResult::from_result)
+            }
+            #[cfg(feature = "sync")]
+            TryInsertResult::from_result(task)
         }
     }
 
     /// Execute an insert operation and return primary keys of inserted models
-    pub fn exec_with_returning_keys<C>(
+    pub fn exec_with_returning_keys<'a, C>(
         self,
-        db: &C,
-    ) -> Result<TryInsertResult<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>>, DbErr>
+        db: &'a C,
+    ) -> Result<TryInsertResult<Vec<PrimaryKeyValue<A>>>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
+        A: 'a,
     {
         if self.empty {
-            return Ok(TryInsertResult::Empty);
-        }
-
-        let res = self.insert_struct.exec_with_returning_keys(db);
-        match res {
-            Ok(res) => Ok(TryInsertResult::Inserted(res)),
-            Err(DbErr::RecordNotInserted) => Ok(TryInsertResult::Conflicted),
-            Err(err) => Err(err),
+            Ok(TryInsertResult::Empty)
+        } else {
+            let task = self.insert_struct.exec_with_returning_keys(db);
+            #[cfg(not(feature = "sync"))]
+            {
+                task.map(TryInsertResult::from_result)
+            }
+            #[cfg(feature = "sync")]
+            TryInsertResult::from_result(task)
         }
     }
 
     /// Execute an insert operation and return all inserted models
-    pub fn exec_with_returning_many<C>(
+    pub fn exec_with_returning_many<'a, C>(
         self,
-        db: &C,
+        db: &'a C,
     ) -> Result<TryInsertResult<Vec<<A::Entity as EntityTrait>::Model>>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
+        A: 'a,
     {
         if self.empty {
-            return Ok(TryInsertResult::Empty);
-        }
-
-        let res = self.insert_struct.exec_with_returning_many(db);
-        match res {
-            Ok(res) => Ok(TryInsertResult::Inserted(res)),
-            Err(DbErr::RecordNotInserted) => Ok(TryInsertResult::Conflicted),
-            Err(err) => Err(err),
+            Ok(TryInsertResult::Empty)
+        } else {
+            let task = self.insert_struct.exec_with_returning_many(db);
+            #[cfg(not(feature = "sync"))]
+            {
+                task.map(TryInsertResult::from_result)
+            }
+            #[cfg(feature = "sync")]
+            TryInsertResult::from_result(task)
         }
     }
 }
@@ -242,7 +264,7 @@ where
     pub fn exec_with_returning_keys<'a, C>(
         self,
         db: &'a C,
-    ) -> Result<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr>
+    ) -> Result<Vec<PrimaryKeyValue<A>>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
@@ -270,50 +292,53 @@ where
     A: ActiveModelTrait,
 {
     /// Execute an insert operation
-    pub fn exec<C>(self, db: &C) -> Result<InsertManyResult<A>, DbErr>
+    pub fn exec<'a, C>(self, db: &'a C) -> Result<InsertManyResult<A>, DbErr>
     where
         C: ConnectionTrait,
+        A: 'a,
     {
         if self.empty {
-            return Ok(InsertManyResult {
-                last_insert_id: None,
-            });
-        }
-        let res = self.into_one().exec(db);
-        match res {
-            Ok(r) => Ok(InsertManyResult {
+            {
+                Ok(InsertManyResult {
+                    last_insert_id: None,
+                })
+            }
+        } else {
+            Result::map(self.into_one().exec(db), |r| InsertManyResult {
                 last_insert_id: Some(r.last_insert_id),
-            }),
-            Err(err) => Err(err),
+            })
         }
     }
 
     /// Execute an insert operation without returning (don't use `RETURNING` syntax)
     /// Number of rows affected is returned
-    pub fn exec_without_returning<C>(self, db: &C) -> Result<u64, DbErr>
+    pub fn exec_without_returning<'a, C>(self, db: &'a C) -> Result<u64, DbErr>
     where
         C: ConnectionTrait,
+        A: 'a,
     {
         if self.empty {
-            return Ok(0);
+            Ok(0)
+        } else {
+            self.into_one().exec_without_returning(db)
         }
-        self.into_one().exec_without_returning(db)
     }
 
     /// Execute an insert operation and return all inserted models
-    pub fn exec_with_returning<C>(
+    pub fn exec_with_returning<'a, C>(
         self,
-        db: &C,
+        db: &'a C,
     ) -> Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
+        A: 'a,
     {
         if self.empty {
-            return Ok(Vec::new());
+            Ok(Vec::new())
+        } else {
+            self.into_one().exec_with_returning_many(db)
         }
-
-        self.into_one().exec_with_returning_many(db)
     }
 
     /// Alias to [`InsertMany::exec_with_returning`].
@@ -321,35 +346,33 @@ where
         since = "2.0.0",
         note = "Please use [`InsertMany::exec_with_returning`]"
     )]
-    pub fn exec_with_returning_many<C>(
+    pub fn exec_with_returning_many<'a, C>(
         self,
-        db: &C,
+        db: &'a C,
     ) -> Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
+        A: 'a,
     {
-        if self.empty {
-            return Ok(Vec::new());
-        }
-
-        self.into_one().exec_with_returning_many(db)
+        self.exec_with_returning(db)
     }
 
     /// Execute an insert operation and return primary keys of inserted models
-    pub fn exec_with_returning_keys<C>(
+    pub fn exec_with_returning_keys<'a, C>(
         self,
-        db: &C,
-    ) -> Result<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr>
+        db: &'a C,
+    ) -> Result<Vec<PrimaryKeyValue<A>>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
+        A: 'a,
     {
         if self.empty {
-            return Ok(Vec::new());
+            Ok(Vec::new())
+        } else {
+            self.into_one().exec_with_returning_keys(db)
         }
-
-        self.into_one().exec_with_returning_keys(db)
     }
 }
 
@@ -372,7 +395,60 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert(self.primary_key, self.query, db)
+        let db_backend = db.get_database_backend();
+
+        if db.support_returning() {
+            let task = db.query_all(&self.query);
+            let convert = |result: Result<Vec<QueryResult>, DbErr>| {
+                let mut rows = result?;
+                let row = rows.pop().ok_or(DbErr::RecordNotInserted)?;
+                let cols = PrimaryKey::<A>::iter()
+                    .map(|col| col.to_string())
+                    .collect::<Vec<_>>();
+                let last_insert_id = row
+                    .try_get_many("", cols.as_ref())
+                    .map_err(|_| DbErr::UnpackInsertId)?;
+                Ok(InsertResult { last_insert_id })
+            };
+            #[cfg(not(feature = "sync"))]
+            {
+                FutureExt::map(task, convert)
+            }
+            #[cfg(feature = "sync")]
+            convert(task)
+        } else {
+            let primary_key = self.primary_key;
+            let task = db.execute(&self.query);
+            let convert = move |result: Result<ExecResult, DbErr>| {
+                let res = result?;
+                if res.rows_affected() == 0 {
+                    return Err(DbErr::RecordNotInserted);
+                }
+                let last_insert_id = match primary_key {
+                    Some(value_tuple) => FromValueTuple::from_value_tuple(value_tuple),
+                    None => {
+                        let last_insert_id = res.last_insert_id();
+                        // For MySQL, the affected-rows number:
+                        //   - The affected-rows value per row is `1` if the row is inserted as a new row,
+                        //   - `2` if an existing row is updated,
+                        //   - and `0` if an existing row is set to its current values.
+                        // Reference: https://dev.mysql.com/doc/refman/8.4/en/insert-on-duplicate.html
+                        if db_backend == DbBackend::MySql && last_insert_id == 0 {
+                            return Err(DbErr::RecordNotInserted);
+                        }
+                        PrimaryKeyValue::<A>::try_from_u64(last_insert_id)
+                            .map_err(|_| DbErr::UnpackInsertId)?
+                    }
+                };
+                Ok(InsertResult { last_insert_id })
+            };
+            #[cfg(not(feature = "sync"))]
+            {
+                FutureExt::map(task, convert)
+            }
+            #[cfg(feature = "sync")]
+            convert(task)
+        }
     }
 
     /// Execute an insert operation
@@ -381,12 +457,12 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert_without_returning(self.query, db)
+        Result::map(db.execute(&self.query), |result| result.rows_affected())
     }
 
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
     pub fn exec_with_returning<'a, C>(
-        self,
+        mut self,
         db: &'a C,
     ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
@@ -394,25 +470,93 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert_with_returning::<A, _>(self.primary_key, self.query, db)
+        let db_backend = db.get_database_backend();
+        enum Execution<R, I> {
+            Returning(R),
+            Insert(I),
+        }
+        let execution = match db.support_returning() {
+            true => {
+                let returning = returning_all_columns::<A::Entity>(db_backend);
+                self.query.returning(returning);
+                Execution::Returning(
+                    ReturningSelector::<SelectModel<<A::Entity as EntityTrait>::Model>, _>::from_query(
+                        self.query,
+                    )
+                    .one(db))
+            }
+            false => {
+                #[cfg(not(feature = "sync"))]
+                let task = Box::new(self.exec(db));
+                #[cfg(feature = "sync")]
+                let task = self.exec(db);
+                Execution::Insert(task)
+            }
+        };
+        {
+            let found = match execution {
+                Execution::Returning(task) => task?,
+                Execution::Insert(task) => {
+                    let insert_res = task?;
+                    <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id).one(db)?
+                }
+            };
+            match found {
+                Some(model) => Ok(model),
+                None => Err(DbErr::RecordNotFound(
+                    "Failed to find inserted item".to_owned(),
+                )),
+            }
+        }
     }
 
     /// Execute an insert operation and return primary keys of inserted models
     pub fn exec_with_returning_keys<'a, C>(
-        self,
+        mut self,
         db: &'a C,
-    ) -> Result<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr>
+    ) -> Result<Vec<PrimaryKeyValue<A>>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert_with_returning_keys::<A, _>(self.query, db)
+        let db_backend = db.get_database_backend();
+        if db.support_returning() {
+            self.query.returning(returning_pk::<A>(db_backend));
+            let task = db.query_all(&self.query);
+            let convert = |result: Result<Vec<QueryResult>, DbErr>| {
+                let rows = result?;
+                let cols = PrimaryKey::<A>::iter()
+                    .map(|col| col.to_string())
+                    .collect::<Vec<_>>();
+                let mut keys = Vec::new();
+                for row in rows {
+                    keys.push(
+                        row.try_get_many("", cols.as_ref())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    );
+                }
+                Ok(keys)
+            };
+            #[cfg(not(feature = "sync"))]
+            {
+                FutureExt::map(task, convert)
+            }
+            #[cfg(feature = "sync")]
+            convert(task)
+        } else {
+            {
+                Err(DbErr::BackendNotSupported {
+                    db: db_backend.as_str(),
+                    ctx: "INSERT RETURNING",
+                })
+            }
+        }
     }
 
     /// Execute an insert operation and return all inserted models
     pub fn exec_with_returning_many<'a, C>(
-        self,
+        mut self,
         db: &'a C,
     ) -> Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>
     where
@@ -420,167 +564,22 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert_with_returning_many::<A, _>(self.query, db)
-    }
-}
-
-fn exec_insert<A, C>(
-    primary_key: Option<ValueTuple>,
-    statement: InsertStatement,
-    db: &C,
-) -> Result<InsertResult<A>, DbErr>
-where
-    C: ConnectionTrait,
-    A: ActiveModelTrait,
-{
-    type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
-
-    let db_backend = db.get_database_backend();
-
-    let last_insert_id = match (primary_key, db.support_returning()) {
-        (_, true) => {
-            let mut rows = db.query_all(&statement)?;
-            let row = match rows.pop() {
-                Some(row) => row,
-                None => return Err(DbErr::RecordNotInserted),
-            };
-            let cols = PrimaryKey::<A>::iter()
-                .map(|col| col.to_string())
-                .collect::<Vec<_>>();
-            row.try_get_many("", cols.as_ref())
-                .map_err(|_| DbErr::UnpackInsertId)?
-        }
-        (Some(value_tuple), false) => {
-            let res = db.execute(&statement)?;
-            if res.rows_affected() == 0 {
-                return Err(DbErr::RecordNotInserted);
-            }
-            FromValueTuple::from_value_tuple(value_tuple)
-        }
-        (None, false) => {
-            let res = db.execute(&statement)?;
-            if res.rows_affected() == 0 {
-                return Err(DbErr::RecordNotInserted);
-            }
-            let last_insert_id = res.last_insert_id();
-            // For MySQL, the affected-rows number:
-            //   - The affected-rows value per row is `1` if the row is inserted as a new row,
-            //   - `2` if an existing row is updated,
-            //   - and `0` if an existing row is set to its current values.
-            // Reference: https://dev.mysql.com/doc/refman/8.4/en/insert-on-duplicate.html
-            if db_backend == DbBackend::MySql && last_insert_id == 0 {
-                return Err(DbErr::RecordNotInserted);
-            }
-            ValueTypeOf::<A>::try_from_u64(last_insert_id).map_err(|_| DbErr::UnpackInsertId)?
-        }
-    };
-
-    Ok(InsertResult { last_insert_id })
-}
-
-fn exec_insert_without_returning<C>(insert_statement: InsertStatement, db: &C) -> Result<u64, DbErr>
-where
-    C: ConnectionTrait,
-{
-    let exec_result = db.execute(&insert_statement)?;
-    Ok(exec_result.rows_affected())
-}
-
-fn exec_insert_with_returning<A, C>(
-    primary_key: Option<ValueTuple>,
-    mut insert_statement: InsertStatement,
-    db: &C,
-) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
-where
-    <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
-    C: ConnectionTrait,
-    A: ActiveModelTrait,
-{
-    let db_backend = db.get_database_backend();
-    let found = match db.support_returning() {
-        true => {
-            let returning = Query::returning().exprs(
-                <A::Entity as EntityTrait>::Column::iter()
-                    .map(|c| c.select_as(c.into_returning_expr(db_backend))),
-            );
-            insert_statement.returning(returning);
+        let db_backend = db.get_database_backend();
+        if db.support_returning() {
+            let returning = returning_all_columns::<A::Entity>(db_backend);
+            self.query.returning(returning);
             ReturningSelector::<SelectModel<<A::Entity as EntityTrait>::Model>, _>::from_query(
-                insert_statement,
-            )
-            .one(db)?
-        }
-        false => {
-            let insert_res = exec_insert::<A, _>(primary_key, insert_statement, db)?;
-            <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id).one(db)?
-        }
-    };
-    match found {
-        Some(model) => Ok(model),
-        None => Err(DbErr::RecordNotFound(
-            "Failed to find inserted item".to_owned(),
-        )),
-    }
-}
-
-fn exec_insert_with_returning_keys<A, C>(
-    mut insert_statement: InsertStatement,
-    db: &C,
-) -> Result<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr>
-where
-    <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
-    C: ConnectionTrait,
-    A: ActiveModelTrait,
-{
-    let db_backend = db.get_database_backend();
-    match db.support_returning() {
-        true => {
-            insert_statement.returning(returning_pk::<A>(db_backend));
-            let rows = db.query_all(&insert_statement)?;
-            let cols = PrimaryKey::<A>::iter()
-                .map(|col| col.to_string())
-                .collect::<Vec<_>>();
-            let mut keys = Vec::new();
-            for row in rows {
-                keys.push(
-                    row.try_get_many("", cols.as_ref())
-                        .map_err(|_| DbErr::UnpackInsertId)?,
-                );
-            }
-            Ok(keys)
-        }
-        false => Err(DbErr::BackendNotSupported {
-            db: db_backend.as_str(),
-            ctx: "INSERT RETURNING",
-        }),
-    }
-}
-
-fn exec_insert_with_returning_many<A, C>(
-    mut insert_statement: InsertStatement,
-    db: &C,
-) -> Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>
-where
-    <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
-    C: ConnectionTrait,
-    A: ActiveModelTrait,
-{
-    let db_backend = db.get_database_backend();
-    match db.support_returning() {
-        true => {
-            let returning = Query::returning().exprs(
-                <A::Entity as EntityTrait>::Column::iter()
-                    .map(|c| c.select_as(c.into_returning_expr(db_backend))),
-            );
-            insert_statement.returning(returning);
-            ReturningSelector::<SelectModel<<A::Entity as EntityTrait>::Model>, _>::from_query(
-                insert_statement,
+                self.query,
             )
             .all(db)
+        } else {
+            {
+                Err(DbErr::BackendNotSupported {
+                    db: db_backend.as_str(),
+                    ctx: "INSERT RETURNING",
+                })
+            }
         }
-        false => Err(DbErr::BackendNotSupported {
-            db: db_backend.as_str(),
-            ctx: "INSERT RETURNING",
-        }),
     }
 }
 

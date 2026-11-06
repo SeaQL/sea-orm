@@ -1,17 +1,21 @@
-use super::transaction::run_async_transaction_callback;
+use super::{BoxFuture, transaction::run_async_transaction_callback};
 use crate::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
-    ExecResult, IsolationLevel, QueryResult, Statement, StatementBuilder, TransactionError,
-    TransactionSession, TransactionTrait,
+    ExecResult, IsolationLevel, QueryAccessAudit, QueryResult, Statement, StatementBuilder,
+    TransactionError, TransactionSession, TransactionTrait,
 };
 use crate::{
     TransactionOptions,
     rbac::{
-        PermissionRequest, RbacEngine, RbacError, RbacPermissionsByResources,
-        RbacResourcesAndPermissions, RbacRoleHierarchyList, RbacRolesAndRanks,
-        RbacUserRolePermissions, ResourceRequest,
+        PermissionRequest, RbacEngine, RbacPermissionsByResources, RbacResourcesAndPermissions,
+        RbacRoleHierarchyList, RbacRolesAndRanks, RbacUserRolePermissions, ResourceRequest,
         entity::{role::RoleId, user::UserId},
     },
+};
+#[cfg(not(feature = "sync"))]
+use futures_util::{
+    FutureExt, TryFutureExt,
+    future::{lazy, ready},
 };
 use std::{
     future::Future,
@@ -57,9 +61,35 @@ impl ConnectionTrait for RestrictedConnection {
         )))
     }
 
-    async fn execute<S: StatementBuilder>(&self, stmt: &S) -> Result<ExecResult, DbErr> {
-        self.user_can_run(stmt)?;
-        self.conn.execute(stmt).await
+    fn execute<S: StatementBuilder>(&self, stmt: &S) -> BoxFuture<'_, Result<ExecResult, DbErr>> {
+        let backend = self.get_database_backend();
+        let prepared = stmt
+            .audit()
+            .map_err(|err| DbErr::RbacError(err.to_string()))
+            .map(|audit| (backend.build(stmt), audit));
+
+        match prepared {
+            Ok((stmt, audit)) => {
+                #[cfg(not(feature = "sync"))]
+                {
+                    lazy(move |_| {
+                        self.conn.rbac.user_can_run_audit(self.user_id, audit)?;
+                        Ok(self.conn.execute_raw(stmt))
+                    })
+                    .try_flatten()
+                    .boxed()
+                }
+                #[cfg(feature = "sync")]
+                {
+                    self.conn.rbac.user_can_run_audit(self.user_id, audit)?;
+                    self.conn.execute_raw(stmt)
+                }
+            }
+            #[cfg(not(feature = "sync"))]
+            Err(err) => ready(Err(err)).boxed(),
+            #[cfg(feature = "sync")]
+            Err(err) => Err(err),
+        }
     }
 
     async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
@@ -74,9 +104,38 @@ impl ConnectionTrait for RestrictedConnection {
         )))
     }
 
-    async fn query_one<S: StatementBuilder>(&self, stmt: &S) -> Result<Option<QueryResult>, DbErr> {
-        self.user_can_run(stmt)?;
-        self.conn.query_one(stmt).await
+    fn query_one<S: StatementBuilder>(
+        &self,
+        stmt: &S,
+    ) -> BoxFuture<'_, Result<Option<QueryResult>, DbErr>> {
+        let backend = self.get_database_backend();
+        let prepared = stmt
+            .audit()
+            .map_err(|err| DbErr::RbacError(err.to_string()))
+            .map(|audit| (backend.build(stmt), audit));
+
+        match prepared {
+            Ok((stmt, audit)) => {
+                #[cfg(not(feature = "sync"))]
+                {
+                    lazy(move |_| {
+                        self.conn.rbac.user_can_run_audit(self.user_id, audit)?;
+                        Ok(self.conn.query_one_raw(stmt))
+                    })
+                    .try_flatten()
+                    .boxed()
+                }
+                #[cfg(feature = "sync")]
+                {
+                    self.conn.rbac.user_can_run_audit(self.user_id, audit)?;
+                    self.conn.query_one_raw(stmt)
+                }
+            }
+            #[cfg(not(feature = "sync"))]
+            Err(err) => ready(Err(err)).boxed(),
+            #[cfg(feature = "sync")]
+            Err(err) => Err(err),
+        }
     }
 
     async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
@@ -85,18 +144,60 @@ impl ConnectionTrait for RestrictedConnection {
         )))
     }
 
-    async fn query_all<S: StatementBuilder>(&self, stmt: &S) -> Result<Vec<QueryResult>, DbErr> {
-        self.user_can_run(stmt)?;
-        self.conn.query_all(stmt).await
+    fn query_all<S: StatementBuilder>(
+        &self,
+        stmt: &S,
+    ) -> BoxFuture<'_, Result<Vec<QueryResult>, DbErr>> {
+        let backend = self.get_database_backend();
+        let prepared = stmt
+            .audit()
+            .map_err(|err| DbErr::RbacError(err.to_string()))
+            .map(|audit| (backend.build(stmt), audit));
+
+        match prepared {
+            Ok((stmt, audit)) => {
+                #[cfg(not(feature = "sync"))]
+                {
+                    lazy(move |_| {
+                        self.conn.rbac.user_can_run_audit(self.user_id, audit)?;
+                        Ok(self.conn.query_all_raw(stmt))
+                    })
+                    .try_flatten()
+                    .boxed()
+                }
+                #[cfg(feature = "sync")]
+                {
+                    self.conn.rbac.user_can_run_audit(self.user_id, audit)?;
+                    self.conn.query_all_raw(stmt)
+                }
+            }
+            #[cfg(not(feature = "sync"))]
+            Err(err) => ready(Err(err)).boxed(),
+            #[cfg(feature = "sync")]
+            Err(err) => Err(err),
+        }
     }
 
     #[cfg(not(feature = "sync"))]
-    async fn query_rows<S: StatementBuilder>(
+    fn query_rows<S: StatementBuilder>(
         &self,
         stmt: &S,
-    ) -> Result<crate::QueryRows<'_>, DbErr> {
-        self.user_can_run(stmt)?;
-        self.conn.query_rows(stmt).await
+    ) -> BoxFuture<'_, Result<crate::QueryRows<'_>, DbErr>> {
+        let backend = self.get_database_backend();
+        let prepared = stmt
+            .audit()
+            .map_err(|err| DbErr::RbacError(err.to_string()))
+            .map(|audit| (backend.build(stmt), audit));
+
+        match prepared {
+            Ok((stmt, audit)) => lazy(move |_| {
+                self.conn.rbac.user_can_run_audit(self.user_id, audit)?;
+                Ok(self.conn.query_rows_raw(stmt))
+            })
+            .try_flatten()
+            .boxed(),
+            Err(err) => ready(Err(err)).boxed(),
+        }
     }
 }
 
@@ -112,9 +213,35 @@ impl ConnectionTrait for RestrictedTransaction {
         )))
     }
 
-    async fn execute<S: StatementBuilder>(&self, stmt: &S) -> Result<ExecResult, DbErr> {
-        self.user_can_run(stmt)?;
-        self.conn.execute(stmt).await
+    fn execute<S: StatementBuilder>(&self, stmt: &S) -> BoxFuture<'_, Result<ExecResult, DbErr>> {
+        let backend = self.get_database_backend();
+        let prepared = stmt
+            .audit()
+            .map_err(|err| DbErr::RbacError(err.to_string()))
+            .map(|audit| (backend.build(stmt), audit));
+
+        match prepared {
+            Ok((stmt, audit)) => {
+                #[cfg(not(feature = "sync"))]
+                {
+                    lazy(move |_| {
+                        self.rbac.user_can_run_audit(self.user_id, audit)?;
+                        Ok(self.conn.execute_raw(stmt))
+                    })
+                    .try_flatten()
+                    .boxed()
+                }
+                #[cfg(feature = "sync")]
+                {
+                    self.rbac.user_can_run_audit(self.user_id, audit)?;
+                    self.conn.execute_raw(stmt)
+                }
+            }
+            #[cfg(not(feature = "sync"))]
+            Err(err) => ready(Err(err)).boxed(),
+            #[cfg(feature = "sync")]
+            Err(err) => Err(err),
+        }
     }
 
     async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
@@ -129,9 +256,38 @@ impl ConnectionTrait for RestrictedTransaction {
         )))
     }
 
-    async fn query_one<S: StatementBuilder>(&self, stmt: &S) -> Result<Option<QueryResult>, DbErr> {
-        self.user_can_run(stmt)?;
-        self.conn.query_one(stmt).await
+    fn query_one<S: StatementBuilder>(
+        &self,
+        stmt: &S,
+    ) -> BoxFuture<'_, Result<Option<QueryResult>, DbErr>> {
+        let backend = self.get_database_backend();
+        let prepared = stmt
+            .audit()
+            .map_err(|err| DbErr::RbacError(err.to_string()))
+            .map(|audit| (backend.build(stmt), audit));
+
+        match prepared {
+            Ok((stmt, audit)) => {
+                #[cfg(not(feature = "sync"))]
+                {
+                    lazy(move |_| {
+                        self.rbac.user_can_run_audit(self.user_id, audit)?;
+                        Ok(self.conn.query_one_raw(stmt))
+                    })
+                    .try_flatten()
+                    .boxed()
+                }
+                #[cfg(feature = "sync")]
+                {
+                    self.rbac.user_can_run_audit(self.user_id, audit)?;
+                    self.conn.query_one_raw(stmt)
+                }
+            }
+            #[cfg(not(feature = "sync"))]
+            Err(err) => ready(Err(err)).boxed(),
+            #[cfg(feature = "sync")]
+            Err(err) => Err(err),
+        }
     }
 
     async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
@@ -140,18 +296,60 @@ impl ConnectionTrait for RestrictedTransaction {
         )))
     }
 
-    async fn query_all<S: StatementBuilder>(&self, stmt: &S) -> Result<Vec<QueryResult>, DbErr> {
-        self.user_can_run(stmt)?;
-        self.conn.query_all(stmt).await
+    fn query_all<S: StatementBuilder>(
+        &self,
+        stmt: &S,
+    ) -> BoxFuture<'_, Result<Vec<QueryResult>, DbErr>> {
+        let backend = self.get_database_backend();
+        let prepared = stmt
+            .audit()
+            .map_err(|err| DbErr::RbacError(err.to_string()))
+            .map(|audit| (backend.build(stmt), audit));
+
+        match prepared {
+            Ok((stmt, audit)) => {
+                #[cfg(not(feature = "sync"))]
+                {
+                    lazy(move |_| {
+                        self.rbac.user_can_run_audit(self.user_id, audit)?;
+                        Ok(self.conn.query_all_raw(stmt))
+                    })
+                    .try_flatten()
+                    .boxed()
+                }
+                #[cfg(feature = "sync")]
+                {
+                    self.rbac.user_can_run_audit(self.user_id, audit)?;
+                    self.conn.query_all_raw(stmt)
+                }
+            }
+            #[cfg(not(feature = "sync"))]
+            Err(err) => ready(Err(err)).boxed(),
+            #[cfg(feature = "sync")]
+            Err(err) => Err(err),
+        }
     }
 
     #[cfg(not(feature = "sync"))]
-    async fn query_rows<S: StatementBuilder>(
+    fn query_rows<S: StatementBuilder>(
         &self,
         stmt: &S,
-    ) -> Result<crate::QueryRows<'_>, DbErr> {
-        self.user_can_run(stmt)?;
-        self.conn.query_rows(stmt).await
+    ) -> BoxFuture<'_, Result<crate::QueryRows<'_>, DbErr>> {
+        let backend = self.get_database_backend();
+        let prepared = stmt
+            .audit()
+            .map_err(|err| DbErr::RbacError(err.to_string()))
+            .map(|audit| (backend.build(stmt), audit));
+
+        match prepared {
+            Ok((stmt, audit)) => lazy(move |_| {
+                self.rbac.user_can_run_audit(self.user_id, audit)?;
+                Ok(self.conn.query_rows_raw(stmt))
+            })
+            .try_flatten()
+            .boxed(),
+            Err(err) => ready(Err(err)).boxed(),
+        }
     }
 }
 
@@ -538,7 +736,7 @@ impl RbacEngineMount {
         let engine = holder.as_ref().expect("RBAC Engine not set");
         engine
             .user_can(user_id, permission, resource)
-            .map_err(map_err)
+            .map_err(|err| DbErr::RbacError(err.to_string()))
     }
 
     pub fn user_can_run<S: StatementBuilder>(
@@ -546,10 +744,13 @@ impl RbacEngineMount {
         user_id: UserId,
         stmt: &S,
     ) -> Result<(), DbErr> {
-        let audit = match stmt.audit() {
-            Ok(audit) => audit,
-            Err(err) => return Err(DbErr::RbacError(err.to_string())),
-        };
+        let audit = stmt
+            .audit()
+            .map_err(|err| DbErr::RbacError(err.to_string()))?;
+        self.user_can_run_audit(user_id, audit)
+    }
+
+    fn user_can_run_audit(&self, user_id: UserId, audit: QueryAccessAudit) -> Result<(), DbErr> {
         // There is nothing we can do if RwLock is poisoned.
         let holder = self.inner.read().expect("RBAC Engine died");
         // Constructor of this struct should ensure engine is not None.
@@ -564,7 +765,7 @@ impl RbacEngineMount {
             };
             if !engine
                 .user_can(user_id, permission(), resource())
-                .map_err(map_err)?
+                .map_err(|err| DbErr::RbacError(err.to_string()))?
             {
                 return Err(DbErr::AccessDenied {
                     permission: permission().action.to_owned(),
@@ -613,8 +814,4 @@ impl RbacEngineMount {
             .list_role_permissions_by_resources(role_id)
             .map_err(|err| DbErr::RbacError(err.to_string()))
     }
-}
-
-fn map_err(err: RbacError) -> DbErr {
-    DbErr::RbacError(err.to_string())
 }

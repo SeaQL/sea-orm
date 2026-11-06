@@ -11,8 +11,6 @@ use crate::{
 #[cfg(feature = "stream")]
 pub use crate::StreamTrait;
 
-#[cfg(feature = "sync")]
-use itertools::Itertools;
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
 
@@ -595,10 +593,7 @@ where
 
     /// Stream the results of a SELECT operation on a Model
     #[cfg(feature = "stream")]
-    pub fn stream<'a: 'b, 'b, C>(
-        self,
-        db: &'a C,
-    ) -> Result<impl Iterator<Item = Result<E::Model, DbErr>> + 'b, DbErr>
+    pub fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<PinBoxStream<'b, E::Model>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
     {
@@ -610,7 +605,7 @@ where
     pub fn stream_partial_model<'a: 'b, 'b, C, M>(
         self,
         db: &'a C,
-    ) -> Result<impl Iterator<Item = Result<M, DbErr>> + 'b, DbErr>
+    ) -> Result<PinBoxStream<'b, M>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
         M: PartialModelTrait + 'b,
@@ -688,7 +683,7 @@ where
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<impl Iterator<Item = Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
+    ) -> Result<PinBoxStream<'b, (E::Model, Option<F::Model>)>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
     {
@@ -700,7 +695,7 @@ where
     pub fn stream_partial_model<'a: 'b, 'b, C, M, N>(
         self,
         db: &'a C,
-    ) -> Result<impl Iterator<Item = Result<(M, Option<N>), DbErr>> + 'b, DbErr>
+    ) -> Result<PinBoxStream<'b, (M, Option<N>)>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
         M: PartialModelTrait + 'b,
@@ -741,8 +736,7 @@ where
     where
         C: ConnectionTrait,
     {
-        let rows = self.into_model().all(db)?;
-        Ok(consolidate_query_result::<E, F>(rows))
+        Result::map(self.into_model().all(db), consolidate_query_result::<E, F>)
     }
 
     // pub fn paginate()
@@ -824,7 +818,7 @@ where
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<impl Iterator<Item = Result<(E::Model, F::Model), DbErr>> + 'b, DbErr>
+    ) -> Result<PinBoxStream<'b, (E::Model, F::Model)>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
     {
@@ -836,7 +830,7 @@ where
     pub fn stream_partial_model<'a: 'b, 'b, C, M, N>(
         self,
         db: &'a C,
-    ) -> Result<impl Iterator<Item = Result<(M, N), DbErr>> + 'b, DbErr>
+    ) -> Result<PinBoxStream<'b, (M, N)>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
         M: PartialModelTrait + 'b,
@@ -861,11 +855,17 @@ where
         C: ConnectionTrait,
     {
         self.query.limit(1);
-        let row = db.query_one(&self.query)?;
-        match row {
-            Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
-            None => Ok(None),
+        let task = db.query_one(&self.query);
+        let convert = |result: Result<Option<QueryResult>, DbErr>| {
+            let row = result?;
+            row.map(S::from_raw_query_result).transpose()
+        };
+        #[cfg(not(feature = "sync"))]
+        {
+            FutureExt::map(task, convert)
         }
+        #[cfg(feature = "sync")]
+        convert(task)
     }
 
     /// Get exactly one item from the Select query, returning
@@ -878,7 +878,8 @@ where
     where
         C: ConnectionTrait,
     {
-        self.one(db)?.ok_or(record_not_found())
+        let task = self.one(db);
+        task?.ok_or(record_not_found())
     }
 
     /// Get all items from the Select query
@@ -888,16 +889,14 @@ where
     {
         #[cfg(not(feature = "sync"))]
         {
-            db.query_rows(&self.query)?
-                .collect(S::from_raw_query_result)
+            let task = db.query_rows(&self.query);
+            task?.collect(S::from_raw_query_result)
         }
         #[cfg(feature = "sync")]
-        {
-            db.query_all(&self.query)?
-                .into_iter()
-                .map(|row| S::from_raw_query_result(row))
-                .try_collect()
-        }
+        db.query_all(&self.query)?
+            .into_iter()
+            .map(S::from_raw_query_result)
+            .collect()
     }
 
     /// Stream the results of the Select operation
@@ -907,20 +906,10 @@ where
         C: ConnectionTrait + StreamTrait,
         S: 'b,
     {
-        let stream = db.stream(&self.query)?;
-
-        #[cfg(not(feature = "sync"))]
-        {
-            Ok(Box::new(stream.and_then(|row| {
-                futures_util::future::ready(S::from_raw_query_result(row))
-            })))
-        }
-        #[cfg(feature = "sync")]
-        {
-            Ok(Box::new(
-                stream.map(|item| item.and_then(S::from_raw_query_result)),
-            ))
-        }
+        Result::map(db.stream(&self.query), |stream| {
+            Box::new(stream.map(|row| row.and_then(S::from_raw_query_result)))
+                as PinBoxStream<'b, S::Item>
+        })
     }
 }
 
@@ -1122,11 +1111,17 @@ where
     where
         C: ConnectionTrait,
     {
-        let row = db.query_one_raw(self.stmt)?;
-        match row {
-            Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
-            None => Ok(None),
+        let task = db.query_one_raw(self.stmt);
+        let convert = |result: Result<Option<QueryResult>, DbErr>| {
+            let row = result?;
+            row.map(S::from_raw_query_result).transpose()
+        };
+        #[cfg(not(feature = "sync"))]
+        {
+            FutureExt::map(task, convert)
         }
+        #[cfg(feature = "sync")]
+        convert(task)
     }
 
     /// Get exactly one item from the query, returning [`DbErr::RecordNotFound`]
@@ -1135,7 +1130,8 @@ where
     where
         C: ConnectionTrait,
     {
-        self.one(db)?.ok_or(record_not_found())
+        let task = self.one(db);
+        task?.ok_or(record_not_found())
     }
 
     /// Get all items from the Select query
@@ -1181,16 +1177,14 @@ where
     {
         #[cfg(not(feature = "sync"))]
         {
-            db.query_rows_raw(self.stmt)?
-                .collect(S::from_raw_query_result)
+            let task = db.query_rows_raw(self.stmt);
+            task?.collect(S::from_raw_query_result)
         }
         #[cfg(feature = "sync")]
-        {
-            db.query_all_raw(self.stmt)?
-                .into_iter()
-                .map(|row| S::from_raw_query_result(row))
-                .try_collect()
-        }
+        db.query_all_raw(self.stmt)?
+            .into_iter()
+            .map(S::from_raw_query_result)
+            .collect()
     }
 
     /// Stream the results of the Select operation
@@ -1200,19 +1194,9 @@ where
         C: ConnectionTrait + StreamTrait,
         S: 'b,
     {
-        let stream = db.stream_raw(self.stmt)?;
-
-        #[cfg(not(feature = "sync"))]
-        {
-            Ok(Box::new(stream.and_then(|row| {
-                futures_util::future::ready(S::from_raw_query_result(row))
-            })))
-        }
-        #[cfg(feature = "sync")]
-        {
-            Ok(Box::new(
-                stream.map(|item| item.and_then(S::from_raw_query_result)),
-            ))
-        }
+        Result::map(db.stream_raw(self.stmt), |stream| {
+            Box::new(stream.map(|row| row.and_then(S::from_raw_query_result)))
+                as PinBoxStream<'b, S::Item>
+        })
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
-    ConnectionTrait, EntityTrait, FromQueryResult, Select, SelectModel, SelectTwo, SelectTwoModel,
-    Selector, SelectorRaw, SelectorTrait, error::*,
+    ConnectionTrait, EntityTrait, FromQueryResult, QueryResult, Select, SelectModel, SelectTwo,
+    SelectTwoModel, Selector, SelectorRaw, SelectorTrait, error::*,
 };
 use sea_query::{Expr, SelectStatement};
 use std::marker::PhantomData;
@@ -50,27 +50,28 @@ where
 {
     /// Fetch a specific page; page index starts from zero
     pub fn fetch_page(&self, page: u64) -> Result<Vec<S::Item>, DbErr> {
+        let offset = self.page_size * page;
         let query = self
             .query
             .clone()
             .limit(self.page_size)
-            .offset(self.page_size * page)
+            .offset(offset)
             .to_owned();
         #[cfg(not(feature = "sync"))]
-        let buffer = self
-            .db
-            .query_rows(&query)?
-            .collect(S::from_raw_query_result)?;
+        {
+            self.db
+                .query_rows(&query)
+                .and_then(|rows| rows.collect(S::from_raw_query_result))
+        }
         #[cfg(feature = "sync")]
-        let buffer = {
+        {
             let rows = self.db.query_all(&query)?;
             let mut buffer = Vec::with_capacity(rows.len());
             for row in rows.into_iter() {
                 buffer.push(S::from_raw_query_result(row)?);
             }
-            buffer
-        };
-        Ok(buffer)
+            Ok(buffer)
+        }
     }
 
     /// Fetch the current page
@@ -92,28 +93,35 @@ where
                 "sub_query",
             )
             .to_owned();
-        let result = match self.db.query_one(&query)? {
-            Some(res) => res,
-            None => return Ok(0),
+        let task = self.db.query_one(&query);
+        let convert = |result: Result<Option<QueryResult>, DbErr>| {
+            let row = result?;
+            let result = match row {
+                Some(res) => res,
+                None => return Ok(0),
+            };
+            Ok(result.try_get::<i64>("", "num_items")? as u64)
         };
-        Ok(result.try_get::<i64>("", "num_items")? as u64)
+        #[cfg(not(feature = "sync"))]
+        {
+            FutureExt::map(task, convert)
+        }
+        #[cfg(feature = "sync")]
+        convert(task)
     }
 
     /// Get the total number of pages
     pub fn num_pages(&self) -> Result<u64, DbErr> {
-        let num_items = self.num_items()?;
-        let num_pages = self.compute_pages_number(num_items);
-        Ok(num_pages)
+        Result::map(self.num_items(), |num_items| {
+            self.compute_pages_number(num_items)
+        })
     }
 
     /// Get the total number of items and pages
     pub fn num_items_and_pages(&self) -> Result<ItemsAndPagesNumber, DbErr> {
-        let number_of_items = self.num_items()?;
-        let number_of_pages = self.compute_pages_number(number_of_items);
-
-        Ok(ItemsAndPagesNumber {
+        Result::map(self.num_items(), |number_of_items| ItemsAndPagesNumber {
             number_of_items,
-            number_of_pages,
+            number_of_pages: self.compute_pages_number(number_of_items),
         })
     }
 
@@ -176,7 +184,7 @@ where
         Ok(opt)
     }
 
-    /// Convert self into an stream
+    /// Convert self into a stream
     ///
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
@@ -301,11 +309,23 @@ where
                 "sub_query",
             )
             .to_owned();
-        let result = match db.query_one(&query)? {
-            Some(res) => res,
-            None => return Ok(0),
+        // TODO: Revisit the asynchronous BoxFuture caller API in the next breaking
+        // release to remove its extra allocation with an opaque Future return type.
+        let task = db.query_one(&query);
+        let convert = |result: Result<Option<QueryResult>, DbErr>| {
+            let row = result?;
+            let result = match row {
+                Some(res) => res,
+                None => return Ok(0),
+            };
+            Ok(result.try_get::<i64>("", "num_items")? as u64)
         };
-        Ok(result.try_get::<i64>("", "num_items")? as u64)
+        #[cfg(not(feature = "sync"))]
+        {
+            FutureExt::map(task, convert).boxed()
+        }
+        #[cfg(feature = "sync")]
+        convert(task)
     }
 }
 

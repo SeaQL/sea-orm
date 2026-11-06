@@ -267,7 +267,7 @@ impl SchemaBuilder {
     }
 
     // Regression guard for #3100: `sync()` must return a `Send` future, otherwise it
-    // cannot be used from `tokio::spawn` / most runtimes. Compiled (never called)
+    // cannot be used from `tokio::spawn` / most async runtimes. Compiled (never called)
     // whenever `schema-sync` + a backend is on, so a future dep bump that reintroduces a
     // `!Send` value across an await fails the build here.
     #[allow(dead_code)]
