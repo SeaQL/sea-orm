@@ -39,7 +39,7 @@ impl EntityTransformer {
                     col.unique |= table_create
                         .get_indexes()
                         .iter()
-                        .filter(|index| index.is_unique_key())
+                        .filter(|index| index.is_unique_key() || index.is_primary_key())
                         .map(|index| index.get_index_spec().get_column_names())
                         .filter(|col_names| col_names.len() == 1 && col_names[0] == col.name)
                         .count()
