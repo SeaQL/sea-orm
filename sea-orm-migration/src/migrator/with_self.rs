@@ -364,7 +364,7 @@ where
     exec_up_with(
         manager,
         steps,
-        migrator.get_pending_migrations(db).await?,
+        migrator.get_migration_with_status(db).await?,
         migrator.migration_table_name(),
     )
     .await
@@ -385,7 +385,7 @@ where
     exec_down_with(
         manager,
         steps,
-        migrator.get_applied_migrations(db).await?,
+        migrator.get_migration_with_status(db).await?,
         migrator.migration_table_name(),
     )
     .await

@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Fix compilation failures with the `proxy` feature https://github.com/SeaQL/sea-orm/pull/3220
 
+- Fix concurrent `Migrator::up` / `Migrator::down` on PostgreSQL failing or applying a migration twice when several processes migrate the same database at once
+
 ### Compatibility Notes
 
 - Update the declared MSRV of `sea-orm-cli` to Rust 1.94, matching its existing SQLx 0.9 dependency requirement https://github.com/SeaQL/sea-orm/pull/3187

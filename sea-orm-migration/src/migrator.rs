@@ -276,7 +276,7 @@ where
     exec_up_with(
         manager,
         steps,
-        M::get_pending_migrations(db).await?,
+        M::get_migration_with_status(db).await?,
         M::migration_table_name(),
     )
     .await
@@ -293,7 +293,7 @@ where
     exec_down_with(
         manager,
         steps,
-        M::get_applied_migrations(db).await?,
+        M::get_migration_with_status(db).await?,
         M::migration_table_name(),
     )
     .await
