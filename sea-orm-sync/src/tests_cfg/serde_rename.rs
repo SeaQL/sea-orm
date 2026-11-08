@@ -97,7 +97,7 @@ pub mod directional_rename_all {
     pub struct Model {
         #[sea_orm(primary_key)]
         pub id: i32,
-        #[serde(rename = "user-name")]
+        #[cfg_attr(feature = "with-json", serde(rename = "user-name"))]
         pub user_name: String,
     }
 
