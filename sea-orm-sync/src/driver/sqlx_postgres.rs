@@ -64,7 +64,7 @@ impl SqlxPostgresConnector {
     }
 
     /// Add configuration options for the PostgreSQL database
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(options))]
     pub fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let record_stmt_in_spans = options.get_record_stmt_in_spans();
         let mut sqlx_opts = options

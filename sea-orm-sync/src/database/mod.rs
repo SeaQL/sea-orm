@@ -80,6 +80,7 @@ type AfterConnectCallback =
 #[derive(derive_more::Debug, Clone)]
 pub struct ConnectOptions {
     /// The URI of the database
+    #[debug("{:?}", redact_url_password(url))]
     pub(crate) url: String,
     /// Maximum number of connections for a pool
     pub(crate) max_connections: Option<u32>,
@@ -105,6 +106,7 @@ pub struct ConnectOptions {
     /// SQLx slow statements duration threshold (ignored if `sqlx_logging` is false)
     pub(crate) sqlx_slow_statements_logging_threshold: Duration,
     /// set sqlcipher key
+    #[debug("{:?}", sqlcipher_key.as_ref().map(|_| REDACTED))]
     pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
     /// Schema search path (PostgreSQL only)
     pub(crate) schema_search_path: Option<String>,
@@ -152,6 +154,32 @@ pub struct ConnectOptions {
     #[cfg(feature = "sqlx-sqlite")]
     #[debug(skip)]
     pub(crate) sqlite_before_acquire_fn: Option<crate::driver::BeforeAcquireFn<sqlx::Sqlite>>,
+}
+
+// The two items below are only used by the derived `Debug` impl of
+// `ConnectOptions`, which dead-code analysis ignores.
+
+/// Placeholder printed instead of secrets in the `Debug` output of [`ConnectOptions`].
+#[allow(dead_code)]
+const REDACTED: &str = "<redacted>";
+
+/// Replace the password in a connection URL so it can be printed safely.
+#[allow(dead_code)]
+fn redact_url_password(raw: &str) -> std::borrow::Cow<'_, str> {
+    match url::Url::parse(raw) {
+        Ok(mut parsed) if parsed.password().is_some() => {
+            if parsed.set_password(Some(REDACTED)).is_ok() {
+                std::borrow::Cow::Owned(parsed.to_string())
+            } else {
+                std::borrow::Cow::Borrowed(REDACTED)
+            }
+        }
+        Ok(parsed) if parsed.has_host() => std::borrow::Cow::Borrowed(raw),
+        // A URL that doesn't parse into a host may still hold credentials,
+        // so don't print it if it looks like it has a userinfo part.
+        _ if raw.contains('@') => std::borrow::Cow::Borrowed(REDACTED),
+        _ => std::borrow::Cow::Borrowed(raw),
+    }
 }
 
 impl Database {
@@ -720,5 +748,52 @@ impl ConnectOptions {
     {
         self.sqlite_before_acquire_fn = Some(Arc::new(f));
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn debug_redacts_url_password() {
+        let opt = ConnectOptions::new("postgres://app:s3cr3t@127.0.0.1:5432/app");
+        let printed = format!("{opt:?}");
+        assert!(!printed.contains("s3cr3t"), "{printed}");
+        assert!(
+            printed.contains("postgres://app:%3Credacted%3E@127.0.0.1:5432/app"),
+            "{printed}"
+        );
+    }
+
+    #[test]
+    fn debug_keeps_url_without_password() {
+        for url in [
+            "sqlite::memory:",
+            "sqlite://db.sqlite?mode=rwc",
+            "mysql://root@localhost/db",
+        ] {
+            let printed = format!("{:?}", ConnectOptions::new(url));
+            assert!(printed.contains(url), "{printed}");
+        }
+    }
+
+    #[test]
+    fn debug_redacts_unparsable_url_with_userinfo() {
+        let opt = ConnectOptions::new("app:s3cr3t@not a url");
+        let printed = format!("{opt:?}");
+        assert!(!printed.contains("s3cr3t"), "{printed}");
+    }
+
+    #[test]
+    fn debug_redacts_sqlcipher_key() {
+        let mut opt = ConnectOptions::new("sqlite://db.sqlite");
+        opt.sqlcipher_key("top-secret-key");
+        let printed = format!("{opt:?}");
+        assert!(!printed.contains("top-secret-key"), "{printed}");
+        assert!(
+            printed.contains("sqlcipher_key: Some(\"<redacted>\")"),
+            "{printed}"
+        );
     }
 }

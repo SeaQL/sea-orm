@@ -65,7 +65,7 @@ impl SqlxSqliteConnector {
     }
 
     /// Add configuration options for the SQLite database
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(options))]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let mut options = options;
         let record_stmt_in_spans = options.get_record_stmt_in_spans();
