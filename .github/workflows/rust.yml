@@ -146,6 +146,8 @@ jobs:
   deny:
     name: Build Script Whitelist
     runs-on: ubuntu-latest
+    env:
+      RUSTC_WRAPPER: ""
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
