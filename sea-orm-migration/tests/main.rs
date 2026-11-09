@@ -55,6 +55,8 @@ async fn main() -> Result<(), DbErr> {
     )
     .await?;
 
+    run_ignore_missing_test(url, "sea_orm_migration_ignore_missing", "public").await?;
+
     Ok(())
 }
 
@@ -118,6 +120,40 @@ where
         total - 1
     );
 
+    Ok(())
+}
+
+/// An older build that knows only the first migration of `default::Migrator`.
+struct OlderMigrator;
+
+impl MigratorTraitSelf for OlderMigrator {
+    fn migrations(&self) -> Vec<Box<dyn MigrationTrait>> {
+        vec![Box::new(
+            common::migration::m20220118_000001_create_cake_table::Migration,
+        )]
+    }
+
+    fn ignore_missing_migrations(&self) -> bool {
+        true
+    }
+}
+
+async fn run_ignore_missing_test(url: &str, db_name: &str, schema: &str) -> Result<(), DbErr> {
+    let db = &create_db(url, db_name, schema).await?;
+    let manager = SchemaManager::new(db);
+    let newer = default::Migrator;
+    let total = newer.get_migration_files().len();
+
+    newer.up(db, None).await?;
+
+    // `reset` must refuse before rolling anything back: dropping the table would lose the
+    // records of the migrations the older build cannot roll back.
+    let err = OlderMigrator.reset(db).await.unwrap_err();
+    assert!(err.to_string().contains("is missing"), "{err}");
+    assert!(manager.has_table("cake").await?);
+    assert_eq!(newer.get_applied_migrations(db).await?.len(), total);
+
+    newer.reset(db).await?;
     Ok(())
 }
 
