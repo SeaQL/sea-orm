@@ -6,6 +6,7 @@
 #
 #   - `clippy`
 #   - `fmt` (rustfmt & taplo)
+#   - `deny` (build script whitelist)
 #   - `test`
 #   - `cli-test`
 #   - `compile`
@@ -141,6 +142,22 @@ jobs:
       - run: cargo fmt --manifest-path sea-orm-cli/Cargo.toml --all -- --check
       - run: cargo fmt --manifest-path sea-orm-migration/Cargo.toml --all -- --check
       - run: taplo fmt --check
+
+  deny:
+    name: Build Script Whitelist
+    runs-on: ubuntu-latest
+    env:
+      RUSTC_WRAPPER: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny@0.20.2
+      - run: cargo deny check bans
+      - run: cargo deny --manifest-path sea-orm-cli/Cargo.toml check bans
+      - run: cargo deny --manifest-path sea-orm-migration/Cargo.toml check bans
+      - run: cargo deny --manifest-path sea-orm-sync/Cargo.toml check bans
 
   compile:
     name: Compile (${{ matrix.label }})
