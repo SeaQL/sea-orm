@@ -814,7 +814,7 @@ mod tests {
             }
 
             #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-            #[sea_orm(table_name = "collection")]
+            #[sea_orm(table_name = "active_enum")]
             pub struct Model {
                 #[sea_orm(primary_key)]
                 pub id: i32,
