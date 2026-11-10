@@ -3,7 +3,7 @@ use crate::{
     ExecResultHolder, Iden, IdenStatic, Iterable, MockDatabaseConnection, MockDatabaseTrait,
     ModelTrait, QueryResult, QueryResultRow, SelectA, SelectB, Statement, error::*,
 };
-use sea_query::{Value, ValueType, Values};
+use sea_query::{OptionEnum, Value, ValueType, Values};
 use std::{collections::BTreeMap, sync::Arc};
 use tracing::instrument;
 
@@ -230,29 +230,44 @@ impl MockRow {
     where
         T: ValueType,
     {
-        if let Some(index) = index.as_str() {
-            T::try_from(
-                self.values
-                    .get(index)
-                    .ok_or_else(|| query_err(format!("No column for ColIdx {index:?}")))?
-                    .clone(),
-            )
-            .map_err(type_err)
+        let value = if let Some(index) = index.as_str() {
+            self.values
+                .get(index)
+                .ok_or_else(|| query_err(format!("No column for ColIdx {index:?}")))?
         } else if let Some(index) = index.as_usize() {
             let (_, value) = self
                 .values
                 .iter()
                 .nth(*index)
                 .ok_or_else(|| query_err(format!("Column at index {index} not found")))?;
-            T::try_from(value.clone()).map_err(type_err)
+            value
         } else {
             unreachable!("Missing ColIdx implementation for MockRow");
-        }
+        };
+
+        T::try_from(value.clone())
+            .or_else(|err| match enum_value_as_string(value) {
+                Some(value) => T::try_from(value),
+                None => Err(err),
+            })
+            .map_err(type_err)
     }
 
     /// An iterator over the keys and values of a mock row
     pub fn into_column_value_tuples(self) -> impl Iterator<Item = (String, Value)> {
         self.values.into_iter()
+    }
+}
+
+/// A real database hands enum columns back as text, and `ActiveEnum`s backed by
+/// [`sea_query::Enum`] decode themselves from a `String`. A `Model` turned into a
+/// [`MockRow`] stores those columns as [`Value::Enum`] instead, so convert them to
+/// the text a real row would carry. Returns `None` for any non-enum value.
+pub fn enum_value_as_string(value: &Value) -> Option<Value> {
+    match value {
+        Value::Enum(OptionEnum::Some(value)) => Some(Value::String(Some(value.value.to_string()))),
+        Value::Enum(OptionEnum::None(_)) => Some(Value::String(None)),
+        _ => None,
     }
 }
 
@@ -779,6 +794,60 @@ mod tests {
                 []
             ),]
         );
+
+        Ok(())
+    }
+
+    #[macro_rules_attribute::apply(smol_macros::test!)]
+    async fn test_active_enum_1() -> Result<(), DbErr> {
+        mod active_enum {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+            #[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "active_enum")]
+            pub enum ActiveEnum {
+                #[sea_orm(string_value = "a")]
+                A,
+                #[sea_orm(string_value = "b")]
+                B,
+            }
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "collection")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub active_enum: ActiveEnum,
+                pub active_enum_opt: Option<ActiveEnum>,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        use active_enum::{ActiveEnum, Model};
+
+        let models = vec![
+            Model {
+                id: 1,
+                active_enum: ActiveEnum::A,
+                active_enum_opt: Some(ActiveEnum::A),
+            },
+            Model {
+                id: 2,
+                active_enum: ActiveEnum::B,
+                active_enum_opt: None,
+            },
+        ];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        assert_eq!(active_enum::Entity::find().all(&db).await?, models);
 
         Ok(())
     }
