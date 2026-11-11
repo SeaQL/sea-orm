@@ -17,7 +17,17 @@ pub trait SelectExt {
         Self: Sized,
     {
         let stmt = self.exists_query();
-        Ok(db.query_one(&stmt)?.is_some())
+        // TODO: Revisit the asynchronous BoxFuture caller API in the next breaking
+        // release to remove its extra allocation with an opaque Future return type.
+        let task = Result::map(db.query_one(&stmt), |row| row.is_some());
+        #[cfg(not(feature = "sync"))]
+        {
+            task.boxed()
+        }
+        #[cfg(feature = "sync")]
+        {
+            task
+        }
     }
 }
 

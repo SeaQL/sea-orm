@@ -36,7 +36,7 @@ fn check_error(error: &DbErr) {
             Error::Database(e) => {
                 #[cfg(feature = "sqlx-mysql")]
                 assert_eq!(e.code().unwrap(), "23000");
-                #[cfg(feature = "rusqlite")]
+                #[cfg(feature = "sqlx-sqlite")]
                 assert_eq!(e.code().unwrap(), "1555");
             }
             _ => panic!("Unexpected sqlx-error kind"),

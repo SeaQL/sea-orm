@@ -17,7 +17,12 @@ async fn reports_stream_errors() {
         let inner = futures_util::stream::once(async {
             Err(DbErr::Custom("expected query error".to_owned()))
         });
-        let mut stream = MetricStream::new(&metric_callback, &stmt, Some(Duration::ZERO), inner);
+        let mut stream = MetricStream::new(
+            &metric_callback,
+            &stmt,
+            Some(Duration::ZERO),
+            Box::pin(inner),
+        );
         assert!(stream.next().await.expect("one item").is_err());
     }
 
@@ -41,7 +46,12 @@ async fn includes_time_waiting_for_stream() {
             smol::Timer::after(delay).await;
             Err(DbErr::Custom("expected query error".to_owned()))
         });
-        let mut stream = MetricStream::new(&metric_callback, &stmt, Some(Duration::ZERO), inner);
+        let mut stream = MetricStream::new(
+            &metric_callback,
+            &stmt,
+            Some(Duration::ZERO),
+            Box::pin(inner),
+        );
         assert!(stream.next().await.expect("one item").is_err());
     }
 

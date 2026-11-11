@@ -1,10 +1,11 @@
 use crate::{
     ConnectionTrait, DbErr, EntityTrait, Select, SelectFive, SelectFour, SelectSix, SelectThree,
-    SelectTwo, Selector, SelectorRaw, SelectorTrait, Topology,
+    SelectTwo, Selector, SelectorRaw, SelectorTrait, Topology, database::BoxFuture,
 };
+use futures_util::FutureExt;
+use futures_util::TryFutureExt;
 use sea_query::{Expr, SelectStatement};
 
-#[async_trait::async_trait]
 /// Helper trait for selectors with convenient methods
 pub trait SelectExt {
     /// This method is unstable and is only used for internal testing.
@@ -12,13 +13,23 @@ pub trait SelectExt {
     #[doc(hidden)]
     fn exists_query(self) -> SelectStatement;
     /// Check if any records exist
-    async fn exists<C>(self, db: &C) -> Result<bool, DbErr>
+    fn exists<C>(self, db: &C) -> BoxFuture<'_, Result<bool, DbErr>>
     where
         C: ConnectionTrait,
         Self: Send + Sized,
     {
         let stmt = self.exists_query();
-        Ok(db.query_one(&stmt).await?.is_some())
+        // TODO: Revisit the asynchronous BoxFuture caller API in the next breaking
+        // release to remove its extra allocation with an opaque Future return type.
+        let task = TryFutureExt::map_ok(db.query_one(&stmt), |row| row.is_some());
+        #[cfg(not(feature = "sync"))]
+        {
+            task.boxed()
+        }
+        #[cfg(feature = "sync")]
+        {
+            task
+        }
     }
 }
 
@@ -41,7 +52,6 @@ where
     }
 }
 
-#[async_trait::async_trait]
 impl<S> SelectExt for SelectorRaw<S>
 where
     S: SelectorTrait,

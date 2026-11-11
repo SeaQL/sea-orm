@@ -275,7 +275,7 @@
 //!
 //! ## Synchronous Support
 //!
-//! [`sea-orm-sync`](https://crates.io/crates/sea-orm-sync) provides the full SeaORM API without requiring an runtime, making it ideal for lightweight CLI programs with SQLite.
+//! [`sea-orm-sync`](https://crates.io/crates/sea-orm-sync) provides the full SeaORM API without requiring an async runtime, making it ideal for lightweight CLI programs with SQLite.
 //!
 //! See the [quickstart example](https://github.com/SeaQL/sea-orm/blob/master/sea-orm-sync/examples/quickstart/src/main.rs) for usage.
 //!

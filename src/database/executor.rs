@@ -1,3 +1,4 @@
+use super::BoxFuture;
 use super::transaction::run_async_transaction_callback;
 #[cfg(not(feature = "sync"))]
 use crate::StatementBuilder;
@@ -40,7 +41,6 @@ impl<'c> From<&'c DatabaseTransaction> for DatabaseExecutor<'c> {
     }
 }
 
-#[async_trait::async_trait]
 impl ConnectionTrait for DatabaseExecutor<'_> {
     fn get_database_backend(&self) -> DbBackend {
         match self {
@@ -50,56 +50,132 @@ impl ConnectionTrait for DatabaseExecutor<'_> {
         }
     }
 
-    async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
+    #[cfg(not(feature = "sync"))]
+    fn execute_raw<'conn, 'task>(
+        &'conn self,
+        stmt: Statement,
+    ) -> BoxFuture<'task, Result<ExecResult, DbErr>>
+    where
+        'conn: 'task,
+        Self: 'task,
+    {
         match self {
-            DatabaseExecutor::Connection(conn) => conn.execute_raw(stmt).await,
-            DatabaseExecutor::Transaction(trans) => trans.execute_raw(stmt).await,
-            DatabaseExecutor::OwnedTransaction(trans) => trans.execute_raw(stmt).await,
+            DatabaseExecutor::Connection(conn) => conn.execute_raw(stmt),
+            DatabaseExecutor::Transaction(trans) => trans.execute_raw(stmt),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.execute_raw(stmt),
         }
     }
 
-    async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+    #[cfg(feature = "sync")]
+    fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
-            DatabaseExecutor::Connection(conn) => conn.execute_unprepared(sql).await,
-            DatabaseExecutor::Transaction(trans) => trans.execute_unprepared(sql).await,
-            DatabaseExecutor::OwnedTransaction(trans) => trans.execute_unprepared(sql).await,
-        }
-    }
-
-    async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
-        match self {
-            DatabaseExecutor::Connection(conn) => conn.query_one_raw(stmt).await,
-            DatabaseExecutor::Transaction(trans) => trans.query_one_raw(stmt).await,
-            DatabaseExecutor::OwnedTransaction(trans) => trans.query_one_raw(stmt).await,
-        }
-    }
-
-    async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
-        match self {
-            DatabaseExecutor::Connection(conn) => conn.query_all_raw(stmt).await,
-            DatabaseExecutor::Transaction(trans) => trans.query_all_raw(stmt).await,
-            DatabaseExecutor::OwnedTransaction(trans) => trans.query_all_raw(stmt).await,
+            DatabaseExecutor::Connection(conn) => conn.execute_raw(stmt),
+            DatabaseExecutor::Transaction(trans) => trans.execute_raw(stmt),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.execute_raw(stmt),
         }
     }
 
     #[cfg(not(feature = "sync"))]
-    async fn query_rows_raw(&self, stmt: Statement) -> Result<crate::QueryRows<'_>, DbErr> {
+    fn execute_unprepared<'conn, 'sql, 'task>(
+        &'conn self,
+        sql: &'sql str,
+    ) -> BoxFuture<'task, Result<ExecResult, DbErr>>
+    where
+        'conn: 'task,
+        'sql: 'task,
+        Self: 'task,
+    {
         match self {
-            DatabaseExecutor::Connection(conn) => conn.query_rows_raw(stmt).await,
-            DatabaseExecutor::Transaction(trans) => trans.query_rows_raw(stmt).await,
-            DatabaseExecutor::OwnedTransaction(trans) => trans.query_rows_raw(stmt).await,
+            DatabaseExecutor::Connection(conn) => conn.execute_unprepared(sql),
+            DatabaseExecutor::Transaction(trans) => trans.execute_unprepared(sql),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.execute_unprepared(sql),
+        }
+    }
+
+    #[cfg(feature = "sync")]
+    fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+        match self {
+            DatabaseExecutor::Connection(conn) => conn.execute_unprepared(sql),
+            DatabaseExecutor::Transaction(trans) => trans.execute_unprepared(sql),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.execute_unprepared(sql),
         }
     }
 
     #[cfg(not(feature = "sync"))]
-    async fn query_rows<S: StatementBuilder>(
+    fn query_one_raw<'conn, 'task>(
+        &'conn self,
+        stmt: Statement,
+    ) -> BoxFuture<'task, Result<Option<QueryResult>, DbErr>>
+    where
+        'conn: 'task,
+        Self: 'task,
+    {
+        match self {
+            DatabaseExecutor::Connection(conn) => conn.query_one_raw(stmt),
+            DatabaseExecutor::Transaction(trans) => trans.query_one_raw(stmt),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.query_one_raw(stmt),
+        }
+    }
+
+    #[cfg(feature = "sync")]
+    fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
+        match self {
+            DatabaseExecutor::Connection(conn) => conn.query_one_raw(stmt),
+            DatabaseExecutor::Transaction(trans) => trans.query_one_raw(stmt),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.query_one_raw(stmt),
+        }
+    }
+
+    #[cfg(not(feature = "sync"))]
+    fn query_all_raw<'conn, 'task>(
+        &'conn self,
+        stmt: Statement,
+    ) -> BoxFuture<'task, Result<Vec<QueryResult>, DbErr>>
+    where
+        'conn: 'task,
+        Self: 'task,
+    {
+        match self {
+            DatabaseExecutor::Connection(conn) => conn.query_all_raw(stmt),
+            DatabaseExecutor::Transaction(trans) => trans.query_all_raw(stmt),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.query_all_raw(stmt),
+        }
+    }
+
+    #[cfg(feature = "sync")]
+    fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+        match self {
+            DatabaseExecutor::Connection(conn) => conn.query_all_raw(stmt),
+            DatabaseExecutor::Transaction(trans) => trans.query_all_raw(stmt),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.query_all_raw(stmt),
+        }
+    }
+
+    #[cfg(not(feature = "sync"))]
+    fn query_rows_raw<'conn, 'task>(
+        &'conn self,
+        stmt: Statement,
+    ) -> BoxFuture<'task, Result<crate::QueryRows<'conn>, DbErr>>
+    where
+        'conn: 'task,
+        Self: 'task,
+    {
+        match self {
+            DatabaseExecutor::Connection(conn) => conn.query_rows_raw(stmt),
+            DatabaseExecutor::Transaction(trans) => trans.query_rows_raw(stmt),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.query_rows_raw(stmt),
+        }
+    }
+
+    #[cfg(not(feature = "sync"))]
+    fn query_rows<S: StatementBuilder>(
         &self,
         stmt: &S,
-    ) -> Result<crate::QueryRows<'_>, DbErr> {
+    ) -> BoxFuture<'_, Result<crate::QueryRows<'_>, DbErr>> {
         match self {
-            DatabaseExecutor::Connection(conn) => conn.query_rows(stmt).await,
-            DatabaseExecutor::Transaction(trans) => trans.query_rows(stmt).await,
-            DatabaseExecutor::OwnedTransaction(trans) => trans.query_rows(stmt).await,
+            DatabaseExecutor::Connection(conn) => conn.query_rows(stmt),
+            DatabaseExecutor::Transaction(trans) => trans.query_rows(stmt),
+            DatabaseExecutor::OwnedTransaction(trans) => trans.query_rows(stmt),
         }
     }
 }

@@ -15,7 +15,7 @@ mod common {
 }
 
 #[sea_orm_macros::test]
-#[cfg(feature = "rusqlite")]
+#[cfg(any(feature = "sqlx-sqlite", feature = "rusqlite"))]
 fn raw_sql_test_simple_select() {
     #[derive(FromQueryResult)]
     struct BakerySimple {
@@ -78,7 +78,7 @@ fn raw_sql_test_simple_select() {
 }
 
 #[sea_orm_macros::test]
-#[cfg(feature = "rusqlite")]
+#[cfg(any(feature = "sqlx-sqlite", feature = "rusqlite"))]
 fn raw_sql_test_nested_select() {
     #[derive(FromQueryResult)]
     struct Cake {

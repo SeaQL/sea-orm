@@ -37,7 +37,7 @@ const DEFAULT_ACQUIRE_TIMEOUT: Duration = Duration::from_secs(60);
 /// A shared SQLite connection for synchronous contexts.
 ///
 /// Unlike sqlx's connection pool, which maintains multiple connections that can
-/// be checked out concurrently by different tasks, this holds a single
+/// be checked out concurrently by different async tasks, this holds a single
 /// [`RusqliteConnection`] behind an `Arc<Mutex<State>>`. All callers contend on
 /// the same mutex; [`acquire`](Self::acquire) spins with `try_lock` until the
 /// mutex is available or the `acquire_timeout` deadline expires.
