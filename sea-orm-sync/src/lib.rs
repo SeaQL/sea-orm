@@ -641,13 +641,9 @@
 //!
 //! ### Silver Sponsors
 //!
-//! We're grateful to our silver sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
+//! We're grateful to our silver sponsor: JetBrains, for sponsoring our IDE.
 //!
 //! <table><tr>
-//! <td><a href="https://www.digitalocean.com/">
-//!   <img src="https://www.sea-ql.org/static/sponsors/DigitalOcean.svg" width="125">
-//! </a></td>
-//!
 //! <td><a href="https://www.jetbrains.com/">
 //!   <img src="https://www.sea-ql.org/static/sponsors/JetBrains.svg" width="125">
 //! </a></td>
@@ -721,6 +717,13 @@ pub use sea_orm_macros::{
 
 pub use sea_query;
 pub use sea_query::Iden;
+
+#[cfg(feature = "with-json")]
+#[doc(hidden)]
+pub use serde;
+#[cfg(feature = "with-json")]
+#[doc(hidden)]
+pub use serde_json;
 
 pub use sea_orm_macros::EnumIter;
 pub use strum;

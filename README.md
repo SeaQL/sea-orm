@@ -532,13 +532,9 @@ If you feel generous, a small donation via [GitHub Sponsor](https://github.com/s
 
 ### Silver Sponsors
 
-We're grateful to our silver sponsors: Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
+We're grateful to our silver sponsor: JetBrains, for sponsoring our IDE.
 
 <table><tr>
-<td><a href="https://www.digitalocean.com/">
-  <img src="https://www.sea-ql.org/static/sponsors/DigitalOcean.svg" width="125">
-</a></td>
-
 <td><a href="https://www.jetbrains.com/">
   <img src="https://www.sea-ql.org/static/sponsors/JetBrains.svg" width="125">
 </a></td>

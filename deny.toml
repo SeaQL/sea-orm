@@ -1,0 +1,74 @@
+# Build-script whitelist, enforced in CI by `cargo deny check bans`.
+#
+# A build script runs arbitrary code on every machine that compiles us.
+# Any dependency with a build.rs that is not listed below fails CI.
+# Before adding a crate, read its build.rs: it should only probe rustc,
+# compile vendored C, or write into OUT_DIR. No network, no writes outside
+# OUT_DIR, no spawning anything beyond rustc / cc / git / pkg-config.
+
+[graph]
+all-features = true
+
+[bans]
+multiple-versions = "allow"
+wildcards         = "allow"
+
+[bans.build]
+allow-build-scripts = [
+    { crate = "ahash" },
+    { crate = "async-io" },
+    { crate = "bigdecimal" },
+    { crate = "borsh" },
+    { crate = "crossbeam-utils" },
+    { crate = "crunchy" },
+    { crate = "generic-array" },
+    { crate = "getrandom" },
+    { crate = "iana-time-zone-haiku" },
+    { crate = "icu_normalizer_data" },
+    { crate = "icu_properties_data" },
+    { crate = "libc" },
+    { crate = "libm" },
+    { crate = "libsqlite3-sys" },
+    { crate = "memoffset" },
+    { crate = "native-tls" },
+    { crate = "nix" },
+    { crate = "num-traits" },
+    { crate = "openssl" },
+    { crate = "openssl-sys" },
+    { crate = "parking_lot_core" },
+    { crate = "portable-atomic" },
+    { crate = "portable-atomic-util" },
+    { crate = "prettyplease" },
+    { crate = "proc-macro2" },
+    { crate = "proc-macro2-diagnostics" },
+    { crate = "quote" },
+    { crate = "ring" },
+    { crate = "rust_decimal" },
+    { crate = "rustix" },
+    { crate = "rustls" },
+    { crate = "rustversion" },
+    { crate = "serde" },
+    { crate = "serde_core" },
+    { crate = "serde_json" },
+    { crate = "sqlite-wasm-rs" },
+    { crate = "syn" },
+    { crate = "thiserror" },
+    { crate = "tiny-keccak" },
+    { crate = "valuable" },
+    { crate = "wasm-bindgen" },
+    { crate = "wasm-bindgen-shared" },
+    { crate = "winapi" },
+    { crate = "winapi-i686-pc-windows-gnu" },
+    { crate = "winapi-x86_64-pc-windows-gnu" },
+    { crate = "windows_aarch64_gnullvm" },
+    { crate = "windows_aarch64_msvc" },
+    { crate = "windows_i686_gnu" },
+    { crate = "windows_i686_gnullvm" },
+    { crate = "windows_i686_msvc" },
+    { crate = "windows_x86_64_gnu" },
+    { crate = "windows_x86_64_gnullvm" },
+    { crate = "windows_x86_64_msvc" },
+    { crate = "wit-bindgen" },
+    { crate = "zerocopy" },
+    { crate = "zmij" },
+]

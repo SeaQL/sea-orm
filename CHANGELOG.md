@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Add the opt-in `feat-sqlite-transactional-migrations` feature to `sea-orm-migration` to run SQLite migrations in transactions by default
 
+- Add `MigratorTrait::ignore_missing_migrations` to let an older build migrate a database that a newer one has already migrated, instead of failing on the migrations it does not know
+
 ### Enhancements
 
 - Use streaming collection by default for `.all()`, pagination, and cursor queries on SQLx backends https://github.com/SeaQL/sea-orm/pull/3215

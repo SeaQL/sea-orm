@@ -504,13 +504,9 @@ SeaORM 2.0 将是我们迄今最重要的版本——包含一些破坏性变更
 
 ### 银牌赞助商
 
-我们感谢银牌赞助商：Digital Ocean 赞助我们的服务器，以及 JetBrains 赞助我们的 IDE。
+我们感谢银牌赞助商：JetBrains 赞助我们的 IDE。
 
 <table><tr>
-<td><a href="https://www.digitalocean.com/">
-  <img src="https://www.sea-ql.org/static/sponsors/DigitalOcean.svg" width="125">
-</a></td>
-
 <td><a href="https://www.jetbrains.com/">
   <img src="https://www.sea-ql.org/static/sponsors/JetBrains.svg" width="125">
 </a></td>
