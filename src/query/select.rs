@@ -247,6 +247,12 @@ impl ColumnAsExpr for SimpleExpr {
     }
 }
 
+impl ColumnAsExpr for FunctionCall {
+    fn into_column_as_expr(self) -> SimpleExpr {
+        self.into_simple_expr()
+    }
+}
+
 impl<C> IntoSimpleExpr for C
 where
     C: ColumnTrait,

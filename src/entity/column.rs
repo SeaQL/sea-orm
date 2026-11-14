@@ -2,7 +2,8 @@ use crate::{
     ColumnDef, ColumnType, DbBackend, EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable,
 };
 use sea_query::{
-    BinOper, DynIden, Expr, ExprTrait, IntoIden, IntoLikeExpr, SeaRc, SelectStatement, Value,
+    BinOper, DynIden, Expr, ExprTrait, Func, FunctionCall, IntoIden, IntoLikeExpr, SeaRc,
+    SelectStatement, Value,
 };
 use std::{borrow::Cow, str::FromStr};
 
@@ -382,6 +383,35 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         V: Into<Value>,
     {
         Expr::col(self.as_column_ref()).if_null(v)
+    }
+
+    /// Concatenate the column's values within a group: `GROUP_CONCAT` in MySQL and SQLite,
+    /// `STRING_AGG` in Postgres. Order the values with [`FunctionCall::order_by`].
+    /// ```
+    /// use sea_orm::{DbBackend, entity::*, query::*, sea_query::Order, tests_cfg::cake};
+    ///
+    /// let query = cake::Entity::find().select_only().column_as(
+    ///     cake::Column::Name
+    ///         .group_concat(", ")
+    ///         .order_by(cake::Column::Id.into_expr(), Order::Asc),
+    ///     "names",
+    /// );
+    ///
+    /// assert_eq!(
+    ///     query.build(DbBackend::MySql).to_string(),
+    ///     "SELECT GROUP_CONCAT(`cake`.`name` ORDER BY `cake`.`id` ASC SEPARATOR ', ') AS `names` FROM `cake`"
+    /// );
+    /// assert_eq!(
+    ///     query.build(DbBackend::Postgres).to_string(),
+    ///     r#"SELECT STRING_AGG("cake"."name", ', ' ORDER BY "cake"."id" ASC) AS "names" FROM "cake""#
+    /// );
+    /// assert_eq!(
+    ///     query.build(DbBackend::Sqlite).to_string(),
+    ///     r#"SELECT GROUP_CONCAT("cake"."name", ', ' ORDER BY "cake"."id" ASC) AS "names" FROM "cake""#
+    /// );
+    /// ```
+    fn group_concat(&self, separator: &str) -> FunctionCall {
+        Func::group_concat(Expr::col(self.as_column_ref()), separator)
     }
 
     bind_vec_func!(is_in);

@@ -340,3 +340,36 @@ pub fn select_except_non_nullable_column_fails() {
 
     ctx.delete();
 }
+
+#[sea_orm_macros::test]
+pub fn group_concat() {
+    use sea_orm::sea_query::Order;
+
+    let ctx = TestContext::new("group_concat");
+    create_bakery_table(&ctx.db).unwrap();
+
+    for name in ["B", "C", "A"] {
+        bakery::ActiveModel {
+            name: Set(name.to_owned()),
+            profit_margin: Set(0.0),
+            ..Default::default()
+        }
+        .save(&ctx.db)
+        .unwrap();
+    }
+
+    let names: Option<String> = Bakery::find()
+        .select_only()
+        .column_as(
+            bakery::Column::Name
+                .group_concat(", ")
+                .order_by(bakery::Column::Name.into_expr(), Order::Asc),
+            "names",
+        )
+        .into_tuple()
+        .one(&ctx.db)
+        .unwrap();
+    assert_eq!(names.as_deref(), Some("A, B, C"));
+
+    ctx.delete();
+}
