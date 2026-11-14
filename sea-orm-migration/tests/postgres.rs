@@ -12,27 +12,10 @@ mod inner {
 
     #[tokio::test]
     async fn test_fresh_with_extension() -> Result<(), DbErr> {
-        let url =
-            &std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
-        let db_name = "test_fresh_with_extension";
-
-        let db_connect = |url: String| async {
-            let connect_options = ConnectOptions::new(url).to_owned();
-            Database::connect(connect_options).await
-        };
-
-        let db = db_connect(url.to_owned()).await?;
-        if !matches!(db.get_database_backend(), DbBackend::Postgres) {
+        let Some(url) = create_db("test_fresh_with_extension").await? else {
             return Ok(());
-        }
-
-        db.execute_unprepared(&format!(r#"DROP DATABASE IF EXISTS "{db_name}""#))
-            .await?;
-        db.execute_unprepared(&format!(r#"CREATE DATABASE "{db_name}""#))
-            .await?;
-
-        let url = format!("{url}/{db_name}");
-        let db = db_connect(url).await?;
+        };
+        let db = Database::connect(&url).await?;
 
         // Create the extension, a custom type, and dependent objects.
         db.execute_unprepared("CREATE EXTENSION IF NOT EXISTS citext")
@@ -119,10 +102,11 @@ mod inner {
         Ok(Some(format!("{url}/{db_name}")))
     }
 
-    /// Several instances of an app starting at once, each migrating on start.
+    /// Several instances of an app starting at once, each migrating on start. `run` gets the
+    /// index of its instance.
     async fn concurrently<F, Fut>(url: &str, run: F) -> Result<(), DbErr>
     where
-        F: Fn(DatabaseConnection) -> Fut,
+        F: Fn(usize, DatabaseConnection) -> Fut,
         Fut: Future<Output = Result<(), DbErr>> + Send + 'static,
     {
         // Connect first, so that the runs start together.
@@ -130,7 +114,11 @@ mod inner {
         for _ in 0..8 {
             dbs.push(Database::connect(url).await?);
         }
-        let runs: Vec<_> = dbs.into_iter().map(|db| tokio::spawn(run(db))).collect();
+        let runs: Vec<_> = dbs
+            .into_iter()
+            .enumerate()
+            .map(|(i, db)| tokio::spawn(run(i, db)))
+            .collect();
         for run in runs {
             run.await.expect("migration task panicked")?;
         }
@@ -143,11 +131,11 @@ mod inner {
             return Ok(());
         };
 
-        concurrently(&url, |db| async move { Migrator::up(&db, None).await }).await?;
+        concurrently(&url, |_, db| async move { Migrator::up(&db, None).await }).await?;
         let db = Database::connect(&url).await?;
         assert!(Migrator::get_pending_migrations(&db).await?.is_empty());
 
-        concurrently(&url, |db| async move { Migrator::down(&db, None).await }).await?;
+        concurrently(&url, |_, db| async move { Migrator::down(&db, None).await }).await?;
         assert!(Migrator::get_applied_migrations(&db).await?.is_empty());
 
         Ok(())
@@ -160,7 +148,7 @@ mod inner {
         };
 
         // A failed statement would abort the caller's transaction, so `install` must not race.
-        concurrently(&url, |db| async move {
+        concurrently(&url, |_, db| async move {
             let txn = db.begin().await?;
             Migrator::up(&txn, None).await?;
             txn.commit().await
@@ -180,23 +168,19 @@ mod inner {
         let db = Database::connect(&url).await?;
         Migrator::up(&db, Some(3)).await?;
 
-        let mut runs = Vec::new();
-        for i in 0..8 {
-            let db = Database::connect(&url).await?;
-            runs.push(tokio::spawn(async move {
-                if i % 2 == 0 {
-                    Migrator::up(&db, None).await
-                } else {
-                    Migrator::down(&db, None).await
-                }
-            }));
-        }
-        for run in runs {
+        concurrently(&url, |i, db| async move {
+            let run = if i % 2 == 0 {
+                Migrator::up(&db, None).await
+            } else {
+                Migrator::down(&db, None).await
+            };
             // A run gives up once another one has moved the state past it.
-            if let Err(err) = run.await.expect("migration task panicked") {
-                assert!(err.to_string().contains("by another process"), "{err}");
+            match run {
+                Err(err) if !err.to_string().contains("by another process") => Err(err),
+                _ => Ok(()),
             }
-        }
+        })
+        .await?;
 
         // Whatever won, the applied migrations are a prefix of the list.
         let statuses: Vec<_> = Migrator::get_migration_with_status(&db)
@@ -321,6 +305,14 @@ mod inner {
             );
             txn.rollback().await?;
         }
+
+        // Postgres treats READ UNCOMMITTED as READ COMMITTED.
+        let txn = db
+            .begin_with_config(Some(IsolationLevel::ReadUncommitted), None)
+            .await?;
+        Migrator::up(&txn, None).await?;
+        txn.commit().await?;
+        assert!(Migrator::get_pending_migrations(&db).await?.is_empty());
 
         Ok(())
     }

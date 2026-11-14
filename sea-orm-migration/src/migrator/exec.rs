@@ -105,8 +105,9 @@ fn missing_file_message(version: &str) -> String {
     )
 }
 
-/// On Postgres, fails unless `db` runs at READ COMMITTED: under a snapshot isolation level, a
-/// transaction waiting for the migration lock would not see what the lock holder committed.
+/// On Postgres, fails unless `db` runs at READ COMMITTED, or at READ UNCOMMITTED, which Postgres
+/// treats the same: under a snapshot isolation level, a transaction waiting for the migration
+/// lock would not see what the lock holder committed.
 pub async fn check_isolation_level<C: ConnectionTrait>(db: &C) -> Result<(), DbErr> {
     let backend = db.get_database_backend();
     if backend != DbBackend::Postgres {
@@ -118,7 +119,7 @@ pub async fn check_isolation_level<C: ConnectionTrait>(db: &C) -> Result<(), DbE
         .await?
         .ok_or_else(|| DbErr::Migration("Failed to read the isolation level".to_owned()))?
         .try_get("", "isolation")?;
-    if isolation != "read committed" {
+    if !matches!(isolation.as_str(), "read committed" | "read uncommitted") {
         return Err(DbErr::Migration(format!(
             "Migrations on Postgres need a READ COMMITTED transaction, not {}",
             isolation.to_uppercase()
