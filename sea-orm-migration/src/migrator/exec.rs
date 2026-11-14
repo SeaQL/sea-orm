@@ -226,21 +226,50 @@ fn advisory_lock_sql(migration_table_name: &DynIden) -> String {
 }
 
 /// On Postgres, serializes the migration's transaction against other processes running a migrator
-/// on the same table, and returns the applied versions, read after the lock is taken. Other
-/// backends and migrations run outside of a transaction are not locked.
+/// on the same table, and returns the applied versions, read after the lock is taken. Fails on an
+/// isolation level that would hide what was committed while waiting, and on a version applied by a
+/// newer migrator. Other backends and migrations run outside of a transaction are not locked.
 async fn lock_and_read_applied<C: ConnectionTrait>(
     db: &C,
     migration_table_name: DynIden,
+    names: &[String],
 ) -> Result<Option<HashSet<String>>, DbErr> {
-    if db.get_database_backend() != DbBackend::Postgres {
+    let backend = db.get_database_backend();
+    if backend != DbBackend::Postgres {
         return Ok(None);
     }
-    db.execute_unprepared(&advisory_lock_sql(&migration_table_name))
-        .await?;
-    let models = get_migration_models(db, migration_table_name).await?;
-    Ok(Some(
-        models.into_iter().map(|model| model.version).collect(),
-    ))
+    let lock = format!(
+        "{}, current_setting('transaction_isolation') AS isolation",
+        advisory_lock_sql(&migration_table_name)
+    );
+    let row = db
+        .query_one_raw(Statement::from_string(backend, lock))
+        .await?
+        .ok_or_else(|| DbErr::Migration("Failed to take the migration lock".to_owned()))?;
+    // Only a READ COMMITTED transaction sees what other processes committed while it waited.
+    let isolation: String = row.try_get("", "isolation")?;
+    if isolation != "read committed" {
+        return Err(DbErr::Migration(format!(
+            "Migrations on Postgres need a READ COMMITTED transaction, not {}",
+            isolation.to_uppercase()
+        )));
+    }
+
+    let stmt = Query::select()
+        .table_name(migration_table_name)
+        .column(seaql_migrations::Column::Version)
+        .take();
+    let mut applied = HashSet::new();
+    for row in db.query_all(&stmt).await? {
+        let version: String = row.try_get("", "version")?;
+        if !names.contains(&version) {
+            return Err(DbErr::Migration(format!(
+                "Migration '{version}' has been applied by another process, but this migrator does not know it"
+            )));
+        }
+        applied.insert(version);
+    }
+    Ok(Some(applied))
 }
 
 /// Whether the `i`-th migration still has to be applied, given the versions applied right now:
@@ -342,7 +371,8 @@ pub async fn exec_up_with(
 
         if use_txn {
             let transaction = db.begin().await?;
-            let applied = lock_and_read_applied(&transaction, migration_table_name.clone()).await?;
+            let applied =
+                lock_and_read_applied(&transaction, migration_table_name.clone(), &names).await?;
             if !applied.map_or(Ok(true), |applied| should_apply(&names, i, &applied))? {
                 info!(
                     "Migration '{}' has been applied by another process",
@@ -402,7 +432,8 @@ pub async fn exec_down_with(
 
         if use_txn {
             let transaction = db.begin().await?;
-            let applied = lock_and_read_applied(&transaction, migration_table_name.clone()).await?;
+            let applied =
+                lock_and_read_applied(&transaction, migration_table_name.clone(), &names).await?;
             if !applied.map_or(Ok(true), |applied| should_roll_back(&names, i, &applied))? {
                 info!(
                     "Migration '{}' has been rolled back by another process",

@@ -4,10 +4,10 @@ mod common;
 mod inner {
     use crate::common::migrator::default::*;
     use sea_orm::{
-        ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement,
-        TransactionTrait, error::DbErr,
+        ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, IsolationLevel,
+        Statement, TransactionTrait, error::DbErr,
     };
-    use sea_orm_migration::prelude::*;
+    use sea_orm_migration::{MigrationStatus, prelude::*};
     use std::time::Duration;
 
     #[tokio::test]
@@ -168,6 +168,138 @@ mod inner {
         .await?;
         let db = Database::connect(&url).await?;
         assert!(Migrator::get_pending_migrations(&db).await?.is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_up_and_down() -> Result<(), DbErr> {
+        let Some(url) = create_db("test_concurrent_up_and_down").await? else {
+            return Ok(());
+        };
+        let db = Database::connect(&url).await?;
+        Migrator::up(&db, Some(3)).await?;
+
+        let mut runs = Vec::new();
+        for i in 0..8 {
+            let db = Database::connect(&url).await?;
+            runs.push(tokio::spawn(async move {
+                if i % 2 == 0 {
+                    Migrator::up(&db, None).await
+                } else {
+                    Migrator::down(&db, None).await
+                }
+            }));
+        }
+        for run in runs {
+            // A run gives up once another one has moved the state past it.
+            if let Err(err) = run.await.expect("migration task panicked") {
+                assert!(err.to_string().contains("by another process"), "{err}");
+            }
+        }
+
+        // Whatever won, the applied migrations are a prefix of the list.
+        let statuses: Vec<_> = Migrator::get_migration_with_status(&db)
+            .await?
+            .iter()
+            .map(|m| m.status())
+            .collect();
+        let applied = statuses
+            .iter()
+            .take_while(|s| **s == MigrationStatus::Applied)
+            .count();
+        assert!(
+            statuses[applied..]
+                .iter()
+                .all(|s| *s == MigrationStatus::Pending),
+            "{statuses:?}"
+        );
+
+        Ok(())
+    }
+
+    /// The default migrations, and one run outside of a transaction that, while it is rolled back,
+    /// does what a newer instance would: apply a migration this migrator does not know.
+    struct RacedByNewerInstance;
+
+    #[async_trait::async_trait]
+    impl MigratorTrait for RacedByNewerInstance {
+        fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+            let mut migrations = Migrator::migrations();
+            migrations.push(Box::new(AppliesNewer));
+            migrations
+        }
+    }
+
+    #[derive(DeriveMigrationName)]
+    struct AppliesNewer;
+
+    #[async_trait::async_trait]
+    impl MigrationTrait for AppliesNewer {
+        async fn up(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
+            Ok(())
+        }
+
+        async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+            manager
+                .get_connection()
+                .execute_unprepared(
+                    "INSERT INTO seaql_migrations (version, applied_at) VALUES ('m99990101_000001_newer', 0)",
+                )
+                .await?;
+            Ok(())
+        }
+
+        fn use_transaction(&self) -> Option<bool> {
+            Some(false)
+        }
+    }
+
+    #[tokio::test]
+    async fn test_down_rejects_unknown_migration() -> Result<(), DbErr> {
+        let Some(url) = create_db("test_down_rejects_unknown_migration").await? else {
+            return Ok(());
+        };
+        let db = Database::connect(&url).await?;
+        RacedByNewerInstance::up(&db, None).await?;
+
+        let err = RacedByNewerInstance::down(&db, Some(2)).await.unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("'m99990101_000001_newer' has been applied by another process"),
+            "{err}"
+        );
+        let applied = db
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT 1 FROM seaql_migrations WHERE version = 'm20230109_000001_seed_cake_table'",
+            ))
+            .await?;
+        assert!(
+            applied.is_some(),
+            "the last known migration was rolled back"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_rejects_snapshot_isolation() -> Result<(), DbErr> {
+        let Some(url) = create_db("test_rejects_snapshot_isolation").await? else {
+            return Ok(());
+        };
+        let db = Database::connect(&url).await?;
+
+        for level in [IsolationLevel::RepeatableRead, IsolationLevel::Serializable] {
+            let txn = db.begin_with_config(Some(level), None).await?;
+            let err = Migrator::up(&txn, None).await.unwrap_err();
+            assert!(err.to_string().contains("READ COMMITTED"), "{err}");
+            assert!(
+                !SchemaManager::new(&txn).has_table("cake").await?,
+                "a migration ran before the check"
+            );
+            txn.rollback().await?;
+        }
 
         Ok(())
     }
