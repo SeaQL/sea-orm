@@ -109,6 +109,8 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
 ///     pub title: String,
 ///     #[sea_orm(column_type = "Text")]
 ///     pub text: String,
+///     #[sea_orm(column_type = "Json", column_type_postgres = "JsonBinary")]
+///     pub metadata: Json,
 /// }
 ///
 /// # #[derive(Copy, Clone, Debug, EnumIter)]
@@ -122,6 +124,17 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
 /// #
 /// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
+///
+/// Fields can use `column_type_mysql`, `column_type_postgres`, and
+/// `column_type_sqlite` to override their physical type during schema generation.
+/// In this example, PostgreSQL uses `jsonb`; other backends keep the `Json`
+/// mapping. Without an override, the explicit `column_type` or inferred type is
+/// used. Override expressions are evaluated only for the requested backend.
+///
+/// These attributes do not change query casts or value encoding/decoding; the
+/// caller must choose a compatible type, including when using raw `Custom` SQL.
+/// Schema generation rejects PostgreSQL overrides that change a native enum or
+/// enum array, because runtime queries retain the logical enum type.
 ///
 /// Entity should always have a primary key.
 /// Or, it will result in a compile error.
