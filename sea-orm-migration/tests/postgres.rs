@@ -218,24 +218,37 @@ mod inner {
         Ok(())
     }
 
-    /// The default migrations, and one run outside of a transaction that, while it is rolled back,
-    /// does what a newer instance would: apply a migration this migrator does not know.
-    struct RacedByNewerInstance;
+    /// The default migrations, and one run outside of a transaction that records an unknown
+    /// version while it is rolled back, after `down` has read the applied migrations.
+    struct RecordsUnknownVersion;
 
     #[async_trait::async_trait]
-    impl MigratorTrait for RacedByNewerInstance {
+    impl MigratorTrait for RecordsUnknownVersion {
         fn migrations() -> Vec<Box<dyn MigrationTrait>> {
             let mut migrations = Migrator::migrations();
-            migrations.push(Box::new(AppliesNewer));
+            migrations.push(Box::new(InsertsUnknownVersion));
             migrations
         }
     }
 
-    #[derive(DeriveMigrationName)]
-    struct AppliesNewer;
+    struct IgnoresUnknownVersion;
 
     #[async_trait::async_trait]
-    impl MigrationTrait for AppliesNewer {
+    impl MigratorTrait for IgnoresUnknownVersion {
+        fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+            RecordsUnknownVersion::migrations()
+        }
+
+        fn ignore_missing_migrations() -> bool {
+            true
+        }
+    }
+
+    #[derive(DeriveMigrationName)]
+    struct InsertsUnknownVersion;
+
+    #[async_trait::async_trait]
+    impl MigrationTrait for InsertsUnknownVersion {
         async fn up(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
             Ok(())
         }
@@ -244,7 +257,7 @@ mod inner {
             manager
                 .get_connection()
                 .execute_unprepared(
-                    "INSERT INTO seaql_migrations (version, applied_at) VALUES ('m99990101_000001_newer', 0)",
+                    "INSERT INTO seaql_migrations (version, applied_at) VALUES ('m99990101_000001_unknown', 0)",
                 )
                 .await?;
             Ok(())
@@ -261,12 +274,12 @@ mod inner {
             return Ok(());
         };
         let db = Database::connect(&url).await?;
-        RacedByNewerInstance::up(&db, None).await?;
+        RecordsUnknownVersion::up(&db, None).await?;
 
-        let err = RacedByNewerInstance::down(&db, Some(2)).await.unwrap_err();
+        let err = RecordsUnknownVersion::down(&db, Some(2)).await.unwrap_err();
         assert!(
             err.to_string()
-                .contains("'m99990101_000001_newer' has been applied by another process"),
+                .contains("version 'm99990101_000001_unknown' is missing"),
             "{err}"
         );
         let applied = db
@@ -279,6 +292,9 @@ mod inner {
             applied.is_some(),
             "the last known migration was rolled back"
         );
+
+        // A migrator that ignores missing migrations rolls back past the unknown version.
+        IgnoresUnknownVersion::down(&db, Some(1)).await?;
 
         Ok(())
     }
@@ -294,8 +310,13 @@ mod inner {
             let txn = db.begin_with_config(Some(level), None).await?;
             let err = Migrator::up(&txn, None).await.unwrap_err();
             assert!(err.to_string().contains("READ COMMITTED"), "{err}");
+            let manager = SchemaManager::new(&txn);
             assert!(
-                !SchemaManager::new(&txn).has_table("cake").await?,
+                !manager.has_table("seaql_migrations").await?,
+                "the migration table was created before the check"
+            );
+            assert!(
+                !manager.has_table("cake").await?,
                 "a migration ran before the check"
             );
             txn.rollback().await?;
