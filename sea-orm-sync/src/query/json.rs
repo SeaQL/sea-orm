@@ -237,18 +237,6 @@ impl FromQueryResult for JsonValue {
                             }
                         };
                     }
-                    #[cfg(feature = "with-jiff")]
-                    macro_rules! match_sqlite_jiff_type {
-                        ( $type: ty, $wrapper: ty ) => {
-                            if <$wrapper as Type<Sqlite>>::type_info().eq(col_type) {
-                                if let Ok(v) = row.try_get::<Option<$wrapper>, _>(column.ordinal())
-                                {
-                                    map.insert(col.to_owned(), json!(v.map(|v| <$type>::from(v))));
-                                    continue;
-                                }
-                            }
-                        };
-                    }
                     match_sqlite_type!(bool);
                     match_sqlite_type!(i8);
                     match_sqlite_type!(i16);
@@ -274,14 +262,8 @@ impl FromQueryResult for JsonValue {
                     match_sqlite_type!(time::PrimitiveDateTime);
                     #[cfg(feature = "with-time")]
                     match_sqlite_type!(time::OffsetDateTime);
-                    #[cfg(feature = "with-jiff")]
-                    match_sqlite_jiff_type!(jiff::civil::Date, jiff_sqlx::Date);
-                    #[cfg(feature = "with-jiff")]
-                    match_sqlite_jiff_type!(jiff::civil::Time, jiff_sqlx::Time);
-                    #[cfg(feature = "with-jiff")]
-                    match_sqlite_jiff_type!(jiff::civil::DateTime, jiff_sqlx::DateTime);
-                    #[cfg(feature = "with-jiff")]
-                    match_sqlite_jiff_type!(jiff::Timestamp, jiff_sqlx::Timestamp);
+                    // Jiff's SQLite wrappers all report TEXT. Keep text verbatim instead of
+                    // guessing temporal types, which can truncate or normalize its contents.
                     try_get_type!(String, col);
                     #[cfg(feature = "with-uuid")]
                     try_get_type!(uuid::Uuid, col);
