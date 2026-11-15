@@ -181,6 +181,12 @@ with-ipnetwork = [
     "sea-query/with-ipnetwork",
     "sea-query-rusqlite?/with-ipnetwork",
 ]
+with-jiff = [
+    "jiff",
+    "jiff-sqlx",
+    "sea-query/with-jiff",
+    "sea-query-rusqlite?/with-jiff",
+]
 with-json = [
     "dep:serde",
     "serde/derive",
@@ -200,12 +206,6 @@ with-mac_address = [
     "mac_address",
     "sea-query/with-mac_address",
     "sea-query-rusqlite?/with-mac_address",
-]
-with-jiff = [
-    "jiff",
-    "jiff-sqlx",
-    "sea-query/with-jiff",
-    "sea-query-rusqlite?/with-jiff",
 ]
 with-rust_decimal = [
     "rust_decimal",
