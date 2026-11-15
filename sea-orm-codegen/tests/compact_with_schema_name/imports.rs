@@ -9,6 +9,7 @@ pub struct Model {
     pub a: Json,
     pub b: Date,
     pub c: Time,
+    #[sea_orm(column_type = "DateTime")]
     pub d: DateTime,
     pub e: DateTimeWithTimeZone,
     pub f: Decimal,

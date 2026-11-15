@@ -134,6 +134,24 @@ fn try_get(res: &QueryResult, pre: &str, col: &str, ty: &ArrayType) -> Result<Va
             Value::TimeDateTimeWithTimeZone(res.try_get(pre, col)?)
         }
 
+        #[cfg(feature = "with-jiff")]
+        ArrayType::JiffDate => Value::JiffDate(res.try_get(pre, col)?),
+
+        #[cfg(feature = "with-jiff")]
+        ArrayType::JiffTime => Value::JiffTime(res.try_get(pre, col)?),
+
+        #[cfg(feature = "with-jiff")]
+        ArrayType::JiffDateTime => Value::JiffDateTime(
+            res.try_get::<Option<jiff::civil::DateTime>>(pre, col)?
+                .map(Box::new),
+        ),
+
+        #[cfg(feature = "with-jiff")]
+        ArrayType::JiffTimestamp => Value::JiffTimestamp(
+            res.try_get::<Option<jiff::Timestamp>>(pre, col)?
+                .map(Box::new),
+        ),
+
         #[cfg(feature = "with-uuid")]
         ArrayType::Uuid => Value::Uuid(res.try_get(pre, col)?),
 
