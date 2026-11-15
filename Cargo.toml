@@ -58,7 +58,7 @@ jiff = { version = "0.2.15", default-features = false, optional = true, features
     "std",
     "perf-inline",
 ] }
-jiff-sqlx = { version = "0.1.1", default-features = false, optional = true }
+jiff-sqlx = { version = "0.2.2", default-features = false, optional = true }
 log = { version = "0.4", default-features = false }
 mac_address = { version = "1.1", default-features = false, optional = true }
 ouroboros = { version = "0.18", default-features = false, optional = true }
@@ -263,8 +263,7 @@ with-time = [
 ]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-sqlx?/with-uuid"]
 
-# This allows us to develop using a local version of sea-query
+# Use upstream Jiff support until it is released.
 [patch.crates-io]
-sea-query      = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
-sea-query-sqlx = { git = "https://github.com/Huliiiiii/sea-query", branch = "jiff" }
-# sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "master" }
+sea-query      = { git = "https://github.com/SeaQL/sea-query", branch = "master" }
+sea-query-sqlx = { git = "https://github.com/SeaQL/sea-query", branch = "master" }
