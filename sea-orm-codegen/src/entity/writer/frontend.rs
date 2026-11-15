@@ -19,12 +19,17 @@ enum ExternalTypes {
 }
 
 impl ExternalTypes {
-    fn from_column_type(col_type: &ColumnType) -> Option<Self> {
+    fn from_column_type(col_type: &ColumnType, date_time_crate: DateTimeCrate) -> Option<Self> {
         Some(match col_type {
             ColumnType::Json | ColumnType::JsonBinary => Self::JsonOrJsonBinary,
             ColumnType::Date => Self::Date,
             ColumnType::Time => Self::Time,
             ColumnType::DateTime => Self::DateTime,
+            ColumnType::Timestamp
+                if matches!(date_time_crate, DateTimeCrate::Time | DateTimeCrate::Jiff) =>
+            {
+                Self::DateTime
+            }
             ColumnType::Timestamp => Self::Timestamp,
             ColumnType::TimestampWithTimeZone => Self::TimestampWithTimeZone,
             ColumnType::Decimal(..) | ColumnType::Money(..) => Self::DecimalOrMoney,
@@ -132,7 +137,7 @@ impl EntityWriter {
             encountered: &mut HashSet<ExternalTypes>,
         ) {
             // skip column types we have already generated imports for
-            if let Some(ty) = ExternalTypes::from_column_type(col_type)
+            if let Some(ty) = ExternalTypes::from_column_type(col_type, opt.date_time_crate)
                 && !encountered.insert(ty)
             {
                 return;
@@ -149,6 +154,9 @@ impl EntityWriter {
                     DateTimeCrate::Time => {
                         date_time.push(quote! { Date as TimeDate });
                     }
+                    DateTimeCrate::Jiff => {
+                        date_time.push(quote! { civil::Date as JiffDate });
+                    }
                 },
                 ColumnType::Time => match opt.date_time_crate {
                     DateTimeCrate::Chrono => {
@@ -157,6 +165,9 @@ impl EntityWriter {
                     DateTimeCrate::Time => {
                         date_time.push(quote! { Time as TimeTime });
                     }
+                    DateTimeCrate::Jiff => {
+                        date_time.push(quote! { civil::Time as JiffTime });
+                    }
                 },
                 ColumnType::DateTime => match opt.date_time_crate {
                     DateTimeCrate::Chrono => {
@@ -164,6 +175,9 @@ impl EntityWriter {
                     }
                     DateTimeCrate::Time => {
                         date_time.push(quote! { PrimitiveDateTime as TimeDateTime });
+                    }
+                    DateTimeCrate::Jiff => {
+                        date_time.push(quote! { civil::DateTime as JiffDateTime });
                     }
                 },
                 ColumnType::Timestamp => match opt.date_time_crate {
@@ -175,6 +189,9 @@ impl EntityWriter {
                     DateTimeCrate::Time => {
                         date_time.push(quote! { PrimitiveDateTime as TimeDateTime });
                     }
+                    DateTimeCrate::Jiff => {
+                        date_time.push(quote! { civil::DateTime as JiffDateTime });
+                    }
                 },
                 ColumnType::TimestampWithTimeZone => match opt.date_time_crate {
                     DateTimeCrate::Chrono => {
@@ -184,6 +201,9 @@ impl EntityWriter {
                     }
                     DateTimeCrate::Time => {
                         date_time.push(quote! { OffsetDateTime as TimeDateTimeWithTimeZone });
+                    }
+                    DateTimeCrate::Jiff => {
+                        date_time.push(quote! { Timestamp as JiffTimestamp });
                     }
                 },
                 ColumnType::Decimal(_) | ColumnType::Money(_) => {
@@ -234,6 +254,7 @@ impl EntityWriter {
             match opt.date_time_crate {
                 DateTimeCrate::Chrono => quote! { use chrono::{ #(#date_time_uses),* }; },
                 DateTimeCrate::Time => quote! { use time::{ #(#date_time_uses),* }; },
+                DateTimeCrate::Jiff => quote! { use jiff::{ #(#date_time_uses),* }; },
             }
         };
 
@@ -241,6 +262,75 @@ impl EntityWriter {
             #time_use
             #(#plain_uses)*
             #(#aliases)*
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Column;
+    use quote::quote;
+
+    #[test]
+    fn frontend_temporal_imports_match_column_types() {
+        for (date_time_crate, columns, expected) in [
+            (
+                DateTimeCrate::Jiff,
+                vec![
+                    ColumnType::Array(ColumnType::Date.into()),
+                    ColumnType::Time,
+                    ColumnType::DateTime,
+                    ColumnType::Timestamp,
+                    ColumnType::TimestampWithTimeZone,
+                ],
+                quote! {
+                    use jiff::{
+                        civil::Date as JiffDate,
+                        civil::Time as JiffTime,
+                        civil::DateTime as JiffDateTime,
+                        Timestamp as JiffTimestamp
+                    };
+                },
+            ),
+            (
+                DateTimeCrate::Jiff,
+                vec![ColumnType::Timestamp],
+                quote! { use jiff::{civil::DateTime as JiffDateTime}; },
+            ),
+            (
+                DateTimeCrate::Time,
+                vec![ColumnType::DateTime, ColumnType::Timestamp],
+                quote! { use time::{PrimitiveDateTime as TimeDateTime}; },
+            ),
+        ] {
+            let entity = Entity {
+                table_name: "temporal".to_owned(),
+                columns: columns
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, col_type)| Column {
+                        name: format!("column_{index}"),
+                        col_type,
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                        unique_key: None,
+                    })
+                    .collect(),
+                relations: vec![],
+                conjunct_relations: vec![],
+                primary_keys: vec![],
+            };
+            let opt = ColumnOption {
+                date_time_crate,
+                ..Default::default()
+            };
+            assert_eq!(
+                EntityWriter::gen_import_frontend(&entity, &opt).to_string(),
+                expected.to_string(),
+                "{date_time_crate:?}"
+            );
         }
     }
 }

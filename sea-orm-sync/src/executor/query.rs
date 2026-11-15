@@ -221,6 +221,7 @@ impl QueryResult {
                         .map_err(|e| sqlx_error_to_query_err(e).into()),
                 )
             }
+            #[allow(unreachable_patterns)]
             _ => None,
         }
     }

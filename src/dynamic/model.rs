@@ -96,7 +96,6 @@ fn try_get(res: &QueryResult, pre: &str, col: &str, ty: &ArrayType) -> Result<Va
         }
         ArrayType::Char => return Err(DbErr::Type("Unsupported type: char".into())),
         ArrayType::Bytes => Value::Bytes(res.try_get(pre, col)?),
-        ArrayType::Enum(_) => Value::String(res.try_get(pre, col)?),
 
         #[cfg(feature = "with-json")]
         ArrayType::Json => Value::Json(res.try_get::<Option<_>>(pre, col)?.map(Box::new)),
