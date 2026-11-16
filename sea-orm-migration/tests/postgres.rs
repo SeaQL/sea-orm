@@ -266,21 +266,34 @@ mod inner {
                 .contains("version 'm99990101_000001_unknown' is missing"),
             "{err}"
         );
-        let applied = db
-            .query_one_raw(Statement::from_string(
-                DbBackend::Postgres,
-                "SELECT 1 FROM seaql_migrations WHERE version = 'm20230109_000001_seed_cake_table'",
-            ))
-            .await?;
         assert!(
-            applied.is_some(),
+            is_recorded(&db, "m20230109_000001_seed_cake_table").await?,
             "the last known migration was rolled back"
         );
 
         // A migrator that ignores missing migrations rolls back past the unknown version.
         IgnoresUnknownVersion::down(&db, Some(1)).await?;
+        assert!(
+            !is_recorded(&db, "m20230109_000001_seed_cake_table").await?,
+            "the last known migration was not rolled back"
+        );
+        assert!(
+            is_recorded(&db, "m99990101_000001_unknown").await?,
+            "the unknown version is no longer recorded"
+        );
 
         Ok(())
+    }
+
+    async fn is_recorded(db: &DatabaseConnection, version: &str) -> Result<bool, DbErr> {
+        let row = db
+            .query_one_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "SELECT 1 FROM seaql_migrations WHERE version = $1",
+                [version.into()],
+            ))
+            .await?;
+        Ok(row.is_some())
     }
 
     #[tokio::test]
