@@ -3,7 +3,7 @@ use std::collections::HashSet;
 
 use super::*;
 
-// seperate enum so `ColumnType` doesnt need to derive `Hash` or `Eq`
+// separate enum so `ColumnType` doesn't need to derive `Hash` or `Eq`
 #[derive(Hash, PartialEq, Eq)]
 enum ExternalTypes {
     JsonOrJsonBinary,

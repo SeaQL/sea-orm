@@ -17,7 +17,7 @@ async fn graphql_playground() -> Result<Response> {
 async fn graphql_handler(State(ctx): State<AppContext>, req: Request<Body>) -> Result<Response> {
     const DEPTH: usize = 1_000;
     const COMPLEXITY: usize = 1_000;
-    // Construct the the GraphQL query root
+    // Construct the GraphQL query root
     let schema = query_root::schema(ctx.db.clone(), DEPTH, COMPLEXITY).unwrap();
     // GraphQL handler
     let mut graphql_handler = async_graphql_axum::GraphQL::new(schema);
