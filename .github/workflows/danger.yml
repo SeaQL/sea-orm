@@ -1,0 +1,31 @@
+name: Danger
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  danger:
+    name: Danger
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test Danger rules
+        run: node --test .github/danger/dangerfile.test.js
+      - name: Check PR
+        run: npx --yes --package=danger@14.1.0 danger ci --dangerfile .github/danger/dangerfile.js --text-only --failOnErrors --no-publish-check
+        env:
+          DANGER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
