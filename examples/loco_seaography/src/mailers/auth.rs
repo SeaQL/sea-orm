@@ -15,7 +15,7 @@ static forgot: Dir<'_> = include_dir!("src/mailers/auth/forgot");
 pub struct AuthMailer {}
 impl Mailer for AuthMailer {}
 impl AuthMailer {
-    /// Sending welcome email the the given user
+    /// Sending welcome email to the given user
     ///
     /// # Errors
     ///
