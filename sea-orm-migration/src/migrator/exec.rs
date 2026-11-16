@@ -74,10 +74,9 @@ pub fn get_migration_with_status(
 
     let missing_migrations_in_fs = &migration_in_db - &migration_in_fs;
     let errors: Vec<String> = missing_migrations_in_fs
-            .iter()
-            .map(|missing_migration| {
-                format!("Migration file of version '{missing_migration}' is missing, this migration has been applied but its file is missing")
-            }).collect();
+        .iter()
+        .map(|version| missing_file_message(version))
+        .collect();
 
     if !errors.is_empty() && !ignore_missing {
         Err(DbErr::Custom(errors.join("\n")))
@@ -100,6 +99,35 @@ where
     get_migration_with_status(migration_files, migration_models, false).map(|_| ())
 }
 
+fn missing_file_message(version: &str) -> String {
+    format!(
+        "Migration file of version '{version}' is missing, this migration has been applied but its file is missing"
+    )
+}
+
+/// On Postgres, fails unless `db` runs at READ COMMITTED, or at READ UNCOMMITTED, which Postgres
+/// treats the same: under a snapshot isolation level, a transaction waiting for the migration
+/// lock would not see what the lock holder committed.
+pub async fn check_isolation_level<C: ConnectionTrait>(db: &C) -> Result<(), DbErr> {
+    let backend = db.get_database_backend();
+    if backend != DbBackend::Postgres {
+        return Ok(());
+    }
+    let sql = "SELECT current_setting('transaction_isolation') AS isolation";
+    let isolation: String = db
+        .query_one_raw(Statement::from_string(backend, sql))
+        .await?
+        .ok_or_else(|| DbErr::Migration("Failed to read the isolation level".to_owned()))?
+        .try_get("", "isolation")?;
+    if !matches!(isolation.as_str(), "read committed" | "read uncommitted") {
+        return Err(DbErr::Migration(format!(
+            "Migrations on Postgres need a READ COMMITTED transaction, not {}",
+            isolation.to_uppercase()
+        )));
+    }
+    Ok(())
+}
+
 pub async fn install<C>(db: &C, migration_table_name: DynIden) -> Result<(), DbErr>
 where
     C: ConnectionTrait,
@@ -108,9 +136,17 @@ where
     let schema = Schema::new(builder);
     let mut stmt = schema
         .create_table_from_entity(seaql_migrations::Entity)
-        .table_name(migration_table_name);
+        .table_name(migration_table_name.clone());
     stmt.if_not_exists();
-    db.execute(&stmt).await?;
+    if builder == DbBackend::Postgres {
+        // `IF NOT EXISTS` does not hold against another connection creating the table at the same
+        // moment. One simple query runs as one transaction, so the lock is held until it is created.
+        let create = builder.build(&stmt).sql;
+        let lock = advisory_lock_sql(&migration_table_name);
+        db.execute_unprepared(&format!("{lock}; {create}")).await?;
+    } else {
+        db.execute(&stmt).await?;
+    }
     Ok(())
 }
 
@@ -223,6 +259,74 @@ fn should_use_transaction(migration: &dyn crate::MigrationTrait, backend: DbBack
     }
 }
 
+/// A Postgres lock, held until the end of the transaction, on the migration table of the current
+/// schema.
+fn advisory_lock_sql(migration_table_name: &DynIden) -> String {
+    let key = migration_table_name.to_string().replace('\'', "''");
+    format!(
+        "SELECT pg_advisory_xact_lock(hashtext('sea-orm-migration:' || current_schema() || '.{key}'))"
+    )
+}
+
+/// On Postgres, serializes the migration's transaction against other processes running a migrator
+/// on the same table, and returns the applied versions, read after the lock is taken. Other
+/// backends and migrations run outside of a transaction are not locked.
+async fn lock_and_read_applied<C: ConnectionTrait>(
+    db: &C,
+    migration_table_name: DynIden,
+    known: &HashSet<&str>,
+    ignore_missing: bool,
+) -> Result<Option<HashSet<String>>, DbErr> {
+    if db.get_database_backend() != DbBackend::Postgres {
+        return Ok(None);
+    }
+    check_isolation_level(db).await?;
+    db.execute_unprepared(&advisory_lock_sql(&migration_table_name))
+        .await?;
+
+    let stmt = Query::select()
+        .table_name(migration_table_name)
+        .column(seaql_migrations::Column::Version)
+        .take();
+    let mut applied = HashSet::new();
+    for row in db.query_all(&stmt).await? {
+        let version: String = row.try_get("", "version")?;
+        if !known.contains(version.as_str()) && !ignore_missing {
+            return Err(DbErr::Custom(missing_file_message(&version)));
+        }
+        applied.insert(version);
+    }
+    Ok(Some(applied))
+}
+
+/// Whether the `i`-th migration still has to be applied, given the versions applied right now:
+/// `false` if another process applied it, an error if it rolled back an earlier one.
+fn should_apply(names: &[String], i: usize, applied: &HashSet<String>) -> Result<bool, DbErr> {
+    if applied.contains(&names[i]) {
+        return Ok(false);
+    }
+    match names[..i].iter().find(|name| !applied.contains(*name)) {
+        Some(name) => Err(DbErr::Migration(format!(
+            "Migration '{name}' has been rolled back by another process"
+        ))),
+        None => Ok(true),
+    }
+}
+
+/// Whether the `i`-th migration still has to be rolled back, given the versions applied right
+/// now: `false` if another process rolled it back, an error if it applied a later one.
+fn should_roll_back(names: &[String], i: usize, applied: &HashSet<String>) -> Result<bool, DbErr> {
+    if !applied.contains(&names[i]) {
+        return Ok(false);
+    }
+    match names[i + 1..].iter().find(|name| applied.contains(*name)) {
+        Some(name) => Err(DbErr::Migration(format!(
+            "Migration '{name}' has been applied by another process"
+        ))),
+        None => Ok(true),
+    }
+}
+
 async fn insert_migration_record<C: ConnectionTrait>(
     db: &C,
     name: &str,
@@ -261,10 +365,18 @@ async fn delete_migration_record<C: ConnectionTrait>(
 pub async fn exec_up_with(
     manager: &SchemaManager<'_>,
     mut steps: Option<u32>,
-    pending_migrations: Vec<Migration>,
+    migrations: Vec<Migration>,
     migration_table_name: DynIden,
+    ignore_missing: bool,
 ) -> Result<(), DbErr> {
     let db = manager.get_connection();
+    let names: Vec<String> = migrations.iter().map(|m| m.name().to_owned()).collect();
+    let known: HashSet<&str> = names.iter().map(String::as_str).collect();
+    let pending_migrations: Vec<_> = migrations
+        .into_iter()
+        .enumerate()
+        .filter(|(_, m)| m.status == MigrationStatus::Pending)
+        .collect();
 
     if let Some(steps) = steps {
         info!("Applying {} pending migrations", steps);
@@ -275,7 +387,7 @@ pub async fn exec_up_with(
         info!("No pending migrations");
     }
 
-    for Migration { migration, .. } in pending_migrations {
+    for (i, Migration { migration, .. }) in pending_migrations {
         if let Some(steps) = steps.as_mut() {
             if steps == &0 {
                 break;
@@ -288,6 +400,20 @@ pub async fn exec_up_with(
 
         if use_txn {
             let transaction = db.begin().await?;
+            let applied = lock_and_read_applied(
+                &transaction,
+                migration_table_name.clone(),
+                &known,
+                ignore_missing,
+            )
+            .await?;
+            if !applied.map_or(Ok(true), |applied| should_apply(&names, i, &applied))? {
+                info!(
+                    "Migration '{}' has been applied by another process",
+                    migration.name()
+                );
+                continue;
+            }
             let txn_manager = SchemaManager::new(&transaction);
             migration.up(&txn_manager).await?;
             info!("Migration '{}' has been applied", migration.name());
@@ -307,10 +433,18 @@ pub async fn exec_up_with(
 pub async fn exec_down_with(
     manager: &SchemaManager<'_>,
     mut steps: Option<u32>,
-    applied_migrations: Vec<Migration>,
+    migrations: Vec<Migration>,
     migration_table_name: DynIden,
+    ignore_missing: bool,
 ) -> Result<(), DbErr> {
     let db = manager.get_connection();
+    let names: Vec<String> = migrations.iter().map(|m| m.name().to_owned()).collect();
+    let known: HashSet<&str> = names.iter().map(String::as_str).collect();
+    let applied_migrations: Vec<_> = migrations
+        .into_iter()
+        .enumerate()
+        .filter(|(_, m)| m.status == MigrationStatus::Applied)
+        .collect();
 
     if let Some(steps) = steps {
         info!("Rolling back {} applied migrations", steps);
@@ -321,7 +455,7 @@ pub async fn exec_down_with(
         info!("No applied migrations");
     }
 
-    for Migration { migration, .. } in applied_migrations.into_iter().rev() {
+    for (i, Migration { migration, .. }) in applied_migrations.into_iter().rev() {
         if let Some(steps) = steps.as_mut() {
             if steps == &0 {
                 break;
@@ -334,6 +468,20 @@ pub async fn exec_down_with(
 
         if use_txn {
             let transaction = db.begin().await?;
+            let applied = lock_and_read_applied(
+                &transaction,
+                migration_table_name.clone(),
+                &known,
+                ignore_missing,
+            )
+            .await?;
+            if !applied.map_or(Ok(true), |applied| should_roll_back(&names, i, &applied))? {
+                info!(
+                    "Migration '{}' has been rolled back by another process",
+                    migration.name()
+                );
+                continue;
+            }
             let txn_manager = SchemaManager::new(&transaction);
             migration.down(&txn_manager).await?;
             info!("Migration '{}' has been rolled back", migration.name());
@@ -409,5 +557,36 @@ mod tests {
                 ("m2".to_owned(), MigrationStatus::Pending),
             ]
         );
+    }
+
+    fn names() -> Vec<String> {
+        ["m1", "m2", "m3"].map(String::from).to_vec()
+    }
+
+    fn applied(versions: &[&str]) -> HashSet<String> {
+        versions.iter().map(|v| v.to_string()).collect()
+    }
+
+    #[test]
+    fn apply_after_another_process() {
+        assert!(should_apply(&names(), 1, &applied(&["m1"])).unwrap());
+        // Another `up` applied it first.
+        assert!(!should_apply(&names(), 1, &applied(&["m1", "m2"])).unwrap());
+        // A concurrent `down` rolled back the migration it builds on.
+        let err = should_apply(&names(), 1, &applied(&[])).unwrap_err();
+        assert!(
+            err.to_string().contains("'m1' has been rolled back"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn roll_back_after_another_process() {
+        assert!(should_roll_back(&names(), 1, &applied(&["m1", "m2"])).unwrap());
+        // Another `down` rolled it back first.
+        assert!(!should_roll_back(&names(), 1, &applied(&["m1"])).unwrap());
+        // A concurrent `up` applied a migration that builds on it.
+        let err = should_roll_back(&names(), 1, &applied(&["m1", "m2", "m3"])).unwrap_err();
+        assert!(err.to_string().contains("'m3' has been applied"), "{err}");
     }
 }

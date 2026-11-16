@@ -359,6 +359,7 @@ where
 {
     let db = manager.get_connection();
 
+    check_isolation_level(db).await?;
     migrator.install(db).await?;
 
     drop_everything(db).await?;
@@ -376,13 +377,15 @@ where
 {
     let db = manager.get_connection();
 
+    check_isolation_level(db).await?;
     migrator.install(db).await?;
 
     exec_up_with(
         manager,
         steps,
-        migrator.get_pending_migrations(db).await?,
+        migrator.get_migration_with_status(db).await?,
         migrator.migration_table_name(),
+        migrator.ignore_missing_migrations(),
     )
     .await
 }
@@ -397,13 +400,15 @@ where
 {
     let db = manager.get_connection();
 
+    check_isolation_level(db).await?;
     migrator.install(db).await?;
 
     exec_down_with(
         manager,
         steps,
-        migrator.get_applied_migrations(db).await?,
+        migrator.get_migration_with_status(db).await?,
         migrator.migration_table_name(),
+        migrator.ignore_missing_migrations(),
     )
     .await
 }
