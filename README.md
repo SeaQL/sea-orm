@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> Remove this line to confirm you've reviewed this PR before submitting.
+
 <div align="center">
 
   <img alt="SeaORM" src="https://www.sea-ql.org/blog/img/SeaORM 2.0 Banner.png"/>

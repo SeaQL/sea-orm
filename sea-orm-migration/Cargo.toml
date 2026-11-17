@@ -23,7 +23,8 @@ path = "src/lib.rs"
 async-trait = { version = "0.1", default-features = false }
 clap = { version = "4.3", features = ["env", "derive"], optional = true }
 dotenvy = { version = "0.15", default-features = false, optional = true }
-sea-orm = { version = "~2.0.4", path = "../", features = [
+sea-orm = { version = "~2.0.4", path = "../", default-features = false, features = [
+    "macros",
     "schema-sync",
 ] }
 sea-orm-cli = { version = "~2.0.4", path = "../sea-orm-cli", default-features = false, optional = true }
@@ -43,7 +44,16 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 
 [features]
 cli = ["clap", "dotenvy", "sea-orm-cli/cli"]
-default = ["cli"]
+default = [
+    "cli",
+    "with-json",
+    "with-chrono",
+    "with-rust_decimal",
+    "with-uuid",
+    "with-time",
+    "sqlite-use-returning-for-3_35",
+    "stream",
+]
 entity-registry = ["sea-orm/entity-registry"]
 feat-sqlite-transactional-migrations = []
 runtime-async-std = [
@@ -97,6 +107,7 @@ sqlx-sqlite = [
     "sea-schema/sqlx-sqlite",
     "sea-orm-cli?/sqlx-sqlite",
 ]
+stream = ["sea-orm/stream"]
 with-bigdecimal = ["sea-orm/with-bigdecimal"]
 with-chrono = ["sea-orm/with-chrono"]
 with-ipnetwork = ["sea-orm/with-ipnetwork"]
