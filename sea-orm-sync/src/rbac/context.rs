@@ -81,16 +81,14 @@ impl RbacContext {
         let txn = db.begin()?;
 
         for table_name in tables {
-            if let Some(table_id) = resource::Entity::insert(Resource {
+            let table_id = resource::Entity::insert(Resource {
                 table: Set(table_name.to_string()),
                 ..Default::default()
             })
             .on_conflict_do_nothing()
             .exec(&txn)?
-            .last_insert_id()?
-            {
-                self.tables.insert(table_name.to_string(), table_id);
-            }
+            .last_insert_id()?;
+            self.tables.insert(table_name.to_string(), table_id);
         }
 
         txn.commit()
@@ -106,17 +104,15 @@ impl RbacContext {
             AccessType::Update,
             AccessType::Delete,
         ] {
-            if let Some(permission_id) = permission::Entity::insert(Permission {
+            let permission_id = permission::Entity::insert(Permission {
                 action: Set(action.as_str().to_owned()),
                 ..Default::default()
             })
             .on_conflict_do_nothing()
             .exec(&txn)?
-            .last_insert_id()?
-            {
-                self.permissions
-                    .insert(action.as_str().to_owned(), permission_id);
-            }
+            .last_insert_id()?;
+            self.permissions
+                .insert(action.as_str().to_owned(), permission_id);
         }
 
         txn.commit()
@@ -131,16 +127,14 @@ impl RbacContext {
         let txn = db.begin()?;
 
         for role in roles {
-            if let Some(role_id) = role::Entity::insert(Role {
+            let role_id = role::Entity::insert(Role {
                 role: Set(role.to_string()),
                 ..Default::default()
             })
             .on_conflict_do_nothing()
             .exec(&txn)?
-            .last_insert_id()?
-            {
-                self.roles.insert(role.to_string(), role_id);
-            }
+            .last_insert_id()?;
+            self.roles.insert(role.to_string(), role_id);
         }
 
         txn.commit()
