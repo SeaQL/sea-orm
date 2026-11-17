@@ -49,6 +49,42 @@
 //!
 //! + [Documentation](https://www.sea-ql.org/SeaORM)
 //!
+//! ## Database Backends & Feature Flags
+//!
+//! SeaORM supports multiple SQL databases via Cargo feature flags.
+//! You must enable at least one database backend when adding SeaORM to your project.
+//!
+//! ### Supported Databases
+//!
+//! | Database    | Feature Flag      |
+//! |-------------|-------------------|
+//! | PostgreSQL  | `sqlx-postgres`   |
+//! | MySQL       | `sqlx-mysql`      |
+//! | SQLite      | `sqlx-sqlite`     |
+//!
+//! ### Runtime Support
+//!
+//! SeaORM requires an async runtime.
+//! Common runtime features:
+//!
+//! | Runtime              | Feature Flag |
+//! |----------------------|--------------|
+//! | Tokio (Rustls TLS)   | `runtime-tokio-rustls` |
+//! | Tokio (Native TLS)   | `runtime-tokio-native-tls` |
+//!
+//! ### Example
+//!
+//! ```toml
+//! sea-orm = { version = "2", features = [
+//!     "sqlx-postgres",
+//!     "runtime-tokio-rustls"
+//! ] }
+//! ```
+//!
+//! For Microsoft SQL Server support, see:
+//! https://www.sea-ql.org/SeaORM-X/
+//!
+//!
 //! Integration examples:
 //!
 //! + [Actix Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
