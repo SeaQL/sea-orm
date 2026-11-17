@@ -11,7 +11,7 @@ use std::sync::MutexGuard;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::Executor;
 
-use super::metric::MetricStream;
+use super::metric::{BoxedMetricStream, MetricStream};
 #[cfg(feature = "sqlx-dep")]
 use crate::driver::*;
 use crate::{DbErr, InnerConnection, QueryResult, Statement};
@@ -25,7 +25,7 @@ pub struct TransactionStream<'a> {
     metric_callback: Option<crate::metric::Callback>,
     #[borrows(mut conn, stmt, metric_callback)]
     #[not_covariant]
-    stream: MetricStream<'this>,
+    stream: BoxedMetricStream<'this>,
 }
 
 impl std::fmt::Debug for TransactionStream<'_> {
@@ -56,7 +56,7 @@ impl TransactionStream<'_> {
                         .map_ok(Into::into)
                         .map_err(sqlx_error_to_query_err);
                     let elapsed = start.map(|s| s.elapsed().unwrap_or_default());
-                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
+                    MetricStream::new(_metric_callback, stmt, elapsed, Box::new(stream))
                 }
                 #[cfg(feature = "sqlx-postgres")]
                 InnerConnection::Postgres(c) => {
@@ -67,7 +67,7 @@ impl TransactionStream<'_> {
                         .map_ok(Into::into)
                         .map_err(sqlx_error_to_query_err);
                     let elapsed = start.map(|s| s.elapsed().unwrap_or_default());
-                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
+                    MetricStream::new(_metric_callback, stmt, elapsed, Box::new(stream))
                 }
                 #[cfg(feature = "sqlx-sqlite")]
                 InnerConnection::Sqlite(c) => {
@@ -78,7 +78,7 @@ impl TransactionStream<'_> {
                         .map_ok(Into::into)
                         .map_err(sqlx_error_to_query_err);
                     let elapsed = start.map(|s| s.elapsed().unwrap_or_default());
-                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
+                    MetricStream::new(_metric_callback, stmt, elapsed, Box::new(stream))
                 }
                 #[cfg(feature = "mock")]
                 InnerConnection::Mock(c) => {
@@ -97,7 +97,7 @@ impl TransactionStream<'_> {
                         })
                     });
                     let elapsed = start.map(|s| s.elapsed().unwrap_or_default());
-                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
+                    MetricStream::new(_metric_callback, stmt, elapsed, Box::new(stream))
                 }
                 #[allow(unreachable_patterns)]
                 _ => unreachable!(),

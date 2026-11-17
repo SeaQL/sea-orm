@@ -326,7 +326,15 @@ impl DatabaseTransaction {
     #[instrument(level = "trace")]
     fn start_rollback(&mut self) -> Result<(), DbErr> {
         if self.open {
-            if let Some(mut conn) = self.conn.try_lock().ok() {
+            let conn = {
+                #[cfg(not(feature = "sync"))]
+                {
+                    self.conn.try_lock()
+                }
+                #[cfg(feature = "sync")]
+                self.conn.try_lock().ok()
+            };
+            if let Some(mut conn) = conn {
                 match &mut *conn {
                     #[cfg(feature = "sqlx-mysql")]
                     InnerConnection::MySql(c) => {

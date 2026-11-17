@@ -133,16 +133,16 @@ macro_rules! db_span {
 #[cfg(feature = "tracing-spans")]
 pub(crate) use db_span;
 
-/// Execute a future and wrap it in a tracing span when `tracing-spans` is enabled.
+/// Evaluate an expression inside a tracing span when `tracing-spans` is enabled.
 ///
-/// When the feature is disabled, this macro simply awaits the future with zero overhead.
+/// When the feature is disabled, evaluate the expression directly.
 ///
 /// # Arguments
 /// - `$name`: span name (e.g., "sea_orm.execute")
 /// - `$backend`: DbBackend
 /// - `$sql`: &str used for db.operation parsing
 /// - `record_stmt`: whether to record `db.statement`
-/// - `$fut`: the future to execute
+/// - `$fut` is the expression to evaluate.
 macro_rules! with_db_span {
     ($name:expr, $backend:expr, $sql:expr, record_stmt = $record_stmt:expr, $fut:expr) => {{
         #[cfg(all(feature = "tracing-spans", not(feature = "sync")))]

@@ -4,6 +4,22 @@ use crate::{
     SelectC, SelectFive, SelectFour, SelectFourMany, Topology, TopologyStar,
     combine::{SelectD, prepare_select_col},
 };
+use futures_util::TryFutureExt;
+use std::future::Future;
+
+type SelectFourManyResult<E, F, G, H> = (
+    <E as EntityTrait>::Model,
+    Vec<<F as EntityTrait>::Model>,
+    Vec<<G as EntityTrait>::Model>,
+    Vec<<H as EntityTrait>::Model>,
+);
+
+type SelectFourResult<E, F, G, H> = (
+    <E as EntityTrait>::Model,
+    Option<<F as EntityTrait>::Model>,
+    Option<<G as EntityTrait>::Model>,
+    Option<<H as EntityTrait>::Model>,
+);
 
 impl<E, F, G, H, TOP> SelectFour<E, F, G, H, TOP>
 where
@@ -154,77 +170,45 @@ where
     }
 
     /// Get one Model from the Select query
-    pub async fn one<C>(
+    pub fn one<C>(
         self,
         db: &C,
-    ) -> Result<
-        Option<(
-            E::Model,
-            Option<F::Model>,
-            Option<G::Model>,
-            Option<H::Model>,
-        )>,
-        DbErr,
-    >
+    ) -> impl Future<Output = Result<Option<SelectFourResult<E, F, G, H>>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().one(db).await
+        self.into_model().one(db)
     }
 
     /// Get all Models from the Select query
-    pub async fn all<C>(
+    pub fn all<C>(
         self,
         db: &C,
-    ) -> Result<
-        Vec<(
-            E::Model,
-            Option<F::Model>,
-            Option<G::Model>,
-            Option<H::Model>,
-        )>,
-        DbErr,
-    >
+    ) -> impl Future<Output = Result<Vec<SelectFourResult<E, F, G, H>>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().all(db).await
+        self.into_model().all(db)
     }
 
     /// Stream the results of a Select operation on a Model
     #[cfg(feature = "stream")]
-    pub async fn stream<'a: 'b, 'b, C>(
+    pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<
-        impl Stream<
-            Item = Result<
-                (
-                    E::Model,
-                    Option<F::Model>,
-                    Option<G::Model>,
-                    Option<H::Model>,
-                ),
-                DbErr,
-            >,
-        > + 'b,
-        DbErr,
-    >
+    ) -> impl Future<Output = Result<PinBoxStream<'b, SelectFourResult<E, F, G, H>>, DbErr>>
     where
         C: ConnectionTrait + StreamTrait + Send,
     {
-        self.into_model().stream(db).await
+        self.into_model().stream(db)
     }
 
     /// Stream the result of the operation with PartialModel
     #[cfg(feature = "stream")]
-    pub async fn stream_partial_model<'a: 'b, 'b, C, M, N, O, P>(
+    pub fn stream_partial_model<'a: 'b, 'b, C, M, N, O, P>(
         self,
         db: &'a C,
-    ) -> Result<
-        impl Stream<Item = Result<(M, Option<N>, Option<O>, Option<P>), DbErr>> + 'b + Send,
-        DbErr,
-    >
+    ) -> impl Future<Output = Result<PinBoxStream<'b, (M, Option<N>, Option<O>, Option<P>)>, DbErr>>
     where
         C: ConnectionTrait + StreamTrait + Send,
         M: PartialModelTrait + Send + 'b,
@@ -232,7 +216,7 @@ where
         O: PartialModelTrait + Send + 'b,
         P: PartialModelTrait + Send + 'b,
     {
-        self.into_partial_model().stream(db).await
+        self.into_partial_model().stream(db)
     }
 }
 
@@ -285,15 +269,17 @@ where
     H: EntityTrait,
 {
     /// Execute query and consolidate rows by E
-    pub async fn all<C>(
+    pub fn all<C>(
         self,
         db: &C,
-    ) -> Result<Vec<(E::Model, Vec<F::Model>, Vec<G::Model>, Vec<H::Model>)>, DbErr>
+    ) -> impl Future<Output = Result<Vec<SelectFourManyResult<E, F, G, H>>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        let rows = self.into_model().all(db).await?;
-        Ok(consolidate_query_result_quad_star::<E, F, G, H>(rows))
+        TryFutureExt::map_ok(
+            self.into_model().all(db),
+            consolidate_query_result_quad_star::<E, F, G, H>,
+        )
     }
 }
 

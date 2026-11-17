@@ -5,6 +5,15 @@ use crate::{
     combine::{SelectD, SelectE, SelectF, prepare_select_col},
 };
 
+type SelectSixResult<E, F, G, H, I, J> = (
+    <E as EntityTrait>::Model,
+    Option<<F as EntityTrait>::Model>,
+    Option<<G as EntityTrait>::Model>,
+    Option<<H as EntityTrait>::Model>,
+    Option<<I as EntityTrait>::Model>,
+    Option<<J as EntityTrait>::Model>,
+);
+
 impl<E, F, G, H, I, J, TOP> SelectSix<E, F, G, H, I, J, TOP>
 where
     E: EntityTrait,
@@ -161,20 +170,7 @@ where
     }
 
     /// Get one Model from the Select query
-    pub fn one<C>(
-        self,
-        db: &C,
-    ) -> Result<
-        Option<(
-            E::Model,
-            Option<F::Model>,
-            Option<G::Model>,
-            Option<H::Model>,
-            Option<I::Model>,
-            Option<J::Model>,
-        )>,
-        DbErr,
-    >
+    pub fn one<C>(self, db: &C) -> Result<Option<SelectSixResult<E, F, G, H, I, J>>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -182,20 +178,7 @@ where
     }
 
     /// Get all Models from the Select query
-    pub fn all<C>(
-        self,
-        db: &C,
-    ) -> Result<
-        Vec<(
-            E::Model,
-            Option<F::Model>,
-            Option<G::Model>,
-            Option<H::Model>,
-            Option<I::Model>,
-            Option<J::Model>,
-        )>,
-        DbErr,
-    >
+    pub fn all<C>(self, db: &C) -> Result<Vec<SelectSixResult<E, F, G, H, I, J>>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -207,22 +190,7 @@ where
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<
-        impl Iterator<
-            Item = Result<
-                (
-                    E::Model,
-                    Option<F::Model>,
-                    Option<G::Model>,
-                    Option<H::Model>,
-                    Option<I::Model>,
-                    Option<J::Model>,
-                ),
-                DbErr,
-            >,
-        > + 'b,
-        DbErr,
-    >
+    ) -> Result<PinBoxStream<'b, SelectSixResult<E, F, G, H, I, J>>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
     {

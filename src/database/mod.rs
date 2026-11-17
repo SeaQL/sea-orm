@@ -1,7 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-#[cfg(not(feature = "sync"))]
-use futures_util::future::BoxFuture;
+pub(crate) use futures_util::future::BoxFuture;
 #[cfg(feature = "sqlx-mysql")]
 use sqlx::mysql::MySqlConnectOptions;
 #[cfg(feature = "sqlx-postgres")]
@@ -53,9 +52,6 @@ use crate::error::*;
 /// Entry point for opening a [`DatabaseConnection`]; see [`Database::connect`].
 #[derive(Debug, Default)]
 pub struct Database;
-
-#[cfg(feature = "sync")]
-type BoxFuture<'a, T> = T;
 
 #[cfg(feature = "sqlx-mysql")]
 type MapMySqlPoolOptsFn = Arc<

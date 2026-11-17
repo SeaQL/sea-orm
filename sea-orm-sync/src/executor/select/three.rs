@@ -5,6 +5,23 @@ use crate::{
     combine::prepare_select_col,
 };
 
+type SelectThreeManyResult<E, F, G> = (
+    <E as EntityTrait>::Model,
+    Vec<<F as EntityTrait>::Model>,
+    Vec<<G as EntityTrait>::Model>,
+);
+
+type SelectThreeChainResult<E, F, G> = (
+    <E as EntityTrait>::Model,
+    Vec<(<F as EntityTrait>::Model, Vec<<G as EntityTrait>::Model>)>,
+);
+
+type SelectThreeResult<E, F, G> = (
+    <E as EntityTrait>::Model,
+    Option<<F as EntityTrait>::Model>,
+    Option<<G as EntityTrait>::Model>,
+);
+
 impl<E, F, G, TOP> SelectThree<E, F, G, TOP>
 where
     E: EntityTrait,
@@ -143,10 +160,7 @@ where
     }
 
     /// Get one Model from the Select query
-    pub fn one<C>(
-        self,
-        db: &C,
-    ) -> Result<Option<(E::Model, Option<F::Model>, Option<G::Model>)>, DbErr>
+    pub fn one<C>(self, db: &C) -> Result<Option<SelectThreeResult<E, F, G>>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -154,10 +168,7 @@ where
     }
 
     /// Get all Models from the Select query
-    pub fn all<C>(
-        self,
-        db: &C,
-    ) -> Result<Vec<(E::Model, Option<F::Model>, Option<G::Model>)>, DbErr>
+    pub fn all<C>(self, db: &C) -> Result<Vec<SelectThreeResult<E, F, G>>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -169,10 +180,7 @@ where
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<
-        impl Iterator<Item = Result<(E::Model, Option<F::Model>, Option<G::Model>), DbErr>> + 'b,
-        DbErr,
-    >
+    ) -> Result<PinBoxStream<'b, SelectThreeResult<E, F, G>>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
     {
@@ -184,7 +192,7 @@ where
     pub fn stream_partial_model<'a: 'b, 'b, C, M, N, O>(
         self,
         db: &'a C,
-    ) -> Result<impl Iterator<Item = Result<(M, Option<N>, Option<O>), DbErr>> + 'b, DbErr>
+    ) -> Result<PinBoxStream<'b, (M, Option<N>, Option<O>)>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
         M: PartialModelTrait + 'b,
@@ -251,12 +259,14 @@ where
     G: EntityTrait,
 {
     /// Execute query and consolidate rows by E
-    pub fn all<C>(self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>, Vec<G::Model>)>, DbErr>
+    pub fn all<C>(self, db: &C) -> Result<Vec<SelectThreeManyResult<E, F, G>>, DbErr>
     where
         C: ConnectionTrait,
     {
-        let rows = self.into_model().all(db)?;
-        Ok(consolidate_query_result_tee::<E, F, G>(rows))
+        Result::map(
+            self.into_model().all(db),
+            consolidate_query_result_tee::<E, F, G>,
+        )
     }
 }
 
@@ -267,12 +277,14 @@ where
     G: EntityTrait,
 {
     /// Execute query and consolidate rows in two passes, first by E, then by F
-    pub fn all<C>(self, db: &C) -> Result<Vec<(E::Model, Vec<(F::Model, Vec<G::Model>)>)>, DbErr>
+    pub fn all<C>(self, db: &C) -> Result<Vec<SelectThreeChainResult<E, F, G>>, DbErr>
     where
         C: ConnectionTrait,
     {
-        let rows = self.into_model().all(db)?;
-        Ok(consolidate_query_result_chain::<E, F, G>(rows))
+        Result::map(
+            self.into_model().all(db),
+            consolidate_query_result_chain::<E, F, G>,
+        )
     }
 }
 

@@ -5,6 +5,20 @@ use crate::{
     combine::{SelectD, prepare_select_col},
 };
 
+type SelectFourManyResult<E, F, G, H> = (
+    <E as EntityTrait>::Model,
+    Vec<<F as EntityTrait>::Model>,
+    Vec<<G as EntityTrait>::Model>,
+    Vec<<H as EntityTrait>::Model>,
+);
+
+type SelectFourResult<E, F, G, H> = (
+    <E as EntityTrait>::Model,
+    Option<<F as EntityTrait>::Model>,
+    Option<<G as EntityTrait>::Model>,
+    Option<<H as EntityTrait>::Model>,
+);
+
 impl<E, F, G, H, TOP> SelectFour<E, F, G, H, TOP>
 where
     E: EntityTrait,
@@ -154,18 +168,7 @@ where
     }
 
     /// Get one Model from the Select query
-    pub fn one<C>(
-        self,
-        db: &C,
-    ) -> Result<
-        Option<(
-            E::Model,
-            Option<F::Model>,
-            Option<G::Model>,
-            Option<H::Model>,
-        )>,
-        DbErr,
-    >
+    pub fn one<C>(self, db: &C) -> Result<Option<SelectFourResult<E, F, G, H>>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -173,18 +176,7 @@ where
     }
 
     /// Get all Models from the Select query
-    pub fn all<C>(
-        self,
-        db: &C,
-    ) -> Result<
-        Vec<(
-            E::Model,
-            Option<F::Model>,
-            Option<G::Model>,
-            Option<H::Model>,
-        )>,
-        DbErr,
-    >
+    pub fn all<C>(self, db: &C) -> Result<Vec<SelectFourResult<E, F, G, H>>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -196,20 +188,7 @@ where
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<
-        impl Iterator<
-            Item = Result<
-                (
-                    E::Model,
-                    Option<F::Model>,
-                    Option<G::Model>,
-                    Option<H::Model>,
-                ),
-                DbErr,
-            >,
-        > + 'b,
-        DbErr,
-    >
+    ) -> Result<PinBoxStream<'b, SelectFourResult<E, F, G, H>>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
     {
@@ -221,7 +200,7 @@ where
     pub fn stream_partial_model<'a: 'b, 'b, C, M, N, O, P>(
         self,
         db: &'a C,
-    ) -> Result<impl Iterator<Item = Result<(M, Option<N>, Option<O>, Option<P>), DbErr>> + 'b, DbErr>
+    ) -> Result<PinBoxStream<'b, (M, Option<N>, Option<O>, Option<P>)>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
         M: PartialModelTrait + 'b,
@@ -282,15 +261,14 @@ where
     H: EntityTrait,
 {
     /// Execute query and consolidate rows by E
-    pub fn all<C>(
-        self,
-        db: &C,
-    ) -> Result<Vec<(E::Model, Vec<F::Model>, Vec<G::Model>, Vec<H::Model>)>, DbErr>
+    pub fn all<C>(self, db: &C) -> Result<Vec<SelectFourManyResult<E, F, G, H>>, DbErr>
     where
         C: ConnectionTrait,
     {
-        let rows = self.into_model().all(db)?;
-        Ok(consolidate_query_result_quad_star::<E, F, G, H>(rows))
+        Result::map(
+            self.into_model().all(db),
+            consolidate_query_result_quad_star::<E, F, G, H>,
+        )
     }
 }
 

@@ -1,9 +1,12 @@
-use super::ReturningSelector;
+use super::{ReturningSelector, returning_all_columns};
 use crate::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel, Iterable,
-    PrimaryKeyTrait, SelectModel, UpdateMany, UpdateOne, ValidatedUpdateOne, error::*,
+    ActiveModelTrait, ConnectionTrait, EntityTrait, ExecResult, IntoActiveModel, PrimaryKeyTrait,
+    SelectModel, UpdateMany, UpdateOne, ValidatedUpdateOne, error::*,
 };
-use sea_query::{FromValueTuple, Query, UpdateStatement};
+use futures_util::future::{OptionFuture, ready};
+use futures_util::{FutureExt, TryFutureExt};
+use sea_query::{FromValueTuple, UpdateStatement};
+use std::future::Future;
 
 /// Lower-level executor that runs a raw `sea_query` [`UpdateStatement`].
 /// Most code shouldn't need it directly — prefer
@@ -32,7 +35,10 @@ where
     /// Execute an UPDATE operation without a RETURNING clause, yielding an
     /// [`UpdateResult`] instead of the updated model. Returns
     /// [`DbErr::RecordNotUpdated`] if no row matches.
-    pub async fn exec_without_returning<C>(self, db: &C) -> Result<UpdateResult, DbErr>
+    pub fn exec_without_returning<C>(
+        self,
+        db: &C,
+    ) -> impl Future<Output = Result<UpdateResult, DbErr>>
     where
         C: ConnectionTrait,
     {
@@ -40,18 +46,18 @@ where
             // If nothing is updated, return RecordNotUpdated error
             .check_record_exists()
             .exec(db)
-            .await
     }
 
     /// Execute an UPDATE operation on an ActiveModel
-    pub async fn exec<C>(self, db: &C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
+    pub fn exec<C>(
+        self,
+        db: &C,
+    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
     {
-        Updater::new(self.query)
-            .exec_update_and_return_updated(self.model, db)
-            .await
+        Updater::new(self.query).exec_update_and_return_updated(self.model, db)
     }
 }
 
@@ -62,20 +68,38 @@ where
     /// Execute an UPDATE operation without a RETURNING clause, yielding an
     /// [`UpdateResult`] instead of the updated model. Returns
     /// [`DbErr::RecordNotUpdated`] if no row matches.
-    pub async fn exec_without_returning<C>(self, db: &C) -> Result<UpdateResult, DbErr>
+    pub fn exec_without_returning<C>(
+        self,
+        db: &C,
+    ) -> impl Future<Output = Result<UpdateResult, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.0?.exec_without_returning(db).await
+        let task = self.0.map(|update| update.exec_without_returning(db));
+        #[cfg(not(feature = "sync"))]
+        {
+            ready(task).try_flatten()
+        }
+        #[cfg(feature = "sync")]
+        task?
     }
 
     /// Execute an UPDATE operation on an ActiveModel
-    pub async fn exec<C>(self, db: &C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
+    pub fn exec<C>(
+        self,
+        db: &C,
+    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
     {
-        self.0?.exec(db).await
+        let task = self.0.map(|update| update.exec(db));
+        #[cfg(not(feature = "sync"))]
+        {
+            ready(task).try_flatten()
+        }
+        #[cfg(feature = "sync")]
+        task?
     }
 }
 
@@ -84,21 +108,22 @@ where
     E: EntityTrait,
 {
     /// Execute an update operation on multiple ActiveModels
-    pub async fn exec<C>(self, db: &'a C) -> Result<UpdateResult, DbErr>
+    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<UpdateResult, DbErr>>
     where
         C: ConnectionTrait,
     {
-        Updater::new(self.query).exec(db).await
+        Updater::new(self.query).exec(db)
     }
 
     /// Execute an update operation and return the updated model (use `RETURNING` syntax if supported)
-    pub async fn exec_with_returning<C>(self, db: &'a C) -> Result<Vec<E::Model>, DbErr>
+    pub fn exec_with_returning<C>(
+        self,
+        db: &'a C,
+    ) -> impl Future<Output = Result<Vec<E::Model>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        Updater::new(self.query)
-            .exec_update_with_returning::<E, _>(db)
-            .await
+        Updater::new(self.query).exec_update_with_returning::<E, _>(db)
     }
 }
 
@@ -117,91 +142,108 @@ impl Updater {
     }
 
     /// Execute an update operation
-    pub async fn exec<C>(self, db: &C) -> Result<UpdateResult, DbErr>
+    pub fn exec<C>(self, db: &C) -> impl Future<Output = Result<UpdateResult, DbErr>>
     where
         C: ConnectionTrait,
     {
-        if self.is_noop() {
-            return Ok(UpdateResult::default());
+        let task = if self.is_noop() {
+            None
+        } else {
+            Some(db.execute(&self.query))
+        };
+        let check_record_exists = self.check_record_exists;
+        let convert = move |result: Option<Result<ExecResult, DbErr>>| {
+            let Some(result) = result.transpose()? else {
+                return Ok(UpdateResult::default());
+            };
+            if check_record_exists && result.rows_affected() == 0 {
+                return Err(DbErr::RecordNotUpdated);
+            }
+            Ok(UpdateResult {
+                rows_affected: result.rows_affected(),
+            })
+        };
+        #[cfg(not(feature = "sync"))]
+        {
+            FutureExt::map(OptionFuture::from(task), convert)
         }
-        let result = db.execute(&self.query).await?;
-        if self.check_record_exists && result.rows_affected() == 0 {
-            return Err(DbErr::RecordNotUpdated);
-        }
-        Ok(UpdateResult {
-            rows_affected: result.rows_affected(),
-        })
+        #[cfg(feature = "sync")]
+        convert(task)
     }
 
-    async fn exec_update_and_return_updated<A, C>(
+    fn exec_update_and_return_updated<A, C>(
         mut self,
         model: A,
         db: &C,
-    ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
+    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>>
     where
         A: ActiveModelTrait,
         C: ConnectionTrait,
     {
         type Entity<A> = <A as ActiveModelTrait>::Entity;
         type Model<A> = <Entity<A> as EntityTrait>::Model;
-        type Column<A> = <Entity<A> as EntityTrait>::Column;
 
-        if self.is_noop() {
-            return find_updated_model_by_id(model, db).await;
-        }
-
-        match db.support_returning() {
-            true => {
-                let db_backend = db.get_database_backend();
-                let returning = Query::returning().exprs(
-                    Column::<A>::iter().map(|c| c.select_as(c.into_returning_expr(db_backend))),
-                );
-                self.query.returning(returning);
-                let found: Option<Model<A>> =
-                    ReturningSelector::<SelectModel<Model<A>>, _>::from_query(self.query)
-                        .one(db)
-                        .await?;
+        if !self.is_noop() && db.support_returning() {
+            let db_backend = db.get_database_backend();
+            let returning = returning_all_columns::<Entity<A>>(db_backend);
+            self.query.returning(returning);
+            let task =
+                ReturningSelector::<SelectModel<Model<A>>, _>::from_query(self.query).one(db);
+            let convert = move |result: Result<Option<Model<A>>, DbErr>| {
+                let _model = model;
                 // If we got `None` then we are updating a row that does not exist.
-                match found {
-                    Some(model) => Ok(model),
-                    None => Err(DbErr::RecordNotUpdated),
-                }
+                result?.ok_or(DbErr::RecordNotUpdated)
+            };
+            #[cfg(not(feature = "sync"))]
+            {
+                FutureExt::map(task, convert).left_future()
             }
-            false => {
-                // If we updating a row that does not exist then an error will be thrown here.
-                self.check_record_exists = true;
-                self.exec(db).await?;
-                find_updated_model_by_id(model, db).await
+            #[cfg(feature = "sync")]
+            convert(task)
+        } else {
+            let task = self.check_record_exists().exec(db);
+            // If we updating a row that does not exist then an error will be thrown here.
+            #[cfg(not(feature = "sync"))]
+            {
+                task.and_then(move |_| find_updated_model_by_id(model, db))
+                    .right_future()
+            }
+            #[cfg(feature = "sync")]
+            {
+                task?;
+                find_updated_model_by_id(model, db)
             }
         }
     }
 
-    async fn exec_update_with_returning<E, C>(mut self, db: &C) -> Result<Vec<E::Model>, DbErr>
+    fn exec_update_with_returning<E, C>(
+        mut self,
+        db: &C,
+    ) -> impl Future<Output = Result<Vec<E::Model>, DbErr>>
     where
         E: EntityTrait,
         C: ConnectionTrait,
     {
         if self.is_noop() {
-            return Ok(vec![]);
-        }
-
-        let db_backend = db.get_database_backend();
-        match db.support_returning() {
-            true => {
-                let returning = Query::returning().exprs(
-                    E::Column::iter().map(|c| c.select_as(c.into_returning_expr(db_backend))),
-                );
+            async { Ok(vec![]) }.left_future()
+        } else {
+            let db_backend = db.get_database_backend();
+            let task = if db.support_returning() {
+                let returning = returning_all_columns::<E>(db_backend);
                 self.query.returning(returning);
-                let models: Vec<E::Model> =
-                    ReturningSelector::<SelectModel<E::Model>, _>::from_query(self.query)
-                        .all(db)
-                        .await?;
-                Ok(models)
-            }
-            false => Err(DbErr::BackendNotSupported {
-                db: db_backend.as_str(),
-                ctx: "UPDATE RETURNING",
-            }),
+                ReturningSelector::<SelectModel<E::Model>, _>::from_query(self.query)
+                    .all(db)
+                    .left_future()
+            } else {
+                async move {
+                    Err(DbErr::BackendNotSupported {
+                        db: db_backend.as_str(),
+                        ctx: "UPDATE RETURNING",
+                    })
+                }
+                .right_future()
+            };
+            task.right_future()
         }
     }
 

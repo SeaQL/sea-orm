@@ -9,19 +9,21 @@ type PinBoxStream<'a> = Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + 
 #[cfg(feature = "sync")]
 type PinBoxStream<'a> = Box<dyn Iterator<Item = Result<QueryResult, DbErr>> + 'a>;
 
-pub(crate) struct MetricStream<'a> {
+pub(super) type BoxedMetricStream<'a> = MetricStream<'a, PinBoxStream<'a>>;
+
+pub(crate) struct MetricStream<'a, S> {
     metric_callback: &'a Option<crate::metric::Callback>,
     stmt: &'a Statement,
     elapsed: Option<Duration>,
     #[cfg(not(feature = "sync"))]
     waiting_since: Option<Instant>,
     failed: bool,
-    stream: PinBoxStream<'a>,
+    stream: S,
 }
 
-impl<'a> MetricStream<'a> {
+impl<'a, S> MetricStream<'a, S> {
     #[allow(dead_code)]
-    pub(crate) fn new<S>(
+    pub(crate) fn new(
         metric_callback: &'a Option<crate::metric::Callback>,
         stmt: &'a Statement,
         elapsed: Option<Duration>,
@@ -37,13 +39,16 @@ impl<'a> MetricStream<'a> {
             #[cfg(not(feature = "sync"))]
             waiting_since: None,
             failed: false,
-            stream: Box::new(stream),
+            stream,
         }
     }
 }
 
 #[cfg(not(feature = "sync"))]
-impl Stream for MetricStream<'_> {
+impl<S> Stream for MetricStream<'_, S>
+where
+    S: Iterator<Item = Result<QueryResult, DbErr>> + Unpin,
+{
     type Item = Result<QueryResult, DbErr>;
 
     fn poll_next(
@@ -73,7 +78,10 @@ impl Stream for MetricStream<'_> {
 }
 
 #[cfg(feature = "sync")]
-impl Iterator for MetricStream<'_> {
+impl<S> Iterator for MetricStream<'_, S>
+where
+    S: Iterator<Item = Result<QueryResult, DbErr>>,
+{
     type Item = Result<QueryResult, DbErr>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -90,7 +98,7 @@ impl Iterator for MetricStream<'_> {
     }
 }
 
-impl Drop for MetricStream<'_> {
+impl<S> Drop for MetricStream<'_, S> {
     fn drop(&mut self) {
         if let (Some(callback), Some(elapsed)) = (self.metric_callback.as_deref(), self.elapsed) {
             #[cfg(not(feature = "sync"))]

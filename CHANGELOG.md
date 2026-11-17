@@ -29,6 +29,75 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Add `ConnectionTrait::build` as a shorthand for `conn.get_database_backend().build(&query)` https://github.com/SeaQL/sea-orm/pull/3226
 
+- Reduce the size of futures
+
+    | Type                                                                                     | Methods                                              |              Shallow |                Total |
+    | ---------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------: | -------------------: |
+    | `Select`                                                                                 | `one`                                                |  1,688 / 16 (-99.1%) | 2,024 / 312 (-84.6%) |
+    | `Select`                                                                                 | `stream`, `stream_partial_model`                     |  1,688 / 16 (-99.1%) | 2,064 / 376 (-81.8%) |
+    | `Select`                                                                                 | `require_one`                                        |  2,248 / 40 (-98.2%) | 2,584 / 336 (-87.0%) |
+    | `Select`                                                                                 | `all`                                                |  1,744 / 64 (-96.3%) | 2,168 / 448 (-79.3%) |
+    | `Selector`                                                                               | `one`                                                |  1,120 / 16 (-98.6%) | 1,456 / 312 (-78.6%) |
+    | `Selector`                                                                               | `stream`                                             |  1,120 / 16 (-98.6%) | 1,496 / 376 (-74.9%) |
+    | `Selector`                                                                               | `exists`                                             |        16 / 16 (N/A) | 1,472 / 328 (-77.7%) |
+    | `Selector`                                                                               | `require_one`                                        |  1,680 / 40 (-97.6%) | 2,016 / 336 (-83.3%) |
+    | `Selector`                                                                               | `all`                                                |  1,176 / 64 (-94.6%) | 1,600 / 448 (-72.0%) |
+    | `SelectorRaw`                                                                            | `one`                                                |     88 / 16 (-81.8%) |   384 / 312 (-18.8%) |
+    | `SelectorRaw`                                                                            | `stream`                                             |     88 / 16 (-81.8%) |   464 / 376 (-19.0%) |
+    | `SelectorRaw`                                                                            | `require_one`                                        |    160 / 40 (-75.0%) |   456 / 336 (-26.3%) |
+    | `SelectorRaw`                                                                            | `all`                                                |    144 / 64 (-55.6%) |   528 / 448 (-15.2%) |
+    | `SelectTwo`, `SelectTwoRequired`, `SelectThree`, `SelectFour`                            | `one`                                                |  1,680 / 16 (-99.0%) | 2,016 / 312 (-84.5%) |
+    | `SelectTwo`, `SelectTwoRequired`, `SelectThree`, `SelectFour`                            | `stream`, `stream_partial_model`                     |  1,680 / 16 (-99.0%) | 2,056 / 376 (-81.7%) |
+    | `SelectFive`, `SelectSix`                                                                | `one`                                                |  1,680 / 16 (-99.0%) | 2,016 / 312 (-84.5%) |
+    | `SelectFive`                                                                             | `stream`                                             |  1,680 / 16 (-99.0%) | 2,088 / 376 (-82.0%) |
+    | `SelectSix`                                                                              | `stream`                                             |  1,680 / 16 (-99.0%) | 2,120 / 376 (-82.3%) |
+    | `SelectTwo`, `SelectTwoRequired`                                                         | `require_one`                                        |  2,240 / 40 (-98.2%) | 2,576 / 336 (-87.0%) |
+    | `SelectTwo`, `SelectThree`, `SelectFour`, `SelectFive`, `SelectSix`, `SelectTwoRequired` | `all`                                                |  1,736 / 64 (-96.3%) | 2,160 / 448 (-79.3%) |
+    | `SelectTwoMany`, `SelectThreeMany`, `SelectFourMany`                                     | `all`                                                |  1,736 / 72 (-95.9%) | 2,160 / 456 (-78.9%) |
+    | `DynSelector`                                                                            | `one`, `all`                                         |  1,168 / 40 (-96.6%) | 1,504 / 336 (-77.7%) |
+    | `Paginator`                                                                              | `fetch_page`                                         |    640 / 40 (-93.8%) | 1,064 / 424 (-60.2%) |
+    | `Paginator`                                                                              | `fetch`                                              |    656 / 40 (-93.9%) | 1,080 / 424 (-60.7%) |
+    | `Paginator`                                                                              | `num_items`                                          |    576 / 16 (-97.2%) |   912 / 312 (-65.8%) |
+    | `Paginator`                                                                              | `num_pages`, `num_items_and_pages`                   |    600 / 24 (-96.0%) |   936 / 320 (-65.8%) |
+    | `Paginator`                                                                              | `fetch_and_next`                                     |    680 / 64 (-90.6%) | 1,104 / 448 (-59.4%) |
+    | `Select`                                                                                 | `exists`                                             |        16 / 16 (N/A) | 1,480 / 328 (-77.8%) |
+    | `SelectTwo`, `SelectThree`, `SelectFour`, `SelectFive`, `SelectSix`                      | `exists`                                             |        16 / 16 (N/A) | 1,472 / 328 (-77.7%) |
+    | `SelectorRaw`                                                                            | `exists`                                             |        16 / 16 (N/A) |   984 / 328 (-66.7%) |
+    | `Select`                                                                                 | `count`                                              |        16 / 16 (N/A) | 2,048 / 328 (-84.0%) |
+    | `Selector`, `SelectTwo`, `SelectThree`, `SelectFour`, `SelectFive`, `SelectSix`          | `count`                                              |        16 / 16 (N/A) | 2,040 / 328 (-83.9%) |
+    | `SelectorRaw`                                                                            | `count`                                              |        16 / 16 (N/A) | 1,552 / 328 (-78.9%) |
+    | `Insert`                                                                                 | `exec`                                               | 4,392 / 120 (-97.3%) | 4,728 / 416 (-91.2%) |
+    | `Insert`                                                                                 | `exec_without_returning`                             |  3,472 / 16 (-99.5%) | 3,808 / 312 (-91.8%) |
+    | `Insert`                                                                                 | `exec_with_returning`                                |  4,216 / 64 (-98.5%) | 4,552 / 360 (-92.1%) |
+    | `Insert`                                                                                 | `exec_with_returning_keys`                           |  3,472 / 24 (-99.3%) | 3,808 / 320 (-91.6%) |
+    | `Insert`                                                                                 | `exec_with_returning_many`                           |  4,736 / 24 (-99.5%) | 5,072 / 320 (-93.7%) |
+    | `TryInsert`, `InsertMany`                                                                | `exec`                                               | 5,136 / 120 (-97.7%) | 5,472 / 416 (-92.4%) |
+    | `TryInsert`, `InsertMany`                                                                | `exec_without_returning`, `exec_with_returning_keys` |  4,216 / 24 (-99.4%) | 4,552 / 320 (-93.0%) |
+    | `TryInsert`                                                                              | `exec_with_returning`                                |  4,960 / 72 (-98.5%) | 5,296 / 368 (-93.1%) |
+    | `TryInsert`                                                                              | `exec_with_returning_many`                           |  5,480 / 24 (-99.6%) | 5,816 / 320 (-94.5%) |
+    | `InsertMany`                                                                             | `exec_with_returning`, `exec_with_returning_many`    |  5,480 / 24 (-99.6%) | 5,816 / 320 (-94.5%) |
+    | `Inserter`                                                                               | `exec`                                               | 2,312 / 120 (-94.8%) | 2,648 / 416 (-84.3%) |
+    | `Inserter`                                                                               | `exec_without_returning`                             |  2,736 / 16 (-99.4%) | 3,072 / 312 (-89.8%) |
+    | `Inserter`                                                                               | `exec_with_returning`                                |  3,480 / 64 (-98.2%) | 3,816 / 360 (-90.6%) |
+    | `Inserter`                                                                               | `exec_with_returning_keys`                           |  2,736 / 24 (-99.1%) | 3,072 / 320 (-89.6%) |
+    | `Inserter`                                                                               | `exec_with_returning_many`                           |  4,000 / 24 (-99.4%) | 4,336 / 320 (-92.6%) |
+    | `UpdateOne`                                                                              | `exec`                                               | 4,896 / 128 (-97.4%) | 5,232 / 424 (-91.9%) |
+    | `UpdateOne`                                                                              | `exec_without_returning`                             |  3,040 / 56 (-98.2%) | 3,376 / 352 (-89.6%) |
+    | `ValidatedUpdateOne`                                                                     | `exec`                                               | 4,272 / 120 (-97.2%) | 4,608 / 416 (-91.0%) |
+    | `ValidatedUpdateOne`                                                                     | `exec_without_returning`                             |  2,416 / 24 (-99.0%) | 2,752 / 320 (-88.4%) |
+    | `UpdateMany`                                                                             | `exec`                                               |  1,768 / 24 (-98.6%) | 2,104 / 320 (-84.8%) |
+    | `UpdateMany`                                                                             | `exec_with_returning`                                |  2,920 / 24 (-99.2%) | 3,256 / 320 (-90.2%) |
+    | `DeleteOne`                                                                              | `exec`                                               |  3,216 / 56 (-98.3%) | 3,552 / 352 (-90.1%) |
+    | `DeleteOne`                                                                              | `exec_with_returning`                                |  3,200 / 56 (-98.3%) | 3,536 / 352 (-90.0%) |
+    | `ValidatedDeleteOne`, `DeleteMany`                                                       | `exec`                                               |  2,680 / 16 (-99.4%) | 3,016 / 312 (-89.7%) |
+    | `ValidatedDeleteOne`, `DeleteMany`, `Deleter`                                            | `exec_with_returning`                                |  2,664 / 24 (-99.1%) | 3,000 / 320 (-89.3%) |
+    | `Deleter`                                                                                | `exec`                                               |  1,608 / 16 (-99.0%) | 1,944 / 312 (-84.0%) |
+    | `DatabaseConnection`                                                                     | `execute`, `query_one`, `query_all`                  |        16 / 16 (N/A) |   352 / 312 (-11.4%) |
+    | `RestrictedConnection`                                                                   | `execute`, `query_one`, `query_all`                  |        16 / 16 (N/A) |    392 / 400 (+2.0%) |
+    | `DatabaseExecutor`                                                                       | `execute_raw`, `query_one_raw`, `query_all_raw`      |        16 / 16 (N/A) |   400 / 312 (-22.0%) |
+    | `DatabaseExecutor`                                                                       | `execute_unprepared`                                 |        16 / 16 (N/A) |   232 / 184 (-20.7%) |
+    | `DatabaseExecutor`                                                                       | `query_rows_raw`                                     |        16 / 16 (N/A) |   488 / 400 (-18.0%) |
+
 ### Bug Fixes
 
 - Fix compilation failures with the `proxy` feature https://github.com/SeaQL/sea-orm/pull/3220

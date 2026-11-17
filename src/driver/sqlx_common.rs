@@ -5,9 +5,7 @@ use std::{sync::Arc, time::Duration};
 ///
 /// This mirrors the signature accepted by SQLx's
 /// [`PoolOptions::before_acquire`][sqlx::pool::PoolOptions::before_acquire] for the given
-/// database backend `DB`. Note the fully-qualified [`futures_util::future::BoxFuture`]: the
-/// crate-local `BoxFuture` alias collapses to `T` under the `sync` feature, which would not
-/// match SQLx's signature.
+/// database backend `DB`.
 pub(crate) type BeforeAcquireFn<DB> = Arc<
     dyn for<'c> Fn(
             &'c mut <DB as sqlx::Database>::Connection,

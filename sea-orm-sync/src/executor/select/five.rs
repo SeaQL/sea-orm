@@ -5,6 +5,14 @@ use crate::{
     combine::{SelectD, SelectE, prepare_select_col},
 };
 
+type SelectFiveResult<E, F, G, H, I> = (
+    <E as EntityTrait>::Model,
+    Option<<F as EntityTrait>::Model>,
+    Option<<G as EntityTrait>::Model>,
+    Option<<H as EntityTrait>::Model>,
+    Option<<I as EntityTrait>::Model>,
+);
+
 impl<E, F, G, H, I, TOP> SelectFive<E, F, G, H, I, TOP>
 where
     E: EntityTrait,
@@ -163,19 +171,7 @@ where
     }
 
     /// Get one Model from the Select query
-    pub fn one<C>(
-        self,
-        db: &C,
-    ) -> Result<
-        Option<(
-            E::Model,
-            Option<F::Model>,
-            Option<G::Model>,
-            Option<H::Model>,
-            Option<I::Model>,
-        )>,
-        DbErr,
-    >
+    pub fn one<C>(self, db: &C) -> Result<Option<SelectFiveResult<E, F, G, H, I>>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -183,19 +179,7 @@ where
     }
 
     /// Get all Models from the Select query
-    pub fn all<C>(
-        self,
-        db: &C,
-    ) -> Result<
-        Vec<(
-            E::Model,
-            Option<F::Model>,
-            Option<G::Model>,
-            Option<H::Model>,
-            Option<I::Model>,
-        )>,
-        DbErr,
-    >
+    pub fn all<C>(self, db: &C) -> Result<Vec<SelectFiveResult<E, F, G, H, I>>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -207,21 +191,7 @@ where
     pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<
-        impl Iterator<
-            Item = Result<
-                (
-                    E::Model,
-                    Option<F::Model>,
-                    Option<G::Model>,
-                    Option<H::Model>,
-                    Option<I::Model>,
-                ),
-                DbErr,
-            >,
-        > + 'b,
-        DbErr,
-    >
+    ) -> Result<PinBoxStream<'b, SelectFiveResult<E, F, G, H, I>>, DbErr>
     where
         C: ConnectionTrait + StreamTrait,
     {

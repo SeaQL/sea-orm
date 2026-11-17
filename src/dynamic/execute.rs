@@ -2,9 +2,10 @@ use crate::{
     ConnectionTrait, DbBackend, DbErr, EntityTrait, FromQueryResult, QueryResult, Select,
     Statement, dynamic,
 };
+use futures_util::FutureExt;
 use itertools::Itertools;
 use sea_query::{DynIden, Expr, IntoIden, SelectStatement};
-use std::marker::PhantomData;
+use std::{future::Future, marker::PhantomData};
 
 #[derive(Debug)]
 pub struct SelectModelAndDynModel<M>
@@ -80,27 +81,42 @@ where
     }
 
     /// Get an item from the Select query
-    pub async fn one<C>(mut self, db: &C) -> Result<Option<S::Item>, DbErr>
+    pub fn one<C>(mut self, db: &C) -> impl Future<Output = Result<Option<S::Item>, DbErr>>
     where
         C: ConnectionTrait,
     {
         self.query.limit(1);
-        let row = db.query_one(&self.query).await?;
-        match row {
-            Some(row) => Ok(Some(self.selector.from_raw_query_result(row)?)),
-            None => Ok(None),
+        let task = db.query_one(&self.query);
+        let convert = move |result: Result<Option<QueryResult>, DbErr>| {
+            let row = result?;
+            row.map(|row| self.selector.from_raw_query_result(row))
+                .transpose()
+        };
+        #[cfg(not(feature = "sync"))]
+        {
+            FutureExt::map(task, convert)
         }
+        #[cfg(feature = "sync")]
+        convert(task)
     }
 
     /// Get all items from the Select query
-    pub async fn all<C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
+    pub fn all<C>(self, db: &C) -> impl Future<Output = Result<Vec<S::Item>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        db.query_all(&self.query)
-            .await?
-            .into_iter()
-            .map(|row| self.selector.from_raw_query_result(row))
-            .try_collect()
+        let task = db.query_all(&self.query);
+        let convert = move |result: Result<Vec<QueryResult>, DbErr>| {
+            let rows = result?;
+            rows.into_iter()
+                .map(|row| self.selector.from_raw_query_result(row))
+                .try_collect()
+        };
+        #[cfg(not(feature = "sync"))]
+        {
+            FutureExt::map(task, convert)
+        }
+        #[cfg(feature = "sync")]
+        convert(task)
     }
 }

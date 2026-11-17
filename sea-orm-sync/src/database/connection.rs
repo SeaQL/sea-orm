@@ -1,9 +1,3 @@
-#[cfg(not(feature = "sync"))]
-use futures_util::stream::{BoxStream, iter};
-#[cfg(not(feature = "sync"))]
-#[cfg(not(feature = "sync"))]
-use std::task::{Context, Poll};
-
 use crate::{
     DbBackend, DbErr, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError,
 };
@@ -29,8 +23,7 @@ pub trait ConnectionTrait {
 
     /// Execute a [`StatementBuilder`]
     fn execute<S: StatementBuilder>(&self, stmt: &S) -> Result<ExecResult, DbErr> {
-        let db_backend = self.get_database_backend();
-        let stmt = db_backend.build(stmt);
+        let stmt = self.build(stmt);
         self.execute_raw(stmt)
     }
 
@@ -42,8 +35,7 @@ pub trait ConnectionTrait {
 
     /// Execute a [`StatementBuilder`] and return a single row of `QueryResult`
     fn query_one<S: StatementBuilder>(&self, stmt: &S) -> Result<Option<QueryResult>, DbErr> {
-        let db_backend = self.get_database_backend();
-        let stmt = db_backend.build(stmt);
+        let stmt = self.build(stmt);
         self.query_one_raw(stmt)
     }
 
@@ -52,29 +44,8 @@ pub trait ConnectionTrait {
 
     /// Execute a [`StatementBuilder`] and return a vector of `QueryResult`
     fn query_all<S: StatementBuilder>(&self, stmt: &S) -> Result<Vec<QueryResult>, DbErr> {
-        let db_backend = self.get_database_backend();
-        let stmt = db_backend.build(stmt);
+        let stmt = self.build(stmt);
         self.query_all_raw(stmt)
-    }
-
-    /// Query rows for internal model collection.
-    #[cfg(not(feature = "sync"))]
-    #[doc(hidden)]
-    fn query_rows_raw(&self, stmt: Statement) -> Result<crate::QueryRows<'_>, DbErr> {
-        let rows = self.query_all_raw(stmt)?;
-        Ok(crate::QueryRows::new(Box::new(iter(
-            rows.into_iter().map(Ok),
-        ))))
-    }
-
-    /// Query rows from a statement builder for internal model collection.
-    #[cfg(not(feature = "sync"))]
-    #[doc(hidden)]
-    fn query_rows<S: StatementBuilder>(&self, stmt: &S) -> Result<crate::QueryRows<'_>, DbErr> {
-        let rows = self.query_all(stmt)?;
-        Ok(crate::QueryRows::new(Box::new(iter(
-            rows.into_iter().map(Ok),
-        ))))
     }
 
     /// Check if the connection supports `RETURNING` syntax on insert and update
@@ -123,12 +94,9 @@ impl<'a> QueryRows<'a> {
     where
         F: FnMut(QueryResult) -> Result<T, DbErr>,
     {
-        let mut rows = self.rows;
-        let mut result = Vec::new();
-        while let Some(row) = rows.try_next()? {
-            result.push(convert(row)?);
-        }
-        Ok(result)
+        self.rows
+            .map(move |row| row.and_then(&mut convert))
+            .try_collect::<Vec<_>>()
     }
 }
 
@@ -140,7 +108,7 @@ struct TracedRows<'a> {
 }
 
 #[cfg(not(feature = "sync"))]
-impl RowStream for TracedRows<'_> {
+impl Stream for TracedRows<'_> {
     type Item = Result<QueryResult, DbErr>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {

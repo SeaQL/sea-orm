@@ -1,4 +1,5 @@
 #![allow(unused_assignments)]
+use super::BoxFuture;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use futures_util::lock::Mutex;
@@ -354,7 +355,15 @@ impl DatabaseTransaction {
     #[instrument(level = "trace")]
     fn start_rollback(&mut self) -> Result<(), DbErr> {
         if self.open {
-            if let Some(mut conn) = self.conn.try_lock() {
+            let conn = {
+                #[cfg(not(feature = "sync"))]
+                {
+                    self.conn.try_lock()
+                }
+                #[cfg(feature = "sync")]
+                self.conn.try_lock().ok()
+            };
+            if let Some(mut conn) = conn {
                 match &mut *conn {
                     #[cfg(feature = "sqlx-mysql")]
                     InnerConnection::MySql(c) => {
@@ -771,11 +780,11 @@ impl ConnectionTrait for DatabaseTransaction {
     }
 
     #[cfg(not(feature = "sync"))]
-    async fn query_rows<S: StatementBuilder>(
+    fn query_rows<S: StatementBuilder>(
         &self,
         stmt: &S,
-    ) -> Result<crate::QueryRows<'_>, DbErr> {
-        self.query_rows_raw(self.backend.build(stmt)).await
+    ) -> BoxFuture<'_, Result<crate::QueryRows<'_>, DbErr>> {
+        self.query_rows_raw(self.backend.build(stmt))
     }
 }
 

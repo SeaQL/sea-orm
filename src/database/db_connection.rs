@@ -1,11 +1,11 @@
+use super::BoxFuture;
 use super::transaction::run_async_transaction_callback;
 use crate::{
     AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel, QueryResult,
     Schema, SchemaBuilder, Statement, StatementBuilder, TransactionError, TransactionOptions,
     TransactionTrait, error::*,
 };
-#[cfg(not(feature = "sync"))]
-use futures_util::stream::iter;
+use futures_util::stream;
 use std::{fmt::Debug, future::Future, pin::Pin};
 use tracing::instrument;
 use url::Url;
@@ -369,7 +369,7 @@ impl ConnectionTrait for DatabaseConnection {
             }
             _ => {
                 let rows = self.query_all_raw(stmt).await?;
-                Ok(crate::QueryRows::new(Box::pin(iter(
+                Ok(crate::QueryRows::new(Box::pin(stream::iter(
                     rows.into_iter().map(Ok),
                 ))))
             }
@@ -377,12 +377,11 @@ impl ConnectionTrait for DatabaseConnection {
     }
 
     #[cfg(not(feature = "sync"))]
-    async fn query_rows<S: StatementBuilder>(
+    fn query_rows<S: StatementBuilder>(
         &self,
         stmt: &S,
-    ) -> Result<crate::QueryRows<'_>, DbErr> {
+    ) -> BoxFuture<'_, Result<crate::QueryRows<'_>, DbErr>> {
         self.query_rows_raw(self.get_database_backend().build(stmt))
-            .await
     }
 }
 

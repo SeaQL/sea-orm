@@ -7,16 +7,18 @@ use crate::{
     QueryResult, QuerySelect, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
     SelectTwoRequired, Statement, TryGetableMany, error::*,
 };
+use futures_util::FutureExt;
+#[cfg(feature = "stream")]
+use futures_util::StreamExt;
+use futures_util::TryFutureExt;
 
 #[cfg(feature = "stream")]
 pub use crate::StreamTrait;
 #[cfg(feature = "stream")]
-use futures_util::{Stream, TryStreamExt};
+use futures_util::Stream;
 
-#[cfg(feature = "sync")]
-use itertools::Itertools;
 use sea_query::SelectStatement;
-use std::marker::PhantomData;
+use std::{future::Future, marker::PhantomData};
 
 mod five;
 mod four;
@@ -545,11 +547,11 @@ where
     }
 
     /// Get one Model from the SELECT query
-    pub async fn one<C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
+    pub fn one<C>(self, db: &C) -> impl Future<Output = Result<Option<E::Model>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().one(db).await
+        self.into_model().one(db)
     }
 
     /// Get exactly one Model from the SELECT query, returning
@@ -589,44 +591,44 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn require_one<C>(self, db: &C) -> Result<E::Model, DbErr>
+    pub fn require_one<C>(self, db: &C) -> impl Future<Output = Result<E::Model, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().require_one(db).await
+        self.into_model().require_one(db)
     }
 
     /// Get all Models from the SELECT query
-    pub async fn all<C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
+    pub fn all<C>(self, db: &C) -> impl Future<Output = Result<Vec<E::Model>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().all(db).await
+        self.into_model().all(db)
     }
 
     /// Stream the results of a SELECT operation on a Model
     #[cfg(feature = "stream")]
-    pub async fn stream<'a: 'b, 'b, C>(
+    pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<impl Stream<Item = Result<E::Model, DbErr>> + 'b + Send, DbErr>
+    ) -> impl Future<Output = Result<PinBoxStream<'b, E::Model>, DbErr>>
     where
         C: ConnectionTrait + StreamTrait + Send,
     {
-        self.into_model().stream(db).await
+        self.into_model().stream(db)
     }
 
     /// Stream the result of the operation with PartialModel
     #[cfg(feature = "stream")]
-    pub async fn stream_partial_model<'a: 'b, 'b, C, M>(
+    pub fn stream_partial_model<'a: 'b, 'b, C, M>(
         self,
         db: &'a C,
-    ) -> Result<impl Stream<Item = Result<M, DbErr>> + 'b + Send, DbErr>
+    ) -> impl Future<Output = Result<PinBoxStream<'b, M>, DbErr>>
     where
         C: ConnectionTrait + StreamTrait + Send,
         M: PartialModelTrait + Send + 'b,
     {
-        self.into_partial_model().stream(db).await
+        self.into_partial_model().stream(db)
     }
 }
 
@@ -669,55 +671,64 @@ where
     }
 
     /// Get one Model from the Select query
-    pub async fn one<C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
+    pub fn one<C>(
+        self,
+        db: &C,
+    ) -> impl Future<Output = Result<Option<(E::Model, Option<F::Model>)>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().one(db).await
+        self.into_model().one(db)
     }
 
     /// Get exactly one row from the Select query, returning
     /// [`DbErr::RecordNotFound`] when nothing matches. The non-optional
     /// counterpart to [`one`](Self::one).
-    pub async fn require_one<C>(self, db: &C) -> Result<(E::Model, Option<F::Model>), DbErr>
+    pub fn require_one<C>(
+        self,
+        db: &C,
+    ) -> impl Future<Output = Result<(E::Model, Option<F::Model>), DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().require_one(db).await
+        self.into_model().require_one(db)
     }
 
     /// Get all Models from the Select query
-    pub async fn all<C>(self, db: &C) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
+    pub fn all<C>(
+        self,
+        db: &C,
+    ) -> impl Future<Output = Result<Vec<(E::Model, Option<F::Model>)>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().all(db).await
+        self.into_model().all(db)
     }
 
     /// Stream the results of a Select operation on a Model
     #[cfg(feature = "stream")]
-    pub async fn stream<'a: 'b, 'b, C>(
+    pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<impl Stream<Item = Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
+    ) -> impl Future<Output = Result<PinBoxStream<'b, (E::Model, Option<F::Model>)>, DbErr>>
     where
         C: ConnectionTrait + StreamTrait + Send,
     {
-        self.into_model().stream(db).await
+        self.into_model().stream(db)
     }
 
     /// Stream the result of the operation with PartialModel
     #[cfg(feature = "stream")]
-    pub async fn stream_partial_model<'a: 'b, 'b, C, M, N>(
+    pub fn stream_partial_model<'a: 'b, 'b, C, M, N>(
         self,
         db: &'a C,
-    ) -> Result<impl Stream<Item = Result<(M, Option<N>), DbErr>> + 'b + Send, DbErr>
+    ) -> impl Future<Output = Result<PinBoxStream<'b, (M, Option<N>)>, DbErr>>
     where
         C: ConnectionTrait + StreamTrait + Send,
         M: PartialModelTrait + Send + 'b,
         N: PartialModelTrait + Send + 'b,
     {
-        self.into_partial_model().stream(db).await
+        self.into_partial_model().stream(db)
     }
 }
 
@@ -748,12 +759,14 @@ where
     /// > then use [`ModelTrait::find_related`](crate::ModelTrait::find_related) on the model.
     /// >
     /// > See <https://www.sea-ql.org/SeaORM/docs/basic-crud/select#lazy-loading> for details.
-    pub async fn all<C>(self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
+    pub fn all<C>(
+        self,
+        db: &C,
+    ) -> impl Future<Output = Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        let rows = self.into_model().all(db).await?;
-        Ok(consolidate_query_result::<E, F>(rows))
+        TryFutureExt::map_ok(self.into_model().all(db), consolidate_query_result::<E, F>)
     }
 
     // pub fn paginate()
@@ -805,55 +818,55 @@ where
     }
 
     /// Get one Model from the Select query
-    pub async fn one<C>(self, db: &C) -> Result<Option<(E::Model, F::Model)>, DbErr>
+    pub fn one<C>(self, db: &C) -> impl Future<Output = Result<Option<(E::Model, F::Model)>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().one(db).await
+        self.into_model().one(db)
     }
 
     /// Get exactly one row from the Select query, returning
     /// [`DbErr::RecordNotFound`] when nothing matches. The non-optional
     /// counterpart to [`one`](Self::one).
-    pub async fn require_one<C>(self, db: &C) -> Result<(E::Model, F::Model), DbErr>
+    pub fn require_one<C>(self, db: &C) -> impl Future<Output = Result<(E::Model, F::Model), DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().require_one(db).await
+        self.into_model().require_one(db)
     }
 
     /// Get all Models from the Select query
-    pub async fn all<C>(self, db: &C) -> Result<Vec<(E::Model, F::Model)>, DbErr>
+    pub fn all<C>(self, db: &C) -> impl Future<Output = Result<Vec<(E::Model, F::Model)>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.into_model().all(db).await
+        self.into_model().all(db)
     }
 
     /// Stream the results of a Select operation on a Model
     #[cfg(feature = "stream")]
-    pub async fn stream<'a: 'b, 'b, C>(
+    pub fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<impl Stream<Item = Result<(E::Model, F::Model), DbErr>> + 'b, DbErr>
+    ) -> impl Future<Output = Result<PinBoxStream<'b, (E::Model, F::Model)>, DbErr>>
     where
         C: ConnectionTrait + StreamTrait + Send,
     {
-        self.into_model().stream(db).await
+        self.into_model().stream(db)
     }
 
     /// Stream the result of the operation with PartialModel
     #[cfg(feature = "stream")]
-    pub async fn stream_partial_model<'a: 'b, 'b, C, M, N>(
+    pub fn stream_partial_model<'a: 'b, 'b, C, M, N>(
         self,
         db: &'a C,
-    ) -> Result<impl Stream<Item = Result<(M, N), DbErr>> + 'b + Send, DbErr>
+    ) -> impl Future<Output = Result<PinBoxStream<'b, (M, N)>, DbErr>>
     where
         C: ConnectionTrait + StreamTrait + Send,
         M: PartialModelTrait + Send + 'b,
         N: PartialModelTrait + Send + 'b,
     {
-        self.into_partial_model().stream(db).await
+        self.into_partial_model().stream(db)
     }
 }
 
@@ -867,16 +880,22 @@ where
     }
 
     /// Get an item from the Select query
-    pub async fn one<C>(mut self, db: &C) -> Result<Option<S::Item>, DbErr>
+    pub fn one<C>(mut self, db: &C) -> impl Future<Output = Result<Option<S::Item>, DbErr>>
     where
         C: ConnectionTrait,
     {
         self.query.limit(1);
-        let row = db.query_one(&self.query).await?;
-        match row {
-            Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
-            None => Ok(None),
+        let task = db.query_one(&self.query);
+        let convert = |result: Result<Option<QueryResult>, DbErr>| {
+            let row = result?;
+            row.map(S::from_raw_query_result).transpose()
+        };
+        #[cfg(not(feature = "sync"))]
+        {
+            FutureExt::map(task, convert)
         }
+        #[cfg(feature = "sync")]
+        convert(task)
     }
 
     /// Get exactly one item from the Select query, returning
@@ -885,57 +904,46 @@ where
     /// This is the non-optional counterpart to [`one`](Self::one): reach for it
     /// when a missing row is an error rather than an expected `None`, so the
     /// call site can use `?` instead of unwrapping an `Option`.
-    pub async fn require_one<C>(self, db: &C) -> Result<S::Item, DbErr>
+    pub fn require_one<C>(self, db: &C) -> impl Future<Output = Result<S::Item, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.one(db).await?.ok_or(record_not_found())
+        let task = self.one(db);
+        async move { task.await?.ok_or(record_not_found()) }
     }
 
     /// Get all items from the Select query
-    pub async fn all<C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
+    pub fn all<C>(self, db: &C) -> impl Future<Output = Result<Vec<S::Item>, DbErr>>
     where
         C: ConnectionTrait,
     {
         #[cfg(not(feature = "sync"))]
         {
-            db.query_rows(&self.query)
-                .await?
-                .collect(S::from_raw_query_result)
-                .await
+            let task = db.query_rows(&self.query);
+            async move { task.await?.collect(S::from_raw_query_result).await }
         }
         #[cfg(feature = "sync")]
-        {
-            db.query_all(&self.query)
-                .await?
-                .into_iter()
-                .map(|row| S::from_raw_query_result(row))
-                .try_collect()
-        }
+        db.query_all(&self.query)?
+            .into_iter()
+            .map(S::from_raw_query_result)
+            .collect()
     }
 
     /// Stream the results of the Select operation
     #[cfg(feature = "stream")]
-    pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<PinBoxStream<'b, S::Item>, DbErr>
+    pub fn stream<'a: 'b, 'b, C>(
+        self,
+        db: &'a C,
+    ) -> impl Future<Output = Result<PinBoxStream<'b, S::Item>, DbErr>>
     where
         C: ConnectionTrait + StreamTrait + Send,
         S: 'b,
         S::Item: Send,
     {
-        let stream = db.stream(&self.query).await?;
-
-        #[cfg(not(feature = "sync"))]
-        {
-            Ok(Box::pin(stream.and_then(|row| {
-                futures_util::future::ready(S::from_raw_query_result(row))
-            })))
-        }
-        #[cfg(feature = "sync")]
-        {
-            Ok(Box::new(
-                stream.map(|item| item.and_then(S::from_raw_query_result)),
-            ))
-        }
+        TryFutureExt::map_ok(db.stream(&self.query), |stream| {
+            Box::pin(stream.map(|row| row.and_then(S::from_raw_query_result)))
+                as PinBoxStream<'b, S::Item>
+        })
     }
 }
 
@@ -1138,24 +1146,31 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn one<C>(self, db: &C) -> Result<Option<S::Item>, DbErr>
+    pub fn one<C>(self, db: &C) -> impl Future<Output = Result<Option<S::Item>, DbErr>>
     where
         C: ConnectionTrait,
     {
-        let row = db.query_one_raw(self.stmt).await?;
-        match row {
-            Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
-            None => Ok(None),
+        let task = db.query_one_raw(self.stmt);
+        let convert = |result: Result<Option<QueryResult>, DbErr>| {
+            let row = result?;
+            row.map(S::from_raw_query_result).transpose()
+        };
+        #[cfg(not(feature = "sync"))]
+        {
+            FutureExt::map(task, convert)
         }
+        #[cfg(feature = "sync")]
+        convert(task)
     }
 
     /// Get exactly one item from the query, returning [`DbErr::RecordNotFound`]
     /// when no row matches. The non-optional counterpart to [`one`](Self::one).
-    pub async fn require_one<C>(self, db: &C) -> Result<S::Item, DbErr>
+    pub fn require_one<C>(self, db: &C) -> impl Future<Output = Result<S::Item, DbErr>>
     where
         C: ConnectionTrait,
     {
-        self.one(db).await?.ok_or(record_not_found())
+        let task = self.one(db);
+        async move { task.await?.ok_or(record_not_found()) }
     }
 
     /// Get all items from the Select query
@@ -1197,48 +1212,36 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn all<C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
+    pub fn all<C>(self, db: &C) -> impl Future<Output = Result<Vec<S::Item>, DbErr>>
     where
         C: ConnectionTrait,
     {
         #[cfg(not(feature = "sync"))]
         {
-            db.query_rows_raw(self.stmt)
-                .await?
-                .collect(S::from_raw_query_result)
-                .await
+            let task = db.query_rows_raw(self.stmt);
+            async move { task.await?.collect(S::from_raw_query_result).await }
         }
         #[cfg(feature = "sync")]
-        {
-            db.query_all_raw(self.stmt)
-                .await?
-                .into_iter()
-                .map(|row| S::from_raw_query_result(row))
-                .try_collect()
-        }
+        db.query_all_raw(self.stmt)?
+            .into_iter()
+            .map(S::from_raw_query_result)
+            .collect()
     }
 
     /// Stream the results of the Select operation
     #[cfg(feature = "stream")]
-    pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<PinBoxStream<'b, S::Item>, DbErr>
+    pub fn stream<'a: 'b, 'b, C>(
+        self,
+        db: &'a C,
+    ) -> impl Future<Output = Result<PinBoxStream<'b, S::Item>, DbErr>>
     where
         C: ConnectionTrait + StreamTrait + Send,
         S: 'b,
         S::Item: Send,
     {
-        let stream = db.stream_raw(self.stmt).await?;
-
-        #[cfg(not(feature = "sync"))]
-        {
-            Ok(Box::pin(stream.and_then(|row| {
-                futures_util::future::ready(S::from_raw_query_result(row))
-            })))
-        }
-        #[cfg(feature = "sync")]
-        {
-            Ok(Box::new(
-                stream.map(|item| item.and_then(S::from_raw_query_result)),
-            ))
-        }
+        TryFutureExt::map_ok(db.stream_raw(self.stmt), |stream| {
+            Box::pin(stream.map(|row| row.and_then(S::from_raw_query_result)))
+                as PinBoxStream<'b, S::Item>
+        })
     }
 }
