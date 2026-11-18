@@ -37,7 +37,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Compatibility Notes
 
-<!-- AI-generated: -->
 - `sea-orm-migration` no longer turns on sea-orm's default features behind the user's back. Its own default features now carry them instead (`with-json`, `with-chrono`, `with-rust_decimal`, `with-uuid`, `with-time`, `sqlite-use-returning-for-3_35`, and the new `stream`), so a project on the defaults sees no change. A project that sets `default-features = false` on `sea-orm-migration` now gets only the features it names, and can drop `chrono`, which RUSTSEC-2026-0543 marks unmaintained. If such a project relied on the migrator for one of those features, it names it on `sea-orm-migration` or on its own `sea-orm` dependency. https://github.com/SeaQL/sea-orm/issues/3271
 
 - Update the declared MSRV of `sea-orm-cli` to Rust 1.94, matching its existing SQLx 0.9 dependency requirement https://github.com/SeaQL/sea-orm/pull/3187
