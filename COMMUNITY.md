@@ -6,6 +6,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 ### Startups
 
+- [arcodash](https://www.arcodash.com) [![GitHub stars](https://img.shields.io/github/stars/arcodash/arcodash.svg?style=social)](https://github.com/arcodash/arcodash) | Open-source BI with data observability built in: SQL dashboards, data checks and alerts that explain why they fired | DB: Postgres
 - [Caido](https://caido.io/) | A lightweight web security auditing toolkit
 - [FirstLook.gg](https://firstlook.gg/) | A platform to onboard, understand, and reward players | DB: Postgres
 - [Lapdev](https://lap.dev/) [![GitHub stars](https://img.shields.io/github/stars/lapce/lapdev.svg?style=social)](https://github.com/lapce/lapdev) | Self-hosted remote development environment | DB: Postgres
